@@ -11,7 +11,7 @@ import java.util.Arrays;
  * ReferenceBases stores the bases of the reference genome for a particular interval.
  * This class requires the bases to be encoded at 8 bits per base.
  */
-public class ReferenceBases implements Serializable {
+public final class ReferenceBases implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final byte[] bases;

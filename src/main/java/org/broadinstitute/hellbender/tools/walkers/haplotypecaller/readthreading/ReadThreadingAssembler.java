@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.util.*;
 
 public final class ReadThreadingAssembler {
@@ -51,9 +52,14 @@ public final class ReadThreadingAssembler {
     private static final int MIN_DANDLING_BRANCH_LENGTH = 0;
 
     private static final byte MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY = DEFAULT_MIN_BASE_QUALITY_TO_USE;
+
+    protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor = 2;
 
+    protected boolean errorCorrectKmers = false;
+
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
+    private PrintStream graphWriter = null;
 
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef, final int numPruningSamples) {
         if ( maxAllowedPathsForReadThreadingAssembler < 1 ) {
@@ -126,6 +132,9 @@ public final class ReadThreadingAssembler {
         }
 
         findBestPaths(nonRefGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByGraph, resultSet);
+
+        // print the graphs if the appropriate debug option has been turned on
+        if ( graphWriter != null ) { printGraphs(nonRefGraphs); }
 
         return resultSet;
     }
@@ -506,11 +515,64 @@ public final class ReadThreadingAssembler {
         return "ReadThreadingAssembler{kmerSizes=" + kmerSizes + '}';
     }
 
+    /**
+     * Print the generated graphs to the graphWriter
+     * @param graphs a non-null list of graphs to print out
+     */
+    private void printGraphs(final List<SeqGraph> graphs) {
+        final int writeFirstGraphWithSizeSmallerThan = 50;
+
+        graphWriter.println("digraph assemblyGraphs {");
+        for( final SeqGraph graph : graphs ) {
+            if ( debugGraphTransformations && graph.getKmerSize() >= writeFirstGraphWithSizeSmallerThan ) {
+                logger.info("Skipping writing of graph with kmersize " + graph.getKmerSize());
+                continue;
+            }
+
+            graph.printGraph(graphWriter, false, pruneFactor);
+
+            if ( debugGraphTransformations )
+                break;
+        }
+
+        graphWriter.println("}");
+    }
+
     // -----------------------------------------------------------------------------------------------
     //
     // getter / setter routines for generic assembler properties
     //
     // -----------------------------------------------------------------------------------------------
+
+    public int getPruneFactor() {
+        return pruneFactor;
+    }
+
+    public boolean shouldErrorCorrectKmers() {
+        return errorCorrectKmers;
+    }
+
+    public void setErrorCorrectKmers(boolean errorCorrectKmers) {
+        this.errorCorrectKmers = errorCorrectKmers;
+    }
+
+    public void setGraphWriter(PrintStream graphWriter) {
+        this.graphWriter = graphWriter;
+    }
+
+    public byte getMinBaseQualityToUseInAssembly() {
+        return minBaseQualityToUseInAssembly;
+    }
+
+    public void setMinBaseQualityToUseInAssembly(byte minBaseQualityToUseInAssembly) {
+        this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
+    }
+
+    public boolean isDebugGraphTransformations() {
+        return debugGraphTransformations;
+    }
+
+    public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
 
     public void setPruneFactor(final int pruneFactor) {
         this.pruneFactor = pruneFactor;

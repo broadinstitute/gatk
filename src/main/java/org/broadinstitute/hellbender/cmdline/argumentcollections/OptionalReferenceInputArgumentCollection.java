@@ -16,7 +16,6 @@ public final class OptionalReferenceInputArgumentCollection extends ReferenceInp
 
     private File referenceFile = null;
 
-    // Not thread-safe
     @Override
     public File getReferenceFile() {
         if (null!=referenceFile) return referenceFile;

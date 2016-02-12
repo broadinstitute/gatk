@@ -192,7 +192,7 @@ public final class AssemblyRegion {
      * @param extensionSize the extensionSize size we want for the newly trimmed active region
      * @return a non-null, empty active region
      */
-    private AssemblyRegion trim(final GenomeLoc span, final int extensionSize) {
+    public AssemblyRegion trim(final GenomeLoc span, final int extensionSize) {
         Utils.nonNull(span, "Active region extent cannot be null");
         if ( extensionSize < 0) {
             throw new IllegalArgumentException("the extensionSize size must be 0 or greater");
@@ -241,7 +241,7 @@ public final class AssemblyRegion {
      * @param span the new extend of the active region we want
      * @return a non-null, empty active region
      */
-    private AssemblyRegion trim(final GenomeLoc span, final GenomeLoc extendedSpan) {
+    public AssemblyRegion trim(final GenomeLoc span, final GenomeLoc extendedSpan) {
         Utils.nonNull(span, "Active region extent cannot be null");
         Utils.nonNull(extendedSpan, "Active region extended span cannot be null");
         if ( ! extendedSpan.containsP(span)) {

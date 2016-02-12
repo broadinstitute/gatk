@@ -381,4 +381,12 @@ public class UserException extends RuntimeException {
                                 featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
 	    }
     }
+
+    public static final class ReadMissingReadGroup extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public ReadMissingReadGroup(final GATKRead read) {
+            super(read, String.format("Read %s is missing the read group (RG) tag, which is required by the GATK.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getName()));
+        }
+    }
 }

@@ -22,6 +22,19 @@ public final class MathUtilsUnitTest extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(MathUtilsUnitTest.class);
 
+    @Test
+    public void testRMS()  {
+        Assert.assertEquals(MathUtils.rms(Arrays.asList(2,2,2)), 2.0);
+        Assert.assertEquals(MathUtils.rms(Arrays.asList(1,2,3)), Math.sqrt((1.0 + 4.0 + 9.0)/3));
+    }
+
+    @Test
+    public void log10BinomialProbability() throws Exception {
+        Assert.assertEquals(MathUtils.log10BinomialProbability(2, 1), log10(0.5),1E-9);
+        Assert.assertEquals(MathUtils.log10BinomialProbability(4, 1), log10(0.25),1E-9);
+        Assert.assertEquals(MathUtils.log10BinomialProbability(4, 2), log10(0.375),1E-9);
+    }
+
     @Test(dataProvider = "log10OneMinusPow10Data")
     public void testLog10OneMinusPow10(final double x, final double expected) {
         final double actual = MathUtils.log10OneMinusPow10(x);

@@ -34,6 +34,7 @@ public final class MathUtils {
      * Log10 of the e constant.
      */
     public static final double LOG10_OF_E = Math.log10(Math.E);
+    public static final double FAIR_BINOMIAL_PROB_LOG10_0_5 = Math.log10(0.5);
 
     /**
      * Private constructor.  No instantiating this class!
@@ -458,6 +459,13 @@ public final class MathUtils {
             throw new IllegalArgumentException("log10p: Log10-probability must be 0 or less");
         double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
+    }
+
+    /**
+     * @see #binomialProbability(int, int, double) with p=0.5 and log10 applied to result
+     */
+    public static double log10BinomialProbability(final int n, final int k) {
+        return log10BinomialCoefficient(n, k) + (n * FAIR_BINOMIAL_PROB_LOG10_0_5);
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start) {
