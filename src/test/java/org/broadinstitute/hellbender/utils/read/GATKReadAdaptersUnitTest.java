@@ -532,7 +532,7 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         Assert.assertEquals(read.getBaseQualities(), newQuals, "Wrong base qualities for read after setBaseQualities()");
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testSetInvalidBaseQualitiesOnGoogleRead() {
         final GATKRead read = basicReadBackedByGoogle();
         read.setBaseQualities(new byte[]{-1});

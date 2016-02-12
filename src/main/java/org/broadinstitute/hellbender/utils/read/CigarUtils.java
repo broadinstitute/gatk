@@ -88,7 +88,7 @@ public final class CigarUtils {
         if (read == null){
             throw new IllegalArgumentException("null read");
         }
-        final List<CigarElement> elems = read.getCigar().getCigarElements();
+        final List<CigarElement> elems = read.getCigarElements();
         if (cigarStartIndex < 0 || cigarEndIndex > elems.size() || cigarStartIndex > cigarEndIndex){
             throw new IllegalArgumentException("invalid index:" + 0 + " -" + elems.size());
         }
@@ -185,7 +185,14 @@ public final class CigarUtils {
      * Returns whether the cigar has any N operators.
      */
     public static boolean containsNOperator(final Cigar cigar) {
-        return Utils.nonNull(cigar).getCigarElements().stream().anyMatch(el -> el.getOperator() == CigarOperator.N);
+        return containsNOperator(Utils.nonNull(cigar).getCigarElements());
+    }
+
+    /**
+     * Returns whether the list has any N operators.
+     */
+    public static boolean containsNOperator(final List<CigarElement> cigarElements) {
+        return Utils.nonNull(cigarElements).stream().anyMatch(el -> el.getOperator() == CigarOperator.N);
     }
 
     /**

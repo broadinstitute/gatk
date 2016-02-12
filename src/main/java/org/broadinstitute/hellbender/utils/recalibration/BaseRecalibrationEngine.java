@@ -318,12 +318,11 @@ public final class BaseRecalibrationEngine implements Serializable {
     }
 
     private boolean[] calculateSkipArray( final GATKRead read, final Iterable<? extends Locatable> knownSites ) {
-        final byte[] bases = read.getBases();
-        final boolean[] skip = new boolean[bases.length];
+        final int readLength = read.getLength();
+        final boolean[] skip = new boolean[readLength];
         final boolean[] knownSitesArray = calculateKnownSites(read, knownSites);
-        final byte[] baseQualities = read.getBaseQualities();
-        for( int i = 0; i < bases.length; i++ ) {
-            skip[i] = !BaseUtils.isRegularBase(bases[i]) || baseQualities[i] < recalArgs.PRESERVE_QSCORES_LESS_THAN || knownSitesArray[i];
+        for(int i = 0; i < readLength; i++ ) {
+            skip[i] = !BaseUtils.isRegularBase(read.getBase(i)) || read.getBaseQuality(i) < recalArgs.PRESERVE_QSCORES_LESS_THAN || knownSitesArray[i];
         }
         return skip;
     }
@@ -332,8 +331,8 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int readLength = read.getLength();
         final boolean[] knownSitesArray = new boolean[readLength];//initializes to all false
         final Cigar cigar = read.getCigar();
-        final int softStart = ReadUtils.getSoftStart(read, cigar);
-        final int softEnd = ReadUtils.getSoftEnd(read, cigar);
+        final int softStart = ReadUtils.getSoftStart(read);
+        final int softEnd = ReadUtils.getSoftEnd(read);
         for ( final Locatable knownSite : knownSites ) {
             if (knownSite.getEnd() < softStart || knownSite.getStart() > softEnd) {
                 // knownSite is outside clipping window for the read, ignore
@@ -370,20 +369,19 @@ public final class BaseRecalibrationEngine implements Serializable {
      * @return the total number of SNP and indel events
      */
     protected static int calculateIsSNPOrIndel(final GATKRead read, final ReferenceDataSource ref, int[] snp, int[] isIns, int[] isDel) {
-        final byte[] readBases = read.getBases();
         final byte[] refBases = ref.queryAndPrefetch(read.getContig(), read.getStart(), read.getEnd()).getBases();
         int readPos = 0;
         int refPos = 0;
         int nEvents = 0;
 
-        for (final CigarElement ce : read.getCigar().getCigarElements()) {
+        for (final CigarElement ce : read.getCigarElements()) {
             final int elementLength = ce.getLength();
             switch (ce.getOperator()) {
                 case M:
                 case EQ:
                 case X:
                     for (int i = 0; i < elementLength; i++) {
-                        int snpInt = (BaseUtils.basesAreEqual(readBases[readPos], refBases[refPos]) ? 0 : 1);
+                        int snpInt = (BaseUtils.basesAreEqual(read.getBase(readPos), refBases[refPos]) ? 0 : 1);
                         snp[readPos] = snpInt;
                         nEvents += snpInt;
                         readPos++;
