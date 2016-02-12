@@ -117,6 +117,8 @@ public class Target implements Locatable, Feature, Serializable {
         return interval.getEnd();
     }
 
+    public int length() { return getEnd() - getStart() + 1; }
+
     @Override
     public boolean equals(final Object other) {
         return other instanceof Target ? equals((Target)other) : false;

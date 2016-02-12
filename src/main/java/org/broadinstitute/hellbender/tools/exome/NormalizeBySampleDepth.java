@@ -1,9 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.collections4.list.SetUniqueList;
-import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
-import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
-import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -13,10 +9,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Calculates basic statistics for coverage per targets and per sample.
@@ -56,7 +48,7 @@ public class NormalizeBySampleDepth extends CommandLineProgram {
     protected File outputFile;
 
     @Argument(
-            doc = "Weighted average with weights proportional to target sizes",
+            doc = "Weight average with weights proportional to target sizes",
             fullName = WEIGHTED_AVERAGE_LONG_NAME,
             shortName = WEIGHTED_AVERAGE_SHORT_NAME,
             optional = true
@@ -72,44 +64,12 @@ public class NormalizeBySampleDepth extends CommandLineProgram {
             throw new UserException.CouldNotReadInputFile(inputFile, "cannot reach or read the input target coverage file");
         }
 
-        final RealMatrix counts = inputCounts.counts();
-
-        //kludgy way to deep copy input targets list
-        final List<Target> targets = inputCounts.targets().stream()
-                .map(t -> new Target(t.getName(), t.getInterval())).collect(Collectors.toList());
-        final List<String> columnNames = new ArrayList<>(inputCounts.columnNames());
-
-        final int[] targetSizes;
-        if (weightByTargetSize) {
-            try {
-                targetSizes = targets.stream().mapToInt(t -> length(t)).toArray();
-            } catch (final IllegalStateException e) {
-                throw new UserException.BadInput("Weighting by target size requested but input read counts lack target intervals.");
-            }
-        } else {
-            targetSizes = new int[targets.size()];
-            Arrays.fill(targetSizes, 1);
+        final ReadCountCollection normalizedCounts;
+        try {
+            normalizedCounts = inputCounts.normalizeByColumnAverages(weightByTargetSize);
+        } catch (final IllegalArgumentException e) {
+            throw new UserException.BadInput("Weighting by target size requested but input read normalizedCounts lack target intervals.");
         }
-        final int totalTargetSize = Arrays.stream(targetSizes).sum();
-
-        final double[] sampleWeightedAverages = new double[counts.getColumnDimension()]; // elements initialized to 0.0
-
-        counts.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
-            @Override
-            public void visit(final int target, final int sample, final double coverage) {
-                sampleWeightedAverages[sample] += targetSizes[target] * coverage / totalTargetSize;
-            }
-        });
-
-        counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(final int target, final int sample, final double coverage) {
-                return coverage / sampleWeightedAverages[sample];
-            }
-        });
-
-        final ReadCountCollection normalizedCounts = new ReadCountCollection(SetUniqueList.setUniqueList(targets),
-                SetUniqueList.setUniqueList(columnNames), counts);
 
         try {
             ReadCountCollectionUtils.write(outputFile, normalizedCounts);
@@ -119,6 +79,4 @@ public class NormalizeBySampleDepth extends CommandLineProgram {
 
         return "SUCCESS";
     }
-
-    private static int length(final Target target) { return target.getEnd() - target.getStart() + 1; }
 }

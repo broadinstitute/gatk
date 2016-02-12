@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.util.TestUtil;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -29,6 +32,33 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
     public void testCorrectInstantiation(final ReadCountCollectionInfo info) {
         final ReadCountCollection readCountCollection = info.newInstance();
         Assert.assertNotNull(readCountCollection);
+    }
+
+    @Test(dataProvider ="correctInstantiationData")
+    public void testNormalizeBySampleAverageNoWeighting(final ReadCountCollectionInfo info) {
+        final boolean weightByTargetSize = false;
+        final ReadCountCollection counts = info.newInstance();
+        final ReadCountCollection normalizedCounts = counts.normalizeByColumnAverages(weightByTargetSize);
+        assertNormalizedBySampleAverage(counts, normalizedCounts, weightByTargetSize);
+    }
+
+    @Test(dataProvider ="correctInstantiationData")
+    public void testNormalizeBySampleAverageWeighting(final ReadCountCollectionInfo info) {
+        if (info.intervals == null) { return; }
+        final boolean weightByTargetSize = true;
+        final ReadCountCollection counts = info.newInstance();
+        final ReadCountCollection normalizedCounts = counts.normalizeByColumnAverages(weightByTargetSize);
+        assertNormalizedBySampleAverage(counts, normalizedCounts, weightByTargetSize);
+    }
+
+    @Test(dataProvider ="correctInstantiationData", expectedExceptions = IllegalArgumentException.class)
+    public void testNormalizeBySampleAverageWithweightingNoTargetIntervals(final ReadCountCollectionInfo info) {
+        if (info.intervals != null) {
+            throw new IllegalArgumentException("this instance given by the DataProvider has intervals and is thus irrelevant");
+        }
+        final boolean weightByTargetSize = true;
+        final ReadCountCollection counts = info.newInstance();
+        final ReadCountCollection normalizedCounts = counts.normalizeByColumnAverages(weightByTargetSize);
     }
 
     @Test(dataProvider="correctInstantiationData",dependsOnMethods = "testCorrectInstantiation")
@@ -467,6 +497,32 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
             TestUtil.serializeAndDeserialize(newInstance);
         } catch (final IOException | ClassNotFoundException e) {
             Assert.fail("Exception thrown", e);
+        }
+    }
+
+    private void assertNormalizedBySampleAverage(final ReadCountCollection counts,
+                                                 final ReadCountCollection normalizedCounts, final boolean weightByTargetSize) {
+        Assert.assertEquals(counts.targets(), normalizedCounts.targets());
+        Assert.assertEquals(counts.columnNames(), normalizedCounts.columnNames());
+
+        final RealVector weights = new ArrayRealVector(counts.targets().stream()
+                .mapToDouble(t -> weightByTargetSize ? t.length() : 1).toArray());
+
+        final RealMatrix countsMatrix = counts.counts();
+        final RealMatrix normalizedCountsMatrix = normalizedCounts.counts();
+
+        Assert.assertEquals(countsMatrix.getRowDimension(), normalizedCountsMatrix.getRowDimension());
+        Assert.assertEquals(countsMatrix.getColumnDimension(), normalizedCountsMatrix.getColumnDimension());
+
+        for (int col = 0; col < countsMatrix.getColumnDimension(); col++) {
+            final RealVector countsColumn = countsMatrix.getColumnVector(col);
+            final RealVector normalizedCountsColumn = normalizedCountsMatrix.getColumnVector(col);
+
+            //check that the two columns are parallel
+            Assert.assertEquals(Math.abs(countsColumn.cosine(normalizedCountsColumn)), 1, 1e-8);
+
+            final double inputWeightedAverage = countsColumn.dotProduct(weights) / weights.getL1Norm();
+            Assert.assertEquals(normalizedCountsColumn.mapMultiply(inputWeightedAverage).getL1Distance(countsColumn), 0, 1e-8);
         }
     }
 }

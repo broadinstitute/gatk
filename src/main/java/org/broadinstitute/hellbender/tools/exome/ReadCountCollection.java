@@ -4,14 +4,14 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
+import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -291,6 +291,49 @@ public final class ReadCountCollection implements Serializable {
             counts.setRow(i, this.counts.getRow(targetToIndex.getInt(target)));
         }
         return new ReadCountCollection(new ArrayList<>(targetsInOrder), columnNames, counts);
+    }
+
+    /**
+     * Divide coverage at each target and each column by the average of that column.
+     * @param weightByTargetSize whether to use a weighted average with weights given by target sizes
+     * @return a new collection.
+     * @throws IllegalArgumentException if {@code weightByTargetSize} is {@code true} but any target
+     * is missing an interval.
+     */
+    public ReadCountCollection normalizeByColumnAverages(final boolean weightByTargetSize) {
+        final RealMatrix normalizedCounts = counts().copy();
+
+        final int[] weights;
+        if (weightByTargetSize) {
+            try {
+                weights = targets.stream().mapToInt(Target::length).toArray();
+            } catch (final IllegalStateException e) {
+                throw new IllegalArgumentException("Weighting by target size requested but at least one target lacks an interval");
+            }
+        } else {
+            weights = new int[targets.size()];
+            Arrays.fill(weights, 1);
+        }
+        final int totalWeight = Arrays.stream(weights).sum();
+
+
+        final double[] sampleWeightedAverages = new double[counts.getColumnDimension()]; // elements initialized to 0.0
+
+        normalizedCounts.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
+            @Override
+            public void visit(final int target, final int column, final double coverage) {
+                sampleWeightedAverages[column] += weights[target] * coverage / totalWeight;
+            }
+        });
+
+        normalizedCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int target, final int column, final double coverage) {
+                return coverage / sampleWeightedAverages[column];
+            }
+        });
+
+        return new ReadCountCollection(targets, columnNames, normalizedCounts);
     }
 
     /**
