@@ -38,6 +38,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected static final String INTERMEDIATE_SEG_FILE_TAG = "sim";
     protected static final String FINAL_SEG_FILE_TAG = "sim-final";
     protected static final String GATK_SEG_FILE_TAG = "cnv";
+    protected static final String CGA_ACS_SEG_FILE_TAG = "acs";
 
     private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
 
@@ -258,12 +259,18 @@ public class AllelicCNV extends SparkCommandLineProgram {
             modeller.writeACNVModeledSegmentFile(modeledSegmentsFile);
         }
         logger.info("Final number of segments after similar-segment merging: " + modeller.getACNVModeledSegments().size());
+
         //write final model fit to file
         final File finalModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + ".seg");
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
+
         //write file for GATK CNV formatted seg file
         final File finalModeledSegmentsFileAsGatkCNV = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + "." + GATK_SEG_FILE_TAG + ".seg");
         modeller.writeModeledSegmentFile(finalModeledSegmentsFileAsGatkCNV);
+
+        // Write file for ACS- compatible output to help Broad CGA
+        final File finalACSModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + "." + CGA_ACS_SEG_FILE_TAG + ".seg");
+        modeller.writeACNVModeledSegmentFileAsAllelicCapSegFile(finalACSModeledSegmentsFile);
 
         ctx.setLogLevel(originalLogLevel);
         logger.info("SUCCESS: Allelic CNV run complete for sample " + sampleName + ".");
