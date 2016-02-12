@@ -19,8 +19,8 @@ public class ACSModeledSegment extends ModeledSegment {
     final int segLabelCNLOH;
     final int hetCount;
 
-    public ACSModeledSegment(final SimpleInterval interval, final String call, final long targetCount, final double segmentMeanInLogCR, final int hetCount, final double f, final double sigmaTau, final double muMinor, final double sigmaMinor, final double muMajor, final double sigmaMajor, final int segLabelCNLOH) {
-        super(interval, call, targetCount, segmentMeanInLogCR);
+    public ACSModeledSegment(final SimpleInterval interval, final String call, final long targetCount, final double segmentMeanInLog2CR, final int hetCount, final double f, final double sigmaTau, final double muMinor, final double sigmaMinor, final double muMajor, final double sigmaMajor, final int segLabelCNLOH) {
+        super(interval, call, targetCount, segmentMeanInLog2CR);
         this.f = f;
         this.tau = getSegmentMeanInCRSpace() * 2;
         this.sigmaTau = sigmaTau;

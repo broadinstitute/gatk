@@ -14,8 +14,6 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String LEGACY_SEG_FILE_SHORT_NAME = "LEG";
     public static final String LEGACY_SEG_FILE_LONG_NAME = "legacy";
 
-    public static final String SAMPLE_LONG_NAME = "sample";
-
     public static final String NORMAL_BAM_FILE_SHORT_NAME = "N";
     public static final String NORMAL_BAM_FILE_LONG_NAME = "normal";
 

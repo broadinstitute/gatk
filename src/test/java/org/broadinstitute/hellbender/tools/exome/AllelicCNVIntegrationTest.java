@@ -35,7 +35,6 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
                 "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "25",
                 "--" + AllelicCNV.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
                 "--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",

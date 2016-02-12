@@ -357,26 +357,14 @@ public final class SegmentUtils {
     /**
      * Read ACNV file into ACNV modeled segments.
      *
-     * @param acnvSegFile File in the ACNV format (*-final.seg).  Must be readable file and never {@code null}
+     * @param acnvSegFile File in the ACNV format (sim-*.seg).  Must be readable file and never {@code null}
      * @return Never {@code null}.  Can be empty list if no entries exist in the input file.
      */
     public static List<ACNVModeledSegment> readACNVModeledSegmentFile(final File acnvSegFile) {
         Utils.nonNull(acnvSegFile);
         Utils.regularReadableUserFile(acnvSegFile);
 
-        try (final TableReader<ACNVModeledSegment> reader = TableUtils.reader(acnvSegFile,
-                (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY)) {
-                        final Set<String> missingColumns = Sets.difference(new HashSet<>(Arrays.asList(SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY)), new HashSet<>(columns.names()));
-                        throw formatExceptionFactory.apply("Bad header in ACS file.  Not all columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
-                    }
-                    //return the lambda to translate dataLines into called segments
-                    return SegmentUtils :: toACNVModeledSegment;
-                })) {
-            return reader.stream().collect(Collectors.toList());
-        } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(acnvSegFile, e);
-        }
+        return readSegmentFile(acnvSegFile, SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY, SegmentUtils::toACNVModeledSegment);
     }
 
     /*===============================================================================================================*
@@ -504,8 +492,8 @@ public final class SegmentUtils {
      *
      * @param dataLine line in a file
      * @param contigColumn name of the contig column
-     * @param startColumn
-     * @param endColumn
+     * @param startColumn column name for the start position
+     * @param endColumn column name for the end position
      * @return interval in the dataLine.  Never {@code null}
      */
     public static SimpleInterval toInterval(final DataLine dataLine, final String contigColumn, final String startColumn,
@@ -521,6 +509,8 @@ public final class SegmentUtils {
     public static <T extends Locatable> List<T> readSegmentFile(final File segmentsFile,
                                                                 final String[] mandatoryColumns,
                                                                 final Function<DataLine, T> dataLineToSegmentFunction) {
+        Utils.nonNull(segmentsFile);
+        Utils.regularReadableUserFile(segmentsFile);
         try (final TableReader<T> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.containsAll(mandatoryColumns)) {
@@ -569,7 +559,6 @@ public final class SegmentUtils {
     private static String toSampleName(final DataLine dataLine) {
         return dataLine.get(SegmentTableColumns.SAMPLE.toString());
     }
-
 
     private static <T extends Locatable> void writeSegmentFile(final File outFile,
                                                                final List<T> segments,

@@ -23,6 +23,12 @@ import java.util.stream.Collectors;
  * Static class for writing out legacy AllelicCapSeg formatted files from ACNV output.
  */
 public class ACSModeledSegmentUtils {
+
+    /**
+     * This was taken since it approximates 1 sigma from 95% confidence intervals, when used to divide the credible interval width.
+     * Made larger at user request.
+     */
+    public static final double DIVISOR = 2.0;
     /**
      * Writes a list of segments represented by {@link ACNVModeledSegment} to a file with header:
      * <p>
@@ -35,11 +41,9 @@ public class ACSModeledSegmentUtils {
                                                                       final List<ACNVModeledSegment> acnvModeledSegments,
                                                                       final Genome genome) {
         Utils.nonNull(genome, "The genome cannot be null.");
+        Utils.nonNull(acnvModeledSegments, "ACNV modeled segments cannot be null.");
 
-        // This was taken since it approximates 1 sigma from 95% confidence intervals.  Then it was made larger at user request.
-        final double divisor = 2.0;
-
-        final List<ACSModeledSegment> acsModeledSegments = convertACNVSegmentsToACSSegments(acnvModeledSegments, divisor, genome);
+        final List<ACSModeledSegment> acsModeledSegments = convertACNVSegmentsToACSSegments(acnvModeledSegments, DIVISOR, genome);
         try (final TableWriter<ACSModeledSegment> writer =
                      TableUtils.writer(outFile, new TableColumnCollection(ACSTableColumns.COLUMN_NAME_ARRAY),
                              //lambda for creating DataLine with sampleName and segment fields
@@ -92,8 +96,8 @@ public class ACSModeledSegmentUtils {
         final BalancedSegmentCaller balancedSegmentCaller = new SimpleBalancedSegmentCaller();
         final boolean isSegmentBalanced = balancedSegmentCaller.isSegmentBalanced(acnvModeledSegment);
 
-        final double f = (isSegmentBalanced? 0.5 : acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().center());
-        final double tau = Math.pow(2,acnvModeledSegment.getSegmentMeanPosteriorSummary().center()) * 2.0;
+        final double f = (isSegmentBalanced ? 0.5 : acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().center());
+        final double tau = Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().center()) * 2.0;
         final double widthTau = Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().upper()) - Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().lower());
         final double sigmaTau = widthTau/divisor;
         final double muMinor = tau * f;
@@ -124,7 +128,7 @@ public class ACSModeledSegmentUtils {
         final SimpleInterval interval = SegmentUtils.toInterval(dataLine, ACSTableColumns.CHROMOSOME.toString(),
                 ACSTableColumns.START.toString(), ACSTableColumns.END.toString());
         final int targetCount = dataLine.getInt(ACSTableColumns.NUM_PROBES);
-        final double segmentMeanInLogCR = dataLine.getDouble(ACSTableColumns.TAU.toString())/2.0;
+        final double segmentMeanInLog2CR = dataLine.getDouble(ACSTableColumns.TAU.toString())/2.0;
         final int hetCount = dataLine.getInt(ACSTableColumns.NUM_HETS.toString());
         final double f = dataLine.getDouble(ACSTableColumns.F.toString());
         final double sigmaTau = dataLine.getDouble(ACSTableColumns.SIGMA_TAU.toString());
@@ -133,7 +137,7 @@ public class ACSModeledSegmentUtils {
         final double sigmaMinor = dataLine.getDouble(ACSTableColumns.SIGMA_MINOR.toString());
         final double sigmaMajor = dataLine.getDouble(ACSTableColumns.SIGMA_MAJOR.toString());
         final int segLabelCNLOH = dataLine.getInt(ACSTableColumns.SEGLABELCNLOH.toString());
-        return new ACSModeledSegment(interval, ModeledSegment.NO_CALL, targetCount, segmentMeanInLogCR, hetCount, f,
+        return new ACSModeledSegment(interval, ModeledSegment.NO_CALL, targetCount, segmentMeanInLog2CR, hetCount, f,
                 sigmaTau, muMinor, sigmaMinor, muMajor, sigmaMajor, segLabelCNLOH);
     }
 }

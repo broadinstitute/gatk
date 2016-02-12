@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.tools.exome.acnvconversion.ACNVModeledSegmentConverter;
+import org.broadinstitute.hellbender.tools.exome.acnvconversion.ACNVModeledSegmentConversionUtils;
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionModeller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -124,11 +124,11 @@ public final class ACNVModeller {
      */
     public void writeModeledSegmentFile(final File outFile) {
         SegmentUtils.writeModeledSegmentFile(outFile,
-                ACNVModeledSegmentConverter.convertACNVModeledSegmentsToModeledSegments(segments, segmentedModel.getGenome()),
+                ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentsToModeledSegments(segments, segmentedModel.getGenome()),
                 segmentedModel.getGenome().getSampleName());
     }
 
-    public void writeACNVModeledSegmentFileAsAllelicCapSegFile(final File outFile) {
+    public void writeAllelicCapSegFile(final File outFile) {
         ACSModeledSegmentUtils.writeACNVModeledSegmentFileAsAllelicCapSegFile(outFile, segments, segmentedModel.getGenome());
     }
 

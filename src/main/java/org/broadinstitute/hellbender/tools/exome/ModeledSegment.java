@@ -15,11 +15,11 @@ public class ModeledSegment extends Segment<String> {
 
     public static final String NO_CALL = "";
 
-    public ModeledSegment(final SimpleInterval interval, final String call, final long targetCount, final double segmentMeanInLogCR) {
-        super(interval, targetCount, segmentMeanInLogCR, call);
+    public ModeledSegment(final SimpleInterval interval, final String call, final long targetCount, final double segmentMeanInLog2CR) {
+        super(interval, targetCount, segmentMeanInLog2CR, call);
         Utils.nonNull(interval, "The input interval cannot be null");
         Utils.nonNull(call, String.format("The input call cannot be null.  Use empty string, instead (\"%s\")", NO_CALL));
-        ParamUtils.isFinite(segmentMeanInLogCR, "Segment Mean must be finite.");
+        ParamUtils.isFinite(segmentMeanInLog2CR, "Segment Mean must be finite.");
     }
 
     public ModeledSegment(final SimpleInterval interval, final long targetCount, final double segmentMean) {

@@ -103,14 +103,6 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected String outputPrefix;
 
     @Argument(
-            doc = "Sample name. If not provided, prefix for output files will be used.",
-            fullName = ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME,
-            shortName = ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME,
-            optional = true
-    )
-    protected String sampleName;
-
-    @Argument(
             doc = "Threshold for small-segment merging. If a segment has strictly less than this number of targets, " +
                     "it is considered small and will be merged with an adjacent segment.",
             fullName = SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD_LONG_NAME,
@@ -183,11 +175,9 @@ public class AllelicCNV extends SparkCommandLineProgram {
                 (ctx.getLocalProperty("logLevel") != null) ? ctx.getLocalProperty("logLevel") : "INFO";
         ctx.setLogLevel("WARN");
 
-        if (sampleName == null) {
-            sampleName = outputPrefix;
-        }
+        final String sampleName = outputPrefix;
 
-        logger.info("Starting workflow for sample " + sampleName + "...");
+        logger.info("Starting workflow for " + sampleName + "...");
 
         //make Genome from input target coverages and SNP counts
         logger.info("Loading input files...");
@@ -270,7 +260,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
 
         // Write file for ACS- compatible output to help Broad CGA
         final File finalACSModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + "." + CGA_ACS_SEG_FILE_TAG + ".seg");
-        modeller.writeACNVModeledSegmentFileAsAllelicCapSegFile(finalACSModeledSegmentsFile);
+        modeller.writeAllelicCapSegFile(finalACSModeledSegmentsFile);
 
         ctx.setLogLevel(originalLogLevel);
         logger.info("SUCCESS: Allelic CNV run complete for sample " + sampleName + ".");

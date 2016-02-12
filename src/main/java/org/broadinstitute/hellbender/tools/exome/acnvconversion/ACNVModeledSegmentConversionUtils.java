@@ -11,8 +11,8 @@ import java.util.stream.Collectors;
 /**
  * Utilities for converting ACNV modeled segments.
  */
-public class ACNVModeledSegmentConverter {
-    private ACNVModeledSegmentConverter() {}
+public final class ACNVModeledSegmentConversionUtils {
+    private ACNVModeledSegmentConversionUtils() {}
 
     /**
      *  Convert our ACNV modeled segments to a generic modeled segments.
