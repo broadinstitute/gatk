@@ -88,7 +88,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
      */
     @VisibleForTesting static List<SVKmer> processRefFile( final JavaSparkContext ctx, final File refSequenceFile ) {
         final int nParts = (int)(refSequenceFile.length()/CHUNK_SIZE + 1);
-        final JavaRDD<String> genomicBases = ctx.textFile("file:/" + refSequenceFile.getPath(), nParts);
+        final JavaRDD<String> genomicBases = ctx.textFile("file://" + refSequenceFile.getPath(), nParts);
         return genomicBases
                         .flatMapToPair(seq ->
                                 SVKmerizer.stream(seq, SVConstants.KMER_SIZE)
