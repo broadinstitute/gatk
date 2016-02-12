@@ -70,6 +70,14 @@ public class TargetUnitTest {
         Assert.assertEquals(subject.getEnd(), 2);
     }
 
+    @Test
+    public void testLength() {
+        final Target subject1 = new Target("target", new SimpleInterval("chr",1,1));
+        final Target subject2 = new Target("target", new SimpleInterval("chr",10,100));
+        Assert.assertEquals(subject1.length(), 1);
+        Assert.assertEquals(subject2.length(), 91);
+    }
+
     @Test()
     public void testEquals() {
         final Target subject1 = new Target("my-name");
