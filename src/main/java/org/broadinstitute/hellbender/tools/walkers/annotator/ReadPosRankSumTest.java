@@ -28,7 +28,7 @@ import java.util.OptionalDouble;
  * <p>The read position rank sum test can not be calculated for sites without a mixture of reads showing both the reference and alternate alleles.</p>
  *
  */
-public final class ReadPosRankSumTest extends RankSumTest {
+public final class ReadPosRankSumTest extends RankSumTest implements StandardAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.READ_POS_RANK_SUM_KEY); }

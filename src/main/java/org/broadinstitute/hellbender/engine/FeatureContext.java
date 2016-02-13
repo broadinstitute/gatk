@@ -28,8 +28,11 @@ import java.util.stream.Collectors;
  * A FeatureContext may have no backing data source and/or interval. In these cases, queries on it will always
  * return empty Lists. You can determine whether there is a backing source of Features via
  * {@link #hasBackingDataSource()}, and whether there is an interval via {@link #getInterval}
+ *
+ * Note: This class is NOT intended to be extended outside of the testing harness.
  */
-public final class FeatureContext {
+@DoNotSubclass
+public class FeatureContext {
 
     /**
      * FeatureManager containing backing data sources for all discovered Feature arguments.

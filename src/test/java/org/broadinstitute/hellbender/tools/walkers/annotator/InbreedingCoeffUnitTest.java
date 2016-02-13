@@ -10,6 +10,9 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public final class InbreedingCoeffUnitTest {
     private static double DELTA_PRECISION = 0.001;
     private Allele Aref, T, C;
@@ -268,5 +271,12 @@ public final class InbreedingCoeffUnitTest {
         final double ICHets = new InbreedingCoeff().calculateIC(allHet, allHet.getGenotypes()).getRight();
 
         Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(ICHets), String.format("singleton=%f allHets=%f", ICsingleton, ICHets));
+    }
+
+    @Test
+    public void testNullIfNoGenotypes() throws Exception {
+        final InbreedingCoeff ann = new InbreedingCoeff();
+        final Map<String, Object> annotate = ann.annotate(null, when(mock(VariantContext.class).getGenotypesOrderedByName()).thenReturn(Collections.<Genotype>emptyList()).getMock(), null);
+        Assert.assertNull(annotate);
     }
 }

@@ -10,7 +10,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
@@ -39,19 +38,19 @@ import java.util.Set;
  * </ul>
  *
  */
-public final class InbreedingCoeff extends InfoFieldAnnotation {
+public final class InbreedingCoeff extends InfoFieldAnnotation implements StandardAnnotation {
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
     private final Set<String> founderIds;
 
+    public InbreedingCoeff(){
+        this(null);
+    }
+
     public InbreedingCoeff(final Set<String> founderIds){
         //If available, get the founder IDs and cache them. the IC will only be computed on founders then.
         this.founderIds = founderIds;
-    }
-
-    public InbreedingCoeff(){
-        this(null);
     }
 
     @Override

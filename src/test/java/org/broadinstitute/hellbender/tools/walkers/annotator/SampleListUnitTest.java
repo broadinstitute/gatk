@@ -1,18 +1,17 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
-import org.broadinstitute.hellbender.utils.samples.Sample;
-import org.broadinstitute.hellbender.utils.samples.Sex;
-import org.broadinstitute.hellbender.utils.samples.Trio;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 
 public final class SampleListUnitTest extends BaseTest {
 
@@ -74,5 +73,12 @@ public final class SampleListUnitTest extends BaseTest {
 
         Assert.assertEquals(ann.getDescriptions(), Arrays.asList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SAMPLE_LIST_KEY)));
         Assert.assertEquals(ann.getKeyNames(), Arrays.asList(GATKVCFConstants.SAMPLE_LIST_KEY));
+    }
+
+    @Test
+    public void testNullIfNoGenotypes() throws Exception {
+        final SampleList ann = new SampleList();
+        final Map<String, Object> annotate = ann.annotate(null, when(mock(VariantContext.class).getGenotypesOrderedByName()).thenReturn(Collections.<Genotype>emptyList()).getMock(), null);
+        Assert.assertNull(annotate);
     }
 }

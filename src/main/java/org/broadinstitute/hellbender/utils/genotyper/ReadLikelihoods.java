@@ -1118,6 +1118,39 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     }
 
     /**
+     * Transform into a multi-sample HashMap backed {@link PerReadAlleleLikelihoodMap} type.
+     * @return never {@code null}.
+     *
+     */
+    public Map<String, PerReadAlleleLikelihoodMap> toPerReadAlleleLikelihoodMap() {
+        final int sampleCount = samples.numberOfSamples();
+        final Map<String, PerReadAlleleLikelihoodMap> result = new HashMap<>(sampleCount);
+        for (int s = 0; s < sampleCount; s++)
+            result.put(samples.getSample(s),toPerReadAlleleLikelihoodMap(s));
+        return result;
+    }
+
+    /**
+     * Transform into a single-sample HashMap backed {@link PerReadAlleleLikelihoodMap} type.
+     *
+     * @return never {@code null}.
+     */
+    public PerReadAlleleLikelihoodMap toPerReadAlleleLikelihoodMap(final int sampleIndex) {
+        Utils.validIndex(sampleIndex, samples.numberOfSamples());
+        final PerReadAlleleLikelihoodMap result = new PerReadAlleleLikelihoodMap();
+        final int alleleCount = alleles.numberOfAlleles();
+        final GATKRead[] sampleReads = readsBySampleIndex[sampleIndex];
+        final int sampleReadCount = sampleReads.length;
+        for (int a = 0; a < alleleCount; a++) {
+            final A allele = alleles.getAllele(a);
+            final double[] readLikelihoods = valuesBySampleIndex[sampleIndex][a];
+            for (int r = 0; r < sampleReadCount; r++)
+                result.add(sampleReads[r], allele, readLikelihoods[r]);
+        }
+        return result;
+    }
+
+    /**
      * Implements a likelihood matrix per sample given its index.
      */
     private final class SampleMatrix implements LikelihoodMatrix<A> {

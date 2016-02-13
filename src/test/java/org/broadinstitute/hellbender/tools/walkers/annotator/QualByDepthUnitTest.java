@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.math3.stat.StatUtils;
-import org.apache.commons.math3.util.MathArrays;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;

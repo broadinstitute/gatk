@@ -6,7 +6,6 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 
@@ -29,7 +28,7 @@ import java.util.*;
  * The total number of alleles in the genotype should be equivalent to the ploidy of the sample.</p>
  *
  */
-public final class ChromosomeCounts extends InfoFieldAnnotation {
+public final class ChromosomeCounts extends InfoFieldAnnotation implements StandardAnnotation {
 
     public static final String[] keyNames = {
             VCFConstants.ALLELE_NUMBER_KEY,

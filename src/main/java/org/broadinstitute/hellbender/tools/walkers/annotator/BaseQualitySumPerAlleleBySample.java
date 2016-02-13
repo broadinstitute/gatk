@@ -7,7 +7,6 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.GenotypeAnnotation;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
@@ -34,7 +33,7 @@ import java.util.Map;
  * and INDELs. Qualities are not literal base qualities, but instead are derived from the per-allele likelihoods derived
  * from the assembly engine.
  */
-public final class BaseQualitySumPerAlleleBySample extends GenotypeAnnotation {
+public final class BaseQualitySumPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.QUALITY_SCORE_SUM_KEY); }

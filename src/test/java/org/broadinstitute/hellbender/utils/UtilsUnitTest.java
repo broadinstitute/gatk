@@ -1,15 +1,10 @@
 package org.broadinstitute.hellbender.utils;
 
-import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.Log.LogLevel;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
-import org.broadinstitute.hellbender.Main;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -479,5 +474,4 @@ public final class UtilsUnitTest extends BaseTest {
                 {"romeo+juliette" , "01111010111001" },
         };
     }
-
 }

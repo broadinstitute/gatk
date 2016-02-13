@@ -3,10 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
+import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -93,4 +92,21 @@ public final class LikelihoodRankSumTestUnitTest extends BaseTest {
         Assert.assertEquals(annotate.get(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY), valStr);
 
     }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testBlowupOnCallWithoutAllele(){
+        final LikelihoodRankSumTest ann = new LikelihoodRankSumTest();
+        final String contig = "1";
+        final GATKRead read1 = makeRead(contig, 1,  30, "read1");
+        ann.getElementForRead(read1, read1.getStart());
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testBlowupOnCallUninformativeAllele(){
+        final LikelihoodRankSumTest ann = new LikelihoodRankSumTest();
+        final String contig = "1";
+        final GATKRead read1 = makeRead(contig, 1,  30, "read1");
+        ann.getElementForRead(read1, read1.getStart(), MostLikelyAllele.NO_CALL);
+    }
+
 }

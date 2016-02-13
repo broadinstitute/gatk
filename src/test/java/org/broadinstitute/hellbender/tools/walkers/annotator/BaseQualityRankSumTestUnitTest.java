@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
@@ -19,13 +17,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public final class BaseQualityRankSumTestUnitTest {
 
     private final String sample1 = "NA1";
     private final String sample2 = "NA2";
 
-    private VariantContext makeVC( final Allele refAllele, final Allele altAllele) {
-        final double[] genotypeLikelihoods1 = {30,0,190};
+    private VariantContext makeVC(final Allele refAllele, final Allele altAllele) {
+        final double[] genotypeLikelihoods1 = {30, 0, 190};
         final GenotypesContext testGC = GenotypesContext.create(2);
         // sample1 -> A/T with GQ 30
         testGC.add(new GenotypeBuilder(sample1).alleles(Arrays.asList(refAllele, altAllele)).PL(genotypeLikelihoods1).GQ(30).make());
@@ -44,9 +45,10 @@ public final class BaseQualityRankSumTestUnitTest {
         read.setBaseQualities(Utils.dupBytes(qual, n));
         return read;
     }
+
     @Test
-    public void testBaseQual(){
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
+    public void testBaseQual() {
+        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
 
         final Allele alleleRef = Allele.create("T", true);
         final Allele alleleAlt = Allele.create("A", false);
@@ -72,22 +74,33 @@ public final class BaseQualityRankSumTestUnitTest {
         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
 
 
-        final ReferenceContext ref= null;
-        final VariantContext vc= makeVC(alleleRef, alleleAlt);
+        final ReferenceContext ref = null;
+        final VariantContext vc = makeVC(alleleRef, alleleAlt);
         final InfoFieldAnnotation ann = new BaseQualityRankSumTest();
 
         final Map<String, Object> annotate = ann.annotate(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
 
-        final double val= MannWhitneyU.runOneSidedTest(false, Arrays.asList(hardAlts[0], hardAlts[1]),
-                                                              Arrays.asList(hardRefs[0], hardRefs[1])).getLeft();
-        final String valStr= String.format("%.3f", val);
+        final double val = MannWhitneyU.runOneSidedTest(false, Arrays.asList(hardAlts[0], hardAlts[1]),
+                Arrays.asList(hardRefs[0], hardRefs[1])).getLeft();
+        final String valStr = String.format("%.3f", val);
         Assert.assertEquals(annotate.get(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY), valStr);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);
         Assert.assertEquals(ann.getDescriptions().get(0).getID(), GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY);
         Assert.assertEquals(ann.getKeyNames().size(), 1);
         Assert.assertEquals(ann.getKeyNames().get(0), GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY);
+    }
 
+    @Test
+    public void testNullIfNoGenotypes() throws Exception {
+        final BaseQualityRankSumTest ann = new BaseQualityRankSumTest();
+        final Map<String, Object> annotate = ann.annotate(null, when(mock(VariantContext.class).getGenotypesOrderedByName()).thenReturn(Collections.<Genotype>emptyList()).getMock(), Collections.emptyMap());
+        Assert.assertNull(annotate);
+    }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testMapNotNull() {
+        final BaseQualityRankSumTest ann = new BaseQualityRankSumTest();
+        ann.annotate(null, mock(VariantContext.class), null);
     }
 }

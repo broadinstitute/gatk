@@ -52,7 +52,8 @@ import static java.lang.Math.min;
  * </ul>
  *
  */
-public final class StrandOddsRatio extends StrandBiasTest {
+public final class StrandOddsRatio extends StrandBiasTest implements StandardAnnotation {
+
     private static final double PSEUDOCOUNT = 1.0;
     private static final int MIN_COUNT = 0;
 
@@ -75,7 +76,7 @@ public final class StrandOddsRatio extends StrandBiasTest {
      *
      * Adding pseudocounts avoids division by zero.
      *
-     * @param originalTable The table before augmentation
+     * @param table The table before adding pseudocounts
      * @return the SOR annotation value
      */
     @VisibleForTesting
@@ -101,9 +102,13 @@ public final class StrandOddsRatio extends StrandBiasTest {
      */
     @VisibleForTesting
     Map<String, Object> annotationForOneTable(final double sor) {
-        final Object value = String.format("%.3f", sor);
-        return Collections.singletonMap(getKeyNames().get(0), value);
+        return Collections.singletonMap(getKeyNames().get(0), formattedValue(sor));
     }
+
+    public static String formattedValue(double sor) {
+        return String.format("%.3f", sor);
+    }
+
 
     @Override
     public List<String> getKeyNames() {

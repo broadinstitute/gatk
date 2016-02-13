@@ -10,9 +10,9 @@ import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.*;
-
-import static org.apache.commons.math3.util.CombinatoricsUtils.factorialLog;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -36,7 +36,8 @@ import static org.apache.commons.math3.util.CombinatoricsUtils.factorialLog;
  * </ul>
  *
  */
-public final class FisherStrand extends StrandBiasTest {
+public final class FisherStrand extends StrandBiasTest implements StandardAnnotation {
+
     static final double MIN_PVALUE = 1E-320;
     private static final int MIN_COUNT = ARRAY_DIM;
 
@@ -74,8 +75,15 @@ public final class FisherStrand extends StrandBiasTest {
      */
     @VisibleForTesting
     Map<String, Object> annotationForOneTable(final double pValue) {
-        final Object value = String.format("%.3f", QualityUtils.phredScaleErrorRate(Math.max(pValue, MIN_PVALUE))); // prevent INFINITYs
-        return Collections.singletonMap(getKeyNames().get(0), value);
+        return Collections.singletonMap(getKeyNames().get(0), makeValueObjectForAnnotation(pValue));
+    }
+
+    public static String makeValueObjectForAnnotation(final int[][] originalTable) {
+        return makeValueObjectForAnnotation(pValueForContingencyTable(originalTable));
+    }
+
+    public static String makeValueObjectForAnnotation(double pValue) {
+        return String.format("%.3f", QualityUtils.phredScaleErrorRate(Math.max(pValue, MIN_PVALUE))); // prevent INFINITYs
     }
 
     public static Double pValueForContingencyTable(final int[][] originalTable) {

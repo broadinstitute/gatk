@@ -16,16 +16,7 @@ import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public final class Utils {
 
@@ -500,7 +491,7 @@ public final class Utils {
     /**
      * Checks that an {@link Object} is not {@code null} and returns the same object or throws an {@link IllegalArgumentException}
      * @param object any Object
-     * @param message the text message that would be pass to the exception thrown when {@code o == null}.
+     * @param message the text message that would be passed to the exception thrown when {@code o == null}.
      * @return the same object
      * @throws IllegalArgumentException if a {@code o == null}
      */
@@ -543,7 +534,7 @@ public final class Utils {
      * Checks that the collection does not contain a {@code null} value (throws an {@link IllegalArgumentException} if it does).
      * The implementation calls {@code c.contains(null)} to determine the presence of null.
      * @param c collection
-     * @param s the text message that would be pass to the exception thrown when c contains a null.
+     * @param message the text message that would be pass to the exception thrown when c contains a null.
      * @throws IllegalArgumentException if a {@code o == null}
      */
     public static void containsNoNull(final Collection<?> c, final String message) {

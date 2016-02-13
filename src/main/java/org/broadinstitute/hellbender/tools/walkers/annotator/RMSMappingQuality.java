@@ -1,17 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.annotator.interfaces.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -29,7 +31,7 @@ import java.util.stream.Collectors;
  * </ul>
  *
  */
-public final class RMSMappingQuality extends InfoFieldAnnotation {
+public final class RMSMappingQuality extends InfoFieldAnnotation implements StandardAnnotation {
 
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
@@ -44,7 +46,12 @@ public final class RMSMappingQuality extends InfoFieldAnnotation {
                 flatMap(pprl -> pprl.getReads().stream().map(read -> read.getMappingQuality()).filter(mq -> mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE))
                 .collect(Collectors.toList());
         final double rms = MathUtils.rms(qualities);
-        return Collections.singletonMap(getKeyNames().get(0), String.format("%.2f", rms));
+        return Collections.singletonMap(getKeyNames().get(0), formatedValue(rms));
+    }
+
+    @VisibleForTesting
+    static String formatedValue(double rms) {
+        return String.format("%.2f", rms);
     }
 
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.RMS_MAPPING_QUALITY_KEY); }

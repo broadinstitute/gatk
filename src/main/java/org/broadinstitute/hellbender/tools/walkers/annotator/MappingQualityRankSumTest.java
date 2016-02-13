@@ -29,7 +29,7 @@ import java.util.OptionalDouble;
  * </ul>
  *
  */
-public final class MappingQualityRankSumTest extends RankSumTest {
+public final class MappingQualityRankSumTest extends RankSumTest implements StandardAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY); }

@@ -175,6 +175,13 @@ public final class ArtificialReadUtils {
     }
 
     /**
+     * Makes a new read with a name that is unique (so that it will return false to equals(otherRead)
+     */
+    public static GATKRead createUniqueArtificialRead(final String cigarString) {
+        return new SAMRecordToGATKReadAdapter(createUniqueArtificialSAMRecord(TextCigarCodec.decode(cigarString)));
+    }
+
+    /**
      * Creates an artificial GATKRead backed by a SAMRecord.
      *
      * The read will consist of the specified number of Q30 'A' bases, and will be
@@ -375,6 +382,14 @@ public final class ArtificialReadUtils {
     public static SAMRecord createArtificialSAMRecord(final Cigar cigar) {
         final SAMFileHeader header = createArtificialSamHeader();
         return createArtificialSAMRecord(header, cigar, "default_read");
+    }
+
+    /**
+     * Makes a new read with a name that is unique (so that it will return false to equals(otherRead)
+     */
+    public static SAMRecord createUniqueArtificialSAMRecord(final Cigar cigar) {
+        final SAMFileHeader header = createArtificialSamHeader();
+        return createArtificialSAMRecord(header, cigar, UUID.randomUUID().toString());
     }
 
     public static Read createArtificialGoogleGenomicsRead( final String name, final String contig, final int start, final byte[] bases, final byte[] quals, final String cigar ) {

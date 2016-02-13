@@ -15,50 +15,47 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Annotate the ID field and attribute overlap FLAGs for a VariantContext against a RefMetaDataTracker or a list
- * of VariantContexts
+ * Annotate the ID field and attribute overlap FLAGs for a VariantContext against a FeatureContext or a list
+ * of VariantContexts. It uses dbSNP to look up RSIDs for variants.
  */
 public final class VariantOverlapAnnotator {
-    private final FeatureInput<VariantContext> dbSNPBinding;
-    private final Map<FeatureInput<VariantContext>, String> overlapBindings;
+    private final FeatureInput<VariantContext> dbSNP;
+    private final Map<FeatureInput<VariantContext>, String> overlaps;
 
     /**
-     * Create a new VariantOverlapAnnotator without overall bindings
-     *
-     * @see #VariantOverlapAnnotator(org.broadinstitute.gatk.utils.commandline.RodBinding, java.util.Map, org.broadinstitute.gatk.utils.GenomeLocParser)
+     * Create a new VariantOverlapAnnotator
      */
-    public VariantOverlapAnnotator(final FeatureInput<VariantContext> dbSNPBinding) {
-        this(dbSNPBinding, Collections.<FeatureInput<VariantContext>, String>emptyMap());
+    public VariantOverlapAnnotator(final FeatureInput<VariantContext> dbSNP) {
+        this(dbSNP, Collections.emptyMap());
     }
 
     /**
      * Create a new VariantOverlapAnnotator
      *
-     * @param dbSNPBinding the RodBinding to use for updating ID field values, or null if that behavior isn't desired
-     * @param overlapBindings a map of RodBindings / name to use for overlap annotation.  Each binding will be used to
-     *                        add name => true for variants that overlap with variants found to a
-     *                        RefMetaDataTracker at each location.  Can be empty but not null
+     * @param dbSNP used for updating ID field values, or null if that behavior isn't desired
+     * @param overlaps a map of FeatureInput -> name to use for overlap annotation.  Each feature input will be used to
+     *                        add name => true for variants that overlap it each location.
+     *                        Can be empty but not null
      */
-    public VariantOverlapAnnotator(final FeatureInput<VariantContext> dbSNPBinding, final Map<FeatureInput<VariantContext>, String> overlapBindings) {
-        Utils.nonNull(overlapBindings, "overlapBindings cannot be null");
+    public VariantOverlapAnnotator(final FeatureInput<VariantContext> dbSNP, final Map<FeatureInput<VariantContext>, String> overlaps) {
+        Utils.nonNull(overlaps, "overlaps cannot be null");
 
-        this.dbSNPBinding = dbSNPBinding;
-        this.overlapBindings = overlapBindings;
+        this.dbSNP = dbSNP;
+        this.overlaps = overlaps;
     }
 
     /**
-     * Update rsID in vcToAnnotate with rsIDs from dbSNPBinding fetched from tracker
+     * Update rsID in vcToAnnotate with rsIDs from dbSNP fetched from featureContext
      * @see #annotateOverlap(java.util.List, String, htsjdk.variant.variantcontext.VariantContext)
      *
-     * @param tracker non-null tracker, which we will use to update the rsID of vcToAnnotate
-     *                for VariantContexts bound to dbSNPBinding that start at vcToAnnotate
+     * @param featureContext non-null featureContext, which we will use to update the rsID of vcToAnnotate
      * @param vcToAnnotate a variant context to annotate
      * @return a VariantContext (may be == to vcToAnnotate) with updated rsID value
      */
-    public VariantContext annotateRsID(final FeatureContext tracker, final VariantContext vcToAnnotate) {
-        if ( dbSNPBinding != null ) {
+    public VariantContext annotateRsID(final FeatureContext featureContext, final VariantContext vcToAnnotate) {
+        if ( dbSNP != null ) {
             final SimpleInterval loc = new SimpleInterval(vcToAnnotate);
-            return annotateRsID(tracker.getValues(dbSNPBinding, loc.getStart()), vcToAnnotate);
+            return annotateRsID(featureContext.getValues(dbSNP, loc.getStart()), vcToAnnotate);
         } else {
             return vcToAnnotate;
         }
@@ -90,34 +87,33 @@ public final class VariantOverlapAnnotator {
     }
 
     /**
-     * Add overlap attributes to vcToAnnotate against all overlapBindings in tracker
+     * Add overlap attributes to vcToAnnotate against all overlaps in featureContext
      *
      * @see #annotateOverlap(java.util.List, String, htsjdk.variant.variantcontext.VariantContext)
      * for more information
      *
-     * @param tracker non-null tracker, which we will use to update the rsID of vcToAnnotate
-     *                for VariantContexts bound to dbSNPBinding that start at vcToAnnotate
+     * @param featureContext non-null featureContext, which we will use to update the rsID of vcToAnnotate
      * @param vcToAnnotate a variant context to annotate
      * @return a VariantContext (may be == to vcToAnnotate) with updated overlaps update fields value
      */
-    public VariantContext annotateOverlaps(final FeatureContext tracker, final VariantContext vcToAnnotate) {
-        if ( overlapBindings.isEmpty() ) {
+    public VariantContext annotateOverlaps(final FeatureContext featureContext, final VariantContext vcToAnnotate) {
+        if ( overlaps.isEmpty() ) {
             return vcToAnnotate;
         }
 
         VariantContext annotated = vcToAnnotate;
         final SimpleInterval loc = new SimpleInterval(vcToAnnotate);
-        for ( final Map.Entry<FeatureInput<VariantContext>, String> overlapBinding : overlapBindings.entrySet() ) {
-            final FeatureInput<VariantContext> fi = overlapBinding.getKey();
-            final List<VariantContext> vcs = tracker.getValues(fi, loc.getStart());
-            annotated = annotateOverlap(vcs, overlapBinding.getValue(), annotated);
+        for ( final Map.Entry<FeatureInput<VariantContext>, String> overlap : overlaps.entrySet() ) {
+            final FeatureInput<VariantContext> fi = overlap.getKey();
+            final List<VariantContext> vcs = featureContext.getValues(fi, loc.getStart());
+            annotated = annotateOverlap(vcs, overlap.getValue(), annotated);
         }
 
         return annotated;
     }
 
     /**
-     * Add overlaps flag attributes to vcToAnnotate binding overlapTestVCs.getSource() => true if
+     * Add overlaps flag attributes to vcToAnnotate overlapTestVCs.getSource() => true if
      * an overlapping variant context can be found in overlapTestVCs with vcToAnnotate
      *
      * Overlaps here means that the reference alleles are the same and at least one alt
@@ -126,10 +122,9 @@ public final class VariantOverlapAnnotator {
      * @param overlapTestVCs a non-null list of potential overlaps that start at vcToAnnotate
      * @param attributeKey the key to set to true in the attribute map for vcToAnnotate if it overlaps
      * @param vcToAnnotate a non-null VariantContext to annotate
-     * @return
      */
     public VariantContext annotateOverlap(final List<VariantContext> overlapTestVCs, final String attributeKey, final VariantContext vcToAnnotate) {
-        if ( overlapBindings.isEmpty() ) {
+        if ( overlaps.isEmpty() ) {
             return vcToAnnotate;
         }
 
@@ -195,10 +190,9 @@ public final class VariantOverlapAnnotator {
     }
 
     /**
-     * Get the collection of the RodBinding names for those being used for overlap detection
-     * @return a non-null collection of Strings
+     * Get the collection of names of overlap sets ued by this annotator.
      */
     public Collection<String> getOverlapNames() {
-        return overlapBindings.values();
+        return overlaps.values();
     }
 }
