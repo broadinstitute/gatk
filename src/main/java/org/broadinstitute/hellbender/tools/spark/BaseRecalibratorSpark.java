@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSpark;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -59,9 +58,6 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
     private List<String> knownVariants;
 
-    @Argument(doc = "the join strategy for reference bases and known variants", shortName = "joinStrategy", fullName = "joinStrategy", optional = true)
-    private JoinStrategy joinStrategy = JoinStrategy.BROADCAST;
-
     @Argument(doc = "Path to save the final recalibration tables to.",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     private String outputTablesPath = null;
@@ -74,7 +70,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
 
     @Override
     protected void runTool( JavaSparkContext ctx ) {
-        if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
+        if (! getReference().isCompatibleWithSparkBroadcast()){
             throw new UserException.Require2BitReferenceForBroadcast();
         }
         if ( knownVariants.size() > 1 ) {
@@ -88,7 +84,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, getReference(), bqsrKnownVariants, joinStrategy);
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(initialReads, getReference(), bqsrKnownVariants);
         // TODO: broadcast the reads header?
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
 
