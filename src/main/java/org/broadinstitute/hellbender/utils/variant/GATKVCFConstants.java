@@ -38,6 +38,7 @@ public final class GATKVCFConstants {
     public static final String AVG_INTERVAL_DP_KEY =                "IDP"; //DiagnoseTargets
     public static final String INTERVAL_GC_CONTENT_KEY =            "IGC";
     public static final String INBREEDING_COEFFICIENT_KEY =         "InbreedingCoeff";
+    public static final String EXCESS_HET_KEY =                     "ExcessHet";
     public static final String LIKELIHOOD_RANK_SUM_KEY =            "LikelihoodRankSum";
     public static final String LO_CONF_DENOVO_KEY =                 "loConfDeNovo";
     public static final String LOW_MQ_KEY =                         "LowMQ";
