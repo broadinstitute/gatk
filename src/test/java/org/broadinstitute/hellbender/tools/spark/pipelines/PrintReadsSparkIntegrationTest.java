@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import htsjdk.samtools.cram.build.CramIO;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
@@ -25,23 +27,21 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @DataProvider(name="testingData")
     public Object[][] testingData() {
         return new String[][]{
-                {"print_reads.sorted.cram", ".sam", "print_reads.fasta"},
-                {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
                 {"print_reads.sorted.sam", ".sam", null},
                 {"print_reads.sorted.sam", ".bam", null},
                 {"print_reads.sorted.bam", ".sam", null},
                 {"print_reads.sorted.bam", ".bam", null},
-
-                //Writing cram on spark is not supported https://github.com/broadinstitute/gatk/issues/1270
-//                {"print_reads.sorted.cram", ".cram", "print_reads.fasta"},
-//                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
-//                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"}
+                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.cram", ".sam", "print_reads.fasta"},
+                {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
+                {"print_reads.sorted.cram", ".cram", "print_reads.fasta"}
         };
     }
 
     @Test(dataProvider="testingData")
     public void testFileToFile(String fileIn, String extOut, String reference) throws Exception {
-        final File outFile = File.createTempFile(fileIn + ".", extOut);
+        final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
         final File originalFile = new File(TEST_DATA_DIR, fileIn);
         final File refFile;
@@ -61,49 +61,20 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
             };
         }
         runCommandLine(args);
-        SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
-    }
 
-    @DataProvider(name="testingDataWriteCram")
-    public Object[][] testingDataWriteCram() {
-        return new String[][]{
-                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
-                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"},
-                {"print_reads.sorted.cram", ".cram", "print_reads.fasta"},
-        };
-    }
-
-    //Note: this test will be deleted and cases moved to testingData when
-    // https://github.com/broadinstitute/gatk/issues/1270 is done
-    @Test(dataProvider="testingDataWriteCram", expectedExceptions = UserException.class)
-    public void testFileToFileCram(String fileIn, String extOut, String reference) throws Exception {
-        final File outFile = File.createTempFile(fileIn + ".", extOut);
-        outFile.deleteOnExit();
-        final File originalFile = new File(TEST_DATA_DIR, fileIn);
-        final File refFile;
-        final String[] args;
-        if (reference == null) {
-            refFile = null;
-            args = new String[]{
-                    "--input", originalFile.getAbsolutePath(),
-                    "--output", outFile.getAbsolutePath(),
-            };
+        // TODO: We still need lenient comparison due to https://github.com/samtools/htsjdk/issues/455
+        // (bam->cram conversion strips out NM/MD tags)
+        if (refFile != null && extOut.equals(CramIO.CRAM_FILE_EXTENSION) && !fileIn.endsWith(CramIO.CRAM_FILE_EXTENSION)) {
+            SamAssertionUtils.assertSamsEqualLenient(outFile, originalFile, refFile);
         } else {
-            refFile = new File(TEST_DATA_DIR, reference);
-            args = new String[]{
-                    "--input", originalFile.getAbsolutePath(),
-                    "--output", outFile.getAbsolutePath(),
-                    "-R", refFile.getAbsolutePath()
-            };
+            SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
         }
-        runCommandLine(args);
-        SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
     @Test
     public void testCoordinateSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.sorted.bam");
-        final File outBam = createTempFile("print_reads_spark", ".bam");
+        final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inBam.getCanonicalPath());
@@ -119,7 +90,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     public void testCoordinateSortedInRegion() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.sorted.bam");
         final File expectedBam = new File(getTestDataDir(), "print_reads.sorted.chr1_1.bam");
-        final File outBam = createTempFile("print_reads_spark", ".bam");
+        final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inBam.getCanonicalPath());
@@ -136,7 +107,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     public void testSequenceDictionaryValidation() throws Exception {
         final File inCram = new File(getTestDataDir(), "print_reads.sorted.cram");
         final File inRef = new File(getTestDataDir(), "print_reads.chr1only.fasta");
-        final File outBam = createTempFile("print_reads_spark", ".bam");
+        final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inCram.getCanonicalPath());
@@ -157,17 +128,15 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
                 {"print_reads.sorted.queryname.bam", ".bam", null},
                 {"print_reads.sorted.queryname.cram", ".sam", "print_reads.fasta"},
                 {"print_reads.sorted.queryname.cram", ".bam", "print_reads.fasta"},
-
-                //comparing queryname sorted cram files blows up: https://github.com/broadinstitute/gatk/issues/1271
-//                {"print_reads.sorted.queryname.cram", ".cram", "print_reads.fasta"},
-//                {"print_reads.sorted.queryname.sam", ".cram", "print_reads.fasta"},
-//                {"print_reads.sorted.queryname.bam", ".cram", "print_reads.fasta"}
+                {"print_reads.sorted.queryname.cram", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.sam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.bam", ".cram", "print_reads.fasta"}
         };
     }
 
     @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class)
     public void testFileToFile_queryNameSorted(String fileIn, String extOut, String reference) throws Exception {
-        final File outFile = File.createTempFile(fileIn + ".", extOut);
+        final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
         final File originalFile = new File(TEST_DATA_DIR, fileIn);
         final File refFile;
@@ -193,7 +162,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @Test(expectedExceptions = UserException.class)
     public void testNameSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.bam");
-        final File outBam = createTempFile("print_reads", ".bam");
+        final File outBam = BaseTest.createTempFile("print_reads", ".bam");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
         args.add(inBam.getCanonicalPath());
@@ -211,7 +180,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     @Test
     public void testReadFiltering() throws IOException {
         final File samWithOneMalformedRead = new File(getTestDataDir(), "print_reads_one_malformed_read.sam");
-        final File outBam = createTempFile("print_reads_testReadFiltering", ".bam");
+        final File outBam = BaseTest.createTempFile("print_reads_testReadFiltering", ".bam");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);

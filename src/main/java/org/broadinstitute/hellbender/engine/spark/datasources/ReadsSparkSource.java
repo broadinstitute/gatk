@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import htsjdk.samtools.*;
+import htsjdk.samtools.cram.build.CramIO;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -199,7 +201,7 @@ public final class ReadsSparkSource implements Serializable {
                 }
                 path = bamFiles[0].getPath(); // Hadoop-BAM writes the same header to each shard, so use the first one
             }
-            setHadoopBAMConfigurationProperties(path.getName(), referencePath);
+            setHadoopBAMConfigurationProperties(filePath, referencePath);
             return SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
         } catch (IOException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
@@ -223,7 +225,8 @@ public final class ReadsSparkSource implements Serializable {
         final Configuration conf = ctx.hadoopConfiguration();
         conf.set(SAMHeaderReader.VALIDATION_STRINGENCY_PROPERTY, validationStringency.name());
 
-        if (!IOUtils.isCramFileName(inputName)) { // only set the reference for CRAM input
+        if (!IOUtils.isCramFileName(inputName)) {
+            // only set the reference for CRAM input
             conf.unset(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY);
         }
         else {
