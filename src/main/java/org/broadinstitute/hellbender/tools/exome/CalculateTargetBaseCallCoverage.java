@@ -30,10 +30,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.IntBinaryOperator;
 import java.util.function.ToIntFunction;
-import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
-import java.util.stream.LongStream;
-import java.util.stream.StreamSupport;
+import java.util.stream.*;
 
 /**
  * Calculates the coverage for each target at each input sample.
@@ -82,12 +79,12 @@ import java.util.stream.StreamSupport;
  * <dl>
  *     <dt>{@link CoverageUnit#OVERLAPPING_READ OVERLAPPING_READ}</dt>
  *     <dd>Number of reads that overlap the target at least by one base. <i>This is the default.</i></dd>
- *     <dt>{@link CoverageUnit#AVERAGE_DEPTH AVERAGE_DEPTH}</dt>
+ *     <dt>{@link CoverageUnit#AVERAGE_READ_DEPTH AVERAGE_DEPTH}</dt>
  *     <dd>Average number of base-calls per base-pair in the target.</dd>
  * </dl>
  *
  * <h4>Qualifying base-calls</h4>
- * <p>When the user selects {@link CoverageUnit#AVERAGE_DEPTH} as the
+ * <p>When the user selects {@link CoverageUnit#AVERAGE_READ_DEPTH} as the
  * coverage unit, only qualifying base-calls will be taken into account.</p>
  * A base is qualifying iff:
  * <ul>
@@ -176,7 +173,7 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
     /**
      * Default value for the {@link #coverageUnit} argument.
      */
-    public static final CoverageUnit DEFAULT_COVERAGE_UNIT = CoverageUnit.AVERAGE_DEPTH;
+    public static final CoverageUnit DEFAULT_COVERAGE_UNIT = CoverageUnit.AVERAGE_READ_DEPTH;
 
     @Argument(
             doc = "Output file",
@@ -229,7 +226,7 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
     /**
      * Reference to the counter code.
      */
-    private BiFunction<Target, ReadsContext, long[]> counter;
+    private BiFunction<Target, Stream<GATKRead>, long[]> counter;
 
     @Override
     public boolean requiresReads() {
@@ -304,17 +301,48 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
      * Chooses the appropriate coverage calculator based on user arguments.
      * @return never {@code null}.
      */
-    private BiFunction<Target, ReadsContext, long[]> composeCoverageCounter() {
+    private BiFunction<Target, Stream<GATKRead>, long[]> composeCoverageCounter() {
+
+        final BiFunction<Target, Stream<GATKRead>, long[]> unitCounter;
         switch (coverageUnit.datum) {
             case READ:
-                return new ReadsCounter();
+                unitCounter = new ReadsCounter();
+                break;
             case BASE_CALL:
-                return new BaseCallsCounter();
+                unitCounter = new BaseCallsCounter();
+                break;
             default:
                 // This exception means that a new datum type was added to {@link CoverageDatum}.
                 // Yet this switch was not updated to handle it.
                 // Coverage Note: please ignore lack of coverage on this line as it is virtually impossible to cover.
                 throw new GATKException("Unsupported coverage datum: " + coverageUnit.datum);
+        }
+
+        if (coverageUnit.basedOnFragments) {
+            return (target, readContext) -> unitCounter.apply(target, condenseReadsIntoFragments(readContext));
+        } else {
+            return unitCounter;
+        }
+
+    }
+
+    private Stream<GATKRead> condenseReadsIntoFragments(final Stream<GATKRead> readContext) {
+        final Map<String, List<GATKRead>> readsByFragmentName = readContext
+                .filter(read -> !read.isUnmapped())
+                .collect(Collectors.groupingBy(GATKRead::getName));
+        return readsByFragmentName.values().stream()
+                .map(this::mergeReads);
+    }
+
+    private GATKRead mergeReads(final List<GATKRead> reads) {
+        if (reads.size() == 1) {
+            return reads.get(0);
+        } else if (reads.size() == 2) {
+            final GATKRead first = reads.get(0);
+            final GATKRead second = reads.get(1);
+            return MergedGATKReadPair.mergeReadPair(first, second);
+        } else {
+            throw new IllegalArgumentException("reads must either have one or two elements");
         }
     }
 
@@ -353,6 +381,8 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
     private CountingReadFilter makeReadFilter() {
         final CountingReadFilter baseFilter = new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
                 .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
+                .and(new CountingReadFilter("Primary", ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                .and(new CountingReadFilter("VendorQuality", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
                 .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
                 .and(new CountingReadFilter("Non_Zero_Reference_Length", ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
 
@@ -364,7 +394,7 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
     @Override
     public void apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
-        final long[] absoluteCounts = counter.apply(target, readsContext);
+        final long[] absoluteCounts = counter.apply(target, StreamSupport.stream(readsContext.spliterator(), false).filter(readFilter));
         final ReadCountRecord record = createReadCountRecord(target, absoluteCounts);
         try {
             outputTableWriter.writeRecord(record);
@@ -414,13 +444,12 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
     /**
      * Each read is considered an independent coverage unit on the target.
      */
-    private class ReadsCounter implements BiFunction<Target, ReadsContext, long[]> {
+    private class ReadsCounter implements BiFunction<Target, Stream<GATKRead>, long[]> {
 
         @Override
-        public long[] apply(final Target target, final ReadsContext readsContext) {
+        public long[] apply(final Target target, final Stream<GATKRead> readsContext) {
             final long[] counts = new long[countColumnCount];
-            StreamSupport.stream(readsContext.spliterator(), false)
-                    .filter(readFilter)
+            readsContext
                     .mapToInt(readToColumn)
                     .filter(i -> i >= 0)
                     .forEach(i -> counts[i]++);
@@ -432,14 +461,13 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
      * Each base call is counts toward coverage where the final output is the total number of overlapping
      * based divided by the target width, thus the average base call depth per bp.
      */
-    private class BaseCallsCounter implements BiFunction<Target, ReadsContext, long[]> {
+    private class BaseCallsCounter implements BiFunction<Target, Stream<GATKRead>, long[]> {
 
         @Override
-        public long[] apply(final Target target, final ReadsContext readsContext) {
+        public long[] apply(final Target target, final Stream<GATKRead> readsContext) {
             final long[] counts = new long[countColumnCount];
             final SimpleInterval interval = target.getInterval();
-            StreamSupport.stream(readsContext.spliterator(), false)
-                    .filter(readFilter)
+            readsContext
                     .forEach(read -> {
                         final int columnIndex = readToColumn.applyAsInt(read);
                         if (columnIndex >= 0) {

@@ -13,16 +13,26 @@ public class ParamUtilsUnitTest {
 
     @Test
     public void testInRangeSuccess(){
+        Assert.assertTrue(4 == ParamUtils.inRange(4L, 3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(4 == ParamUtils.inRange(4, 3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(4.1 == ParamUtils.inRange(4.1, 3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(4.1 == ParamUtils.inRange(4.1, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0 == ParamUtils.inRange(0L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(0 == ParamUtils.inRange(0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(0.0 == ParamUtils.inRange(0.0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0 == ParamUtils.inRange(0L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(0 == ParamUtils.inRange(0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(0.0 == ParamUtils.inRange(0.0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(-1 == ParamUtils.inRange(-1L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(-1 == ParamUtils.inRange(-1, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(-1.5 == ParamUtils.inRange(-1.5, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(-1 == ParamUtils.inRange(-1L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
         Assert.assertTrue(-1 == ParamUtils.inRange(-1, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureAllPositiveLong(){
+        ParamUtils.inRange(4L, 7, 10, "Range calculation did not work properly");
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -76,6 +86,11 @@ public class ParamUtilsUnitTest {
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValNegativeLong(){
+        ParamUtils.inRange(-10L, -7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testInRangeFailureValNegativeInt(){
         ParamUtils.inRange(-10, -7, 10, "Range calculation did not work properly");
     }
@@ -86,8 +101,13 @@ public class ParamUtilsUnitTest {
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testInRangeFailureValMinMaxUnreasonable(){
+    public void testInRangeFailureIntValMinMaxUnreasonable(){
         ParamUtils.inRange(5, 10, -7, "Range calculation did not work properly.  Min was greater than max, so will always throw exception.");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValMinMaxUnreasonable(){
+        ParamUtils.inRange(5L, 10, -7, "Range calculation did not work properly.  Min was greater than max, so will always throw exception.");
     }
 
     @Test
@@ -143,7 +163,12 @@ public class ParamUtilsUnitTest {
 
     @Test
     public void testPositiveIsGreaterThanZero2(){
-        ParamUtils.isPositive(4, "That is negative!");
+        Assert.assertEquals(ParamUtils.isPositive(4L, "That is negative!"), 4L);
+    }
+
+    @Test
+    public void testPositiveIntIsGreaterThanZero2() {
+        Assert.assertEquals(ParamUtils.isPositive(4, "That is negative!"), 4);
     }
 
     @Test
@@ -153,6 +178,11 @@ public class ParamUtilsUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
     public void testZeroIsGreaterThanZero2(){
+        ParamUtils.isPositive(0L, "That is zero!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
+    public void testIntZeroIsGreaterThanZero2(){
         ParamUtils.isPositive(0, "That is zero!");
     }
 
@@ -160,6 +190,8 @@ public class ParamUtilsUnitTest {
     public void testZeroIsGreaterThanZero3(){
         ParamUtils.isPositive(0.0, "That is zero!");
     }
+
+
 
     @Test
     public void testLogB(){

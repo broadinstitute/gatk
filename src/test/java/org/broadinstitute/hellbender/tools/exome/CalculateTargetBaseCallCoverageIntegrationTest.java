@@ -34,9 +34,11 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
     private static final File TEST_BAM_NA12878 = new File(TEST_DATA_DIR, "exome-read-counts-NA12878.bam");
     private static final File TARGETS_FILE = new File(TEST_DATA_DIR, "exome-read-counts-test-targets.tsv");
     private static final File EXPECTED_COUNTS_FILE = new File(TEST_DATA_DIR, "exome-read-counts.output");
+    private static final File EXPECTED_FRAGMENT_COUNTS_FILE = new File(TEST_DATA_DIR, "exome-fragment-counts.output");
     private static final File EXPECTED_COUNTS_MAX_OF_9_FILE = new File(TEST_DATA_DIR, "exome-read-counts-max-of-9.output");
     private static final File EXPECTED_COUNTS_MIN_MQ_30_FILE = new File(TEST_DATA_DIR, "exome-read-counts-min-MQ-30.output");
     private static final File EXPECTED_AVERAGE_DEPTH_COUNTS_FILE = new File(TEST_DATA_DIR, "exome-average-depth.output");
+    private static final File EXPECTED_AVERAGE_FRAGMENT_DEPTH_COUNTS_FILE = new File(TEST_DATA_DIR, "exome-average-fragment-depth.output");
     private static final File TARGETS_FILE_WITHOUT_COORDINATES = new File(TEST_DATA_DIR, "exome-read-counts-test-targets-wo-coords.tsv");
     private static final File INEXISTENT_TARGETS_FILE = new File(TEST_DATA_DIR, "fantasy-exome-read-counts-test-targets.tsv");
 
@@ -273,7 +275,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                                 TEST_BAM_NA12878.toString(),
                                 "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                                CoverageUnit.AVERAGE_DEPTH.toString(),
+                                CoverageUnit.AVERAGE_READ_DEPTH.toString(),
                                 "-" + CalculateTargetBaseCallCoverage.MINIMUM_MAPPING_QUALITY_SHORT_NAME,
                                 String.valueOf(minMQ),
                                 "-" + CalculateTargetBaseCallCoverage.MINIMUM_BASE_QUALITY_SHORT_NAME,
@@ -294,6 +296,61 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
     }
 
     @Test
+    public void testSimpleRunFragmentBaseCallCoverage() throws IOException {
+        final File outputFile = createTempFile("ctc-test-", ".tsv");
+        runCommandLine(
+                new String[]{
+                        "-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME,
+                        TARGETS_FILE.toString(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
+                        TEST_BAM_NA12878.toString(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
+                        TEST_BAM_NA12778.toString(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
+                        TEST_BAM_NA12872.toString(),
+                        "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
+                        CoverageUnit.AVERAGE_FRAGMENT_DEPTH.toString(),
+                        "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+                        outputFile.toString()
+                });
+        Assert.assertTrue(outputFile.canRead());
+        final ReadCountCollection outputCounts = ReadCountCollectionUtils.parse(outputFile);
+
+        //BAMIO.openBAM()
+        final ReadCountCollection expectedCounts = ReadCountCollectionUtils.parse(EXPECTED_AVERAGE_FRAGMENT_DEPTH_COUNTS_FILE);
+
+        Assert.assertEquals(outputCounts.columnNames(), expectedCounts.columnNames());
+        assertEqualDataMatrix(outputCounts.counts().getData(), expectedCounts.counts().getData());
+    }
+
+    @Test
+    public void testSimpleRunFragmentCoverage() throws IOException {
+        final File outputFile = createTempFile("ctc-test-", ".tsv");
+        runCommandLine(
+                new String[]{
+                        "-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME,
+                        TARGETS_FILE.toString(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
+                        TEST_BAM_NA12878.toString(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
+                        TEST_BAM_NA12778.toString(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
+                        TEST_BAM_NA12872.toString(),
+                        "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
+                        CoverageUnit.OVERLAPPING_FRAGMENT.toString(),
+                        "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+                        outputFile.toString()
+                });
+        Assert.assertTrue(outputFile.canRead());
+        final ReadCountCollection outputCounts = ReadCountCollectionUtils.parse(outputFile);
+
+        final ReadCountCollection expectedCounts = ReadCountCollectionUtils.parse(EXPECTED_FRAGMENT_COUNTS_FILE);
+
+        Assert.assertEquals(outputCounts.columnNames(), expectedCounts.columnNames());
+        assertEqualDataMatrix(outputCounts.counts().getData(), expectedCounts.counts().getData());
+    }
+
+    @Test
     public void testSimpleRunBaseCallCoverage() throws IOException {
         final File outputFile = createTempFile("ctc-test-", ".tsv");
         runCommandLine(
@@ -307,7 +364,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                         TEST_BAM_NA12872.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.AVERAGE_DEPTH.toString(),
+                        CoverageUnit.AVERAGE_READ_DEPTH.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });
@@ -326,7 +383,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
         for (int i = 0; i < m1.length; i++) {
             Assert.assertEquals(m1[i].length, m2[i].length);
             for (int j = 0; j < m1[i].length; j++) {
-                Assert.assertEquals(m1[i][j], m2[i][j], 0.00001, "i,j = " + i + "," + j);
+                Assert.assertEquals(m1[i][j], m2[i][j], 0.00001, "<i,j> = <" + i + "," + j + ">");
             }
         }
     }
