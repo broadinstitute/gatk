@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFormatException;
-import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.*;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -23,6 +22,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 public class ReadsSparkSourceUnitTest extends BaseTest {
@@ -185,6 +185,22 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
             Assert.assertFalse(localReads.isEmpty());
             Assert.assertEquals(localReads, hdfsReads);
         });
+    }
+
+    @Test
+    public void testIntervals() throws IOException {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx);
+        List<SimpleInterval> intervals =
+                ImmutableList.of(new SimpleInterval("17", 69010, 69040), new SimpleInterval("17", 69910, 69920));
+        JavaRDD<GATKRead> reads = readSource.getParallelReads(NA12878_chr17_1k_BAM, null, intervals);
+
+        SamReaderFactory samReaderFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.SILENT);
+        try (SamReader samReader = samReaderFactory.open(new File(NA12878_chr17_1k_BAM))) {
+            int seqIndex = samReader.getFileHeader().getSequenceIndex("17");
+            SAMRecordIterator query = samReader.query(new QueryInterval[]{new QueryInterval(seqIndex, 69010, 69040), new QueryInterval(seqIndex, 69910, 69920)}, false);
+            Assert.assertEquals(reads.count(), Iterators.size(query));
+        }
     }
 
     /**
