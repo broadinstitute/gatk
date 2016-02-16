@@ -34,7 +34,11 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     private static final File SNP_FILE = new File(TEST_SUB_DIR + "common_SNP.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
-    private static final HetPulldownCalculator calculator = new HetPulldownCalculator(REF_FILE, SNP_FILE);
+    private static final int MINIMUM_MAPPING_QUALITY = 30;
+    private static final int MINIMUM_BASE_QUALITY = 20;
+
+    private static final HetPulldownCalculator calculator =
+            new HetPulldownCalculator(REF_FILE, SNP_FILE, MINIMUM_MAPPING_QUALITY, MINIMUM_BASE_QUALITY);
 
     private static SAMFileHeader normalHeader;
     private static SAMFileHeader tumorHeader;

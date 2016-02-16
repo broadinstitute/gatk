@@ -28,6 +28,12 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected static final String PVALUE_THRESHOLD_FULL_NAME = "pvalueThreshold";
     protected static final String PVALUE_THRESHOLD_SHORT_NAME = "p";
 
+    protected static final String MINIMUM_MAPPING_QUALITY_SHORT_NAME = "minMQ";
+    protected static final String MINIMUM_MAPPING_QUALITY_FULL_NAME = "minimumMappingQuality";
+
+    protected static final String MINIMUM_BASE_QUALITY_SHORT_NAME = "minBQ";
+    protected static final String MINIMUM_BASE_QUALITY_FULL_NAME = "minimumBaseQuality";
+
     @Argument(
             doc = "BAM file for normal sample.",
             fullName = ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_LONG_NAME,
@@ -76,6 +82,22 @@ public final class GetHetCoverage extends CommandLineProgram {
     )
     protected double pvalThreshold = 0.05;
 
+    @Argument(
+            doc = "Minimum mapping quality; reads with lower quality will be filtered out of pileup.",
+            shortName = MINIMUM_MAPPING_QUALITY_SHORT_NAME,
+            fullName  = MINIMUM_MAPPING_QUALITY_FULL_NAME,
+            optional = true
+    )
+    protected int minimumMappingQuality = 30;
+
+    @Argument(
+            doc = "Minimum base quality; base calls with lower quality will be filtered out of pileup.",
+            shortName = MINIMUM_BASE_QUALITY_SHORT_NAME,
+            fullName = MINIMUM_BASE_QUALITY_FULL_NAME,
+            optional = true
+    )
+    protected int minimumBaseQuality = 20;
+
     @Override
     protected Object doWork() {
         if (pvalThreshold < 0 || pvalThreshold > 1) {
@@ -84,7 +106,8 @@ public final class GetHetCoverage extends CommandLineProgram {
                     "p-value threshold should be in the [0, 1] range.");
         }
 
-        final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REF_ARGUMENTS.getReferenceFile(), snpFile);
+        final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REF_ARGUMENTS.getReferenceFile(), snpFile,
+                minimumMappingQuality, minimumBaseQuality);
 
         logger.info("Getting normal het pulldown...");
         final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, pvalThreshold);

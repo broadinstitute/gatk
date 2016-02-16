@@ -31,22 +31,35 @@ public final class HetPulldownCalculator {
     private final File refFile;
     private final IntervalList snpIntervals;
 
-    private static final int NUMBER_OF_LOG_UPDATES = 20;
+    private final int minMappingQuality;
+    private final int minBaseQuality;
+
+    private static final int NUMBER_OF_LOG_UPDATES = 20;    //sets (approximate) number of status updates printed to log
     private static final double HET_ALLELE_FRACTION = 0.5;
 
-    /** Set quality and read-depth thresholds for pulldown, interval threshold for indexing for SamLocusIterator. */
-    private static final int MIN_BASE_QUALITY = 20;
-    private static final int MIN_MAPPING_QUALITY = 30;
+    //set read-depth thresholds for pulldown, interval threshold for indexing for SamLocusIterator
     private static final int READ_DEPTH_THRESHOLD = 10;
     private static final int MAX_INTERVALS_FOR_INDEX = 25000;
 
-    public HetPulldownCalculator(final File refFile, final File snpFile) {
+    /**
+     * Constructs a {@link HetPulldownCalculator} object for calculating {@link Pulldown} objects from files
+     * containing a reference genome and an interval list of common SNP sites.  Reads and bases below the specified
+     * mapping quality and base quality, respectively, are filtered out of the pileup.
+     * @param refFile           file containing the reference
+     * @param snpFile           file containing the interval list of common SNP sites
+     * @param minMappingQuality minimum mapping quality required for reads to be included in pileup
+     * @param minBaseQuality    minimum base quality required for bases to be included in pileup
+     */
+    public HetPulldownCalculator(final File refFile, final File snpFile,
+                                 final int minMappingQuality, final int minBaseQuality) {
         this.refFile = refFile;
         this.snpIntervals = IntervalList.fromFile(snpFile);
+        this.minMappingQuality = minMappingQuality;
+        this.minBaseQuality = minBaseQuality;
     }
 
     /**
-     * Provide flags for running getHetPulldown based on sample type (normal or tumor).
+     * Provides flags for running getHetPulldown based on sample type (normal or tumor).
      */
     private enum SampleType {
         NORMAL, TUMOR
@@ -181,8 +194,8 @@ public final class HetPulldownCalculator {
             locusIterator.setSamFilters(samFilters);
             locusIterator.setEmitUncoveredLoci(false);
             locusIterator.setIncludeNonPfReads(false);
-            locusIterator.setQualityScoreCutoff(MIN_BASE_QUALITY);
-            locusIterator.setMappingQualityScoreCutoff(MIN_MAPPING_QUALITY);
+            locusIterator.setMappingQualityScoreCutoff(minMappingQuality);
+            locusIterator.setQualityScoreCutoff(minBaseQuality);
 
             logger.info("Examining " + totalNumberOfSNPs + " sites...");
             final int iterationsPerStatus =
