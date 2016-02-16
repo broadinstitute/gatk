@@ -12,9 +12,20 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public class ReferenceWindowFunctions {
 
     /**
-     * A function for requesting only reference bases that directly overlap each read
+     * A function for requesting only reference bases that directly overlap each read. To maintain the ability to serialize the reference,
+     * this needs to be a class rather than a simple lambda function because of errors in serializing lambda functions
+     * in Kryo, at least in version 2.21 which we currently using. Partial support for lambda serialization was added in Kryo 3.0.
+     * See https://github.com/broadinstitute/gatk/pull/1489, https://github.com/EsotericSoftware/kryo/issues/215,
+     * https://issues.apache.org/jira/browse/SPARK-7708
      */
-    public static final SerializableFunction<GATKRead, SimpleInterval> IDENTITY_FUNCTION = read -> new SimpleInterval(read);
+    public static final SerializableFunction<GATKRead, SimpleInterval> IDENTITY_FUNCTION = new SerializableFunction<GATKRead, SimpleInterval>() {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public SimpleInterval apply(final GATKRead input) {
+            return new SimpleInterval(input);
+        }
+    };
 
     /**
      * A function for requesting a fixed number of extra bases of reference context on either side
