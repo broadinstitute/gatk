@@ -5,8 +5,11 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.apache.avro.test.Simple;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
+import org.apache.tools.ant.taskdefs.Java;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -14,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 
@@ -30,7 +34,7 @@ import java.util.stream.Collectors;
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     @VisibleForTesting static final Long MAX_KMER_FREQ = 3L;
-    private static final int REF_RECORD_LEN = 10000;
+    private static final int REF_RECORD_LEN = 10000000;
     private static final int CHUNK_SIZE = 3000000;
 
     @Argument(doc = "file for ubiquitous kmer output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -58,12 +62,16 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                                                     final GCSOptions gcsOptions,
                                                     final SAMSequenceDictionary readsDict ) {
         // Generate reference text file.
-        final File refSequenceFile = writeRefAsOverlappingRecords(ref, gcsOptions, readsDict);
+        // final File refSequenceFile = writeRefAsOverlappingRecords(ref, gcsOptions, readsDict);
+        //final JavaRDD<byte[]> refRDD = createRefRDD(ctx, ref, gcsOptions, readsDict);
+        final JavaRDD<SimpleInterval> refIntervalRDD = createRefIntervalRDD(ctx, ref, gcsOptions, readsDict);
 
         // Find the high copy number kmers
-        final List<SVKmer> killList = processRefFile(ctx, refSequenceFile);
+        //final List<SVKmer> killList = processRefFile(ctx, refSequenceFile);
+        //final List<SVKmer> killList = processRefFile(ctx, refRDD);
+        final List<SVKmer> killList = processRefFile(ctx, ref, refIntervalRDD, gcsOptions);
 
-        if ( !refSequenceFile.delete() ) throw new GATKException("Failed to delete "+refSequenceFile.getPath());
+        //if ( !refSequenceFile.delete() ) throw new GATKException("Failed to delete "+refSequenceFile.getPath());
 
         return killList;
     }
@@ -88,7 +96,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
      */
     @VisibleForTesting static List<SVKmer> processRefFile( final JavaSparkContext ctx, final File refSequenceFile ) {
         final int nParts = (int)(refSequenceFile.length()/CHUNK_SIZE + 1);
-        final JavaRDD<String> genomicBases = ctx.textFile("file://" + refSequenceFile.getAbsolutePath(), nParts);
+        final JavaRDD<String> genomicBases = ctx.textFile("file://" + refSequenceFile.getAbsolutePath(), nParts).cache();
         return genomicBases
                         .flatMapToPair(seq ->
                                 SVKmerizer.stream(seq, SVConstants.KMER_SIZE)
@@ -98,6 +106,74 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                         .filter(kv -> kv._2 > MAX_KMER_FREQ)
                         .map(kv -> kv._1)
                         .collect();
+    }
+
+    @VisibleForTesting static List<SVKmer> processRefFile( final JavaSparkContext ctx, final JavaRDD<byte[]> refRDD ) {
+        JavaRDD<String> overlappingRecords = refRDD.flatMap(OverlappingRecordIterator::new);
+
+        return overlappingRecords
+                .flatMapToPair(seq ->
+                        SVKmerizer.stream(seq, SVConstants.KMER_SIZE)
+                                .map(kmer -> new Tuple2<>(kmer.canonical(SVConstants.KMER_SIZE),1))
+                                .collect(Collectors.toCollection(() -> new ArrayList<>(CHUNK_SIZE))))
+                .reduceByKey(( v1, v2 ) -> v1 + v2)
+                .filter(kv -> kv._2 > MAX_KMER_FREQ)
+                .map(kv -> kv._1)
+                .collect();
+    }
+
+    @VisibleForTesting static List<SVKmer> processRefFile(final JavaSparkContext ctx, final ReferenceMultiSource ref,
+                                                          final JavaRDD<SimpleInterval> refIntervalRDD, final GCSOptions gcsOptions) {
+        if (!ref.isCompatibleWithSparkBroadcast()) throw new UserException.Require2BitReferenceForBroadcast();
+        Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(ref);
+
+        return refIntervalRDD
+                .map(interval -> bReferenceSource.getValue().getReferenceBases(null, interval).getBases())
+                .flatMapToPair(seq ->
+                        SVKmerizer.stream(seq, SVConstants.KMER_SIZE)
+                                .map(kmer -> new Tuple2<>(kmer.canonical(SVConstants.KMER_SIZE),1))
+                                .collect(Collectors.toCollection(() -> new ArrayList<>(CHUNK_SIZE))))
+                .reduceByKey(( v1, v2 ) -> v1 + v2)
+                .filter(kv -> kv._2 > MAX_KMER_FREQ)
+                .map(kv -> kv._1)
+                .collect();
+    }
+
+    private static class OverlappingRecordIterator implements Iterator<String>, Iterable<String> {
+        final int effectiveRecLen = REF_RECORD_LEN - SVConstants.KMER_SIZE + 1;
+        int pos = 0;
+        final byte[] refSequence;
+
+        public OverlappingRecordIterator(final byte[] refSequence) {
+            this.refSequence = refSequence;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return pos < refSequence.length;
+        }
+
+        @Override
+        public String next() {
+            String result = new String(refSequence, pos, Math.min(REF_RECORD_LEN, refSequence.length - pos));
+            pos = pos + effectiveRecLen;
+            return result;
+        }
+
+        @Override
+        public Iterator<String> iterator() {
+            return this;
+        }
+    }
+
+    private static List<String> overlappingRecords(byte[] refSequence) {
+        final int effectiveRecLen = REF_RECORD_LEN - SVConstants.KMER_SIZE + 1;
+
+        final List<String> records = new ArrayList<>();
+        for ( int start = 0; start < refSequence.length; start += effectiveRecLen ) {
+            records.add(new String(refSequence, start, Math.min(REF_RECORD_LEN, refSequence.length - start)));
+        }
+        return records;
     }
 
     /**
@@ -136,4 +212,49 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
 
         return refSequenceFile;
     }
+
+    private static JavaRDD<byte[]> createRefRDD(final JavaSparkContext ctx, final ReferenceMultiSource ref,
+                                                final GCSOptions gcsOptions,
+                                                final SAMSequenceDictionary readsDict) {
+        final JavaRDD<byte[]> rdd;
+        try {
+            final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(readsDict);
+            if (dict == null) throw new GATKException("No reference dictionary available.");
+
+            List<byte[]> referenceSequenceList = new ArrayList<>(dict.getSequences().size());
+            for (final SAMSequenceRecord rec : dict.getSequences()) {
+                final String seqName = rec.getSequenceName();
+                final int seqLen = rec.getSequenceLength();
+                final SimpleInterval interval = new SimpleInterval(seqName, 1, seqLen);
+                final byte[] bases = ref.getReferenceBases(gcsOptions, interval).getBases();
+                referenceSequenceList.add(bases);
+            }
+            rdd = ctx.parallelize(referenceSequenceList, dict.getSequences().size());
+        } catch (final IOException e) {
+            throw new GATKException("Unable to write reference text file for kmerizing.", e);
+        }
+        return rdd;
+    }
+
+    private static JavaRDD<SimpleInterval> createRefIntervalRDD(final JavaSparkContext ctx, final ReferenceMultiSource ref,
+                                                final GCSOptions gcsOptions,
+                                                final SAMSequenceDictionary readsDict) {
+        final JavaRDD<SimpleInterval> rdd;
+        final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(readsDict);
+        if (dict == null) throw new GATKException("No reference dictionary available.");
+
+        List<SimpleInterval> referenceIntervalList = new ArrayList<>();
+        final int effectiveRecLen = REF_RECORD_LEN - SVConstants.KMER_SIZE + 1;
+        for ( final SAMSequenceRecord rec : dict.getSequences() ) {
+            final String seqName = rec.getSequenceName();
+            final int seqLen = rec.getSequenceLength();
+            for ( int start = 0; start < seqLen; start += effectiveRecLen ) {
+                SimpleInterval interval = new SimpleInterval(seqName, start + 1, Math.min(seqLen, start + effectiveRecLen));
+                referenceIntervalList.add(interval);
+            }
+        }
+        rdd = ctx.parallelize(referenceIntervalList, referenceIntervalList.size());
+        return rdd;
+    }
+
 }
