@@ -5,11 +5,9 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.apache.avro.test.Simple;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.apache.tools.ant.taskdefs.Java;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -34,7 +32,7 @@ import java.util.stream.Collectors;
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     @VisibleForTesting static final Long MAX_KMER_FREQ = 3L;
-    private static final int REF_RECORD_LEN = 10000000;
+    private static final int REF_RECORD_LEN = 2000000;
     private static final int CHUNK_SIZE = 3000000;
 
     @Argument(doc = "file for ubiquitous kmer output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,

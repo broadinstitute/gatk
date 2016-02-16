@@ -14,8 +14,16 @@ public class ReferenceWindowFunctions {
     /**
      * A function for requesting only reference bases that directly overlap each read
      */
-    public static final SerializableFunction<GATKRead, SimpleInterval> IDENTITY_FUNCTION = read -> new SimpleInterval(read);
+    public static final SerializableFunction<GATKRead, SimpleInterval> IDENTITY_FUNCTION = new IdentityFunction();
 
+    private static final class IdentityFunction implements SerializableFunction<GATKRead, SimpleInterval> {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public SimpleInterval apply(final GATKRead input) {
+            return new SimpleInterval(input);
+        }
+    }
     /**
      * A function for requesting a fixed number of extra bases of reference context on either side
      * of each read. For example, a "new FixedWindowFunction(3, 5)" would request 3 extra reference bases
