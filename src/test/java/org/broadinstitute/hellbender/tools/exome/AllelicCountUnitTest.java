@@ -5,7 +5,11 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 /**
- * Created by davidben on 1/25/16.
+ * Unit tests for {@link AllelicCount}.  Also tests functionality in helper class
+ * {@link org.broadinstitute.hellbender.tools.exome.allelefraction.MinorAlleleFractionCache}.
+ *
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class AllelicCountUnitTest {
 
@@ -20,6 +24,18 @@ public class AllelicCountUnitTest {
         Assert.assertEquals(new AllelicCount(interval, 40, 12).estimateMinorAlleleFraction(), 0.23076923128457277, tolerance);
         Assert.assertEquals(new AllelicCount(interval, 53, 67).estimateMinorAlleleFraction(), 0.44744832677710078, tolerance);
         Assert.assertEquals(new AllelicCount(interval, 55, 45).estimateMinorAlleleFraction(), 0.5, tolerance);
+        //bias = 1.1, exact MLE values obtained from Mathematica
+        Assert.assertEquals(new AllelicCount(interval, 10, 10).estimateMinorAlleleFraction(1.1), 0.5, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 12, 19).estimateMinorAlleleFraction(1.1), 0.367402, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 40, 12).estimateMinorAlleleFraction(1.1), 0.248120, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 53, 67).estimateMinorAlleleFraction(1.1), 0.418562, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 55, 45).estimateMinorAlleleFraction(1.1), 0.5, tolerance);
+        //bias = 1.5, exact MLE values obtained from Mathematica
+        Assert.assertEquals(new AllelicCount(interval, 10, 10).estimateMinorAlleleFraction(1.5), 0.5, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 12, 19).estimateMinorAlleleFraction(1.5), 0.296301, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 40, 12).estimateMinorAlleleFraction(1.5), 0.310345, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 53, 67).estimateMinorAlleleFraction(1.5), 0.345277, tolerance);
+        Assert.assertEquals(new AllelicCount(interval, 55, 45).estimateMinorAlleleFraction(1.5), 0.482849, tolerance);
     }
 
     @Test

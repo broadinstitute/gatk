@@ -44,7 +44,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
 
         //only check that files are created, do not check for correctness of results
-        final File snpSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SNP_MAF_SEG_FILE_TAG + ".seg");
+        final File finalSNPSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SNP_MAF_SEG_FILE_TAG + ".seg");
         final File unionedSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.UNION_SEG_FILE_TAG + ".seg");
         final File noSmallSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SMALL_MERGED_SEG_FILE_TAG + ".seg");
         final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.INITIAL_SEG_FILE_TAG + ".seg");
@@ -54,7 +54,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
 
 
         final List<File> outputFileList = new ArrayList<>();
-        outputFileList.add(snpSegmentsFile);
+        outputFileList.add(finalSNPSegmentsFile);
         outputFileList.add(unionedSegmentsFile);
         outputFileList.add(noSmallSegmentsFile);
         outputFileList.add(initialSimilarSegmentsFile);

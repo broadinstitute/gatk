@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.util.TestUtil;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
