@@ -51,7 +51,7 @@ import java.util.UUID;
  */
 public final class ReadsSparkSink {
 
-    // We need an output format for saveAsNewAPIHadoopFile.
+    // We need an output format for saveAsNewAPIHadoopFile. It must be public
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
         public static SAMFileHeader bamHeader = null;
 
@@ -127,7 +127,7 @@ public final class ReadsSparkSink {
             header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
             writeReadsSingle(ctx, absoluteOutputFile, samReads, header, numReducers);
         } else if (format == ReadsWriteFormat.SHARDED) {
-            writeReadsSharded(ctx, absoluteOutputFile, samReads, header);
+            saveAsShardedHadoopFiles(ctx, absoluteOutputFile, samReads, header, true);
         } else if (format == ReadsWriteFormat.ADAM) {
             writeReadsADAM(ctx, absoluteOutputFile, samReads, header);
         }
@@ -151,76 +151,76 @@ public final class ReadsSparkSink {
         // we are writing the Avro schema to the Configuration as a JSON string. The AvroParquetOutputFormat class knows
         // how to translate objects in the Avro data model to the Parquet primitives that get written.
         AvroParquetOutputFormat.setSchema(job, AlignmentRecord.getClassSchema());
-        deleteHadoopFile(outputFile);
+        deleteHadoopFile(outputFile, ctx.hadoopConfiguration());
         rddAlignmentRecords.saveAsNewAPIHadoopFile(
                 outputFile, Void.class, AlignmentRecord.class, AvroParquetOutputFormat.class, job.getConfiguration());
     }
 
-    private static void writeReadsSharded(
-            final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
-            final SAMFileHeader header) throws IOException {
-        // Set the header on the main thread.
+
+    private static void saveAsShardedHadoopFiles(JavaSparkContext ctx, String outputFile, JavaRDD<SAMRecord> reads, SAMFileHeader header, boolean writeHeader) throws IOException {
+        // Set the static header on the driver thread.
         SparkBAMOutputFormat.setHeader(header);
-        // MyOutputFormat is a static class, so we need to copy the header to each worker then call
-        final Broadcast<SAMFileHeader> broadcast = ctx.broadcast(header);
-        final JavaRDD<SAMRecord> readsRDD = reads.mapPartitions(readIterator -> {
-            SparkBAMOutputFormat.setHeader(broadcast.getValue());
-            return new IteratorIterable<>(readIterator);
-        });
 
-        // The expected format for writing is JavaPairRDD where the key is ignored and the value is a
-        // SAMRecordWritable. We use SAMRecord as the key, so we can sort the reads before writing them to a file.
-        final JavaPairRDD<SAMRecord, SAMRecordWritable> rddSamRecordWriteable = readsRDD.mapToPair(read -> {
-            read.setHeader(broadcast.getValue());
-            final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
-            samRecordWritable.set(read);
-            return new Tuple2<>(read, samRecordWritable);
-        });
+        final Broadcast<SAMFileHeader> headerBroadcast = ctx.broadcast(header);
 
-        deleteHadoopFile(outputFile);
-        rddSamRecordWriteable.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, SparkBAMOutputFormat.class);
+        // SparkBAMOutputFormat is a static class, so we need to copy the header to each worker then call
+        final JavaRDD<SAMRecord> readsRDD = setHeaderForEachPartition(reads, headerBroadcast);
+
+        // The expected format for writing is JavaPairRDD where the key is ignored and the value is SAMRecordWritable.
+        final JavaPairRDD<SAMRecord, SAMRecordWritable> rddSamRecordWriteable = pairReadsWithSAMRecordWritables(headerBroadcast, readsRDD);
+
+        rddSamRecordWriteable.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, getOutputFormat(writeHeader));
+    }
+
+    /**
+     * SparkBAMOutputFormat has a static header value which must be set on each executor.
+     */
+    private static JavaRDD<SAMRecord> setHeaderForEachPartition(JavaRDD<SAMRecord> reads, Broadcast<SAMFileHeader> headerBroadcast) {
+        return reads.mapPartitions(readIterator -> {
+                SparkBAMOutputFormat.setHeader(headerBroadcast.getValue());
+                return new IteratorIterable<>(readIterator);
+            });
     }
 
     private static void writeReadsSingle(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header, final int numReducers) throws IOException {
-        // Set the header on the main thread.
-        SparkBAMOutputFormat.setHeader(header);
 
+        final JavaRDD<SAMRecord> sortedReads = sortReads(reads, header, numReducers);
+        saveAsShardedHadoopFiles(ctx, outputFile, sortedReads, header, false);
+        mergeHeaderlessBamShards(outputFile, header);
+
+    }
+
+    private static JavaRDD<SAMRecord> sortReads(JavaRDD<SAMRecord> reads, SAMFileHeader header, int numReducers) {
         // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
         // of data going through the shuffle.
         final JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
 
         // do a total sort so that all the reads in partition i are less than those in partition i+1
         Comparator<SAMRecord> comparator = new HeaderlessSAMRecordCoordinateComparator(header);
-        final JavaPairRDD<SAMRecord, Void> out = numReducers > 0 ?
+        final JavaPairRDD<SAMRecord, Void> readVoidPairs = numReducers > 0 ?
                 rddReadPairs.sortByKey(comparator, true, numReducers) : rddReadPairs.sortByKey(comparator);
 
-        // MyOutputFormat is a static class, so we need to copy the header to each worker then call
-        // MyOutputFormat.setHeader.
-        final Broadcast<SAMFileHeader> broadcast = ctx.broadcast(header);
-
-        final JavaPairRDD<SAMRecord, SAMRecordWritable> finalOut = out.mapPartitions(tuple2Iterator -> {
-            SparkBAMOutputFormat.setHeader(broadcast.getValue());
-            return new IteratorIterable<>(tuple2Iterator);
-        }).mapToPair(t -> {
-            final SAMRecord samRecord = t._1();
-            samRecord.setHeader(header);
-            final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
-            samRecordWritable.set(samRecord);
-            return new Tuple2<>(samRecord, samRecordWritable);
-        });
-
-        deleteHadoopFile(outputFile);
-        // Use SparkHeaderlessBAMOutputFormat so that the header is not written for each part file
-        finalOut.saveAsNewAPIHadoopFile(outputFile, SAMRecord.class, SAMRecordWritable.class, SparkHeaderlessBAMOutputFormat.class);
-        mergeHeaderlessBamShards(outputFile, header);
+        return readVoidPairs.map(Tuple2::_1);
     }
 
-    private static void deleteHadoopFile(String fileToObliterate) throws IOException {
-        final Configuration conf = new Configuration();
-        final FileSystem fs = FileSystem.get(conf);
-        fs.delete(new Path(fileToObliterate), true);
+    private static Class<? extends SparkBAMOutputFormat> getOutputFormat(boolean writeHeader) {
+        return writeHeader ? SparkBAMOutputFormat.class : SparkHeaderlessBAMOutputFormat.class;
+    }
+
+    private static JavaPairRDD<SAMRecord, SAMRecordWritable> pairReadsWithSAMRecordWritables(Broadcast<SAMFileHeader> headerBroadcast, JavaRDD<SAMRecord> records) {
+        return records.mapToPair(read -> {
+            read.setHeader(headerBroadcast.getValue());
+            final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
+            samRecordWritable.set(read);
+            return new Tuple2<>(read, samRecordWritable);
+        });
+    }
+
+    private static void deleteHadoopFile(String fileToObliterate, Configuration conf) throws IOException {
+        final Path pathToDelete = new Path(fileToObliterate);
+        pathToDelete.getFileSystem(conf).delete(pathToDelete, true);
     }
 
     private static void mergeHeaderlessBamShards(String outputFile, SAMFileHeader header) throws IOException {
@@ -230,12 +230,15 @@ public final class ReadsSparkSink {
         // terminating end-of-file marker. Note that this has the side effect of being ever-so-slightly less efficient
         // than writing a BAM in one go because the last block of each file isn't completely full.
 
-        final Configuration conf = new Configuration();
-        final FileSystem fs = FileSystem.get(conf);
         final String outputParentDir = outputFile.substring(0, outputFile.lastIndexOf('/') + 1);
         // First, check for the _SUCCESS file.
         final String successFile = outputFile + "/_SUCCESS";
-        if (!fs.exists(new Path(successFile))) {
+        final Path successPath = new Path(successFile);
+        final Configuration conf = new Configuration();
+
+        //it's important that we get the appropriate file system by requesting it from the path
+        final FileSystem fs = successPath.getFileSystem(conf);
+        if (!fs.exists(successPath)) {
             throw new GATKException("unable to find " + successFile + " file");
         }
         final Path outputPath = new Path(outputFile);
@@ -286,10 +289,11 @@ public final class ReadsSparkSink {
     }
 
     private static String makeFilePathAbsolute(String path){
-        if(BucketUtils.isCloudStorageUrl(path) || BucketUtils.isHadoopUrl(path)){
+        if(BucketUtils.isCloudStorageUrl(path) || BucketUtils.isHadoopUrl(path) || BucketUtils.isFileUrl(path)){
             return path;
         } else {
             return new File(path).getAbsolutePath();
         }
     }
+
 }

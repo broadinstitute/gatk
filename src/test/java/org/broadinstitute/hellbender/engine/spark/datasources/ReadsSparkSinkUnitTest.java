@@ -8,15 +8,20 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -27,8 +32,19 @@ import java.util.Comparator;
 import java.util.List;
 
 public class ReadsSparkSinkUnitTest extends BaseTest {
+    private MiniDFSCluster cluster;
 
     private static String testDataDir = publicTestDir + "org/broadinstitute/hellbender/";
+
+    @BeforeClass(alwaysRun = true)
+    private void setupMiniCluster() throws IOException {
+        cluster = MiniClusterUtils.getMiniCluster();
+    }
+
+    @AfterClass(alwaysRun = true)
+    private void shutdownMiniCluster() {
+        MiniClusterUtils.stopCluster(cluster);
+    }
 
     @DataProvider(name = "loadReadsBAM")
     public Object[][] loadReadsBAM() {
@@ -68,17 +84,50 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
     @Test(dataProvider = "loadReadsBAM", groups = "spark")
     public void readsSinkTest(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
         final File outputFile = createTempFile(outputFileName, outputFileExtension);
+        assertSingleShardedWritingWorks(inputBam, outputFile.getAbsolutePath());
+    }
+
+    @Test(dataProvider = "loadReadsBAM", groups = "spark")
+    public void readsSinkHDFSTest(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
+        final String outputHDFSPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension).toString();
+        Assert.assertTrue(BucketUtils.isHadoopUrl(outputHDFSPath));
+        assertSingleShardedWritingWorks(inputBam, outputHDFSPath);
+    }
+
+    @Test(dataProvider = "loadReadsBAM", groups = "spark")
+    public void testWritingToAnExistingFileHDFS(String inputBam, String outputFileName, String outputFileExtension) throws IOException {
+        final Path outputPath = MiniClusterUtils.getTempPath(cluster, outputFileName, outputFileExtension);
+        final FileSystem fs = outputPath.getFileSystem(new Configuration());
+        Assert.assertTrue(fs.createNewFile(outputPath));
+        Assert.assertTrue(fs.exists(outputPath));
+        assertSingleShardedWritingWorks(inputBam, outputPath.toString());
+
+    }
+
+    @Test
+    public void testWritingToFileURL() throws IOException {
+        String inputBam = testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam";
+        String outputUrl = "file:///" + createTempFile("ReadsSparkSinkUnitTest1", ".bam").getAbsolutePath();
+        assertSingleShardedWritingWorks(inputBam, outputUrl);
+    }
+
+    private void assertSingleShardedWritingWorks(String inputBam, String outputPath) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
         SAMFileHeader header = ReadsSparkSource.getHeader(ctx, inputBam, null);
 
-        ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.SINGLE);
+        ReadsSparkSink.writeReads(ctx, outputPath, rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
-        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputFile.getAbsolutePath(), null);
+        JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputPath, null);
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
 
+        assertReadsAreSorted(header, writtenReads);
+        Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
+    }
+
+    private static void assertReadsAreSorted(SAMFileHeader header, List<GATKRead> writtenReads) {
         final SAMRecordCoordinateComparator comparator = new SAMRecordCoordinateComparator();
         // Assert that the reads are sorted.
         final int size = writtenReads.size();
@@ -88,7 +137,6 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             final int compare = comparator.compare(smaller, larger);
             Assert.assertTrue(compare < 0, "Reads are out of order (compare=" + compare+"): " + smaller.getSAMString() + " and " + larger.getSAMString());
         }
-        Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }
 
     @Test(dataProvider = "loadReadsBAM", groups = "spark")

@@ -32,6 +32,10 @@ public final class BucketUtils {
     public static final String GCS_PREFIX = "gs://";
     public static final String HDFS_PREFIX = "hdfs://";
 
+    // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
+    public static final String FILE_PREFIX = "file:";
+
+
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
     private BucketUtils(){} //private so that no one will instantiate this class
@@ -316,5 +320,9 @@ public final class BucketUtils {
         } catch (IOException e) {
             throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
         }
+    }
+
+    public static boolean isFileUrl(String path) {
+        return path.startsWith(FILE_PREFIX);
     }
 }

@@ -4,9 +4,7 @@ import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -16,12 +14,12 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 public class ReadsSparkSourceUnitTest extends BaseTest {
@@ -103,13 +101,11 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
     }
 
     @Test
-    public void testReadFromFileAndHDFS() throws IOException {
+    public void testReadFromFileAndHDFS() throws Exception {
         final File bam = new File( getToolTestDataDir(), "hdfs_file_test.bam");
         final File bai = new File( getToolTestDataDir(), "hdfs_file_test.bai");
-        MiniDFSCluster cluster = null;
-        try {
-            cluster = new MiniDFSCluster.Builder(new Configuration()).build();
-            final Path workingDirectory = cluster.getFileSystem().getWorkingDirectory();
+        MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
+            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path bamPath = new Path(workingDirectory,"hdfs.bam");
             final Path baiPath = new Path(workingDirectory, "hdfs.bai");
             cluster.getFileSystem().copyFromLocalFile(new Path(bam.toURI()), bamPath);
@@ -122,12 +118,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
 
             Assert.assertFalse(localReads.isEmpty());
             Assert.assertEquals(localReads, hdfsReads);
-        } finally {
-
-            if (cluster != null) {
-                cluster.shutdown();
-            }
-        }
+        });
     }
 
     /**
