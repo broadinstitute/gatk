@@ -51,13 +51,6 @@ public final class CallSegments extends CommandLineProgram{
     protected File outFile;
 
     @Argument(
-            doc = "Sample",
-            fullName = ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME,
-            optional = false
-    )
-    protected String sample;
-
-    @Argument(
             doc = "(Advanced) Number of standard deviations of targets' coverage a segment mean must deviate from copy neutral"
             + " to be considered an amplification or deletion.  This parameter controls the trade-off between"
             + " sensitivity and specificity, with smaller values favoring sensitivity.\n"
@@ -105,6 +98,8 @@ public final class CallSegments extends CommandLineProgram{
         } else {
             ReCapSegCaller.makeCalls(targets, segments);
         }
+
+        final String sample = TargetCoverageUtils.getSampleNameForCLIsFromTargetCoverageFile(targetsFile);
 
         SegmentUtils.writeModeledSegmentFile(outFile, segments, sample);
 

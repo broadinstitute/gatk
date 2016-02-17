@@ -27,7 +27,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD)
         };
         runCommandLine(arguments);
@@ -48,7 +47,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
                 "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME, "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
         };
@@ -70,7 +68,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
                 "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
         };
@@ -92,7 +89,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
                 "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME
         };

@@ -19,7 +19,6 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
@@ -48,7 +47,6 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
         final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),

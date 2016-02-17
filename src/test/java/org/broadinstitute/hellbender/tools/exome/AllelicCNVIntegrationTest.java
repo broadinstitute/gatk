@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegment;
+import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -33,7 +35,6 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
                 "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, SAMPLE_NAME,
                 "--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "25",
                 "--" + AllelicCNV.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
                 "--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
@@ -49,6 +50,8 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.INITIAL_SEG_FILE_TAG + ".seg");
         final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + ".seg");
         final File finalSimilarSegmentsFileAsGATKCNV = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + "." + AllelicCNV.GATK_SEG_FILE_TAG + ".seg");
+        final File finalSimilarSegmentsFileAsCGAACS = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + "." +  AllelicCNV.CGA_ACS_SEG_FILE_TAG + ".seg");
+
 
         final List<File> outputFileList = new ArrayList<>();
         outputFileList.add(snpSegmentsFile);
@@ -57,11 +60,12 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         outputFileList.add(initialSimilarSegmentsFile);
         outputFileList.add(finalSimilarSegmentsFile);
         outputFileList.add(finalSimilarSegmentsFileAsGATKCNV);
+        outputFileList.add(finalSimilarSegmentsFileAsCGAACS);
 
         for (final File outputFile: outputFileList) {
 
             // Check that all files are files with a size greater than 0.
-            Assert.assertTrue(outputFile.isFile());
+            Assert.assertTrue(outputFile.isFile(), outputFile.getAbsolutePath() + " is not a file.");
             Assert.assertTrue(outputFile.length() > 0);
             try {
 
@@ -80,8 +84,21 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
 
         // This is being done to make sure no exception is thrown
         // GATK CNV segs are not log2'd.  ACNV seg means are log2'd
-        // TODO: Adjust this code once the credible mean functionality is introduced.  Then add testing for actual values.
         final List<ModeledSegment> modeledSegments = SegmentUtils.readModeledSegmentsFromSegmentFile(finalSimilarSegmentsFileAsGATKCNV);
+        final List<ModeledSegment> originalModeledSegments = SegmentUtils.readModeledSegmentsFromSegmentFile(SEGMENT_FILE);
         Assert.assertTrue(modeledSegments.size() > 0);
+
+        final int originalTotalTargetCount = originalModeledSegments.stream().mapToInt(s -> (int)s.getTargetCount()).sum();
+        final int totalTargetCount = modeledSegments.stream().mapToInt(s -> (int)s.getTargetCount()).sum();
+
+        Assert.assertEquals(totalTargetCount, originalTotalTargetCount);
+
+        final List<ACSModeledSegment> acsModeledSegments = ACSModeledSegmentUtils.readACSFile(finalSimilarSegmentsFileAsCGAACS);
+        Assert.assertTrue(acsModeledSegments.size() > 0);
+        final int totalACSTargetCount = acsModeledSegments.stream().mapToInt(s -> (int)s.getTargetCount()).sum();
+        Assert.assertEquals(totalACSTargetCount, originalTotalTargetCount);
+
+        final List<ACNVModeledSegment> acnvModeledSegments = SegmentUtils.readACNVModeledSegmentFile(finalSimilarSegmentsFile);
+        Assert.assertEquals(acnvModeledSegments.size(), acsModeledSegments.size());
     }
 }

@@ -32,7 +32,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
     public void testUnLoggedCommandLine(final File INPUT_FILE, final File EXPECTED, final File output, String sampleName) throws IOException {
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
         };
@@ -48,7 +47,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
@@ -69,7 +67,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
@@ -95,7 +92,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
@@ -133,7 +129,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
@@ -143,7 +138,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final String[] newArguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
@@ -172,7 +166,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
@@ -182,7 +175,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final String[] newArguments = {
-                "--" + ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME, sampleName,
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),

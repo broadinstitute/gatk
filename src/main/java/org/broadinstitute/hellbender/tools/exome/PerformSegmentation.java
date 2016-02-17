@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 import java.io.File;
 
 @CommandLineProgramProperties(
-        summary = "Segment genomic data into regions of constant copy-ratio",
+        summary = "Segment genomic data into regions of constant copy-ratio.  Only supports one sample input.",
         oneLineSummary = "Segment genomic data into regions of constant copy-ratio",
         programGroup = CopyNumberProgramGroup.class
 )
@@ -48,14 +48,6 @@ public final class PerformSegmentation extends CommandLineProgram {
 
     public final static String UNDOSD_LONG_NAME="undoSD";
     public final static String UNDOSD_SHORT_NAME="undoSD";
-
-
-    @Argument(
-            doc = "Name of the sample being segmented",
-            fullName = ExomeStandardArgumentDefinitions.SAMPLE_LONG_NAME,
-            optional = false
-    )
-    protected String sampleName;
 
     @Argument(
             doc = "Genomic targets file",
@@ -181,11 +173,14 @@ public final class PerformSegmentation extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+
+        final String sampleName = TargetCoverageUtils.getSampleNameForCLIsFromTargetCoverageFile(new File(tangentFile));
+
         applySegmentation(sampleName, tangentFile, outFile);
         return "Success";
     }
 
-    private void applySegmentation(String sampleName, String tangentFile, String outFile) {
+    private void applySegmentation(final String sampleName, final String tangentFile, final String outFile) {
         RCBSSegmenter.writeSegmentFile(sampleName, tangentFile, outFile, log, weightFile, alpha, nperm, pmethod,
                 minWidth, kmax, nmin, eta, trim, undoSplits, undoPrune, undoSD);
     }

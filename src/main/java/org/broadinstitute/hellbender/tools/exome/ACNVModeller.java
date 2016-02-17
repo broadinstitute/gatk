@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.tools.exome.acnvconversion.ACNVModeledSegmentConversionUtils;
+import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionModeller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -121,7 +123,13 @@ public final class ACNVModeller {
      * @param outFile   output file
      */
     public void writeModeledSegmentFile(final File outFile) {
-        SegmentUtils.writeModeledSegmentFile(outFile, segments, segmentedModel.getGenome().getSampleName());
+        SegmentUtils.writeModeledSegmentFile(outFile,
+                ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentsToModeledSegments(segments, segmentedModel.getGenome()),
+                segmentedModel.getGenome().getSampleName());
+    }
+
+    public void writeAllelicCapSegFile(final File outFile) {
+        ACSModeledSegmentUtils.writeACNVModeledSegmentFileAsAllelicCapSegFile(outFile, segments, segmentedModel.getGenome());
     }
 
     //converts list of ACNVModeledSegments to list of SimpleIntervals
