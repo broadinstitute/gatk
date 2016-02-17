@@ -31,18 +31,35 @@ public final class HetPulldownCalculator {
     private final File refFile;
     private final IntervalList snpIntervals;
 
-    /** Set quality and read-depth thresholds for pulldown, interval threshold for indexing for SamLocusIterator. */
-    private static final int MIN_QUALITY = 0;
+    private final int minMappingQuality;
+    private final int minBaseQuality;
+
+    private static final int NUMBER_OF_LOG_UPDATES = 20;    //sets (approximate) number of status updates printed to log
+    private static final double HET_ALLELE_FRACTION = 0.5;
+
+    //set read-depth thresholds for pulldown, interval threshold for indexing for SamLocusIterator
     private static final int READ_DEPTH_THRESHOLD = 10;
     private static final int MAX_INTERVALS_FOR_INDEX = 25000;
 
-    public HetPulldownCalculator(final File refFile, final File snpFile) {
+    /**
+     * Constructs a {@link HetPulldownCalculator} object for calculating {@link Pulldown} objects from files
+     * containing a reference genome and an interval list of common SNP sites.  Reads and bases below the specified
+     * mapping quality and base quality, respectively, are filtered out of the pileup.
+     * @param refFile           file containing the reference
+     * @param snpFile           file containing the interval list of common SNP sites
+     * @param minMappingQuality minimum mapping quality required for reads to be included in pileup
+     * @param minBaseQuality    minimum base quality required for bases to be included in pileup
+     */
+    public HetPulldownCalculator(final File refFile, final File snpFile,
+                                 final int minMappingQuality, final int minBaseQuality) {
         this.refFile = refFile;
         this.snpIntervals = IntervalList.fromFile(snpFile);
+        this.minMappingQuality = minMappingQuality;
+        this.minBaseQuality = minBaseQuality;
     }
 
     /**
-     * Provide flags for running getHetPulldown based on sample type (normal or tumor).
+     * Provides flags for running getHetPulldown based on sample type (normal or tumor).
      */
     private enum SampleType {
         NORMAL, TUMOR
@@ -85,30 +102,29 @@ public final class HetPulldownCalculator {
 
     /**
      * Returns true if the distribution of major and other base-pair counts from a pileup at a locus is compatible with
-     * a given heterozygous allele fraction.
+     * allele fraction of 0.5.
      *
      * <p>
      *     Compatibility is defined by a p-value threshold.  That is, compute the two-sided p-value of observing
      *     a number of major read counts out of a total number of reads, assuming the given heterozygous
      *     allele fraction.  If the p-value is less than the given threshold, then reject the null hypothesis
-     *     that the heterozygous allele fraction is as given (i.e., SNP is likely to be homozygous) and return false,
+     *     that the heterozygous allele fraction is 0.5 (i.e., SNP is likely to be homozygous) and return false,
      *     otherwise return true.
      * </p>
      * @param baseCounts        map of base-pair counts
      * @param totalBaseCount    total base-pair counts (excluding N, etc.)
-     * @param hetAlleleFraction skewed heterozygous allele fraction (0.5 in the ideal case)
      * @param pvalThreshold     p-value threshold for two-sided binomial test
      * @return                  boolean compatibility with heterozygous allele fraction
      */
     public static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
-                                                final double hetAlleleFraction, final double pvalThreshold) {
+                                                final double pvalThreshold) {
         final int majorReadCount = Collections.max(baseCounts.values());
 
         if (majorReadCount == 0 || totalBaseCount - majorReadCount == 0) {
             return false;
         }
 
-        final double pval = new BinomialTest().binomialTest(totalBaseCount, majorReadCount, hetAlleleFraction,
+        final double pval = new BinomialTest().binomialTest(totalBaseCount, majorReadCount, HET_ALLELE_FRACTION,
                 AlternativeHypothesis.TWO_SIDED);
 
         return pval >= pvalThreshold;
@@ -117,15 +133,15 @@ public final class HetPulldownCalculator {
     /**
      * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a normal sample.
      */
-    public Pulldown getNormal(final File normalBAMFile, final double hetAlleleFraction, final double pvalThreshold) {
-        return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, hetAlleleFraction, pvalThreshold);
+    public Pulldown getNormal(final File normalBAMFile, final double pvalThreshold) {
+        return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, pvalThreshold);
     }
 
     /**
      * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a tumor sample.
      */
     public Pulldown getTumor(final File tumorBAMFile, final IntervalList normalHetIntervals) {
-        return getHetPulldown(tumorBAMFile, normalHetIntervals, SampleType.TUMOR, -1, -1);
+        return getHetPulldown(tumorBAMFile, normalHetIntervals, SampleType.TUMOR, -1);
     }
 
     /**
@@ -138,8 +154,8 @@ public final class HetPulldownCalculator {
      *         The IntervalList snpIntervals gives common SNP sites in 1-based format.
      *     </ul>
      *     <ul>
-     *         The skewed heterozygous allele fraction and p-value threshold for binomial test must be specified for a
-     *         two-sided binomial test, which is used to determine SNP sites from snpIntervals that are
+     *         The p-value threshold must be specified for a two-sided binomial test,
+     *         which is used to determine SNP sites from snpIntervals that are
      *         compatible with a heterozygous SNP, given the sample.  Only these sites are output.
      *     </ul>
      * </p>
@@ -155,12 +171,11 @@ public final class HetPulldownCalculator {
      * @param snpIntervals      IntervalList of SNP sites
      * @param sampleType        flag indicating type of sample (SampleType.NORMAL or SampleType.TUMOR)
      *                          (determines whether to perform binomial test)
-     * @param hetAlleleFraction skewed heterozygous allele fraction (0.5 in an ideal case), used for normal sample
      * @param pvalThreshold     p-value threshold for two-sided binomial test, used for normal sample
      * @return                  Pulldown of heterozygous SNP sites in 1-based format
      */
-    private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, SampleType sampleType,
-                                    final double hetAlleleFraction, final double pvalThreshold) {
+    private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, final SampleType sampleType,
+                                    final double pvalThreshold) {
         try (final SamReader bamReader = SamReaderFactory.makeDefault().open(bamFile);
              final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
@@ -178,11 +193,13 @@ public final class HetPulldownCalculator {
                     new DuplicateReadFilter());
             locusIterator.setSamFilters(samFilters);
             locusIterator.setEmitUncoveredLoci(false);
-            locusIterator.setQualityScoreCutoff(MIN_QUALITY);
             locusIterator.setIncludeNonPfReads(false);
+            locusIterator.setMappingQualityScoreCutoff(minMappingQuality);
+            locusIterator.setQualityScoreCutoff(minBaseQuality);
 
             logger.info("Examining " + totalNumberOfSNPs + " sites...");
-            final int iterationsPerStatus = Math.max((int) Math.floor(totalNumberOfSNPs / 20.), 1);
+            final int iterationsPerStatus =
+                    Math.max((int) Math.floor((float) totalNumberOfSNPs / NUMBER_OF_LOG_UPDATES), 1);
             int locusCount = 1;
             for (final SamLocusIterator.LocusInfo locus : locusIterator) {
                 if (locusCount % iterationsPerStatus == 0) {
@@ -201,7 +218,7 @@ public final class HetPulldownCalculator {
                 final int totalBaseCount = baseCounts.values().stream().mapToInt(Number::intValue).sum();
 
                 if (sampleType == SampleType.NORMAL &&
-                        !isPileupHetCompatible(baseCounts, totalBaseCount, hetAlleleFraction, pvalThreshold)) {
+                        !isPileupHetCompatible(baseCounts, totalBaseCount, pvalThreshold)) {
                     continue;
                 }
 

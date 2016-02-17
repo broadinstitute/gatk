@@ -34,7 +34,11 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     private static final File SNP_FILE = new File(TEST_SUB_DIR + "common_SNP.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
-    private static final HetPulldownCalculator calculator = new HetPulldownCalculator(REF_FILE, SNP_FILE);
+    private static final int MINIMUM_MAPPING_QUALITY = 30;
+    private static final int MINIMUM_BASE_QUALITY = 20;
+
+    private static final HetPulldownCalculator calculator =
+            new HetPulldownCalculator(REF_FILE, SNP_FILE, MINIMUM_MAPPING_QUALITY, MINIMUM_BASE_QUALITY);
 
     private static SAMFileHeader normalHeader;
     private static SAMFileHeader tumorHeader;
@@ -109,63 +113,56 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
         //if pval < pvalThreshold, expected = false
         return new Object[][]{
-                {baseCountsUsualHet, 100, 0.5, 0.05, true}, //pval = 1.0
-                {baseCountsUsualHom, 51, 0.5, 0.05, false}, //pval = 4.6185277824406525e-14
-                {baseCountsEdgeHom, 30, 0.5, 0.05, false},  //pval = 0.04277394525706768
-                {baseCountsEdgeHom, 30, 0.5, 0.04, true},   //pval = 0.04277394525706768
-                {baseCountsEmpty, 0, 0.5, 0.05, false},     //pval = 1.0
-                {baseCountsUsualHom, 51, 0.9, 0.05, true}   //pval = 0.058793513949862403
+                {baseCountsUsualHet, 100, 0.05, true}, //pval = 1.0
+                {baseCountsUsualHom, 51, 0.05, false}, //pval = 4.6185277824406525e-14
+                {baseCountsEdgeHom, 30, 0.05, false},  //pval = 0.04277394525706768
+                {baseCountsEdgeHom, 30, 0.04, true},   //pval = 0.04277394525706768
+                {baseCountsEmpty, 0, 0.05, false},     //pval = 1.0
         };
     }
 
     @Test(dataProvider = "inputIsPileupHetCompatible")
     public void testIsPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCounts,
-                                          final double hetAlleleFraction, final double pvalThreshold,
+                                          final double pvalThreshold,
                                           final boolean expected) {
         final boolean result = HetPulldownCalculator.isPileupHetCompatible(baseCounts, totalBaseCounts,
-                hetAlleleFraction, pvalThreshold);
+                pvalThreshold);
         Assert.assertEquals(result, expected);
     }
 
     @DataProvider(name = "inputGetNormalHetPulldown")
     public Object[][] inputGetNormalHetPulldown() {
         final Pulldown normalHetPulldown1 = new Pulldown(normalHeader);
-        normalHetPulldown1.add(new SimpleInterval("1", 10736, 10736), 9, 2);
         normalHetPulldown1.add(new SimpleInterval("1", 11522, 11522), 7, 4);
         normalHetPulldown1.add(new SimpleInterval("1", 12098, 12098), 8, 6);
         normalHetPulldown1.add(new SimpleInterval("1", 14630, 14630), 9, 8);
         normalHetPulldown1.add(new SimpleInterval("2", 14689, 14689), 6, 9);
         normalHetPulldown1.add(new SimpleInterval("2", 14982, 14982), 6, 5);
 
-        //changing hetAlleleFraction from 0.5 -> 0.45 removes first het SNP
+        //changing pValThreshold from 0.05 -> 0.95 only keeps hets close to balanced
         final Pulldown normalHetPulldown2 = new Pulldown(normalHeader);
-        normalHetPulldown2.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-        normalHetPulldown2.add(new SimpleInterval("1", 12098, 12098), 8, 6);
         normalHetPulldown2.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        normalHetPulldown2.add(new SimpleInterval("2", 14689, 14689), 6, 9);
         normalHetPulldown2.add(new SimpleInterval("2", 14982, 14982), 6, 5);
 
         return new Object[][]{
-                {0.5, 0.05, normalHetPulldown1},
-                {0.45, 0.05, normalHetPulldown2}
+                {0.05, normalHetPulldown1},
+                {0.95, normalHetPulldown2}
         };
     }
 
     @Test(dataProvider = "inputGetNormalHetPulldown")
-    public void testGetNormalHetPulldown(final double hetAlleleFraction, final double pvalThreshold,
-                                         final Pulldown expected) {
-        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, hetAlleleFraction, pvalThreshold);
+    public void testGetNormalHetPulldown(final double pvalThreshold, final Pulldown expected) {
+        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, pvalThreshold);
         Assert.assertEquals(result, expected);
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testGetHetPulldownWithUnsortedBAMFile() {
-        final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, -1, -1);
+        final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, -1);
     }
 
     @DataProvider(name = "inputGetTumorHetPulldown")
     public Object[][] inputGetTumorHetPulldown() {
-        //first het SNP in normalHetPulldown1 has <= 10 reads in tumor BAM and hence does not pass read depth filter
         final Pulldown tumorHetPulldown = new Pulldown(normalHeader);
         tumorHetPulldown.add(new SimpleInterval("1", 11522, 11522), 7, 4);
         tumorHetPulldown.add(new SimpleInterval("1", 12098, 12098), 8, 6);
