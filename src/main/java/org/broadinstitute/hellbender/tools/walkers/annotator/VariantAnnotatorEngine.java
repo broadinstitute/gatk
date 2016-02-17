@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException.BadArgumentValue;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -28,10 +29,12 @@ public final class VariantAnnotatorEngine {
 
     private final VariantOverlapAnnotator variantOverlapAnnotator;
 
-    private VariantAnnotatorEngine(final AnnotationManager annots, final FeatureInput<VariantContext> dbSNPInput){
+    private VariantAnnotatorEngine(final AnnotationManager annots,
+                                   final FeatureInput<VariantContext> dbSNPInput,
+                                   final List<FeatureInput<VariantContext>> featureInputs){
         infoAnnotations = annots.createInfoFieldAnnotations();
         genotypeAnnotations = annots.createGenotypeAnnotations();
-        variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput);
+        variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput, featureInputs);
     }
 
     /**
@@ -39,10 +42,17 @@ public final class VariantAnnotatorEngine {
      * @param annotationsToExclude list of annotations to exclude (pass an empty list to indicate that there are no exclusions)
      * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
      *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
+     * @param comparisonFeatureInputs list of inputs with known variants.
+     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
+     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
+     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
      */
-    public static VariantAnnotatorEngine ofAllMinusExcluded(final List<String> annotationsToExclude, final FeatureInput<VariantContext> dbSNPInput) {
+    public static VariantAnnotatorEngine ofAllMinusExcluded(final List<String> annotationsToExclude,
+                                                            final FeatureInput<VariantContext> dbSNPInput,
+                                                            final List<FeatureInput<VariantContext>> comparisonFeatureInputs) {
         Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
-        return new VariantAnnotatorEngine(AnnotationManager.ofAllMinusExcluded(annotationsToExclude), dbSNPInput);
+        Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
+        return new VariantAnnotatorEngine(AnnotationManager.ofAllMinusExcluded(annotationsToExclude), dbSNPInput, comparisonFeatureInputs);
     }
 
     /**
@@ -52,17 +62,32 @@ public final class VariantAnnotatorEngine {
      * @param annotationsToExclude list of annotations to exclude
      * @param dbSNPInput input for variants from a known set from DbSNP or null if not provided.
      *                   The annotation engine will mark variants overlapping anything in this set using {@link htsjdk.variant.vcf.VCFConstants#DBSNP_KEY}.
+     * @param comparisonFeatureInputs list of inputs with known variants.
+     *                   The annotation engine will mark variants overlapping anything in those sets using the name given by {@link FeatureInput#getName()}.
+     *                   Note: the DBSNP FeatureInput should be passed in separately, and not as part of this List - an GATKException will be thrown otherwise.
+     *                   Note: there are no non-DBSNP comparison FeatureInputs an empty List should be passed in here, rather than null.
      */
-    public static VariantAnnotatorEngine ofSelectedMinusExcluded(final List<String> annotationGroupsToUse, final List<String> annotationsToUse, final List<String> annotationsToExclude, final FeatureInput<VariantContext> dbSNPInput) {
+    public static VariantAnnotatorEngine ofSelectedMinusExcluded(final List<String> annotationGroupsToUse,
+                                                                 final List<String> annotationsToUse,
+                                                                 final List<String> annotationsToExclude,
+                                                                 final FeatureInput<VariantContext> dbSNPInput,
+                                                                 final List<FeatureInput<VariantContext>> comparisonFeatureInputs) {
         Utils.nonNull(annotationGroupsToUse, "annotationGroupsToUse is null");
         Utils.nonNull(annotationsToUse, "annotationsToUse is null");
         Utils.nonNull(annotationsToExclude, "annotationsToExclude is null");
-        return new VariantAnnotatorEngine(AnnotationManager.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude), dbSNPInput);
+        Utils.nonNull(comparisonFeatureInputs, "comparisonFeatureInputs is null");
+        return new VariantAnnotatorEngine(AnnotationManager.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude), dbSNPInput, comparisonFeatureInputs);
     }
 
-    private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput) {
+    private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
         final Map<FeatureInput<VariantContext>, String> overlaps = new LinkedHashMap<>();
-        if ( dbSNPInput != null ) {
+        for ( final FeatureInput<VariantContext> fi : featureInputs) {
+            overlaps.put(fi, fi.getName());
+        }
+        if (overlaps.values().contains(VCFConstants.DBSNP_KEY)){
+            throw new GATKException("The map of overlaps must not contain " + VCFConstants.DBSNP_KEY);
+        }
+        if (dbSNPInput != null) {
             overlaps.put(dbSNPInput, VCFConstants.DBSNP_KEY); // add overlap detection with DBSNP by default
         }
 
