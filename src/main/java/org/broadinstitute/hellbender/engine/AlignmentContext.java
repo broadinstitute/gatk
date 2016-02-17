@@ -1,58 +1,74 @@
-package org.broadinstitute.hellbender.engine;
+/*
+* Copyright 2012-2015 Broad Institute, Inc.
+* 
+* Permission is hereby granted, free of charge, to any person
+* obtaining a copy of this software and associated documentation
+* files (the "Software"), to deal in the Software without
+* restriction, including without limitation the rights to use,
+* copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the
+* Software is furnished to do so, subject to the following
+* conditions:
+* 
+* The above copyright notice and this permission notice shall be
+* included in all copies or substantial portions of the Software.
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.HasGenomeLocation;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
+package org.broadinstitute.gatk.utils.contexts;
 
-import java.util.*;
+import org.broadinstitute.gatk.utils.GenomeLoc;
+import org.broadinstitute.gatk.utils.HasGenomeLocation;
+import org.broadinstitute.gatk.utils.exceptions.ReviewedGATKException;
+import org.broadinstitute.gatk.utils.pileup.ReadBackedPileup;
+import org.broadinstitute.gatk.utils.sam.GATKSAMRecord;
+
+import java.util.List;
 
 /**
- * Bundles together a pileup and a location.
+ * Useful class for forwarding on locusContext data from this iterator
+ * 
+ * Created by IntelliJ IDEA.
+ * User: mdepristo
+ * Date: Feb 22, 2009
+ * Time: 3:01:34 PM
+ * To change this template use File | Settings | File Templates.
  */
-public final class AlignmentContext implements HasGenomeLocation {
-    // Definitions:
-    //   COMPLETE = full alignment context
-    //   FORWARD  = reads on forward strand
-    //   REVERSE  = reads on forward strand
-    //
-    public enum ReadOrientation { COMPLETE, FORWARD, REVERSE }
-
-    private final Locatable loc;
-    private final ReadPileup basePileup;
-
+public class AlignmentContext implements HasGenomeLocation {
+    protected GenomeLoc loc = null;
+    protected ReadBackedPileup basePileup = null;
     protected boolean hasPileupBeenDownsampled;
 
     /**
      * The number of bases we've skipped over in the reference since the last map invocation.
-     * By default, nothing is being skipped, so skippedBases == 0.
+     * Only filled in by RodTraversals right now.  By default, nothing is being skipped, so skippedBases == 0.
      */
     private long skippedBases = 0;
 
-    public AlignmentContext(final Locatable loc, final ReadPileup basePileup) {
+    public AlignmentContext(GenomeLoc loc, ReadBackedPileup basePileup) {
         this(loc, basePileup, 0, false);
     }
 
-    public AlignmentContext(final Locatable loc, final ReadPileup basePileup, final boolean hasPileupBeenDownsampled) {
+    public AlignmentContext(GenomeLoc loc, ReadBackedPileup basePileup, boolean hasPileupBeenDownsampled) {
         this(loc, basePileup, 0, hasPileupBeenDownsampled);
     }
 
-    public AlignmentContext(final Locatable loc, final ReadPileup basePileup, final long skippedBases) {
+    public AlignmentContext(GenomeLoc loc, ReadBackedPileup basePileup, long skippedBases) {
         this(loc, basePileup, skippedBases, false);
     }
 
-    public AlignmentContext(final Locatable loc, final ReadPileup basePileup, final long skippedBases, final boolean hasPileupBeenDownsampled ) {
-        Utils.nonNull(loc, "BUG: GenomeLoc in Alignment context is null");
-        Utils.nonNull(basePileup, "BUG: ReadBackedPileup in Alignment context is null");
-        if ( skippedBases < 0 ) {
-            throw new IllegalArgumentException("BUG: skippedBases is -1 in Alignment context");
-        }
+    public AlignmentContext(GenomeLoc loc, ReadBackedPileup basePileup, long skippedBases,boolean hasPileupBeenDownsampled ) {
+        if ( loc == null ) throw new ReviewedGATKException("BUG: GenomeLoc in Alignment context is null");
+        if ( basePileup == null ) throw new ReviewedGATKException("BUG: ReadBackedPileup in Alignment context is null");
+        if ( skippedBases < 0 ) throw new ReviewedGATKException("BUG: skippedBases is -1 in Alignment context");
 
         this.loc = loc;
         this.basePileup = basePileup;
@@ -60,19 +76,20 @@ public final class AlignmentContext implements HasGenomeLocation {
         this.hasPileupBeenDownsampled = hasPileupBeenDownsampled;
     }
 
-    /**
-     * How many reads cover this locus?
+    /** Returns base pileup over the current genomic location. Deprectated. Use getBasePileup() to make your intentions
+     * clear.
      * @return
      */
-    public int size() {
-        return basePileup.size();
+    @Deprecated
+    public ReadBackedPileup getPileup() { return basePileup; }
+
+    /** Returns base pileup over the current genomic location. May return null if this context keeps only
+     * extended event (indel) pileup.
+     * @return
+     */
+    public ReadBackedPileup getBasePileup() {
+        return basePileup;
     }
-
-    public String getContig() { return getLocation().getContig(); }
-
-    public long getPosition() { return getLocation().getStart(); }
-
-    public Locatable getLocation() { return loc; }
 
     /**
      * Returns true if any reads have been filtered out of the pileup due to excess DoC.
@@ -80,102 +97,58 @@ public final class AlignmentContext implements HasGenomeLocation {
      */
     public boolean hasPileupBeenDownsampled() { return hasPileupBeenDownsampled; }
 
-    public ReadPileup getBasePileup() {
-        return basePileup;
-    }
-
     /**
-     * Returns a potentially derived subcontext containing only forward, reverse, or in fact all reads
-     * in alignment context context.
+     * get all of the reads within this context
+     * 
+     * @return
      */
-    public AlignmentContext stratify(final ReadOrientation type) {
-        switch(type) {
-            case COMPLETE:
-                return this;
-            case FORWARD:
-                return new AlignmentContext(loc, basePileup.makeFilteredPileup(pe -> !pe.getRead().isReverseStrand()));
-            case REVERSE:
-                return new AlignmentContext(loc, basePileup.makeFilteredPileup(pe -> pe.getRead().isReverseStrand()));
-            default:
-                throw new IllegalArgumentException("Unable to get alignment context for type = " + type);
-        }
-    }
+    @Deprecated
+    //todo: unsafe and tailored for current usage only; both pileups can be null or worse, bot can be not null in theory
+    public List<GATKSAMRecord> getReads() { return ( basePileup.getReads() ); }
 
-    public Map<String, AlignmentContext> splitContextBySampleName(final SAMFileHeader header) {
-        return this.splitContextBySampleName((String)null, header);
+    /**
+     * Are there any reads associated with this locus?
+     *
+     * @return
+     */
+    public boolean hasReads() {
+        return basePileup != null && basePileup.getNumberOfElements() > 0 ;
     }
 
     /**
-     * Splits the given AlignmentContext into a StratifiedAlignmentContext per sample, but referencd by sample name instead
-     * of sample object.
-     *
-     * @return a Map of sample name to StratifiedAlignmentContext
-     *
-     **/
-    public Map<String, AlignmentContext> splitContextBySampleName(final String assumedSingleSample, final SAMFileHeader header) {
-        final Locatable loc = this.getLocation();
-        final Map<String, AlignmentContext> contexts = new HashMap<>();
-
-        for(final String sample: this.getBasePileup().getSamples(header)) {
-            final ReadPileup pileupBySample = this.getBasePileup().makeFilteredPileup(pe -> sample.equals(ReadUtils.getSampleName(pe.getRead(), header)));
-
-            // Don't add empty pileups to the split context.
-            if(pileupBySample.isEmpty()) {
-                continue;
-            }
-
-            if(sample != null) {
-                contexts.put(sample, new AlignmentContext(loc, pileupBySample));
-            } else {
-                if(assumedSingleSample == null) {
-                    throw new UserException.ReadMissingReadGroup(pileupBySample.iterator().next().getRead());
-                }
-                contexts.put(assumedSingleSample,new AlignmentContext(loc, pileupBySample));
-            }
-        }
-
-        return contexts;
+     * How many reads cover this locus?
+     * @return
+     */
+    public int size() {
+        return basePileup.getNumberOfElements();
     }
 
     /**
-     * Splits the AlignmentContext into one context per read group
+     * get a list of the equivalent positions within in the reads at Pos
      *
-     * @return a Map of ReadGroup to AlignmentContext, or an empty map if context has no base pileup
-     *
-     **/
-    public Map<SAMReadGroupRecord, AlignmentContext> splitContextByReadGroup(final Collection<SAMReadGroupRecord> readGroups) {
-        final Map<SAMReadGroupRecord, AlignmentContext> contexts = new HashMap<>();
-
-        for (final SAMReadGroupRecord rg : readGroups) {
-            final ReadPileup rgPileup = this.getBasePileup().makeFilteredPileup(pe -> rg.getReadGroupId().equals(pe.getRead().getReadGroup()));
-            if ( rgPileup != null ) // there we some reads for RG
-            {
-                contexts.put(rg, new AlignmentContext(this.getLocation(), rgPileup));
-            }
-        }
-
-        return contexts;
+     * @return
+     */
+    @Deprecated
+    public List<Integer> getOffsets() {
+        return basePileup.getOffsets();
     }
 
-    public static Map<String, AlignmentContext> splitContextBySampleName(final ReadPileup pileup, final SAMFileHeader header) {
-        return new AlignmentContext(pileup.getLocation(), pileup).splitContextBySampleName(header);
+    public String getContig() { return getLocation().getContig(); }
+    public long getPosition() { return getLocation().getStart(); }
+    public GenomeLoc getLocation() { return loc; }
+
+    public void downsampleToCoverage(int coverage) {
+        basePileup = basePileup.getDownsampledPileup(coverage);
+        hasPileupBeenDownsampled = true;
     }
 
-    public static AlignmentContext joinContexts(final Collection<AlignmentContext> contexts) {
-        // validation
-        final Locatable loc = contexts.iterator().next().getLocation();
-        for(final AlignmentContext context: contexts) {
-            if(!loc.equals(context.getLocation())) {
-                throw new GATKException("Illegal attempt to join contexts from different genomic locations");
-            }
-        }
-
-        final List<PileupElement> pe = new ArrayList<>();
-        for(final AlignmentContext context: contexts) {
-            for(final PileupElement pileupElement: context.basePileup) {
-                pe.add(pileupElement);
-            }
-        }
-        return new AlignmentContext(loc, new ReadPileup(loc,pe));
+    /**
+     * Returns the number of bases we've skipped over in the reference since the last map invocation.
+     * Only filled in by RodTraversals right now.  A value of 0 indicates that no bases were skipped.
+     *
+     * @return the number of skipped bases
+     */
+    public long getSkippedBases() {
+        return skippedBases;
     }
 }
