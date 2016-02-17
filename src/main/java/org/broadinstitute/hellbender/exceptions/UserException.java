@@ -381,4 +381,12 @@ public class UserException extends RuntimeException {
                                 featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
 	    }
     }
+
+    public static final class HardwareFeatureException extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public HardwareFeatureException(String message) {
+            super(message);
+        }
+    }
 }

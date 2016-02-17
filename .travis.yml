@@ -3,8 +3,11 @@ addons:
   apt:
     sources:
     - r-packages-precise
+    - ubuntu-toolchain-r-test
     packages:
     - r-base
+    - gcc-4.8
+    - g++-4.8
 jdk:
 - oraclejdk8
 env:
@@ -50,6 +53,12 @@ before_install:
     $GCLOUD/gcloud auth activate-service-account --key servicekey.json;
   fi
 - R --version
+# create links to newer gcc for gradle
+- mkdir $HOME/bin
+- ln -s /usr/bin/gcc-4.8 $HOME/bin/gcc
+- ln -s /usr/bin/g++-4.8 $HOME/bin/g++
+- export PATH=$HOME/bin:$PATH
+- gcc --version
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
