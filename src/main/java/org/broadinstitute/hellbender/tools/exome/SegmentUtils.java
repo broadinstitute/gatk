@@ -367,6 +367,56 @@ public final class SegmentUtils {
         return readSegmentFile(acnvSegFile, SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY, SegmentUtils::toACNVModeledSegment);
     }
 
+    /** Simple conversion to an interval given standard segment columns
+     *
+     * @param dataLine line in a file
+     * @return interval in the dataLine.  Never {@code null}
+     */
+    public static SimpleInterval toInterval(final DataLine dataLine) {
+        Utils.nonNull(dataLine);
+        return toInterval(dataLine, SegmentTableColumns.CONTIG.toString(), SegmentTableColumns.START.toString(),
+                SegmentTableColumns.END.toString());
+
+    }
+
+    /** Simple conversion to an interval given standard segment columns
+     *
+     * @param dataLine line in a file
+     * @param contigColumn name of the contig column
+     * @param startColumn column name for the start position
+     * @param endColumn column name for the end position
+     * @return interval in the dataLine.  Never {@code null}
+     */
+    public static SimpleInterval toInterval(final DataLine dataLine, final String contigColumn, final String startColumn,
+                                            final String endColumn) {
+        Utils.nonNull(dataLine);
+        Utils.nonNull(contigColumn);
+        Utils.nonNull(startColumn);
+        Utils.nonNull(endColumn);
+        return new SimpleInterval(dataLine.get(contigColumn), dataLine.getInt(startColumn), dataLine.getInt(endColumn));
+
+    }
+
+    public static <T extends Locatable> List<T> readSegmentFile(final File segmentsFile,
+                                                                final String[] mandatoryColumns,
+                                                                final Function<DataLine, T> dataLineToSegmentFunction) {
+        Utils.nonNull(segmentsFile);
+        Utils.regularReadableUserFile(segmentsFile);
+        try (final TableReader<T> reader = TableUtils.reader(segmentsFile,
+                (columns, formatExceptionFactory) -> {
+                    if (!columns.containsAll(mandatoryColumns)) {
+                        final Set<String> missingColumns = Sets.difference(new HashSet<>(Arrays.asList(mandatoryColumns)), new HashSet<>(columns.names()));
+                        throw formatExceptionFactory.apply("Bad header in file.  Not all columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
+                    }
+                    //return the lambda to translate dataLines into called segments
+                    return dataLineToSegmentFunction;
+                })) {
+            return reader.stream().collect(Collectors.toList());
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
+        }
+    }
+
     /*===============================================================================================================*
      * PRIVATE METHODS FOR SEGMENT UNION (COMBINING TARGET AND SNP SEGMENTS)                                         *
      *===============================================================================================================*/
@@ -474,56 +524,6 @@ public final class SegmentUtils {
             }
         }
         return mergedSegments;
-    }
-
-    /** Simple conversion to an interval given standard segment columns
-     *
-     * @param dataLine line in a file
-     * @return interval in the dataLine.  Never {@code null}
-     */
-    public static SimpleInterval toInterval(final DataLine dataLine) {
-        Utils.nonNull(dataLine);
-        return toInterval(dataLine, SegmentTableColumns.CONTIG.toString(), SegmentTableColumns.START.toString(),
-                SegmentTableColumns.END.toString());
-
-    }
-
-    /** Simple conversion to an interval given standard segment columns
-     *
-     * @param dataLine line in a file
-     * @param contigColumn name of the contig column
-     * @param startColumn column name for the start position
-     * @param endColumn column name for the end position
-     * @return interval in the dataLine.  Never {@code null}
-     */
-    public static SimpleInterval toInterval(final DataLine dataLine, final String contigColumn, final String startColumn,
-                                            final String endColumn) {
-        Utils.nonNull(dataLine);
-        Utils.nonNull(contigColumn);
-        Utils.nonNull(startColumn);
-        Utils.nonNull(endColumn);
-        return new SimpleInterval(dataLine.get(contigColumn), dataLine.getInt(startColumn), dataLine.getInt(endColumn));
-
-    }
-
-    public static <T extends Locatable> List<T> readSegmentFile(final File segmentsFile,
-                                                                final String[] mandatoryColumns,
-                                                                final Function<DataLine, T> dataLineToSegmentFunction) {
-        Utils.nonNull(segmentsFile);
-        Utils.regularReadableUserFile(segmentsFile);
-        try (final TableReader<T> reader = TableUtils.reader(segmentsFile,
-                (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(mandatoryColumns)) {
-                        final Set<String> missingColumns = Sets.difference(new HashSet<>(Arrays.asList(mandatoryColumns)), new HashSet<>(columns.names()));
-                        throw formatExceptionFactory.apply("Bad header in file.  Not all columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
-                    }
-                    //return the lambda to translate dataLines into called segments
-                    return dataLineToSegmentFunction;
-                })) {
-            return reader.stream().collect(Collectors.toList());
-        } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(segmentsFile, e);
-        }
     }
 
     /*===============================================================================================================*
