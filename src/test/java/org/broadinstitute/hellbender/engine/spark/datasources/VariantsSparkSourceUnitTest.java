@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.beust.jcommander.internal.Lists;
+import com.google.common.collect.Lists;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextComparator;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -21,8 +22,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class VariantsSparkSourceUnitTest extends BaseTest {
+public final class VariantsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadVariants")
     public Object[][] loadVariants() {
         return new Object[][]{
@@ -36,27 +38,60 @@ public class VariantsSparkSourceUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<Variant> rddSerialVariants =
-                getSerialVariants(ctx, vcf);
         JavaRDD<Variant> rddParallelVariants =
                 variantsSparkSource.getParallelVariants(vcf);
 
-        List<Variant> serialVariants = rddSerialVariants.collect();
+        List<Variant> serialVariants = getSerialVariants(vcf);
         List<Variant> parallelVariants = rddParallelVariants.collect();
         Assert.assertEquals(parallelVariants, serialVariants);
+    }
+
+    @Test(dataProvider = "loadVariants", groups = "spark")
+    public void pairReadsAndVariantsTest_variantContexts(String vcf) {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
+        JavaRDD<VariantContext> rddParallelVariants =
+                variantsSparkSource.getParallelVariantContexts(vcf);
+
+        List<VariantContext> serialVariants = getSerialVariantContexts(vcf);
+        List<VariantContext> parallelVariants = rddParallelVariants.collect();
+
+        final List<String> contigs = serialVariants.stream().map(vc -> vc.getContig()).distinct().collect(Collectors.toList());
+        assertEquals(parallelVariants, serialVariants, new VariantContextComparator(contigs));
+    }
+
+    private void assertEquals(List<VariantContext> v1, List<VariantContext> v2, VariantContextComparator comparator) {
+        if (v1.size() != v2.size()){
+            throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
+        }
+        for (int i = 0; i < v1.size(); i++) {
+            if (0 != comparator.compare(v1.get(i), v2.get(i))){
+                throw new AssertionError("different element " + i + " " + v1.get(i) + " vs " + v2.get(i));
+            }
+        }
     }
 
     /**
      * Loads variants using FeatureDataSource<VariantContext>.
      * @param vcf file to load
-     * @return JavaRDD of Variants.
+     * @return List of Variants.
      */
-    static JavaRDD<Variant> getSerialVariants(final JavaSparkContext ctx, final String vcf) {
-        List<Variant> records = Lists.newArrayList();
+    static List<Variant> getSerialVariants(final String vcf) {
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(vcf), getCodecForVariantSource(vcf), null, 0) ) {
-            records.addAll(wrapQueryResults(dataSource.iterator()));
+            return Lists.newArrayList(wrapQueryResults(dataSource.iterator()));
         }
-        return ctx.parallelize(records);
+    }
+
+    /**
+     * Loads variants using FeatureDataSource<VariantContext>.
+     * @param vcf file to load
+     * @return List of VariantContext.
+     */
+    static List<VariantContext> getSerialVariantContexts(final String vcf) {
+        try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(vcf), getCodecForVariantSource(vcf), null, 0) ) {
+            return Lists.newArrayList(dataSource.iterator());
+        }
     }
 
     @SuppressWarnings("unchecked")
