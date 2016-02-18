@@ -368,17 +368,6 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
     }
 
     @Test
-    public void testNoGoodStarts() {
-        final TestAssembler assembler = new TestAssembler(3);
-        final String ref  = "CAAAATGGGG";
-        final String read =   "AAATCGGG";
-        assembler.addSequence(ref.getBytes(), true);
-        assembler.addSequence(read.getBytes(), false);
-        assertSingleBubble(assembler, ref, "CAAAATCGGG");
-    }
-
-
-    @Test
     public void testCreateWithBasesBeforeRefSource() {
         final TestAssembler assembler = new TestAssembler(3);
         final String ref  =  "ACTG";
