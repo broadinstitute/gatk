@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -54,7 +55,9 @@ public final class SimpleIntervalUnitTest extends BaseTest {
         SimpleInterval interval = new SimpleInterval(str);
         Assert.assertEquals(interval.getContig(), contig, "contig");
         Assert.assertEquals(interval.getStart(), start, "start");
+        Assert.assertEquals(interval.getGA4GHStart(), start-1, "GA4GH start");
         Assert.assertEquals(interval.getEnd(), end, "end");
+        Assert.assertEquals(interval.getGA4GHEnd(), end, "GA4GH start");
     }
 
     @Test(dataProvider = "goodIntervals")
@@ -100,6 +103,18 @@ public final class SimpleIntervalUnitTest extends BaseTest {
         Assert.assertTrue(i2.equals(i1));
         Assert.assertTrue(i1.equals(i6));
         Assert.assertTrue(i6.equals(i1));
+
+        //i1 i2 i6 are same
+        Assert.assertEquals(i1.hashCode(), i2.hashCode());
+        Assert.assertEquals(i1.hashCode(), i6.hashCode());
+
+        //i3 i4 i5 are are different from each other and from i1 i2 i6
+        Assert.assertNotEquals(i1.hashCode(), i3.hashCode());
+        Assert.assertNotEquals(i1.hashCode(), i4.hashCode());
+        Assert.assertNotEquals(i1.hashCode(), i5.hashCode());
+        Assert.assertNotEquals(i3.hashCode(), i4.hashCode());
+        Assert.assertNotEquals(i3.hashCode(), i5.hashCode());
+        Assert.assertNotEquals(i4.hashCode(), i5.hashCode());
 
         Assert.assertFalse(i1.equals(i3));
         Assert.assertFalse(i1.equals(i4));
@@ -219,5 +234,20 @@ public final class SimpleIntervalUnitTest extends BaseTest {
     public void testContains( final SimpleInterval firstInterval, final SimpleInterval secondInterval, final boolean expectedContainsResult ) {
         Assert.assertEquals(firstInterval.contains(secondInterval), expectedContainsResult,
                             "contains() returned incorrect result for intervals " + firstInterval + " and " + secondInterval);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNoNullInConstruction() throws Exception {
+        new SimpleInterval((String)null);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testEmptyStringInConstruction() throws Exception {
+        new SimpleInterval("");
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testBadParsePosition() throws Exception {
+        new SimpleInterval("chr1:fred");
     }
 }

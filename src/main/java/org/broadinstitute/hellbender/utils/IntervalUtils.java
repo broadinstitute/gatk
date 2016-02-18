@@ -59,14 +59,37 @@ public final class IntervalUtils {
 
 
     /**
+     * getSpanningInterval returns interval that covers all of the locations passed in.
+     * @param locations the locations to be spanned (on a single contig)
+     * @return the minimal span that covers all locations (could be null if no locations are passed in).
+     * @throws IllegalArgumentException if the argument is null
+     * or if the argument contains any null element
+     * or if the locations are not all on the same contig (compared by String.equals)
+     */
+    public static SimpleInterval getSpanningInterval(final List<? extends Locatable> locations) {
+        Utils.nonNull(locations);
+        Utils.containsNoNull(locations, "locations must not contain a null");
+        if (locations.isEmpty()){
+            return null;
+        }
+        final List<String> contigs = locations.stream().map(l -> l.getContig()).distinct().collect(Collectors.toList());
+        if (contigs.size() != 1){
+            throw new IllegalArgumentException("found different contigs from inputs:" + contigs);
+        }
+        final int minStart = locations.stream().mapToInt(l -> l.getStart()).min().getAsInt();
+        final int maxEnd   = locations.stream().mapToInt(l -> l.getEnd()).max().getAsInt();
+        return new SimpleInterval(contigs.get(0), minStart, maxEnd);
+    }
+
+    /**
      * Convert a List of intervals in GenomeLoc format into a List of intervals in SimpleInterval format.
      *
      * @param genomeLocIntervals list of GenomeLoc intervals to convert
      * @return equivalent List of SimpleIntervals
      */
     public static List<SimpleInterval> convertGenomeLocsToSimpleIntervals( final List<GenomeLoc> genomeLocIntervals ) {
-        List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
-        for ( GenomeLoc genomeLoc : genomeLocIntervals ) {
+        final List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
+        for ( final GenomeLoc genomeLoc : genomeLocIntervals ) {
             if ( genomeLoc.isUnmapped() ) {
                 throw new UserException("Unmapped intervals are not currently supported");
             }

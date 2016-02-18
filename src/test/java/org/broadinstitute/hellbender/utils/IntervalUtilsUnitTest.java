@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.interval;
+package org.broadinstitute.hellbender.utils;
 
 import com.google.common.collect.Lists;
 
@@ -11,7 +11,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -39,6 +38,50 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void init() {
         hg19ReferenceLocs = Collections.unmodifiableList(GenomeLocSortedSet.createSetFromSequenceDictionary(hg19Header.getSequenceDictionary()).toList()) ;
         hg19exomeIntervals = Collections.unmodifiableList(IntervalUtils.parseIntervalArguments(hg19GenomeLocParser, Arrays.asList(hg19MiniIntervalFile)));
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNullArgSpanningInterval() throws Exception {
+        IntervalUtils.getSpanningInterval(null);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSpanningInterval_differentConfigs() throws Exception {
+        final SimpleInterval chr1_200_300 = new SimpleInterval("1:200-300");
+        final SimpleInterval chr2_1_100 = new SimpleInterval("2:1-100");
+
+        IntervalUtils.getSpanningInterval(Arrays.asList(chr1_200_300, chr2_1_100));
+    }
+
+    @Test
+    public void testSpanningInterval_nullIfEmptyInput() throws Exception {
+        Assert.assertNull(IntervalUtils.getSpanningInterval(Collections.emptyList()));
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSpanningInterval_nullElement() throws Exception {
+        final SimpleInterval chr1_200_300 = new SimpleInterval("1:200-300");
+        Assert.assertNull(IntervalUtils.getSpanningInterval(Arrays.asList(chr1_200_300, null)));
+    }
+
+    @DataProvider(name = "SpanningInterval")
+    public Object[][] SpanningInterval() {
+        final SimpleInterval chr1_1_100   = new SimpleInterval("1:1-100");
+        final SimpleInterval chr1_1_200 = new SimpleInterval("1:1-200");
+        final SimpleInterval chr1_1_300 = new SimpleInterval("1:1-300");
+        final SimpleInterval chr1_100_200 = new SimpleInterval("1:100-200");
+        final SimpleInterval chr1_200_300 = new SimpleInterval("1:200-300");
+        return new Object[][]{
+           {Arrays.asList(chr1_1_100),                             chr1_1_100, },
+           {Arrays.asList(chr1_1_100, chr1_100_200),               chr1_1_200, },
+           {Arrays.asList(chr1_1_100, chr1_100_200, chr1_200_300), chr1_1_300, },
+           {Arrays.asList(chr1_1_100, chr1_200_300),               chr1_1_300, },
+        };
+    }
+
+    @Test(dataProvider = "SpanningInterval")
+    public void testSpanningInterval(final List<? extends Locatable> locs, final SimpleInterval expectedResult) throws Exception {
+        Assert.assertEquals(IntervalUtils.getSpanningInterval(locs), expectedResult);
     }
 
     // -------------------------------------------------------------------------------------
