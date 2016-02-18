@@ -21,7 +21,7 @@ import java.util.stream.StreamSupport;
  * of Features.
  *
  * VariantWalker authors must implement the apply() method to process each read, and may optionally implement
- * onTraversalStart() and/or onTraversalDone().
+ * onTraversalStart() and/or onTraversalSuccess().
  */
 public abstract class VariantWalker extends GATKTool {
 
@@ -153,7 +153,7 @@ public abstract class VariantWalker extends GATKTool {
     /**
      * Close the reads and reference data sources.
      *
-     * Marked final so that tool authors don't override it. Tool authors should override onTraversalDone() instead.
+     * Marked final so that tool authors don't override it. Tool authors should override onTraversalSuccess() instead.
      */
     @Override
     protected final void onShutdown() {

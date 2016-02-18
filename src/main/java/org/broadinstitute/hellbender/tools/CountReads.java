@@ -21,7 +21,7 @@ public final class CountReads extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         return count;
     }
 }

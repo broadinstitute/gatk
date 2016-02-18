@@ -44,7 +44,7 @@ public class UnmarkDuplicates extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputWriter != null ) {
             outputWriter.close();
         }

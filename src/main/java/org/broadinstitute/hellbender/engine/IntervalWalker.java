@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
  * will address this issue when porting this traversal to dataflow.
  *
  * IntervalWalker authors must implement the apply() method to process each interval, and may optionally implement
- * onTraversalStart() and/or onTraversalDone(). See the {@link org.broadinstitute.hellbender.tools.examples.ExampleIntervalWalker}
+ * onTraversalStart() and/or onTraversalSuccess(). See the {@link org.broadinstitute.hellbender.tools.examples.ExampleIntervalWalker}
  * tool for an example.
  */
 public abstract class IntervalWalker extends GATKTool {
@@ -40,7 +40,7 @@ public abstract class IntervalWalker extends GATKTool {
     /**
      * Initialize data sources.
      *
-     * Marked final so that tool authors don't override it. Tool authors should override onTraversalDone() instead.
+     * Marked final so that tool authors don't override it. Tool authors should override onTraversalSuccess() instead.
      */
     @Override
     protected final void onStartup() {
@@ -83,7 +83,7 @@ public abstract class IntervalWalker extends GATKTool {
     /**
      * Close data sources.
      *
-     * Marked final so that tool authors don't override it. Tool authors should override onTraversalDone() instead.
+     * Marked final so that tool authors don't override it. Tool authors should override onTraversalSuccess() instead.
      */
     @Override
     protected final void onShutdown() {

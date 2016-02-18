@@ -170,7 +170,7 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         recalibrationEngine.finalizeData();
 
         logger.info("Calculating quantized quality scores...");

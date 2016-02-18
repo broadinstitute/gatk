@@ -324,8 +324,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
-        super.onTraversalDone();
+    public Object onTraversalSuccess() {
         logger.log(Level.INFO, "Collecting read counts done.");
 
         logger.log(Level.INFO, "Writing counts ...");

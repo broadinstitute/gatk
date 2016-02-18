@@ -302,7 +302,7 @@ public final class ClipReads extends ReadWalker {
     }
 
     @Override
-    public ClippingData onTraversalDone(){
+    public ClippingData onTraversalSuccess(){
         if ( out != null ){
            out.printf(accumulator.toString());
         }

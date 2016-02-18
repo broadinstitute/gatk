@@ -16,7 +16,7 @@ import java.util.stream.StreamSupport;
  * If multiple sources of reads are specified, they are merged together into a single sorted stream of reads.
  *
  * ReadWalker authors must implement the apply() method to process each read, and may optionally implement
- * onTraversalStart() and/or onTraversalDone(). See the PrintReadsWithReference walker for an example.
+ * onTraversalStart() and/or onTraversalSuccess(). See the PrintReadsWithReference walker for an example.
  */
 public abstract class ReadWalker extends GATKTool {
 
@@ -131,7 +131,7 @@ public abstract class ReadWalker extends GATKTool {
     /**
      * Shutdown data sources.
      *
-     * Marked final so that tool authors don't override it. Tool authors should override onTraversalDone() instead.
+     * Marked final so that tool authors don't override it. Tool authors should override onTraversalSuccess() instead.
      */
     @Override
     protected final void onShutdown() {

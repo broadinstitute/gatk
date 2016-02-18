@@ -83,7 +83,7 @@ public final class ExampleReadWalkerWithVariants extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputStream != null )
             outputStream.close();
 

@@ -79,7 +79,7 @@ public final class ExampleVariantWalker extends VariantWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputStream != null ) {
             outputStream.close();
         }

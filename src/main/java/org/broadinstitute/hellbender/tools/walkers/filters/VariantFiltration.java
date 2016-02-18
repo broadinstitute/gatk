@@ -396,12 +396,9 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
-        try {
-            return null;
-        } finally {
-            writer.close();
-        }
+    public Object onTraversalSuccess() {
+        writer.close();
+        return null;
     }
 
 }
