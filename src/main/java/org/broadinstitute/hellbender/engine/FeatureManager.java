@@ -406,7 +406,7 @@ public final class FeatureManager implements AutoCloseable {
                 }
             }
             catch ( InstantiationException | IllegalAccessException e ) {
-                throw new GATKException("Unable to instantiate codec " + codecClass.getName());
+                throw new GATKException("Unable to automatically instantiate codec " + codecClass.getName());
             }
         }
 

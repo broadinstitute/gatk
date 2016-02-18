@@ -140,4 +140,38 @@ public class ProgressMeterUnitTest extends BaseTest {
         }
 
     }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testMustStartBeforeUpdate() throws Exception {
+        ProgressMeter pm = new ProgressMeter();
+        pm.update(new SimpleInterval("1",1,1));
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testCantStartTwice() throws Exception {
+        ProgressMeter pm = new ProgressMeter();
+        pm.start();
+        pm.update(new SimpleInterval("1",1,1));
+        pm.start();
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testCantStopBeforeStart() throws Exception {
+        ProgressMeter pm = new ProgressMeter();
+        pm.stop();
+    }
+
+    @Test
+    public void testStartedAndStopped() throws Exception {
+        ProgressMeter pm = new ProgressMeter();
+        Assert.assertFalse(pm.started());
+        Assert.assertFalse(pm.stopped());
+        pm.start();
+        Assert.assertTrue(pm.started());
+        Assert.assertFalse(pm.stopped());
+        pm.stop();
+        Assert.assertTrue(pm.started());
+        Assert.assertTrue(pm.stopped());
+    }
+
 }
