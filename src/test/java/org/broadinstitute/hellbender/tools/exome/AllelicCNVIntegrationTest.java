@@ -15,13 +15,9 @@ import java.util.List;
 
 public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
-
-    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
-            + "coverages-for-allelic-integration.tsv");
-    private static final File SNP_COUNTS_FILE = new File(TEST_SUB_DIR
-            + "snps-for-allelic-integration.tsv");
-    private static final File SEGMENT_FILE =
-            new File(TEST_SUB_DIR + "segments-for-allelic-integration.seg");
+    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");
+    private static final File SNP_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
+    private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-allelic-integration.seg");
     private static final String SAMPLE_NAME = "test";
 
     @Test
@@ -32,7 +28,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
 
         final String[] arguments = {
                 "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
-                "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
                 "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
                 "--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "25",

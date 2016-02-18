@@ -84,8 +84,8 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
     @Argument(
             doc = "Tangent normalized counts output",
-            shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_SHORT_NAME,
-            fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             optional = false
     )
     protected File outFile;

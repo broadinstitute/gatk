@@ -17,7 +17,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_TARGETS = new File(TEST_DIR,"targets.tsv");
     private static final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
     private static final File TEST_SEGMENTS_LEGACY = new File(TEST_DIR,"segments_legacy.tsv");
-    private static final String SAMPLE_NAME = "sample";
 
     @Test
     public void testCallSegmentsExperimental() {

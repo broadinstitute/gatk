@@ -42,6 +42,6 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String PRE_TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME = "preTangentNormalized";
     public static final String PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME = "PTN";
 
-    public static final String TANGENT_NORMALIZED_COUNTS_LONG_NAME = "tangentNormalized";
-    public static final String TANGENT_NORMALIZED_COUNTS_SHORT_NAME = "TN";
+    public static final String TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME = "tangentNormalized";
+    public static final String TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME = "TN";
 }
