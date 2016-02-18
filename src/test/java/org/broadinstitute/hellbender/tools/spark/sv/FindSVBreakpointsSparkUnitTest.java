@@ -19,6 +19,7 @@ import org.testng.annotations.Test;
 import scala.Tuple2;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
@@ -55,7 +56,7 @@ public class FindSVBreakpointsSparkUnitTest extends BaseTest {
         final List<SVKmer> badKmers = FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, ref, null, null);
         final File kmersFile = File.createTempFile("kmerKillList", "txt");
         kmersFile.deleteOnExit();
-        FindBadGenomicKmersSpark.writeKmersToFile(kmersFile, badKmers);
+        FindBadGenomicKmersSpark.writeKmersToOutput(new FileOutputStream(kmersFile), badKmers);
         final Set<SVKmer> kmerSet = FindSVBreakpointsSpark.readKmersToIgnore(kmersFile);
         if ( !kmersFile.delete() )
             throw new GATKException("Unable to delete file "+kmersFile);

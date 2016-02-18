@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
@@ -27,33 +27,28 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void badKmersTest() throws IOException {
-        final File refSequenceFile = File.createTempFile("genomic_sequence", "txt");
-        refSequenceFile.deleteOnExit();
 
-        final String polyA = StringUtils.repeat('A', KMER_SIZE);
-        final String polyC = StringUtils.repeat('C', KMER_SIZE);
-        final String polyT = StringUtils.repeat('T', KMER_SIZE);
+        final byte[] polyA = new byte[KMER_SIZE]; Arrays.fill(polyA, (byte)'A');
+        final byte[] polyC = new byte[KMER_SIZE]; Arrays.fill(polyC, (byte)'C');
+        final byte[] polyT = new byte[KMER_SIZE]; Arrays.fill(polyT, (byte)'T');
 
-        try ( PrintWriter writer = new PrintWriter(refSequenceFile) ) {
-            long nTimes = FindBadGenomicKmersSpark.MAX_KMER_FREQ;
-            // write polyA and polyC the max number of times possible while evading the trigger
-            while ( nTimes-- > 0L ) {
-                writer.println(polyA);
-                writer.println(polyC);
-            }
-            // tip polyA over the edge by writing its reverse complement
-            writer.println(polyT);
+        int nTimes = FindBadGenomicKmersSpark.MAX_KMER_FREQ.intValue();
+        final List<byte[]> sequenceChunks = new ArrayList<>(nTimes*2+1);
+
+        // add polyA and polyC the max number of times possible while evading the trigger
+        while ( nTimes-- > 0L ) {
+            sequenceChunks.add(polyA);
+            sequenceChunks.add(polyC);
         }
+        // tip polyA over the edge by writing its reverse complement
+        sequenceChunks.add(polyT);
 
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final List<SVKmer> badKmers = FindBadGenomicKmersSpark.processRefFile(ctx, refSequenceFile);
+        final JavaRDD<byte[]> refRDD = SparkContextFactory.getTestSparkContext().parallelize(sequenceChunks);
+        final List<SVKmer> badKmers = FindBadGenomicKmersSpark.processRefRDD(refRDD);
 
         // should have just one bad kmer:  polyA
         Assert.assertEquals(badKmers.size(), 1);
-        Assert.assertEquals(badKmers.get(0).toString(KMER_SIZE), polyA);
-
-        if ( !refSequenceFile.delete() )
-            throw new GATKException("Unable to delete file "+refSequenceFile);
+        Assert.assertEquals(badKmers.get(0), SVKmerizer.toKmer(polyA));
     }
 
     @Test(groups = "spark")
