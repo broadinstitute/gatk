@@ -76,7 +76,7 @@ import java.util.stream.IntStream;
  * </p>
  * <h2>Input and Output File Format</h2>
  * <p>
- *    Input read count file format follows the one produced by {@link ExomeReadCounts}.
+ *    Input read count file format follows the one produced by {@link CalculateTargetBaseCallCoverage}.
  *    Namely a tab separated value table file where there is a least one column, <b>NAME</b>;
  *    indicating the target name, an arbitrary number of read count columns (e.g. one per sample)
  *    and the target coordinates (<b>CONTIG</b>, <b>START</b> and <b>STOP</b>) which are optional if
@@ -301,11 +301,7 @@ public final class CombineReadCounts extends CommandLineProgram {
     private void doMerge(final TargetCollection<Target> targets, final List<File> filesToMerge, final File outputFile) {
         try (final ReadCountReaderCollection readers = new ReadCountReaderCollection(filesToMerge, targets);
              final TableWriter<ReadCountRecord> writer = ReadCountCollectionUtils.writerWithIntervals(new FileWriter(outputFile), readers.countColumnNames)) {
-            for (final Target target : targets.targets()) {
-                final double[] counts = readers.countsFor(target);
-                final ReadCountRecord readCounts = new ReadCountRecord(target, counts);
-                writer.writeRecord(readCounts);
-            }
+            writer.writeAllRecords(readers);
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, "Could not create output file");
         }
@@ -443,27 +439,50 @@ public final class CombineReadCounts extends CommandLineProgram {
      * current target.
      * </p>
      */
-    private final class ReadCountReaderCollection implements AutoCloseable {
+    private final class ReadCountReaderCollection implements AutoCloseable, Iterator<ReadCountRecord>, Iterable<ReadCountRecord> {
         private final List<TableReader<ReadCountRecord>> readers;
-        private final List<ReadCountRecord> lastReadCounts;
         private List<String> countColumnNames;
         private int[] countColumnSourceIndexMap;
+        private final TargetCollection<Target> targets;
+        private int targetsProcessedCount = 0;
 
         /**
          * Counts buffer used to accumulate counts coming from different readers.
          */
         private final double[] countsBuffer;
-        private Target lastTarget;
-        public ReadCountReaderCollection(final List<File> mergeGroup,
-                                         final TargetCollection<Target> targets) {
-            readers = mergeGroup.stream().map(f -> readCountFileReader(f, targets))
-                .collect(Collectors.toList());
-            lastReadCounts = new ArrayList<>();
-            seekTarget(targets.target(0));
+
+        @Override
+        public Iterator<ReadCountRecord> iterator() { return this; }
+
+        @Override
+        public boolean hasNext() {
+            return targetsProcessedCount < targets.targetCount();
+        }
+
+        @Override
+        public ReadCountRecord next() {
+            while (true) {
+                final List<ReadCountRecord> nextReadCounts = readers.stream().map(r -> getNextRecord(r)).collect(Collectors.toList());
+                final Target targetInFirstReader = nextReadCounts.get(0).getTarget();
+                if (nextReadCounts.stream().map(ReadCountRecord::getTarget).anyMatch(t -> !t.equals(targetInFirstReader))) {
+                    throw new UserException.BadInput(String.format("Target in file %s is %s but at least one input file" +
+                            "has a different target at this position", readers.get(0).getSource(), targetInFirstReader));
+                }
+                if (targets.index(targetInFirstReader) != -1) {
+                    targetsProcessedCount++;
+                    return composeMergedReadCountRecord(nextReadCounts);
+                }
+            }
+        }
+
+        public ReadCountReaderCollection(final List<File> mergeGroup, final TargetCollection<Target> targets) {
+            this.targets = targets;
+            readers = mergeGroup.stream().map(f -> readCountFileReader(f, targets)).collect(Collectors.toList());
             composeCountColumnNamesAndSourceIndexMapping();
             // pre-allocate count array used to accumulate the counts from all readers.
             countsBuffer = new double[countColumnNames.size()];
         }
+
 
         /**
          * Initializes count column name data-structures.
@@ -494,7 +513,7 @@ public final class CombineReadCounts extends CommandLineProgram {
         }
 
         /**
-         * Makes sure that there is no repeated sample names in the input.
+         * Makes sure that there are no repeated sample names in the input.
          *
          * <p>
          *     At this point {@link #countColumnNames} is assumed to have all sample names (more than one) sorted.
@@ -511,34 +530,6 @@ public final class CombineReadCounts extends CommandLineProgram {
             }
         }
 
-        /**
-         * Find a given target in the remaining input from each reader.
-         * <p>
-         * This code assume that the requested target its downstream in the input readers.
-         * </p>
-         * @throws UserException.BadInput if the target cannot be found in any of the inputs.
-         * @param target the target to find.
-         */
-        private void seekTarget(final Target target) {
-            lastReadCounts.clear();
-            for (final TableReader<ReadCountRecord> reader : readers) {
-                boolean targetFound = false;
-                for (final ReadCountRecord counts : reader) {
-                    if (counts.getTarget().equals(target)) {
-                        lastReadCounts.add(counts);
-                        targetFound = true;
-                        break;
-                    }
-                }
-                if (!targetFound) {
-                    throw new UserException.BadInput(
-                            String.format("could not find target %s (or is out of order, after %s) in file %s",
-                                    target, lastTarget, reader.getSource()));
-                }
-            }
-            lastTarget = target;
-        }
-
         @Override
         public void close() {
             for (final TableReader<ReadCountRecord> reader : readers) {
@@ -551,40 +542,34 @@ public final class CombineReadCounts extends CommandLineProgram {
         }
 
         /**
-         * Returns the counts for a given target.
-         * <p>
-         * It returns an array with as many elements as count columns in {@link #countColumnNames}.
-         * The ith corresponds to the ith column in that list.
-         * </p>
-         * @param target the query target.
-         * @return never {@code null}.
-         * @throws UserException.BadInput if the requested target could not be found in the remaining
-         * of the input readers.
-         */
-        public double[] countsFor(final Target target) {
-            if (!target.equals(lastTarget)) {
-                seekTarget(target);
-            }
-            return composeLastTargetCounts();
-        }
-
-        /**
-         * Compose the count array from the last read target.
+         * Compose a merged ReadCountRecord from a List of records, assuming these records share the same target
          *
          * @return never {@code null}.
          */
-        private double[] composeLastTargetCounts() {
-            final double[] result = new double[countColumnNames.size()];
+        private ReadCountRecord composeMergedReadCountRecord(final List<ReadCountRecord> records) {
+            final double[] counts = new double[countColumnNames.size()];
             int nextIndex = 0;
-            for (final ReadCountRecord readCount : lastReadCounts) {
-                final int size = readCount.size();
-                readCount.copyCountsTo(countsBuffer, nextIndex);
+            for (final ReadCountRecord record : records) {
+                final int size = record.size();
+                record.copyCountsTo(countsBuffer, nextIndex);
                 nextIndex += size;
             }
-            for (int i = 0; i < result.length; i++) {
-                result[i] = countsBuffer[countColumnSourceIndexMap[i]];
+            for (int i = 0; i < counts.length; i++) {
+                counts[i] = countsBuffer[countColumnSourceIndexMap[i]];
             }
-            return result;
+            return new ReadCountRecord(records.get(0).getTarget(), counts);
+        }
+    }
+
+    private static ReadCountRecord getNextRecord(final TableReader<ReadCountRecord> reader) {
+        try {
+            final ReadCountRecord record = reader.readRecord();
+            if (record == null) {
+                throw new UserException.BadInput(String.format("End of file %s reached without finding all requested targets.", reader.getSource()));
+            }
+            return record;
+        } catch (final IOException e) {
+            throw new UserException.BadInput(String.format("End of file %s reached without finding all requested targets.", reader.getSource()));
         }
     }
 }
