@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -32,10 +32,10 @@ public class ReadsPreprocessingPipelineSparkTestData {
     private final List<GATKRead> reads;
     private final List<SimpleInterval> readIntervals;
     private final List<SimpleInterval> allIntervals;
-    private final List<Variant> variants;
+    private final List<GATKVariant> variants;
     private final List<KV<GATKRead, ReferenceBases>> kvReadsRefBases;
-    private final List<KV<GATKRead, Variant>> kvReadVariant;
-    private final List<KV<GATKRead, Iterable<Variant>>> kvReadiVariant;
+    private final List<KV<GATKRead, GATKVariant>> kvReadVariant;
+    private final List<KV<GATKRead, Iterable<GATKVariant>>> kvReadiVariant;
     private final List<KV<GATKRead, ReadContextData>> kvReadContextData;
 
 
@@ -101,13 +101,13 @@ public class ReadsPreprocessingPipelineSparkTestData {
                 KV.of(reads.get(3), variants.get(3)),     // why there are two of them (2,3).
                 KV.of(reads.get(4), variants.get(4))
         );
-        final KV<GATKRead, Variant> readNullVariant = KV.of(reads.get(0), null);
+        final KV<GATKRead, GATKVariant> readNullVariant = KV.of(reads.get(0), null);
 
-        Iterable<Variant> variant10 = Lists.newArrayList(kvReadVariant.get(1).getValue(), kvReadVariant.get(0).getValue());
-        Iterable<Variant> variant2 = Lists.newArrayList(kvReadVariant.get(2).getValue());
-        Iterable<Variant> variant3 = Lists.newArrayList(kvReadVariant.get(3).getValue());
-        Iterable<Variant> variant4 = Lists.newArrayList(kvReadVariant.get(5).getValue());
-        Iterable<Variant> noVariant = Lists.newArrayList(new ArrayList<>());
+        Iterable<GATKVariant> variant10 = Lists.newArrayList(kvReadVariant.get(1).getValue(), kvReadVariant.get(0).getValue());
+        Iterable<GATKVariant> variant2 = Lists.newArrayList(kvReadVariant.get(2).getValue());
+        Iterable<GATKVariant> variant3 = Lists.newArrayList(kvReadVariant.get(3).getValue());
+        Iterable<GATKVariant> variant4 = Lists.newArrayList(kvReadVariant.get(5).getValue());
+        Iterable<GATKVariant> noVariant = Lists.newArrayList(new ArrayList<>());
 
         kvReadiVariant = Arrays.asList(
                 KV.of(kvReadVariant.get(0).getKey(), variant10),
@@ -175,7 +175,7 @@ public class ReadsPreprocessingPipelineSparkTestData {
         return kvReadsRefBases;
     }
 
-    public List<Variant> getVariants() {
+    public List<GATKVariant> getVariants() {
         return variants;
     }
 
@@ -189,7 +189,7 @@ public class ReadsPreprocessingPipelineSparkTestData {
         Assert.assertEquals(Math.floorMod(ReferenceShard.REFERENCE_SHARD_SIZE, VariantShard.VARIANT_SHARDSIZE), 0);
     }
 
-    public List<KV<GATKRead, Iterable<Variant>>> getKvReadiVariant() {
+    public List<KV<GATKRead, Iterable<GATKVariant>>> getKvReadiVariant() {
         return kvReadiVariant;
     }
 }

@@ -18,19 +18,19 @@ public class VariantContextVariantAdapterTest extends BaseTest {
     private static final File QUERY_TEST_VCF = new File(FEATURE_DATA_SOURCE_TEST_DIRECTORY + "feature_data_source_test.vcf");
 
     @Test(dataProvider = "VariantDataProvider")
-    public void testVariantAdapter(final List<Variant> expectedVariantList) {
+    public void testVariantAdapter(final List<GATKVariant> expectedVariantList) {
         // The test suite for reading in VCF files is FeatureDataSourceUnitTest.
         try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
-            List<Variant> variantList = new ArrayList<>();
+            List<GATKVariant> variantList = new ArrayList<>();
             for (VariantContext feature : featureSource) {
                 VariantContextVariantAdapter va = new VariantContextVariantAdapter(feature);
                 variantList.add(va);
             }
             // Now, test to see that every variant is in in the expected set.
             Assert.assertEquals(variantList.size(), expectedVariantList.size());
-            for (Variant v : variantList) {
+            for (GATKVariant v : variantList) {
                 boolean matchFound = false;
-                for (Variant vv : expectedVariantList) {
+                for (GATKVariant vv : expectedVariantList) {
                     if (VariantUtils.variantsAreEqual(v, vv)) {
                         matchFound = true;
                     }
@@ -42,7 +42,7 @@ public class VariantContextVariantAdapterTest extends BaseTest {
 
     @DataProvider(name = "VariantDataProvider")
     public Object[][] getVariantData() {
-        List<Variant> variantSet = new ArrayList<>();
+        List<GATKVariant> variantSet = new ArrayList<>();
         variantSet.add(new MinimalVariant(new SimpleInterval("1", 100, 100), true, false));
         variantSet.add(new MinimalVariant(new SimpleInterval("1", 199, 200), false, true));
         variantSet.add(new MinimalVariant(new SimpleInterval("1", 200, 200), true, false));

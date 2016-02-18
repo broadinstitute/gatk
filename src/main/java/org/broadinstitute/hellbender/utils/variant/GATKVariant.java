@@ -8,7 +8,7 @@ import htsjdk.samtools.util.Locatable;
  * NOTE: getStart() and getEnd() are 1-base inclusive (which matches the current GATK tools).
  * This does not match the GA4GH spec.
  */
-public interface Variant extends Locatable {
+public interface GATKVariant extends Locatable {
     boolean isSnp();
     boolean isIndel();
 }

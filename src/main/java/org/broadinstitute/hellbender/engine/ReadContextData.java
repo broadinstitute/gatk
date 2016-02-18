@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.Serializable;
 import java.util.List;
@@ -15,14 +15,14 @@ public class ReadContextData implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final ReferenceBases referenceBases;
-    private final List<Variant> variants;
+    private final List<GATKVariant> variants;
 
-    public ReadContextData( final ReferenceBases referenceBases, final Iterable<Variant> variants ) {
+    public ReadContextData( final ReferenceBases referenceBases, final Iterable<GATKVariant> variants ) {
         this.referenceBases = referenceBases;
         this.variants = Lists.newArrayList(variants);
     }
 
-    public ReadContextData( final ReferenceBases referenceBases, final List<Variant> variants ) {
+    public ReadContextData( final ReferenceBases referenceBases, final List<GATKVariant> variants ) {
         this.referenceBases = referenceBases;
         this.variants = variants;
     }
@@ -31,7 +31,7 @@ public class ReadContextData implements Serializable {
         return referenceBases;
     }
 
-    public Iterable<Variant> getOverlappingVariants() {
+    public Iterable<GATKVariant> getOverlappingVariants() {
         return variants;
     }
 
@@ -58,7 +58,7 @@ public class ReadContextData implements Serializable {
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("<");
-        for (Variant v : variants) {
+        for (GATKVariant v : variants) {
             builder.append(v + ",");
         }
         builder.append(">");

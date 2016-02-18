@@ -1,17 +1,11 @@
 package org.broadinstitute.hellbender.utils.collections;
 
-import com.google.common.collect.Lists;
-
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.variant.Variant;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Hashtable;
-import java.util.List;
 
 /**
  * Holds many intervals in memory, with an efficient operation to get

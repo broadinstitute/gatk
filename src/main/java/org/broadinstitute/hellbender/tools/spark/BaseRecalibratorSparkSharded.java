@@ -33,7 +33,7 @@ import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationTables;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.File;
 import java.io.IOException;
@@ -103,7 +103,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
 
         List<String> localVariants = knownVariants;
         localVariants = hackilyCopyFromGCSIfNecessary(localVariants);
-        List<Variant> variants = VariantsSource.getVariantsList(localVariants);
+        List<GATKVariant> variants = VariantsSource.getVariantsList(localVariants);
 
         // get reads, reference, variants
         JavaRDD<ContextShard> readsWithContext = AddContextDataToReadSparkOptimized.add(ctx, intervals, bam, variants, auth, readFilterToApply, rds);

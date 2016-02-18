@@ -4,7 +4,7 @@ package org.broadinstitute.hellbender.utils.variant;
  * VariantUtils contains utility methods for the Variant interface.
  **/
 public class VariantUtils {
-    public static boolean variantsAreEqual(Variant v1, Variant v2) {
+    public static boolean variantsAreEqual(GATKVariant v1, GATKVariant v2) {
         if (v1.getStart() != v2.getStart()) {
             return false;
         }

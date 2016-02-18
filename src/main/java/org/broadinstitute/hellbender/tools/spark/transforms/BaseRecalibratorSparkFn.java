@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ public final class BaseRecalibratorSparkFn {
 
             while ( readWithContextIterator.hasNext() ) {
                 final Tuple2<GATKRead, ReadContextData> readWithData = readWithContextIterator.next();
-                Iterable<Variant> variants = readWithData._2().getOverlappingVariants();
+                Iterable<GATKVariant> variants = readWithData._2().getOverlappingVariants();
                 final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
                 ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
 

@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -36,11 +36,11 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<Variant> rddParallelVariants =
+        JavaRDD<GATKVariant> rddParallelVariants =
                 variantsSparkSource.getParallelVariants(vcf);
 
-        List<Variant> serialVariants = getSerialVariants(vcf);
-        List<Variant> parallelVariants = rddParallelVariants.collect();
+        List<GATKVariant> serialVariants = getSerialVariants(vcf);
+        List<GATKVariant> parallelVariants = rddParallelVariants.collect();
         Assert.assertEquals(parallelVariants, serialVariants);
     }
 
@@ -58,9 +58,9 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
     /**
      * Loads variants using FeatureDataSource<VariantContext>.
      * @param vcf file to load
-     * @return List of Variants.
+     * @return List of GATKVariants.
      */
-    static List<Variant> getSerialVariants(final String vcf) {
+    static List<GATKVariant> getSerialVariants(final String vcf) {
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(vcf), getCodecForVariantSource(vcf), null, 0) ) {
             return Lists.newArrayList(wrapQueryResults(dataSource.iterator()));
         }
@@ -86,8 +86,8 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
         return (FeatureCodec<VariantContext, ?>)codec;
     }
 
-    static List<Variant> wrapQueryResults( final Iterator<VariantContext> queryResults ) {
-        final List<Variant> wrappedResults = new ArrayList<>();
+    static List<GATKVariant> wrapQueryResults(final Iterator<VariantContext> queryResults ) {
+        final List<GATKVariant> wrappedResults = new ArrayList<>();
         while ( queryResults.hasNext() ) {
             wrappedResults.add(VariantContextVariantAdapter.sparkVariantAdapter(queryResults.next()));
         }
