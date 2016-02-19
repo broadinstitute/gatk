@@ -28,7 +28,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 "--output", outFile.getAbsolutePath()
         };
         Assert.assertEquals(runCommandLine(args), null);
-        SamAssertionUtils.assertSamsEqual(ORIG_BAM, outFile);
+        SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
     }
 
     @Test(dataProvider="testingDataCRAM")
@@ -47,9 +47,9 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
         //TODO: Make this comparison non-lenient in all cases: https://github.com/broadinstitute/gatk/issues/1087
         if (extOut.equals(".cram")){
-            SamAssertionUtils.assertSamsEqualLenient(ORIG_BAM, outFile, refFile);
+            SamAssertionUtils.assertSamsEqualLenient(outFile, ORIG_BAM, refFile);
         } else {
-            SamAssertionUtils.assertSamsEqual(ORIG_BAM, outFile, refFile);
+            SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
         }
     }
 

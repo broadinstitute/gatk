@@ -10,6 +10,7 @@ import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -133,6 +134,9 @@ public final class FilterReadsIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertNull(runCommandLine(args));
 
+        if (null != referenceFileName) {
+            SamAssertionUtils.assertCRAMContentsIfCRAM(new File(outFileName));
+        }
         Assert.assertEquals(getReadCounts(outFileName, referenceFileName), expectedOutputCount);
         Assert.assertTrue(validateSortOrder(outFileName, referenceFileName, sortOrder));
         Assert.assertEquals(getReadsFileCount(inputFile, new File(outFileName), writeReadsFile), expectedReadsCount);

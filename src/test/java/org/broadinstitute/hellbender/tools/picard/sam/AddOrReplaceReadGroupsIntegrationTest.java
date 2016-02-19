@@ -34,7 +34,7 @@ public final class AddOrReplaceReadGroupsIntegrationTest extends CommandLineProg
         final File referenceFile = (null == referenceFileName) ? null : new File(TEST_DATA_DIR, referenceFileName);
         runIt(inputFile, referenceFile, outputFile);
         final File expectedOutBam = new File(TEST_DATA_DIR, expectedFileName); //created using picard 1.130
-        SamAssertionUtils.assertSamsEqual(expectedOutBam, outputFile, ValidationStringency.SILENT, referenceFile);
+        SamAssertionUtils.assertSamsEqual(outputFile, expectedOutBam, ValidationStringency.SILENT, referenceFile);
     }
 
     private void runIt(final File inputFile, final File referenceFile, final File outputFile) {

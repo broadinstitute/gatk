@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.broadinstitute.hellbender.utils.test.testers.CleanSamTester;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -36,6 +37,7 @@ public final class CleanSamIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args.getArgsArray());
 
+        SamAssertionUtils.assertCRAMContentsIfCRAM(cleanedFile);
         final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);
         validator.setIgnoreWarnings(true);
         validator.setVerbose(true, 1000);

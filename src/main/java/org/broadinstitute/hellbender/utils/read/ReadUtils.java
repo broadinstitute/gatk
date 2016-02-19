@@ -12,7 +12,10 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.EventType;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -942,6 +945,23 @@ public final class ReadUtils {
         }
 
         return factory.makeWriter(header.clone(), preSorted, outputFile, referenceFile);
+    }
+
+    /**
+     * Validate that a file has CRAM contents by checking that it has a valid CRAM file header
+     * (no matter what the extension).
+     *
+     * @param putativeCRAMFile File to check.
+     * @return true if the file has a valid CRAM file header, otherwise false
+     */
+    public static boolean hasCRAMFileContents(final File putativeCRAMFile) {
+        try (final FileInputStream fileStream = new FileInputStream(putativeCRAMFile);
+             final BufferedInputStream bis = new BufferedInputStream(fileStream)) {
+            return SamStreams.isCRAMFile(bis);
+        }
+        catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile(e.getMessage());
+        }
     }
 
     public static boolean isNonPrimary(GATKRead read) {
