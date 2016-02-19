@@ -9,12 +9,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 
 @CommandLineProgramProperties(summary = "Counts variants in the input VCF",
@@ -40,20 +36,11 @@ public final class CountVariantsSpark extends GATKSparkTool {
         final VariantsSparkSource vss = new VariantsSparkSource(ctx);
         final JavaRDD<VariantContext> variants = vss.getParallelVariantContexts(input);
 
-        System.out.println( variants.first() );
-
         final long count = variants.count();
         System.out.println(count);
 
-        if (out != null){
-            final File file = new File(out);
-            try(final OutputStream outputStream = BucketUtils.createNonGCSFile(file.getPath());
-                final PrintStream ps = new PrintStream(outputStream)) {
-                ps.print(count);
-            } catch(final IOException e){
-                throw new UserException.CouldNotCreateOutputFile(file, e);
-            }
+        try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {
+            ps.print(count);
         }
-
     }
 }

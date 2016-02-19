@@ -7,13 +7,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 
 @CommandLineProgramProperties(summary = "Counts reads in the input SAM/BAM",
@@ -38,14 +34,8 @@ public final class CountReadsSpark extends GATKSparkTool {
         final long count = reads.count();
         System.out.println(count);
 
-        if (out != null){
-            final File file = new File(out);
-            try(final OutputStream outputStream = BucketUtils.createNonGCSFile(file.getPath());
-                final PrintStream ps = new PrintStream(outputStream)) {
-                ps.print(count);
-            } catch(final IOException e){
-                throw new UserException.CouldNotCreateOutputFile(file, e);
-            }
+        try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {
+            ps.print(count);
         }
     }
 }

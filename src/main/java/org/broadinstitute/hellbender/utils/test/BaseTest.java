@@ -6,6 +6,7 @@ import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Log;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -26,14 +28,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 
 
@@ -491,6 +486,24 @@ public abstract class BaseTest {
 
     public static void assertContains(String actual, String expectedSubstring){
         Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual+ ".");
+    }
+
+    /**
+     * Validates that the given lists have variant
+     * context that correspond to the same variants in the same order.
+     * Compares VariantContext by comparing toStringDecodeGenotypes
+     */
+    public static void assertEqualVariants(final List<VariantContext> v1, final List<VariantContext> v2) {
+        Utils.nonNull(v1, "v1");
+        Utils.nonNull(v2, "v2");
+        if (v1.size() != v2.size()){
+            throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
+        }
+        for (int i = 0; i < v1.size(); i++) {
+            if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
+                throw new AssertionError("different element (compared by toStringDecodeGenotypes) " + i + "\n" + v1.get(i) + "\n" + v2.get(i) );
+            }
+        }
     }
 
 }

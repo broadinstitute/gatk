@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextComparator;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -22,7 +21,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public final class VariantsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadVariants")
@@ -51,25 +49,10 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<VariantContext> rddParallelVariants =
+        JavaRDD<VariantContext> rddParallelVariantContexts =
                 variantsSparkSource.getParallelVariantContexts(vcf);
 
-        List<VariantContext> serialVariants = getSerialVariantContexts(vcf);
-        List<VariantContext> parallelVariants = rddParallelVariants.collect();
-
-        final List<String> contigs = serialVariants.stream().map(vc -> vc.getContig()).distinct().collect(Collectors.toList());
-        assertEquals(parallelVariants, serialVariants, new VariantContextComparator(contigs));
-    }
-
-    private void assertEquals(List<VariantContext> v1, List<VariantContext> v2, VariantContextComparator comparator) {
-        if (v1.size() != v2.size()){
-            throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
-        }
-        for (int i = 0; i < v1.size(); i++) {
-            if (0 != comparator.compare(v1.get(i), v2.get(i))){
-                throw new AssertionError("different element " + i + " " + v1.get(i) + " vs " + v2.get(i));
-            }
-        }
+        assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
     }
 
     /**
