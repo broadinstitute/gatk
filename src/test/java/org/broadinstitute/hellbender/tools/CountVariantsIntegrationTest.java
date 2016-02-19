@@ -16,20 +16,21 @@ public final class CountVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "filenames")
-    public void testCountBases(String fileIn) throws Exception {
-        final File ORIG_FILE = new File(getTestDataDir(), fileIn);
+    public void testCountVariants(final File fileIn, final long expected) throws Exception {
         final String[] args = new String[]{
-            "--variant" ,  ORIG_FILE.getAbsolutePath(),
+            "--variant" ,  fileIn.getAbsolutePath(),
 
         };
         final Object res = this.runCommandLine(args);
-        Assert.assertEquals(res, 26l);
+        Assert.assertEquals(res, expected);
     }
 
     @DataProvider(name="filenames")
     public Object[][] filenames() {
-        return new String[][]{
-                {"count_variants.vcf"},
+        return new Object[][]{
+                {new File(getTestDataDir(), "count_variants.vcf"), 26L},
+                {new File(getTestDataDir(), "count_variants.blockgz.gz"), 26L},
+                {new File(dbsnp_138_b37_1_65M_vcf), 1375319L},
         };
     }
 }

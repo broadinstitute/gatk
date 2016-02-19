@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -7,20 +8,23 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.PrintStream;
 
-@CommandLineProgramProperties(summary = "Counts reads in the input SAM/BAM",
-        oneLineSummary = "CountReads on Spark",
+@CommandLineProgramProperties(summary = "Counts variants in the input VCF",
+        oneLineSummary = "CountVariants on Spark",
         programGroup = SparkProgramGroup.class)
-public final class CountReadsSpark extends GATKSparkTool {
+public final class CountVariantsSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
-    @Override
-    public boolean requiresReads() { return true; }
+    @Argument(doc = "uri for the input file: a local file path",
+            shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
+            optional = true)
+    public String input;
+
 
     @Argument(doc = "uri for the output file: a local file path",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -29,9 +33,10 @@ public final class CountReadsSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final JavaRDD<GATKRead> reads = getReads();
+        final VariantsSparkSource vss = new VariantsSparkSource(ctx);
+        final JavaRDD<VariantContext> variants = vss.getParallelVariantContexts(input);
 
-        final long count = reads.count();
+        final long count = variants.count();
         System.out.println(count);
 
         try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {

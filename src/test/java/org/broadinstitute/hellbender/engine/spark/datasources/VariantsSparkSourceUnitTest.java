@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.beust.jcommander.internal.Lists;
+import com.google.common.collect.Lists;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class VariantsSparkSourceUnitTest extends BaseTest {
+public final class VariantsSparkSourceUnitTest extends BaseTest {
     @DataProvider(name = "loadVariants")
     public Object[][] loadVariants() {
         return new Object[][]{
@@ -36,27 +36,45 @@ public class VariantsSparkSourceUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<Variant> rddSerialVariants =
-                getSerialVariants(ctx, vcf);
         JavaRDD<Variant> rddParallelVariants =
                 variantsSparkSource.getParallelVariants(vcf);
 
-        List<Variant> serialVariants = rddSerialVariants.collect();
+        List<Variant> serialVariants = getSerialVariants(vcf);
         List<Variant> parallelVariants = rddParallelVariants.collect();
         Assert.assertEquals(parallelVariants, serialVariants);
+    }
+
+    @Test(dataProvider = "loadVariants", groups = "spark")
+    public void pairReadsAndVariantsTest_variantContexts(String vcf) {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+        VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
+        JavaRDD<VariantContext> rddParallelVariantContexts =
+                variantsSparkSource.getParallelVariantContexts(vcf);
+
+        assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
     }
 
     /**
      * Loads variants using FeatureDataSource<VariantContext>.
      * @param vcf file to load
-     * @return JavaRDD of Variants.
+     * @return List of Variants.
      */
-    static JavaRDD<Variant> getSerialVariants(final JavaSparkContext ctx, final String vcf) {
-        List<Variant> records = Lists.newArrayList();
+    static List<Variant> getSerialVariants(final String vcf) {
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(vcf), getCodecForVariantSource(vcf), null, 0) ) {
-            records.addAll(wrapQueryResults(dataSource.iterator()));
+            return Lists.newArrayList(wrapQueryResults(dataSource.iterator()));
         }
-        return ctx.parallelize(records);
+    }
+
+    /**
+     * Loads variants using FeatureDataSource<VariantContext>.
+     * @param vcf file to load
+     * @return List of VariantContext.
+     */
+    static List<VariantContext> getSerialVariantContexts(final String vcf) {
+        try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(vcf), getCodecForVariantSource(vcf), null, 0) ) {
+            return Lists.newArrayList(dataSource.iterator());
+        }
     }
 
     @SuppressWarnings("unchecked")
