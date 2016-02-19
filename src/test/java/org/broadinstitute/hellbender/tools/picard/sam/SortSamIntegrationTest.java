@@ -18,9 +18,8 @@ public class SortSamIntegrationTest extends CommandLineProgramTest {
                 {"count_reads.bam", "count_reads_sorted.bam", "count_reads.fasta", ".cram", "coordinate"},
                 {"count_reads.bam", "count_reads.bam", null, ".bam", "queryname"},
                 {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".cram", "coordinate"},
-                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".bam", "coordinate"}
-                // requires fix in https://github.com/samtools/htsjdk/issues/404
-                //{"count_reads.cram", "count_reads.cram", "count_reads.fasta", ".cram", "queryname"}
+                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".bam", "coordinate"},
+                {"count_reads.cram", "count_reads.cram", "count_reads.fasta", ".cram", "queryname"}
         };
     }
 

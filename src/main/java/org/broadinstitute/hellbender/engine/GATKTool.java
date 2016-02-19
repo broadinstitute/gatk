@@ -103,9 +103,8 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reads data source.
      */
     void initializeReads() {
-        SamReaderFactory factory = null;
         if (! readArguments.getReadFiles().isEmpty()) {
-            factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
+            SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
                 factory = factory.referenceSequence(referenceArguments.getReferenceFile());
             }
