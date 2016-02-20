@@ -41,16 +41,17 @@ public final class SVCustomReadFilter implements ReadFilter {
     private final customFilter sfilter = new customFilter();
 
 
-    public SVCustomReadFilter(boolean[] sixFilterOptions,
-                              int whichEnd,
+    public SVCustomReadFilter(final boolean[] sixFilterOptions,
+                              final int whichEnd,
                               final double mappingQualityThreshold,
                               final double mateMappingQualityThreshold){
-        properlyPairedOnly = sixFilterOptions[1];
-        mappedReadsOnly = sixFilterOptions[2];
-        mateMappedReadsOnly = sixFilterOptions[3];
-        nonDupReadsOnly = sixFilterOptions[4];
-        nonSecondaryAlignmentsOnly = sixFilterOptions[5];
-        nonSupplementaryAlignmentsOnly = sixFilterOptions[6];
+        properlyPairedOnly = sixFilterOptions[0];
+        mappedReadsOnly = sixFilterOptions[1];
+        mateMappedReadsOnly = sixFilterOptions[2];
+        nonDupReadsOnly = sixFilterOptions[3];
+        nonSecondaryAlignmentsOnly = sixFilterOptions[4];
+        nonSupplementaryAlignmentsOnly = sixFilterOptions[5];
+
         this.whichEnd = whichEnd;
 
         MQPassingThreshold = mappingQualityThreshold;
