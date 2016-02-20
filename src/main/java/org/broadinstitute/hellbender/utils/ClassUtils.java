@@ -17,6 +17,7 @@ public final class ClassUtils {
 
     /**
      * Returns true iff we can make instances of this class.
+     * Note that this will return false if the class does not have any public constructors.
      */
     public static boolean canMakeInstances(final Class<?> clazz) {
         return clazz != null &&
@@ -25,7 +26,8 @@ public final class ClassUtils {
                 !clazz.isInterface()  &&
                 !clazz.isLocalClass() &&
                 !Modifier.isPrivate(clazz.getModifiers()) &&
-                !Modifier.isAbstract(clazz.getModifiers());
+                !Modifier.isAbstract(clazz.getModifiers()) &&
+                clazz.getConstructors().length != 0;
     }
 
     /**

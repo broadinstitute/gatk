@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public final class ExactACSetUnitTest {

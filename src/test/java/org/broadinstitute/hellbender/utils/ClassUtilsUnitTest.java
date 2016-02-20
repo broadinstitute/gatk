@@ -13,11 +13,38 @@ import java.util.stream.Collectors;
 
 public final class ClassUtilsUnitTest extends BaseTest{
 
-    private static class Priv{
+    //These classes are for testing the methods in ClassUtils.
 
+    private static class Priv{
+    }
+
+    public static class PubNestedUtils{
+        private PubNestedUtils(){}
+    }
+
+    public static class PubNested{
+        public PubNested(){}
+    }
+
+    public static class PubNestedImplicitConstructor{
+    }
+
+    static class NestedWithPublicConstructor{
+        public NestedWithPublicConstructor(){}
+    }
+
+    static class NestedImplicitConstructor{
     }
     @Test
     public void testCanMakeInstances() {
+        Assert.assertFalse(ClassUtils.canMakeInstances(Collections.class));//a util class
+        Assert.assertFalse(ClassUtils.canMakeInstances(PubNestedUtils.class));
+        Assert.assertFalse(ClassUtils.canMakeInstances(NestedImplicitConstructor.class));
+
+        Assert.assertTrue(ClassUtils.canMakeInstances(PubNested.class));
+        Assert.assertTrue(ClassUtils.canMakeInstances(PubNestedImplicitConstructor.class));
+        Assert.assertTrue(ClassUtils.canMakeInstances(NestedWithPublicConstructor.class));
+
         Assert.assertFalse(ClassUtils.canMakeInstances(null));
         Assert.assertFalse(ClassUtils.canMakeInstances(int.class));
         Assert.assertFalse(ClassUtils.canMakeInstances(List.class));
@@ -37,10 +64,10 @@ public final class ClassUtilsUnitTest extends BaseTest{
         ClassUtils.makeInstancesOfSubclasses(VariantAnnotation.class, VariantAnnotation.class.getPackage());
     }
 
-    abstract static class C{}
-    static class C1 extends C{}
-    static final class C2 extends C{}
-    static final class C11 extends C1{}
+    public abstract static class C{}
+    public static class C1 extends C{}
+    public static final class C2 extends C{}
+    public static final class C11 extends C1{}
 
     @Test
     public void testMakeInstances() throws Exception {
