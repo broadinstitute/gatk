@@ -1,14 +1,15 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SamPairUtil;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.tools.picard.analysis.InsertSizeMetrics;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -22,22 +23,32 @@ public class ISZMetricsCollectorSpark implements Serializable{
     // uses TreeMap because it is serializable and sorted
     private TreeMap<Integer, Long> hist;
 
-    public ISZMetricsCollectorSpark(final JavaRDD<GATKRead> filteredReads, final Set<MetricAccumulationLevel> accumLevels,
-                                    final double devTolerance)
-    {
+    public ISZMetricsCollectorSpark(final JavaRDD<GATKRead> filteredReads,
+                                    final Set<MetricAccumulationLevel> accumLevels,
+                                    final List<SAMReadGroupRecord> samRgRecords,
+                                    final double devTolerance) {
+
         final Map<Integer, Long> toBeCasted = filteredReads.map(read -> Math.abs(read.getFragmentLength()) ).countByValue();
         hist = new TreeMap<>(toBeCasted);
     }
 
-
-    public void produceMetricsFile(MetricsFile<InsertSizeMetrics, ?> metricsFile)
-    {
+    public void produceMetricsFile(MetricsFile<InsertSizeMetrics, ?> metricsFile) {
 
         InsertSizeMetrics metric = new InsertSizeMetrics();
         metric.PAIR_ORIENTATION = SamPairUtil.PairOrientation.FR; // what does this mean?
 
         metric.MIN_INSERT_SIZE = hist.firstKey();
         metric.MAX_INSERT_SIZE = hist.lastKey();
+
+        collectMedianAndMAD(metric);
+
+        collectPercentages(metric);
+
+        metricsFile.addMetric(metric);
+    }
+
+    private void collectMedianAndMAD(InsertSizeMetrics metric){
+
         // first round get total # of valid read pairs and mean size
         Long pairsCount = 0L;
         Double totalLength = 0.0;
@@ -99,6 +110,9 @@ public class ISZMetricsCollectorSpark implements Serializable{
                 break;
             }
         }
+    }
+
+    private void collectPercentages(InsertSizeMetrics metric){
 
         double bins[][] = new double[10][2];
         final double offsets[] = {0.005, 0.05, 0.10, 0.15, 0.2, 0.25, 0.30, 0.35, 0.40, 0.45};
@@ -132,7 +146,5 @@ public class ISZMetricsCollectorSpark implements Serializable{
         metric.WIDTH_OF_80_PERCENT = (int) (bins[7][1]-bins[7][0]);
         metric.WIDTH_OF_90_PERCENT = (int) (bins[8][1]-bins[8][0]);
         metric.WIDTH_OF_99_PERCENT = (int) (bins[9][1]-bins[9][0]);
-
-        metricsFile.addMetric(metric);
     }
 }

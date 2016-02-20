@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.AlignmentAgreesWithHeaderReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
@@ -28,60 +29,65 @@ import java.util.*;
 public final class CollectISizeDistributionSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "Should an output plot be created")
+    @Argument(doc = "Should an output plot be created?")
     public boolean PRODUCE_FILES = false;
 
-    @Argument(doc = "A local path to file to write metrics to;",
+    @Argument(doc = "A local path to file to write insert size metrics to.",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = true)
     public String OUTPUT;
 
-    @Argument(doc="PDF File to write insert size Histogram chart to.",
+    @Argument(doc="PDF File to write histogram chart to.",
             shortName="H")
     public File HISTOGRAM_FILE;
 
-    @Argument(doc="Similar to Picard CollectInsertSizeMetrics::DEVIATIONS")
+    @Argument(doc="Similar to Picard CollectInsertSizeMetrics::DEVIATIONS.")
     public double DEVIATIONS_TOL = 10;
 
-    @Argument(doc="The level(s) at which to accumulate metrics",
+    @Argument(doc="The level(s) at which to accumulate metrics.",
             shortName="LEVEL")
     public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
     // read filtering criteria
-    @Argument(shortName = "F",
-            fullName = "pfReadsOnly",
-            doc = "If set to true, include PF reads only.")
-    public boolean pfReadsOnly = false;
-
-    @Argument(shortName = "U",
-            fullName = "mappedReadsOnly",
-            doc = "If set to true, include mapped reads only.")
-    public boolean mappedReadsOnly = false;
-
-    @Argument(shortName = "Um",
-            fullName = "mateMappedReadsOnly",
-            doc = "If set to true, include mate-mapped reads only.")
-    public boolean mateMappedReadsOnly = false;
-
-    @Argument(shortName = "D",
-            fullName = "nonDupReadsOnly",
-            doc = "If set to true, inlcude non-duplicated reads only.")
-    public boolean nonDupReadsOnly = false;
-
-    @Argument(shortName = "S",
-            fullName = "nonSecondaryAlignmentsOnly",
-            doc = "If set to true, filter out secondary aglignments reads.")
-    public boolean nonSecondaryAlignmentsOnly = false;
-
-    @Argument(shortName = "SS",
-            fullName = "nonSupplementaryAlignmentsOnly",
-            doc = "If set to true, filter out supplementary aglignments reads.")
-    public boolean nonSupplementaryAlignmentsOnly = false;
 
     @Argument(shortName = "PP",
             fullName = "properlyPariedOnly",
-            doc = "If set to true, filter out supplementary aglignments reads.")
-    public boolean properlyPairedOnly = false;
+            doc = "If set to true, filter out pairs of reads that are not properly oriented. Default value: true.")
+    public boolean properlyPairedOnly = true;
+
+    @Argument(shortName = "U",
+            fullName = "mappedReadsOnly",
+            doc = "If set to true, include mapped reads only. Default value: true.")
+    public boolean mappedReadsOnly = true;
+
+    @Argument(shortName = "Um",
+            fullName = "mateMappedReadsOnly",
+            doc = "If set to true, include mate-mapped reads only. Default value: true.")
+    public boolean mateMappedReadsOnly = true;
+
+    @Argument(shortName = "D",
+            fullName = "nonDupReadsOnly",
+            doc = "If set to true, include non-duplicated reads only. Default value: true.")
+    public boolean nonDupReadsOnly = true;
+
+    @Argument(shortName = "S",
+            fullName = "nonSecondaryAlignmentsOnly",
+            doc = "If set to true, filter out secondary alignments reads. Default value: true.")
+    public boolean nonSecondaryAlignmentsOnly = true;
+
+    @Argument(shortName = "SS",
+            fullName = "nonSupplementaryAlignmentsOnly",
+            doc = "If set to true, filter out supplementary alignments reads. Default value: true.")
+    public boolean nonSupplementaryAlignmentsOnly = true;
+
+    @Argument(shortName = "F",
+            fullName = "whichEndOfPairToUse",
+            doc = "Which end of pairs to use for collecting information. Possible values:{0,1,2}, where 1 and 2 " +
+                    "stands for first or second end respectively. Option 0 picks up information from 1st end " +
+                    "when both ends are available, and pick either one when only one end is available. " +
+                    "(Remember, in SV analysis, a truncated region may be investigated, so this is possible.)" +
+                    " Unused if only paired reads are used (properlyPairedOnly==true).")
+    public int whichEndOfPairToUse = 1;
 
     @Argument(shortName = "Q",
             fullName = "MQPassingThreshold",
@@ -102,70 +108,33 @@ public final class CollectISizeDistributionSpark extends GATKSparkTool {
     private static ISZMetricsCollectorSpark collector;
 
     @Override
-    protected void runTool(final JavaSparkContext ctx)
-    {
-        // two step filter: first is general, makeReadFilter, implicitly called in getReads;
-        //   second is MetricsReadFilter, but provides limited capability now.
-        //   So makeReadFilter is hacked.
-        //   TODO: improve MetricsReadFilter that uses SAM/BAM/CRAM flags.
-        final JavaRDD<GATKRead> reads = getReads();
-        // final MetricsReadFilter metricsFilter = new MetricsReadFilter(pfReadsOnly, mappedReadsOnly);
-        // final JavaRDD<GATKRead> filteredReads = reads.filter(read -> metricsFilter.test(read));
+    protected void runTool(final JavaSparkContext ctx) {
 
-        collector = new ISZMetricsCollectorSpark(reads, METRIC_ACCUMULATION_LEVEL, DEVIATIONS_TOL);
+        final JavaRDD<GATKRead> reads = getReads();
+
+        collector = new ISZMetricsCollectorSpark(reads, METRIC_ACCUMULATION_LEVEL, getHeaderForReads().getReadGroups(), DEVIATIONS_TOL);
 
         if(PRODUCE_FILES)
             saveResults(getHeaderForReads(), getReadSourceName());
     }
 
     @Override
-    public ReadFilter makeReadFilter()
-    {
-        //return ReadFilterLibrary.ALLOW_ALL_READS;
-        return new CustomReadFilter();
-    }
+    public ReadFilter makeReadFilter() { // return type serializable. implicitly called in getReads(): behavior from GATKTools
+        final boolean filters[] = {properlyPairedOnly, mappedReadsOnly, mateMappedReadsOnly,
+                                   nonDupReadsOnly, nonSecondaryAlignmentsOnly, nonSupplementaryAlignmentsOnly};
 
-    /**
-     * Implements serializable read filters based on cmd line arguments provided.
-     */
-    private final class CustomReadFilter implements ReadFilter {
-        private static final long serialVersionUID = 1L;
+        final SVCustomReadFilter svfilter = new SVCustomReadFilter(filters, whichEndOfPairToUse,
+                                                                   MQPassingThreshold, mateMQPassingThreshold);
 
-        @Override
-        public boolean test(GATKRead read)
-        {
-            boolean result = false;
-            if(pfReadsOnly)
-                result &= !read.failsVendorQualityCheck();
-            if(mappedReadsOnly)
-                result &= !read.isUnmapped();
-            if(mateMappedReadsOnly)
-                result &= !read.mateIsUnmapped();
-            if(nonDupReadsOnly)
-                result &= !read.isDuplicate();
-            if(nonSecondaryAlignmentsOnly)
-                result &= !read.isSecondaryAlignment();
-            if(nonSupplementaryAlignmentsOnly)
-                result &= !read.isSupplementaryAlignment();
-            if(properlyPairedOnly)
-                result &= read.isProperlyPaired();
+        final AlignmentAgreesWithHeaderReadFilter alignmentAgreesWithHeader = new AlignmentAgreesWithHeaderReadFilter(getHeaderForReads());
 
-            if(MQPassingThreshold > 0.0)
-                result &= (read.getMappingQuality() >= MQPassingThreshold);
-
-            // TODO: efficiently checking mate mapping quality
-            // TODO: pick only isFirstOfPair/isSecondOfPair.
-            // TODO: pick only isReverseStrand/mateIsReverseStrand
-            // TODO: filter or not based on length==0
-            return result;
-        }
+        return svfilter.and(alignmentAgreesWithHeader); // Is this bad practice (type mixture)?
     }
 
     /**
      * Produce metrics files and histogram chart upon request
      */
-    protected void saveResults(final SAMFileHeader readsHeader, final String inputFileName)
-    {
+    protected void saveResults(final SAMFileHeader readsHeader, final String inputFileName) {
         // write text-based metrics
         if(OUTPUT != null){
             final MetricsFile<InsertSizeMetrics, Integer> metrics = getMetricsFile();
