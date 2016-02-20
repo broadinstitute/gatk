@@ -22,8 +22,8 @@ If you are looking for the codebase of the current production version of GATK, p
 * Java 8
 * Git 2.5 or greater
 * Optional, but recommended:
-    * Gradle 2.11 or greater (needed for building the GATK, but can use the bundled `./gradlew` script instead which will
-      download an appropriate gradle version for you automatically: just replace `gradle` with `./gradlew` in the commands below)
+    * Gradle 2.11 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
+      download and use an appropriate gradle version automatically), see examples below.
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
@@ -31,7 +31,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 ##Quick Start Guide
 
-* Build the GATK: `gradle installAll`
+* Build the GATK: `./gradlew installAll`
 * Get help on running the GATK: `./gatk-launch --help`
 * Get a list of available tools: `./gatk-launch --list`
 * Run a tool: `./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam`
@@ -39,22 +39,22 @@ If you are looking for the codebase of the current production version of GATK, p
 
 ##Building GATK4
 
-* **Recommended method:** To build everything you need to run all GATK tools, run **`gradle installAll`**.
+* **Recommended method:** To build everything you need to run all GATK tools, run **`./gradlew installAll`**.
     * This does both the standard build and the Spark build described below.
 
-* To _only_ do a standard build to save time, run **`gradle installDist`**.
+* To _only_ do a standard build to save time, run **`./gradlew installDist`**.
     * The resulting executable will be `build/install/gatk/bin/gatk`,
       and will be suitable for running non-Spark tools and for running Spark tools locally (not on a cluster).
     * This executable is **not** a fully-packaged executable that can be copied across machines, it's just
-      for running in-place. To create a packaged version of this build, run `gradle shadowJar`. The
+      for running in-place. To create a packaged version of this build, run `./gradlew shadowJar`. The
       packaged jar will be in `build/libs/` with a name like `gatk-all-*-SNAPSHOT-shadowJar.jar`.
 
-* To _only_ build a special jar suitable for running spark tools on a cluster, run **`gradle installSpark`**.
+* To _only_ build a special jar suitable for running spark tools on a cluster, run **`./gradlew installSpark`**.
     * The resulting jar will be in `build/libs/` and will have a name like `gatk-all-*-SNAPSHOT-spark.jar`
     * This jar will not include Spark and Hadoop libraries, in order to allow
       the versions of Spark and Hadoop installed on your cluster to be used.
 
-* To remove previous builds, run **`gradle clean`**
+* To remove previous builds, run **`./gradlew clean`**
 
 * For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.
   This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.
@@ -313,7 +313,7 @@ signing.secretKeyRingFile=/Users/<username>/.gnupg/secring.gpg
 
 To perform an upload, use
 ```
-gradle uploadArchives
+./gradlew uploadArchives
 ```
 
 Currently all builds are considered snapshots.  The archive name is based off of `git describe`.
@@ -358,7 +358,7 @@ For ideas on what to contribute, check issues labeled ["Help wanted (Community)"
 To contribute a patch:
 * Break your work into small, single-purpose patches if possible. It’s much harder to merge in a large change with a lot of disjoint features.
 * Submit the patch as a GitHub pull request against the master branch. For a tutorial, see the GitHub guides on [forking a repo](https://help.github.com/articles/fork-a-repo/) and [sending a pull request](https://help.github.com/articles/be-social/). If applicable, include the issue number in the pull request name.
-* Make sure that your code passes all our tests. You can run the tests with `gradle test` in the root directory.
+* Make sure that your code passes all our tests. You can run the tests with `./gradlew test` in the root directory.
 * Add tests for all new code you've written. We prefer unit tests but high quality integration tests that use small amounts of data are acceptable.
 * Follow the [**General guidelines for GATK4 developers**](https://github.com/broadinstitute/gatk#general-guidelines-for-gatk4-developers).
 
