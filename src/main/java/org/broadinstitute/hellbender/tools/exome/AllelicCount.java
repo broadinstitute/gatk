@@ -2,19 +2,10 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Locatable;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.math3.optim.MaxEval;
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
-import org.apache.commons.math3.optim.univariate.BrentOptimizer;
-import org.apache.commons.math3.optim.univariate.SearchInterval;
-import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.tools.exome.allelefraction.MinorAlleleFractionCache;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-
-import java.util.Map;
-import java.util.TreeMap;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 /**
  * Reference and alternate allele counts at a SNP site specified by an interval.
@@ -24,13 +15,6 @@ import java.util.TreeMap;
 public final class AllelicCount implements Locatable {
     private final SimpleInterval interval;
     private final int refReadCount, altReadCount;
-
-    // constants for Brent optimization of minor allele fraction
-    private static final MaxEval BRENT_MAX_EVAL = new MaxEval(100);
-    private static final double MINOR_ALLELE_FRACTION_RELATIVE_TOLERANCE = 0.00001;
-    private static final double MINOR_ALLELE_FRACTION_ABSOLUTE_TOLERANCE = 0.00001;
-    private static final BrentOptimizer OPTIMIZER =
-            new BrentOptimizer(MINOR_ALLELE_FRACTION_RELATIVE_TOLERANCE, MINOR_ALLELE_FRACTION_ABSOLUTE_TOLERANCE);
 
     public AllelicCount(final SimpleInterval interval, final int refReadCount, final int altReadCount) {
         Utils.nonNull(interval, "Can't construct AllelicCount with null interval.");
@@ -71,9 +55,21 @@ public final class AllelicCount implements Locatable {
     }
 
     /**
-     * Returns the maximum likelihood estimate of the minor-allele fraction.
+     * Returns the maximum-likelihood estimate of the minor-allele fraction given a specified allelic bias.
+     * This likelihood is unimodal on [0,1/2] so numerical max-finding is straightforward.  See docs/CNVs/CNV-methods.pdf.
      *
-     * Ignoring allelic bias the likelihood of a alt reads and r ref reads is proportional to f^a(1-f)^r + f^r(1-f)^a,
+     * @param allelicBias   allelic bias to use in estimate of minor allele fraction
+     * @return      maximum likelihood estimate of the minor allele fraction
+     */
+    public double estimateMinorAlleleFraction(final double allelicBias) {
+        ParamUtils.isPositiveOrZero(allelicBias, "Allelic bias must be non-negative.");
+        return MinorAlleleFractionCache.get(altReadCount, refReadCount, allelicBias);
+    }
+
+    /**
+     * Returns the maximum-likelihood estimate of the minor-allele fraction, assuming no allelic bias.
+     *
+     * With no allelic bias, the likelihood of a alt reads and r ref reads is proportional to f^a(1-f)^r + f^r(1-f)^a,
      * where f in [0,1/2] is the minor allele fraction and NOT the alt allele fraction.  The two terms derive from the
      * a priori equally likely cases that the alt and ref alleles are the minor allele, respectively.
      * This likelihood is unimodal on [0,1/2] so numerical max-finding is straightforward.
@@ -81,17 +77,30 @@ public final class AllelicCount implements Locatable {
      * @return      maximum likelihood estimate of the minor allele fraction
      */
     public double estimateMinorAlleleFraction() {
-        return MinorAlleleFractionCache.get(altReadCount, refReadCount);
+        return MinorAlleleFractionCache.get(altReadCount, refReadCount, 1.);
     }
 
     /**
-     * Returns a TargetCoverage with coverage given by minor allele fraction (plus epsilon, to avoid issues caused by
-     * taking logs).
-     * @param name  target name
+     * Returns a TargetCoverage with coverage given by the maximum-likelihood estimate of the minor-allele fraction at
+     * a specified allelic bias.
+     * @param name          target name
+     * @param allelicBias   allelic bias to use in estimate of minor allele fraction
+     * @return      TargetCoverage with coverage given by minor allele fraction
+     */
+    public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name, final double allelicBias) {
+        Utils.nonNull(name);
+        ParamUtils.isPositiveOrZero(allelicBias, "Allelic bias must be non-negative.");
+        return new TargetCoverage(name, new SimpleInterval(interval), estimateMinorAlleleFraction(allelicBias));
+    }
+
+    /**
+     * Returns a TargetCoverage with coverage given by the maximum-likelihood estimate of the minor-allele fraction,
+     * assuming no allelic bias.
+     * @param name          target name
      * @return      TargetCoverage with coverage given by minor allele fraction
      */
     public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name) {
-        return new TargetCoverage(name, new SimpleInterval(interval), estimateMinorAlleleFraction() + Double.MIN_VALUE);
+        return toMinorAlleleFractionTargetCoverage(name, 1.);
     }
 
     @Override
@@ -114,47 +123,5 @@ public final class AllelicCount implements Locatable {
         result = 31 * result + refReadCount;
         result = 31 * result + altReadCount;
         return result;
-    }
-
-    /**
-     * A helper class to maintain a cache of computed maximum likelihood estimates of minor allele fraction
-     */
-    private static final class MinorAlleleFractionCache {
-
-        private static final Map<Pair<Integer, Integer>, Double> cache = new TreeMap<>();
-
-        /**
-         * get cached value or cache a new value as necessary
-         * @param a alt read count
-         * @param r ref read count
-         * @return maximum likelihood estimate of minor allele fraction
-         */
-        public static double get(final int a, final int r) {
-            final Pair<Integer, Integer> pair = new ImmutablePair<>(Math.min(a, r), Math.max(a, r));    //by symmetry
-            if (cache.containsKey(pair)) {
-                return cache.get(pair);
-            } else {
-                final double minorAlleleFraction = calculateMinorAlleleFraction(a, r);
-                cache.put(pair, minorAlleleFraction);
-                return minorAlleleFraction;
-            }
-        }
-
-        private static double calculateMinorAlleleFraction(final int a, final int r) {
-            final double altFraction = (double) a / (a + r);
-            final double initialEstimate = altFraction < 0.5 ? altFraction : 1 - altFraction;
-            final SearchInterval searchInterval = new SearchInterval(0.0, 0.5, initialEstimate);
-
-            // work in log space to avoid underflow
-            final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(f -> {
-                final double logf = Math.log(f);
-                final double logOneMinusf = Math.log(1-f);
-                final double altMinorLogLikelihood = a * logf + r * logOneMinusf;
-                final double refMinorLogLikelihood = r * logf + a * logOneMinusf;
-                return GATKProtectedMathUtils.naturalLogSumExp(altMinorLogLikelihood, refMinorLogLikelihood);
-            });
-
-            return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
-        }
     }
 }

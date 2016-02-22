@@ -69,10 +69,7 @@ public final class SegmentMergeUtils {
 
     /**
      * Given a list of {@link ModeledSegment}, returns a new, modifiable list of {@link SimpleInterval} with neutral
-     * and uncalled segments merged.  Note that a list of {@link SimpleInterval} is returned
-     * (rather than a list of {@link ModeledSegment}) since {@link ModeledSegment} may store its mean in either
-     * log2 or non-log2 space; hence, we do not know ahead of time how to merge these means, which are currently unused.
-     * TODO refactor Segment class/subclasses (issue 344)
+     * and uncalled segments merged.
      * @param segments  list of {@link ModeledSegment} in which to merge neutral and uncalled segments
      * @return          list of {@link SimpleInterval} with neutral and uncalled segments merged, never {@code null}
      */
@@ -434,7 +431,7 @@ public final class SegmentMergeUtils {
         /**
          * Returns a list of the inverse minor-allele fractions (which, ideally, are proportional to total copy ratio)
          * for SNPs in a given segment. Double.MIN_VALUE is added to the minor-allele fraction to avoid divide-by-zero
-         * cases.
+         * cases and allelic bias is ignored.
          * @param segment   segment to consider
          * @param snps      SNP-allele-count data to be segmented
          * @return          list of inverse minor-allele fractions for SNPs in the segment

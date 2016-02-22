@@ -249,9 +249,9 @@ public final class AlleleFractionModeller {
      * in which latent variables (bias and indicator) are marginalized out
      *
      * @param state allele fraction state
-     * @param segment index of segment containijng this het site
+     * @param segment index of segment containing this het site
      * @param count AllelicCount of alt and ref reads
-     * @return the log of the likelihood at this het site, marginalzied over indicator states.
+     * @return the log of the likelihood at this het site, marginalized over indicator states.
      */
     public static double collapsedHetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count) {
         return logSumLog(hetLogLikelihood(state, segment, count, AlleleFractionIndicator.ALT_MINOR),
