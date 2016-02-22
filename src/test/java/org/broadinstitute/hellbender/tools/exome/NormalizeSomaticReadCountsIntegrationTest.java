@@ -35,7 +35,6 @@ import java.util.stream.IntStream;
  */
 public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgramTest {
 
-
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
 
     private static final File FULL_READ_COUNTS_INPUT = new File(TEST_DIR,"full-read-counts.txt");

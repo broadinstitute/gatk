@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-
 import htsjdk.tribble.bed.BEDFeature;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 
 import java.io.File;
@@ -17,8 +13,8 @@ import java.io.File;
 )
 public final class PadTargets extends CommandLineProgram {
 
-    protected static final String TARGET_FILE_FULL_NAME = "targets";
-    protected static final String TARGET_FILE_SHORT_NAME = "T";
+    protected static final String TARGET_FILE_FULL_NAME = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME;
+    protected static final String TARGET_FILE_SHORT_NAME = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME;
 
     protected static final String PADDING_SHORT_NAME = "p";
     protected static final String PADDING_FULL_NAME = "padding";

@@ -25,5 +25,4 @@ public class CopyNumberTriStateSegmentRecord {
     public String getSampleName() {
         return sampleName;
     }
-
 }

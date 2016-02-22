@@ -190,8 +190,7 @@ public final class FilterTargets extends CommandLineProgram {
     protected List<String> excludedIntervals = new ArrayList<>();
 
     @ArgumentCollection
-    protected TargetArgumentCollection targetArguments
-            = new TargetArgumentCollection();
+    protected TargetArgumentCollection targetArguments = new TargetArgumentCollection();
 
     @Argument(
             doc = "Output left in targets",
@@ -248,12 +247,10 @@ public final class FilterTargets extends CommandLineProgram {
         if (maximumRepeatContent < 1.0) {
             result.add(new ExtremeTargetRepeatContent());
         }
-        if (maximumCoverageMean < Double.POSITIVE_INFINITY ||
-            minimumCoverageMean > Double.NEGATIVE_INFINITY) {
+        if (maximumCoverageMean < Double.POSITIVE_INFINITY || minimumCoverageMean > Double.NEGATIVE_INFINITY) {
             result.add(new ExtremeCoverageMean());
         }
-        if (maximumCoverageVariance < Double.POSITIVE_INFINITY ||
-                minimumCoverageVariance > Double.NEGATIVE_INFINITY) {
+        if (maximumCoverageVariance < Double.POSITIVE_INFINITY || minimumCoverageVariance > Double.NEGATIVE_INFINITY) {
             result.add(new ExtremeCoverageVariance());
         }
         if (maximumCoverageInterquartileRange < Double.POSITIVE_INFINITY) {
@@ -288,7 +285,6 @@ public final class FilterTargets extends CommandLineProgram {
          */
         String reasonToFilter(final Target target);
     }
-
 
     /**
      * Common code for filter predicates that depend on a single

@@ -81,16 +81,9 @@ public final class CallSegments extends CommandLineProgram{
 
     @Override
     protected Object doWork() {
-
-
         final TargetCollection<TargetCoverage> targets = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(targetsFile);
-
-        List<ModeledSegment> segments = null;
-        if (isLegacyFormatSegFile) {
-            segments = SegmentUtils.readModeledSegmentsFromLegacySegmentFile(segmentsFile);
-        } else {
-            segments = SegmentUtils.readModeledSegmentsFromSegmentFile(segmentsFile);
-        }
+        List<ModeledSegment> segments = isLegacyFormatSegFile ? SegmentUtils.readModeledSegmentsFromLegacySegmentFile(segmentsFile) :
+               SegmentUtils.readModeledSegmentsFromSegmentFile(segmentsFile);
 
         //add calls to segments in-place
         if (useExperimentalCaller) {
@@ -100,9 +93,7 @@ public final class CallSegments extends CommandLineProgram{
         }
 
         final String sample = TargetCoverageUtils.getSampleNameForCLIsFromTargetCoverageFile(targetsFile);
-
         SegmentUtils.writeModeledSegmentFile(outFile, segments, sample);
-
         return "SUCCESS";
     }
 }

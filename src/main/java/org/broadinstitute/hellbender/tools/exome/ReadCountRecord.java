@@ -13,14 +13,9 @@ import java.util.stream.LongStream;
  */
 public final class ReadCountRecord implements Feature {
 
-    /**
-     * Holds a reference to the target.
-     */
     private final Target target;
 
-    /**
-     * Holds the counts, one element per read count group.
-     */
+    // counts, one element per read count group.
     private final double[] counts;
 
     /**

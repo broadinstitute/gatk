@@ -32,7 +32,7 @@ public class GATKProtectedMathUtils {
         }
         return max + Math.log(sum);
     }
-
+    
     public static double interquartileRange(final double ... values) {
         final Percentile percentile = new Percentile();
         percentile.setData(values);

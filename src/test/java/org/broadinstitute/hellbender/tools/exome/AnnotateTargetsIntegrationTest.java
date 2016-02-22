@@ -53,8 +53,8 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
     private static final File REPEAT_FILE_IDX = Tribble.indexFile(REPEAT_FILE);
 
     /**
-     * Holds a boolean matrix where each row represent a different sequence in the reference (order by their index)
-     * and each position tell use whether that position (0-based) in the corresponding sequence is believe to be a
+     * Boolean matrix where each row represents a different sequence in the reference (ordered by their index)
+     * and each position tells us whether that position (0-based) in the corresponding sequence is believed to be a
      * repeat or not.
      * <p>
      *     This matrix is initialized in {@link #createRepeatsFile()}.
@@ -149,7 +149,6 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
     private static SAMSequenceDictionary resolveReferenceDictionary() {
         return new ReferenceFileSource(REFERENCE).getSequenceDictionary();
     }
-
 
     @Override
     public String getTestedClassName() {

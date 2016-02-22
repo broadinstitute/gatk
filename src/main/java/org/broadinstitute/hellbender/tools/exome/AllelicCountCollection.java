@@ -14,6 +14,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Simple data structure to pass and read/write List of AllelicCounts.
@@ -32,7 +33,6 @@ public class AllelicCountCollection {
      * @param inputFile     file to read from
      */
     public AllelicCountCollection(final File inputFile) {
-        this.counts = new ArrayList<>();
         try (final TableReader<AllelicCount> reader = TableUtils.reader(inputFile,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.matchesExactly(AllelicCountTableColumns.COLUMN_NAME_ARRAY))
@@ -47,9 +47,7 @@ public class AllelicCountCollection {
                         return new AllelicCount(interval, refReadCount, altReadCount);
                     };
                 })) {
-            for (final AllelicCount count : reader) {
-                this.counts.add(count);
-            }
+            this.counts = reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
             throw new UserException.CouldNotReadInputFile(inputFile, e);
         }
@@ -84,9 +82,7 @@ public class AllelicCountCollection {
                     final int altReadCount = count.getAltReadCount();
                     dataLine.append(interval.getContig()).append(interval.getEnd(), refReadCount, altReadCount);
                 })) {
-            for (final AllelicCount count : counts) {
-                writer.writeRecord(count);
-            }
+            writer.writeAllRecords(counts);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }

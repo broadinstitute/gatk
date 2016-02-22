@@ -13,18 +13,17 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public class TangentNormalizerUnitTest extends BaseTest {
-    private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private final static String TEST_PCOV_FILE = TEST_DIR + "create-pon-control-full.pcov";
-    private final static String TEST_FULL_NORMALS_TN_FILE = TEST_DIR + "create-pon-all-targets.pon.normal_projection";
-    private final static String TEST_SOME_NORMALS_TN_FILE = TEST_DIR + "create-pon-some-targets.pon.normal_projection";
-    private final static String TEST_FULL_PON = TEST_DIR + "create-pon-all-targets.pon";
-    private final static String TEST_SOME_PON = TEST_DIR + "create-pon-some-targets.pon";
-
+    private final static File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
+    private final static File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
+    private final static File TEST_FULL_NORMALS_TN_FILE = new File(TEST_DIR, "create-pon-all-targets.pon.normal_projection");
+    private final static File TEST_SOME_NORMALS_TN_FILE = new File(TEST_DIR, "create-pon-some-targets.pon.normal_projection");
+    private final static File TEST_FULL_PON = new File(TEST_DIR, "create-pon-all-targets.pon");
+    private final static File TEST_SOME_PON = new File(TEST_DIR, "create-pon-some-targets.pon");
 
     @Test
     public void testSparkTangentNormalizeSparkVsNoSpark() {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(new File(TEST_PCOV_FILE), 20);
+        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, 20);
 
         try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponHDF5File);
@@ -42,10 +41,9 @@ public class TangentNormalizerUnitTest extends BaseTest {
     public void testSparkNormalizeNormalsFullPoN() {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        final File ponFile = new File(TEST_FULL_PON);
-        try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
+        try (final HDF5File ponHDF5File = new HDF5File(TEST_FULL_PON)) {
             final PoN pon = new HDF5PoN(ponHDF5File);
-            final RealMatrix gtTNedNormals = PoNTestUtils.readTsvIntoMatrix(new File(TEST_FULL_NORMALS_TN_FILE));
+            final RealMatrix gtTNedNormals = PoNTestUtils.readTsvIntoMatrix(TEST_FULL_NORMALS_TN_FILE);
             final TangentNormalizationResult tnWithSpark = TangentNormalizer.tangentNormalizeNormalsInPoN(pon, ctx);
 
             PoNTestUtils.assertEqualsMatrix(tnWithSpark.getTangentNormalized().counts(), gtTNedNormals, false);
@@ -55,10 +53,9 @@ public class TangentNormalizerUnitTest extends BaseTest {
     public void testSparkNormalizeNormalsSomePoN() {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        final File ponFile = new File(TEST_SOME_PON);
-        try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
+        try (final HDF5File ponHDF5File = new HDF5File(TEST_SOME_PON)) {
             final PoN pon = new HDF5PoN(ponHDF5File);
-            final RealMatrix gtTNedNormals = PoNTestUtils.readTsvIntoMatrix(new File(TEST_SOME_NORMALS_TN_FILE));
+            final RealMatrix gtTNedNormals = PoNTestUtils.readTsvIntoMatrix(TEST_SOME_NORMALS_TN_FILE);
             final TangentNormalizationResult tnWithSpark = TangentNormalizer.tangentNormalizeNormalsInPoN(pon, ctx);
 
             PoNTestUtils.assertEqualsMatrix(tnWithSpark.getTangentNormalized().counts(), gtTNedNormals, false);

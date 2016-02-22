@@ -34,17 +34,13 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
     private static final String SAMPLE_NAME = "test";
-    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
-            + "coverages-for-copy-ratio-modeller.tsv");
-    private static final File SEGMENT_FILE =
-            new File(TEST_SUB_DIR + "segments-for-copy-ratio-modeller.seg");
-    private static final File MEANS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "segment-means-truth-for-copy-ratio-modeller.txt");
-    private static final File OUTLIER_INDICATORS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "outlier-indicators-truth-for-copy-ratio-modeller.txt");
+    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-copy-ratio-modeller.tsv");
+    private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-copy-ratio-modeller.seg");
+    private static final File MEANS_TRUTH_FILE = new File(TEST_SUB_DIR, "segment-means-truth-for-copy-ratio-modeller.txt");
+    private static final File OUTLIER_INDICATORS_TRUTH_FILE = new File(TEST_SUB_DIR, "outlier-indicators-truth-for-copy-ratio-modeller.txt");
 
     private static final double CREDIBLE_INTERVAL_ALPHA = 0.32;
 
@@ -121,24 +117,19 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
         //check statistics of global-parameter posterior samples (i.e., posterior mean and standard deviation)
         final double[] varianceSamples = Doubles.toArray(modeller.getVarianceSamples());
         final double variancePosteriorMean = new Mean().evaluate(varianceSamples);
-        final double variancePosteriorStandardDeviation =
-                new StandardDeviation().evaluate(varianceSamples);
+        final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
         Assert.assertEquals(Math.abs(variancePosteriorMean - VARIANCE_TRUTH),
                 0., 3 * VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH);
-        Assert.assertEquals(
-                relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
+        Assert.assertEquals(relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
                 0., 0.2);
 
         final double[] outlierProbabilitySamples = Doubles.toArray(modeller.getOutlierProbabilitySamples());
         final double outlierProbabilityPosteriorMean = new Mean().evaluate(outlierProbabilitySamples);
-        final double outlierProbabilityPosteriorStandardDeviation =
-                new StandardDeviation().evaluate(outlierProbabilitySamples);
+        final double outlierProbabilityPosteriorStandardDeviation = new StandardDeviation().evaluate(outlierProbabilitySamples);
         Assert.assertEquals(Math.abs(outlierProbabilityPosteriorMean - OUTLIER_PROBABILITY_TRUTH),
                 0., 3 * OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH);
-        Assert.assertEquals(
-                relativeError(outlierProbabilityPosteriorStandardDeviation,
-                        OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH),
-                0., 0.25);
+        Assert.assertEquals(relativeError(outlierProbabilityPosteriorStandardDeviation,
+                        OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH), 0., 0.25);
 
         //check statistics of segment-mean posterior samples (i.e., posterior means and standard deviations)
         final List<Double> meansTruth = loadList(MEANS_TRUTH_FILE, Double::parseDouble);
@@ -167,13 +158,11 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
                 numMeansOutsideThreeSigma++;
             }
         }
-        final double meanPosteriorStandardDeviationsMean =
-                new Mean().evaluate(meanPosteriorStandardDeviations);
+        final double meanPosteriorStandardDeviationsMean = new Mean().evaluate(meanPosteriorStandardDeviations);
         Assert.assertEquals(numMeansOutsideOneSigma, 100 - 68, 15);
         Assert.assertEquals(numMeansOutsideTwoSigma, 100 - 95, 6);
         Assert.assertTrue(numMeansOutsideThreeSigma <= 2);
-        Assert.assertEquals(
-                relativeError(meanPosteriorStandardDeviationsMean, MEAN_POSTERIOR_STANDARD_DEVIATION_MEAN_TRUTH),
+        Assert.assertEquals(relativeError(meanPosteriorStandardDeviationsMean, MEAN_POSTERIOR_STANDARD_DEVIATION_MEAN_TRUTH),
                 0., 0.1);
 
         //check accuracy of latent outlier-indicator posterior samples

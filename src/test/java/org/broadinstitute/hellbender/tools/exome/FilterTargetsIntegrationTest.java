@@ -412,7 +412,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         final List<Target> targets = IntStream.range(1, 1001)
                 .mapToObj(i -> new Target("target_" + i,
                         new SimpleInterval("chr1", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))
-                , new HashTargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.GC_CONTENT, String.valueOf(rdn.nextDouble())))))
+                , new TargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.GC_CONTENT, String.valueOf(rdn.nextDouble())))))
                 .collect(Collectors.toList());
 
         return new Object[][] {
@@ -430,7 +430,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         final List<Target> targets = IntStream.range(1, 1001)
                 .mapToObj(i -> new Target("target_" + i,
                         new SimpleInterval("chr1", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))
-                        , new HashTargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.REPEAT_FRACTION, String.valueOf(rdn.nextDouble())))))
+                        , new TargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.REPEAT_FRACTION, String.valueOf(rdn.nextDouble())))))
                 .collect(Collectors.toList());
 
         return new Object[][] {
@@ -451,7 +451,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         final List<Target> targets = IntStream.range(1, 1001)
                 .mapToObj(i -> new Target("target_" + i,
                         new SimpleInterval("chr1", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))
-                        , new HashTargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.MEAN_COVERAGE, String.valueOf(rdn.nextDouble() * 1000)))))
+                        , new TargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.MEAN_COVERAGE, String.valueOf(rdn.nextDouble() * 1000)))))
                 .collect(Collectors.toList());
 
         return new Object[][] {
@@ -469,7 +469,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         final List<Target> targets = IntStream.range(1, 1001)
                 .mapToObj(i -> new Target("target_" + i,
                         new SimpleInterval("chr1", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))
-                        , new HashTargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.COVERAGE_VARIANCE, String.valueOf(rdn.nextDouble() * 100)))))
+                        , new TargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.COVERAGE_VARIANCE, String.valueOf(rdn.nextDouble() * 100)))))
                 .collect(Collectors.toList());
 
         return new Object[][] {
@@ -487,7 +487,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         final List<Target> targets = IntStream.range(1, 1001)
                 .mapToObj(i -> new Target("target_" + i,
                         new SimpleInterval("chr1", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))
-                        , new HashTargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE, String.valueOf(rdn.nextDouble() * 100)))))
+                        , new TargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE, String.valueOf(rdn.nextDouble() * 100)))))
                 .collect(Collectors.toList());
 
         return new Object[][] {
