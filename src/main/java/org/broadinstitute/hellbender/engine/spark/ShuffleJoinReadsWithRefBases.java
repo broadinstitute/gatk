@@ -4,8 +4,9 @@ import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
 import com.google.common.collect.Lists;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.ReferenceShard;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -51,7 +52,7 @@ import java.util.stream.StreamSupport;
  * The reference bases paired with each read can be customized by passing in a reference window function
  * inside the {@link org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource} argument to {@link #addBases}. See {@link org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions} for examples.
  */
-public class ShuffleJoinReadsWithRefBases {
+public final class ShuffleJoinReadsWithRefBases {
 
     /**
      * Joins each read of an RDD<GATKRead> with that read's corresponding reference sequence.
@@ -80,7 +81,7 @@ public class ShuffleJoinReadsWithRefBases {
             // the desired reference bases for each read.
             final List<SimpleInterval> readWindows = StreamSupport.stream(iReads.spliterator(), false).map(read -> windowFunction.apply(read)).collect(Collectors.toList());
 
-            SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);
+            SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
             ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
             for (GATKRead r : iReads) {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(r));
@@ -116,7 +117,7 @@ public class ShuffleJoinReadsWithRefBases {
             // the desired reference bases for each read.
             final List<SimpleInterval> readWindows = StreamSupport.stream(iReads.spliterator(), false).map(pair -> windowFunction.apply(pair._1())).collect(Collectors.toList());
 
-            SimpleInterval interval = SimpleInterval.getSpanningInterval(readWindows);
+            SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
             // TODO: don't we need to support GCS PipelineOptions?
             ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
             for (Tuple2<GATKRead, T> p : iReads) {

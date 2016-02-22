@@ -90,6 +90,8 @@ public final class SimpleInterval implements Locatable, Serializable {
      * examples (note that _all_ commas in numbers are simply ignored, for human convenience):
      *
      * 'chr2', 'chr2:1000000' or 'chr2:1,000,000-2,000,000' or 'chr2:1000000+'
+      *
+      * @param str non-empty string to be parsed
      */
     public SimpleInterval(final String str){
         /* Note: we want to keep the class immutable. So all fields need to be final.
@@ -97,6 +99,9 @@ public final class SimpleInterval implements Locatable, Serializable {
          * So we can either keep this parsing code in the constructor or make a static factory method
          * and make multiple objects. We chose the former.
          */
+        Utils.nonNull(str);
+        Utils.validateArg(!str.isEmpty(), "str should not be empty");
+
         final String contig;
         final int start;
         final int end;
@@ -150,7 +155,6 @@ public final class SimpleInterval implements Locatable, Serializable {
         if (end != that.end) return false;
         if (start != that.start) return false;
         return contig.equals(that.contig);
-
     }
 
     @Override
@@ -242,35 +246,5 @@ public final class SimpleInterval implements Locatable, Serializable {
         }
 
         return this.contig.equals(other.getContig()) && this.start <= other.getStart() && this.end >= other.getEnd();
-    }
-
-    /**
-    * getSpanningInterval returns interval that covers all of the locations passd in.
-    * @param locations the locations to be spanned (on a single contig)
-    * @return the minimal span that covers all locations (could be null if no locations are passed in).
-    */
-    public static SimpleInterval getSpanningInterval(Iterable<? extends Locatable> locations) {
-        int min = Integer.MAX_VALUE;
-        int max = 1;
-        String contig = null;
-        for (Locatable l : locations) {
-            if (contig == null) {
-                contig = l.getContig();
-            } else if (!l.getContig().equals(contig)) {
-                throw new IllegalArgumentException("found different contigs from inputs: " + contig + ","
-                     + l.getContig());
-            }
-
-            if (l.getStart() < min) {
-                min = l.getStart();
-            }
-            if (l.getEnd() > max) {
-                max = l.getEnd();
-            }
-        }
-        if (contig == null) {
-            return null;
-        }
-        return new SimpleInterval(contig, min, max);
     }
 }
