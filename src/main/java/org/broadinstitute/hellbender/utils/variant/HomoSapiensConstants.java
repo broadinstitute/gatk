@@ -8,6 +8,7 @@ package org.broadinstitute.hellbender.utils.variant;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class HomoSapiensConstants {
+    private HomoSapiensConstants(){}
 
     /**
      * Standard heterozygous rate for SNP variation.

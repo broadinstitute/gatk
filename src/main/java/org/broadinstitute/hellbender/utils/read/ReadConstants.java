@@ -6,6 +6,7 @@ import htsjdk.samtools.ValidationStringency;
  * Constants for use with the GATKRead interface
  */
 public final class ReadConstants {
+    private ReadConstants(){}
 
     /**
      * Value used as the default validation stringency for all read input

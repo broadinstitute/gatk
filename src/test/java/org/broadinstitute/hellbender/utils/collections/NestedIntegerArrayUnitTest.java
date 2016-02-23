@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.collections;
 
 import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
@@ -18,7 +18,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
     @Test
     public void testNew() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2);
-        Assert.assertArrayEquals(arr.getDimensions(), new int[]{2});
+        Assert.assertEquals(arr.getDimensions(), new int[]{2});
         Assert.assertTrue(arr.getAllLeaves().isEmpty());
         Assert.assertTrue(arr.getAllValues().isEmpty());
     }
@@ -27,7 +27,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
     public void testPut() throws Exception {
         NestedIntegerArray<String> arr= new NestedIntegerArray<>(2);
         arr.put("fred", 0);
-        Assert.assertArrayEquals(arr.getDimensions(), new int[]{2});
+        Assert.assertEquals(arr.getDimensions(), new int[]{2});
         Assert.assertEquals(1, arr.getAllLeaves().size());
         Assert.assertEquals(Arrays.asList("fred"), arr.getAllValues());
     }

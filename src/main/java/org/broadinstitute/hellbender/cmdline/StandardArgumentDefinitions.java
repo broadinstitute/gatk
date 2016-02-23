@@ -5,6 +5,7 @@ package org.broadinstitute.hellbender.cmdline;
  * is the standard long Option name, and the value of the constant is the standard shortName.
  */
 public final class StandardArgumentDefinitions {
+    private StandardArgumentDefinitions(){}
 
     public static final String INPUT_LONG_NAME = "input";
     public static final String OUTPUT_LONG_NAME = "output";

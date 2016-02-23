@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.junit.Assert;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -42,8 +42,8 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         final Counts counts = new Counts(false);
         final long[] initQs = counts.getQualCounts();
         final long[] initOQs = counts.getOrigQualCounts();
-        Assert.assertArrayEquals(initQs, qs);
-        Assert.assertArrayEquals(initOQs, oqs);
+        Assert.assertEquals(initQs, qs);
+        Assert.assertEquals(initOQs, oqs);
 
         final GATKRead read1 = ArtificialReadUtils.createArtificialRead("aa".getBytes(), new byte[]{50, 50}, "2M");
         read1.setAttribute(SAMTag.OQ.name(), SAMUtils.phredToFastq(new byte[]{30, 40}));
@@ -54,8 +54,8 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         oqs[40]+=1;
         final long[] oneQs = counts.getQualCounts();
         final long[] oneOQs = counts.getOrigQualCounts();
-        Assert.assertArrayEquals(oneQs, qs);
-        Assert.assertArrayEquals(oneOQs, oqs);
+        Assert.assertEquals(oneQs, qs);
+        Assert.assertEquals(oneOQs, oqs);
 
         final Counts counts2 = new Counts(false);
 
@@ -69,8 +69,8 @@ public class QualityScoreDistributionSparkIntegrationTest  extends CommandLinePr
         oqs[41]+=1;  //new read OQ
         final long[] mergedQs = counts.getQualCounts();
         final long[] mergedOQs = counts.getOrigQualCounts();
-        Assert.assertArrayEquals(mergedQs, qs);
-        Assert.assertArrayEquals(mergedOQs, oqs);
+        Assert.assertEquals(mergedQs, qs);
+        Assert.assertEquals(mergedOQs, oqs);
     }
 
     @DataProvider(name = "QualityScoreDistribution")
