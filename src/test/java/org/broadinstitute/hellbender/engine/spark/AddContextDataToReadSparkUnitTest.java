@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -42,7 +42,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
 
             List<GATKRead> reads = testData.getReads();
             List<SimpleInterval> intervals = testData.getAllIntervals();
-            List<Variant> variantList = testData.getVariants();
+            List<GATKVariant> variantList = testData.getVariants();
             List<KV<GATKRead, ReadContextData>> expectedReadContextData = testData.getKvReadContextData();
             for (int j = 0; j < strategies.length; j++) {
                 data[i * strategies.length + j] = new Object[]{reads, variantList, expectedReadContextData, intervals, strategies[j]};
@@ -52,13 +52,13 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "bases", groups = "spark")
-    public void addContextDataTest(List<GATKRead> reads, List<Variant> variantList,
+    public void addContextDataTest(List<GATKRead> reads, List<GATKVariant> variantList,
                                    List<KV<GATKRead, ReadContextData>> expectedReadContextData,
                                    List<SimpleInterval> intervals, JoinStrategy joinStrategy) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
-        JavaRDD<Variant> rddVariants = ctx.parallelize(variantList);
+        JavaRDD<GATKVariant> rddVariants = ctx.parallelize(variantList);
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
         for (SimpleInterval i : intervals) {

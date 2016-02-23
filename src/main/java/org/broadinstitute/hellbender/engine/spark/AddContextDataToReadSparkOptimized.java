@@ -28,7 +28,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 
 import java.io.File;
@@ -59,8 +59,8 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
      * See the other methods here for an explanation of the various arguments.
      */
      public static JavaRDD<ContextShard> add(JavaSparkContext ctx, final List<SimpleInterval> intervals,
-                                            String bam, final List<Variant> variants, AuthHolder auth,
-                                            final ReadFilter optFilter, final ReferenceMultiSource rds) {
+                                             String bam, final List<GATKVariant> variants, AuthHolder auth,
+                                             final ReadFilter optFilter, final ReferenceMultiSource rds) {
         // prepare shards for the intervals of interest
         List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, bigShardSize);
         // add variants
@@ -155,7 +155,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
         ArrayList<ReadContextData> readContext = new ArrayList<>();
         for (GATKRead r : shard.reads) {
             SimpleInterval readInterval = new SimpleInterval(r);
-            ArrayList<Variant> variantsOverlappingThisRead = shard.variantsOverlapping(readInterval);
+            ArrayList<GATKVariant> variantsOverlappingThisRead = shard.variantsOverlapping(readInterval);
             // we pass all the bases. That's better because this way it's just a shared
             // pointer instead of being an array copy. Downstream processing is fine with having
             // extra bases (it expects a few, actually).
@@ -332,8 +332,8 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
      *
      * This happens immediately, at the caller.
      */
-    public static ArrayList<ContextShard> fillVariants(List<SimpleInterval> shardedIntervals, List<Variant> variants, int margin) {
-        IntervalsSkipList<Variant> intervals = new IntervalsSkipList<>(variants);
+    public static ArrayList<ContextShard> fillVariants(List<SimpleInterval> shardedIntervals, List<GATKVariant> variants, int margin) {
+        IntervalsSkipList<GATKVariant> intervals = new IntervalsSkipList<>(variants);
         ArrayList<ContextShard> ret = new ArrayList<>();
         for (SimpleInterval s : shardedIntervals) {
             int start = Math.max(s.getStart() - margin, 1);

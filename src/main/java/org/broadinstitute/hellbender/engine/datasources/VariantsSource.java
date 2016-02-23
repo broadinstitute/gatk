@@ -1,19 +1,12 @@
 package org.broadinstitute.hellbender.engine.datasources;
 
-import com.google.cloud.dataflow.sdk.Pipeline;
-import com.google.cloud.dataflow.sdk.transforms.Create;
-import com.google.cloud.dataflow.sdk.values.PCollection;
-
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 
 import java.io.File;
@@ -30,8 +23,8 @@ public class VariantsSource {
      * getVariantsList grabs the variants from local files (or perhaps eventually buckets).
      * @param variantSources, list of files  to read from
      */
-    public static List<Variant> getVariantsList(List<String> variantSources) {
-        final List<Variant> aggregatedResults = new ArrayList<>();
+    public static List<GATKVariant> getVariantsList(List<String> variantSources) {
+        final List<GATKVariant> aggregatedResults = new ArrayList<>();
 
         for ( final String variantSource : variantSources ) {
             try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(new File(variantSource), getCodecForVariantSource(variantSource), null, 0) ) {
@@ -50,8 +43,8 @@ public class VariantsSource {
         return (FeatureCodec<VariantContext, ?>)codec;
     }
 
-    private static List<Variant> wrapQueryResults( final Iterator<VariantContext> queryResults ) {
-        final List<Variant> wrappedResults = new ArrayList<>();
+    private static List<GATKVariant> wrapQueryResults(final Iterator<VariantContext> queryResults ) {
+        final List<GATKVariant> wrappedResults = new ArrayList<>();
         while ( queryResults.hasNext() ) {
             wrappedResults.add(new VariantContextVariantAdapter(queryResults.next()));
         }

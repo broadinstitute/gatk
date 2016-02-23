@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 /**
@@ -26,18 +26,18 @@ import scala.Tuple2;
 public class AddContextDataToReadSpark {
     public static JavaPairRDD<GATKRead, ReadContextData> add(
             final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceDataflowSource,
-            final JavaRDD<Variant> variants, final JoinStrategy joinStrategy) {
+            final JavaRDD<GATKVariant> variants, final JoinStrategy joinStrategy) {
         // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
         JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
-        JavaPairRDD<GATKRead, Tuple2<Iterable<Variant>, ReferenceBases>> withVariantsWithRef;
+        JavaPairRDD<GATKRead, Tuple2<Iterable<GATKVariant>, ReferenceBases>> withVariantsWithRef;
         if (joinStrategy.equals(JoinStrategy.BROADCAST)) {
             // Join Reads and Variants
-            JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
+            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
             // Join Reads with ReferenceBases
             withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
             // Join Reads and Variants
-            JavaPairRDD<GATKRead, Iterable<Variant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);
+            JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);
             // Join Reads with ReferenceBases
             withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         } else {

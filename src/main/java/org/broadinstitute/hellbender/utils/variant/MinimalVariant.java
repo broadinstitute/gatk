@@ -5,9 +5,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.io.Serializable;
 
 /**
- * MinimalVariant is a minimal implementation of the Variant interface.
+ * MinimalVariant is a minimal implementation of the {@link GATKVariant} interface.
  */
-public class MinimalVariant implements Variant, Serializable {
+public class MinimalVariant implements GATKVariant, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final SimpleInterval interval;

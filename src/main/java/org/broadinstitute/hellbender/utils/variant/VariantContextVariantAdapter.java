@@ -7,9 +7,9 @@ import java.io.Serializable;
 
 /**
  * VariantContextVariantAdapter wraps the existing htsjdk VariantContext class so it can be
- * used with the Variant API.
+ * used with the {@link GATKVariant} API.
  */
-public class VariantContextVariantAdapter implements Variant, Serializable {
+public class VariantContextVariantAdapter implements GATKVariant, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final VariantContext variantContext;
@@ -18,7 +18,7 @@ public class VariantContextVariantAdapter implements Variant, Serializable {
         this.variantContext = vc;
     }
 
-    public static Variant sparkVariantAdapter(VariantContext vc) {
+    public static GATKVariant sparkVariantAdapter(VariantContext vc) {
         return new MinimalVariant(new SimpleInterval(vc.getContig(),vc.getStart(),vc.getEnd()), vc.isSNP(), vc.isIndel());
     }
 

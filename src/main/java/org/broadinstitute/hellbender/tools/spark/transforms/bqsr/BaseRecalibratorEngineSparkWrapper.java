@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.recalibration.*;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -79,7 +79,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
                 ReadUtils.restoreHeaderIfNecessary(read, header);
 
                 final ReadContextData rc = shard.readContext.get(i);
-                final Iterable<Variant> variants = rc.getOverlappingVariants();
+                final Iterable<GATKVariant> variants = rc.getOverlappingVariants();
                 final ReferenceBases refBases = rc.getOverlappingReferenceBases();
                 final ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceSequenceDictionary);
                 recalibrationEngine.processRead(read, refDS, variants);

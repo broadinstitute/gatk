@@ -7,7 +7,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 /**
@@ -17,13 +17,13 @@ import scala.Tuple2;
  * then mapped over and overlapping variants are added for each read.
  */
 public class BroadcastJoinReadsWithVariants {
-    public static JavaPairRDD<GATKRead, Iterable<Variant>> join( final JavaRDD<GATKRead> reads, final JavaRDD<Variant> variants ) {
+    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(final JavaRDD<GATKRead> reads, final JavaRDD<GATKVariant> variants ) {
         JavaSparkContext ctx = new JavaSparkContext(reads.context());
-        final IntervalsSkipList<Variant> variantSkipList = new IntervalsSkipList<>(variants.collect());
-        Broadcast<IntervalsSkipList<Variant>> variantsBroadcast = ctx.broadcast(variantSkipList);
+        final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
+        Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
 
         return reads.mapToPair(r -> {
-            IntervalsSkipList<Variant> intervalsSkipList = variantsBroadcast.getValue();
+            IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
             return new Tuple2<>(r, intervalsSkipList.getOverlapping(new SimpleInterval(r)));
         });
     }

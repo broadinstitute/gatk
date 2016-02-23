@@ -27,7 +27,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.PrintStream;
 import java.util.List;
@@ -84,7 +84,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
 
         JavaRDD<GATKRead> initialReads = getReads();
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<Variant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants.get(0));
+        JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants.get(0));
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).

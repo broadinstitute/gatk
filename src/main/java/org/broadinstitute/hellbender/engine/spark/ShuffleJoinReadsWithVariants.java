@@ -6,7 +6,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.VariantShard;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.variant.Variant;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
 import java.util.HashSet;
@@ -57,25 +57,25 @@ import java.util.List;
  * Tuple2<read b, <variant 3>>
  */
 public class ShuffleJoinReadsWithVariants {
-    public static JavaPairRDD<GATKRead, Iterable<Variant>> join(
-            final JavaRDD<GATKRead> reads, final JavaRDD<Variant> variants) {
+    public static JavaPairRDD<GATKRead, Iterable<GATKVariant>> join(
+            final JavaRDD<GATKRead> reads, final JavaRDD<GATKVariant> variants) {
 
         JavaPairRDD<VariantShard, GATKRead> readsWShards = pairReadsWithVariantShards(reads);
 
-        JavaPairRDD<VariantShard, Variant> variantsWShards = pairVariantsWithVariantShards(variants);
+        JavaPairRDD<VariantShard, GATKVariant> variantsWShards = pairVariantsWithVariantShards(variants);
 
         // generate read-variant pairs; however, the reads are replicated for each overlapping pair
-        JavaPairRDD<GATKRead, Variant> allPairs = pairReadsWithVariants(readsWShards, variantsWShards);
+        JavaPairRDD<GATKRead, GATKVariant> allPairs = pairReadsWithVariants(readsWShards, variantsWShards);
 
         // we group together all variants for each unique GATKRead.  As we combine through the Variants, they are added
         // to a HashSet that get continually merged together
         return allPairs.aggregateByKey(new HashSet<>(), (vs, v) -> {
             if (v != null) { // pairReadsWithVariants can produce null variant
-                ((HashSet<Variant>) vs).add(v);
+                ((HashSet<GATKVariant>) vs).add(v);
             }
             return vs;
         }, (vs1, vs2) -> {
-            ((HashSet<Variant>) vs1).addAll((HashSet<Variant>) vs2);
+            ((HashSet<GATKVariant>) vs1).addAll((HashSet<GATKVariant>) vs2);
             return vs1;
         });
     }
@@ -91,30 +91,30 @@ public class ShuffleJoinReadsWithVariants {
         });
     }
 
-    private static JavaPairRDD<VariantShard, Variant> pairVariantsWithVariantShards(final JavaRDD<Variant> variants) {
+    private static JavaPairRDD<VariantShard, GATKVariant> pairVariantsWithVariantShards(final JavaRDD<GATKVariant> variants) {
         return  variants.flatMapToPair(variant -> {
             List<VariantShard> shards = VariantShard.getVariantShardsFromInterval(variant);
-            List<Tuple2<VariantShard, Variant>> out = Lists.newArrayList();
+            List<Tuple2<VariantShard, GATKVariant>> out = Lists.newArrayList();
             for (VariantShard shard : shards) {
                 out.add(new Tuple2<>(shard, variant));
             }
             return out;
         });
     }
-    private static JavaPairRDD<GATKRead, Variant> pairReadsWithVariants(final JavaPairRDD<VariantShard, GATKRead> readsWShards,
-                                                                        final  JavaPairRDD<VariantShard, Variant> variantsWShards) {
-        JavaPairRDD<VariantShard, Tuple2<Iterable<GATKRead>, Iterable<Variant>>> cogroup = readsWShards.cogroup(variantsWShards);
+    private static JavaPairRDD<GATKRead, GATKVariant> pairReadsWithVariants(final JavaPairRDD<VariantShard, GATKRead> readsWShards,
+                                                                            final  JavaPairRDD<VariantShard, GATKVariant> variantsWShards) {
+        JavaPairRDD<VariantShard, Tuple2<Iterable<GATKRead>, Iterable<GATKVariant>>> cogroup = readsWShards.cogroup(variantsWShards);
 
         return cogroup.flatMapToPair(cogroupValue -> {
             Iterable<GATKRead> iReads = cogroupValue._2()._1();
-            Iterable<Variant> iVariants = cogroupValue._2()._2();
+            Iterable<GATKVariant> iVariants = cogroupValue._2()._2();
 
-            List<Tuple2<GATKRead, Variant>> out = Lists.newArrayList();
+            List<Tuple2<GATKRead, GATKVariant>> out = Lists.newArrayList();
             // For every read, find every overlapping variant.
             for (GATKRead r : iReads) {
                 boolean foundVariants = false;
                 SimpleInterval interval = new SimpleInterval(r);
-                for (Variant v : iVariants) {
+                for (GATKVariant v : iVariants) {
                     if (interval.overlaps(v)) {
                         foundVariants = true;
                         out.add(new Tuple2<>(r, v));
