@@ -10,44 +10,37 @@ import org.testng.annotations.Test;
 import java.io.File;
 
 public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTest{
+    private static File testDir = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter");
+    private static final File TN_FILE = new File(testDir, "HCC1143.tn.tsv");
+    private static final File PRE_TN_FILE = new File(testDir, "HCC1143.preTN.tsv");
+    private static final File SEG_FILE = new File(testDir, "HCC1143.seg");
+
+    private static final String SAMPLE_NAME = "HCC1143";
 
     @Test()
     public void testUnLoggedCommandLine() {
-        final File TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.tn.tsv");
-        final File PRE_TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.preTN.tsv");
-        final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
-        final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After_CR_Lim_4.png").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After_CR_Lim_4.png").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After.png").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After.png").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_preQc.txt").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_preQc.txt").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_postQc.txt").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_postQc.txt").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
     }
+
     @Test()
     public void testUnLoggedCommandLineSexChrs() {
-        final File TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.tn.tsv");
-        final File PRE_TN_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.preTN.tsv");
-        final File SEG_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/HCC1143.seg");
-        final String sampleName = "HCC1143";
         File tDir = IOUtils.tempDir("Test", "Plotting");
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
@@ -55,17 +48,11 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
                 "-" + ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_SHORT_NAME,
         };
         runCommandLine(arguments);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_FullGenome.png").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After_CR_Lim_4.png").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After_CR_Lim_4.png").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After.png").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_Before_After.png").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_preQc.txt").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_preQc.txt").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_postQc.txt").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_postQc.txt").length() > 0);
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").exists());
-        Assert.assertTrue(new File(tDir + "/" + sampleName + "_dQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
     }
 }

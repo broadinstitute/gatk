@@ -7,7 +7,8 @@ import org.broadinstitute.hellbender.utils.io.Resource;
  * Calls an R script to create plots of target data
  */
 public final class CopyRatioSegmentedPlotter {
-    private static final String R_SCRIPT = "TangentResultsPlotting.R";
+    private static final String CNV_PLOTTING_R_LIBRARY = "CNV_plotting_library.R";
+    private static final String COPY_RATIO_PLOTTING_R_SCRIPT = "TangentResultsPlotting.R";
 
     private CopyRatioSegmentedPlotter() {
     }
@@ -25,7 +26,9 @@ public final class CopyRatioSegmentedPlotter {
         String logArg = log ? "TRUE" : "FALSE";
         String schr = useSexChromosomes ? "TRUE" : "FALSE";
         final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new Resource(R_SCRIPT, CopyRatioSegmentedPlotter.class));
+        //This leads to the R statement source("CNV_plotting_library.R") before the main script runs
+        executor.addScript(new Resource(CNV_PLOTTING_R_LIBRARY, CopyRatioSegmentedPlotter.class));
+        executor.addScript(new Resource(COPY_RATIO_PLOTTING_R_SCRIPT, CopyRatioSegmentedPlotter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
         executor.addArgs("--args", "--sample_name="+sampleName, "--targets_file="+tnFile, "--pre_tn_file="+preTnFile, "--segments_file="+segmentsFile,
                 "--output_dir="+outputDir, "--log2_input="+logArg, "--sex_chrs="+schr);

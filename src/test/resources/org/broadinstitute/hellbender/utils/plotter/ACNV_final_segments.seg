@@ -1,0 +1,3 @@
+Sample	Chromosome	Start	End	Num_Targets	Num_SNPs	Segment_Mean_Post_Mode	Segment_Mean_Post_Lo	Segment_Mean_Post_Hi	MAF_Post_Mode	MAF_Post_Lo	MAF_Post_Hi
+test	1	30116	62393753	5194	451	0.0219	0.0205	0.0272	0.4093	0.3992	0.4139
+test	10	92745	49997881	1617	272	0.0088	0.0054	0.0175	0.4121	0.3988	0.4171

@@ -15,8 +15,8 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
 
     @Argument(
             doc = "Genomic targets file after tangent normalization has been applied, produced by NormalizeSomaticReadCounts: tn",
-            shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
-            fullName =  ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
+            fullName =  ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             optional = false
     )
     protected String tangentFile;
@@ -51,7 +51,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
             fullName = ExomeStandardArgumentDefinitions.LOG2_LONG_NAME,
             optional = true
     )
-    protected Boolean log = false;
+    protected Boolean log = true;
 
     @Argument(
             doc = "Plot sex chromosomes",

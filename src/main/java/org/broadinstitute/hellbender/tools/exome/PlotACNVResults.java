@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.utils.plotter.AlleleFractionSegmentedPlotter;
+import org.broadinstitute.hellbender.utils.plotter.ACNVPlotter;
 
 import java.io.File;
 
@@ -11,7 +11,7 @@ import java.io.File;
         oneLineSummary = "Create plots of allele fraction data.",
         programGroup = CopyNumberProgramGroup.class
 )
-public final class PlotSegmentedAlleleFraction extends CommandLineProgram {
+public final class PlotACNVResults extends CommandLineProgram {
 
     @Argument(
             doc = "File of het SNP positions, ref counts, and alt counts, produced by GetHetCoverage.",
@@ -20,6 +20,14 @@ public final class PlotSegmentedAlleleFraction extends CommandLineProgram {
             optional = false
     )
     protected String snpCountsFile;
+
+    @Argument(
+            doc = "File of tangent-normalized coverage of targets",
+            fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
+            optional = false
+    )
+    protected String coverageFile;
 
     @Argument(
             doc = "File of segmented regions of the genome, produced by AllelicCNV.",
@@ -48,7 +56,7 @@ public final class PlotSegmentedAlleleFraction extends CommandLineProgram {
     @Override
     protected Object doWork() {
         final String sampleName = SegmentUtils.getSampleNameForCLIsFromSegmentFile(new File(segmentsFile));
-        AlleleFractionSegmentedPlotter.writeSegmentedAlleleFractionPlot(sampleName, snpCountsFile,
+        ACNVPlotter.writeSegmentedAlleleFractionPlot(sampleName, snpCountsFile, coverageFile,
                 segmentsFile, outputDir, useSexChromosomes);
         return "Success";
     }
