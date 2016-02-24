@@ -38,8 +38,9 @@ public final class ReadFilterLibrary {
 
     public static final ReadFilter VALID_ALIGNMENT_START = read -> read.isUnmapped() || read.getStart() > 0;
 
-    // Alignment doesn't align to a negative or zero number of bases in the reference.
-    public static final ReadFilter VALID_ALIGNMENT_END = read -> read.isUnmapped() || (read.getEnd() - read.getStart() + 1) > 0;
+    // Alignment doesn't align to a negative number of bases in the reference.
+    //Note: to match gatk3 we must keep reads that align to zero bases in the reference.
+    public static final ReadFilter VALID_ALIGNMENT_END = read -> read.isUnmapped() || (read.getEnd() - read.getStart() + 1) >= 0;
 
     public static final ReadFilter HAS_READ_GROUP = read -> read.getReadGroup() != null;
     public static final ReadFilter HAS_MATCHING_BASES_AND_QUALS = read -> read.getLength() == read.getBaseQualityCount();

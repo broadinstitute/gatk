@@ -40,7 +40,8 @@ public final class BucketUtils {
 
     private BucketUtils(){} //private so that no one will instantiate this class
 
-    public static boolean isCloudStorageUrl(String path) {
+    public static boolean isCloudStorageUrl(final String path) {
+        Utils.nonNull(path);
         return path.startsWith(GCS_PREFIX);
     }
 
@@ -101,6 +102,7 @@ public final class BucketUtils {
      * @return an OutputStream that writes to the specified file.
      */
     public static OutputStream createFile(String path, PipelineOptions popts) {
+        Utils.nonNull(path);
         try {
             if (isCloudStorageUrl(path)) {
                 return Channels.newOutputStream(new GcsUtil.GcsUtilFactory().create(popts).create(GcsPath.fromUri(path), "application/octet-stream"));
