@@ -32,6 +32,9 @@ public final class EncodeDenseGVCFsInParquet extends CommandLineProgram{
     @Argument(shortName = "F", fullName = "file", doc = "File or dir")
     public File arg;
 
+    @Argument(shortName = "out", fullName = "O", doc = "file out")
+    public File out;
+
     @Override
     protected Object doWork() {
         final File[] files;
@@ -44,7 +47,7 @@ public final class EncodeDenseGVCFsInParquet extends CommandLineProgram{
         final Schema.Parser parser = new Schema.Parser();
         try (final InputStream stream = new FileInputStream(new File("src/main/resources/Alleles.avsc"))) {
             final Schema schema = parser.parse(stream);
-            final Path path = new Path("gvcfs.parquet");
+            final Path path = new Path(out.getCanonicalPath());
 
             try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path).withSchema(schema).build()) {
                 final GenericRecordBuilder builder = new GenericRecordBuilder(schema);
@@ -67,7 +70,7 @@ public final class EncodeDenseGVCFsInParquet extends CommandLineProgram{
     }
 
     private static void encodeGVCF(final File file, final ParquetWriter<GenericRecord> writer, final GenericRecordBuilder builder) throws IOException {
-        final VCFFileReader vcf = new VCFFileReader(file);
+        try(final VCFFileReader vcf = new VCFFileReader(file)){
         final List<String> namesInOrder = vcf.getFileHeader().getSampleNamesInOrder();
         if (namesInOrder.size() != 1){
             System.err.println("expected 1 sample but got " + namesInOrder.size());
@@ -80,8 +83,15 @@ public final class EncodeDenseGVCFsInParquet extends CommandLineProgram{
             final int pos = vc.getStart();
             final Genotype genotype = vc.getGenotype(0);
             final int[] ad = genotype.getAD();
-            final int refCount = ad[0];
-            final int altCount = (int) MathUtils.sum(ad) - refCount;
+            final int refCount;
+            final int altCount;
+            if (ad != null){
+               refCount = ad[0];
+               altCount = (int) MathUtils.sum(ad) - refCount;
+	    } else {
+	       refCount = 0;
+               altCount = 0;
+	    }
             builder.set("sampleName", sampleName);
             builder.set("contig", contig);
             builder.set("REF", ref.getBaseString());
@@ -91,5 +101,5 @@ public final class EncodeDenseGVCFsInParquet extends CommandLineProgram{
             writer.write(builder.build());
         }
     }
-
+    }
 }
