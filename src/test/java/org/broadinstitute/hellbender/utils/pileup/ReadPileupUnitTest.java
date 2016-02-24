@@ -4,7 +4,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -261,7 +260,6 @@ public final class ReadPileupUnitTest {
         Assert.assertTrue(empty.getReadGroupIDs().isEmpty());
         Assert.assertTrue(empty.getReads().isEmpty());
         Assert.assertTrue(empty.getSamples(header).isEmpty());
-        Assert.assertTrue(empty.getStartSortedPileup().isEmpty());
         Assert.assertTrue(empty.getPileupForLane("fred").isEmpty());
     }
 
@@ -305,7 +303,6 @@ public final class ReadPileupUnitTest {
         Assert.assertEquals(pu.getReadGroupIDs(), Arrays.asList(new SAMReadGroupRecord[]{null}), "getReadGroups");
         Assert.assertEquals(pu.getReads(), Arrays.asList(read1, read2), "getReads");
         Assert.assertEquals(pu.getSamples(header), Arrays.asList(new String[]{null}), "getSamples");
-        Assert.assertEquals(pu.getStartSortedPileup().size(), 2, "getStartSortedPileup");
         Assert.assertTrue(pu.getPileupForLane("fred").isEmpty());
         Assert.assertTrue(pu.makeFilteredPileup(r -> r.getMappingQual() >= 10).isEmpty());
     }
@@ -352,7 +349,6 @@ public final class ReadPileupUnitTest {
         Assert.assertEquals(pu.getReadGroupIDs(), Arrays.asList(new SAMReadGroupRecord[]{null}), "getReadGroups");
         Assert.assertEquals(pu.getReads(), Arrays.asList(read1, read2), "getReads");
         Assert.assertEquals(pu.getSamples(header), Arrays.asList(new String[]{null}), "getSamples");
-        Assert.assertEquals(pu.getStartSortedPileup().size(), 2, "getStartSortedPileup");
         Assert.assertTrue(pu.getPileupForLane("fred").isEmpty());
         Assert.assertTrue(pu.makeFilteredPileup(r -> r.getMappingQual() >= 10).isEmpty());
     }
@@ -400,17 +396,8 @@ public final class ReadPileupUnitTest {
         Assert.assertEquals(pu.getReadGroupIDs(), Arrays.asList(new SAMReadGroupRecord[]{null}), "getReadGroups");
         Assert.assertEquals(pu.getReads(), Arrays.asList(read1, read2), "getReads");
         Assert.assertEquals(pu.getSamples(header), Arrays.asList(new String[]{null}), "getSamples");
-        Assert.assertEquals(pu.getStartSortedPileup().size(), 2, "getStartSortedPileup");
         Assert.assertTrue(pu.getPileupForLane("fred").isEmpty());
         Assert.assertTrue(pu.makeFilteredPileup(p -> p.getMappingQual() >= 10).isEmpty());
     }
 
-
-    private static byte [] arrayFromArrayWithLength(final byte[] array, final int length) {
-        final byte [] output = new byte[length];
-        for (int j = 0; j < length; j++) {
-            output[j] = array[(j % array.length)];
-        }
-        return output;
-    }
 }

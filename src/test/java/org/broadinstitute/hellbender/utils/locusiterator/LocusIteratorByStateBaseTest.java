@@ -1,12 +1,19 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
-import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.CloseableIterator;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -17,10 +24,38 @@ public abstract class LocusIteratorByStateBaseTest extends BaseTest {
     protected static SAMFileHeader header;
     protected GenomeLocParser genomeLocParser;
 
+    /**
+     * For testing only.  Assumes that the incoming SAMRecords have no read groups, so creates a dummy sample list
+     * for the system.
+     */
+    public static List<String> sampleListForSAMWithoutReadGroups() {
+        List<String> samples = new ArrayList<>();
+        samples.add(null);
+        return samples;
+    }
+
     @BeforeClass
     public void beforeClass() {
         header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
         genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
+    }
+
+    protected LocusIteratorByState makeLIBS(final List<GATKRead> reads, final SAMFileHeader header) {
+        return makeLIBS(reads, null, false, header);
+    }
+
+    protected LocusIteratorByState makeLIBS(final List<GATKRead> reads,
+                                            final DownsamplingMethod downsamplingMethod,
+                                            final boolean keepUniqueReadList,
+                                            final SAMFileHeader header) {
+        reads.sort(new ReadCoordinateComparator(header));
+        return new LocusIteratorByState(
+                new FakeCloseableIterator<>(reads.iterator()),
+                downsamplingMethod,
+                true,
+                keepUniqueReadList,
+                sampleListForSAMWithoutReadGroups(),
+                header);
     }
 
     private boolean isIndel(final CigarElement ce) {
@@ -120,5 +155,32 @@ public abstract class LocusIteratorByStateBaseTest extends BaseTest {
 
     private static boolean isPadding(final CigarElement elt) {
         return elt.getOperator() == CigarOperator.P || elt.getOperator() == CigarOperator.H || elt.getOperator() == CigarOperator.S;
+    }
+
+
+    static final class FakeCloseableIterator<T> implements CloseableIterator<T> {
+        Iterator<T> iterator;
+
+        public FakeCloseableIterator(Iterator<T> it) {
+            iterator = it;
+        }
+
+        @Override
+        public void close() {}
+
+        @Override
+        public boolean hasNext() {
+            return iterator.hasNext();
+        }
+
+        @Override
+        public T next() {
+            return iterator.next();
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException("Don't remove!");
+        }
     }
 }

@@ -80,6 +80,12 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         return new VariantContextBuilder(source, "1", start, stop, alleles).genotypes(genotypes).filters(filters).make();
     }
 
+    @Test
+    public void testHomozygousAlleleList() throws Exception {
+        final List<Allele> alleles = GATKVariantContextUtils.homozygousAlleleList(T, 2);
+        Assert.assertEquals(alleles, Arrays.asList(T, T));
+    }
+
     // --------------------------------------------------------------------------------
     //
     // Test allele merging

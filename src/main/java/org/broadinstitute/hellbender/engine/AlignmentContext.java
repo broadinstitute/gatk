@@ -34,4 +34,8 @@ public final class AlignmentContext implements HasGenomeLocation {
 
     public Locatable getLocation() { return loc; }
 
+    public ReadPileup getBasePileup(){
+        return basePileup;
+    }
+
 }

@@ -2,9 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -20,8 +19,6 @@ import java.util.*;
 
 
 public final class AssemblyRegionUnitTest extends BaseTest {
-    private final static boolean DEBUG = false;
-    private GenomeLocParser genomeLocParser;
     private IndexedFastaSequenceFile seq;
     private String contig;
     private int contigLength;
@@ -31,19 +28,19 @@ public final class AssemblyRegionUnitTest extends BaseTest {
     public void init() throws FileNotFoundException {
         // sequence
         seq = new CachingIndexedFastaSequenceFile(new File(hg19MiniReference));
-        genomeLocParser = new GenomeLocParser(seq);
         contig = "1";
-        contigLength = genomeLocParser.getContigInfo(contig).getSequenceLength();
-        header = ArtificialReadUtils.createArtificialSamHeader();
+        contigLength = seq.getSequence(contig).length();
+        header = ArtificialReadUtils.createArtificialSamHeader(seq.getSequenceDictionary());
     }
 
     @Test
     public void testConstructor(){
-        final GenomeLoc loc = genomeLocParser.createGenomeLoc("1", 10, 20);
-        final AssemblyRegion ar = new AssemblyRegion(loc, genomeLocParser, 2, header);
+        final SimpleInterval loc = new SimpleInterval("1", 10, 20);
+        final AssemblyRegion ar = new AssemblyRegion(loc, 2, header);
         Assert.assertEquals(ar.getExtension(), 2);
         Assert.assertEquals(ar.isActive(), true);
         Assert.assertEquals(ar.getSpan(), loc);
+        Assert.assertEquals(ar.getHeader(), header);
     }
 
     @DataProvider(name = "ActionRegionCreationTest")
@@ -58,10 +55,10 @@ public final class AssemblyRegionUnitTest extends BaseTest {
                             if ( addStates ) {
                                 states = new LinkedList<>();
                                 for ( int i = start; i < start + size; i++ ) {
-                                    states.add(new ActivityProfileState(genomeLocParser.createGenomeLoc(contig, i + start), isActive ? 1.0 : 0.0));
+                                    states.add(new ActivityProfileState(new SimpleInterval(contig, i + start, i + start), isActive ? 1.0 : 0.0));
                                 }
                             }
-                            final GenomeLoc loc = genomeLocParser.createGenomeLoc(contig, start, start + size - 1);
+                            final SimpleInterval loc = new SimpleInterval(contig, start, start + size - 1);
                             tests.add(new Object[]{loc, states, isActive, ext});
                         }
                     }
@@ -72,15 +69,15 @@ public final class AssemblyRegionUnitTest extends BaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(enabled = !DEBUG, dataProvider = "ActionRegionCreationTest")
-    public void testCreatingAssemblyRegions(final GenomeLoc loc, final List<ActivityProfileState> supportingStates, final boolean isActive, final int extension) {
-        final AssemblyRegion region = new AssemblyRegion(loc, supportingStates, isActive, genomeLocParser, extension, header);
+    @Test(dataProvider = "ActionRegionCreationTest")
+    public void testCreatingAssemblyRegions(final SimpleInterval loc, final List<ActivityProfileState> supportingStates, final boolean isActive, final int extension) {
+        final AssemblyRegion region = new AssemblyRegion(loc, supportingStates, isActive, extension, header);
         Assert.assertFalse(region.isFinalized());
         Assert.assertEquals(region.getSpan(), loc);
         Assert.assertEquals(region.getExtendedSpan().getStart(), Math.max(loc.getStart() - extension, 1));
-        Assert.assertEquals(region.getExtendedSpan().getStop(), Math.min(loc.getStop() + extension, contigLength));
+        Assert.assertEquals(region.getExtendedSpan().getEnd(), Math.min(loc.getEnd() + extension, contigLength));
         Assert.assertEquals(region.getReadSpanLoc().getStart(), Math.max(loc.getStart() - extension, 1));
-        Assert.assertEquals(region.getReadSpanLoc().getStop(), Math.min(loc.getStop() + extension, contigLength));
+        Assert.assertEquals(region.getReadSpanLoc().getEnd(), Math.min(loc.getEnd() + extension, contigLength));
         Assert.assertEquals(region.isActive(), isActive);
         Assert.assertEquals(region.getExtension(), extension);
         Assert.assertEquals(region.getReads(), Collections.emptyList());
@@ -104,9 +101,9 @@ public final class AssemblyRegionUnitTest extends BaseTest {
         Assert.assertFalse(region.isFinalized());
     }
 
-    private void assertGoodReferenceGetter(final byte[] actualBytes, final GenomeLoc span, final int padding) {
+    private void assertGoodReferenceGetter(final byte[] actualBytes, final SimpleInterval span, final int padding) {
         final int expectedStart = Math.max(span.getStart() - padding, 1);
-        final int expectedStop = Math.min(span.getStop() + padding, contigLength);
+        final int expectedStop = Math.min(span.getEnd() + padding, contigLength);
         final byte[] expectedBytes = seq.getSubsequenceAt(span.getContig(), expectedStart, expectedStop).getBases();
         Assert.assertEquals(actualBytes, expectedBytes);
     }
@@ -118,16 +115,17 @@ public final class AssemblyRegionUnitTest extends BaseTest {
         for ( final int start : Arrays.asList(1, 10, 100, contigLength - 10, contigLength - 1) ) {
             for ( final int readStartOffset : Arrays.asList(-100, -10, 0, 10, 100) ) {
                 for ( final int readSize : Arrays.asList(10, 100, 1000) ) {
-                    final GenomeLoc loc = genomeLocParser.createGenomeLocOnContig(contig, start, start + 10);
+                    final SimpleInterval loc = IntervalUtils.trimIntervalToContig(contig, start, start + 10, header.getSequence(contig).getSequenceLength());
 
                     final int readStart = Math.max(start + readStartOffset, 1);
                     final int readStop = Math.min(readStart + readSize, contigLength);
                     final int readLength = readStop - readStart + 1;
                     if ( readLength > 0 ) {
                         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read", 0, readStart, readLength);
-                        final GenomeLoc readLoc = genomeLocParser.createGenomeLoc(read);
-                        if ( readLoc.overlapsP(loc) )
+                        final SimpleInterval readLoc = new SimpleInterval(read);
+                        if ( readLoc.overlaps(loc) ) {
                             tests.add(new Object[]{loc, read});
+                        }
                     }
                 }
             }
@@ -136,12 +134,12 @@ public final class AssemblyRegionUnitTest extends BaseTest {
         return tests.subList(2,3).toArray(new Object[][]{});       //HACK!
     }
 
-    @Test(enabled = !DEBUG, dataProvider = "AssemblyRegionReads")
-    public void testAssemblyRegionReads(final GenomeLoc loc, final GATKRead read) throws Exception {
-        final GenomeLoc expectedSpan = loc.union(genomeLocParser.createGenomeLoc(read));
+    @Test(dataProvider = "AssemblyRegionReads")
+    public void testAssemblyRegionReads(final SimpleInterval loc, final GATKRead read) throws Exception {
+        final SimpleInterval expectedSpan = loc.mergeWithContiguous(new SimpleInterval(read));
 
-        final AssemblyRegion region = new AssemblyRegion(loc, null, true, genomeLocParser, 0, header);
-        final AssemblyRegion region2 = new AssemblyRegion(loc, null, true, genomeLocParser, 0, header);
+        final AssemblyRegion region = new AssemblyRegion(loc, null, true, 0, header);
+        final AssemblyRegion region2 = new AssemblyRegion(loc, null, true, 0, header);
         Assert.assertEquals(region.getReads(), Collections.emptyList());
         Assert.assertEquals(region.size(), 0);
         Assert.assertEquals(region.getExtendedSpan(), loc);
@@ -221,10 +219,10 @@ public final class AssemblyRegionUnitTest extends BaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(enabled = !DEBUG, dataProvider = "BadReadsTest", expectedExceptions = IllegalArgumentException.class)
+    @Test(dataProvider = "BadReadsTest", expectedExceptions = IllegalArgumentException.class)
     public void testBadReads(final SAMFileHeader header, final GATKRead read1, final GATKRead read2) {
-        final GenomeLoc loc = genomeLocParser.createGenomeLoc(read1);
-        final AssemblyRegion region = new AssemblyRegion(loc, null, true, genomeLocParser, 0, header);
+        final SimpleInterval loc = new SimpleInterval(read1);
+        final AssemblyRegion region = new AssemblyRegion(loc, null, true, 0, header);
         region.add(read1);
         region.add(read2);
     }
@@ -239,77 +237,76 @@ public final class AssemblyRegionUnitTest extends BaseTest {
     public Object[][] makeSplitAssemblyRegion() {
         final List<Object[]> tests = new ArrayList<>();
 
-        final GenomeLoc whole_span = genomeLocParser.createGenomeLoc("1", 1, 500);
-        final GenomeLoc gl_before = genomeLocParser.createGenomeLoc("1", 1, 9);
-        final GenomeLoc gl_after = genomeLocParser.createGenomeLoc("1", 250, 500);
-        final GenomeLoc gl_diff_contig = genomeLocParser.createGenomeLoc("2", 40, 50);
+        final SimpleInterval whole_span = new SimpleInterval("1", 1, 500);
+        final SimpleInterval gl_before = new SimpleInterval("1", 1, 9);
+        final SimpleInterval gl_after = new SimpleInterval("1", 250, 500);
+        final SimpleInterval gl_diff_contig = new SimpleInterval("2", 40, 50);
 
         final int regionStart = 10;
         final int regionStop = 100;
-        final GenomeLoc region = genomeLocParser.createGenomeLoc("1", regionStart, regionStop);
+        final SimpleInterval region = new SimpleInterval("1", regionStart, regionStop);
 
-        for ( final GenomeLoc noEffect : Arrays.asList(whole_span) )
+        for ( final SimpleInterval noEffect : Arrays.asList(whole_span) )
             tests.add(new Object[]{
                     region,
                     Arrays.asList(noEffect),
                     Arrays.asList(region)});
 
-        for ( final GenomeLoc noOverlap : Arrays.asList(gl_before, gl_after, gl_diff_contig) )
+        for ( final SimpleInterval noOverlap : Arrays.asList(gl_before, gl_after, gl_diff_contig) )
             tests.add(new Object[]{
                     region,
                     Arrays.asList(noOverlap),
                     Arrays.asList()});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 5, 50)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", regionStart, 50))});
+                Arrays.asList(new SimpleInterval("1", 5, 50)),
+                Arrays.asList(new SimpleInterval("1", regionStart, 50))});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 50, 200)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 50, regionStop))});
+                Arrays.asList(new SimpleInterval("1", 50, 200)),
+                Arrays.asList(new SimpleInterval("1", 50, regionStop))});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 40, 50)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 40, 50))});
+                Arrays.asList(new SimpleInterval("1", 40, 50)),
+                Arrays.asList(new SimpleInterval("1", 40, 50))});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 20, 30), genomeLocParser.createGenomeLoc("1", 40, 50)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 20, 30), genomeLocParser.createGenomeLoc("1", 40, 50))});
+                Arrays.asList(new SimpleInterval("1", 20, 30), new SimpleInterval("1", 40, 50)),
+                Arrays.asList(new SimpleInterval("1", 20, 30), new SimpleInterval("1", 40, 50))});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 1, 30), genomeLocParser.createGenomeLoc("1", 40, 50)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", regionStart, 30), genomeLocParser.createGenomeLoc("1", 40, 50))});
+                Arrays.asList(new SimpleInterval("1", 1, 30), new SimpleInterval("1", 40, 50)),
+                Arrays.asList(new SimpleInterval("1", regionStart, 30), new SimpleInterval("1", 40, 50))});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 1, 30), genomeLocParser.createGenomeLoc("1", 70, 200)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", regionStart, 30), genomeLocParser.createGenomeLoc("1", 70, regionStop))});
+                Arrays.asList(new SimpleInterval("1", 1, 30), new SimpleInterval("1", 70, 200)),
+                Arrays.asList(new SimpleInterval("1", regionStart, 30), new SimpleInterval("1", 70, regionStop))});
 
         tests.add(new Object[]{region,
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", 1, 30), genomeLocParser.createGenomeLoc("1", 40, 50), genomeLocParser.createGenomeLoc("1", 70, 200)),
-                Arrays.asList(genomeLocParser.createGenomeLoc("1", regionStart, 30), genomeLocParser.createGenomeLoc("1", 40, 50), genomeLocParser.createGenomeLoc("1", 70, regionStop))});
+                Arrays.asList(new SimpleInterval("1", 1, 30), new SimpleInterval("1", 40, 50), new SimpleInterval("1", 70, 200)),
+                Arrays.asList(new SimpleInterval("1", regionStart, 30), new SimpleInterval("1", 40, 50), new SimpleInterval("1", 70, regionStop))});
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "SplitAssemblyRegion")
-    public void testSplitAssemblyRegion(final GenomeLoc regionLoc, final List<GenomeLoc> intervalLocs, final List<GenomeLoc> expectedRegionLocs) {
+    public void testSplitAssemblyRegion(final SimpleInterval regionLoc, final List<SimpleInterval> intervalLocs, final List<SimpleInterval> expectedRegionLocs) {
         for ( final boolean addSubstates : Arrays.asList(true, false) ) {
             final List<ActivityProfileState> states;
             if ( addSubstates ) {
                 states = new LinkedList<>();
                 for ( int i = 0; i < regionLoc.size(); i++ )
-                    states.add(new ActivityProfileState(genomeLocParser.createGenomeLoc(regionLoc.getContig(), regionLoc.getStart() + i), 1.0));
+                    states.add(new ActivityProfileState(new SimpleInterval(regionLoc.getContig(), regionLoc.getStart() + i, regionLoc.getStart() + i), 1.0));
             } else {
                 states = null;
             }
 
-            final AssemblyRegion region = new AssemblyRegion(regionLoc, states, true, genomeLocParser, 0, header);
-            final GenomeLocSortedSet intervals = new GenomeLocSortedSet(genomeLocParser,  intervalLocs);
-            final List<AssemblyRegion> regions = region.splitAndTrimToIntervals(intervals);
+            final AssemblyRegion region = new AssemblyRegion(regionLoc, states, true, 0, header);
+            final List<AssemblyRegion> regions = region.splitAndTrimToIntervals(new HashSet<>(intervalLocs));
 
             Assert.assertEquals(regions.size(), expectedRegionLocs.size(), "Wrong number of split locations");
             for ( int i = 0; i < expectedRegionLocs.size(); i++ ) {
-                final GenomeLoc expected = expectedRegionLocs.get(i);
+                final SimpleInterval expected = expectedRegionLocs.get(i);
                 final AssemblyRegion actual = regions.get(i);
                 Assert.assertEquals(actual.getSpan(), expected, "Bad region after split");
                 Assert.assertEquals(actual.isActive(), region.isActive());
@@ -330,60 +327,60 @@ public final class AssemblyRegionUnitTest extends BaseTest {
 
         // fully enclosed within active region
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 15, 16),
-                genomeLocParser.createGenomeLoc("1", 15, 16), 0});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 15, 16),
+                new SimpleInterval("1", 15, 16), 0});
 
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 10, 15),
-                genomeLocParser.createGenomeLoc("1", 10, 15), 0});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 10, 15),
+                new SimpleInterval("1", 10, 15), 0});
 
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 15, 20),
-                genomeLocParser.createGenomeLoc("1", 15, 20), 0});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 15, 20),
+                new SimpleInterval("1", 15, 20), 0});
 
         // needs extra padding on the right
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 15, 25),
-                genomeLocParser.createGenomeLoc("1", 15, 20), 5});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 15, 25),
+                new SimpleInterval("1", 15, 20), 5});
 
         // needs extra padding on the left
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 5, 15),
-                genomeLocParser.createGenomeLoc("1", 10, 15), 5});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 5, 15),
+                new SimpleInterval("1", 10, 15), 5});
 
         // needs extra padding on both
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 7, 21),
-                genomeLocParser.createGenomeLoc("1", 10, 20), 3});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 7, 21),
+                new SimpleInterval("1", 10, 20), 3});
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 9, 23),
-                genomeLocParser.createGenomeLoc("1", 10, 20), 3});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 9, 23),
+                new SimpleInterval("1", 10, 20), 3});
 
         // desired span captures everything, so we're returning everything.  Tests that extension is set correctly
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10,
-                genomeLocParser.createGenomeLoc("1", 1, 50),
-                genomeLocParser.createGenomeLoc("1", 10, 20), 10});
+                new SimpleInterval("1", 10, 20), 10,
+                new SimpleInterval("1", 1, 50),
+                new SimpleInterval("1", 10, 20), 10});
 
         // At the start of the chromosome, potentially a bit weird
         tests.add(new Object[]{
-                genomeLocParser.createGenomeLoc("1", 1, 10), 10,
-                genomeLocParser.createGenomeLoc("1", 1, 50),
-                genomeLocParser.createGenomeLoc("1", 1, 10), 10});
+                new SimpleInterval("1", 1, 10), 10,
+                new SimpleInterval("1", 1, 50),
+                new SimpleInterval("1", 1, 10), 10});
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "TrimAssemblyRegionData")
-    public void testTrimAssemblyRegion(final GenomeLoc regionLoc, final int extension, final GenomeLoc desiredSpan, final GenomeLoc expectedAssemblyRegion, final int expectedExtension) {
-        final AssemblyRegion region = new AssemblyRegion(regionLoc, Collections.<ActivityProfileState>emptyList(), true, genomeLocParser, extension, header);
+    public void testTrimAssemblyRegion(final SimpleInterval regionLoc, final int extension, final SimpleInterval desiredSpan, final SimpleInterval expectedAssemblyRegion, final int expectedExtension) {
+        final AssemblyRegion region = new AssemblyRegion(regionLoc, Collections.<ActivityProfileState>emptyList(), true, extension, header);
         final AssemblyRegion trimmed = region.trim(desiredSpan);
         Assert.assertEquals(trimmed.getSpan(), expectedAssemblyRegion, "Incorrect region");
         Assert.assertEquals(trimmed.getExtension(), expectedExtension, "Incorrect region");

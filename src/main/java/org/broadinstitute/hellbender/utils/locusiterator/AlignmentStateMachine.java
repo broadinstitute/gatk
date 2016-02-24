@@ -4,8 +4,7 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -126,12 +125,11 @@ public final class AlignmentStateMachine {
 
     /**
      * Gets #getGenomePosition but as a 1 bp GenomeLoc
-     * @param genomeLocParser the parser to use to create the genome loc
      * @return a non-null genome location with start position of getGenomePosition
      */
-    public GenomeLoc getLocation(final GenomeLocParser genomeLocParser) {
+    public SimpleInterval getLocation() {
         // TODO -- may return wonky results if on an edge (could be 0 or could be beyond genome location)
-        return genomeLocParser.createGenomeLoc(read.getContig(), getGenomePosition());
+        return new SimpleInterval(read.getContig(), getGenomePosition(), getGenomePosition());
     }
 
     /**

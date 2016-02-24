@@ -40,6 +40,14 @@ public final class MathUtilsUnitTest extends BaseTest {
             Assert.assertEquals(actual,expected,1E-9);
     }
 
+    @Test
+    public void testRandomIntegerInRange() throws Exception {
+        for (int i = 0; i < 1000; i++) {
+            final int n = MathUtils.randomIntegerInRange(10, 20);
+            Assert.assertTrue(n >= 10 && n <= 20);
+        }
+    }
+
     @DataProvider(name = "log10OneMinusPow10Data")
     public Iterator<Object[]> log10OneMinusPow10Data() {
 

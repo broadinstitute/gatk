@@ -66,13 +66,13 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         final Map<GATKRead, Map<Allele, Double>> readMap = perReadAlleleLikelihoodMap.getLikelihoodReadMap();
         Assert.assertEquals(readMap.size(), pileup.size());
 
-        final Map<Allele, Double> likMap = perReadAlleleLikelihoodMap.getLikelihoods(pileup.get(0));
+        final Map<Allele, Double> likMap = perReadAlleleLikelihoodMap.getLikelihoods(pileup.iterator().next());
         Assert.assertEquals(likMap.size(), 3); //three allele
         Assert.assertEquals(likMap.get(base_A), likA);
         Assert.assertEquals(likMap.get(base_C), likNotA);
 
         ReadPileup newPileup = makeArtificialPileup("second");
-        Assert.assertNull(perReadAlleleLikelihoodMap.getLikelihoods(newPileup.get(0)));
+        Assert.assertNull(perReadAlleleLikelihoodMap.getLikelihoods(newPileup.iterator().next()));
 
         Assert.assertNotNull(perReadAlleleLikelihoodMap.toString()); //checking blowup
 
@@ -232,7 +232,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         PerReadAlleleLikelihoodMap perReadAlleleLikelihoodMap = new PerReadAlleleLikelihoodMap();
         Allele base_A = Allele.create(BaseUtils.Base.A.base);
         final Allele allele = base_A;
-        PileupElement e = pileup.get(0);
+        PileupElement e = pileup.iterator().next();
         perReadAlleleLikelihoodMap.add(e,allele, 0.1);  //boom: positive likelihood
     }
 

@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.Collection;
 import java.util.Iterator;
 
 import static org.testng.Assert.*;
@@ -14,6 +17,21 @@ public final class ArtificialReadUtilsUnitTest extends BaseTest {
     public void testReadGroup() {
         GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
         assertNull(read.getReadGroup());
+    }
+
+    @Test
+    public void testCreateIdenticalArtificialReads(){
+        int length= 7;
+        int alignmentStart= 19;
+        int refIndex= 0;
+        SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final Collection<GATKRead> reads = ArtificialReadUtils.createIdenticalArtificialReads(10, header, "name", refIndex, alignmentStart, length);
+        Assert.assertEquals(reads.size(), 10);
+        for (final GATKRead read: reads){
+            Assert.assertEquals(read.getLength(), length);
+            Assert.assertEquals(read.getStart(), alignmentStart);
+            Assert.assertEquals(ReadUtils.getReferenceIndex(read, header), refIndex);
+        }
     }
 
     @Test

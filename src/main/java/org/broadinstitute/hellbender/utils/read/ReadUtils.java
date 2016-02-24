@@ -25,6 +25,7 @@ import java.util.List;
  * Static methods only, please.
  */
 public final class ReadUtils {
+
     private ReadUtils() {
     }
 
@@ -41,6 +42,7 @@ public final class ReadUtils {
     public static final String BQSR_BASE_DELETION_QUALITIES = "BD";                 // base qualities for deletions
 
     public static final int CLIPPING_GOAL_NOT_REACHED = -1;
+    private static final int DEFAULT_ADAPTOR_SIZE = 100;
 
     public static final String ORIGINAL_BASE_QUALITIES_TAG = SAMTag.OQ.name();
 
@@ -966,5 +968,27 @@ public final class ReadUtils {
 
     public static boolean isNonPrimary(GATKRead read) {
         return read.isSecondaryAlignment() || read.isSupplementaryAlignment() || read.isUnmapped();
+    }
+
+    /**
+     * is this base inside the adaptor of the read?
+     *
+     * There are two cases to treat here:
+     *
+     * 1) Read is in the negative strand => Adaptor boundary is on the left tail
+     * 2) Read is in the positive strand => Adaptor boundary is on the right tail
+     *
+     * Note: We return false to all reads that are UNMAPPED or have an weird big insert size (probably due to mismapping or bigger event)
+     *
+     * @param read the read to test
+     * @param basePos base position in REFERENCE coordinates (not read coordinates)
+     * @return whether or not the base is in the adaptor
+     */
+    public static boolean isBaseInsideAdaptor(final GATKRead read, long basePos) {
+        final int adaptorBoundary = ReadUtils.getAdaptorBoundary(read);
+        if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || read.getFragmentLength() > DEFAULT_ADAPTOR_SIZE)
+            return false;
+
+        return read.isReverseStrand() ? basePos <= adaptorBoundary : basePos >= adaptorBoundary;
     }
 }

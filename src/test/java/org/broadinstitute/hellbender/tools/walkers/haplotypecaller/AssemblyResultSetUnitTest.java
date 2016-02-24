@@ -4,9 +4,9 @@ import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.TestingReadThreadingGraph;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.RandomDNA;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -90,9 +90,11 @@ public final class AssemblyResultSetUnitTest extends BaseTest{
         for (final Map.Entry<Haplotype,AssemblyResult> entry : haplotypesAndResultSets.entrySet())
             subject.add(entry.getKey(),entry.getValue());
         subject.setRegionForGenotyping(original);
-        final GenomeLoc originalLocation = original.getExtendedSpan();
+        final SimpleInterval originalLocation = original.getExtendedSpan();
         final int length = originalLocation.size();
-        final GenomeLoc newLocation = originalLocation.setStop(originalLocation.setStart(originalLocation,originalLocation.getStart() + length / 2),originalLocation.getStop() - length / 2);
+        final SimpleInterval newLocation = new SimpleInterval(originalLocation.getContig(),
+                                                  originalLocation.getStart() + length / 2,
+                                                  originalLocation.getEnd() - length / 2);
         final AssemblyRegion newRegion = original.trim(newLocation);
 
         final Map<Haplotype,Haplotype> originalHaplotypesByTrimmed = new HashMap<>(haplotypesAndResultSets.size());
@@ -112,7 +114,7 @@ public final class AssemblyResultSetUnitTest extends BaseTest{
 
     @DataProvider(name="trimmingData")
     public Iterator<Object[]> trimmingData() {
-        final AssemblyRegion activeRegion = new AssemblyRegion(genomeLocParser.createGenomeLoc("1",1000,1100),genomeLocParser,25, header);
+        final AssemblyRegion activeRegion = new AssemblyRegion(new SimpleInterval("1",1000,1100), 25, header);
         final int length = activeRegion.getExtendedSpan().size();
         final RandomDNA rnd = new RandomDNA(13); // keep it prepoducible by fixing the seed to lucky 13.
         final AssemblyRegionTestDataSet actd = new AssemblyRegionTestDataSet(10,new String(rnd.nextBases(length)),new String[] {

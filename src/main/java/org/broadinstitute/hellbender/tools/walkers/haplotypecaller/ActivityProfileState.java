@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
  * The state of an active region walker's isActive call at a specific locus in the genome
  */
 public final class ActivityProfileState {
-    private final GenomeLoc loc;
+    private final SimpleInterval loc;
     private final double activeProb;
     private final Type resultState;
     private final Number resultValue;
@@ -36,7 +36,7 @@ public final class ActivityProfileState {
      * @param loc the position of the result profile (for debugging purposes)
      * @param activeProb the probability of being active (between 0 and 1)
      */
-    public ActivityProfileState(final GenomeLoc loc, final double activeProb) {
+    public ActivityProfileState(final SimpleInterval loc, final double activeProb) {
         this(loc, activeProb, Type.NONE, null);
     }
 
@@ -50,7 +50,7 @@ public final class ActivityProfileState {
      * @param loc the position of the result profile (for debugging purposes)
      * @param activeProb the probability of being active (between 0 and 1)
      */
-    public ActivityProfileState(final GenomeLoc loc, final double activeProb, final Type resultState, final Number resultValue) {
+    public ActivityProfileState(final SimpleInterval loc, final double activeProb, final Type resultState, final Number resultValue) {
         // make sure the location of that activity profile is 1
         if ( loc.size() != 1 ) {
             throw new IllegalArgumentException("Location for an ActivityProfileState must have to size 1 bp but saw " + loc);
@@ -79,7 +79,7 @@ public final class ActivityProfileState {
      * Get the genome loc associated with the ActivityProfileState
      * @return the location of this result
      */
-    public GenomeLoc getLoc() {
+    public SimpleInterval getLoc() {
         return loc;
     }
 

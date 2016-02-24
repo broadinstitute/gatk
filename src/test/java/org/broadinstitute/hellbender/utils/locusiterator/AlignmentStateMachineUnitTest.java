@@ -59,8 +59,8 @@ public final class AlignmentStateMachineUnitTest extends LocusIteratorByStateBas
 
             Assert.assertEquals(state.getGenomeOffset(), tester.getCurrentGenomeOffsetBase0(), "Offset from alignment start is bad");
             Assert.assertEquals(state.getGenomePosition(), tester.getCurrentGenomeOffsetBase0() + read.getStart(), "GenomePosition start is bad");
-            Assert.assertEquals(state.getLocation(genomeLocParser).size(), 1, "GenomeLoc position should have size == 1");
-            Assert.assertEquals(state.getLocation(genomeLocParser).getStart(), state.getGenomePosition(), "GenomeLoc position is bad");
+            Assert.assertEquals(state.getLocation().size(), 1, "GenomeLoc position should have size == 1");
+            Assert.assertEquals(state.getLocation().getStart(), state.getGenomePosition(), "GenomeLoc position is bad");
             // most tests of this functionality are in LIBS
             Assert.assertNotNull(state.makePileupElement());
 
