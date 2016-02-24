@@ -14,7 +14,6 @@ BIN_PATH = script + "/build/libs"
 DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
 "--conf", "spark.driver.maxResultSize=0",
 "--conf", "spark.driver.userClassPathFirst=true",
-"--conf", "spark.executor.userClassPathFirst=true",
 "--conf", "spark.io.compression.codec=lzf",
 "--conf", "spark.yarn.executor.memoryOverhead=600"]
 

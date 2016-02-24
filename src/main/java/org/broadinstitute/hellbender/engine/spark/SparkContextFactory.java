@@ -39,7 +39,6 @@ public final class SparkContextFactory {
             .put("spark.kryoserializer.buffer.max", "512m")
             .put("spark.driver.maxResultSize", "0")
             .put("spark.driver.userClassPathFirst", "true")
-            .put("spark.executor.userClassPathFirst", "true")
             .put("spark.io.compression.codec", "lzf")
             .put("spark.yarn.executor.memoryOverhead", "600")
             .build();
