@@ -80,11 +80,6 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
             throw new UserException.Require2BitReferenceForBroadcast();
         }
-        // TODO: workaround for known bug in List version of getParallelVariants
-        if ( baseRecalibrationKnownVariants.size() > 1 ) {
-            throw new GATKException("Cannot currently handle more than one known sites file, " +
-                    "as getParallelVariants(List) is broken");
-        }
         final JavaRDD<GATKRead> initialReads = getReads();
 
         // The initial reads have already had the WellformedReadFilter applied to them, which
@@ -94,7 +89,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> filteredReadsForBQSR = initialReads.filter(read -> bqsrReadFilter.apply(read));
 
         final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
+        final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants);
 
         final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(filteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
         //note: we use the reference dictionary from the reads themselves.

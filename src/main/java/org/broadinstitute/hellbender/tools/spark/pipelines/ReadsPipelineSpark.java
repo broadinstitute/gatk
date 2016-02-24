@@ -92,12 +92,6 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             throw new UserException.Require2BitReferenceForBroadcast();
         }
 
-        // TODO: workaround for known bug in List version of getParallelVariants
-        if ( baseRecalibrationKnownVariants.size() > 1 ) {
-            throw new GATKException("Cannot currently handle more than one known sites file, " +
-                    "as getParallelVariants(List) is broken");
-        }
-
         final JavaRDD<GATKRead> initialReads = getReads();
         final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
         final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
@@ -109,7 +103,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> markedFilteredReadsForBQSR = markedReads.filter(read -> bqsrReadFilter.apply(read));
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants.get(0));
+        JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants);
 
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);

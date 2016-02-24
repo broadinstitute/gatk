@@ -64,8 +64,11 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String origQualsBam_chr1 = getResourceDir() + "originalQuals.1kg.chr1.1-1K.1RG.dictFix.bam";
         final String dbSNPb36_chr1 = getResourceDir() + "dbsnp_132.b36.excluding_sites_after_129.chr1_1k.vcf";
         final String GRCh37Ref_chr2021 = "src/test/resources/large/human_g1k_v37.20.21.fasta";
-        final String moreSites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
+        final String more17Sites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr17.vcf"; //for testing 2 input files
 
+        final String hiSeqBam_20_21_100000 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.bam";
+        final String more20Sites = getResourceDir() + "dbsnp_138.b37.20.10m-10m100.vcf"; //for testing 2 input files
+        final String more21Sites = getResourceDir() + "dbsnp_138.b37.21.10m-10m100.vcf"; //for testing 2 input files
         return new Object[][]{
                 //Note: recal tables were created using GATK3.4 with one change from 2.87 to 2.88 in expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recal.txt
                 // The reason is that GATK4 uses a multiplier in summing doubles in RecalDatum.
@@ -84,7 +87,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
                 {new BQSRTest(hg18Reference, HiSeqCram_chr17, dbSNPb37_chr17, "", getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam_chr17, dbSNPb37_chr17, "", getResourceDir() + "expected.NA12878.chr17_69k_70k.txt")},
                 {new BQSRTest(GRCh37Ref_chr2021, trickyBam_chr20, dbSNPb37_chr17, "", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.recal.txt")},
-                {new BQSRTest(hg18Reference, HiSeqBam_chr17, dbSNPb37_chr17, "-knownSites " + moreSites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
+                {new BQSRTest(hg18Reference, HiSeqBam_chr17, dbSNPb37_chr17, "-knownSites " + more17Sites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam_chr17, dbSNPb37_chr17, "--indels_context_size 4", getResourceDir() + "expected.NA12878.chr17_69k_70k.indels_context_size4.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam_chr17, dbSNPb37_chr17, "--low_quality_tail 5", getResourceDir() + "expected.NA12878.chr17_69k_70k.low_quality_tail5.txt")},
                 {new BQSRTest(hg18Reference, HiSeqBam_chr17, dbSNPb37_chr17, "--quantizing_levels 6", getResourceDir() + "expected.NA12878.chr17_69k_70k.quantizing_levels6.txt")},

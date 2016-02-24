@@ -57,15 +57,20 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         final String hiSeqBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.bam";
         final String hiSeqBam_chr20_queryNameSorted = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.queryNameSorted.bam";
         final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
+        final String more20Sites = getResourceDir() + "dbsnp_138.b37.20.10m-10m100.vcf"; //for testing 2 input files
 
-        final String EXPECTED_BAM = "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.md.bqsr.bam";
+        final String expectedSingleKnownSites = "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.noMD.noBQSR.md.bqsr.bam";
+        final String expectedMultipleKnownSites = "expected.MultiSite.reads.pipeline.bam";
 
         return new Object[][]{
                 // input local, computation local.
                 //Note: these output files were created by running Picard 1.130 and GATK3.46
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + EXPECTED_BAM)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy SHUFFLE", getResourceDir() + EXPECTED_BAM)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + EXPECTED_BAM)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy SHUFFLE", getResourceDir() + expectedSingleKnownSites)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
+
+                // Output generated with GATK4
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
         };
     }
 

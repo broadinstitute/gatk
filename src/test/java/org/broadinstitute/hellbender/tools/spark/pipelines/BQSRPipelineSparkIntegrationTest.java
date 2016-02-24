@@ -58,11 +58,18 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
+        final String hiSeqBam_20_21_100000 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.10m-10m100.bam";
+        final String more20Sites = getResourceDir() + "dbsnp_138.b37.20.10m-10m100.vcf"; //for testing 2 input files
+        final String more21Sites = getResourceDir() + "dbsnp_138.b37.21.10m-10m100.vcf"; //for testing 2 input files
+
         return new Object[][]{
                 // input local, computation local.
                 //Note: these output files were created by running GATK3
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
                 {new BQSRTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy SHUFFLE", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
+
+                //Output generated with GATK4 (resulting BAM has 4 differences with GATK3)
+                {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, " --joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
         };
     }
 

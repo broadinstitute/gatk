@@ -4,10 +4,12 @@ import com.google.common.collect.Lists;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -19,6 +21,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -53,6 +56,30 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
                 variantsSparkSource.getParallelVariantContexts(vcf);
 
         assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
+    }
+
+    @DataProvider(name = "loadMultipleVCFs")
+    public Object[][] loadMultipleVCFs() {
+        return new Object[][]{
+                {Arrays.asList(hg19_chr1_1M_dbSNP, hg19_chr1_1M_dbSNP_modified)},
+        };
+    }
+
+    @Test(dataProvider = "loadMultipleVCFs", groups = "spark")
+    public void getMultipleParallelVCFsTest(List<String> vcfList) {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
+
+        JavaRDD<GATKVariant> rddParallelVariants =
+                variantsSparkSource.getParallelVariants(vcfList);
+
+        // retrieve the same set of variants, but through VariantsSource, and wrapped by
+        // the same wrapper class used by VariantsSparkSource to facilitate comparison
+        List<GATKVariant> variantsList =
+                VariantsSource.getVariantsListAs
+                        (vcfList, vc -> VariantContextVariantAdapter.sparkVariantAdapter(vc));
+
+        Assert.assertTrue(CollectionUtils.isEqualCollection(rddParallelVariants.collect(), variantsList));
     }
 
     /**
