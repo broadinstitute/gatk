@@ -219,7 +219,7 @@ public final class CollectInsertSizeMetricsSpark extends GATKSparkTool {
  *       so third case is possible: will use either end when only one end is available in the region specified,
  *       and only first end if both are available
  */
-enum whichEndToUse{
+public enum whichEndToUse{
     first(1), second(2);//, either(0);
     private final int value;
     whichEndToUse(int value){

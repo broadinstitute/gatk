@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * Customized serializable reads filter, based on cmd line arguments provided, for structural variation purposes
  */
 public final class SVCustomReadFilter implements ReadFilter {
-    private final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 
     private static final PrimaryFilter pfilter = new PrimaryFilter();
     private final CustomFilter sfilter;

@@ -101,7 +101,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable{
     // simply return an doubel array from an RDD of integers for using Apache DescriptiveStatistics
     private final double[] returnRDDArray(final JavaRDD<Integer> rdd){
         final List<Integer> tempList = rdd.collect();
-        final double lengthArr[] = new double[(int) tempList.size()];
+        final double lengthArr[] = new double[tempList.size()];
         for(int i=0; i<lengthArr.length; ++i){
             lengthArr[i] = tempList.get(i);
         }
