@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -30,7 +31,7 @@ public class Segment<C> implements Locatable {
      *  not belong to the same contig.
      */
     public Segment(final List<? extends Target> targets, final double mean, final C call) {
-        this(SimpleInterval.getSpanningInterval(Utils.nonNull(targets)), Utils.nonNull(targets).size(), mean, call);
+        this(IntervalUtils.getSpanningInterval(targets), Utils.nonNull(targets).size(), mean, call);
     }
 
     /**
