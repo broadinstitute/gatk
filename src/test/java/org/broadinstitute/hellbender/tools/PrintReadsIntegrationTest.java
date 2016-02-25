@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools;
 
+import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,11 +34,59 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
     }
 
+    @Test(dataProvider="testingData")
+    public void testFileToFileWithMD5(String fileIn, String extOut) throws Exception {
+        String samFile= fileIn;
+        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
+        File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
+        final String[] args = new String[]{
+                "--input" , ORIG_BAM.getAbsolutePath(),
+                "--createOutputBamMD5", "true",
+                "--output", outFile.getAbsolutePath()
+        };
+        Assert.assertEquals(runCommandLine(args), null);
+        SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
+        checkMD5asExpected(outFile);
+    }
+
+    @Test(dataProvider="testingDataCRAM")
+    public void testFileToFileCRAMWithMD5(String fileIn, String extOut, String reference) throws Exception {
+        String samFile= fileIn;
+        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
+        final File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
+        final File refFile = new File(TEST_DATA_DIR, reference);
+        final String[] args = new String[]{
+                "--input" , ORIG_BAM.getAbsolutePath(),
+                "--createOutputBamMD5", "true",
+                "--output", outFile.getAbsolutePath(),
+                "-R", refFile.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        //TODO: Make this comparison non-lenient in all cases: https://github.com/broadinstitute/gatk/issues/1087
+        if (extOut.equals(".cram")){
+            SamAssertionUtils.assertSamsEqualLenient(outFile, ORIG_BAM, refFile);
+        } else {
+            SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
+        }
+        checkMD5asExpected(outFile);
+    }
+
+    private void checkMD5asExpected(final File outFile) throws IOException {
+        final File md5File = new File(outFile.getAbsolutePath() + ".md5");
+        if (md5File.exists()) {
+            md5File.deleteOnExit();
+        }
+        Assert.assertTrue(md5File.exists(), md5File + " does not exist");
+        final String expectedMD5 = Utils.calculateFileMD5(outFile);
+        final String actualMD5 = FileUtils.readFileToString(md5File);
+        Assert.assertEquals(actualMD5, expectedMD5);
+    }
+
     @Test(dataProvider="testingDataCRAM")
     public void testFileToFileCRAM(String fileIn, String extOut, String reference) throws Exception {
         String samFile= fileIn;
-        final File outFile = File.createTempFile(samFile + ".", extOut);
-        outFile.deleteOnExit();
+        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
         final File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
         final File refFile = new File(TEST_DATA_DIR, reference);
         final String[] args = new String[]{
