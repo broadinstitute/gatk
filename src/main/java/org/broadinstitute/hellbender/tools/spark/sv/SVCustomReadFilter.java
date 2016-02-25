@@ -14,7 +14,7 @@ public final class SVCustomReadFilter implements ReadFilter {
     private final CustomFilter sfilter;
 
     public SVCustomReadFilter(final boolean[] sixFilterOptions,
-                              final whichEndToUse whichEnd,
+                              final CollectInsertSizeMetricsSpark.whichEndToUse whichEnd,
                               final int mappingQualityThreshold
                               //TODO: final int mateMappingQualityThreshold
                              ){
@@ -37,7 +37,8 @@ public final class SVCustomReadFilter implements ReadFilter {
 
         //TODO: private final int mateMQPassingThreshold = 0;
 
-        public CustomFilter(final boolean sixOptions[], final whichEndToUse whichEnd, final int MQThreshold//, mateMQThreshold
+        public CustomFilter(final boolean sixOptions[], final CollectInsertSizeMetricsSpark.whichEndToUse whichEnd,
+                            final int MQThreshold//, mateMQThreshold
                             ){
 
             endVal = whichEnd.getValue();

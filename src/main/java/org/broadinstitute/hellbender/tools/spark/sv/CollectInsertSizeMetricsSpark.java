@@ -107,6 +107,23 @@ public final class CollectInsertSizeMetricsSpark extends GATKSparkTool {
 //              optional = false)
 //    public Set<MetricAccumulationLevel> METRIC_ACCUMULATION_LEVEL = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
+    /**
+     * Which end of a read pair to use for collecting insert size metrics.
+     * TODO: For truncated genomic regions of putative SV breakpoints, not all reads have both ends land in the region,
+     *       so third case is possible: will use either end when only one end is available in the region specified,
+     *       and only first end if both are available
+     */
+    public enum whichEndToUse{
+        first(1), second(2);//, either(0);
+        private final int value;
+        whichEndToUse(int value){
+            this.value = value;
+        }
+        public int getValue(){
+            return value;
+        }
+    }
+
     @Argument(doc = "Which end of pairs to use for collecting information. Possible values:{0,1,2}, where 1 and 2 " +
                     "stands for first or second end respectively. Option 0 picks up information from 1st end " +
                     "when both ends are available, and pick either one when only one end is available. " +
@@ -210,22 +227,5 @@ public final class CollectInsertSizeMetricsSpark extends GATKSparkTool {
                          histogramPlotPDF.getAbsolutePath(),    // PDF graphics file
                          inputFileName);                        // input bam file
         executor.exec();
-    }
-}
-
-/**
- * Which end of a read pair to use for collecting insert size metrics.
- * TODO: For truncated genomic regions of putative SV breakpoints, not all reads have both ends land in the region,
- *       so third case is possible: will use either end when only one end is available in the region specified,
- *       and only first end if both are available
- */
-public enum whichEndToUse{
-    first(1), second(2);//, either(0);
-    private final int value;
-    whichEndToUse(int value){
-        this.value = value;
-    }
-    public int getValue(){
-        return value;
     }
 }
