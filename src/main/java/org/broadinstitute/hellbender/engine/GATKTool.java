@@ -43,8 +43,11 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = "disableSequenceDictionaryValidation", shortName = "disableSequenceDictionaryValidation", doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
     private boolean disableSequenceDictionaryValidation = false;
 
-    @Argument(fullName="createOutputBamIndex", shortName="createOutputBamIndex", doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true)
+    @Argument(fullName="createOutputBamIndex", shortName="createOutputBamIndex", doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file", optional=true)
     public boolean createOutputBamIndex = true;
+
+    @Argument(fullName="createOutputBamMD5", shortName="createOutputBamMD5", doc = "If true, create a MD5 digest for any BAM/SAM/CRAM file created", optional=true)
+    public boolean createOutputBamMD5 = false;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -388,7 +391,7 @@ public abstract class GATKTool extends CommandLineProgram {
                                 getHeaderForReads(),
                                 preSorted,
                                 createOutputBamIndex,
-                                false
+                                createOutputBamMD5
                         )
         );
     }
