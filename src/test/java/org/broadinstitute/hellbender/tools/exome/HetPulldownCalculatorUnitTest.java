@@ -26,12 +26,12 @@ import java.util.Map;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class HetPulldownCalculatorUnitTest extends BaseTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
-    private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR + "normal.sorted.bam");
-    private static final File NORMAL_UNSORTED_BAM_FILE = new File(TEST_SUB_DIR + "normal.unsorted.bam");
-    private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR + "tumor.sorted.bam");
-    private static final File SNP_FILE = new File(TEST_SUB_DIR + "common_SNP.interval_list");
+    private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "normal.sorted.bam");
+    private static final File NORMAL_UNSORTED_BAM_FILE = new File(TEST_SUB_DIR, "normal.unsorted.bam");
+    private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "tumor.sorted.bam");
+    private static final File SNP_FILE = new File(TEST_SUB_DIR, "common_SNP.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
     private static final int MINIMUM_MAPPING_QUALITY = 30;
@@ -158,7 +158,12 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testGetHetPulldownWithUnsortedBAMFile() {
-        final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, -1);
+        final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, 0.05);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testBadpValue() {
+        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, -1);
     }
 
     @DataProvider(name = "inputGetTumorHetPulldown")

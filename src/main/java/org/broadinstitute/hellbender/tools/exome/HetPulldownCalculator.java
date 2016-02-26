@@ -15,9 +15,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -30,6 +30,7 @@ public final class HetPulldownCalculator {
 
     private final File refFile;
     private final IntervalList snpIntervals;
+    private final SamReaderFactory samReaderFactory;
 
     private final int minMappingQuality;
     private final int minBaseQuality;
@@ -52,10 +53,13 @@ public final class HetPulldownCalculator {
      */
     public HetPulldownCalculator(final File refFile, final File snpFile,
                                  final int minMappingQuality, final int minBaseQuality) {
+        ParamUtils.isPositiveOrZero(minMappingQuality, "Minimum mapping quality must be nonnegative.");
+        ParamUtils.isPositiveOrZero(minBaseQuality, "Minimum base quality must be nonnegative.");
         this.refFile = refFile;
         this.snpIntervals = IntervalList.fromFile(snpFile);
         this.minMappingQuality = minMappingQuality;
         this.minBaseQuality = minBaseQuality;
+        this.samReaderFactory = SamReaderFactory.makeDefault();     //will use default validation stringency
     }
 
     /**
@@ -113,7 +117,7 @@ public final class HetPulldownCalculator {
      * </p>
      * @param baseCounts        map of base-pair counts
      * @param totalBaseCount    total base-pair counts (excluding N, etc.)
-     * @param pvalThreshold     p-value threshold for two-sided binomial test
+     * @param pvalThreshold     p-value threshold for two-sided binomial test (should be in [0, 1], but no check is performed)
      * @return                  boolean compatibility with heterozygous allele fraction
      */
     public static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
@@ -134,6 +138,7 @@ public final class HetPulldownCalculator {
      * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a normal sample.
      */
     public Pulldown getNormal(final File normalBAMFile, final double pvalThreshold) {
+        ParamUtils.inRange(pvalThreshold, 0., 1., "p-value threshold must be in [0, 1].");
         return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, pvalThreshold);
     }
 
@@ -176,7 +181,7 @@ public final class HetPulldownCalculator {
      */
     private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, final SampleType sampleType,
                                     final double pvalThreshold) {
-        try (final SamReader bamReader = SamReaderFactory.makeDefault().open(bamFile);
+        try (final SamReader bamReader = samReaderFactory.open(bamFile);
              final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
                 throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");
@@ -231,7 +236,7 @@ public final class HetPulldownCalculator {
             }
             logger.info("Examined " + totalNumberOfSNPs + " sites.");
             return hetPulldown;
-        } catch (final IOException e) {
+        } catch (final Exception e) {
             throw new UserException(e.getMessage());
         }
     }
