@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -10,13 +11,8 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -25,7 +21,7 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
+public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
 
     @Override
     public String getTestedClassName() {
@@ -39,9 +35,11 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         final File targetFile = createTargetFile(targets, Collections.emptySet());
         final List<Target> leftInTargets = targets.stream()
                 .filter(t -> t.getInterval().size() >= min && t.getInterval().size() <= max)
+                .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
                 .collect(Collectors.toList());
         final List<Target> leftOutTargets = targets.stream()
                 .filter(t -> t.getInterval().size() < min || t.getInterval().size() > max)
+                .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
                 .collect(Collectors.toList());
         final File outputFile = createTempFile("output", ".tab");
         final File rejectionFile = createTempFile("reject", ".tab");
@@ -57,10 +55,84 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.ExtremeTargetSize);
     }
 
-    private void checkLeftInTargets(List<Target> leftInTargets, File outputFile) {
+    @Test(dataProvider = "targetExcludedIntervalsData")
+    public void testExcludedIntervalsThroughFile(final List<String> excludeSpecs,
+                                      final List<SimpleInterval> excludedIntervals,
+                                      final List<Target> targets)
+            throws IOException
+    {
+        final File excludedIntervalsFile = createExcludedIntervalsFile(excludeSpecs);
+        final File targetFile = createTargetFile(targets, Collections.emptySet());
+        final List<Target> leftInTargets = targets.stream()
+                .filter(t -> excludedIntervals.stream().noneMatch(e -> e.overlaps(t.getInterval())))
+                .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                .collect(Collectors.toList());
+        final List<Target> leftOutTargets = targets.stream()
+                .filter(t -> excludedIntervals.stream().anyMatch(e -> e.overlaps(t.getInterval())))
+                .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                .collect(Collectors.toList());
+        final File outputFile = createTempFile("output", ".tab");
+        final File rejectionFile = createTempFile("reject", ".tab");
+        final List<String> commonArgument = new ArrayList<>(Arrays.asList("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME, targetFile.getPath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                "-" + FilterTargets.REJECT_OUTPUT_FILE_SHORT_NAME, rejectionFile.getPath()));
+        final List<String> arguments = new ArrayList<>(commonArgument);
+        arguments.add("-" + FilterTargets.EXCLUDED_INTERVALS_SHORT_NAME);
+        arguments.add(excludedIntervalsFile.getPath());
+        runCommandLine(arguments);
+
+        checkLeftInTargets(leftInTargets, outputFile);
+        checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.ExcludedInterval);
+    }
+
+    private File createExcludedIntervalsFile(final List<String> excludeSpecs) throws IOException {
+        final File result = createTempFile("excluded-interval",".list");
+        try (final PrintWriter writer = new PrintWriter(new FileWriter(result))) {
+            writer.println("# comment1");
+            writer.println();
+            for (final String s : excludeSpecs) {
+                writer.println(s);
+            }
+        }
+        return result;
+    }
+
+    @Test(dataProvider = "targetExcludedIntervalsData")
+    public void testExcludedIntervals(final List<String> excludeSpecs,
+                                      final List<SimpleInterval> excludedIntervals,
+                                      final List<Target> targets)
+            throws IOException
+    {
+        final File targetFile = createTargetFile(targets, Collections.emptySet());
+        final List<Target> leftInTargets = targets.stream()
+                .filter(t -> excludedIntervals.stream().noneMatch(e -> e.overlaps(t.getInterval())))
+                .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                .collect(Collectors.toList());
+        final List<Target> leftOutTargets = targets.stream()
+                .filter(t -> excludedIntervals.stream().anyMatch(e -> e.overlaps(t.getInterval())))
+                .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
+                .collect(Collectors.toList());
+        final File outputFile = createTempFile("output", ".tab");
+        final File rejectionFile = createTempFile("reject", ".tab");
+        final List<String> commonArgument = new ArrayList<>(Arrays.asList("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME, targetFile.getPath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                "-" + FilterTargets.REJECT_OUTPUT_FILE_SHORT_NAME, rejectionFile.getPath()));
+        final List<String> arguments = new ArrayList<>(commonArgument);
+        for (final String spec : excludeSpecs) {
+            arguments.add("-" + FilterTargets.EXCLUDED_INTERVALS_SHORT_NAME);
+            arguments.add(spec);
+        }
+        runCommandLine(arguments);
+
+        checkLeftInTargets(leftInTargets, outputFile);
+        checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.ExcludedInterval);
+    }
+
+    private void checkLeftInTargets(final List<Target> leftInTargets, final File outputFile) {
         final TargetCollection<Target> outputTargetCollection = TargetArgumentCollection.readTargetCollection(outputFile);
         final List<Target> outputTargets = outputTargetCollection.targets();
         Assert.assertEquals(outputTargets.size(), leftInTargets.size());
+        Assert.assertEquals(new HashSet<>(outputTargets), new HashSet<>(leftInTargets));
         for (int i = 0; i < outputTargets.size(); i++) {
             Assert.assertEquals(outputTargets.get(i), leftInTargets.get(i));
             Assert.assertEquals(outputTargets.get(i).getInterval(),
@@ -280,13 +352,40 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
     private File createTargetFile(final List<Target> targets, final Set<TargetAnnotation> annotations) {
         final File result = createTempFile("filter-test-target", ".tab");
         try (final TargetTableWriter writer = new TargetTableWriter(result, annotations)) {
-            for (final Target target : targets) {
+            for (final Target target : targets.stream()
+                    .sorted((a, b) -> IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR.compare(a.getInterval(), b.getInterval()))
+                    .collect(Collectors.toList())) {
                 writer.writeRecord(target);
             }
             return result;
         } catch (final IOException ex) {
             throw new UncheckedIOException(ex);
         }
+    }
+
+    @DataProvider(name = "targetExcludedIntervalsData")
+    public Object[][] targetExcludedIntervalsData() {
+        final Random rdn = new Random(1313);
+        final List<Target> targets = IntStream.range(1, 1001)
+                .mapToObj(i -> new Target("target_" + i,
+                        new SimpleInterval((i & 1) == 0 ?"chr1" : "chr2", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))))
+                .collect(Collectors.toList());
+
+        return new Object[][] {
+                { Collections.singletonList("chr2:1-2000"),
+                  Collections.singletonList(new SimpleInterval("chr2", 1, 2000)), targets},
+                { Collections.singletonList("chr1"),
+                  Collections.singletonList(new SimpleInterval("chr1")), targets},
+                { Collections.singletonList("chr1:10000+"),
+                  Collections.singletonList(new SimpleInterval("chr1:10000+")), targets},
+                { Arrays.asList("chr2", "chr1:1-10000"),
+                  Arrays.asList(new SimpleInterval("chr1:1-10000"), new SimpleInterval("chr2")), targets},
+                { Arrays.asList("chr2:1003", "chr1:2010", "chr2:200000+", "chr1:500000-700000"),
+                  Arrays.asList(new SimpleInterval("chr2:1003"), new SimpleInterval("chr1:2010"),
+                                new SimpleInterval("chr2:200000+"),
+                                new SimpleInterval("chr1:500000-700000")) , targets},
+                { Collections.emptyList(), Collections.emptyList(), targets},
+        };
     }
 
     @DataProvider(name = "targetTargetSizeFilterData")

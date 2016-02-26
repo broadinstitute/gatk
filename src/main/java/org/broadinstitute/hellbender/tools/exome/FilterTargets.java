@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.output.NullWriter;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -10,15 +11,14 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -48,7 +48,7 @@ import java.util.function.Predicate;
         oneLineSummary = "filters targets on coverage and annotations",
         programGroup = CopyNumberProgramGroup.class
 )
-public class FilterTargets extends CommandLineProgram {
+public final class FilterTargets extends CommandLineProgram {
 
     public static String REJECT_FILE_TARGET_COLUMN_NAME = "TARGET";
     public static String REJECT_FILE_FILTER_COLUMN_NAME = "FILTER";
@@ -59,7 +59,8 @@ public class FilterTargets extends CommandLineProgram {
      */
     public enum TargetFilter {
         ExtremeTargetSize, ExtremeGCContent, ExtremeRepeatContent,
-        ExtremeCoverageMean, ExtremeCoverageVariance, ExtremeCoverageInterquartileRange;
+        ExtremeCoverageMean, ExtremeCoverageVariance, ExtremeCoverageInterquartileRange,
+        ExcludedInterval
     }
 
     public static final int DEFAULT_MINIMUM_TARGET_SIZE = 0;
@@ -96,6 +97,9 @@ public class FilterTargets extends CommandLineProgram {
 
     public static final String REJECT_OUTPUT_FILE_FULL_NAME = "rejectedOutputFile";
     public static final String REJECT_OUTPUT_FILE_SHORT_NAME = "rejected";
+
+    public static final String EXCLUDED_INTERVALS_FULL_NAME = "excludedIntervals";
+    public static final String EXCLUDED_INTERVALS_SHORT_NAME = "excl";
 
     @Argument(
             doc = "Minimum target size; targets spanning fewer base-pairs are filtered out",
@@ -177,6 +181,13 @@ public class FilterTargets extends CommandLineProgram {
     )
     protected double maximumCoverageInterquartileRange = DEFAULT_MAXIMUM_COVERAGE_INTERQUARTILE_RANGE;
 
+    @Argument(
+            doc = "Targets to explicitly exclude",
+            fullName = EXCLUDED_INTERVALS_FULL_NAME,
+            shortName = EXCLUDED_INTERVALS_SHORT_NAME,
+            optional = true
+    )
+    protected List<String> excludedIntervals = new ArrayList<>();
 
     @ArgumentCollection
     protected TargetArgumentCollection targetArguments
@@ -247,6 +258,9 @@ public class FilterTargets extends CommandLineProgram {
         }
         if (maximumCoverageInterquartileRange < Double.POSITIVE_INFINITY) {
             result.add(new ExtremeCoverageInterquartileRange());
+        }
+        if (!excludedIntervals.isEmpty()) {
+            result.add(new ExcludedTargetList(excludedIntervals));
         }
         return result;
     }
@@ -331,9 +345,159 @@ public class FilterTargets extends CommandLineProgram {
     }
 
     /**
+     * Class that represents a interval of targets to exclude.
+     *
+     * It contains a copy of the interval specification (e.g. "chr1", "chr1:1+", "chr2:100,000,000-200,000,000").
+     *
+     * And the location where it was specified so that we can provide more informative error and target rejection messages.
+     */
+    private final class ExcludedInterval implements Locatable {
+
+        /**
+         * The exclusion interval.
+         * <p>
+         * Is never {@code null}.
+         * </p>
+         *
+         */
+        final SimpleInterval interval;
+
+        /**
+         * The location of the specification. Either {@value ExcludedTargetList#COMMAND_LINE_SPEC_LOCATION}
+         * for specifications directly indicated in the command line and the file name and line number
+         * when it was done through a file.
+         *
+         * <p>
+         * Is never {@code null}.
+         * </p>
+         */
+        final String specLocation;
+
+        /**
+         * The input specification string.
+         *
+         * <p>
+         * Is never {@code null}.
+         * </p>
+         */
+        final String specString;
+
+        /**
+         * Creates a new exclusion interval.
+         * @param specString the interval specification as accepted by
+         * {@link SimpleInterval#SimpleInterval(String) SimpleInterval(String)}.
+         * @param specLocation where the user indicated the excluded interval.
+         * @throws UserException.BadInput if {@code specString} is not a valid interval specification.
+         * @throws IllegalArgumentException if either {@code specString} or {@code specLocation} is
+         * {@code null}.
+         */
+        public ExcludedInterval(final String specString, final String specLocation) {
+            this.specLocation = Utils.nonNull(specLocation);
+            this.specString = Utils.nonNull(specString);
+            try {
+                this.interval = new SimpleInterval(specString);
+            } catch (final IllegalArgumentException ex) {
+                throw new UserException.BadInput(
+                        String.format("bad format in exclusion interval specification (%s) at %s", specString, specLocation));
+            }
+        }
+
+        @Override
+        public String getContig() {
+            return interval.getContig();
+        }
+
+        @Override
+        public int getStart() {
+            return interval.getStart();
+        }
+
+        @Override
+        public int getEnd() {
+            return interval.getEnd();
+        }
+
+        public String reasonToFilter(final Target target) {
+            return (interval.overlaps(target)) ?
+                    String.format("overlaps with excluded interval (%s) provided by the user (%s)", specString, specLocation) : null;
+        }
+    }
+
+    /**
+     * Evaluates targets against the excluded intervals list
+     * provided by the user through the argument {@link #excludedIntervals}.
+     */
+    private final class ExcludedTargetList implements TargetFilterPredicate {
+
+        private static final String COMMENT_PREFIX = "#";
+
+        private static final String COMMAND_LINE_SPEC_LOCATION = "command-line argument";
+
+        private final IntervalsSkipList<ExcludedInterval> excludedIntervals;
+
+        /**
+         * Composes a exclusion predicate.
+         * @param exclusionSpecArgs the exclusion spec list provided by the user.
+         */
+        private ExcludedTargetList(final List<String> exclusionSpecArgs) {
+            final List<ExcludedInterval> exclusionObjects =
+                    new ArrayList<>(Math.max(10, exclusionSpecArgs.size()));
+            for (final String specStringOrFile : exclusionSpecArgs) {
+                final File asFile = new File(specStringOrFile);
+                if (asFile.canRead() && asFile.isFile()) {
+                    exclusionObjects.addAll(readExcludedIntervalsFromFile(asFile));
+                } else {
+                    exclusionObjects.add(new ExcludedInterval(specStringOrFile, COMMAND_LINE_SPEC_LOCATION));
+                }
+            }
+            excludedIntervals = new IntervalsSkipList<>(exclusionObjects);
+        }
+
+        /**
+         * Reads the exclusion specs enclosed in a list file.
+         * @param file the file.
+         * @return never {@code null}, perhaps empty.
+         */
+        private Collection<? extends ExcludedInterval> readExcludedIntervalsFromFile(final File file) {
+            final List<ExcludedInterval> result = new ArrayList<>();
+            try (final BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                int lineNumber = 0;
+                while ((line = reader.readLine()) != null) {
+                    lineNumber++;
+                    final String trimmedLine = line.trim();
+                    if (!trimmedLine.startsWith(COMMENT_PREFIX) && !trimmedLine.isEmpty()) {
+                        result.add(new ExcludedInterval(trimmedLine, String.format("%s line %d", file.getPath(), lineNumber)));
+                    }
+                }
+            } catch (final IOException ex) {
+                throw new UserException.CouldNotReadInputFile(file, ex);
+            }
+            return result;
+        }
+
+        @Override
+        public TargetFilter getFilter() {
+            return TargetFilter.ExcludedInterval;
+        }
+
+        @Override
+        public String reasonToFilter(final Target target) {
+            return excludedIntervals.getOverlapping(target.getInterval()).stream()
+                    .map(ei -> ei.reasonToFilter(target))
+                    .findFirst().orElse(null);
+        }
+
+        @Override
+        public boolean test(final Target target) {
+            return excludedIntervals.getOverlapping(target.getInterval()).isEmpty();
+        }
+    }
+
+    /**
      * Filter for extreme target coverage mean across samples.
      */
-    private class ExtremeCoverageMean extends DoubleAnnotationBasedFilterPredicate {
+    private final class ExtremeCoverageMean extends DoubleAnnotationBasedFilterPredicate {
 
         @Override
         TargetAnnotation inputAnnotation() {
@@ -359,7 +523,7 @@ public class FilterTargets extends CommandLineProgram {
     /**
      * Extreme coverage variance across sample target filter predicate.
      */
-    private class ExtremeCoverageVariance extends DoubleAnnotationBasedFilterPredicate {
+    private final class ExtremeCoverageVariance extends DoubleAnnotationBasedFilterPredicate {
 
         @Override
         TargetAnnotation inputAnnotation() {
@@ -411,7 +575,7 @@ public class FilterTargets extends CommandLineProgram {
     /**
      * Extreme target repeat fraction filter predicate.
      */
-    private class ExtremeTargetRepeatContent extends DoubleAnnotationBasedFilterPredicate {
+    private final class ExtremeTargetRepeatContent extends DoubleAnnotationBasedFilterPredicate {
 
         @Override
         public TargetFilter getFilter() {
@@ -437,7 +601,7 @@ public class FilterTargets extends CommandLineProgram {
     /**
      * Extreme GC Content filter predicate.
      */
-    private class ExtremeTargetGCContent extends DoubleAnnotationBasedFilterPredicate {
+    private final class ExtremeTargetGCContent extends DoubleAnnotationBasedFilterPredicate {
 
         @Override
         public TargetFilter getFilter() {
@@ -464,7 +628,7 @@ public class FilterTargets extends CommandLineProgram {
      * Filters targets that are too small as per
      * the {@link #minimumTargetSize} user argument.
      */
-    private class ExtremeTargetSize implements TargetFilterPredicate {
+    private final class ExtremeTargetSize implements TargetFilterPredicate {
 
         /**
          * Creates the filter.
@@ -495,7 +659,7 @@ public class FilterTargets extends CommandLineProgram {
      * Keeps counters on how many targets have failed each filter.
      * </p>
      */
-    private class TargetRejectWriter implements  AutoCloseable {
+    private final class TargetRejectWriter implements  AutoCloseable {
 
         /**
          * Reference to the underlying reason table file writer.
