@@ -143,8 +143,8 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
 
     @Test
     public void testReadFromFileAndHDFS() throws Exception {
-        final File bam = new File( getToolTestDataDir(), "hdfs_file_test.bam");
-        final File bai = new File( getToolTestDataDir(), "hdfs_file_test.bai");
+        final File bam = getTestFile("hdfs_file_test.bam");
+        final File bai = getTestFile("hdfs_file_test.bai");
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path bamPath = new Path(workingDirectory,"hdfs.bam");

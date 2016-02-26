@@ -22,7 +22,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         File outputFile = createTempFile("flagStatTest", ".txt");
 
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput(new File(getToolTestDataDir(), "flag_stat.bam"));
+        args.addInput(getTestFile("flag_stat.bam"));
         args.addOutput(outputFile);
 
         this.runCommandLine(args.getArgsArray());
@@ -35,7 +35,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
     public void flagStatSparkLocalWithBigInterval() throws IOException {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.addInput( new File(getToolTestDataDir(), "flag_stat.bam"));
+        args.addInput(getTestFile("flag_stat.bam"));
         args.add("-L"); args.add("chr1");
         args.add("-L"); args.add("chr2");
         args.add("-L"); args.add("chr3");
@@ -58,7 +58,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
     public void flagStatSparkLocalWithSmallInterval() throws IOException {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
-        args.addInput(  new File(getToolTestDataDir(), "flag_stat.bam"));
+        args.addInput(getTestFile("flag_stat.bam"));
         args.add("-L chr7:1-100 -XL chr7:2-100");
         File outputFile = createTempFile("flagStatTest.chr1_1", ".txt");
         args.addOutput(outputFile);
@@ -73,7 +73,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testNoNPRWhenOutputIsUnspecified(){
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.addInput(new File(getToolTestDataDir(), "flag_stat.bam"));
+        args.addInput(getTestFile("flag_stat.bam"));
         this.runCommandLine(args.getArgsArray());
     }
 }

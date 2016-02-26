@@ -321,7 +321,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final File dbSNPFile= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>("dbsnp", Collections.emptyMap(), dbSNPFile);
 
-        final File fredFile = new File(getToolTestDataDir(), "one_entry_source.vcf");
+        final File fredFile = getTestFile("one_entry_source.vcf");
         final String featureSourceName = "fred";
         final FeatureInput<VariantContext> fredInput = new FeatureInput<>(featureSourceName, Collections.emptyMap(), fredFile);
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
@@ -369,7 +369,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final File dbSNPFile = new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
         final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(VCFConstants.DBSNP_KEY, Collections.emptyMap(), dbSNPFile);
 
-        final File fredFile = new File(getToolTestDataDir(), "one_entry_source.vcf");
+        final File fredFile = getTestFile("one_entry_source.vcf");
         final FeatureInput<VariantContext> fredInput = new FeatureInput<>(VCFConstants.DBSNP_KEY, Collections.emptyMap(), fredFile);
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 

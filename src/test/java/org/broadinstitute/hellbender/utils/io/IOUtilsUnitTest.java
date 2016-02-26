@@ -152,4 +152,23 @@ public final class IOUtilsUnitTest extends BaseTest {
         anotherFile.createNewFile();
     }
 
+    @DataProvider(name = "extensionsToReplace")
+    public Object[][] getExtensionsToReplace(){
+        return new Object[][] {
+                {"file.old", "file.new"},
+                {"file.something.old", "file.something.new"},
+                {"src/test.something/file", "src/test.something/file.new"},
+                {"/.src.folder/some/thing/.secret/file.old", "/.src.folder/some/thing/.secret/file.new" }
+        };
+    }
+
+    @Test(dataProvider = "extensionsToReplace")
+    public void testReplaceExtension(String input, String expected){
+        Assert.assertEquals(IOUtils.replaceExtension(input, "new"), expected);
+        Assert.assertEquals(IOUtils.replaceExtension(input, "new"), IOUtils.replaceExtension(input,"..new"));
+        Assert.assertEquals(IOUtils.replaceExtension(new File(input), "new"), new File(expected));
+    }
+
+
+
 }

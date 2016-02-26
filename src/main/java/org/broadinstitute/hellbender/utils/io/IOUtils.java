@@ -468,6 +468,22 @@ public final class IOUtils {
         }
     }
 
+
+    /**
+     * @param extension a file extension, may include 0 or more leading dots which will be replaced with a single dot
+     * @return replace the final extension on a path with the given extension
+     */
+    public static String replaceExtension(String path, String extension){
+        Utils.nonNull(path);
+        Utils.nonNull(extension);
+        final String extensionNoLeadingDot = StringUtils.stripStart(extension, ".");
+        return FilenameUtils.removeExtension(path) + '.' + extensionNoLeadingDot;
+    }
+
+    public static File replaceExtension(File file, String extension){
+        return new File(replaceExtension(file.getPath(), extension));
+    }
+
     /**
      * Schedule a file or directory to be deleted on jvm exit.
      *

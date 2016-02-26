@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender;
 import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.logging.BunnyLog;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 
 import java.io.File;
@@ -60,15 +61,16 @@ public abstract class CommandLineProgramTest extends BaseTest {
         return argsWithVerbosity;
     }
 
-    public String[] makeCommandLineArgs(final String[] args) {
-        return makeCommandLineArgs(Arrays.asList(args));
-    }
-
     public Object runCommandLine(final List<String> args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
     }
 
     public Object runCommandLine(final String[] args) {
-        return new Main().instanceMain(makeCommandLineArgs(args));
+        return runCommandLine(Arrays.asList(args));
     }
+
+    public Object runCommandLine(final ArgumentsBuilder args) {
+        return runCommandLine(args.getArgsList());
+    }
+
 }
