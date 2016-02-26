@@ -203,7 +203,7 @@ public final class ReadFilterLibraryUnitTest {
     }
 
     @Test
-    public void failsValidAlignmentEndReadConsumesZeroRefBases() {
+    public void passesValidAlignmentEndReadConsumesZeroRefBases() {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
 
@@ -211,7 +211,7 @@ public final class ReadFilterLibraryUnitTest {
         read.setCigar("60S30I11S");
         Assert.assertEquals(read.getCigar().getReferenceLength(), 0, "read should consume no reference bases");
 
-        Assert.assertFalse(VALID_ALIGNMENT_END.test(read), "Read consuming no reference bases should have failed VALID_ALIGNMENT_END");
+        Assert.assertTrue(VALID_ALIGNMENT_END.test(read), "Read consuming no reference bases should have passed VALID_ALIGNMENT_END");
     }
 
     @Test

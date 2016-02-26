@@ -2,10 +2,13 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -122,5 +125,20 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
                 0,
                 UserException.CommandLineException.class);
         spec.executeTest("testPRWithConflictingArguments_qqAndSQQ", this);
+    }
+
+    @Test
+    public void testOverfiltering() throws IOException {
+        final File zeroRefBasesReadBam = new File(resourceDir, "NA12878.oq.read_consumes_zero_ref_bases.bam");
+        final File outFile = BaseTest.createTempFile("testReadThatConsumesNoReferenceBases", ".bam");
+        final String[] args = new String[] {
+                "--input", zeroRefBasesReadBam.getAbsolutePath(),
+                "--bqsr_recal_file", resourceDir + "NA12878.oq.gatk4.recal.gz",
+                "--useOriginalQualities",
+                "--output", outFile.getAbsolutePath()
+        };
+        runCommandLine(args);
+        //The expected output is actually the same as inputs for this read
+        SamAssertionUtils.assertSamsEqual(outFile, zeroRefBasesReadBam);
     }
 }

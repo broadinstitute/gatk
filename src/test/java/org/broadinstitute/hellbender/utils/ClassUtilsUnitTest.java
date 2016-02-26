@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.utils;
 
 import com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.tools.ApplyBQSR;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.bqsr.ApplyBQSR;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;

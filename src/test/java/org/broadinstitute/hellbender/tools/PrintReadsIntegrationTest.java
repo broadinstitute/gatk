@@ -8,6 +8,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
@@ -87,7 +88,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
     }
 
     @Test
-    public void testReadThatConsumesNoReferenceBases() {
+    public void testReadThatConsumesNoReferenceBases() throws IOException {
         final File zeroRefBasesReadBam = new File(TEST_DATA_DIR, "read_consumes_zero_ref_bases.bam");
         final File outFile = BaseTest.createTempFile("testReadThatConsumesNoReferenceBases", ".bam");
         final String[] args = new String[] {
@@ -96,5 +97,8 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         };
         // Make sure no exception is thrown given an input containing a read that consumes no reference bases
         runCommandLine(args);
+
+        //Make sure we print the read, ie not lose it.
+        SamAssertionUtils.assertSamsEqual(outFile, zeroRefBasesReadBam);
     }
 }
