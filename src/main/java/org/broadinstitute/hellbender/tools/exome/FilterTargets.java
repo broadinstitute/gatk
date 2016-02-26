@@ -59,7 +59,7 @@ public class FilterTargets extends CommandLineProgram {
      */
     public enum TargetFilter {
         ExtremeTargetSize, ExtremeGCContent, ExtremeRepeatContent,
-        ExtremeCoverageMean, ExtremeCoverageVariance;
+        ExtremeCoverageMean, ExtremeCoverageVariance, ExtremeCoverageInterquartileRange;
     }
 
     public static final int DEFAULT_MINIMUM_TARGET_SIZE = 0;
@@ -71,6 +71,7 @@ public class FilterTargets extends CommandLineProgram {
     public static final double DEFAULT_MINIMUM_COVERAGE_MEAN = Double.NEGATIVE_INFINITY;
     public static final double DEFAULT_MAXIMUM_COVERAGE_VARIANCE = Double.POSITIVE_INFINITY;
     public static final double DEFAULT_MINIMUM_COVERAGE_VARIANCE = Double.NEGATIVE_INFINITY;
+    public static final double DEFAULT_MAXIMUM_COVERAGE_INTERQUARTILE_RANGE = Double.POSITIVE_INFINITY;
 
     public static final String MINIMUM_TARGET_SIZE_FULL_NAME = "minimumSize";
     public static final String MINIMUM_TARGET_SIZE_SHORT_NAME = "minSize";
@@ -90,6 +91,8 @@ public class FilterTargets extends CommandLineProgram {
     public static final String MINIMUM_COVERAGE_VARIANCE_SHORT_NAME = "minCovVar";
     public static final String MAXIMUM_COVERAGE_VARIANCE_FULL_NAME = "maximumCoverageVariance";
     public static final String MAXIMUM_COVERAGE_VARIANCE_SHORT_NAME = "maxCovVar";
+    public static final String MAXIMUM_COVERAGE_INTERQUARTILE_RANGE_FULL_NAME = "maximumCoverageIQR";
+    public static final String MAXIMUM_COVERAGE_INTERQUARTILE_RANGE_SHORT_NAME = "maxCovIQR";
 
     public static final String REJECT_OUTPUT_FILE_FULL_NAME = "rejectedOutputFile";
     public static final String REJECT_OUTPUT_FILE_SHORT_NAME = "rejected";
@@ -166,6 +169,14 @@ public class FilterTargets extends CommandLineProgram {
     )
     protected double maximumCoverageVariance = DEFAULT_MAXIMUM_COVERAGE_VARIANCE;
 
+    @Argument(
+            doc = "Maximum target coverage interquartile range; targets with a larger interquartile range with be discarded",
+            fullName = MAXIMUM_COVERAGE_INTERQUARTILE_RANGE_FULL_NAME,
+            shortName = MAXIMUM_COVERAGE_INTERQUARTILE_RANGE_SHORT_NAME,
+            optional = true
+    )
+    protected double maximumCoverageInterquartileRange = DEFAULT_MAXIMUM_COVERAGE_INTERQUARTILE_RANGE;
+
 
     @ArgumentCollection
     protected TargetArgumentCollection targetArguments
@@ -233,6 +244,9 @@ public class FilterTargets extends CommandLineProgram {
         if (maximumCoverageVariance < Double.POSITIVE_INFINITY ||
                 minimumCoverageVariance > Double.NEGATIVE_INFINITY) {
             result.add(new ExtremeCoverageVariance());
+        }
+        if (maximumCoverageInterquartileRange < Double.POSITIVE_INFINITY) {
+            result.add(new ExtremeCoverageInterquartileRange());
         }
         return result;
     }
@@ -365,6 +379,32 @@ public class FilterTargets extends CommandLineProgram {
         @Override
         public TargetFilter getFilter() {
             return TargetFilter.ExtremeCoverageVariance;
+        }
+    }
+
+    /**
+     * Extreme coverage variance across sample target filter predicate.
+     */
+    private class ExtremeCoverageInterquartileRange extends DoubleAnnotationBasedFilterPredicate {
+
+        @Override
+        TargetAnnotation inputAnnotation() {
+            return TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE;
+        }
+
+        @Override
+        boolean test(final double value) {
+            return value <= maximumCoverageInterquartileRange;
+        }
+
+        @Override
+        String reasonToFilter(final double value) {
+            return String.format("the coverage interquartile range %g is greater than the maximum %g", value, maximumCoverageInterquartileRange);
+        }
+
+        @Override
+        public TargetFilter getFilter() {
+            return TargetFilter.ExtremeCoverageInterquartileRange;
         }
     }
 

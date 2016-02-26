@@ -116,9 +116,9 @@ public final class CalculateCoverageStats extends CommandLineProgram {
 
     @Override
     public Object doWork() {
-        try (final ReadCountsReader readers = new ReadCountsReader(inputFile)) {
+        try (final ReadCountsReader reader = new ReadCountsReader(inputFile)) {
             onTraversalStart();
-            readers.stream().forEach(this::processCoverage);
+            reader.stream().forEach(this::processCoverage);
             onTraversalDone();
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(inputFile, ex);

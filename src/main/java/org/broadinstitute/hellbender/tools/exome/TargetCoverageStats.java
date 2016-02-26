@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
@@ -20,6 +21,11 @@ public final class TargetCoverageStats {
     public static final String VARIANCE_COLUMN_NAME = TargetTableColumns.COVERAGE_VARIANCE.toString();
 
     /**
+     * Name of the column for the interquartile range.
+     */
+    public static final String INTERQUARTILE_RANGE_COLUMN_NAME = TargetTableColumns.COVERAGE_INTERQUARTILE_RANGE.toString();
+
+    /**
      * Target the coverage statistics makes reference to.
      * <p>
      * This is never {@code null}.
@@ -37,17 +43,24 @@ public final class TargetCoverageStats {
      */
     public final double variance;
 
+    /**
+     * The coverage interquartile range for {@link #target} across samples.
+     */
+    public final double interquartileRange;
+
 
     /**
      * Creates a new instance given its member values.
      * @param target the target this statistics make reference to.
      * @param mean the mean across samples.
      * @param variance the sample variance across samples.
+     * @param interquartileRange the interquartile range across samples
      */
-    TargetCoverageStats(final Target target, final double mean, final double variance) {
+    TargetCoverageStats(final Target target, final double mean, final double variance, final double interquartileRange) {
         this.target = Utils.nonNull(target, "the target cannot be null");
         this.mean = mean;
         this.variance = variance;
+        this.interquartileRange = interquartileRange;
     }
 
     /**
@@ -70,6 +83,7 @@ public final class TargetCoverageStats {
         final double squaresMean = squaresSum / size;
         final double populationVariance = squaresMean - (mean * mean);
         final double sampleVariance = size == 1 ? 0 : populationVariance * size / (size - 1);
-        return new TargetCoverageStats(target, mean, sampleVariance);
+        final double interquartileRange = GATKProtectedMathUtils.interquartileRange(coverage);
+        return new TargetCoverageStats(target, mean, sampleVariance, interquartileRange);
     }
 }

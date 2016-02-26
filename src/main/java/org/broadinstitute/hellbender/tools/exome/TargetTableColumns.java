@@ -20,7 +20,8 @@ public enum TargetTableColumns {
     GC_CONTENT("GC_CONTENT", false),
     REPEAT_FRACTION("REPEAT_FRACTION", false),
     MEAN_COVERAGE("MEAN_COVERAGE", false),
-    COVERAGE_VARIANCE("COVERAGE_VARIANCE", false);
+    COVERAGE_VARIANCE("COVERAGE_VARIANCE", false),
+    COVERAGE_INTERQUARTILE_RANGE("COVERAGE_INTERQUARTILE_RANGE", false);
 
     private final String columnName;  //store the column names
 

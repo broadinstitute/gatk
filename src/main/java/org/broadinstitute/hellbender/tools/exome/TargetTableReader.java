@@ -36,7 +36,6 @@ import java.util.stream.Stream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class TargetTableReader extends TableReader<Target> {
-
     private TargetTableAnnotationManager annotationCollection;
 
     public TargetTableReader(final Reader reader) throws IOException {

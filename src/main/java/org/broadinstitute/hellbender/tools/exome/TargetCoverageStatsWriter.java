@@ -72,11 +72,13 @@ public final class TargetCoverageStatsWriter extends TableWriter<TargetCoverageS
                         TargetTableColumns.END,
                         TargetTableColumns.NAME,
                         TargetCoverageStats.MEAN_COLUMN_NAME,
-                        TargetCoverageStats.VARIANCE_COLUMN_NAME)
+                        TargetCoverageStats.VARIANCE_COLUMN_NAME,
+                        TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME)
                : new TableColumnCollection(
                         TargetTableColumns.NAME,
                         TargetCoverageStats.MEAN_COLUMN_NAME,
-                        TargetCoverageStats.VARIANCE_COLUMN_NAME));
+                        TargetCoverageStats.VARIANCE_COLUMN_NAME,
+                        TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME));
         this.outputIntervals = outputIntervals;
     }
 
@@ -91,6 +93,7 @@ public final class TargetCoverageStatsWriter extends TableWriter<TargetCoverageS
         }
         dataLine.append(record.target.getName())
                 .append(record.mean)
-                .append(record.variance);
+                .append(record.variance)
+                .append(record.interquartileRange);
     }
 }

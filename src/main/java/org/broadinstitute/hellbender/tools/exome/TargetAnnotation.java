@@ -35,7 +35,12 @@ public enum TargetAnnotation {
     /**
      * The coverage variance across samples.
      */
-    COVERAGE_VARIANCE(TargetTableColumns.COVERAGE_VARIANCE);
+    COVERAGE_VARIANCE(TargetTableColumns.COVERAGE_VARIANCE),
+
+    /**
+     * The coverage interquartile range across samples.
+     */
+    COVERAGE_INTERQUARTILE_RANGE(TargetTableColumns.COVERAGE_INTERQUARTILE_RANGE);
 
     /**
      * Reference to the corresponding column in the targets table.

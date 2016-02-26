@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+
 /**
  * Extra MathUtils that should be moved to gatk-public
  * Created by davidben on 1/22/16.
@@ -25,5 +27,11 @@ public class GATKProtectedMathUtils {
             }
         }
         return max + Math.log(sum);
+    }
+
+    public static double interquartileRange(final double ... values) {
+        final Percentile percentile = new Percentile();
+        percentile.setData(values);
+        return percentile.evaluate(75.0) - percentile.evaluate(25.0);
     }
 }
