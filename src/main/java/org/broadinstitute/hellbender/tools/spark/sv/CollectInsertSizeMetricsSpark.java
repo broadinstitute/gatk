@@ -222,7 +222,7 @@ public final class CollectInsertSizeMetricsSpark extends GATKSparkTool {
             }*/
 
         final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(new Resource(CollectInsertSizeMetricsSpark.R_SCRIPT, CollectInsertSizeMetrics.class));
+        executor.addScript(new Resource(CollectInsertSizeMetricsSpark.R_SCRIPT, CollectInsertSizeMetricsSpark.class));
         executor.addArgs(OUTPUT,                                // text-based metrics file
                          histogramPlotPDF.getAbsolutePath(),    // PDF graphics file
                          inputFileName);                        // input bam file
