@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
+import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -140,5 +142,28 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
         //The expected output is actually the same as inputs for this read
         SamAssertionUtils.assertSamsEqual(outFile, zeroRefBasesReadBam);
+    }
+
+    @Test
+    public void testAddingPG() throws IOException {
+        final File inFile = new File(resourceDir, "NA12878.oq.read_consumes_zero_ref_bases.bam");
+        final File outFile = BaseTest.createTempFile("testAddingPG", ".bam");
+        final String[] args = new String[] {
+                "--input", inFile.getAbsolutePath(),
+                "--bqsr_recal_file", resourceDir + "NA12878.oq.gatk4.recal.gz",
+                "--useOriginalQualities",
+                "--addOutputSAMProgramRecord",
+                "--output", outFile.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        //The expected output is actually the same as inputs for this read (this ignores the PGs header)
+        SamAssertionUtils.assertSamsEqual(outFile, inFile);
+
+        //input has no GATK ApplyBQSR in headers
+        Assert.assertNull(SamReaderFactory.makeDefault().open(inFile).getFileHeader().getProgramRecord("GATK ApplyBQSR"));
+
+        //output has a GATK ApplyBQSR in headers
+        Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK ApplyBQSR"));
     }
 }

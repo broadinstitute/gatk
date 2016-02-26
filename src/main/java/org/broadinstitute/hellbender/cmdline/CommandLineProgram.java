@@ -10,6 +10,7 @@ import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -71,6 +72,7 @@ public abstract class CommandLineProgram {
     /**
      * Perform initialization/setup after command-line argument parsing but before doWork() is invoked.
      * Default implementation does nothing.
+     * Subclasses can override to perform initialization.
      */
     protected void onStartup() {}
 
@@ -84,6 +86,7 @@ public abstract class CommandLineProgram {
     /**
      * Perform cleanup after doWork() is finished. Always executes even if an exception is thrown during the run.
      * Default implementation does nothing.
+     * Subclasses can override to perform cleanup.
      */
     protected void onShutdown() {}
 
@@ -139,7 +142,7 @@ public abstract class CommandLineProgram {
                         "; Version: " + commandLineParser.getVersion() +
                         " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
-            catch (Exception e) { /* Unpossible! */ }
+            catch (final Exception e) { /* Unpossible! */ }
         }
 
         try {
@@ -210,31 +213,34 @@ public abstract class CommandLineProgram {
         return file;
     }
 
-    public String getStandardUsagePreamble() {
-        return standardUsagePreamble;
-    }
-
-    public CommandLineParser getCommandLineParser() {
-        return commandLineParser;
-    }
-
     /**
-     * @return Version stored in the manifest of the jarfile.
+     * Returns the version of this tool. It is the version stored in the manifest of the jarfile.
      */
-    public String getVersion() {
+    public final String getVersion() {
         return commandLineParser == null ? "SNAPSHOT" : commandLineParser.getVersion();
     }
 
-    public String getCommandLine() {
+    /**
+     * Returns the commandline used to run this program.
+     */
+    public final String getCommandLine() {
         return commandLine;
     }
 
-    public void setDefaultHeaders(final List<Header> headers) {
+    /**
+     * Replaces the set of default metrics headers by the given argument.
+     * The given list is copied.
+     */
+    public final void setDefaultHeaders(final List<Header> headers) {
+        Utils.nonNull(headers);
         this.defaultHeaders.clear();
         this.defaultHeaders.addAll(headers);
     }
 
-    public List<Header> getDefaultHeaders() {
+    /**
+     * Returns the (live) list of default metrics headers used by this tool.
+     */
+    public final List<Header> getDefaultHeaders() {
         return this.defaultHeaders;
     }
 

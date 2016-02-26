@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.cram.build.CramIO;
 import org.apache.commons.io.FileUtils;
+import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -136,5 +137,29 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
         //Make sure we print the read, ie not lose it.
         SamAssertionUtils.assertSamsEqual(outFile, zeroRefBasesReadBam);
+    }
+
+    @Test
+    public void testNoConflictPG() throws IOException {
+        final File inFile = new File(TEST_DATA_DIR, "print_reads_withPG.sam");
+        final File outFile = BaseTest.createTempFile("testNoConflictRG", ".sam");
+        final String[] args = new String[] {
+                "--input" , inFile.getAbsolutePath(),
+                "--addOutputSAMProgramRecord",
+                "--output", outFile.getAbsolutePath()
+        };
+        runCommandLine(args);
+
+        //Make sure contents are the same
+        SamAssertionUtils.assertSamsEqual(outFile, inFile);
+
+        //input has GATK PrintReads not NOT GATK PrintReads.1 in headers
+        Assert.assertNotNull(SamReaderFactory.makeDefault().open(inFile).getFileHeader().getProgramRecord("GATK PrintReads"));
+        Assert.assertNull(SamReaderFactory.makeDefault().open(inFile).getFileHeader().getProgramRecord("GATK PrintReads.1"));
+
+        //output has both GATK PrintReads and GATK PrintReads.1 in headers
+        Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK PrintReads"));
+        Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK PrintReads.1"));
+
     }
 }
