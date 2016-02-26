@@ -35,8 +35,10 @@ public final class FlagStatSpark extends GATKSparkTool {
         final FlagStatus result = reads.aggregate(new FlagStatus(), FlagStatus::add, FlagStatus::merge);
         System.out.println(result);
 
-        try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {
-            ps.print(result);
+        if(out != null ) {
+            try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {
+                ps.print(result);
+            }
         }
     }
 }

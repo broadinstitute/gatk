@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.utils.test;
 
 import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,9 +51,45 @@ public final class ArgumentsBuilder {
     }
 
     /**
+     * add an input file argument {@link StandardArgumentDefinitions#INPUT_LONG_NAME}
+     */
+    public void addInput(File input) {
+        addFileArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
+    }
+
+    /**
+     * add an output file argument using {@link StandardArgumentDefinitions#OUTPUT_LONG_NAME}
+     */
+    public void addOutput(File output) {
+        addFileArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, output);
+    }
+
+    /**
+     * add a reference file argument using {@link StandardArgumentDefinitions#REFERENCE_LONG_NAME}
+     */
+    public void addReference(File reference){
+        addFileArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+    }
+
+    /**
+     * add a vcf file argument using {@link StandardArgumentDefinitions#VARIANT_LONG_NAME}
+     */
+    public void addVCF(File fileIn) {
+        addFileArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, fileIn);
+    }
+
+    /**
+     * add an argument with a file as its parameter
+     */
+    public void addFileArgument(String argumentName, File file){
+        Utils.nonNull(file);
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        add(file.getAbsolutePath());
+    }
+
+    /**
      * Add any object's string representation to the arguments list
-     * @param arg
-     * @return
      */
     public ArgumentsBuilder add(Object arg) {
         this.args.add(arg.toString());
@@ -73,6 +112,7 @@ public final class ArgumentsBuilder {
         return this.args.toArray(new String[this.args.size()]);
     }
 
+
     /**
      * get the arguments as a single String
      * @return
@@ -80,6 +120,4 @@ public final class ArgumentsBuilder {
     public String getString() {
         return String.join(" ", args);
     }
-
-
 }

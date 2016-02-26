@@ -12,6 +12,8 @@ import java.io.File;
 
 public final class CountVariantsSparkIntegrationTest extends CommandLineProgramTest {
 
+    public static final File COUNT_VARIANTS_VCF = new File(getTestDataDir(), "count_variants.vcf");
+
     @Override
     public String getTestedClassName() {
         return CountVariantsSpark.class.getSimpleName();
@@ -21,8 +23,8 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
     public void test(final File fileIn, final long expected) throws Exception {
         final File outputTxt = createTempFile("count_variants", ".txt");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.VARIANT_LONG_NAME); args.add(fileIn);
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME); args.add(outputTxt.getCanonicalPath());
+        args.addVCF(fileIn);
+        args.addOutput(outputTxt);
         this.runCommandLine(args.getArgsArray());
 
         final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
@@ -32,9 +34,16 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
     @DataProvider(name="filenames")
     public Object[][] filenames() {
         return new Object[][]{
-                {new File(getTestDataDir(), "count_variants.vcf"), 26L},
+                {COUNT_VARIANTS_VCF, 26L},
 //                {new File(getTestDataDir(), "count_variants.blockgz.gz"), 26L}, //disabled because of https://github.com/HadoopGenomics/Hadoop-BAM/issues/68
                 {new File(dbsnp_138_b37_1_65M_vcf), 1375319L},
         };
+    }
+
+    @Test
+    public void testNoNPRWhenOutputIsUnspecified(){
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addVCF(COUNT_VARIANTS_VCF);
+        this.runCommandLine(args.getArgsArray());
     }
 }

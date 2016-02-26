@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
@@ -37,19 +36,15 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         final File outputTxt = createTempFile("count_reads", ".txt");
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--input");
-        args.add(ORIG_BAM.getAbsolutePath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outputTxt.getCanonicalPath());
+        args.addInput(ORIG_BAM);
+        args.addOutput(outputTxt);
         if (null != referenceName) {
             final File REF = new File(getTestDataDir(), referenceName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            args.addReference(REF);
         }
         this.runCommandLine(args.getArgsArray());
         final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
         Assert.assertEquals((long)Long.valueOf(readIn), expectedCount);
-
     }
 
     @Test
@@ -57,8 +52,8 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         final File unsortedBam = new File(getTestDataDir(), "count_reads.bam");
         final File outputTxt = createTempFile("count_reads", ".txt");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME); args.add(unsortedBam.getCanonicalPath());
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME); args.add(outputTxt.getCanonicalPath());
+        args.addInput(unsortedBam);
+        args.addOutput(outputTxt);
         this.runCommandLine(args.getArgsArray());
 
         final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
@@ -89,15 +84,21 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         final File ORIG_BAM = new File(getTestDataDir(), "count_reads_sorted.bam");
         final File outputFile = createTempFile("count_reads_spark","count");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--"+ StandardArgumentDefinitions.INPUT_LONG_NAME); args.add(ORIG_BAM.getAbsolutePath());
+        args.addInput(ORIG_BAM);
         args.add(interval_args);
-        args.add("--"+StandardArgumentDefinitions.OUTPUT_LONG_NAME); args.add(outputFile);
+        args.addOutput(outputFile);
 
         this.runCommandLine(args.getArgsArray());
 
         try(XReadLines output = new XReadLines(outputFile)){
             Assert.assertEquals((long)Long.valueOf(output.next()), expectedCount);
         }
+    }
 
+    @Test
+    public void testNoNPRWhenOutputIsUnspecified(){
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addInput(new File(getTestDataDir(), "count_reads.bam"));
+        this.runCommandLine(args.getArgsArray());
     }
 }
