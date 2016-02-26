@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -25,22 +26,37 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
 
     @Argument(doc = "uri for the output file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            optional = true)
+            optional = false)
     public String out;
+
+    @Argument(doc = "bin size",
+            shortName = "binSize", fullName = "binSize",
+            optional = false)
+    public Integer binSize;
 
     @Override
     public boolean requiresReads() { return true; }
 
     @Override
+    public ReadFilter makeReadFilter() {
+        return super.makeReadFilter()
+                .and(read -> !read.failsVendorQualityCheck())
+                .and(GATKRead::isFirstOfPair)
+                .and(read -> !read.isDuplicate())
+                .and(read -> !read.isSecondaryAlignment())
+                .and(read -> !read.isSupplementaryAlignment())
+                .and(read -> read.hasAttribute("BX"));
+    }
+
+    @Override
     protected void runTool(final JavaSparkContext ctx) {
+
         final JavaRDD<GATKRead> reads = getReads();
 
-        int binSize = 10000;
-
-        final JavaPairRDD<SimpleInterval, Tuple2<Integer, Set<String>>> intervalCounts =
+        final JavaPairRDD<SimpleInterval, Tuple2<Integer, Integer>> intervalCounts =
                 reads.mapToPair(read -> new Tuple2<>(new SimpleInterval(read.getContig(), read.getStart() - read.getStart() % binSize, read.getStart() + (binSize - read.getStart() % binSize)), read))
                         .aggregateByKey(
-                                new Tuple2<>(0, new HashSet<>()),
+                                new Tuple2<Integer, Set<String>>(1, new HashSet<>()),
                                 (aggregator, read) -> {
                                     int newCount = aggregator._1 + 1;
                                     Set<String> newBarcodeSet = aggregator._2;
@@ -53,7 +69,8 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
                                     newBarcodeSet.addAll(aggregator2._2);
                                     return new Tuple2<>(newCount, newBarcodeSet);
                                 }
-                        );
+                        )
+                .mapValues(aggregator -> new Tuple2<>(aggregator._1, aggregator._2.size()));
 
         intervalCounts.saveAsTextFile(out);
     }
