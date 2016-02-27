@@ -40,6 +40,7 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
     @Override
     public ReadFilter makeReadFilter() {
         return super.makeReadFilter()
+                .and(read -> !read.isUnmapped())
                 .and(read -> !read.failsVendorQualityCheck())
                 .and(GATKRead::isFirstOfPair)
                 .and(read -> !read.isDuplicate())
@@ -72,6 +73,6 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
                         )
                 .mapValues(aggregator -> new Tuple2<>(aggregator._1, aggregator._2.size()));
 
-        intervalCounts.saveAsTextFile(out);
+        intervalCounts.coalesce(1).saveAsTextFile(out);
     }
 }
