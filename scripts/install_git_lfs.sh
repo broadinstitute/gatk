@@ -21,6 +21,9 @@ GIT_TRACE=1 $GIT_LFS fetch
 echo "checkout"
 GIT_TRACE=1 $GIT_LFS checkout
 
+echo "and pull once again to work around https://github.com/github/git-lfs/issues/904"
+git-lfs/bin/git-lfs pull
+
 echo "ls-files"
 GIT_TRACE=1 $GIT_LFS ls-files
 ls -lah src/test/resources/large/

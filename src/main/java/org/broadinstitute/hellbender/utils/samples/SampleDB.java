@@ -1,17 +1,11 @@
 package org.broadinstitute.hellbender.utils.samples;
 
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMRecord;
-import htsjdk.variant.variantcontext.Genotype;
-
-import org.broadinstitute.hellbender.exceptions.GATKException;
-
 import java.util.*;
 
 /**
  * Simple database for managing samples
  */
-public class SampleDB {
+public final class SampleDB {
     /**
      * This is where Sample objects are stored. Samples are usually accessed by their ID, which is unique, so
      * this is stored as a HashMap.
@@ -73,29 +67,6 @@ public class SampleDB {
         return new HashSet<>(samples.values());
     }
 
-    public Collection<String> getSampleNames() {
-        return Collections.unmodifiableCollection(samples.keySet());
-    }
-
-
-    /**
-     * Takes a collection of sample names and returns their corresponding sample objects
-     * Note that, since a set is returned, if you pass in a list with duplicates names there will not be any duplicates in the returned set
-     * @param sampleNameList Set of sample names
-     * @return Corresponding set of samples
-     */
-    public Set<Sample> getSamples(Collection<String> sampleNameList) {
-        HashSet<Sample> samples = new HashSet<>();
-        for (String name : sampleNameList) {
-            try {
-                samples.add(getSample(name));
-            }
-            catch (Exception e) {
-                throw new GATKException("Could not get sample with the following ID: " + name, e);
-            }
-        }
-        return samples;
-    }
 
     // --------------------------------------------------------------------------------
     //
@@ -151,19 +122,60 @@ public class SampleDB {
     }
 
     /**
-     * Returns children of a given sample.
-     * @param sample
-     * @return All children of a given sample. See note on the efficiency of getFamily() - since this depends on
-     * getFamily() it's also not efficient
+     * Returns all the trios present in the sample database. The strictOneChild parameter determines
+     * whether multiple children of the same parents resolve to multiple trios, or are excluded
+     * @param strictOneChild - exclude pedigrees with >1 child for parental pair
+     * @return - all of the mother+father=child triplets, subject to strictOneChild
      */
-    public Set<Sample> getChildren(Sample sample) {
-        final HashSet<Sample> children = new HashSet<>();
-        for (final Sample familyMember : getFamily(sample.getFamilyID())) {
-            if (getMother(familyMember) == sample || getFather(familyMember) == sample) {
-                children.add(familyMember);
+    public Set<Trio> getTrios(final boolean strictOneChild) {
+        Set<Trio> trioSet = new HashSet<>();
+        for ( final String familyString : getFamilyIDs() ) {
+            final Set<Sample> family = getFamily(familyString);
+            for ( final Sample sample : family) {
+                if ( getParents(sample).size() == 2 ) {
+                    final Trio trio = new Trio(getSample(sample.getMaternalID()), getSample(sample.getPaternalID()), sample);
+                    trioSet.add(trio);
+                }
             }
         }
-        return children;
+
+        if ( strictOneChild ) {
+            trioSet = removeTriosWithSameParents(trioSet);
+        }
+
+        return trioSet;
+    }
+
+    /**
+     * Returns all the trios present in the db. See getTrios(boolean strictOneChild)
+     * @return all the trios present in the samples db.
+     */
+    public final Set<Trio> getTrios() {
+        return getTrios(false);
+    }
+
+    /**
+     * Subsets a set of trios to only those with nonmatching founders. If two (or more) trio objects have
+     * the same mother and father, then both (all) are removed from the returned set.
+     * @param trios - a set of Trio objects
+     * @return those subset of Trio objects in the input set with nonmatching founders
+     */
+    private Set<Trio> removeTriosWithSameParents(final Set<Trio> trios) {
+        final Set<Trio> filteredTrios = new HashSet<>();
+        filteredTrios.addAll(trios);
+        final Set<Trio> triosWithSameParents = new HashSet<>();
+        for ( final Trio referenceTrio : filteredTrios ) {
+            for ( final Trio compareTrio : filteredTrios ) {
+                if ( referenceTrio != compareTrio &&
+                        referenceTrio.getFather().equals(compareTrio.getFather()) &&
+                        referenceTrio.getMother().equals(compareTrio.getMother()) ) {
+                    triosWithSameParents.add(referenceTrio);
+                    triosWithSameParents.add(compareTrio);
+                }
+            }
+        }
+        filteredTrios.removeAll(triosWithSameParents);
+        return filteredTrios;
     }
 
     public Set<String> getFounderIds(){
@@ -201,14 +213,16 @@ public class SampleDB {
      * @param offSpring child of parents to return
      * @return sample objects with relationship parents, if exists, or null
      */
-    public ArrayList<Sample> getParents(Sample offSpring) {
-        ArrayList<Sample> parents = new ArrayList<>(2);
+    public List<Sample> getParents(final Sample offSpring) {
+        final List<Sample> parents = new ArrayList<>(2);
         Sample parent = getMother(offSpring);
-        if (parent != null)
+        if (parent != null) {
             parents.add(parent);
+        }
         parent = getFather(offSpring);
-        if(parent != null)
+        if(parent != null) {
             parents.add(parent);
+        }
         return parents;
     }
 

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.samples;
 
-import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -8,54 +9,51 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.*;
 
-import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
-
 
 public class SampleDBUnitTest extends BaseTest {
     private static SampleDBBuilder builder;
     // all the test sample files are located here
     private File testPED = new File(getToolTestDataDir() +  "testtrio.ped");
 
-    private static final Set<Sample> testPEDSamples = new HashSet<Sample>(Arrays.asList(
+    private static final Set<Sample> testPEDSamples = new HashSet<>(Arrays.asList(
             new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED),
             new Sample("dad", "fam1", null, null, Sex.MALE, Affection.UNAFFECTED),
             new Sample("mom", "fam1", null, null, Sex.FEMALE, Affection.AFFECTED)));
 
-    private static final Set<Sample> testPEDFamilyF2 = new HashSet<Sample>(Arrays.asList(
+    private static final Set<Sample> testPEDFamilyF2 = new HashSet<>(Arrays.asList(
             new Sample("s2", "fam2", "d2", "m2", Sex.FEMALE, Affection.AFFECTED),
             new Sample("d2", "fam2", null, null, Sex.MALE, Affection.UNKNOWN),
             new Sample("m2", "fam2", null, null, Sex.FEMALE, Affection.UNKNOWN)
     ));
 
-    private static final Set<Sample> testPEDFamilyF3 = new HashSet<Sample>(Arrays.asList(
+    private static final Set<Sample> testPEDFamilyF3 = new HashSet<>(Arrays.asList(
             new Sample("s1", "fam3", "d1", "m1", Sex.FEMALE, Affection.AFFECTED),
             new Sample("d1", "fam3", null, null, Sex.MALE, Affection.UNKNOWN),
             new Sample("m1", "fam3", null, null, Sex.FEMALE, Affection.UNKNOWN)
     ));
 
-    private static final Set<Sample> testSAMSamples = new HashSet<Sample>(Arrays.asList(
+    private static final Set<Sample> testSAMSamples = new HashSet<>(Arrays.asList(
             new Sample("kid", null, null, null, Sex.UNKNOWN,   Affection.UNKNOWN),
             new Sample("mom", null, null, null, Sex.UNKNOWN,   Affection.UNKNOWN),
             new Sample("dad", null, null, null, Sex.UNKNOWN,   Affection.UNKNOWN)));
 
-    private static final HashMap<String, Set<Sample>> testGetFamilies = new HashMap<String,Set<Sample>>();
+    private static final Map<String, Set<Sample>> testGetFamilies = new HashMap<>();
     static {
         testGetFamilies.put("fam1", testPEDSamples);
         testGetFamilies.put("fam2", testPEDFamilyF2);
         testGetFamilies.put("fam3", testPEDFamilyF3);
     }
 
-    private static final Set<Sample> testKidsWithParentsFamilies2 = new HashSet<Sample>(Arrays.asList(
+    private static final Set<Sample> testKidsWithParentsFamilies2 = new HashSet<>(Arrays.asList(
             new Sample("kid", "fam1", "dad", "mom", Sex.MALE,   Affection.AFFECTED),
             new Sample("kid3", "fam5", "dad2", "mom2", Sex.MALE,   Affection.AFFECTED),
             new Sample("kid2", "fam5", "dad2", "mom2", Sex.MALE,   Affection.AFFECTED)));
 
-    private static final HashSet<String> testGetPartialFamiliesIds =   new HashSet<String>(Arrays.asList("kid","s1"));
-    private static final HashMap<String, Set<Sample>> testGetPartialFamilies = new HashMap<String,Set<Sample>>();
+    private static final HashSet<String> testGetPartialFamiliesIds = new HashSet<>(Arrays.asList("kid", "s1"));
+    private static final HashMap<String, Set<Sample>> testGetPartialFamilies = new HashMap<>();
     static {
-        testGetPartialFamilies.put("fam1", new HashSet<Sample>(Arrays.asList(new Sample("kid", "fam1", "dad", "mom", Sex.MALE,   Affection.AFFECTED))));
-        testGetPartialFamilies.put("fam3", new HashSet<Sample>(Arrays.asList(new Sample("s1", "fam3", "d1", "m1", Sex.FEMALE, Affection.AFFECTED))));
+        testGetPartialFamilies.put("fam1", new HashSet<>(Arrays.asList(new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED))));
+        testGetPartialFamilies.put("fam3", new HashSet<>(Arrays.asList(new Sample("s1", "fam3", "d1", "m1", Sex.FEMALE, Affection.AFFECTED))));
     }
 
     private static final String testPEDString =
@@ -91,7 +89,7 @@ public class SampleDBUnitTest extends BaseTest {
             "fam1 kid dad   mom   1 2";
 
     private static final Set<Sample> testPEDSamplesAsSet =
-            new HashSet<Sample>(testPEDSamples);
+            new HashSet<>(testPEDSamples);
 
 
     @BeforeMethod
@@ -158,7 +156,7 @@ public class SampleDBUnitTest extends BaseTest {
     public void getFamilyIDs() {
         builder.addSamplesFromPedigreeStrings(Arrays.asList(testPEDMultipleFamilies));
         SampleDB db = builder.getFinalSampleDB();
-        Assert.assertEquals(db.getFamilyIDs(), new TreeSet<String>(Arrays.asList("fam1", "fam2", "fam3")));
+        Assert.assertEquals(db.getFamilyIDs(), new TreeSet<>(Arrays.asList("fam1", "fam2", "fam3")));
     }
 
     @Test()
@@ -190,7 +188,7 @@ public class SampleDBUnitTest extends BaseTest {
         SampleDB db = builder.getFinalSampleDB();
         Map<String, Set<Sample>> families = db.getFamilies();
         Assert.assertEquals(families.size(), 3);
-        Assert.assertEquals(families.keySet(), new TreeSet<String>(Arrays.asList("fam1", "fam2", "fam3")));
+        Assert.assertEquals(families.keySet(), new TreeSet<>(Arrays.asList("fam1", "fam2", "fam3")));
 
         for ( final String famID : families.keySet() ) {
             final Set<Sample> fam = families.get(famID);
@@ -199,5 +197,25 @@ public class SampleDBUnitTest extends BaseTest {
                 Assert.assertEquals(sample.getFamilyID(), famID);
             }
         }
+    }
+
+    @Test
+    public void testGetTrios() throws Exception {
+        builder.addSamplesFromPedigreeStrings(Arrays.asList(testPEDMultipleFamilies));
+        SampleDB db = builder.getFinalSampleDB();
+        final Set<Trio> trios = db.getTrios();
+        Assert.assertEquals(trios.size(), 3);
+    }
+
+    @Test
+    public void testGetTriosMultipleKids() throws Exception {
+        builder.addSamplesFromPedigreeStrings(Arrays.asList(testPEDMultipleFamilies2));
+        SampleDB db = builder.getFinalSampleDB();
+        final Set<Trio> trios = db.getTrios(false);
+        Assert.assertEquals(trios.size(), 3);
+
+        final Set<Trio> triosOneKid = db.getTrios(true);
+        Assert.assertEquals(triosOneKid.size(), 1);
+
     }
 }
