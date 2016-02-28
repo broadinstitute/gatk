@@ -23,6 +23,7 @@ public final class TargetCoverageStatsReader extends TableReader<TargetCoverageS
     private final Function<DataLine, Target> targetExtractor;
     private final ToDoubleFunction<DataLine> meanExtractor;
     private final ToDoubleFunction<DataLine> varianceExtractor;
+    private final ToDoubleFunction<DataLine> interquartileRangeExtractor;
 
     /**
      * Creates a new reader given the source file.
@@ -36,6 +37,7 @@ public final class TargetCoverageStatsReader extends TableReader<TargetCoverageS
         targetExtractor = createTargetExtractor(columns());
         meanExtractor = createStatExtractor(columns(), TargetCoverageStats.MEAN_COLUMN_NAME);
         varianceExtractor = createStatExtractor(columns(), TargetCoverageStats.VARIANCE_COLUMN_NAME);
+        interquartileRangeExtractor = createStatExtractor(columns(), TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME);
     }
 
     private ToDoubleFunction<DataLine> createStatExtractor(final TableColumnCollection columns, final String columnName) {
@@ -73,6 +75,7 @@ public final class TargetCoverageStatsReader extends TableReader<TargetCoverageS
         return new TargetCoverageStats(
                 targetExtractor.apply(dataLine),
                 meanExtractor.applyAsDouble(dataLine),
-                varianceExtractor.applyAsDouble(dataLine));
+                varianceExtractor.applyAsDouble(dataLine),
+                interquartileRangeExtractor.applyAsDouble(dataLine));
     }
 }

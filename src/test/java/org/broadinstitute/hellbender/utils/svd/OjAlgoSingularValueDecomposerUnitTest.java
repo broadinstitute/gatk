@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.svd;
 
 import htsjdk.samtools.util.Log;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
@@ -10,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 
 public class OjAlgoSingularValueDecomposerUnitTest extends BaseTest {
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");

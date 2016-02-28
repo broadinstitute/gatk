@@ -163,6 +163,32 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
         checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.ExtremeCoverageVariance);
     }
 
+    @Test(dataProvider = "targetExtremeInterquartileRangeData")
+    public void testTargetExtremeCoverageInterquartileRangeFilterUsingAnnotationFile(final List<Target> targets, final double max)
+            throws IOException
+    {
+        final File targetFile = createTargetFile(targets, Collections.emptySet());
+        final File annotationFile = createTargetFile(targets, Collections.singleton(TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE));
+        final List<Target> leftInTargets = targets.stream()
+                .filter(t -> t.getAnnotations().getDouble(TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE) <= max)
+                .collect(Collectors.toList());
+        final List<Target> leftOutTargets = targets.stream()
+                .filter(t -> t.getAnnotations().getDouble(TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE) > max)
+                .collect(Collectors.toList());
+        final File outputFile = createTempFile("output", ".tab");
+        final File rejectionFile = createTempFile("reject", ".tab");
+        runCommandLine(new String[] {
+                "-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME, targetFile.getPath(),
+                "-" + TargetArgumentCollection.TARGET_ANNOTATION_FILES_SHORT_NAME, annotationFile.getPath(),
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                "-" + FilterTargets.MAXIMUM_COVERAGE_INTERQUARTILE_RANGE_SHORT_NAME, String.valueOf(max),
+                "-" + FilterTargets.REJECT_OUTPUT_FILE_SHORT_NAME, rejectionFile.getPath(),
+        });
+
+        checkLeftInTargets(leftInTargets, outputFile);
+        checkRejectedTargets(leftOutTargets, rejectionFile, FilterTargets.TargetFilter.ExtremeCoverageInterquartileRange);
+    }
+
     @Test(dataProvider = "targetExtremeGCFilterData")
     public void testTargetExtremeGCFilterUsingAnnotationFile(final List<Target> targets, final double extremeGC)
             throws IOException
@@ -353,6 +379,23 @@ public class FilterTargetsIntegrationTest extends CommandLineProgramTest {
                 { targets,  90, 110},
                 { targets,  -1.0, Double.POSITIVE_INFINITY},
                 { targets, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY},
+        };
+    }
+
+    @DataProvider(name = "targetExtremeInterquartileRangeData")
+    public Object[][] targetExtremeCoverageInterquartileRangeData() {
+        final Random rdn = new Random(1313);
+        final List<Target> targets = IntStream.range(1, 1001)
+                .mapToObj(i -> new Target("target_" + i,
+                        new SimpleInterval("chr1", i * 1002, i * 1002 + 1 + rdn.nextInt(1000))
+                        , new HashTargetAnnotationCollection(Collections.singletonMap(TargetAnnotation.COVERAGE_INTERQUARTILE_RANGE, String.valueOf(rdn.nextDouble() * 100)))))
+                .collect(Collectors.toList());
+
+        return new Object[][] {
+                { targets,  10},
+                { targets,  50},
+                { targets,  110},
+                { targets,  Double.POSITIVE_INFINITY},
         };
     }
 }

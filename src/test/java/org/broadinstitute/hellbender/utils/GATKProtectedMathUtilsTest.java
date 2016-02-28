@@ -19,4 +19,11 @@ public class GATKProtectedMathUtilsTest {
         Assert.assertEquals(actual, expected, 1e-10);
     }
 
+    @Test
+    public void interquartileRangeTest() {
+        Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[] {1,2,3,4,5}), 3, 0.001);
+        Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[] {4,2,1,5,3}), 3, 0.001);
+        Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[] {1,2,3,4,5,6,7,8,9}), 5, 0.001);
+    }
+
 }

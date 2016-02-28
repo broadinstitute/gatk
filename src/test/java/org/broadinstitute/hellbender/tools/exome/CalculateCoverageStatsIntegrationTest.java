@@ -6,6 +6,7 @@ import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -203,7 +204,8 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
             } else {
                 Assert.assertTrue(reader.columns().contains(TargetTableColumns.NAME.toString()));
             }
-            Assert.assertTrue(reader.columns().containsAll(TargetCoverageStats.MEAN_COLUMN_NAME, TargetCoverageStats.VARIANCE_COLUMN_NAME));
+            Assert.assertTrue(reader.columns().containsAll(TargetCoverageStats.MEAN_COLUMN_NAME,
+                    TargetCoverageStats.VARIANCE_COLUMN_NAME, TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME));
             final List<TargetCoverageStats> stats = reader.stream().collect(Collectors.toList());
             Assert.assertEquals(stats.size(), targets.size());
             for (int i = 0; i < stats.size(); i++) {
@@ -220,7 +222,12 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
                 final double expectedVariance = values[i].length == 1 ? 0 : DoubleStream.of(values[i])
                         .map(d -> Math.pow(d - expectedMean , 2))
                         .sum() / (values[i].length - 1);
-                Assert.assertTrue(Double.isNaN(observedVariance) == Double.isNaN(expectedVariance) ||  Math.abs(observedVariance - expectedVariance) <= EPSILON);
+                final double observedInterquartileRange = stats.get(i).interquartileRange;
+                final double expectedInterquartileRange = GATKProtectedMathUtils.interquartileRange(values[i]);
+                Assert.assertTrue(Double.isNaN(observedVariance) == Double.isNaN(expectedVariance)
+                        ||  Math.abs(observedVariance - expectedVariance) <= EPSILON);
+                Assert.assertTrue(Double.isNaN(observedInterquartileRange) == Double.isNaN(expectedInterquartileRange)
+                        ||  Math.abs(observedInterquartileRange - expectedInterquartileRange) <= EPSILON);
             }
         }
     }
