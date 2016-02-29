@@ -16,7 +16,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
 
         Map<String, IntervalTree<Integer>> intervals = new HashMap<>();
 
-        final GATKRead read1 = ArtificialReadUtils.createSamBackedRead("Foo", "1", 1750, 100);
+        final GATKRead read1 = ArtificialReadUtils.createSamBackedRead("A", "1", 1750, 100);
         final Map<String, IntervalTree<Integer>> stringIntervalTreeMap = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read1);
 
         Assert.assertNotNull(stringIntervalTreeMap.get("1"));
@@ -25,13 +25,27 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertNotNull(node);
         Assert.assertEquals((int) node.getValue(), 1);
 
-        final GATKRead read2 = ArtificialReadUtils.createSamBackedRead("Bar", "1", 1900, 100);
-        final Map<String, IntervalTree<Integer>> stringIntervalTreeMap2 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read1);
+        final GATKRead read2 = ArtificialReadUtils.createSamBackedRead("B", "1", 1900, 100);
+        final Map<String, IntervalTree<Integer>> stringIntervalTreeMap2 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read2);
         Assert.assertNotNull(stringIntervalTreeMap2.get("1"));
         Assert.assertEquals(stringIntervalTreeMap2.get("1").size(), 1);
         final IntervalTree.Node<Integer> node2 = stringIntervalTreeMap2.get("1").find(1750, 1999);
         Assert.assertNotNull(node2);
         Assert.assertEquals((int) node2.getValue(), 2);
+
+        final GATKRead read3 = ArtificialReadUtils.createSamBackedRead("C", "2", 500, 100);
+        final Map<String, IntervalTree<Integer>> stringIntervalTreeMap3 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read3);
+        Assert.assertNotNull(stringIntervalTreeMap3.get("1"));
+        Assert.assertEquals(stringIntervalTreeMap3.get("1").size(), 1);
+        final IntervalTree.Node<Integer> node3 = stringIntervalTreeMap3.get("1").find(1750, 1999);
+        Assert.assertNotNull(node3);
+        Assert.assertEquals((int) node3.getValue(), 2);
+
+        Assert.assertNotNull(stringIntervalTreeMap3.get("2"));
+        Assert.assertEquals(stringIntervalTreeMap3.get("2").size(), 1);
+        final IntervalTree.Node<Integer> node4 = stringIntervalTreeMap3.get("2").find(500, 599);
+        Assert.assertNotNull(node4);
+        Assert.assertEquals((int) node4.getValue(), 1);
 
     }
 

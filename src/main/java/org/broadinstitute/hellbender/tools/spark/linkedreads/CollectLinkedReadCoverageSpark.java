@@ -10,13 +10,12 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 
 @CommandLineProgramProperties(
@@ -34,20 +33,58 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @Override
     public boolean requiresReads() { return true; }
-    
+
+    @Override
+    public ReadFilter makeReadFilter() {
+        return super.makeReadFilter()
+                .and(read -> !read.isUnmapped())
+                .and(read -> !read.failsVendorQualityCheck())
+                .and(GATKRead::isFirstOfPair)
+                .and(read -> !read.isDuplicate())
+                .and(read -> !read.isSecondaryAlignment())
+                .and(read -> !read.isSupplementaryAlignment())
+                .and(read -> read.hasAttribute("BX"));
+    }
+
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
 
-        final JavaPairRDD<String, Map<String, IntervalTree<Integer>>> intervalsByBarcode =
+        final JavaRDD<String> intervalsByBarcode =
                 reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                         .aggregateByKey(
                                 new HashMap<>(),
                                 CollectLinkedReadCoverageSpark::addReadToIntervals,
                                 CollectLinkedReadCoverageSpark::combineIntervalLists
-                        );
+                        ).flatMap(CollectLinkedReadCoverageSpark::intervalTreeToString);
+
 
         intervalsByBarcode.saveAsTextFile(out);
+    }
+
+    static List<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<Integer>>> barcodeLocations) {
+        final List<String> outputLines = new ArrayList<>();
+        final String barcode = barcodeLocations._1;
+        final Map<String, IntervalTree<Integer>> stringIntervalTreeMap = barcodeLocations._2;
+        for (final String contig : stringIntervalTreeMap.keySet()) {
+            final IntervalTree<Integer> contigIntervalTree = stringIntervalTreeMap.get(contig);
+            while (contigIntervalTree.iterator().hasNext()) {
+                final StringBuilder out = new StringBuilder();
+                final IntervalTree.Node<Integer> node = contigIntervalTree.iterator().next();
+                out.append(contig);
+                out.append("\t");
+                out.append(node.getStart());
+                out.append("\t");
+                out.append(node.getEnd());
+                out.append("\t");
+                out.append(barcode);
+                out.append("\t");
+                out.append(node.getValue());
+                outputLines.add(out.toString());
+            }
+        }
+
+        return outputLines;
     }
 
     @VisibleForTesting
