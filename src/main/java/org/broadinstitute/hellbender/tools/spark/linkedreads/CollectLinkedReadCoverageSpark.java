@@ -34,10 +34,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @Override
     public boolean requiresReads() { return true; }
-
-    @Override
-    public boolean requiresReference() { return true; }
-
+    
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
