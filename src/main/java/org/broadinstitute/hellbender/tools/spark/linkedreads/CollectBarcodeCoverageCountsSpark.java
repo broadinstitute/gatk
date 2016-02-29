@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.pipelines.linkedreads;
+package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -55,7 +55,7 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> reads = getReads();
 
         final JavaPairRDD<SimpleInterval, Tuple2<Integer, Integer>> intervalCounts =
-                reads.mapToPair(read -> new Tuple2<>(new SimpleInterval(read.getContig(), read.getStart() - read.getStart() % binSize, read.getStart() + (binSize - read.getStart() % binSize)), read))
+                reads.mapToPair(read -> new Tuple2<>(new SimpleInterval(read.getContig(), read.getStart() - read.getStart() % binSize + 1, read.getStart() + (binSize - read.getStart() % binSize)), read))
                         .aggregateByKey(
                                 new Tuple2<Integer, Set<String>>(1, new HashSet<>()),
                                 (aggregator, read) -> {
@@ -73,6 +73,6 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
                         )
                 .mapValues(aggregator -> new Tuple2<>(aggregator._1, aggregator._2.size()));
 
-        intervalCounts.coalesce(1).saveAsTextFile(out);
+        intervalCounts.sortByKey().coalesce(1).saveAsTextFile(out);
     }
 }
