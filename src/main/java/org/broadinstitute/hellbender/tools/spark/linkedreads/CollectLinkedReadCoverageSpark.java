@@ -68,9 +68,10 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Map<String, IntervalTree<Integer>> stringIntervalTreeMap = barcodeLocations._2;
         for (final String contig : stringIntervalTreeMap.keySet()) {
             final IntervalTree<Integer> contigIntervalTree = stringIntervalTreeMap.get(contig);
-            while (contigIntervalTree.iterator().hasNext()) {
+            final Iterator<IntervalTree.Node<Integer>> nodeIterator = contigIntervalTree.iterator();
+            while (nodeIterator.hasNext()) {
                 final StringBuilder out = new StringBuilder();
-                final IntervalTree.Node<Integer> node = contigIntervalTree.iterator().next();
+                final IntervalTree.Node<Integer> node = nodeIterator.next();
                 out.append(contig);
                 out.append("\t");
                 out.append(node.getStart());
