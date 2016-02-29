@@ -172,7 +172,8 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
-        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null)
+                .filter(r -> !r.isUnmapped()); // filter out unmapped reads (see comment below)
         SAMFileHeader header = readSource.getHeader(inputBam, null, null);
 
         ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), rddParallelReads, header, ReadsWriteFormat.ADAM);

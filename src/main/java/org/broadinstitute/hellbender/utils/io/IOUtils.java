@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.tribble.Tribble;
@@ -46,6 +47,13 @@ public final class IOUtils {
      */
     public static boolean isCramFileName(final String inputFileName) {
         return CramIO.CRAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
+    }
+
+    /**
+     * Returns true if the file's extension is BAM.
+     */
+    public static boolean isBamFileName(final String inputFileName) {
+        return BamFileIoUtils.BAM_FILE_EXTENSION.equalsIgnoreCase("." + FilenameUtils.getExtension(inputFileName));
     }
 
     /**

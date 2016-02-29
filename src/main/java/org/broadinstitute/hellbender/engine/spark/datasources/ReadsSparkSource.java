@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
+import org.seqdoop.hadoop_bam.BAMInputFormat;
 import org.seqdoop.hadoop_bam.CRAMInputFormat;
 import org.seqdoop.hadoop_bam.SAMRecordWritable;
 import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
@@ -92,17 +93,23 @@ public final class ReadsSparkSource implements Serializable {
 
         setHadoopBAMConfigurationProperties(readFileName, referencePath);
 
+        boolean isBam = IOUtils.isBamFileName(readFileName);
+        if (isBam && intervals != null && !intervals.isEmpty()) {
+            BAMInputFormat.setIntervals(conf, intervals);
+        } else {
+            conf.unset(BAMInputFormat.INTERVALS_PROPERTY);
+        }
+
         rdd2 = ctx.newAPIHadoopFile(
                     readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
                     conf);
 
         return rdd2.map(v1 -> {
             SAMRecord sam = v1._2().get();
-            if (samRecordOverlaps(sam, intervals)) {
-                return (GATKRead)SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
+            if (isBam || samRecordOverlaps(sam, intervals)) { // don't check overlaps for BAM since it is done by input format
+                return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
             }
             return null;
-
         }).filter(v1 -> v1 != null);
     }
 
@@ -238,9 +245,10 @@ public final class ReadsSparkSource implements Serializable {
     }
 
     /**
-     * Tests if a given SAMRecord overlaps any interval in a collection.
+     * Tests if a given SAMRecord overlaps any interval in a collection. This is only used as a fallback option for
+     * formats that don't support query-by-interval natively at the Hadoop-BAM layer.
      */
-    //TODO: remove this method when https://github.com/broadinstitute/hellbender/issues/559 is fixed
+    //TODO: use IntervalsSkipList, see https://github.com/broadinstitute/gatk/issues/1531
     private static boolean samRecordOverlaps(final SAMRecord record, final List<SimpleInterval> intervals ) {
         if (intervals == null || intervals.isEmpty()) {
             return true;
