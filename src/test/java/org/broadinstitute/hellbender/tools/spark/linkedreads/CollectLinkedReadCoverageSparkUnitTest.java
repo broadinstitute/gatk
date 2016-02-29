@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.pipelines.linkedreads;
+package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
 import htsjdk.samtools.util.IntervalTree;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -26,7 +26,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals((int) node.getValue(), 1);
 
         final GATKRead read2 = ArtificialReadUtils.createSamBackedRead("Bar", "1", 1900, 100);
-        final Map<String, IntervalTree<Integer>> stringIntervalTreeMap2 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read2);
+        final Map<String, IntervalTree<Integer>> stringIntervalTreeMap2 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read1);
         Assert.assertNotNull(stringIntervalTreeMap2.get("1"));
         Assert.assertEquals(stringIntervalTreeMap2.get("1").size(), 1);
         final IntervalTree.Node<Integer> node2 = stringIntervalTreeMap2.get("1").find(1750, 1999);

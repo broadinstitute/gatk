@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.spark.pipelines.linkedreads;
+package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Interval;
@@ -6,7 +6,6 @@ import htsjdk.samtools.util.IntervalTree;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.storage.StorageLevel;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
