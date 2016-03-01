@@ -69,7 +69,7 @@ public final class QuantizationInfo implements Serializable {
 
     public GATKReportTable generateReportTable() {
         GATKReportTable quantizedTable;
-        quantizedTable = new GATKReportTable(RecalUtils.QUANTIZED_REPORT_TABLE_TITLE, "Quality quantization map", 3, GATKReportTable.TableSortingWay.SORT_BY_COLUMN);
+        quantizedTable = new GATKReportTable(RecalUtils.QUANTIZED_REPORT_TABLE_TITLE, "Quality quantization map", 3, GATKReportTable.Sorting.SORT_BY_COLUMN);
         quantizedTable.addColumn(RecalUtils.QUALITY_SCORE_COLUMN_NAME);
         quantizedTable.addColumn(RecalUtils.QUANTIZED_COUNT_COLUMN_NAME);
         quantizedTable.addColumn(RecalUtils.QUANTIZED_VALUE_COLUMN_NAME);

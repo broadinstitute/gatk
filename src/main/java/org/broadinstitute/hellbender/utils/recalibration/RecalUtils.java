@@ -217,7 +217,7 @@ public final class RecalUtils {
 
             final String reportTableName = getReportTableName(recalibrationTables, table);
 
-            final GATKReportTable.TableSortingWay sort = GATKReportTable.TableSortingWay.SORT_BY_COLUMN;
+            final GATKReportTable.Sorting sort = GATKReportTable.Sorting.SORT_BY_COLUMN;
 
             final GATKReportTable reportTable;
             final boolean addToList;
@@ -284,7 +284,7 @@ public final class RecalUtils {
         }
     }
 
-    private static GATKReportTable makeNewTableWithColumns(ArrayList<Pair<String, String>> columnNames, String reportTableName, GATKReportTable.TableSortingWay sort) {
+    private static GATKReportTable makeNewTableWithColumns(ArrayList<Pair<String, String>> columnNames, String reportTableName, GATKReportTable.Sorting sort) {
         GATKReportTable rt = new GATKReportTable(reportTableName, "", columnNames.size(), sort);
         for (final Pair<String, String> columnName : columnNames) {
             rt.addColumn(columnName.getLeft(), columnName.getRight());
