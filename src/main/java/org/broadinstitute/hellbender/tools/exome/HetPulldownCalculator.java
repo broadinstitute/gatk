@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFormatException;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.filter.DuplicateReadFilter;
 import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
@@ -33,10 +30,10 @@ public final class HetPulldownCalculator {
 
     private final File refFile;
     private final IntervalList snpIntervals;
-    private final SamReaderFactory samReaderFactory;
 
     private final int minMappingQuality;
     private final int minBaseQuality;
+    private final ValidationStringency validationStringency;
 
     private static final int NUMBER_OF_LOG_UPDATES = 20;    //sets (approximate) number of status updates printed to log
     private static final double HET_ALLELE_FRACTION = 0.5;
@@ -53,16 +50,18 @@ public final class HetPulldownCalculator {
      * @param snpFile           file containing the interval list of common SNP sites
      * @param minMappingQuality minimum mapping quality required for reads to be included in pileup
      * @param minBaseQuality    minimum base quality required for bases to be included in pileup
+     * @param validationStringency  validation stringency to use for reading BAM files
      */
     public HetPulldownCalculator(final File refFile, final File snpFile,
-                                 final int minMappingQuality, final int minBaseQuality) {
+                                 final int minMappingQuality, final int minBaseQuality,
+                                 final ValidationStringency validationStringency) {
         ParamUtils.isPositiveOrZero(minMappingQuality, "Minimum mapping quality must be nonnegative.");
         ParamUtils.isPositiveOrZero(minBaseQuality, "Minimum base quality must be nonnegative.");
         this.refFile = refFile;
         this.snpIntervals = IntervalList.fromFile(snpFile);
         this.minMappingQuality = minMappingQuality;
         this.minBaseQuality = minBaseQuality;
-        this.samReaderFactory = SamReaderFactory.makeDefault();     //will use default validation stringency
+        this.validationStringency = validationStringency;
     }
 
     /**
@@ -185,7 +184,8 @@ public final class HetPulldownCalculator {
      */
     private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, final SampleType sampleType,
                                     final double pvalThreshold) {
-        try (final SamReader bamReader = samReaderFactory.open(bamFile);
+        try (final SamReader bamReader = SamReaderFactory.makeDefault().validationStringency(validationStringency)
+                .referenceSequence(refFile).open(bamFile);
              final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
                 throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");

@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
 
@@ -104,14 +104,12 @@ public final class GetHetCoverage extends CommandLineProgram {
             "can improve performance when processing a BAM file in which variable-length data (read, qualities, tags) " +
             "do not otherwise need to be decoded.",
             common=true)
-    protected ValidationStringency VALIDATION_STRINGENCY = ValidationStringency.DEFAULT_STRINGENCY;
+    protected ValidationStringency VALIDATION_STRINGENCY = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
     @Override
     protected Object doWork() {
-        SamReaderFactory.setDefaultValidationStringency(VALIDATION_STRINGENCY);
-
         final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REFERENCE_ARGUMENTS.getReferenceFile(),
-                snpFile, minimumMappingQuality, minimumBaseQuality);
+                snpFile, minimumMappingQuality, minimumBaseQuality, VALIDATION_STRINGENCY);
 
         logger.info("Getting normal het pulldown...");
         final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, pvalThreshold);

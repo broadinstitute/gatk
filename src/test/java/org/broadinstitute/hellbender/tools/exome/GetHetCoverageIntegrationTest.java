@@ -90,15 +90,16 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
                 "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
+                "--VALIDATION_STRINGENCY", ValidationStringency.STRICT.toString()
         };
         runCommandLine(arguments);
-        //should catch SAMFormatException and throw new UserException with default --VALIDATION_STRINGENCY STRICT
+        //should catch SAMFormatException and throw new UserException with --VALIDATION_STRINGENCY STRICT
     }
 
     //Regression test for https://github.com/broadinstitute/gatk-protected/issues/373
     @Test
-    public void testNonStrictBAMWithLenientValidationStringency() {
+    public void testNonStrictBAMWithSilentValidationStringency() {
         final File normalOutputFile = createTempFile("normal-test",".txt");
         final File tumorOutputFile = createTempFile("tumor-test",".txt");
 
@@ -109,9 +110,8 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
-                "--VALIDATION_STRINGENCY", ValidationStringency.LENIENT.toString()
         };
         runCommandLine(arguments);
-        //should complete successfully with --VALIDATION_STRINGENCY LENIENT
+        //should complete successfully with default --VALIDATION_STRINGENCY SILENT
     }
 }

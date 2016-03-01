@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.SamLocusIterator;
@@ -37,8 +34,8 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     private static final int MINIMUM_MAPPING_QUALITY = 30;
     private static final int MINIMUM_BASE_QUALITY = 20;
 
-    private static final HetPulldownCalculator calculator =
-            new HetPulldownCalculator(REF_FILE, SNP_FILE, MINIMUM_MAPPING_QUALITY, MINIMUM_BASE_QUALITY);
+    private static final HetPulldownCalculator calculator = new HetPulldownCalculator(REF_FILE, SNP_FILE,
+            MINIMUM_MAPPING_QUALITY, MINIMUM_BASE_QUALITY, ValidationStringency.STRICT);
 
     private static SAMFileHeader normalHeader;
     private static SAMFileHeader tumorHeader;
