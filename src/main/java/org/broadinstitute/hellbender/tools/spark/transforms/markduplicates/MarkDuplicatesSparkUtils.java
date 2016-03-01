@@ -16,10 +16,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.*;
 import scala.Tuple2;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -51,8 +48,15 @@ public class MarkDuplicatesSparkUtils {
      */
     static JavaRDD<GATKRead> transformReads(final SAMFileHeader header, final MarkDuplicatesScoringStrategy scoringStrategy, final OpticalDuplicateFinder finder, final JavaRDD<GATKRead> reads, final int numReducers) {
 
-        JavaPairRDD<String, Iterable<GATKRead>> keyedReads =
-                reads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read)).groupByKey(numReducers);
+        JavaPairRDD<String, Iterable<GATKRead>> keyedReads;
+        if (SAMFileHeader.SortOrder.queryname.equals(header.getSortOrder())) {
+            // reads are already sorted by name, so perform grouping within the partition (no shuffle)
+            keyedReads = spanReadsByKey(header, reads);
+        } else {
+            // sort by group and name (incurs a shuffle)
+            JavaPairRDD<String, GATKRead> keyReadPairs = reads.mapToPair(read -> new Tuple2<>(ReadsKey.keyForRead(header, read), read));
+            keyedReads = keyReadPairs.groupByKey(numReducers);
+        }
 
         JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs = keyedReads.flatMapToPair(keyedRead -> {
             List<Tuple2<String, PairedEnds>> out = Lists.newArrayList();
@@ -80,9 +84,75 @@ public class MarkDuplicatesSparkUtils {
                 out.add(new Tuple2<>(pair.key(header), pair));
             }
             return out;
-        }).groupByKey();
+        }).groupByKey(numReducers);
 
         return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
+    }
+
+    static JavaPairRDD<String, Iterable<GATKRead>> spanReadsByKey(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
+        JavaPairRDD<String, GATKRead> nameReadPairs = reads.mapToPair(read -> new Tuple2<>(read.getName(), read));
+        return spanByKey(nameReadPairs).flatMapToPair(namedRead -> {
+            // for each name, separate reads by key (group name)
+            List<Tuple2<String, Iterable<GATKRead>>> out = Lists.newArrayList();
+            ListMultimap<String, GATKRead> multi = LinkedListMultimap.create();
+            for (GATKRead read : namedRead._2()) {
+                multi.put(ReadsKey.keyForRead(header, read), read);
+            }
+            for (String key : multi.keySet()) {
+                // list from Multimap is not serializable by Kryo, so put in a new array list
+                out.add(new Tuple2<>(key, Lists.newArrayList(multi.get(key))));
+            }
+            return out;
+        });
+    }
+
+    /**
+     * Like <code>groupByKey</code>, but assumes that values are already sorted by key, so no shuffle is needed,
+     * which is much faster.
+     * @param rdd the input RDD
+     * @param <K> type of keys
+     * @param <V> type of values
+     * @return an RDD where each the values for each key are grouped into an iterable collection
+     */
+    static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
+        return rdd.mapPartitionsToPair(iter -> () -> spanningIterator(iter));
+    }
+
+    /**
+     * An iterator that groups values having the same key into iterable collections.
+     * @param iterator an iterator over key-value pairs
+     * @param <K> type of keys
+     * @param <V> type of values
+     * @return an iterator over pairs of keys and grouped values
+     */
+    static <K, V> Iterator<Tuple2<K, Iterable<V>>> spanningIterator(Iterator<Tuple2<K, V>> iterator) {
+        final PeekingIterator<Tuple2<K, V>> iter = Iterators.peekingIterator(iterator);
+        return new AbstractIterator<Tuple2<K, Iterable<V>>>() {
+            @Override
+            protected Tuple2<K, Iterable<V>> computeNext() {
+                K key = null;
+                List<V> group = Lists.newArrayList();
+                while (iter.hasNext()) {
+                    if (key == null) {
+                        Tuple2<K, V> next = iter.next();
+                        key = next._1();
+                        V value = next._2();
+                        group.add(value);
+                        continue;
+                    }
+                    K nextKey = iter.peek()._1(); // don't advance...
+                    if (nextKey.equals(key)) {
+                        group.add(iter.next()._2()); // .. unless the keys match
+                    } else {
+                        return new Tuple2<>(key, group);
+                    }
+                }
+                if (key != null) {
+                    return new Tuple2<>(key, group);
+                }
+                return endOfData();
+            }
+        };
     }
 
     static JavaRDD<GATKRead> markPairedEnds(final JavaPairRDD<String, Iterable<PairedEnds>> keyedPairs,
