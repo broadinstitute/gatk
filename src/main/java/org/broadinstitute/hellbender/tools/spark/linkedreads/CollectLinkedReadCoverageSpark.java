@@ -31,6 +31,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public String out;
 
+    @Argument(doc = "cluster size",
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            optional = true)
+    private static int windowSize;
+
     @Override
     public boolean requiresReads() { return true; }
 
@@ -90,7 +95,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @VisibleForTesting
     static Map<String, IntervalTree<Integer>> addReadToIntervals(Map<String, IntervalTree<Integer>> intervalList, GATKRead read) {
-        final Interval sloppedReadInterval = new Interval(read.getContig(), read.getStart() - 1000, read.getStart()+1000);
+        windowSize = 1000;
+        final Interval sloppedReadInterval = new Interval(read.getContig(), read.getStart() - windowSize, read.getStart()+windowSize);
         if (! intervalList.containsKey(read.getContig())) {
             intervalList.put(read.getContig(), new IntervalTree<>());
         }
@@ -126,7 +132,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         Map<String, IntervalTree<Integer>> combinedList = new HashMap<>();
         Stream.concat(intervalList1.keySet().stream(), intervalList2.keySet().stream()).
                 forEach(contigName -> combinedList.put(contigName, mergeIntervalTrees(intervalList1.get(contigName), intervalList2.get(contigName))));
-        return intervalList1;
+        return combinedList;
 
     }
 
