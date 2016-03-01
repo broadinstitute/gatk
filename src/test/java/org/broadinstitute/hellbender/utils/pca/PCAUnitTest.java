@@ -245,6 +245,27 @@ public final class PCAUnitTest extends BaseTest {
         }
     }
 
+    @Test
+    public void testNumComponentsToAccountForProportionOfVariance() {
+        final double epsilon = 1e-12;
+        final RealMatrix dataMatrix = new Array2DRowRealMatrix(TEST_MATRIX);
+        final List<String> variableNames = createVariableNames(dataMatrix.getRowDimension());
+        final List<String> sampleNames = createSampleNames(dataMatrix.getColumnDimension());
+        final PCA pca = PCA.createPCA(variableNames, sampleNames, dataMatrix, SVDFactory::createSVD);
+        final RealVector variances = pca.getVariances();
+
+        Assert.assertEquals(pca.numComponentsToAccountForVariance(0), 0);
+        final double totalVariance = variances.getL1Norm();
+        for (int n = 1; n < variances.getDimension(); n++) {
+            if (variances.getEntry(n - 1) < epsilon) {
+                break;
+            }
+            final double proportion = variances.getSubVector(0,n).getL1Norm() / totalVariance;
+            final int calculateNumComponents = pca.numComponentsToAccountForVariance(proportion - epsilon);
+            Assert.assertEquals(calculateNumComponents, n);
+        }
+    }
+
     public static void assertEquals(final RealVector v1, final RealVector v2, final double epsilon) {
         Assert.assertEquals(v1.getDimension(), v2.getDimension());
         for (int i = 0; i < v1.getDimension(); i++) {
