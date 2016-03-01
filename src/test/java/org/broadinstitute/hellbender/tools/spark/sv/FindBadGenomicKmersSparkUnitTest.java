@@ -17,9 +17,6 @@ import org.testng.annotations.Test;
 import java.io.*;
 import java.util.*;
 
-/**
- * Unit tests for FindBadGenomicKmersSpark
- */
 public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
 
     private static final int KMER_SIZE = SVConstants.KMER_SIZE;

@@ -1,17 +1,18 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-
-import java.io.Serializable;
 
 /**
  * An immutable SVKmer.
  * K must be between 1 and 63 (but it's silly to use this class for K < 33).
  * Canonicalization is unimplemented for even K.
  */
-public final class SVKmer implements Comparable<SVKmer>, Serializable {
-    private static final long serialVersionUID = 1L;
-
+@DefaultSerializer(SVKmer.Serializer.class)
+public class SVKmer implements Comparable<SVKmer> {
     // these are treated as K-bit unsigned integers
     private final long valHigh; // most significant K bits
     private final long valLow; // least significant K bits
@@ -33,7 +34,7 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
         G(2L),
         T(3L);
 
-        public long value;
+        public final long value;
 
         Base(final long value) { this.value = value; }
     }
@@ -46,14 +47,26 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
         valHigh = valLow = 0;
     }
 
+    public SVKmer( final SVKmer that ) { this.valHigh = that.valHigh; this.valLow = that.valLow; }
+
     private SVKmer( final long valHigh, final long valLow ) { this.valHigh = valHigh; this.valLow = valLow; }
+
+    protected SVKmer( final Kryo kryo, final Input input ) {
+        valHigh = input.readLong();
+        valLow = input.readLong();
+    }
+
+    protected void serialize( final Kryo kryo, final Output output ) {
+        output.writeLong(valHigh);
+        output.writeLong(valLow);
+    }
 
     /**
      * Returns a new SVKmer that's like this one, but with its leading base discarded and a new one added to the end.
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.successor(SVKmer.Base.C,5).toString(5) is "CTGAC".
      * @param base must be 0, 1, 2, or 3, corresponding to A, C, G, or T.
      */
-    public SVKmer successor( final Base base, final int kSize ) {
+    public final SVKmer successor( final Base base, final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
         // move all the bits up two places, OR in the top two bits from valLow at the bottom, and mask to kSize bits
@@ -68,7 +81,7 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.predecessor(SVKmer.Base.T,5).toString(5) is "TACTG".
      * @param base must be 0, 1, 2, or 3, corresponding to A, C, G, or T.
      */
-    public SVKmer predecessor( final Base base, final int kSize ) {
+    public final SVKmer predecessor( final Base base, final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
         // move all the bits down two places, OR in the successor bits at the top, and mask to kSize bits
@@ -82,7 +95,7 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
      * Returns a new SVKmer that's the reverse-complement of this one.
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.rc(5).toString(5) is "TCAGT".
      */
-    public SVKmer reverseComplement( final int kSize ) {
+    public final SVKmer reverseComplement( final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         final long mask = (1L << kSize) - 1L;
         // number of unused bits at the top
@@ -108,7 +121,7 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
      * The reverse-complement of a non-canonical SVKmer is a canonical SVKmer, and vice versa.  (Think about it.)
      * Canonical form is not defined for even-K Kmers (too expensive to compute routinely).
      */
-    public SVKmer canonical( final int kSize ) {
+    public final SVKmer canonical( final int kSize ) {
         if ( (kSize & 1) == 0 ) throw new IllegalArgumentException("K must be odd to canonicalize.");
         // for odd-size kmers, the high bit of the middle base is in least significant position in valHigh.
         // test its value by ANDing with 1.  if it's zero the middle base is A or C and we're good to go.
@@ -122,19 +135,39 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
         return obj instanceof SVKmer && equals((SVKmer)obj);
     }
 
-    public boolean equals( final SVKmer that ) {
+    public final boolean equals( final SVKmer that ) {
         return this.valHigh == that.valHigh && this.valLow == that.valLow;
     }
 
     @Override
-    public int hashCode() { return (int)(valHigh ^ (valHigh >> 32) ^ valLow ^ (valLow >> 32)); }
+    public final int hashCode() {
+        // 32-bit FNV-1a algorithm
+        return fnvLong(fnvLong((int)2166136261L, valHigh), valLow);
+    }
+
+    private static int fnvLong( final int start, final long toHash ) {
+        return fnvInt(fnvInt(start, (int)(toHash >> 32)), (int)toHash);
+    }
+
+    private static int fnvInt( int start, final int toHash ) {
+        final int mult = 16777619;
+        start ^= (toHash >> 24) & 0xff;
+        start *= mult;
+        start ^= (toHash >> 16) & 0xff;
+        start *= mult;
+        start ^= (toHash >> 8) & 0xff;
+        start *= mult;
+        start ^= toHash & 0xff;
+        start *= mult;
+        return start;
+    }
 
     /**
      * SVKmer comparison is consistent with equals.
      * It's also the same as the lexicographic ordering you'd get using toString on the Kmers.
      */
     @Override
-    public int compareTo( final SVKmer that ) {
+    public final int compareTo( final SVKmer that ) {
         int result = Long.compare(this.valHigh, that.valHigh);
         if ( result == 0 ) result = Long.compare(this.valLow, that.valLow);
         return result;
@@ -143,7 +176,7 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
     /**
      * Not an override.  An SVKmer doesn't know what K is, so it has to be supplied.
      */
-    public String toString( final int kSize ) {
+    public final String toString( final int kSize ) {
         final StringBuilder sb = new StringBuilder(kSize);
 
         // we'll produce the string in reverse order and reverse it at the end
@@ -188,5 +221,17 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
             result = (result << 8) | BYTEWISE_REVERSE_COMPLEMENT[(int)val & 0xFF];
         }
         return result;
+    }
+
+    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SVKmer> {
+        @Override
+        public void write(final Kryo kryo, final Output output, final SVKmer svKmer ) {
+            svKmer.serialize(kryo, output);
+        }
+
+        @Override
+        public SVKmer read(final Kryo kryo, final Input input, final Class<SVKmer> klass ) {
+            return new SVKmer(kryo, input);
+        }
     }
 }
