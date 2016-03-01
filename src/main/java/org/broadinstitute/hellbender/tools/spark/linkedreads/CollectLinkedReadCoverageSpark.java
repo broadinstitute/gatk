@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -32,9 +31,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     public String out;
 
     @Argument(doc = "cluster size",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = "clusterSize", fullName = "clusterSize",
             optional = true)
-    private static int windowSize;
+    public int clusterSize = 5000;
 
     @Override
     public boolean requiresReads() { return true; }
@@ -59,7 +58,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                         .aggregateByKey(
                                 new HashMap<>(),
-                                CollectLinkedReadCoverageSpark::addReadToIntervals,
+                                (aggregator, read) -> addReadToIntervals(aggregator, read, clusterSize),
                                 CollectLinkedReadCoverageSpark::combineIntervalLists
                         ).flatMap(CollectLinkedReadCoverageSpark::intervalTreeToString);
 
@@ -94,9 +93,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     @VisibleForTesting
-    static Map<String, IntervalTree<Integer>> addReadToIntervals(Map<String, IntervalTree<Integer>> intervalList, GATKRead read) {
-        windowSize = 1000;
-        final Interval sloppedReadInterval = new Interval(read.getContig(), read.getStart() - windowSize, read.getStart()+windowSize);
+    static Map<String, IntervalTree<Integer>> addReadToIntervals(final Map<String, IntervalTree<Integer>> intervalList, final GATKRead read, final int clusterSize) {
+        final Interval sloppedReadInterval = new Interval(read.getContig(), read.getStart() - clusterSize, read.getStart()+clusterSize);
         if (! intervalList.containsKey(read.getContig())) {
             intervalList.put(read.getContig(), new IntervalTree<>());
         }
@@ -128,8 +126,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         return intervalList;
     }
 
-    static Map<String, IntervalTree<Integer>> combineIntervalLists(Map<String, IntervalTree<Integer>> intervalList1, Map<String, IntervalTree<Integer>> intervalList2) {
-        Map<String, IntervalTree<Integer>> combinedList = new HashMap<>();
+    static Map<String, IntervalTree<Integer>> combineIntervalLists(final Map<String, IntervalTree<Integer>> intervalList1,
+                                                                   final Map<String, IntervalTree<Integer>> intervalList2) {
+        final Map<String, IntervalTree<Integer>> combinedList = new HashMap<>();
         Stream.concat(intervalList1.keySet().stream(), intervalList2.keySet().stream()).
                 forEach(contigName -> combinedList.put(contigName, mergeIntervalTrees(intervalList1.get(contigName), intervalList2.get(contigName))));
         return combinedList;
@@ -154,7 +153,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
             final Iterator<IntervalTree.Node<Integer>> overlappers = tree2.overlappers(current.getStart(), current.getEnd());
             while (overlappers.hasNext()) {
-                IntervalTree.Node<Integer> overlapper = overlappers.next();
+                final IntervalTree.Node<Integer> overlapper = overlappers.next();
                 if (overlapper == current) {
                     continue;
                 }
