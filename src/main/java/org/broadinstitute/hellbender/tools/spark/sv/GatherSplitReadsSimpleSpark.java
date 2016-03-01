@@ -52,19 +52,25 @@ public class GatherSplitReadsSimpleSpark extends GATKSparkTool
 
         System.err.println("about to run");
 
-
+        /**
+         * Generate mapping between (chromosome + left & right soft-clipping positions, the read) in the read (two entries of both exist),
+         *     then group by (chromosome + left & right soft-clipping positions)
+         *     then filter out if less than 2 reads support this particular clipping location
+         *     then return all supportive reads of filter-passing clipping locations.
+         */
         final JavaRDD<GATKRead> clusteredSplitReads = reads.flatMapToPair(new SRPairFlatMapFunction())
-                .groupByKey().filter(tuple -> {
-                    final Iterable<GATKRead> values = tuple._2();
-                    int valueCount = 0;
-                    for (GATKRead value : values) {
-                        valueCount++;
-                        if (valueCount >= 2) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }).flatMap(Tuple2::_2);
+                                                           .groupByKey()
+                                                           .filter(tuple -> { final Iterable<GATKRead> values = tuple._2();
+                                                                              int valueCount = 0;
+                                                                              for (GATKRead value : values) {
+                                                                                  valueCount++;
+                                                                                  if (valueCount >= 2) {
+                                                                                      return true;
+                                                                                  }
+                                                                              }
+                                                                              return false;
+                                                                              })
+                                                           .flatMap(Tuple2::_2);
 
         try {
             ReadsSparkSink.writeReads(ctx, output, clusteredSplitReads, getHeaderForReads(), ReadsWriteFormat.SINGLE);
@@ -74,8 +80,14 @@ public class GatherSplitReadsSimpleSpark extends GATKSparkTool
 
     }
 
+    /**
+     * Cigar-string based method for mapping (chromosome + left & right soft-clipping positions) to read.
+     * @param read
+     * @param out
+     */
     private static void addReadKeyedByClippingLocationsToOut(final GATKRead read, final List<Tuple2<SimpleInterval, GATKRead>> out) {
         final Cigar cigar = read.getCigar();
+        // first CigarElement is the first non-hard-clipped element
         final int firstCigarElement = cigar.getCigarElement(0).getOperator() == CigarOperator.HARD_CLIP ? 1 : 0;
         final int firstElementLength = cigar.getCigarElement(firstCigarElement).getLength();
         if (cigar.getCigarElement(firstCigarElement).getOperator() == CigarOperator.SOFT_CLIP &&
@@ -83,12 +95,12 @@ public class GatherSplitReadsSimpleSpark extends GATKSparkTool
             final SimpleInterval leftClipLoc = new SimpleInterval(read.getContig(), read.getStart(), read.getStart());
             out.add(new Tuple2<>(leftClipLoc, read));
         }
+        // similarly for right-end
         final int lastCigarElement = cigar.getCigarElement(cigar.numCigarElements() - 1).getOperator() == CigarOperator.HARD_CLIP ? cigar.numCigarElements() - 2 : cigar.numCigarElements() - 1;
         final int lastElementLength = cigar.getCigarElement(lastCigarElement).getLength();
 
         if (cigar.getCigarElement(lastCigarElement).getOperator() == CigarOperator.SOFT_CLIP &&
                 lastElementLength >= 40) {
-
             final SimpleInterval leftClipLoc = new SimpleInterval(read.getContig(), read.getEnd(), read.getEnd());
             out.add(new Tuple2<>(leftClipLoc, read));
         }

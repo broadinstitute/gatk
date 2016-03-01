@@ -45,12 +45,10 @@ public class GatherDiscordantPairsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-
-
         try {
             final InsertSizeDistribution insertSizeDistribution = parsePicardInsertSizeMetricsFile(picardInsertSizeMetricsFile);
 
-            final JavaRDD<GATKRead> reads = getReads();
+            final JavaRDD<GATKRead> reads = getReads();   // get all reads passing WellFormedReadFilter
             final SAMFileHeader header = getHeaderForReads();
             final JavaRDD<GATKRead> discordantReadPairs = DiscordantPairFilterFn.getDiscordantReadPairs(insertSizeDistribution, reads, header);
             try {
@@ -81,6 +79,10 @@ public class GatherDiscordantPairsSpark extends GATKSparkTool {
         boolean hasInfoFor(String sample, String library, String id);
     }
 
+    /**
+     * Read metrics from a metrics file that was produced by Picard::CollectInsertSizeMetrics,
+     *   results are grouped by {SAMPLE, LIBRARY, READ_GROUP}
+     */
     private static class PicardInsertSizeMetrics implements InsertSizeDistribution, Serializable {
         private static final long serialVersionUID = 1L;
 
@@ -151,12 +153,23 @@ public class GatherDiscordantPairsSpark extends GATKSparkTool {
         private final SAMFileHeader header;
         private final InsertSizeDistribution insertSizeDistribution;
 
+        /**
+         * Gather discordant read pairs based on "null distribution" information gathered from Picard-gernated metrics file.
+         * Three cases are tested: case 1: pairs not oriented FR
+         *                         case 2: ends map to different chromosome
+         *                         case 3: out of normal range sized pairs
+         * @param insertSizeDistribution  "null distribution"
+         * @param reads                   reads to be tested
+         * @param header                  header in input file
+         * @return                        discordant paired reads
+         */
         public static JavaRDD<GATKRead> getDiscordantReadPairs(final InsertSizeDistribution insertSizeDistribution, final JavaRDD<GATKRead> reads, final SAMFileHeader header) {
             return reads
                     .filter(read ->
                             new DiscordantPairFilterFn(header, insertSizeDistribution).isPartOfDiscordantPair(read))
                     .mapToPair(read -> new Tuple2<>(read.getName(), read))
-                    .groupByKey().flatMap(Tuple2::_2);
+                    .groupByKey()
+                    .flatMap(Tuple2::_2);
         }
 
         public DiscordantPairFilterFn(final SAMFileHeader header, final InsertSizeDistribution insertSizeDistribution) {
@@ -165,6 +178,8 @@ public class GatherDiscordantPairsSpark extends GATKSparkTool {
         }
 
         private boolean isPartOfDiscordantPair(GATKRead read) {
+
+            // filter reads not to be considered
             if (read.failsVendorQualityCheck() ||
                     read.isDuplicate() ||
                     read.isSecondaryAlignment() ||
@@ -175,19 +190,23 @@ public class GatherDiscordantPairsSpark extends GATKSparkTool {
                 return false;
             }
 
-            if (! read.getContig().equals(read.getMateContig())) {
-                return true;
-            }
-
             final SAMReadGroupRecord readGroup = header.getReadGroup(read.getReadGroup());
-            if (! (SamPairUtil.getPairOrientation(read.convertToSAMRecord(header)) == SamPairUtil.PairOrientation.FR)) {
-                return true;
-            }
 
             if (!insertSizeDistribution.hasInfoFor(readGroup.getSample(), readGroup.getLibrary(), readGroup.getId())) {
                 return false;
             }
 
+            // case 1: pairs not oriented FR
+            if (! (SamPairUtil.getPairOrientation(read.convertToSAMRecord(header)) == SamPairUtil.PairOrientation.FR)) {
+                return true;
+            }
+
+            // case 2: ends map to different chromosome
+            if (! read.getContig().equals(read.getMateContig())) {
+                return true;
+            }
+
+            // case 3: out of normal range sized pairs
             final int isizeThreshold = (insertSizeDistribution.getMedian(readGroup.getSample(), readGroup.getLibrary(), readGroup.getId())) +
                     3 * insertSizeDistribution.getMAD(readGroup.getSample(), readGroup.getLibrary(), readGroup.getId());
 
