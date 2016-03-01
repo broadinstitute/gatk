@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.filter.DuplicateReadFilter;
@@ -18,6 +20,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -120,8 +123,9 @@ public final class HetPulldownCalculator {
      * @param pvalThreshold     p-value threshold for two-sided binomial test (should be in [0, 1], but no check is performed)
      * @return                  boolean compatibility with heterozygous allele fraction
      */
-    public static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
-                                                final double pvalThreshold) {
+    @VisibleForTesting
+    protected static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
+                                                   final double pvalThreshold) {
         final int majorReadCount = Collections.max(baseCounts.values());
 
         if (majorReadCount == 0 || totalBaseCount - majorReadCount == 0) {
@@ -236,7 +240,7 @@ public final class HetPulldownCalculator {
             }
             logger.info("Examined " + totalNumberOfSNPs + " sites.");
             return hetPulldown;
-        } catch (final Exception e) {
+        } catch (final IOException | SAMFormatException e) {
             throw new UserException(e.getMessage());
         }
     }
