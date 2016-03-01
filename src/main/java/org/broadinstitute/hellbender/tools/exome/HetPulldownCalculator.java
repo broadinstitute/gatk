@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.*;
 import htsjdk.samtools.filter.DuplicateReadFilter;
 import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
 import htsjdk.samtools.filter.SamRecordFilter;
@@ -15,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +33,7 @@ public final class HetPulldownCalculator {
 
     private final int minMappingQuality;
     private final int minBaseQuality;
+    private final ValidationStringency validationStringency;
 
     private static final int NUMBER_OF_LOG_UPDATES = 20;    //sets (approximate) number of status updates printed to log
     private static final double HET_ALLELE_FRACTION = 0.5;
@@ -49,13 +50,18 @@ public final class HetPulldownCalculator {
      * @param snpFile           file containing the interval list of common SNP sites
      * @param minMappingQuality minimum mapping quality required for reads to be included in pileup
      * @param minBaseQuality    minimum base quality required for bases to be included in pileup
+     * @param validationStringency  validation stringency to use for reading BAM files
      */
     public HetPulldownCalculator(final File refFile, final File snpFile,
-                                 final int minMappingQuality, final int minBaseQuality) {
+                                 final int minMappingQuality, final int minBaseQuality,
+                                 final ValidationStringency validationStringency) {
+        ParamUtils.isPositiveOrZero(minMappingQuality, "Minimum mapping quality must be nonnegative.");
+        ParamUtils.isPositiveOrZero(minBaseQuality, "Minimum base quality must be nonnegative.");
         this.refFile = refFile;
         this.snpIntervals = IntervalList.fromFile(snpFile);
         this.minMappingQuality = minMappingQuality;
         this.minBaseQuality = minBaseQuality;
+        this.validationStringency = validationStringency;
     }
 
     /**
@@ -113,11 +119,12 @@ public final class HetPulldownCalculator {
      * </p>
      * @param baseCounts        map of base-pair counts
      * @param totalBaseCount    total base-pair counts (excluding N, etc.)
-     * @param pvalThreshold     p-value threshold for two-sided binomial test
+     * @param pvalThreshold     p-value threshold for two-sided binomial test (should be in [0, 1], but no check is performed)
      * @return                  boolean compatibility with heterozygous allele fraction
      */
-    public static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
-                                                final double pvalThreshold) {
+    @VisibleForTesting
+    protected static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
+                                                   final double pvalThreshold) {
         final int majorReadCount = Collections.max(baseCounts.values());
 
         if (majorReadCount == 0 || totalBaseCount - majorReadCount == 0) {
@@ -134,6 +141,7 @@ public final class HetPulldownCalculator {
      * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a normal sample.
      */
     public Pulldown getNormal(final File normalBAMFile, final double pvalThreshold) {
+        ParamUtils.inRange(pvalThreshold, 0., 1., "p-value threshold must be in [0, 1].");
         return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, pvalThreshold);
     }
 
@@ -176,7 +184,8 @@ public final class HetPulldownCalculator {
      */
     private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, final SampleType sampleType,
                                     final double pvalThreshold) {
-        try (final SamReader bamReader = SamReaderFactory.makeDefault().open(bamFile);
+        try (final SamReader bamReader = SamReaderFactory.makeDefault().validationStringency(validationStringency)
+                .referenceSequence(refFile).open(bamFile);
              final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
                 throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");
@@ -231,7 +240,7 @@ public final class HetPulldownCalculator {
             }
             logger.info("Examined " + totalNumberOfSNPs + " sites.");
             return hetPulldown;
-        } catch (final IOException e) {
+        } catch (final IOException | SAMFormatException e) {
             throw new UserException(e.getMessage());
         }
     }

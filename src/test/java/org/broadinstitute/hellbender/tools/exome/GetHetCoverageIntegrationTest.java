@@ -3,10 +3,11 @@ package org.broadinstitute.hellbender.tools.exome;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.exceptions.UserException.CommandLineException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -21,11 +22,12 @@ import java.io.IOException;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
-    private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR + "normal.sorted.bam");
-    private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR + "tumor.sorted.bam");
-    private static final File SNP_FILE = new File(TEST_SUB_DIR + "common_SNP.interval_list");
+    private static final File NORMAL_BAM_FILE = new File(TEST_SUB_DIR, "normal.sorted.bam");
+    private static final File TUMOR_BAM_FILE = new File(TEST_SUB_DIR, "tumor.sorted.bam");
+    private static final File NON_STRICT_BAM_FILE = new File(TEST_SUB_DIR, "simple_overhang.sam");
+    private static final File SNP_FILE = new File(TEST_SUB_DIR, "common_SNP.interval_list");
     private static final File REF_FILE = new File(hg19MiniReference);
 
     private static SAMFileHeader normalHeader;
@@ -76,20 +78,40 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         Assert.assertEquals(tumorHetPulldown, tumorOutputPulldownCLP);
     }
 
-    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
-    public void testBadpValue() {
+    //Regression test for https://github.com/broadinstitute/gatk-protected/issues/373
+    @Test(expectedExceptions = UserException.class)
+    public void testNonStrictBAM() {
         final File normalOutputFile = createTempFile("normal-test",".txt");
         final File tumorOutputFile = createTempFile("tumor-test",".txt");
 
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NON_STRICT_BAM_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
-                "-" + GetHetCoverage.PVALUE_THRESHOLD_SHORT_NAME, Double.toString(-10)
+                "--VALIDATION_STRINGENCY", ValidationStringency.STRICT.toString()
         };
         runCommandLine(arguments);
+        //should catch SAMFormatException and throw new UserException with --VALIDATION_STRINGENCY STRICT
+    }
+
+    //Regression test for https://github.com/broadinstitute/gatk-protected/issues/373
+    @Test
+    public void testNonStrictBAMWithSilentValidationStringency() {
+        final File normalOutputFile = createTempFile("normal-test",".txt");
+        final File tumorOutputFile = createTempFile("tumor-test",".txt");
+
+        final String[] arguments = {
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NON_STRICT_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
+        };
+        runCommandLine(arguments);
+        //should complete successfully with default --VALIDATION_STRINGENCY SILENT
     }
 }
