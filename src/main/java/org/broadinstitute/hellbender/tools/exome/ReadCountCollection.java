@@ -7,6 +7,8 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
@@ -333,6 +335,27 @@ public final class ReadCountCollection implements Serializable {
         });
 
         return new ReadCountCollection(targets, columnNames, normalizedCounts);
+    }
+
+    /**
+     * Express coverage in terms of Z scores with respect to the coverage distribution of the corresponding target.
+     * @return a new collection.
+     */
+    public ReadCountCollection zScoreCounts() {
+        final RealMatrix zScoreCounts = counts().copy();    //we will edit the matrix in-place
+
+        final double[] targetMeans = GATKProtectedMathUtils.rowMeans(zScoreCounts);
+        final double[] targetVariances = GATKProtectedMathUtils.rowVariances(zScoreCounts);
+        final double[] targetStandardDeviations = Arrays.stream(targetVariances).map(Math::sqrt).toArray();
+
+        zScoreCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int target, final int column, final double coverage) {
+                return (coverage - targetMeans[target]) / targetStandardDeviations[target];
+            }
+        });
+
+        return new ReadCountCollection(targets, columnNames, zScoreCounts);
     }
 
     /**
