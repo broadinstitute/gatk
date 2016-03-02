@@ -243,16 +243,15 @@ public class ReadClipper {
             return read;
         }
 
-        final byte [] quals = read.getBaseQualities();
         final int readLength = read.getLength();
         int leftClipIndex = 0;
         int rightClipIndex = readLength - 1;
 
         // check how far we can clip both sides
-        while (rightClipIndex >= 0 && quals[rightClipIndex] <= lowQual) {
+        while (rightClipIndex >= 0 && read.getBaseQuality(rightClipIndex) <= lowQual) {
             rightClipIndex--;
         }
-        while (leftClipIndex < readLength && quals[leftClipIndex] <= lowQual) {
+        while (leftClipIndex < readLength && read.getBaseQuality(leftClipIndex) <= lowQual) {
             leftClipIndex++;
         }
 
@@ -297,7 +296,7 @@ public class ReadClipper {
         int cutRight = -1;           // first position to hard clip (inclusive)
         boolean rightTail = false;   // trigger to stop clipping the left tail and start cutting the right tail
 
-        for (final CigarElement cigarElement : read.getCigar().getCigarElements()) {
+        for (final CigarElement cigarElement : read.getCigarElements()) {
             if (cigarElement.getOperator() == CigarOperator.SOFT_CLIP) {
                 if (rightTail) {
                     cutRight = readIndex;
@@ -404,7 +403,7 @@ public class ReadClipper {
             return read;
         }
 
-        for(final CigarElement cigarElement : read.getCigar().getCigarElements()) {
+        for(final CigarElement cigarElement : read.getCigarElements()) {
             if (cigarElement.getOperator() != CigarOperator.HARD_CLIP && cigarElement.getOperator() != CigarOperator.SOFT_CLIP &&
                     cigarElement.getOperator() != CigarOperator.INSERTION) {
                 break;

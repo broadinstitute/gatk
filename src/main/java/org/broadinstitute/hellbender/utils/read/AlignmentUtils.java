@@ -5,7 +5,6 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 
 import java.util.*;
@@ -323,7 +322,7 @@ public final class AlignmentUtils {
 
         int numHQSoftClips = 0;
         int alignPos = 0;
-        for ( final CigarElement ce : read.getCigar().getCigarElements() ) {
+        for ( final CigarElement ce : read.getCigarElements() ) {
             final int elementLength = ce.getLength();
 
             switch( ce.getOperator() ) {

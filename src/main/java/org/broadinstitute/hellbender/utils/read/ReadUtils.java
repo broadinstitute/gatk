@@ -440,7 +440,7 @@ public final class ReadUtils {
      * @return the length of the first insertion, or 0 if there is none (see warning).
      */
     public static int getFirstInsertionOffset(final GATKRead read) {
-        final CigarElement e = read.getCigar().getCigarElement(0);
+        final CigarElement e = read.getCigarElements().get(0);
         if ( e.getOperator() == CigarOperator.I ) {
             return e.getLength();
         } else {
@@ -457,7 +457,8 @@ public final class ReadUtils {
      * @return the length of the last insertion, or 0 if there is none (see warning).
      */
     public static int getLastInsertionOffset(final GATKRead read) {
-        final CigarElement e = read.getCigar().getCigarElement(read.getCigar().numCigarElements() - 1);
+        final List<CigarElement> cigarElements = read.getCigarElements();
+        final CigarElement e = cigarElements.get(cigarElements.size() - 1);
         if ( e.getOperator() == CigarOperator.I ) {
             return e.getLength();
         } else {
@@ -469,20 +470,14 @@ public final class ReadUtils {
      * Calculates the reference coordinate for the beginning of the read taking into account soft clips but not hard clips.
      *
      * Note: getUnclippedStart() adds soft and hard clips, this function only adds soft clips.
-     * @param read   the read
-     * @param cigar  the read's cigar
-     *
-     * Note: this overload of the function takes the cigar as input for speed because getCigar
-     * is an expensive operation. Most callers should use the overload that does not take the cigar.
      *
      * @return the unclipped start of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftStart(final GATKRead read, final Cigar cigar) {
+    public static int getSoftStart(final GATKRead read) {
         Utils.nonNull(read, "read");
-        Utils.nonNull(cigar, "cigar");
 
         int softStart = read.getStart();
-        for (final CigarElement cig : cigar.getCigarElements()) {
+        for (final CigarElement cig : read.getCigarElements()) {
             final CigarOperator op = cig.getOperator();
 
             if (op == CigarOperator.SOFT_CLIP) {
@@ -495,37 +490,18 @@ public final class ReadUtils {
     }
 
     /**
-     * Calculates the reference coordinate for the beginning of the read taking into account soft clips but not hard clips.
-     *
-     * Note: getUnclippedStart() adds soft and hard clips, this function only adds soft clips.
-     *
-     * @return the unclipped start of the read taking soft clips (but not hard clips) into account
-     */
-    public static int getSoftStart(final GATKRead read) {
-        Utils.nonNull(read);
-        return getSoftStart(read, read.getCigar());
-    }
-
-    /**
      * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
      *
      * Note: getUnclippedEnd() adds soft and hard clips, this function only adds soft clips.
      *
-     * @param read   the read
-     * @param cigar  the read's cigar
-     *
-     * Note: this overload of the function takes the cigar as input for speed because getCigar
-     * is an expensive operation. Most callers should use the overload that does not take the cigar.
-     *
      * @return the unclipped end of the read taking soft clips (but not hard clips) into account
      */
-    public static int getSoftEnd(final GATKRead read, final Cigar cigar) {
+    public static int getSoftEnd(final GATKRead read) {
         Utils.nonNull(read, "read");
-        Utils.nonNull(cigar, "cigar");
 
         boolean foundAlignedBase = false;
         int softEnd = read.getEnd();
-        final List<CigarElement> cigs = cigar.getCigarElements();
+        final List<CigarElement> cigs = read.getCigarElements();
         for (int i = cigs.size() - 1; i >= 0; --i) {
             final CigarElement cig = cigs.get(i);
             final CigarOperator op = cig.getOperator();
@@ -541,17 +517,6 @@ public final class ReadUtils {
             softEnd = read.getEnd();
         }
         return softEnd;
-    }
-
-    /**
-     * Calculates the reference coordinate for the end of the read taking into account soft clips but not hard clips.
-     *
-     * Note: getUnclippedEnd() adds soft and hard clips, this function only adds soft clips.
-     *
-     * @return the unclipped end of the read taking soft clips (but not hard clips) into account
-     */
-    public static int getSoftEnd(final GATKRead read) {
-        return getSoftEnd(read, read.getCigar());
     }
 
     public static int getReadCoordinateForReferenceCoordinateUpToEndOfRead(final GATKRead read, final int refCoord, final ClippingTail tail) {
@@ -726,15 +691,19 @@ public final class ReadUtils {
         return readStartsWithInsertion(cigarForRead, true);
     }
 
+    public static CigarElement readStartsWithInsertion(final Cigar cigarForRead, final boolean ignoreSoftClipOps) {
+        return readStartsWithInsertion(cigarForRead.getCigarElements(), ignoreSoftClipOps);
+    }
+
     /**
      * Checks if a read starts with an insertion.
      *
-     * @param cigarForRead    the CIGAR to evaluate
+     * @param cigarElementsForRead    the CIGAR to evaluate
      * @param ignoreSoftClipOps   should we ignore S operators when evaluating whether an I operator is at the beginning?  Note that H operators are always ignored.
      * @return the element if it's a leading insertion or null otherwise
      */
-    public static CigarElement readStartsWithInsertion(final Cigar cigarForRead, final boolean ignoreSoftClipOps) {
-        for ( final CigarElement cigarElement : cigarForRead.getCigarElements() ) {
+    public static CigarElement readStartsWithInsertion(final List<CigarElement> cigarElementsForRead, final boolean ignoreSoftClipOps) {
+        for ( final CigarElement cigarElement : cigarElementsForRead ) {
             if ( cigarElement.getOperator() == CigarOperator.INSERTION ) {
                 return cigarElement;
             } else if ( cigarElement.getOperator() != CigarOperator.HARD_CLIP && ( !ignoreSoftClipOps || cigarElement.getOperator() != CigarOperator.SOFT_CLIP) ) {
@@ -850,7 +819,7 @@ public final class ReadUtils {
     public static byte[] getBaseInsertionQualities(final GATKRead read) {
         byte [] quals = getExistingBaseInsertionQualities(read);
         if( quals == null ) {
-            quals = new byte[read.getBaseQualities().length];
+            quals = new byte[read.getBaseQualityCount()];
             Arrays.fill(quals, DEFAULT_INSERTION_DELETION_QUAL); // Some day in the future when base insertion and base deletion quals exist the samtools API will
             // be updated and the original quals will be pulled here, but for now we assume the original quality is a flat Q45
         }
@@ -866,7 +835,7 @@ public final class ReadUtils {
     public static byte[] getBaseDeletionQualities(final GATKRead read) {
         byte[] quals = getExistingBaseDeletionQualities(read);
         if( quals == null ) {
-            quals = new byte[read.getBaseQualities().length];
+            quals = new byte[read.getBaseQualityCount()];
             Arrays.fill(quals, DEFAULT_INSERTION_DELETION_QUAL);  // Some day in the future when base insertion and base deletion quals exist the samtools API will
             // be updated and the original quals will be pulled here, but for now we assume the original quality is a flat Q45
         }

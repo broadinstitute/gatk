@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
@@ -242,11 +241,11 @@ public final class FeatureContext {
      *         this FeatureContext's query interval. Empty List if there is no backing data source and/or interval.
      */
     public <T extends Feature> List<T> getValues(final Collection<FeatureInput<T>> featureDescriptors) {
-        if (featureManager == null || interval == null) {
+        if (featureManager == null || interval == null || featureDescriptors.isEmpty()) {
             return Collections.emptyList();
         }
 
-        List<T> features = new ArrayList<>();
+        final List<T> features = new ArrayList<>();
         for (FeatureInput<T> featureSource : featureDescriptors) {
             features.addAll(getValues(featureSource));
         }

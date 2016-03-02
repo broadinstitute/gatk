@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import htsjdk.samtools.Cigar;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
@@ -18,9 +19,12 @@ public final class ReadFilterLibrary {
     public static final ReadFilter PASSES_VENDOR_QUALITY_CHECK = read -> ! read.failsVendorQualityCheck();
     public static final ReadFilter MAPPING_QUALITY_AVAILABLE = read -> read.getMappingQuality() != QualityUtils.MAPPING_QUALITY_UNAVAILABLE;
     public static final ReadFilter MAPPING_QUALITY_NOT_ZERO = read -> read.getMappingQuality() != 0;
-    public static final ReadFilter READLENGTH_EQUALS_CIGARLENGTH = read -> read.isUnmapped() || read.getLength() == read.getCigar().getReadLength();
+
+    //Note: do not call getCigar to avoid creation of new Cigar objects
+    public static final ReadFilter READLENGTH_EQUALS_CIGARLENGTH = read -> read.isUnmapped() || read.getLength() == Cigar.getReadLength(read.getCigarElements());
+
     public static final ReadFilter GOOD_CIGAR =  read -> CigarUtils.isGood(read.getCigar());
-    public static final ReadFilter NON_ZERO_REFERENCE_LENGTH_ALIGNMENT = read -> read.getCigar().getCigarElements().stream().anyMatch(c -> c.getOperator().consumesReferenceBases() && c.getLength() > 0);
+    public static final ReadFilter NON_ZERO_REFERENCE_LENGTH_ALIGNMENT = read -> read.getCigarElements().stream().anyMatch(c -> c.getOperator().consumesReferenceBases() && c.getLength() > 0);
 
     /**
      * Reads whose mate maps to the same contig.
@@ -38,7 +42,9 @@ public final class ReadFilterLibrary {
     public static final ReadFilter VALID_ALIGNMENT_END = read -> read.isUnmapped() || (read.getEnd() - read.getStart() + 1) > 0;
 
     public static final ReadFilter HAS_READ_GROUP = read -> read.getReadGroup() != null;
-    public static final ReadFilter HAS_MATCHING_BASES_AND_QUALS = read -> read.getLength() == read.getBaseQualities().length;
+    public static final ReadFilter HAS_MATCHING_BASES_AND_QUALS = read -> read.getLength() == read.getBaseQualityCount();
     public static final ReadFilter SEQ_IS_STORED = read -> read.getLength() > 0;
-    public static final ReadFilter CIGAR_IS_SUPPORTED = read -> ! CigarUtils.containsNOperator(read.getCigar());
+
+    //Note: do not call getCigar to avoid creation of new Cigar objects
+    public static final ReadFilter CIGAR_IS_SUPPORTED = read -> ! CigarUtils.containsNOperator(read.getCigarElements());
 }

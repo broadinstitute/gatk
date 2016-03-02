@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -190,6 +192,17 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         return bases != null ? Arrays.copyOf(bases, bases.length) : new byte[0];
     }
 
+    //Overridden default method to avoid a call to getBases which makes a copy of data
+    @Override
+    public byte getBase(final int i){
+        final byte[] bases = samRecord.getReadBases();
+        if (bases == null){
+            throw new IllegalArgumentException("Invalid call - there are no bases");
+        }
+        Utils.validIndex(i, bases.length);
+        return bases[i];
+    }
+
     @Override
     public int getLength() {
         final byte[] bases = samRecord.getReadBases();
@@ -210,11 +223,28 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public int getBaseQualityCount(){
+        final byte[] baseQualities = samRecord.getBaseQualities();
+        return baseQualities == null ? 0 : baseQualities.length;
+    }
+
+    //Overridden default method to avoid a call to getBaseQualities which makes a copy of data
+    @Override
+    public int getBaseQuality(final int i){
+        final byte[] baseQualities = samRecord.getBaseQualities();
+        if (baseQualities == null){
+            throw new IllegalArgumentException("Invalid call - there are no baseQualities");
+        }
+        Utils.validIndex(i, baseQualities.length);
+        return baseQualities[i];
+    }
+
+    @Override
     public void setBaseQualities( final byte[] baseQualities ) {
         if ( baseQualities != null ) {
             for ( byte b : baseQualities ) {
                 if ( b < 0 ) {
-                    throw new GATKException("Base quality score " + b + " is invalid");
+                    throw new IllegalArgumentException("Base quality score " + b + " is invalid");
                 }
             }
         }
@@ -227,6 +257,17 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         // Make a defensive copy before returning to guard against modification of the return value,
         // since Cigar is a mutable type:
         return samRecord.getCigar() != null ? new Cigar(samRecord.getCigar().getCigarElements()) : new Cigar();
+    }
+
+    /**
+     * This implementation does not make a new Cigar object but instead provides
+     * an unmodifiable view of the underlying list of CigarElements.
+     * This is done to reduce the amount of object allocation.
+     */
+    @Override
+    public List<CigarElement> getCigarElements(){
+        //Cigar.getCigarElements returns an unmodifiable list so we don't wrap it again
+        return samRecord.getCigar() == null ? Collections.emptyList() : samRecord.getCigar().getCigarElements();
     }
 
     @Override

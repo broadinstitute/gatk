@@ -565,12 +565,12 @@ public final class BAQ implements Serializable {
      * @param read
      * @return
      */
-    private final Pair<Integer,Integer> calculateQueryRange(GATKRead read) {
+    private final Pair<Integer,Integer> calculateQueryRange(final GATKRead read) {
         int queryStart = -1, queryStop = -1;
         int readI = 0;
 
         // iterate over the cigar elements to determine the start and stop of the read bases for the BAQ calculation
-        for ( CigarElement elt : read.getCigar().getCigarElements() ) {
+        for ( CigarElement elt : read.getCigarElements() ) {
             switch (elt.getOperator()) {
                 case N:  return null; // cannot handle these
                 case H : case P : case D: break; // ignore pads, hard clips, and deletions
@@ -613,7 +613,7 @@ public final class BAQ implements Serializable {
 
         // cap quals
         int readI = 0, refI = 0;
-        for ( CigarElement elt : read.getCigar().getCigarElements() ) {
+        for ( CigarElement elt : read.getCigarElements() ) {
             int l = elt.getLength();
             switch (elt.getOperator()) {
                 case N: // cannot handle these

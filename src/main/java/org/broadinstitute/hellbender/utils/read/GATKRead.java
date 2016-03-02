@@ -2,11 +2,15 @@ package org.broadinstitute.hellbender.utils.read;
 
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Unified read interface for use throughout the GATK.
@@ -176,6 +180,19 @@ public interface GATKRead extends Locatable {
     byte[] getBases();
 
     /**
+     * @return The base at index i.
+     * The default implementation returns getBases()[i].
+     * Subclasses may override to provide a more efficient implementations but must preserve the
+     * semantics equal to getBases()[i]
+     *
+     * @throws IllegalArgumentException if i is negative or of i is not smaller than the number
+     * of bases (as reported by {@link #getLength()}. In particular, if no sequence is present.
+     */
+    default byte getBase(final int i){
+        return getBases()[i];
+    }
+
+    /**
      * @return All bases in the read as a single String, or {@link ReadConstants#NULL_SEQUENCE_STRING}
      *         if the read is empty.
      */
@@ -199,11 +216,33 @@ public interface GATKRead extends Locatable {
     byte[] getBaseQualities();
 
     /**
+     * @return The number of base qualities in the read sequence.
+     * This default implementation calls getBaseQualities().length
+     * Subclasses may override to provide a more efficient implementation.
+     */
+    default int getBaseQualityCount(){
+        return getBaseQualities().length;
+    }
+
+    /**
+     * @return The base quality at index i.
+     * This default implementation returns getBaseQualities()[i].
+     * Subclasses may override to provide a more efficient implementations
+     * but must preserve the semantics equal to getBaseQualities()[i]
+     *
+     * @throws IllegalArgumentException if i is negative or of i is not smaller than the number
+     * of base qualities (as reported by {@link #getBaseQualityCount()}.
+     */
+    default int getBaseQuality(final int i){
+        return getBaseQualities()[i];
+    }
+
+    /**
      * Set the read's base qualities.
      *
      * @param baseQualities Base qualities as binary phred scores (not ASCII); negative values not allowed.
      *                      May be empty or null if no base qualities are present.
-     * @throws GATKException if an invalid (negative) base quality is provided
+     * @throws IllegalArgumentException if an invalid (negative) base quality is provided
      */
     void setBaseQualities( final byte[] baseQualities );
 
@@ -212,8 +251,22 @@ public interface GATKRead extends Locatable {
      *
      * This method makes a defensive copy of the Cigar within the read if necessary, so modifying the return value of
      * this method will not modify the read's Cigar.
+     *
+     * Callers of this method that only want to iterate over the elements of the Cigar should call getCigarElements()
+     * instead which may give better performance by avoiding object creation.
      */
     Cigar getCigar();
+
+    /**
+     * @return Unmodifiable list of the CigarElements from this read.
+     *
+     * Note: The default implementation returns a unmodifiable view of
+     * the protective copy made by calling getCigar().getCigarElements()
+     * Subclasses may override.
+     */
+    default List<CigarElement> getCigarElements(){
+        return Collections.unmodifiableList(getCigar().getCigarElements());
+    }
 
     /**
      * Set the read's Cigar using an existing {@link Cigar} object describing how the read aligns to the reference.
@@ -562,6 +615,5 @@ public interface GATKRead extends Locatable {
             return String.format("%s %s:%d-%d", getName(), getContig(), getStart(), getEnd());
         }
     }
-
 }
 
