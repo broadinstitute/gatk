@@ -90,6 +90,37 @@ public final class ReferenceContext implements Iterable<Byte> {
     }
 
     /**
+     * Create a windowed ReferenceContext set up to lazily query the provided interval,
+     * expanded by the specified number of bases in each direction.
+     *
+     * Window boundaries are cropped at contig boundaries, if necessary.
+     *
+     * @param dataSource backing reference data source (may be null if there is no reference)
+     * @param interval our location on the reference (may be null if our location is unknown)
+     * @param window the expanded location on the reference (may be null if our location is unknown). Must be null if interval is null.
+     *               Must contain interval.
+     */
+    public ReferenceContext(final ReferenceDataSource dataSource, final SimpleInterval interval, final SimpleInterval window) {
+        this.dataSource = dataSource;
+        cachedSequence = null;
+        this.interval = interval;
+        if (interval == null && window != null ){
+          throw new IllegalArgumentException("if interval is null then window must be null too but was " + window);
+        }
+        if (interval != null && window != null && !window.contains(interval)){
+            throw new IllegalArgumentException("window " + window + " does not contain the interval " + interval);
+        }
+
+        if (window == null) {
+            this.window = null;
+        } else {
+            this.window = new SimpleInterval(interval.getContig(),
+                    trimToContigStart(window.getStart()),
+                    trimToContigLength(interval.getContig(), window.getEnd()));
+        }
+    }
+
+    /**
      * Determines whether this ReferenceContext has a backing reference data source. A ReferenceContext with
      * no backing data source will always return an empty bases array from {@link #getBases()} and an
      * empty iterator from {@link #iterator()}
@@ -186,8 +217,12 @@ public final class ReferenceContext implements Iterable<Byte> {
      * @param windowTrailingBases Number of extra reference bases to include after the end of our interval. Must be >= 0.
      */
     public void setWindow( final int windowLeadingBases, final int windowTrailingBases ) {
-        if( windowLeadingBases < 0 ) throw new GATKException("Reference window starts after the current interval");
-        if( windowTrailingBases < 0 ) throw new GATKException("Reference window ends before the current interval");
+        if( windowLeadingBases < 0 ) {
+            throw new GATKException("Reference window starts after the current interval");
+        }
+        if( windowTrailingBases < 0 ) {
+            throw new GATKException("Reference window ends before the current interval");
+        }
 
         if ( interval == null || (windowLeadingBases == 0 && windowTrailingBases == 0) ) {
             // the "windowless" case
@@ -235,7 +270,17 @@ public final class ReferenceContext implements Iterable<Byte> {
      * @return The start of the expanded window.
      */
     private int calculateWindowStart( final SimpleInterval locus, final int windowLeadingBases ) {
-        return Math.max(locus.getStart() - windowLeadingBases, 1);
+        return trimToContigStart(locus.getStart() - windowLeadingBases);
+    }
+
+    /**
+     * Determines the start of the expanded reference window, bounded if necessary by the start of the contig.
+     *
+     * @param start the start that is to be trimmed to the contig's start
+     * @return The start, potentially trimmed to the contig's start
+     */
+    private int trimToContigStart(final int start) {
+        return Math.max(start, 1);
     }
 
     /**
@@ -246,8 +291,19 @@ public final class ReferenceContext implements Iterable<Byte> {
      * @return The end of the expanded window.
      */
     private int calculateWindowStop( final SimpleInterval locus, final int windowTrailingBases ) {
-        final int sequenceLength = dataSource.getSequenceDictionary().getSequence(locus.getContig()).getSequenceLength();
-        return Math.min(locus.getEnd() + windowTrailingBases, sequenceLength);
+        return trimToContigLength(locus.getContig(), locus.getEnd() + windowTrailingBases);
+    }
+
+    /**
+     * Determines the end of the expanded reference window, bounded if necessary by the contig.
+     *
+     * @param contig contig on which the location is.
+     * @param end the end that is to be trimmed to the contig's length
+     * @return The end, potentially trimmed to the contig's length
+     */
+    private int trimToContigLength(final String contig, final int end){
+        final int sequenceLength = dataSource.getSequenceDictionary().getSequence(contig).getSequenceLength();
+        return Math.min(end, sequenceLength);
     }
 
     /**
@@ -255,6 +311,6 @@ public final class ReferenceContext implements Iterable<Byte> {
      * @return The base at the given locus from the reference.
      */
     public byte getBase() {
-        return getBases()[(interval.getStart() - window.getStart())];
+        return getBases()[interval.getStart() - window.getStart()];
     }
 }

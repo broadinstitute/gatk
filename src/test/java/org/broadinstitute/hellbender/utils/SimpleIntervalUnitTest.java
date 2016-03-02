@@ -1,12 +1,17 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.Arrays;
 
 public final class SimpleIntervalUnitTest extends BaseTest {
 
@@ -257,5 +262,50 @@ public final class SimpleIntervalUnitTest extends BaseTest {
         final SimpleInterval loc1 = new SimpleInterval("1", 10, 20);
         final SimpleInterval loc3 = new SimpleInterval("1", 31, 40);
         loc1.mergeWithContiguous(loc3);
+    }
+
+    @DataProvider(name = "ExpandWithinContigData")
+    public Object[][] expandWithinContigTestData() {
+        final int CONTIG_LENGTH = 10000;
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("1", CONTIG_LENGTH)));
+
+        return new Object[][] {
+                { new SimpleInterval("1", 5, 10), 0, CONTIG_LENGTH, dictionary, new SimpleInterval("1", 5, 10) },
+                { new SimpleInterval("1", 5, 10), 1, CONTIG_LENGTH, dictionary, new SimpleInterval("1", 4, 11) },
+                { new SimpleInterval("1", 1, 10), 10, CONTIG_LENGTH, dictionary, new SimpleInterval("1", 1, 20) },
+                { new SimpleInterval("1", 10, 20), 10, CONTIG_LENGTH, dictionary, new SimpleInterval("1", 1, 30) },
+                { new SimpleInterval("1", 10, 20), 9, CONTIG_LENGTH, dictionary, new SimpleInterval("1", 1, 29) },
+                { new SimpleInterval("1", 30, 40), 5, CONTIG_LENGTH, dictionary, new SimpleInterval("1", 25, 45) },
+                { new SimpleInterval("1", CONTIG_LENGTH - 10, CONTIG_LENGTH), 10, CONTIG_LENGTH, dictionary, new SimpleInterval("1", CONTIG_LENGTH - 20, CONTIG_LENGTH) },
+                { new SimpleInterval("1", CONTIG_LENGTH - 20, CONTIG_LENGTH - 10), 11, CONTIG_LENGTH, dictionary, new SimpleInterval("1", CONTIG_LENGTH - 31, CONTIG_LENGTH) },
+                { new SimpleInterval("1", CONTIG_LENGTH - 20, CONTIG_LENGTH - 10), 10, CONTIG_LENGTH, dictionary, new SimpleInterval("1", CONTIG_LENGTH - 30, CONTIG_LENGTH) }
+        };
+    }
+
+    @Test(dataProvider = "ExpandWithinContigData")
+    public void testExpandWithinContig( final SimpleInterval startingInterval, final int padding, final int contigLength, final SAMSequenceDictionary dictionary, final SimpleInterval expectedInterval ) {
+        Assert.assertEquals(startingInterval.expandWithinContig(padding, contigLength), expectedInterval);
+        Assert.assertEquals(startingInterval.expandWithinContig(padding, dictionary), expectedInterval);
+    }
+
+    @DataProvider(name = "ExpandWithinContigInvalidData")
+    public Object[][] expandWithinContigInvalidTestData() {
+        final int CONTIG_LENGTH = 10000;
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("1", CONTIG_LENGTH)));
+        final SAMSequenceDictionary badDictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("2", CONTIG_LENGTH)));
+
+        return new Object[][] {
+                { new SimpleInterval("1", 1, 10), -1, CONTIG_LENGTH, dictionary },
+                { new SimpleInterval("1", 1, 10), 1, 0, dictionary },
+                { new SimpleInterval("1", 1, 10), 1, -1, dictionary },
+                { new SimpleInterval("1", 1, 10), 1, CONTIG_LENGTH, null },
+                { new SimpleInterval("1", 1, 10), 1, CONTIG_LENGTH, badDictionary }
+        };
+    }
+
+    @Test(dataProvider = "ExpandWithinContigInvalidData", expectedExceptions = IllegalArgumentException.class)
+    public void testExpandWithinContigInvalidArgs( final SimpleInterval startingInterval, final int padding, final int contigLength, final SAMSequenceDictionary dictionary ) {
+        startingInterval.expandWithinContig(padding, contigLength);
+        startingInterval.expandWithinContig(padding, dictionary);
     }
 }

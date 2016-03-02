@@ -36,12 +36,75 @@ public final class MathUtils {
      * Log10 of the e constant.
      */
     public static final double LOG10_OF_E = Math.log10(Math.E);
+    public static final double FAIR_BINOMIAL_PROB_LOG10_0_5 = Math.log10(0.5);
 
     /**
      * Private constructor.  No instantiating this class!
      */
     private MathUtils() {
     }
+
+
+    /**
+     * A utility class that computes on the fly average and standard deviation for a stream of numbers.
+     * The number of observations does not have to be known in advance, and can be also very big (so that
+     * it could overflow any naive summation-based scheme or cause loss of precision).
+     * Instead, adding a new number <code>observed</code>
+     * to a sample with <code>add(observed)</code> immediately updates the instance of this object so that
+     * it contains correct mean and standard deviation for all the numbers seen so far. Source: Knuth, vol.2
+     * (see also e.g. http://www.johndcook.com/standard_deviation.html for online reference).
+     */
+    public static class RunningAverage {
+        private double mean = 0.0;
+        private double s = 0.0;
+        private long obs_count = 0;
+
+        public void add(double obs) {
+            obs_count++;
+            double oldMean = mean;
+            mean += (obs - mean) / obs_count; // update mean
+            s += (obs - oldMean) * (obs - mean);
+        }
+
+        public void addAll(Collection<Number> col) {
+            for (Number o : col) {
+                add(o.doubleValue());
+            }
+        }
+
+        public double mean() {
+            return mean;
+        }
+
+        public double stddev() {
+            return Math.sqrt(s / (obs_count - 1));
+        }
+
+        public double var() {
+            return s / (obs_count - 1);
+        }
+
+        public long observationCount() {
+            return obs_count;
+        }
+
+        public RunningAverage clone() {
+            RunningAverage ra = new RunningAverage();
+            ra.mean = this.mean;
+            ra.s = this.s;
+            ra.obs_count = this.obs_count;
+            return ra;
+        }
+
+        public void merge(RunningAverage other) {
+            if (this.obs_count > 0 || other.obs_count > 0) { // if we have any observations at all
+                this.mean = (this.mean * this.obs_count + other.mean * other.obs_count) / (this.obs_count + other.obs_count);
+                this.s += other.s;
+            }
+            this.obs_count += other.obs_count;
+        }
+    }
+
 
     /**
      * Get a random int between min and max (inclusive) using the global GATK random number generator.
@@ -473,6 +536,13 @@ public final class MathUtils {
             throw new IllegalArgumentException("log10p: Log10-probability must be 0 or less");
         double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
+    }
+
+    /**
+     * @see #binomialProbability(int, int, double) with p=0.5 and log10 applied to result
+     */
+    public static double log10BinomialProbability(final int n, final int k) {
+        return log10BinomialCoefficient(n, k) + (n * FAIR_BINOMIAL_PROB_LOG10_0_5);
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start) {
@@ -962,5 +1032,9 @@ public final class MathUtils {
 
          final double mult = Math.pow(10,n);
          return Math.round( (in+Math.ulp(in))*mult )/mult;
+    }
+
+    public static boolean wellFormedDouble(final double val) {
+        return !Double.isInfinite(val) && !Double.isNaN(val);
     }
 }

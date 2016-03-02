@@ -4,10 +4,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.collections4.map.DefaultedMap;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
@@ -22,6 +25,115 @@ import java.util.*;
 public final class AlleleBiasedDownsamplingUtils {
 
     private AlleleBiasedDownsamplingUtils() {
+    }
+
+    /**
+     * Computes an allele biased version of the given pileup
+     *
+     * @param pileup                    the original pileup
+     * @param downsamplingFraction      the fraction of total reads to remove per allele
+     * @return allele biased pileup
+     */
+    public static ReadPileup createAlleleBiasedBasePileup(final ReadPileup pileup, final double downsamplingFraction) {
+        // special case removal of all or no reads
+        if ( downsamplingFraction <= 0.0 ) {
+            return pileup;
+        }
+        if ( downsamplingFraction >= 1.0 ) {
+            return new ReadPileup(pileup.getLocation(), new ArrayList<>());
+        }
+
+        final List<List<PileupElement>> alleleStratifiedElements = new ArrayList<>(4);
+        for ( int i = 0; i < 4; i++ ) {
+            alleleStratifiedElements.add(new ArrayList<PileupElement>());
+        }
+
+        // start by stratifying the reads by the alleles they represent at this position
+        for ( final PileupElement pe : pileup ) {
+            final int baseIndex = BaseUtils.simpleBaseToBaseIndex(pe.getBase());
+            if ( baseIndex != -1 ) {
+                alleleStratifiedElements.get(baseIndex).add(pe);
+            }
+        }
+
+        // make a listing of allele counts and calculate the total count
+        final int[] alleleCounts = calculateAlleleCounts(alleleStratifiedElements);
+        final int totalAlleleCount = (int)MathUtils.sum(alleleCounts);
+
+        // do smart down-sampling
+        final int numReadsToRemove = (int)(totalAlleleCount * downsamplingFraction); // floor
+        final int[] targetAlleleCounts = runSmartDownsampling(alleleCounts, numReadsToRemove);
+
+        final HashSet<PileupElement> readsToRemove = new HashSet<PileupElement>(numReadsToRemove);
+        for ( int i = 0; i < 4; i++ ) {
+            final List<PileupElement> alleleList = alleleStratifiedElements.get(i);
+            // if we don't need to remove any reads, then don't
+            if ( alleleCounts[i] > targetAlleleCounts[i] ) {
+                readsToRemove.addAll(downsampleElements(alleleList, alleleCounts[i], alleleCounts[i] - targetAlleleCounts[i]));
+            }
+        }
+
+        // we need to keep the reads sorted because the FragmentUtils code will expect them in coordinate order and will fail otherwise
+        final List<PileupElement> readsToKeep = new ArrayList<>(totalAlleleCount - numReadsToRemove);
+        for ( final PileupElement pe : pileup ) {
+            if ( !readsToRemove.contains(pe) ) {
+                readsToKeep.add(pe);
+            }
+        }
+
+        return new ReadPileup(pileup.getLocation(), new ArrayList<>(readsToKeep));
+    }
+
+    /**
+     * Calculates actual allele counts for each allele (which can be different than the list size when reduced reads are present)
+     *
+     * @param alleleStratifiedElements       pileup elements stratified by allele
+     * @return non-null int array representing allele counts
+     */
+    private static int[] calculateAlleleCounts(final List<List<PileupElement>> alleleStratifiedElements) {
+        final int[] alleleCounts = new int[alleleStratifiedElements.size()];
+        for ( int i = 0; i < alleleStratifiedElements.size(); i++ ) {
+            alleleCounts[i] = alleleStratifiedElements.get(i).size();
+        }
+        return alleleCounts;
+    }
+
+    /**
+     * Performs allele biased down-sampling on a pileup and computes the list of elements to remove
+     *
+     * @param elements                  original list of pileup elements
+     * @param originalElementCount      original count of elements (taking reduced reads into account)
+     * @param numElementsToRemove       the number of records to remove
+     * @return the list of pileup elements TO REMOVE
+     */
+    protected static List<PileupElement> downsampleElements(final List<PileupElement> elements, final int originalElementCount, final int numElementsToRemove) {
+        // are there no elements to remove?
+        if ( numElementsToRemove == 0 ) {
+            return Collections.<PileupElement>emptyList();
+        }
+
+        final ArrayList<PileupElement> elementsToRemove = new ArrayList<>(numElementsToRemove);
+
+        // should we remove all of the elements?
+        if ( numElementsToRemove >= originalElementCount ) {
+            elementsToRemove.addAll(elements);
+            return elementsToRemove;
+        }
+
+        // create a bitset describing which elements to remove
+        final BitSet itemsToRemove = new BitSet(originalElementCount);
+        for ( final Integer selectedIndex : MathUtils.sampleIndicesWithoutReplacement(originalElementCount, numElementsToRemove) ) {
+            itemsToRemove.set(selectedIndex);
+        }
+
+        int currentBitSetIndex = 0;
+        for ( final PileupElement element : elements ) {
+            if ( itemsToRemove.get(currentBitSetIndex++) ) {
+                elementsToRemove.add(element);
+            }
+        }
+
+        return elementsToRemove;
     }
 
     /**
@@ -170,14 +282,14 @@ public final class AlleleBiasedDownsamplingUtils {
      * @param sampleIDs          Set of Samples of interest (no reason to include every sample in file) or null to turn off checking
      * @param logger                      for logging output
      * @return sample-contamination Map. The returned map is a {@link DefaultedMap} that defaults to the defaultContaminationFraction for unspecified samples
-     * @throws IOException if there's an IO problem reading the file.
+     * @throws UserException if there's an IO problem reading the file.
      * @throws UserException if the file is malformed
      */
 
-    public static DefaultedMap<String, Double> loadContaminationFile(final File file, final double defaultContaminationFraction, final Set<String> sampleIDs, final Logger logger) throws IOException {
+    public static DefaultedMap<String, Double> loadContaminationFile(final File file, final double defaultContaminationFraction, final Set<String> sampleIDs, final Logger logger) {
         final DefaultedMap<String, Double> sampleContamination = new DefaultedMap<>(defaultContaminationFraction);
         final Set<String> nonSamplesInContaminationFile = new HashSet<>(sampleContamination.keySet());
-        try ( final XReadLines reader = new XReadLines(file, true)){
+        try ( final XReadLines reader = new XReadLines(file, true) ){
             for (final String line : reader) {
                 if (line.isEmpty()) {
                     continue;
@@ -231,6 +343,8 @@ public final class AlleleBiasedDownsamplingUtils {
 
             return sampleContamination;
 
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile("I/O Error while reading sample-contamination file " + file.getAbsolutePath() + ": " + e.getMessage());
         }
     }
 }

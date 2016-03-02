@@ -2,12 +2,37 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public final class GenotypeCalculationArgumentCollection {
+
+    /**
+     * Creates a GenotypeCalculationArgumentCollection with default values.
+     */
+    public GenotypeCalculationArgumentCollection() {}
+
+    /**
+     * Creates a GenotypeCalculationArgumentCollection with the values from other
+     *
+     * @param other GenotypeCalculationArgumentCollection from which to copy values
+     */
+    public GenotypeCalculationArgumentCollection( final GenotypeCalculationArgumentCollection other ) {
+        Utils.nonNull(other);
+
+        this.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = other.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
+        this.snpHeterozygosity = other.snpHeterozygosity;
+        this.indelHeterozygosity = other.indelHeterozygosity;
+        this.STANDARD_CONFIDENCE_FOR_CALLING = other.STANDARD_CONFIDENCE_FOR_CALLING;
+        this.STANDARD_CONFIDENCE_FOR_EMITTING = other.STANDARD_CONFIDENCE_FOR_EMITTING;
+        this.MAX_ALTERNATE_ALLELES = other.MAX_ALTERNATE_ALLELES;
+        this.inputPrior = new ArrayList<>(other.inputPrior);
+        this.samplePloidy = other.samplePloidy;
+    }
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
@@ -107,5 +132,4 @@ public final class GenotypeCalculationArgumentCollection {
      */
     @Argument(shortName="ploidy", fullName="sample_ploidy", doc="Ploidy (number of chromosomes) per sample. For pooled data, set to (Number of samples in each pool * Sample Ploidy).", optional=true)
     public int samplePloidy = HomoSapiensConstants.DEFAULT_PLOIDY;
-
 }

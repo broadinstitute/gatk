@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -18,6 +19,9 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.*;
 
 public final class ReadThreadingAssembler {
@@ -45,15 +49,20 @@ public final class ReadThreadingAssembler {
     private static final byte DEFAULT_MIN_BASE_QUALITY_TO_USE = (byte) 10;
     private static final int MIN_HAPLOTYPE_REFERENCE_LENGTH = 30;
 
-    private static final boolean DEBUG = false;
+    private boolean debug = false;
     private boolean debugGraphTransformations = false;
     private boolean recoverDanglingBranches = true;
-    private static final int MIN_DANDLING_BRANCH_LENGTH = 0;
+    private int minDanglingBranchLength = 0;
 
     private static final byte MIN_BASE_QUALITY_TO_USE_IN_ASSEMBLY = DEFAULT_MIN_BASE_QUALITY_TO_USE;
+
+    protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
     private int pruneFactor = 2;
 
+    protected boolean errorCorrectKmers = false;
+
     private File debugGraphOutputPath = null;  //Where to write debug graphs, if unset it defaults to the current working dir
+    private File graphOutputPath = null;
 
     public ReadThreadingAssembler(final int maxAllowedPathsForReadThreadingAssembler, final List<Integer> kmerSizes, final boolean dontIncreaseKmerSizesForCycles, final boolean allowNonUniqueKmersInRef, final int numPruningSamples) {
         if ( maxAllowedPathsForReadThreadingAssembler < 1 ) {
@@ -83,6 +92,7 @@ public final class ReadThreadingAssembler {
      * @param fullReferenceWithPadding  byte array holding the reference sequence with padding
      * @param refLoc                    GenomeLoc object corresponding to the reference sequence with padding
      * @param givenAlleles   the alleles to inject into the haplotypes during GGA mode
+     * @param readErrorCorrector        a ReadErrorCorrector object, if read are to be corrected before assembly. Can be null if no error corrector is to be used.
      * @return                          the resulting assembly-result-set
      */
     public AssemblyResultSet runLocalAssembly(final AssemblyRegion assemblyRegion,
@@ -90,6 +100,7 @@ public final class ReadThreadingAssembler {
                                               final byte[] fullReferenceWithPadding,
                                               final SimpleInterval refLoc,
                                               final List<VariantContext> givenAlleles,
+                                              final ReadErrorCorrector readErrorCorrector,
                                               final SAMFileHeader header) {
         Utils.nonNull(assemblyRegion, "Assembly engine cannot be used with a null AssemblyRegion.");
         Utils.nonNull(assemblyRegion.getExtendedSpan(), "Active region must have an extended location.");
@@ -102,7 +113,17 @@ public final class ReadThreadingAssembler {
         // create the list of artificial haplotypes that should be added to the graph for GGA mode
         final List<Haplotype> givenHaplotypes = composeGivenHaplotypes(refHaplotype, givenAlleles, assemblyRegion.getExtendedSpan());
 
-        final List<GATKRead> correctedReads = assemblyRegion.getReads();
+        // error-correct reads before clipping low-quality tails: some low quality bases might be good and we want to recover them
+        final List<GATKRead> correctedReads;
+        if ( readErrorCorrector != null ) {
+            // now correct all reads in active region after filtering/downsampling
+            // Note that original reads in active region are NOT modified by default, since they will be used later for GL computation,
+            // and we only want the read-error corrected reads for graph building.
+            readErrorCorrector.addReadsToKmers(assemblyRegion.getReads());
+            correctedReads = new ArrayList<>(readErrorCorrector.correctReads(assemblyRegion.getReads()));
+        } else {
+            correctedReads = assemblyRegion.getReads();
+        }
 
         final List<SeqGraph> nonRefGraphs = new LinkedList<>();
         final AssemblyResultSet resultSet = new AssemblyResultSet();
@@ -126,6 +147,9 @@ public final class ReadThreadingAssembler {
         }
 
         findBestPaths(nonRefGraphs, refHaplotype, refLoc, activeRegionExtendedLocation, assemblyResultByGraph, resultSet);
+
+        // print the graphs if the appropriate debug option has been turned on
+        if ( graphOutputPath != null ) { printGraphs(nonRefGraphs); }
 
         return resultSet;
     }
@@ -211,7 +235,7 @@ public final class ReadThreadingAssembler {
                     returnHaplotypes.add(h);
                     assemblyResultSet.add(h, assemblyResultByGraph.get(graph));
 
-                    if (DEBUG) {
+                    if ( debug ) {
                         logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + graph.getKmerSize());
                     }
                 }
@@ -238,7 +262,7 @@ public final class ReadThreadingAssembler {
             logger.debug(String.format("failed to align some haplotypes (%d) back to the reference (loc=%s); these will be ignored.", failedCigars, refLoc.toString()));
         }
 
-        if(DEBUG) {
+        if ( debug ) {
             if( returnHaplotypes.size() > 1 ) {
                 logger.info("Found " + returnHaplotypes.size() + " candidate haplotypes of " + returnHaplotypes.size() + " possible combinations to evaluate every read against.");
             } else {
@@ -412,7 +436,7 @@ public final class ReadThreadingAssembler {
         }
 
         if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0, refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
-            if (DEBUG) {
+            if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
             }
             return null;
@@ -441,7 +465,7 @@ public final class ReadThreadingAssembler {
 
         // sanity check: make sure there are no cycles in the graph
         if ( rtgraph.hasCycles() ) {
-            if (DEBUG) {
+            if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
             }
             return null;
@@ -449,7 +473,7 @@ public final class ReadThreadingAssembler {
 
         // sanity check: make sure the graph had enough complexity with the given kmer
         if ( ! allowLowComplexityGraphs && rtgraph.isLowComplexity() ) {
-            if (DEBUG) {
+            if ( debug ) {
                 logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it does not produce a graph with enough complexity");
             }
             return null;
@@ -469,8 +493,8 @@ public final class ReadThreadingAssembler {
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
         if ( recoverDanglingBranches ) {
-            rtgraph.recoverDanglingTails(pruneFactor, MIN_DANDLING_BRANCH_LENGTH);
-            rtgraph.recoverDanglingHeads(pruneFactor, MIN_DANDLING_BRANCH_LENGTH);
+            rtgraph.recoverDanglingTails(pruneFactor, minDanglingBranchLength);
+            rtgraph.recoverDanglingHeads(pruneFactor, minDanglingBranchLength);
         }
 
         // remove all heading and trailing paths
@@ -490,7 +514,7 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
         }
 
-        if (DEBUG) {
+        if ( debug ) {
             logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
         }
         printDebugGraphTransform(initialSeqGraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.2.initial_seqgraph.dot");
@@ -506,11 +530,77 @@ public final class ReadThreadingAssembler {
         return "ReadThreadingAssembler{kmerSizes=" + kmerSizes + '}';
     }
 
+    /**
+     * Print the generated graphs to the graphWriter
+     * @param graphs a non-null list of graphs to print out
+     */
+    private void printGraphs(final List<SeqGraph> graphs) {
+        final int writeFirstGraphWithSizeSmallerThan = 50;
+
+        try ( final PrintStream graphWriter = new PrintStream(graphOutputPath) ) {
+            graphWriter.println("digraph assemblyGraphs {");
+            for ( final SeqGraph graph : graphs ) {
+                if ( debugGraphTransformations && graph.getKmerSize() >= writeFirstGraphWithSizeSmallerThan ) {
+                    logger.info("Skipping writing of graph with kmersize " + graph.getKmerSize());
+                    continue;
+                }
+
+                graph.printGraph(graphWriter, false, pruneFactor);
+
+                if ( debugGraphTransformations )
+                    break;
+            }
+
+            graphWriter.println("}");
+        }
+        catch ( IOException e ) {
+            throw new UserException.CouldNotCreateOutputFile(graphOutputPath, e);
+        }
+    }
+
     // -----------------------------------------------------------------------------------------------
     //
     // getter / setter routines for generic assembler properties
     //
     // -----------------------------------------------------------------------------------------------
+
+    public int getPruneFactor() {
+        return pruneFactor;
+    }
+
+    public boolean shouldErrorCorrectKmers() {
+        return errorCorrectKmers;
+    }
+
+    public void setErrorCorrectKmers(boolean errorCorrectKmers) {
+        this.errorCorrectKmers = errorCorrectKmers;
+    }
+
+    public void setGraphWriter(File graphOutputPath) {
+        this.graphOutputPath = graphOutputPath;
+    }
+
+    public byte getMinBaseQualityToUseInAssembly() {
+        return minBaseQualityToUseInAssembly;
+    }
+
+    public void setMinBaseQualityToUseInAssembly(byte minBaseQualityToUseInAssembly) {
+        this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
+    }
+
+    public boolean isDebug() {
+        return debug;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    public boolean isDebugGraphTransformations() {
+        return debugGraphTransformations;
+    }
+
+    public boolean isRecoverDanglingBranches() { return recoverDanglingBranches; }
 
     public void setPruneFactor(final int pruneFactor) {
         this.pruneFactor = pruneFactor;
@@ -529,6 +619,10 @@ public final class ReadThreadingAssembler {
 
     public void setRecoverDanglingBranches(final boolean recoverDanglingBranches) {
         this.recoverDanglingBranches = recoverDanglingBranches;
+    }
+
+    public void setMinDanglingBranchLength( final int minDanglingBranchLength ) {
+        this.minDanglingBranchLength = minDanglingBranchLength;
     }
 
     @VisibleForTesting

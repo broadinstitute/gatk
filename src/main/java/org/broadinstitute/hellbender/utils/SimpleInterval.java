@@ -1,6 +1,8 @@
  package org.broadinstitute.hellbender.utils;
 
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -252,7 +254,7 @@ public final class SimpleInterval implements Locatable, Serializable {
      /**
       * Returns the intersection of the two intervals. The intervals must overlap or IllegalArgumentException will be thrown.
       */
-     public SimpleInterval intersect( final Locatable that ) throws GATKException {
+     public SimpleInterval intersect( final Locatable that ) {
          if (!this.overlaps(that)) {
              throw new IllegalArgumentException("SimpleInterval::intersect(): The two intervals need to overlap " + this + " " + that);
          }
@@ -266,7 +268,7 @@ public final class SimpleInterval implements Locatable, Serializable {
       * Returns a new SimpleInterval that represents the entire span of this and that.  Requires that
       * this and that SimpleInterval are contiguous.
       */
-     public SimpleInterval mergeWithContiguous( final Locatable that ) throws GATKException {
+     public SimpleInterval mergeWithContiguous( final Locatable that ) {
          Utils.nonNull(that);
          if (!this.contiguous(that)) {
              throw new GATKException("The two intervals need to be contiguous: " + this + " " + that);
@@ -277,8 +279,59 @@ public final class SimpleInterval implements Locatable, Serializable {
                  Math.max( getEnd(), that.getEnd()) );
      }
 
+     /**
+      * Returns a new SimpleInterval that represents the region between the endpoints of this and other.
+      *
+      * Unlike {@link #mergeWithContiguous}, the two intervals do not need to be contiguous
+      *
+      * @param other the other interval with which to calculate the span
+      * @return a new SimpleInterval that represents the region between the endpoints of this and other.
+      */
+     public SimpleInterval spanWith( final Locatable other ) {
+         Utils.nonNull(other);
+         if ( ! this.getContig().equals(other.getContig()) ) {
+             throw new IllegalArgumentException("Cannot get span for intervals on different contigs");
+         }
+
+         return new SimpleInterval(contig, Math.min(start, other.getStart()), Math.max(end, other.getEnd()));
+     }
+
      private boolean contiguous(final Locatable that) {
          Utils.nonNull(that);
          return this.getContig().equals(that.getContig()) && this.getStart() <= that.getEnd() + 1 && that.getStart() <= this.getEnd() + 1;
+     }
+
+     /**
+      * Returns a new SimpleInterval that represents this interval as expanded by the specified amount in both
+      * directions, bounded by the contig start/stop if necessary.
+      *
+      * @param padding amount to expand this interval
+      * @param contigLength length of this interval's contig
+      * @return a new SimpleInterval that represents this interval as expanded by the specified amount in both
+      *         directions, bounded by the contig start/stop if necessary.
+      */
+     public SimpleInterval expandWithinContig( final int padding, final int contigLength ) {
+         Utils.validateArg(padding >= 0, "padding must be >= 0");
+         return IntervalUtils.trimIntervalToContig(contig, start - padding, end + padding, contigLength);
+     }
+
+     /**
+      * Returns a new SimpleInterval that represents this interval as expanded by the specified amount in both
+      * directions, bounded by the contig start/stop if necessary.
+      *
+      * @param padding amount to expand this interval
+      * @param sequenceDictionary dictionary to use to determine the length of this interval's contig
+      * @return a new SimpleInterval that represents this interval as expanded by the specified amount in both
+      *         directions, bounded by the contig start/stop if necessary.
+      */
+     public SimpleInterval expandWithinContig( final int padding, final SAMSequenceDictionary sequenceDictionary ) {
+         Utils.nonNull(sequenceDictionary);
+
+         final SAMSequenceRecord contigRecord = sequenceDictionary.getSequence(contig);
+         if ( contigRecord == null ) {
+             throw new IllegalArgumentException("Contig " + contig + " not found in provided dictionary");
+         }
+
+         return expandWithinContig(padding, contigRecord.getSequenceLength());
      }
  }

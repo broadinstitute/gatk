@@ -208,7 +208,7 @@ public final class AssemblyRegion {
      * @param extensionSize the extensionSize size we want for the newly trimmed active region
      * @return a non-null, empty active region
      */
-    private AssemblyRegion trim(final SimpleInterval span, final int extensionSize) {
+    public AssemblyRegion trim(final SimpleInterval span, final int extensionSize) {
         Utils.nonNull(span, "Active region extent cannot be null");
         if ( extensionSize < 0) {
             throw new IllegalArgumentException("the extensionSize size must be 0 or greater");
@@ -219,7 +219,7 @@ public final class AssemblyRegion {
         final SimpleInterval extendedSpan = new SimpleInterval(span.getContig(), extendStart, extendStop);
         return trim(span, extendedSpan);
 
-//TODO - Inconsiste support of substates trimming. Check lack of consistency!!!!
+//TODO - Inconsistent support of substates trimming. Check lack of consistency!!!!
 //        final GenomeLoc subLoc = getLocation().intersect(span);
 //        final int subStart = subLoc.getStart() - getLocation().getStart();
 //        final int subEnd = subStart + subLoc.size();
@@ -257,7 +257,7 @@ public final class AssemblyRegion {
      * @param span the new extend of the active region we want
      * @return a non-null, empty active region
      */
-    private AssemblyRegion trim(final SimpleInterval span, final SimpleInterval extendedSpan) {
+    public AssemblyRegion trim(final SimpleInterval span, final SimpleInterval extendedSpan) {
         Utils.nonNull(span, "Active region extent cannot be null");
         Utils.nonNull(extendedSpan, "Active region extended span cannot be null");
         if ( ! extendedSpan.contains(span)) {
@@ -295,7 +295,11 @@ public final class AssemblyRegion {
      * @param read the read we want to test
      * @return true if read can be added to this region, false otherwise
      */
-    private boolean readOverlapsRegion(final GATKRead read) {
+    public boolean readOverlapsRegion(final GATKRead read) {
+        if ( read.getStart() > read.getEnd() ) {
+            return false;
+        }
+
         final SimpleInterval readLoc = new SimpleInterval( read );
         return readLoc.overlaps(extendedLoc);
     }

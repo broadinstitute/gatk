@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.samples;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,7 +20,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
  * @since 2011
  */
 public class PedReaderUnitTest extends BaseTest {
-    private static Logger logger = Logger.getLogger(PedReaderUnitTest.class);
+    private static Logger logger = LogManager.getLogger(PedReaderUnitTest.class);
 
     private class PedReaderTest extends TestDataProvider {
         public String fileContents;

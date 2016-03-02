@@ -97,4 +97,25 @@ public final class FixedAFCalculatorProvider extends AFCalculatorProvider {
         }
         return calculator;
     }
+
+    /**
+     * Creates a fixed AF calculator provider that is thread safe.
+     *
+     * @param config the caller configuration.
+     *
+     * @throws IllegalArgumentException if any of the input argument is {@code null} or contain invalid configuration
+     *   like zero-samples, zero or negative ploidy or negative-zero maximum number of alleles.
+     *
+     * @return never {@code null}
+     */
+    public static AFCalculatorProvider createThreadSafeProvider( final StandardCallerArgumentCollection config ) {
+        Utils.nonNull(config);
+
+        return new ConcurrentAFCalculatorProvider() {
+                    @Override
+                    protected AFCalculatorProvider createProvider() {
+                        return new FixedAFCalculatorProvider(config, false);
+                    }
+                };
+    }
 }

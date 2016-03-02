@@ -1007,7 +1007,7 @@ public final class GATKVariantContextUtils {
      * @param allelesToUse     the new (sub)set of alleles to use
      * @return a new non-null GenotypesContext
      */
-    static private GenotypesContext fixADFromSubsettedAlleles(final GenotypesContext originalGs, final VariantContext originalVC, final List<Allele> allelesToUse) {
+    private static GenotypesContext fixADFromSubsettedAlleles(final GenotypesContext originalGs, final VariantContext originalVC, final List<Allele> allelesToUse) {
 
         // the bitset representing the allele indexes we want to keep
         final boolean[] alleleIndexesToUse = getAlleleIndexBitset(originalVC, allelesToUse);
@@ -1280,6 +1280,16 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     * Trim the alleles in inputVC from the reverse direction
+     *
+     * @param inputVC a non-null input VC whose alleles might need a haircut
+     * @return a non-null VariantContext (may be == to inputVC) with alleles trimmed up
+     */
+    public static VariantContext reverseTrimAlleles( final VariantContext inputVC ) {
+        return trimAlleles(inputVC, false, true);
+    }
+
+    /**
      * Trim the alleles in inputVC forward and reverse, as requested
      *
      * @param inputVC a non-null input VC whose alleles might need a haircut
@@ -1436,15 +1446,6 @@ public final class GATKVariantContextUtils {
         }
 
         return indexOflastSharedBase;
-    }
-
-    private static Map<String, Object> subsetAttributes(final CommonInfo igc, final Collection<String> keysToPreserve) {
-        Map<String, Object> attributes = new HashMap<>(keysToPreserve.size());
-        for ( final String key : keysToPreserve  ) {
-            if ( igc.hasAttribute(key) )
-                attributes.put(key, igc.getAttribute(key));
-        }
-        return attributes;
     }
 
     protected static class AlleleMapper {

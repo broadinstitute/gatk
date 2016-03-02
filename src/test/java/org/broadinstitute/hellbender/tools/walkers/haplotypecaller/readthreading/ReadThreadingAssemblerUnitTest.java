@@ -175,7 +175,7 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
         final AssemblyRegion activeRegion = new AssemblyRegion(loc, null, true, 0, header);
         activeRegion.addAll(reads);
 //        logger.warn("Assembling " + activeRegion + " with " + engine);
-        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), header);
+        final AssemblyResultSet assemblyResultSet =  assembler.runLocalAssembly(activeRegion, refHaplotype, refBases, loc, Collections.<VariantContext>emptyList(), null, header);
         return assemblyResultSet.getHaplotypeList();
     }
 

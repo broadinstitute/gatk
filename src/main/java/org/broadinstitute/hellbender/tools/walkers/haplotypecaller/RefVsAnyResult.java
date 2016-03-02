@@ -30,6 +30,10 @@ final class RefVsAnyResult {
         genotypeLikelihoods = new double[likelihoodCapacity];
     }
 
+    double[] getGenotypeLikelihoods() {
+        return genotypeLikelihoods;
+    }
+
     /**
      * @return Get the DP (sum of AD values)
      */

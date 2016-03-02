@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -31,11 +32,43 @@ public abstract class PairHMM implements Closeable{
 
     public enum Implementation {
         /* Very slow implementation which uses very accurate log10 sum functions. Only meant to be used as a reference test implementation */
-        EXACT(() -> new Log10PairHMM(true)),
+        EXACT(() -> {
+            final Log10PairHMM hmm = new Log10PairHMM(true);
+            logger.info("Using the non-hardware accelerated Java EXACT PairHMM implementation");
+            return hmm;
+        }),
         /* PairHMM as implemented for the UnifiedGenotyper. Uses log10 sum functions accurate to only 1E-4 */
-        ORIGINAL(() -> new Log10PairHMM(false)),
+        ORIGINAL(() -> {
+            final Log10PairHMM hmm = new Log10PairHMM(false);
+            logger.info("Using the non-hardware-accelerated Java ORIGINAL PairHMM implementation");
+            return hmm;
+        }),
         /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
-        LOGLESS_CACHING(() -> new LoglessPairHMM());
+        LOGLESS_CACHING(() -> {
+            final LoglessPairHMM hmm = new LoglessPairHMM();
+            logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PairHMM implementation");
+            return hmm;
+        }),
+        /* Optimized AVX implementation of LOGLESS_CACHING called through JNI. Throws if AVX is not available */
+        AVX_LOGLESS_CACHING(() -> {
+            // Constructor will throw a UserException if AVX is not available
+            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM();
+            logger.info("Using the AVX-accelerated native PairHMM implementation");
+            return hmm;
+        }),
+        /* Uses the fastest available PairHMM implementation (AVX if AVX is available, otherwise LOGLESS_CACHING */
+        FASTEST_AVAILABLE(() -> {
+            try {
+                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM();
+                logger.info("Using the AVX-accelerated native PairHMM implementation");
+                return hmm;
+            }
+            catch ( UserException.HardwareFeatureException e ) {
+                logger.warn("***WARNING: Machine does not have the AVX instruction set support needed for the accelerated AVX PairHmm. " +
+                            "Falling back to the MUCH slower LOGLESS_CACHING implementation!");
+                return new LoglessPairHMM();
+            }
+        });
 
         private final Supplier<PairHMM> makeHmm;
 

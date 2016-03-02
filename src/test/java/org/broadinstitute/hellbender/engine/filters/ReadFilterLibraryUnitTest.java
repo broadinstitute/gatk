@@ -407,13 +407,12 @@ public final class ReadFilterLibraryUnitTest {
     public void testMappingQualityFilter() {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
-        final MappingQualityReadFilter f = new MappingQualityReadFilter();
 
-        f.minMappingQualtyScore = 17;
+        MappingQualityReadFilter f = new MappingQualityReadFilter(17);
         read.setMappingQuality(11);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
-        f.minMappingQualtyScore = 9;
+        f = new MappingQualityReadFilter(9);
         Assert.assertTrue(f.test(read), read.toString());//pass
     }
 

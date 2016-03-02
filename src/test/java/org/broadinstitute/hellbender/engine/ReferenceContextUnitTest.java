@@ -95,6 +95,45 @@ public final class ReferenceContextUnitTest extends BaseTest {
         }
     }
 
+    @Test(dataProvider = "WindowedReferenceIntervalDataProvider")
+    public void testWindowedContextUsingIntervalObjects( final SimpleInterval interval, final int windowStartOffset, final int windowStopOffset, final SimpleInterval expectedWindow, final String expectedBases ) {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+            ReferenceContext refContext = new ReferenceContext(reference, interval, expectedWindow);
+
+            checkReferenceContextBases(refContext, expectedBases);
+            Assert.assertEquals(refContext.getInterval(), interval, "Wrong interval in reference context");
+            Assert.assertEquals(refContext.getWindow(), expectedWindow, "Window in windowed reference context not equal to expected window");
+            Assert.assertEquals(refContext.numWindowLeadingBases(), interval.getStart() - expectedWindow.getStart(),
+                    "Leading window size in windowed reference context not equal to expected value");
+            Assert.assertEquals(refContext.numWindowTrailingBases(), 0, expectedWindow.getEnd() - interval.getEnd(),
+                    "Trailing window size in windowed reference context not equal to expected value");
+        }
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNullIntervalAndNonNullWindow() {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+            new ReferenceContext(reference, null, new SimpleInterval("1", 1, 3));
+        }
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalNotInWindow() {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+            new ReferenceContext(reference, new SimpleInterval("1", 1, 3), new SimpleInterval("1", 10, 30));
+        }
+    }
+
+    @Test
+    public void testWindowedContextUsingIntervalObjects_nullWindow() {
+        try (ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
+            final SimpleInterval ival = new SimpleInterval("1", 1, 3);
+            final ReferenceContext refContext = new ReferenceContext(reference, ival, null);
+            Assert.assertNull(refContext.getWindow());
+            Assert.assertEquals(refContext.getInterval(), ival);
+        }
+    }
+
     @Test
     public void testDynamicallyChangingWindow() {
         try (final ReferenceDataSource reference = new ReferenceFileSource(TEST_REFERENCE)) {
@@ -106,30 +145,40 @@ public final class ReferenceContextUnitTest extends BaseTest {
             Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
             Assert.assertEquals(refContext.numWindowTrailingBases(), 0);
             checkReferenceContextBases(refContext, intervalBases);
+            Assert.assertEquals(refContext.getBase(), intervalBases.getBytes()[0]);
+            Assert.assertEquals(refContext.getForwardBases(), intervalBases.getBytes());
 
             refContext.setWindow(5, 5);
             Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart() - 5, interval.getEnd() + 5));
             Assert.assertEquals(refContext.numWindowLeadingBases(), 5);
             Assert.assertEquals(refContext.numWindowTrailingBases(), 5);
             checkReferenceContextBases(refContext, "GCTCA" + intervalBases + "CAGGG");
+            Assert.assertEquals(refContext.getBase(), intervalBases.getBytes()[0]);
+            Assert.assertEquals(refContext.getForwardBases(), (intervalBases+"CAGGG").getBytes());
 
             refContext.setWindow(0, 10);
             Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart(), interval.getEnd() + 10));
             Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
             Assert.assertEquals(refContext.numWindowTrailingBases(), 10);
             checkReferenceContextBases(refContext, intervalBases + "CAGGGCGCCC");
+            Assert.assertEquals(refContext.getBase(), intervalBases.getBytes()[0]);
+            Assert.assertEquals(refContext.getForwardBases(), (intervalBases+"CAGGGCGCCC").getBytes());
 
             refContext.setWindow(20, 3);
             Assert.assertEquals(refContext.getWindow(), new SimpleInterval(interval.getContig(), interval.getStart() - 20, interval.getEnd() + 3));
             Assert.assertEquals(refContext.numWindowLeadingBases(), 20);
             Assert.assertEquals(refContext.numWindowTrailingBases(), 3);
             checkReferenceContextBases(refContext, "CTACAGGACCCGCTTGCTCA" + intervalBases + "CAG");
+            Assert.assertEquals(refContext.getBase(), intervalBases.getBytes()[0]);
+            Assert.assertEquals(refContext.getForwardBases(), (intervalBases+"CAG").getBytes());
 
             refContext.setWindow(0, 0);
             Assert.assertEquals(interval, refContext.getWindow());
             Assert.assertEquals(refContext.numWindowLeadingBases(), 0);
             Assert.assertEquals(refContext.numWindowTrailingBases(), 0);
             checkReferenceContextBases(refContext, intervalBases);
+            Assert.assertEquals(refContext.getBase(), intervalBases.getBytes()[0]);
+            Assert.assertEquals(refContext.getForwardBases(), intervalBases.getBytes());
         }
     }
 
