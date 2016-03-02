@@ -30,27 +30,7 @@ https://github.com/broadinstitute/hellbender/blob/master/README.md
 
 
 #### R Required Packages
-R packages can be installed using the install_R_packages.R script inside the scripts directory. Reproduced below:
-
-```
-source("http://bioconductor.org/biocLite.R")
-biocLite("DNAcopy")
-#Make sure to use http not https as this will give an "unsupported URL scheme" error
-getoptUrl="http://cran.r-project.org/src/contrib/getopt_1.20.0.tar.gz"
-if (!("getopt" %in% rownames(installed.packages()))) {
-  install.packages(getoptUrl, repos=NULL, type="source")
-}
-optparseUrl="http://cran.r-project.org/src/contrib/optparse_1.3.2.tar.gz"
-if (!("optparse" %in% rownames(installed.packages()))) {
-  install.packages(optparseUrl, repos=NULL, type="source")
-}
-dependencies = c("naturalsort")
-if (!all(dependencies %in% rownames(installed.packages()))) {
-  install.packages(setdiff(dependencies, rownames(installed.packages())), repos="http://cran.cnr.Berkeley.edu")
-}
-q(save="no")
-
-```
+R packages can be installed using the install_R_packages.R script inside the scripts directory.
 
 
 Get HDF5-Java JNI Libraries Set-up
@@ -166,6 +146,13 @@ Here you have a couple of options:
 Please refrain from using gradle.properties in the root project directory for this as you don't 
 want to share your set-up with other developers through the source repo; .gitignore should prevent this from happening for now
 but is best to avoid it all together as in the future we might want to use gradle.properties for common set-up.
+
+### Create the jar file
+
+`` gradle shadowJar ``
+
+A jar file will appear in ``build/libs``.
+
 
 ### Get ```java -jar hellbender-protected.jar``` to work.
 
