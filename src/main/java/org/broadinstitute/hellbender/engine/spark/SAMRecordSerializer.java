@@ -17,7 +17,7 @@ public final class SAMRecordSerializer extends Serializer<SAMRecord> {
     public void write(Kryo kryo, Output output, SAMRecord record) {
         // The read is likely to already be headerless, but as a defensive
         // measure in case it's not, set the header to null explicitly.
-        record.setHeader(null);
+        record.setHeaderStrict(null);
 
         // serialize reference names to avoid having to have a header at read time
         output.writeString(record.getReferenceName());
@@ -42,10 +42,10 @@ public final class SAMRecordSerializer extends Serializer<SAMRecord> {
         // set reference names (and indices to null)
         record.setReferenceName(referenceName);
         record.setMateReferenceName(mateReferenceName);
-        // Explicitly clear the reference indices by calling setHeader(null). Although setReferenceName()
+        // Explicitly clear the reference indices by calling setHeaderStrict(null). Although setReferenceName()
         // and setMateReferenceName() above will usually null out the reference indices for us (since our
         // read is headerless) they won't do so if either name is "*"
-        record.setHeader(null);
+        record.setHeaderStrict(null);
 
         return record;
     }

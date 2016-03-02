@@ -266,7 +266,7 @@ public final class ArtificialReadUtils {
      */
     public static GATKRead createHeaderlessSamBackedRead( final String name, final String contig, final int start, final int length ) {
         GATKRead read = createSamBackedRead(name, contig, start, length);
-        ((SAMRecordToGATKReadAdapter) read).getEncapsulatedSamRecord().setHeader(null);
+        ((SAMRecordToGATKReadAdapter) read).getEncapsulatedSamRecord().setHeaderStrict(null);
         return read;
     }
 
