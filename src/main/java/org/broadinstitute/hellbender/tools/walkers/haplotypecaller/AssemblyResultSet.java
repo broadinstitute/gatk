@@ -2,11 +2,14 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.CountSet;
+import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 
 import java.io.PrintWriter;
@@ -34,11 +37,12 @@ public final class AssemblyResultSet {
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
     private AssemblyRegion regionForGenotyping;
     private byte[] fullReferenceWithPadding;
-    private Locatable paddedReferenceLoc;
+    private SimpleInterval paddedReferenceLoc;
     private boolean variationPresent;
     private Haplotype refHaplotype;
     private boolean wasTrimmed = false;
     private final CountSet kmerSizes;
+    private SortedSet<VariantContext> variationEvents;
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
 
@@ -350,7 +354,7 @@ public final class AssemblyResultSet {
      *
      * @return might be {@code null}
      */
-    public Locatable getPaddedReferenceLoc() {
+    public SimpleInterval getPaddedReferenceLoc() {
         return paddedReferenceLoc;
     }
 
@@ -358,7 +362,7 @@ public final class AssemblyResultSet {
      * Changes the padded reference location.
      * @param paddedReferenceLoc the new value.
      */
-    public void setPaddedReferenceLoc(final Locatable paddedReferenceLoc) {
+    public void setPaddedReferenceLoc(final SimpleInterval paddedReferenceLoc) {
         this.paddedReferenceLoc = paddedReferenceLoc;
     }
 
@@ -489,5 +493,23 @@ public final class AssemblyResultSet {
         } else {// assumes that we have checked wether the haplotype is already in the collection and so is no need to check equality.
             throw new IllegalStateException("the assembly-result-set already have a reference haplotype that is different");
         }
+    }
+
+    /**
+     * Returns a sorted set of variant events that best explain the haplotypes found by the assembly
+     * across kmerSizes.
+     *
+     * <p/>
+     * The result is sorted incrementally by location.
+     *
+     * @return never {@code null}, but perhaps an empty collection.
+     */
+    public SortedSet<VariantContext> getVariationEvents() {
+        if (variationEvents == null) {
+            final List<Haplotype> haplotypeList = getHaplotypeList();
+            EventMap.buildEventMapsForHaplotypes(haplotypeList, fullReferenceWithPadding, paddedReferenceLoc, debug);
+            variationEvents = EventMap.getAllVariantContexts(haplotypeList);
+        }
+        return variationEvents;
     }
 }

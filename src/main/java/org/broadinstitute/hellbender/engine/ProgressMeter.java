@@ -28,10 +28,10 @@ public final class ProgressMeter {
     public static final double DEFAULT_SECONDS_BETWEEN_UPDATES = 10.0;
 
     /**
-     * We check the current time every time we process this many records
-     * (to cut down on the number of system calls)
+     * We check the current time every time we process this many records,
+     * by default (to cut down on the number of system calls)
      */
-    public static final long RECORDS_BETWEEN_TIME_CHECKS = 1000l;
+    public static final long DEFAULT_RECORDS_BETWEEN_TIME_CHECKS = 1000l;
 
     /**
      * By default, we use this function to get the current time
@@ -51,7 +51,13 @@ public final class ProgressMeter {
     /**
      * We output a line to the logger after this many seconds have elapsed
      */
-    private final double secondsBetweenUpdates;
+    private double secondsBetweenUpdates;
+
+    /**
+     * We check the current time every time we process this many records
+     * (to cut down on the number of system calls)
+     */
+    private long recordsBetweenTimeChecks = DEFAULT_RECORDS_BETWEEN_TIME_CHECKS;
 
     /**
      * Total records processed
@@ -66,7 +72,7 @@ public final class ProgressMeter {
     /**
      * Current timestamp in milliseconds as returned by our {@link #timeFunction}.
      *
-     * Updated only every {@link #RECORDS_BETWEEN_TIME_CHECKS} records to cut down
+     * Updated only every {@link #recordsBetweenTimeChecks} records to cut down
      * on system calls.
      */
     private long currentTimeMs = 0l;
@@ -134,6 +140,15 @@ public final class ProgressMeter {
     }
 
     /**
+     * Set the number of records we need to process before we check the current time
+     *
+     * @param recordsBetweenTimeChecks number of records we need to process before we check the current time
+     */
+    public void setRecordsBetweenTimeChecks( final long recordsBetweenTimeChecks ) {
+        this.recordsBetweenTimeChecks = recordsBetweenTimeChecks;
+    }
+
+    /**
      * Start the progress meter and produce preliminary output such as column headings.
      */
     public void start() {
@@ -156,7 +171,7 @@ public final class ProgressMeter {
      */
     public void update( final Locatable currentLocus ) {
         ++numRecordsProcessed;
-        if ( numRecordsProcessed % RECORDS_BETWEEN_TIME_CHECKS == 0 ) {
+        if ( numRecordsProcessed % recordsBetweenTimeChecks == 0 ) {
             currentTimeMs = timeFunction.getAsLong();
             this.currentLocus = currentLocus;
 

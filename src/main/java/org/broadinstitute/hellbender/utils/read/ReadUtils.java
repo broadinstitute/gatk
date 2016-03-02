@@ -16,9 +16,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * A miscellaneous collection of utilities for working with reads, headers, etc.
@@ -547,6 +545,26 @@ public final class ReadUtils {
         return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, tail, false);
     }
 
+    /**
+     * Returns the read coordinate corresponding to the requested reference coordinate.
+     *
+     * WARNING: if the requested reference coordinate happens to fall inside or just before a deletion (or skipped region) in the read, this function
+     * will return the last read base before the deletion (or skipped region). This function returns a
+     * Pair(int readCoord, boolean fallsInsideOrJustBeforeDeletionOrSkippedRegion) so you can choose which readCoordinate to use when faced with
+     * a deletion (or skipped region).
+     *
+     * SUGGESTION: Use getReadCoordinateForReferenceCoordinate(GATKSAMRecord, int, ClippingTail) instead to get a
+     * pre-processed result according to normal clipping needs. Or you can use this function and tailor the
+     * behavior to your needs.
+     *
+     * @param read
+     * @param refCoord the requested reference coordinate
+     * @return the read coordinate corresponding to the requested reference coordinate. (see warning!)
+     */
+    public static Pair<Integer, Boolean> getReadCoordinateForReferenceCoordinate(GATKRead read, int refCoord) {
+        return getReadCoordinateForReferenceCoordinate(getSoftStart(read), read.getCigar(), refCoord, false);
+    }
+
     public static int getReadCoordinateForReferenceCoordinate(final int alignmentStart, final Cigar cigar, final int refCoord, final ClippingTail tail, final boolean allowGoalNotReached) {
         final Pair<Integer, Boolean> result = getReadCoordinateForReferenceCoordinate(alignmentStart, cigar, refCoord, allowGoalNotReached);
         int readCoord = result.getLeft();
@@ -990,5 +1008,28 @@ public final class ReadUtils {
             return false;
 
         return read.isReverseStrand() ? basePos <= adaptorBoundary : basePos >= adaptorBoundary;
+    }
+
+    /**
+     * Pull out the sample names from a SAMFileHeader
+     *
+     * note that we use a TreeSet so that they are sorted
+     *
+     * @param header  the sam file header
+     * @return list of strings representing the sample names
+     */
+    public static Set<String> getSamplesFromHeader( final SAMFileHeader header ) {
+        // get all of the unique sample names
+        final Set<String> samples = new TreeSet<>();
+        final List<SAMReadGroupRecord> readGroups = header.getReadGroups();
+
+        for ( SAMReadGroupRecord readGroup : readGroups ) {
+            final String sample = readGroup.getSample();
+            if ( sample != null ) {
+                samples.add(sample);
+            }
+        }
+
+        return samples;
     }
 }

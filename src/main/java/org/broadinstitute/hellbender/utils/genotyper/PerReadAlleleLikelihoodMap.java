@@ -65,6 +65,10 @@ public final class PerReadAlleleLikelihoodMap {
         likelihoodReadMap.computeIfAbsent(read, r -> new LinkedHashMap<>()).put(a,likelihood);
     }
 
+    public ReadPileup createPerAlleleDownsampledBasePileup(final ReadPileup pileup, final double downsamplingFraction) {
+        return AlleleBiasedDownsamplingUtils.createAlleleBiasedBasePileup(pileup, downsamplingFraction);
+    }
+
     /**
      * Convert the @likelihoodReadMap to a map of alleles to reads, where each read is mapped uniquely to the allele
      * for which it has the greatest associated likelihood

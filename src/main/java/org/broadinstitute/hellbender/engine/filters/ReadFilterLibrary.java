@@ -27,9 +27,9 @@ public final class ReadFilterLibrary {
     public static final ReadFilter NON_ZERO_REFERENCE_LENGTH_ALIGNMENT = read -> read.getCigarElements().stream().anyMatch(c -> c.getOperator().consumesReferenceBases() && c.getLength() > 0);
 
     /**
-     * Reads whose mate maps to the same contig.
+     * Reads that either have a mate that maps to the same contig, or don't have a mapped mate.
      */
-    public static final ReadFilter MATE_ON_SAME_CONTIG = read -> read.isPaired() && ! read.isUnmapped() && ! read.mateIsUnmapped() && read.getContig().equals(read.getMateContig());
+    public static final ReadFilter MATE_ON_SAME_CONTIG = read -> ! read.isPaired() || read.isUnmapped() || read.mateIsUnmapped() || read.getContig().equals(read.getMateContig());
 
     /**
      * Reads that have a mapped mate and both mate and read are on different same strands (ie the usual situation).

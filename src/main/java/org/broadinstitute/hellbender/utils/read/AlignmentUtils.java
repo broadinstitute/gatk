@@ -5,7 +5,10 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
 
 import java.util.*;
 
@@ -13,6 +16,7 @@ import java.util.*;
 public final class AlignmentUtils {
     private static final EnumSet<CigarOperator> ALIGNED_TO_GENOME_OPERATORS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X);
     private static final EnumSet<CigarOperator> ALIGNED_TO_GENOME_PLUS_SOFTCLIPS = EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.S);
+    public final static String HAPLOTYPE_TAG = "HC";
 
     // cannot be instantiated
     private AlignmentUtils() { }
@@ -33,6 +37,74 @@ public final class AlignmentUtils {
         final CigarOperator last = cigar.getCigarElement(cigar.numCigarElements()-1).getOperator();
         return first == CigarOperator.D || first == CigarOperator.I || last == CigarOperator.D || last == CigarOperator.I;
     }
+
+    /**
+     * Aligns reads the haplotype, and then projects this alignment of read -> hap onto the reference
+     * via the alignment of haplotype (via its getCigar) method.
+     *
+     * @param originalRead the read we want to write aligned to the reference genome
+     * @param haplotype the haplotype that the read should be aligned to, before aligning to the reference
+     * @param referenceStart the start of the reference that haplotype is aligned to.  Provides global coordinate frame.
+     * @param isInformative true if the read is differentially informative for one of the haplotypes
+     *
+     * @throws IllegalArgumentException if {@code originalRead} is {@code null} or {@code haplotype} is {@code null} or it
+     *   does not have a Cigar or the {@code referenceStart} is invalid (less than 1).
+     *
+     * @return a GATKRead aligned to reference. Never {@code null}.
+     */
+    public static GATKRead createReadAlignedToRef(final GATKRead originalRead,
+                                                       final Haplotype haplotype,
+                                                       final Haplotype refHaplotype,
+                                                       final int referenceStart,
+                                                       final boolean isInformative) {
+        Utils.nonNull(originalRead);
+        Utils.nonNull(haplotype);
+        Utils.nonNull(refHaplotype);
+        Utils.nonNull(haplotype.getCigar());
+        if ( referenceStart < 1 ) { throw new IllegalArgumentException("reference start much be >= 1 but got " + referenceStart); }
+
+        // compute the smith-waterman alignment of read -> haplotype
+        final SWPairwiseAlignment swPairwiseAlignment = new SWPairwiseAlignment(haplotype.getBases(), originalRead.getBases(), CigarUtils.NEW_SW_PARAMETERS);
+        if ( swPairwiseAlignment.getAlignmentStart2wrt1() == -1 ) {
+            // sw can fail (reasons not clear) so if it happens just don't realign the read
+            return originalRead;
+        }
+
+        final Cigar swCigar = consolidateCigar(swPairwiseAlignment.getCigar());
+
+        // since we're modifying the read we need to clone it
+        final GATKRead read = originalRead.copy();
+
+        // only informative reads are given the haplotype tag to enhance visualization
+        if ( isInformative ) {
+            read.setAttribute(HAPLOTYPE_TAG, haplotype.hashCode());
+        }
+
+        // compute here the read starts w.r.t. the reference from the SW result and the hap -> ref cigar
+        final Cigar extendedHaplotypeCigar = haplotype.getConsolidatedPaddedCigar(1000);
+        final int readStartOnHaplotype = calcFirstBaseMatchingReferenceInCigar(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentStart2wrt1());
+        final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnHaplotype;
+        read.setPosition(read.getContig(), readStartOnReference);
+
+        // compute the read -> ref alignment by mapping read -> hap -> ref from the
+        // SW of read -> hap mapped through the given by hap -> ref
+        final Cigar haplotypeToRef = trimCigarByBases(extendedHaplotypeCigar, swPairwiseAlignment.getAlignmentStart2wrt1(), extendedHaplotypeCigar.getReadLength() - 1);
+        final Cigar readToRefCigarRaw = applyCigarToCigar(swCigar, haplotypeToRef);
+        final Cigar readToRefCigarClean = cleanUpCigar(readToRefCigarRaw);
+        final Cigar readToRefCigar = leftAlignIndel(readToRefCigarClean, refHaplotype.getBases(),
+                originalRead.getBases(), swPairwiseAlignment.getAlignmentStart2wrt1(), 0, true);
+
+        read.setCigar(readToRefCigar);
+
+        if ( readToRefCigar.getReadLength() != read.getLength() ) {
+            throw new GATKException("Cigar " + readToRefCigar + " with read length " + readToRefCigar.getReadLength()
+                    + " != read length " + read.getLength() + " for read " + read.toString() + "\nhapToRef " + haplotypeToRef + " length " + haplotypeToRef.getReadLength() + "/" + haplotypeToRef.getReferenceLength()
+                    + "\nreadToHap " + swCigar + " length " + swCigar.getReadLength() + "/" + swCigar.getReferenceLength());
+        }
+
+        return read;
+    }
+
 
     /**
      * Get the byte[] from bases that cover the reference interval refStart -> refEnd given the
@@ -152,6 +224,12 @@ public final class AlignmentUtils {
 
     // todo -- this code and mismatchesInRefWindow should be combined and optimized into a single
     // todo -- high performance implementation.  We can do a lot better than this right now
+    /**
+     * @see #getMismatchCount(GATKRead, byte[], int, int, int) with startOnRead == 0 and nReadBases == read.getReadLength()
+     */
+    public static MismatchCount getMismatchCount(GATKRead r, byte[] refSeq, int refIndex) {
+        return getMismatchCount(r, refSeq, refIndex, 0, r.getLength());
+    }
 
     /**
      * Count how many bases mismatch the reference.  Indels are not considered mismatching.

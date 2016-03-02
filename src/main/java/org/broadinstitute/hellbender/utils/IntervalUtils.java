@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
@@ -1010,11 +1011,30 @@ public final class IntervalUtils {
         final int boundedStop = Math.min(contigLength, stop);
 
         if ( boundedStart > contigLength || boundedStop < 1 ){
-            // there's no meaningful way to create this genome loc, as the start and stop are off the contig
+            // there's no meaningful way to create this interval, as the start and stop are off the contig
             return null;
         } else {
             return new SimpleInterval(contig, boundedStart, boundedStop);
         }
+    }
+
+    /**
+     * Determines whether the provided interval is within the bounds of its assigned contig according to the provided dictionary
+     *
+     * @param interval interval to check
+     * @param dictionary dictionary to use to validate contig bounds
+     * @return true if the interval's contig exists in the dictionary, and the interval is within its bounds, otherwise false
+     */
+    public static boolean intervalIsOnDictionaryContig( final SimpleInterval interval, final SAMSequenceDictionary dictionary ) {
+        Utils.nonNull(interval);
+        Utils.nonNull(dictionary);
+
+        final SAMSequenceRecord contigRecord = dictionary.getSequence(interval.getContig());
+        if ( contigRecord == null ) {
+            return false;
+        }
+
+        return interval.getEnd() <= contigRecord.getSequenceLength();
     }
 
     //-------------------------------------------------------------------------------------------------

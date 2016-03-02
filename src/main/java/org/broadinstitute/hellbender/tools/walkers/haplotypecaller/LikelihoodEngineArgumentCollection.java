@@ -19,7 +19,7 @@ public final class LikelihoodEngineArgumentCollection {
      */
     @Hidden
     @Argument(fullName = "pair_hmm_implementation", shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
-    public PairHMM.Implementation pairHMM = PairHMM.Implementation.LOGLESS_CACHING;
+    public PairHMM.Implementation pairHMM = PairHMM.Implementation.FASTEST_AVAILABLE;
 
     /**
      * The phredScaledGlobalReadMismappingRate reflects the average global mismapping rate of all reads, regardless of their

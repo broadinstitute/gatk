@@ -453,4 +453,39 @@ public final class ReadUtilsUnitTest extends BaseTest {
         Assert.assertEquals(ReadUtils.hasCRAMFileContents(testFile), expected);
     }
 
+    @Test
+    public void testGetSamplesFromHeader() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(5, 1, 100);
+        final List<SAMReadGroupRecord> readGroups = new ArrayList<>();
+        for ( int i = 1; i <= 5; ++i ) {
+            SAMReadGroupRecord readGroup = new SAMReadGroupRecord("ReadGroup" + i);
+            readGroup.setSample("Sample" + i);
+            readGroups.add(readGroup);
+        }
+        header.setReadGroups(readGroups);
+
+        final Set<String> samples = ReadUtils.getSamplesFromHeader(header);
+        Assert.assertEquals(samples.size(), 5, "Wrong number of samples returned from ReadUtils.getSamplesFromHeader()");
+        for ( int i = 1; i <= 5; ++i ) {
+            Assert.assertTrue(samples.contains("Sample" + i), "Missing Sample" + i + " in samples returned from ReadUtils.getSamplesFromHeader()");
+        }
+    }
+
+    @Test
+    public void testGetSamplesFromHeaderNoReadGroups() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(5, 1, 100);
+        Assert.assertTrue(header.getReadGroups().isEmpty());
+
+        Assert.assertTrue(ReadUtils.getSamplesFromHeader(header).isEmpty(), "Non-empty Set returned from ReadUtils.getSamplesFromHeader() for a header with no read groups");
+    }
+
+    @Test
+    public void testGetSamplesFromHeaderNoSamples() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(5, 1, 100);
+        header.setReadGroups(Arrays.asList(new SAMReadGroupRecord("ReadGroup1")));
+        Assert.assertEquals(header.getReadGroups().size(), 1);
+        Assert.assertNull(header.getReadGroups().get(0).getSample());
+
+        Assert.assertTrue(ReadUtils.getSamplesFromHeader(header).isEmpty(), "Non-empty Set returned from ReadUtils.getSamplesFromHeader() for a header with no samples");
+    }
 }

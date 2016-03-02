@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
@@ -49,7 +50,7 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
         this(Collections.emptySet(), 0);
     }
 
-    private static final Logger logger = Logger.getLogger(PossibleDeNovo.class);
+    private static final Logger logger = LogManager.getLogger(PossibleDeNovo.class);
 
     private static final int hi_GQ_threshold = 20; //WARNING - If you change this value, update the description in GATKVCFHeaderLines
     private static final int lo_GQ_threshold = 10; //WARNING - If you change this value, update the description in GATKVCFHeaderLines

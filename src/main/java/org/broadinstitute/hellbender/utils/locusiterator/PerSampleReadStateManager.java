@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.utils.locusiterator;
 
 import htsjdk.samtools.CigarOperator;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.Downsampler;
 import org.broadinstitute.hellbender.utils.downsampling.LevelingDownsampler;
@@ -14,7 +15,7 @@ import java.util.List;
  * ReadStateManager for a single sample
  */
 final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine> {
-    private static final Logger logger = Logger.getLogger(PerSampleReadStateManager.class);
+    private static final Logger logger = LogManager.getLogger(PerSampleReadStateManager.class);
     private static final boolean CAPTURE_DOWNSAMPLING_STATS = false;
 
     /**

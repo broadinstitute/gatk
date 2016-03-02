@@ -20,6 +20,14 @@ public final class QualityUtilsUnitTest extends BaseTest {
     public void init() {
     }
 
+    @Test
+    public void testPhredScaleLog10CorrectRate(){
+        Assert.assertEquals(QualityUtils.phredScaleLog10CorrectRate(Math.log10(0.9)),    10.0, 1e-9);
+        Assert.assertEquals(QualityUtils.phredScaleLog10CorrectRate(Math.log10(0.99)),   20.0, 1e-9);
+        Assert.assertEquals(QualityUtils.phredScaleLog10CorrectRate(Math.log10(0.999)),  30.0, 1e-9);
+        Assert.assertEquals(QualityUtils.phredScaleLog10CorrectRate(Math.log10(0.9999)), 40.0, 1e-9);
+    }
+
     @DataProvider(name = "QualTest")
     public Object[][] makeMyDataProvider() {
         final List<Object[]> tests = new ArrayList<>();

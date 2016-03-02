@@ -8,9 +8,10 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
 public final class UnifiedArgumentCollection extends StandardCallerArgumentCollection {
+    private static final long serialVersionUID = 1L;
 
     @Argument(fullName = "genotype_likelihoods_model", shortName = "glm", doc = "Genotype likelihoods calculation model to employ -- SNP is the default option, while INDEL is also available for calling indels and BOTH is available for calling both together", optional = true)
-    public GenotypeLikelihoodsCalculationModel GLmodel = GenotypeLikelihoodsCalculationModel.SNP;
+    public GenotypeLikelihoodsCalculationModel.Model GLmodel = GenotypeLikelihoodsCalculationModel.Model.SNP;
 
     /**
      * The PCR error rate is independent of the sequencing error rate, which is necessary because we cannot necessarily
@@ -30,7 +31,7 @@ public final class UnifiedArgumentCollection extends StandardCallerArgumentColle
      * The PairHMM implementation to use for -glm INDEL genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
      */
     @Argument(fullName = "pair_hmm_implementation", shortName = "pairHMM", doc = "The PairHMM implementation to use for -glm INDEL genotype likelihood calculations", optional = true)
-    public PairHMM.Implementation pairHMM = PairHMM.Implementation.LOGLESS_CACHING;
+    public PairHMM.Implementation pairHMM = PairHMM.Implementation.FASTEST_AVAILABLE;
 
     /**
      * The minimum confidence needed in a given base for it to be used in variant calling.  Note that the base quality of a base

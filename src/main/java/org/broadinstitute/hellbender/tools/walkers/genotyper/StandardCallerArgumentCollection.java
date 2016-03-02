@@ -2,21 +2,23 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.map.DefaultedMap;
-import org.broadinstitute.hellbender.cmdline.Advanced;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorImplementation;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * This is pulled out so that every caller isn't exposed to the arguments from every other caller.
  */
-public class StandardCallerArgumentCollection {
+public class StandardCallerArgumentCollection implements ArgumentCollectionDefinition {
+    private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -47,7 +49,22 @@ public class StandardCallerArgumentCollection {
     @Argument(fullName = "contamination_fraction_per_sample_file", shortName = "contaminationFile", doc = "Tab-separated File containing fraction of contamination in sequencing data (per sample) to aggressively remove. Format should be \"<SampleID><TAB><Contamination>\" (Contamination is double) per line; No header.", optional = true)
     public File CONTAMINATION_FRACTION_FILE = null;
 
+    /**
+     * Returns true if there is some sample contamination present, false otherwise.
+     * @return {@code true} iff there is some sample contamination
+     */
+    public boolean isSampleContaminationPresent() {
+        return (!Double.isNaN(CONTAMINATION_FRACTION) && CONTAMINATION_FRACTION > 0.0) || (sampleContamination != null && !sampleContamination.isEmpty());
+    }
+
     private DefaultedMap<String,Double> sampleContamination;
+
+    /**
+     * Returns an unmodifiable view of the map of SampleId -> contamination.
+     */
+    public Map<String,Double> getSampleContamination() {
+        return Collections.unmodifiableMap(sampleContamination);
+    }
 
     /**
      * Returns the sample contamination or CONTAMINATION_FRACTION if no contamination level was specified for this sample.
@@ -95,6 +112,36 @@ public class StandardCallerArgumentCollection {
      * Creates a Standard caller argument collection with default values.
      */
     public StandardCallerArgumentCollection() { }
+
+    /**
+     * "Casts" a caller argument collection into another type.
+     *
+     * <p>Common fields values are copied across</p>
+     * @param clazz the class of the result.
+     * @param <T> result argument collection class.
+     * @return never {@code null}.
+     */
+    public <T extends StandardCallerArgumentCollection> T cloneTo(final Class<T> clazz) {
+        try {
+            final T result = clazz.newInstance();
+            for (final Field field : getClass().getFields()) {
+                // just copy common fields.
+                if (!field.getDeclaringClass().isAssignableFrom(clazz))
+                    continue;
+                final int fieldModifiers = field.getModifiers();
+                if ((fieldModifiers & UNCOPYABLE_MODIFIER_MASK) != 0)  continue;
+                //Use the clone() method if appropriate
+                if (Cloneable.class.isAssignableFrom(field.getType())) {
+                    Method clone = field.getType().getMethod("clone");
+                    field.set(result, clone.invoke(field.get(this)));
+                } else
+                    field.set(result,field.get(this));
+            }
+            return result;
+        } catch (final Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
 
     /**
      * Holds a modifiers mask that identifies those fields that cannot be copied between
