@@ -6,6 +6,8 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -48,6 +50,13 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         final ReadCountCollection counts = info.newInstance();
         final ReadCountCollection normalizedCounts = counts.normalizeByColumnAverages(weightByTargetSize);
         assertNormalizedBySampleAverage(counts, normalizedCounts, weightByTargetSize);
+    }
+
+    @Test(dataProvider ="correctInstantiationData")
+    public void testConvertToZScores(final ReadCountCollectionInfo info) {
+        final ReadCountCollection counts = info.newInstance();
+        final ReadCountCollection zScoreCounts = counts.zScoreCounts();
+        assertZScores(counts, zScoreCounts);
     }
 
     @Test(dataProvider ="correctInstantiationData", expectedExceptions = IllegalArgumentException.class)
@@ -523,5 +532,26 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
             final double inputWeightedAverage = countsColumn.dotProduct(weights) / weights.getL1Norm();
             Assert.assertEquals(normalizedCountsColumn.mapMultiply(inputWeightedAverage).getL1Distance(countsColumn), 0, 1e-8);
         }
+    }
+
+    private void assertZScores(final ReadCountCollection counts, final ReadCountCollection zScoreCounts) {
+        Assert.assertEquals(counts.targets(), zScoreCounts.targets());
+        Assert.assertEquals(counts.columnNames(), zScoreCounts.columnNames());
+
+        final RealMatrix countsMatrix = counts.counts();
+        final RealMatrix zScoreCountsMatrix = zScoreCounts.counts();
+
+        for (int row = 0; row < countsMatrix.getRowDimension(); row++) {
+            final double mean = GATKProtectedMathUtils.mean(countsMatrix.getRow(row));
+            final double std = Math.sqrt(new Variance().evaluate(countsMatrix.getRow(row)));
+            for (int col = 0; col < countsMatrix.getColumnDimension(); col++) {
+                if (countsMatrix.getColumnDimension() > 1) {
+                    Assert.assertEquals(zScoreCountsMatrix.getEntry(row, col), (countsMatrix.getEntry(row, col) - mean) / std, 1e-8);
+                } else {
+                    Assert.assertTrue(Double.isNaN(zScoreCountsMatrix.getEntry(row, col)));
+                }
+            }
+        }
+
     }
 }

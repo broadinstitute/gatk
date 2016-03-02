@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+
+import java.util.stream.IntStream;
 
 /**
  * Extra MathUtils that should be moved to gatk-public
@@ -33,5 +37,19 @@ public class GATKProtectedMathUtils {
         final Percentile percentile = new Percentile();
         percentile.setData(values);
         return percentile.evaluate(75.0) - percentile.evaluate(25.0);
+    }
+
+    public static double mean(final double ... values) {
+        Utils.nonNull(values);
+        return MathUtils.mean(values, 0, values.length);
+    }
+
+    public static double[] rowMeans(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        return IntStream.range(0, matrix.getRowDimension()).mapToDouble(r -> mean(matrix.getRow(r))).toArray();
+    }
+
+    public static double[] rowVariances(final RealMatrix matrix) {
+        return IntStream.range(0, matrix.getRowDimension()).mapToDouble(r -> new Variance().evaluate(matrix.getRow(r))).toArray();
     }
 }
