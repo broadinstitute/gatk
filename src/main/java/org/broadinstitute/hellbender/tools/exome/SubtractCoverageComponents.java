@@ -257,20 +257,20 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
     }
 
     private void compareCompomentsAndCoverageTargetNames(final Map<String, Integer> componentTargets,
-                                                                 final Map<String, Integer> coverageTargetIndexByName) {
-        final Stream<String> componentTargetsMissingCoverage = componentTargets.keySet().stream()
-                .filter(n -> !coverageTargetIndexByName.containsKey(n));
+                                                         final Map<String, Integer> coverageTargetIndexByName) {
+        final List<String> componentTargetsMissingCoverage = componentTargets.keySet().stream()
+                .filter(n -> !coverageTargetIndexByName.containsKey(n)).collect(Collectors.toList());
 
-        if (componentTargetsMissingCoverage.count() > 0) {
+        if (componentTargetsMissingCoverage.size() > 0) {
             throw new UserException.BadInput("the input coverage file is missing some of the targets used to calculate "
-                    + "the components; e.g. " + componentTargetsMissingCoverage.limit(5).collect(Collectors.joining(", ")));
+                    + "the components; e.g. " + componentTargetsMissingCoverage.stream().limit(5).collect(Collectors.joining(", ")));
         }
 
-        final Stream<String> coverageTargetsMissingComponents = coverageTargetIndexByName.keySet().stream()
-                .filter(n -> !componentTargets.containsKey(n));
-        if (coverageTargetsMissingComponents.findFirst().isPresent()) {
+        final List<String> coverageTargetsMissingComponents = coverageTargetIndexByName.keySet().stream()
+                .filter(n -> !componentTargets.containsKey(n)).collect(Collectors.toList());
+        if (coverageTargetsMissingComponents.size() > 0) {
             logger.warn(
-                    String.format("there are some targets in the coverage input file that are not present in the components file (a total of %d). These won't be normalized nor output", coverageTargetsMissingComponents.count()));
+                    String.format("there are some targets in the coverage input file that are not present in the components file (a total of %d). These won't be normalized nor output", coverageTargetsMissingComponents.size()));
         }
     }
 
