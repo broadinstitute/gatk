@@ -22,7 +22,7 @@ public final class CountVariantsSpark extends GATKSparkTool {
 
     @Argument(doc = "uri for the input file: a local file path",
             shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
-            optional = true)
+            optional = false)
     public String input;
 
 
@@ -39,8 +39,10 @@ public final class CountVariantsSpark extends GATKSparkTool {
         final long count = variants.count();
         System.out.println(count);
 
-        try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {
-            ps.print(count);
+        if( out != null) {
+            try (final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions()))) {
+                ps.print(count);
+            }
         }
     }
 }

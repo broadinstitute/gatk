@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -32,18 +31,22 @@ public final class CountBasesSparkIntegrationTest extends CommandLineProgramTest
         final File unsortedBam = new File(getTestDataDir(), fileName);
         final File outputTxt = createTempFile("count_bases", ".txt");
         ArgumentsBuilder args = new ArgumentsBuilder();
-        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
-        args.add(unsortedBam.getCanonicalPath());
-        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
-        args.add(outputTxt.getCanonicalPath());
+        args.addInput(unsortedBam);
+        args.addOutput(outputTxt);
         if (null != referenceFileName) {
-            final File REF = new File(getTestDataDir(), referenceFileName);
-            args.add("-R");
-            args.add(REF.getAbsolutePath());
+            final File ref = new File(getTestDataDir(), referenceFileName);
+            args.addReference(ref);
         }
         this.runCommandLine(args.getArgsArray());
 
         final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
         Assert.assertEquals((int) Integer.valueOf(readIn), expectedCount);
+    }
+
+    @Test
+    public void testNoNPRWhenOutputIsUnspecified(){
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addInput(new File(getTestDataDir(), "count_bases.bam"));
+        this.runCommandLine(args.getArgsArray());
     }
 }
