@@ -31,10 +31,10 @@ public final class ProgressMeter {
     public static final double DEFAULT_SECONDS_BETWEEN_UPDATES = 10.0;
 
     /**
-     * We check the current time every time we process this many records
-     * (to cut down on the number of system calls)
+     * We check the current time every time we process this many records,
+     * by default (to cut down on the number of system calls)
      */
-    public static final long RECORDS_BETWEEN_TIME_CHECKS = 1000l;
+    public static final long DEFAULT_RECORDS_BETWEEN_TIME_CHECKS = 1000L;
 
     /**
      * By default, we use this function to get the current time
@@ -44,41 +44,47 @@ public final class ProgressMeter {
     /**
      * Number of milliseconds in a second
      */
-    public static final long MILLISECONDS_PER_SECOND = 1000l;
+    public static final long MILLISECONDS_PER_SECOND = 1000L;
 
     /**
      * Number of milliseconds in a minute
      */
-    public static final long MILLISECONDS_PER_MINUTE = MILLISECONDS_PER_SECOND * 60l;
+    public static final long MILLISECONDS_PER_MINUTE = MILLISECONDS_PER_SECOND * 60L;
 
     /**
      * We output a line to the logger after this many seconds have elapsed
      */
-    private final double secondsBetweenUpdates;
+    private double secondsBetweenUpdates;
+
+    /**
+     * We check the current time every time we process this many records
+     * (to cut down on the number of system calls)
+     */
+    private long recordsBetweenTimeChecks = DEFAULT_RECORDS_BETWEEN_TIME_CHECKS;
 
     /**
      * Total records processed
      */
-    private long numRecordsProcessed = 0l;
+    private long numRecordsProcessed = 0L;
 
     /**
      * Our start timestamp in milliseconds as returned by our {@link #timeFunction}
      */
-    private long startTimeMs = 0l;
+    private long startTimeMs = 0L;
 
     /**
      * Current timestamp in milliseconds as returned by our {@link #timeFunction}.
      *
-     * Updated only every {@link #RECORDS_BETWEEN_TIME_CHECKS} records to cut down
+     * Updated only every {@link #recordsBetweenTimeChecks} records to cut down
      * on system calls.
      */
-    private long currentTimeMs = 0l;
+    private long currentTimeMs = 0L;
 
     /**
      * Timestamp in milliseconds as returned by our {@link #timeFunction} of the last time
      * we outputted a progress line to the logger
      */
-    private long lastPrintTimeMs = 0l;
+    private long lastPrintTimeMs = 0L;
 
     /**
      * The genomic location of the most recently processed record, or null if the most recent record had no location.
@@ -90,7 +96,7 @@ public final class ProgressMeter {
      * The number of times we've outputted a status line to the logger via {@link #printProgress}.
      * We keep track of this only for unit-testing purposes.
      */
-    private long numLoggerUpdates = 0l;
+    private long numLoggerUpdates = 0L;
 
     /**
      * Function that returns the current time in milliseconds (defaults to {@link #DEFAULT_TIME_FUNCTION}).
@@ -149,6 +155,15 @@ public final class ProgressMeter {
     }
 
     /**
+     * Set the number of records we need to process before we check the current time
+     *
+     * @param recordsBetweenTimeChecks number of records we need to process before we check the current time
+     */
+    public void setRecordsBetweenTimeChecks( final long recordsBetweenTimeChecks ) {
+        this.recordsBetweenTimeChecks = recordsBetweenTimeChecks;
+    }
+
+    /**
      * Start the progress meter and produce preliminary output such as column headings.
      * @throws IllegalStateException if the meter has been started before or has been stopped already
      */
@@ -166,8 +181,8 @@ public final class ProgressMeter {
         startTimeMs = timeFunction.getAsLong();
         currentTimeMs = startTimeMs;
         lastPrintTimeMs = startTimeMs;
-        numRecordsProcessed = 0l;
-        numLoggerUpdates = 0l;
+        numRecordsProcessed = 0L;
+        numLoggerUpdates = 0L;
         currentLocus = null;
     }
 
@@ -186,7 +201,7 @@ public final class ProgressMeter {
             throw new IllegalStateException("the progress meter has been stopped already");
         }
         ++numRecordsProcessed;
-        if ( numRecordsProcessed % RECORDS_BETWEEN_TIME_CHECKS == 0 ) {
+        if ( numRecordsProcessed % recordsBetweenTimeChecks == 0 ) {
             currentTimeMs = timeFunction.getAsLong();
             this.currentLocus = currentLocus;
 

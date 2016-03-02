@@ -14,7 +14,7 @@ import static org.broadinstitute.hellbender.utils.BaseUtils.Base.D;
 /**
  * Represents an individual base in a reads pileup.
  */
-public final class PileupElement {
+public class PileupElement {
 
     private static final EnumSet<CigarOperator> ON_GENOME_OPERATORS =
             EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.D);
@@ -27,7 +27,7 @@ public final class PileupElement {
     public static final byte G_FOLLOWED_BY_INSERTION_BASE = (byte) 90;
 
     private final GATKRead read;         // the read this base belongs to
-    private final int offset;            // the offset in the bases array for this base
+    protected final int offset;            // the offset in the bases array for this base
 
     private final CigarElement currentCigarElement;
     private final int currentCigarOffset;
@@ -58,6 +58,14 @@ public final class PileupElement {
         this.currentCigarElement = currentElement;
         this.currentCigarOffset = currentCigarOffset;
         this.offsetInCurrentCigar = offsetInCurrentCigar;
+    }
+
+    /**
+     * Create a new PileupElement that's a copy of toCopy
+     * @param toCopy the element we want to copy
+     */
+    public PileupElement(final PileupElement toCopy) {
+        this(toCopy.read, toCopy.offset, toCopy.currentCigarElement, toCopy.currentCigarOffset, toCopy.offsetInCurrentCigar);
     }
 
     /**

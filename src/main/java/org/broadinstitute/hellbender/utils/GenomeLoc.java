@@ -11,6 +11,8 @@ import java.util.*;
  * Genome location representation.  It is *** 1 *** based closed.  Note that GenomeLocs start and stop values
  * can be any positive or negative number, by design.  Bound validation is a feature of the GenomeLocParser,
  * and not a fundamental constraint of the GenomeLoc
+ *
+ * This class is not intended to be extended outside of the core GATK engine and tests.
  */
 public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenomeLocation, Locatable {
     private static final long serialVersionUID = 1L;
@@ -543,5 +545,21 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     public GenomeLoc setStop(final GenomeLoc loc, final int stop) {
         Utils.nonNull(loc);
         return new GenomeLoc(loc.getContig(), loc.getContigIndex(), loc.start, stop);
+    }
+
+    /**
+     * Returns a new GenomeLoc that represents the region between the endpoints of this and that. Requires that
+     * this and that GenomeLoc are both mapped.
+     */
+    public GenomeLoc endpointSpan(final GenomeLoc that) {
+        if(GenomeLoc.isUnmapped(this) || GenomeLoc.isUnmapped(that)) {
+            throw new IllegalArgumentException("Cannot get endpoint span for unmerged genome locs");
+        }
+
+        if ( ! this.getContig().equals(that.getContig()) ) {
+            throw new IllegalArgumentException("Cannot get endpoint span for genome locs on different contigs");
+        }
+
+        return new GenomeLoc(getContig(),this.contigIndex,Math.min(getStart(),that.getStart()),Math.max(getStop(),that.getStop()));
     }
 }

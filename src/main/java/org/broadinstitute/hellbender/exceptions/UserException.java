@@ -100,6 +100,10 @@ public class UserException extends RuntimeException {
         public BadArgumentValue(String arg, String value, String message){
             super(String.format("Argument %s has a bad value: %s. %s", arg, value,message));
         }
+
+        public BadArgumentValue(String message) {
+            super(String.format("Illegal argument value: %s", message));
+        }
     }
 
     public static class CannotHandleGzippedRef extends UserException {
@@ -380,6 +384,14 @@ public class UserException extends RuntimeException {
             super(String.format("File %s is of the wrong type. It should contain Features of type %s, but instead contains Features of type(s): %s",
                                 featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
 	    }
+    }
+
+    public static final class ReadMissingReadGroup extends MalformedBAM {
+        private static final long serialVersionUID = 0L;
+
+        public ReadMissingReadGroup(final GATKRead read) {
+            super(read, String.format("Read %s is missing the read group (RG) tag, which is required by the GATK.  Please use " + HelpConstants.forumPost("discussion/59/companion-utilities-replacereadgroups to fix this problem"), read.getName()));
+        }
     }
 
     public static final class HardwareFeatureException extends UserException {

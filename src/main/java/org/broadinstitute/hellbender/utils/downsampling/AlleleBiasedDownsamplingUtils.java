@@ -4,10 +4,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.collections4.map.DefaultedMap;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
@@ -170,14 +173,14 @@ public final class AlleleBiasedDownsamplingUtils {
      * @param sampleIDs          Set of Samples of interest (no reason to include every sample in file) or null to turn off checking
      * @param logger                      for logging output
      * @return sample-contamination Map. The returned map is a {@link DefaultedMap} that defaults to the defaultContaminationFraction for unspecified samples
-     * @throws IOException if there's an IO problem reading the file.
+     * @throws UserException if there's an IO problem reading the file.
      * @throws UserException if the file is malformed
      */
 
-    public static DefaultedMap<String, Double> loadContaminationFile(final File file, final double defaultContaminationFraction, final Set<String> sampleIDs, final Logger logger) throws IOException {
+    public static DefaultedMap<String, Double> loadContaminationFile(final File file, final double defaultContaminationFraction, final Set<String> sampleIDs, final Logger logger) {
         final DefaultedMap<String, Double> sampleContamination = new DefaultedMap<>(defaultContaminationFraction);
         final Set<String> nonSamplesInContaminationFile = new HashSet<>(sampleContamination.keySet());
-        try ( final XReadLines reader = new XReadLines(file, true)){
+        try ( final XReadLines reader = new XReadLines(file, true) ){
             for (final String line : reader) {
                 if (line.isEmpty()) {
                     continue;
@@ -231,6 +234,8 @@ public final class AlleleBiasedDownsamplingUtils {
 
             return sampleContamination;
 
+        } catch (IOException e) {
+            throw new UserException.CouldNotReadInputFile("I/O Error while reading sample-contamination file " + file.getAbsolutePath() + ": " + e.getMessage());
         }
     }
 }

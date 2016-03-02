@@ -22,6 +22,37 @@ public final class MathUtilsUnitTest extends BaseTest {
 
     private static final Logger logger = LogManager.getLogger(MathUtilsUnitTest.class);
 
+    /**
+     * Tests that we correctly compute mean and standard deviation from a stream of numbers
+     */
+    @Test
+    public void testRunningAverage() {
+        logger.warn("Executing testRunningAverage");
+
+        int[] numbers = {1, 2, 4, 5, 3, 128, 25678, -24};
+        MathUtils.RunningAverage r = new MathUtils.RunningAverage();
+
+        for (final double b : numbers)
+            r.add(b);
+
+        Assert.assertEquals((long) numbers.length, r.observationCount());
+        Assert.assertTrue(r.mean() - 3224.625 < 2e-10);
+        Assert.assertTrue(r.stddev() - 9072.6515881128 < 2e-10);
+    }
+
+    @Test
+    public void testRMS()  {
+        Assert.assertEquals(MathUtils.rms(Arrays.asList(2,2,2)), 2.0);
+        Assert.assertEquals(MathUtils.rms(Arrays.asList(1,2,3)), Math.sqrt((1.0 + 4.0 + 9.0)/3));
+    }
+
+    @Test
+    public void log10BinomialProbability() throws Exception {
+        Assert.assertEquals(MathUtils.log10BinomialProbability(2, 1), log10(0.5),1E-9);
+        Assert.assertEquals(MathUtils.log10BinomialProbability(4, 1), log10(0.25),1E-9);
+        Assert.assertEquals(MathUtils.log10BinomialProbability(4, 2), log10(0.375),1E-9);
+    }
+
     @Test(dataProvider = "log10OneMinusPow10Data")
     public void testLog10OneMinusPow10(final double x, final double expected) {
         final double actual = MathUtils.log10OneMinusPow10(x);
@@ -561,5 +592,4 @@ public final class MathUtilsUnitTest extends BaseTest {
     public void testMedianOfNullList(){
         MathUtils.median(null);
     }
-
 }

@@ -20,7 +20,7 @@ import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
  * Tests for the read filter library.
  */
 public final class ReadFilterLibraryUnitTest {
-    private static final int CHR_COUNT = 1;
+    private static final int CHR_COUNT = 2;
     private static final int CHR_START = 1;
     private static final int CHR_SIZE = 1000;
     private static final int GROUP_COUNT = 5;
@@ -407,13 +407,12 @@ public final class ReadFilterLibraryUnitTest {
     public void testMappingQualityFilter() {
         final SAMFileHeader header = createHeaderWithReadGroups();
         final GATKRead read = simpleGoodRead(header);
-        final MappingQualityReadFilter f = new MappingQualityReadFilter();
 
-        f.minMappingQualtyScore = 17;
+        MappingQualityReadFilter f = new MappingQualityReadFilter(17);
         read.setMappingQuality(11);
         Assert.assertFalse(f.test(read), read.toString());//fail
 
-        f.minMappingQualtyScore = 9;
+        f = new MappingQualityReadFilter(9);
         Assert.assertTrue(f.test(read), read.toString());//pass
     }
 
@@ -612,5 +611,57 @@ public final class ReadFilterLibraryUnitTest {
         f.blackListedLanes = Collections.singleton(fred);
         read.setAttribute(SAMTag.PU.name(), fred);
         Assert.assertFalse(f.test(read), read.toString());//fail - match
+    }
+
+    @DataProvider(name = "MateOnSameContigOrNoMappedMateTestData")
+    public Object[][] mateOnSameContigOrNoMappedMateTestData() {
+        final SAMFileHeader header = createHeaderWithReadGroups();
+
+        final GATKRead unpairedRead = simpleGoodRead(header);
+        unpairedRead.setIsPaired(false);
+
+        final GATKRead pairedReadWithUnmappedMate = simpleGoodRead(header);
+        pairedReadWithUnmappedMate.setIsPaired(true);
+        pairedReadWithUnmappedMate.setMateIsUnmapped();
+
+        final GATKRead pairedReadWithMappedMateDifferentContig = simpleGoodRead(header);
+        pairedReadWithMappedMateDifferentContig.setIsPaired(true);
+        pairedReadWithMappedMateDifferentContig.setMatePosition("2", 1);
+        pairedReadWithMappedMateDifferentContig.setPosition("1", 1);
+
+        final GATKRead pairedReadWithMappedMateSameContig = simpleGoodRead(header);
+        pairedReadWithMappedMateSameContig.setIsPaired(true);
+        pairedReadWithMappedMateSameContig.setMatePosition("1", 100);
+        pairedReadWithMappedMateSameContig.setPosition("1", 1);
+
+        final GATKRead unmappedReadWithMappedMate = simpleGoodRead(header);
+        unmappedReadWithMappedMate.setIsUnmapped();
+        unmappedReadWithMappedMate.setIsPaired(true);
+        unmappedReadWithMappedMate.setMatePosition("1", 100);
+
+        final GATKRead unmappedReadWithUnmappedMate = simpleGoodRead(header);
+        unmappedReadWithUnmappedMate.setIsUnmapped();
+        unmappedReadWithUnmappedMate.setIsPaired(true);
+        unmappedReadWithUnmappedMate.setMateIsUnmapped();
+
+        final GATKRead unmappedUnpairedRead = simpleGoodRead(header);
+        unmappedUnpairedRead.setIsUnmapped();
+        unmappedUnpairedRead.setIsPaired(false);
+
+        return new Object[][] {
+                { unpairedRead, true },
+                { pairedReadWithUnmappedMate, true },
+                { pairedReadWithMappedMateDifferentContig, false },
+                { pairedReadWithMappedMateSameContig, true },
+                { unmappedReadWithMappedMate, false },
+                { unmappedReadWithUnmappedMate, true },
+                { unmappedUnpairedRead, true }
+        };
+    }
+
+    @Test(dataProvider = "MateOnSameContigOrNoMappedMateTestData")
+    public void testMateOnSameContigOrNoMappedMate( final GATKRead read, final boolean expectedFilterResult ) {
+        final boolean actualFilterResult = MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(read);
+        Assert.assertEquals(actualFilterResult, expectedFilterResult);
     }
 }

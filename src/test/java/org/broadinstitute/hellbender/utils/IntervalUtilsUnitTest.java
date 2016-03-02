@@ -1197,4 +1197,71 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertEquals(convertedInterval.start, 5);
         Assert.assertEquals(convertedInterval.end, 10);
     }
+
+    @DataProvider(name = "TrimIntervalToContigData")
+    public Object[][] trimIntervalToContigData() {
+        return new Object[][] {
+                { "1", 5, 10, 100, new SimpleInterval("1", 5, 10) },
+                { "1", 1, 100, 100, new SimpleInterval("1", 1, 100) },
+                { "1", -1, 100, 100, new SimpleInterval("1", 1, 100) },
+                { "1", -5, 100, 100, new SimpleInterval("1", 1, 100) },
+                { "1", -5, 90, 100, new SimpleInterval("1", 1, 90) },
+                { "1", 1, 101, 100, new SimpleInterval("1", 1, 100) },
+                { "1", 1, 105, 100, new SimpleInterval("1", 1, 100) },
+                { "1", 5, 105, 100, new SimpleInterval("1", 5, 100) },
+                { "1", -1, 10, 100, new SimpleInterval("1", 1, 10) },
+                { "1", -5, 10, 100, new SimpleInterval("1", 1, 10) },
+                { "1", 90, 101, 100, new SimpleInterval("1", 90, 100) },
+                { "1", 90, 105, 100, new SimpleInterval("1", 90, 100) }
+        };
+    }
+
+    @Test(dataProvider = "TrimIntervalToContigData")
+    public void testTrimIntervalToContig( final String contig, final int start, final int stop, final int contigLength, final SimpleInterval expectedInterval ) {
+        Assert.assertEquals(IntervalUtils.trimIntervalToContig(contig, start, stop, contigLength), expectedInterval);
+    }
+
+    @DataProvider(name = "TrimIntervalToContigInvalidData")
+    public Object[][] trimIntervalToContigInvalidData() {
+        return new Object[][] {
+                { null, 1, 10, 100 },
+                { "1", 1, 10, 0 },
+                { "1", 1, 10, -1 }
+        };
+    }
+
+    @Test(dataProvider = "TrimIntervalToContigInvalidData", expectedExceptions = IllegalArgumentException.class)
+    public void testTrimIntervalToContigInvalidArg( final String contig, final int start, final int stop, final int contigLength ) {
+        IntervalUtils.trimIntervalToContig(contig, start, stop, contigLength);
+    }
+
+    @DataProvider(name = "IntervalIsOnDictionaryContigData")
+    public Object[][] intervalIsOnDictionaryContigData() {
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("1", 1000)));
+
+        return new Object[][] {
+                { new SimpleInterval("1", 1, 10), dictionary, true },
+                { new SimpleInterval("1", 50, 100), dictionary, true },
+                { new SimpleInterval("1", 1, 1000), dictionary, true },
+                { new SimpleInterval("2", 1, 10), dictionary, false },
+                { new SimpleInterval("1", 1, 1001), dictionary, false },
+                { new SimpleInterval("1", 1, 2000), dictionary, false }
+        };
+    }
+
+    @Test(dataProvider = "IntervalIsOnDictionaryContigData")
+    public void testIntervalIsOnDictionaryContig( final SimpleInterval interval, final SAMSequenceDictionary dictionary, final boolean expectedResult ) {
+        Assert.assertEquals(IntervalUtils.intervalIsOnDictionaryContig(interval, dictionary), expectedResult);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalIsOnDictionaryContigNullInterval() {
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord("1", 1000)));
+        IntervalUtils.intervalIsOnDictionaryContig(null, dictionary);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testIntervalIsOnDictionaryContigNullDictionary() {
+        IntervalUtils.intervalIsOnDictionaryContig(new SimpleInterval("1", 1, 10), null);
+    }
 }
