@@ -77,7 +77,7 @@ public final class ReplaceSamHeader extends PicardCommandLineProgram {
 
             final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord rec : recordReader) {
-                rec.setHeaderStrict(replacementHeader);
+                rec.setHeader(replacementHeader);
                 writer.addAlignment(rec);
                 progress.record(rec);
             }

@@ -38,7 +38,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
      * @return SAMRecordToGATKReadAdapter wrapping the headerless samRecord
      */
     public static SAMRecordToGATKReadAdapter headerlessReadAdapter( final SAMRecord samRecord ) {
-        samRecord.setHeaderStrict(null);
+        samRecord.setHeader(null);
         return new SAMRecordToGATKReadAdapter(samRecord);
     }
 
@@ -549,7 +549,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public SAMRecord convertToSAMRecord( final SAMFileHeader header ) {
-        samRecord.setHeaderStrict(header);
+        samRecord.setHeader(header);
         return samRecord;
     }
 
@@ -589,6 +589,6 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     public void setHeader(SAMFileHeader header) {
-        samRecord.setHeaderStrict(header);
+        samRecord.setHeader(header);
     }
 }
