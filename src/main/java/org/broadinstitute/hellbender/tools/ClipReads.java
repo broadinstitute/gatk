@@ -545,16 +545,16 @@ public final class ClipReads extends ReadWalker {
         public String toString() {
             StringBuilder s = new StringBuilder();
 
-            s.append(StringUtils.repeat('-', 80) + "\n");
-            s.append(String.format("Number of examined reads              %d%n", nTotalReads));
-            s.append(String.format("Number of clipped reads               %d%n", nClippedReads));
-            s.append(String.format("Percent of clipped reads              %.2f%n", (100.0 * nClippedReads) / nTotalReads));
-            s.append(String.format("Number of examined bases              %d%n", nTotalBases));
-            s.append(String.format("Number of clipped bases               %d%n", nClippedBases));
-            s.append(String.format("Percent of clipped bases              %.2f%n", (100.0 * nClippedBases) / nTotalBases));
-            s.append(String.format("Number of quality-score clipped bases %d%n", nQClippedBases));
-            s.append(String.format("Number of range clipped bases         %d%n", nRangeClippedBases));
-            s.append(String.format("Number of sequence clipped bases      %d%n", nSeqClippedBases));
+            s.append(StringUtils.repeat('-', 80) + "\n")
+                    .append(String.format("Number of examined reads              %d%n", nTotalReads))
+                    .append(String.format("Number of clipped reads               %d%n", nClippedReads))
+                    .append(String.format("Percent of clipped reads              %.2f%n", (100.0 * nClippedReads) / nTotalReads))
+                    .append(String.format("Number of examined bases              %d%n", nTotalBases))
+                    .append(String.format("Number of clipped bases               %d%n", nClippedBases))
+                    .append(String.format("Percent of clipped bases              %.2f%n", (100.0 * nClippedBases) / nTotalBases))
+                    .append(String.format("Number of quality-score clipped bases %d%n", nQClippedBases))
+                    .append(String.format("Number of range clipped bases         %d%n", nRangeClippedBases))
+                    .append(String.format("Number of sequence clipped bases      %d%n", nSeqClippedBases));
 
             for (Map.Entry<String, Long> elt : seqClipCounts.entrySet()) {
                 s.append(String.format("  %8d clip sites matching %s%n", elt.getValue(), elt.getKey()));

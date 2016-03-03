@@ -164,8 +164,8 @@ public class Main {
 
     private static void printUsage(final Set<Class<?>> classes, final String commandLineName) {
         final StringBuilder builder = new StringBuilder();
-        builder.append(BOLDRED + "USAGE: " + commandLineName + " " + GREEN + "<program name>" + BOLDRED + " [-h]\n\n" + KNRM);
-        builder.append(BOLDRED + "Available Programs:\n" + KNRM);
+        builder.append(BOLDRED + "USAGE: " + commandLineName + " " + GREEN + "<program name>" + BOLDRED + " [-h]\n\n" + KNRM)
+                .append(BOLDRED + "Available Programs:\n" + KNRM);
 
         /** Group CommandLinePrograms by CommandLineProgramGroup **/
         final Map<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup> programGroupClassToProgramGroupInstance = new HashMap<>();
