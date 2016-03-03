@@ -112,7 +112,7 @@ public final class FilterReadsIntegrationTest extends CommandLineProgramTest {
         }
 
         if (!writeReadsFile) { // defaults to true
-            args.add("--WRITE_READS_FILE");
+            args.add("--WRITE_READS_FILES");
             args.add("false");
         }
 

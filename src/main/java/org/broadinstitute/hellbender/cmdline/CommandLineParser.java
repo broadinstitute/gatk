@@ -15,8 +15,19 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.*;
-import java.util.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -213,7 +224,7 @@ public final class CommandLineParser {
     public boolean parseArguments(final PrintStream messageStream, final String[] args) {
         this.argv = args;
 
-        OptionParser parser = new OptionParser();
+        OptionParser parser = new OptionParser(false);
 
         for (ArgumentDefinition arg : argumentDefinitions){
             OptionSpecBuilder bld = parser.acceptsAll(arg.getNames(), arg.doc);

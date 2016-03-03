@@ -318,7 +318,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcf4.1.example.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec (
-                " --variant " + testFile + " -o %s ",
+                " --variant " + testFile + " -O %s ",
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_NoGTs.vcf")
         );
 

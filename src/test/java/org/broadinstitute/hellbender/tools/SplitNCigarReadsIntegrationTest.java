@@ -17,7 +17,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSplitsWithOverhangs()  throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-T SplitNCigarReads -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -o %s ",
+                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s ",
                 Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.bam"));    //results created using gatk3.46
         spec.executeTest("test splits with overhangs", this);
     }
@@ -25,7 +25,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSplitsWithOverhangsNotClipping() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-T SplitNCigarReads --doNotFixOverhangs -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -o %s ",
+                "--doNotFixOverhangs -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s ",
                 Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.doNotFixOverhangs.bam"));   //results created using gatk3.46
         spec.executeTest("test splits with overhangs not clipping", this);
     }
@@ -33,7 +33,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSplitsWithOverhangs0Mismatches() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-T SplitNCigarReads --maxMismatchesInOverhang 0 -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -o %s ",
+                "--maxMismatchesInOverhang 0 -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s ",
                 Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.maxMismatchesInOverhang0.bam"));   //results created using gatk3.46
         spec.executeTest("test splits with overhangs 0 mismatches", this);
     }
@@ -41,7 +41,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSplitsWithOverhangs5BasesInOverhang()  throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-T SplitNCigarReads --maxBasesInOverhang 5 -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -o %s ",
+                "--maxBasesInOverhang 5 -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s ",
                 Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.maxBasesInOverhang5.bam"));    //results created using gatk3.46
         spec.executeTest("test splits with overhangs 5 bases in overhang", this);
     }
@@ -49,7 +49,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test
     public void testSplitsFixNDN() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-T SplitNCigarReads -R " + b37_reference_20_21 + " -I " + getTestDataDir() +"/" + "splitNCigarReadsSnippet.bam -o %s -fixNDN",
+                "-R " + b37_reference_20_21 + " -I " + getTestDataDir() +"/" + "splitNCigarReadsSnippet.bam -O %s -fixNDN",
                 Arrays.asList(getTestDataDir() +"/" + "expected.splitNCigarReadsSnippet.splitNcigarReads.fixNDN.bam"));
         spec.executeTest("test fix NDN", this);
     }
