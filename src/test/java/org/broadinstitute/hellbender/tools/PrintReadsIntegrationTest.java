@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.cram.build.CramIO;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -11,6 +12,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
@@ -21,55 +23,41 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         return PrintReads.class.getSimpleName();
     }
 
-    @Test(dataProvider="testingData")
-    public void testFileToFile(String fileIn, String extOut) throws Exception {
-        String samFile= fileIn;
-        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
-        File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
-        final String[] args = new String[]{
-                "--input" , ORIG_BAM.getAbsolutePath(),
-                "--output", outFile.getAbsolutePath()
-        };
-        Assert.assertEquals(runCommandLine(args), null);
-        SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
-    }
-
-    @Test(dataProvider="testingData")
-    public void testFileToFileWithMD5(String fileIn, String extOut) throws Exception {
-        String samFile= fileIn;
-        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
-        File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
-        final String[] args = new String[]{
-                "--input" , ORIG_BAM.getAbsolutePath(),
-                "--createOutputBamMD5", "true",
-                "--output", outFile.getAbsolutePath()
-        };
-        Assert.assertEquals(runCommandLine(args), null);
-        SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
-        checkMD5asExpected(outFile);
-    }
-
-    @Test(dataProvider="testingDataCRAM")
-    public void testFileToFileCRAMWithMD5(String fileIn, String extOut, String reference) throws Exception {
-        String samFile= fileIn;
+    public void doFileToFile(String fileIn, String extOut, String reference, boolean testMD5) throws Exception {
+        String samFile = fileIn;
         final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
         final File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
-        final File refFile = new File(TEST_DATA_DIR, reference);
-        final String[] args = new String[]{
-                "--input" , ORIG_BAM.getAbsolutePath(),
-                "--createOutputBamMD5", "true",
-                "--output", outFile.getAbsolutePath(),
-                "-R", refFile.getAbsolutePath()
+
+        final ArrayList<String> args = new ArrayList<>();
+        args.add("--input"); args.add(ORIG_BAM.getAbsolutePath());
+        args.add("--output"); args.add(outFile.getAbsolutePath());
+        if (reference != null) {
+            final File refFile = new File(TEST_DATA_DIR, reference);
+            args.add("-R"); args.add(refFile.getAbsolutePath());
         };
+        if (testMD5) {
+            args.add("--createOutputBamMD5");
+            args.add("true");
+        }
         runCommandLine(args);
 
-        //TODO: Make this comparison non-lenient in all cases: https://github.com/broadinstitute/gatk/issues/1087
-        if (extOut.equals(".cram")){
-            SamAssertionUtils.assertSamsEqualLenient(outFile, ORIG_BAM, refFile);
+        if (fileIn.endsWith(CramIO.CRAM_FILE_EXTENSION) || extOut.equals(CramIO.CRAM_FILE_EXTENSION)) {
+            final File refFile = new File(TEST_DATA_DIR, reference);
+            if (!fileIn.endsWith(CramIO.CRAM_FILE_EXTENSION)) {
+                // TODO: We still need lenient comparison due to https://github.com/samtools/htsjdk/issues/455
+                // (bam->cram conversion strips out NM/MD tags)
+                SamAssertionUtils.assertSamsEqualLenient(outFile, ORIG_BAM, refFile);
+            }
+            else {
+                SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
+            }
         } else {
-            SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
+            SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
         }
-        checkMD5asExpected(outFile);
+
+        if (testMD5) {
+            checkMD5asExpected(outFile);
+        }
     }
 
     private void checkMD5asExpected(final File outFile) throws IOException {
@@ -83,57 +71,55 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         Assert.assertEquals(actualMD5, expectedMD5);
     }
 
-    @Test(dataProvider="testingDataCRAM")
-    public void testFileToFileCRAM(String fileIn, String extOut, String reference) throws Exception {
-        String samFile= fileIn;
-        final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
-        final File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
-        final File refFile = new File(TEST_DATA_DIR, reference);
-        final String[] args = new String[]{
-                "--input" , ORIG_BAM.getAbsolutePath(),
-                "--output", outFile.getAbsolutePath(),
-                "-R", refFile.getAbsolutePath()
-        };
-        runCommandLine(args);
+    @Test(dataProvider="testingData")
+    public void testFileToFile(String fileIn, String extOut, String reference) throws Exception {
+        doFileToFile(fileIn, extOut, reference, false);
+    }
 
-        //TODO: Make this comparison non-lenient in all cases: https://github.com/broadinstitute/gatk/issues/1087
-        if (extOut.equals(".cram")){
-            SamAssertionUtils.assertSamsEqualLenient(outFile, ORIG_BAM, refFile);
-        } else {
-            SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
-        }
+    @Test(dataProvider="testingData")
+    public void testFileToFileWithMD5(String fileIn, String extOut, String reference) throws Exception {
+        doFileToFile(fileIn, extOut, reference, true);
     }
 
     @DataProvider(name="testingData")
     public Object[][] testingData() {
         return new String[][]{
-                {"print_reads.sam", ".sam"},
-                {"print_reads.sam", ".bam"},
-                {"print_reads.bam", ".sam"},
-                {"print_reads.bam", ".bam"},
-                {"print_reads.sorted.queryname.sam", ".sam"},
-                {"print_reads.sorted.queryname.sam", ".bam"},
-                {"print_reads.sorted.queryname.bam", ".sam"},
-                {"print_reads.sorted.queryname.bam", ".bam"},
+                {"print_reads.sam", ".sam", null},
+                {"print_reads.sam", ".bam", null},
+                {"print_reads.sam", ".cram", "print_reads.fasta"},
+                {"print_reads.bam", ".sam", null},
+                {"print_reads.bam", ".bam", null},
+                {"print_reads.bam", ".cram", "print_reads.fasta"},
+                {"print_reads.cram", ".sam", "print_reads.fasta"},
+                {"print_reads.cram", ".bam", "print_reads.fasta"},
+                {"print_reads.cram", ".cram", "print_reads.fasta"},
 
-        };
-    }
-
-    @DataProvider(name="testingDataCRAM")
-    public Object[][] testingDataCRAM() {
-        return new String[][]{
+                {"print_reads.sorted.sam", ".sam", null},
+                {"print_reads.sorted.sam", ".bam", null},
+                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.bam", ".sam", null},
+                {"print_reads.sorted.bam", ".bam", null},
+                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"},
                 {"print_reads.sorted.cram", ".sam", "print_reads.fasta"},
                 {"print_reads.sorted.cram", ".bam", "print_reads.fasta"},
                 {"print_reads.sorted.cram", ".cram", "print_reads.fasta"},
-                {"print_reads.sorted.sam", ".cram", "print_reads.fasta"},
-                {"print_reads.sorted.bam", ".cram", "print_reads.fasta"},
+
+                {"print_reads.sorted.queryname.sam", ".sam", null},
+                {"print_reads.sorted.queryname.sam", ".bam", null},
+                {"print_reads.sorted.queryname.sam", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.bam", ".sam", null},
+                {"print_reads.sorted.queryname.bam", ".bam", null},
+                {"print_reads.sorted.queryname.bam", ".cram", "print_reads.fasta"},
                 {"print_reads.sorted.queryname.cram", ".sam", "print_reads.fasta"},
                 {"print_reads.sorted.queryname.cram", ".bam", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.cram", ".cram", "print_reads.fasta"},
 
-                //comparing queryname sorted cram files blows up: https://github.com/broadinstitute/gatk/issues/1271
-//                {"print_reads.sorted.queryname.cram", ".cram", "print_reads.fasta"},
-//                {"print_reads.sorted.queryname.sam", ".cram", "print_reads.fasta"},
-//                {"print_reads.sorted.queryname.bam", ".cram", "print_reads.fasta"}
+                //test queryname-sorted crams with multiref containers in GATK:
+                //print_reads.sorted.queryname_htsjdk_2.1.0.cram was generated from print_reads.sam
+                //using gatk4 PrintReads/htsjdk.2.1.0, which includes changes to support
+                //multireference containers
+                {"print_reads.sorted.queryname.htsjdk-2.1.0.cram", ".cram", "print_reads.fasta"},
+                {"print_reads.sorted.queryname.htsjdk-2.1.0.cram", ".sam", "print_reads.fasta"}
         };
     }
 

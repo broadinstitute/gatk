@@ -17,14 +17,12 @@ public final class SortReadFileSparkIntegrationTest extends CommandLineProgramTe
                 {"count_reads.sam", "count_reads_sorted.sam", null, ".sam", "coordinate"},
                 {"count_reads.bam", "count_reads_sorted.bam", null, ".bam", "coordinate"},
                 {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".bam", "coordinate"},
+                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".cram", "coordinate"},
+                {"count_reads.bam", "count_reads_sorted.bam", "count_reads.fasta", ".cram", "coordinate"},
 
                 //SortBamSpark is missing SORT_ORDER parameter  https://github.com/broadinstitute/gatk/issues/1260
 //                {"count_reads.bam", "count_reads.bam", null, ".bam", "queryname"},
 //                {"count_reads.cram", "count_reads.cram", "count_reads.fasta", ".cram", "queryname"},
-
-                //Writing cram files on spark is not implemented yet https://github.com/broadinstitute/gatk/issues/1270
-//                {"count_reads.cram", "count_reads_sorted.cram", "count_reads.fasta", ".cram", "coordinate"},
-//                {"count_reads.bam", "count_reads_sorted.bam", "count_reads.fasta", ".cram", "coordinate"},
         };
     }
 

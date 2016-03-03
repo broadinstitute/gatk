@@ -226,12 +226,15 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     /**
      * Writes the reads from a {@link JavaRDD} to an output file.
      * @param ctx the JavaSparkContext to write.
-     * @param outputFile path to the output bam.
+     * @param outputFile path to the output bam/cram.
      * @param reads reads to write.
      */
     public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads) {
         try {
-            ReadsSparkSink.writeReads(ctx, outputFile, reads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE, getRecommendedNumReducers());
+            ReadsSparkSink.writeReads(ctx, outputFile,
+                    hasReference() ? referenceArguments.getReferenceFile().getAbsolutePath() : null,
+                    reads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
+                    getRecommendedNumReducers());
         } catch (IOException e) {
             throw new GATKException("unable to write bam: " + e);
         }
