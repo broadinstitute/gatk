@@ -20,7 +20,7 @@ public final class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRe
         SAMRecord record = adapter.getEncapsulatedSamRecord();
         // The underlying read is likely to already be headerless, but as a defensive
         // measure in case it's not, set the header to null explicitly.
-        record.setHeader(null);
+        record.setHeaderStrict(null);
 
         // serialize reference names to avoid having to have a header at read time
         output.writeString(record.getReferenceName());
@@ -46,7 +46,7 @@ public final class SAMRecordToGATKReadAdapterSerializer extends Serializer<SAMRe
         record.setReferenceName(referenceName);
         record.setMateReferenceName(mateReferenceName);
 
-        // headerlessReadAdapter() calls setHeader(null), which will set reference indices to null if the above
+        // headerlessReadAdapter() calls setHeaderStrict(null), which will set reference indices to null if the above
         // setReferenceName()/setMateReferenceName() calls failed to do so (eg., in the case of "*" as the
         // reference name).
         return SAMRecordToGATKReadAdapter.headerlessReadAdapter(record);

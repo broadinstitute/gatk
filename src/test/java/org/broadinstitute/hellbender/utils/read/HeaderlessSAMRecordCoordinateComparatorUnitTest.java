@@ -37,7 +37,7 @@ public class HeaderlessSAMRecordCoordinateComparatorUnitTest extends BaseTest {
                 originalReads.add(read);
 
                 final SAMRecord copy = read.deepCopy();
-                copy.setHeader(null);
+                copy.setHeaderStrict(null);
                 // Clear the indexing bin so that it doesn't affect the equality checks below
                 copy.setFlags(copy.getFlags());
                 headerlessReads.add(copy);
@@ -58,7 +58,7 @@ public class HeaderlessSAMRecordCoordinateComparatorUnitTest extends BaseTest {
             final SAMRecord expectedRead = expectedReads.get(i);
 
             // Restore the header on the headerless read before the equality check
-            actualRead.setHeader(header);
+            actualRead.setHeaderStrict(header);
 
             Assert.assertEquals(actualRead, expectedRead, "Ordering produced by HeaderlessSAMRecordCoordinateComparator does not match the ordering produced by SAMRecordCoordinateComparator");
         }

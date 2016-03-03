@@ -140,9 +140,9 @@ public final class ReadsSparkSink {
         final RecordGroupDictionary readGroups = RecordGroupDictionary.fromSAMHeader(header);
         final JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
                 reads.map(read -> {
-                    read.setHeader(header);
+                    read.setHeaderStrict(header);
                     AlignmentRecord alignmentRecord = GATKReadToBDGAlignmentRecordConverter.convert(read, seqDict, readGroups);
-                    read.setHeader(null); // Restore the header to its previous state so as not to surprise the caller
+                    read.setHeaderStrict(null); // Restore the header to its previous state so as not to surprise the caller
                     return alignmentRecord;
                 }).mapToPair(alignmentRecord -> new Tuple2<>(null, alignmentRecord));
         // instantiating a Job is necessary here in order to set the Hadoop Configuration...
@@ -211,7 +211,7 @@ public final class ReadsSparkSink {
 
     private static JavaPairRDD<SAMRecord, SAMRecordWritable> pairReadsWithSAMRecordWritables(Broadcast<SAMFileHeader> headerBroadcast, JavaRDD<SAMRecord> records) {
         return records.mapToPair(read -> {
-            read.setHeader(headerBroadcast.getValue());
+            read.setHeaderStrict(headerBroadcast.getValue());
             final SAMRecordWritable samRecordWritable = new SAMRecordWritable();
             samRecordWritable.set(read);
             return new Tuple2<>(read, samRecordWritable);

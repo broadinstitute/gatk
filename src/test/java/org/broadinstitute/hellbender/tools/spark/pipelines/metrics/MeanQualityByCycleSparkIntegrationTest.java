@@ -82,7 +82,8 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
-    @Test
+    //Disabled due to https://github.com/broadinstitute/gatk/issues/1540
+    @Test(enabled=false)
     public void test_ADAM() throws IOException {
         //Note we compare to non-spark outputs
         final File adamFile = new File(TEST_DATA_DIR, "first5000a.adam");

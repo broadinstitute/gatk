@@ -139,7 +139,7 @@ public final class ReorderSam extends PicardCommandLineProgram {
             final int oldMateIndex = read.getMateReferenceIndex();
             final int newRefIndex = newOrderIndex(read, oldRefIndex, newOrder);
 
-            read.setHeader(out.getFileHeader());
+            read.setHeaderStrict(out.getFileHeader());
             read.setReferenceIndex(newRefIndex);
 
             final int newMateIndex = newOrderIndex(read, oldMateIndex, newOrder);
