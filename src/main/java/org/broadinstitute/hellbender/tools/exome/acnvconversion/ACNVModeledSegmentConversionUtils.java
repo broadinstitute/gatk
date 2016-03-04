@@ -17,9 +17,13 @@ public final class ACNVModeledSegmentConversionUtils {
     /**
      *  Convert our ACNV modeled segments to a generic modeled segments.
      *
+     *  <p>Output modeled segments will never have a segment mean of zero, in CR space.  This will be reflected in the
+     *  {@code ModeledSegment :: getSegmentMean()} value.</p>
+     *
      * @param acnvModeledSegment Never {@code null}
      * @param genome Never {@code null}
-     * @return Never {@code null}, but empty list if input list is empty
+     * @return Never {@code null}, but empty list if input list is empty.  Note that the segment mean (in CR space) will
+     *  never be zero.
      */
     public static List<ModeledSegment> convertACNVModeledSegmentsToModeledSegments(final List<ACNVModeledSegment> acnvModeledSegment, final Genome genome) {
         Utils.nonNull(acnvModeledSegment);
@@ -38,10 +42,7 @@ public final class ACNVModeledSegmentConversionUtils {
     static ModeledSegment convertACNVModeledSegmentToModeledSegment(ACNVModeledSegment acnvModeledSegment, TargetCollection<TargetCoverage> targets) {
 
         // Make sure that we do not let segment mean become zero
-        double updatedCenter = acnvModeledSegment.getSegmentMeanPosteriorSummary().center();
-        if (Math.pow(2, updatedCenter) <= 0) {
-            updatedCenter = ParamUtils.log2(TangentNormalizer.EPSILON);
-        }
+        final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().center(), ParamUtils.log2(TangentNormalizer.EPSILON));
 
         return new ModeledSegment(acnvModeledSegment.getInterval(), ModeledSegment.NO_CALL,
                 targets.targetCount(acnvModeledSegment.getInterval()), updatedCenter);
