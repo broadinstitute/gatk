@@ -225,13 +225,13 @@ public abstract class AbstractAlignmentMerger {
             // Load next unaligned read or read pair.
             final SAMRecord rec = unmappedIterator.next();
 
-            rec.setHeaderStrict(this.header);
+            rec.setHeader(this.header);
             maybeSetPgTag(rec);
 
             final SAMRecord secondOfPair;
             if (rec.getReadPairedFlag()) {
                 secondOfPair = unmappedIterator.next();
-                secondOfPair.setHeaderStrict(this.header);
+                secondOfPair.setHeader(this.header);
                 maybeSetPgTag(secondOfPair);
 
                 // Validate that paired reads arrive as first of pair followed by second of pair
