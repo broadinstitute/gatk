@@ -238,6 +238,152 @@ For this coarse guess we ignore the possibility of outliers, so that $P(z_{ja} =
 P(z_{ja} = 1) \approx I(1/2, a_j + 1, r_j + 1), \quad P(z_{jr} = 1) = 1 - P(z_{ja} = 1).
 \end{equation}
 
+
+\subsection{Calling segments after allelic CNV workflow} \label{ACNV-caller}
+After running the allelic fraction and copy ratio model, we have a list of segments $s$, each with its own posterior pdfs $f_s^{\rm CR}$ and $f_s^{\rm MAF}$ of the copy ratio and minor allele fraction\footnote{ACNV obtains MCMC samples from these posteriors; we assume that a reasonable distribution has been fit to these posterior samples.}.  That is, $f_s^{MAF}(x)$ is the posterior probability density from ACNV that segment $s$ has minor allele fraction $x$.  We assume that for each segment some fraction $\rho$ of sequenced cells carry $m$ and $n$ copies of the original homologs, while the remaining $1 - \rho$ cells are diploid.  This assumption is compatible with both normal contamination and tumor heterogeneity but not with distinct subclones containing different CNVs at overlapping segments.  It \textit{can} express distinct subclones that inherit a CNV from a common ancestor, as well as a single subclone that incurs overlapping CNVs as long as both are fixed (in the population genetics sense) in that subclone.
+
+Each distinct value of $\rho$ therefore corresponds to a node in the tumor's phylogenetic tree, its value being the proportion of sequenced cells belonging to subclones descended from that node.  We therefore expect its values to be drawn from a discrete multinomial distribution, on which we place a symmetric and sparse Dirichlet prior.  That is, let $\rho$ take on values $\rho_1, \rho_2 \ldots \rho_K$ and let $z_s$ be a binary-valued indicator vector such that $z_{sk} = 1$ if the CNV on segment $s$ occurs in fraction $\rho_k$ of sequenced cells.  Then
+\begin{align} 
+P(\pi | \alpha) =& \frac{ \Gamma(\alpha) }{\Gamma(\alpha/K)^K} \prod_k \pi_k^{\alpha/K - 1} \\
+P(z_s | \pi) =& \prod_k \pi_k^{z_{sk}}
+\end{align}
+Here $\alpha$ is the concentration parameter such that the smallness of $\alpha / K$ enforces sparseness\footnote{If $\alpha < K$ the prior is singular as $\pi_k \rightarrow 0$ for any $k$.}, i.e. most cluster components will not be used.  The $K \rightarrow \infty$ limit is a Dirichlet process and for finite $K$ to work well, $K$ must be larger than the number of components needed; in practice making $K$ twice as large as the number of components works well.  The expected number of clusters found in data of size $N$ (here, the number of segments) is roughly $\alpha \ln N$, so we place a vague prior on $\alpha$ that corresponds to roughly a single- or double-digit number of clusters.  For example, a broad gamma prior with mean $1$:
+%
+\begin{equation}
+P(\alpha) = {\rm Gamma}(\alpha | 1,1)
+\end{equation}
+%
+We have little prior knowledge on tumor's phylogeny, so we put a uniform prior on the values of $\rho$: $P(\rho_k) = 1$.
+
+Next we relate copy ratio and minor allele fraction to $(m, n, \rho)$.  The total copy number is a weighted sum of $(1-\rho)$ diploid cells and $\rho$ cells with copy number $m+n$.  
+%
+\begin{equation}
+{\rm cr}(m, p, \rho) \equiv \left( 2(1-\rho) + \rho(m + n) \right)/2.
+\end{equation}
+%
+Similarly, the minor allele fraction is a weighted sum of $1 - \rho$ diploid cells with a single copy of the minor allele and $\rho$ cells with ${\rm min}(m,n)$ copies, divided by the total:
+%
+\begin{equation}
+{\rm maf}(m, n, \rho) \equiv \frac{(1- \rho) + \rho ~ {\rm min}(m,n)}{2(1-\rho) + \rho (m + n)}
+\end{equation}
+%
+It is convenient to represent the latent state $(m,n)$ via binary indicator variables $v$ and $w$ with e.g. $v_{sm} = 1, w_{sn} = 1$ if segment $s$ has $m$ and $n$ copies of the original homologs.
+
+Finally, we place a simple factorized multinomial prior on $(m,n)$: $P(m,n) = P(m)P(n) = \phi_m \phi_n$, which we can do if we set of maximum copy number of, say, $m, n < 4$.  The factorization assumption realistic regarding the origin of CNVs but not necessarily regarding their \textit{viability}.  For example, a homozygous deletion could be lethal when a heterozygous deletion is not.  However, we expect this effect to be less dramatic for small segments, which have less phenotypic impact.  Large segments ought to have sufficient statistical power that the prior is less important.  Taking into account the copy ratio and minor allele fraction posteriors from ACNV as well as the mulitnomial prior, the model likelihood is
+%
+\begin{equation}
+P(z_s, v_s, w_s, \pi, \phi, \rho, \alpha) = P(\alpha) \frac{ \Gamma(\alpha) }{\Gamma(\alpha/K)^K} \prod_k \pi_k^{\alpha/K - 1} \prod_{s, k,n,m} \left[ \pi_k \phi_m \phi_n f_s^{\rm CR}({\rm cr}(m,n,\rho_k) f_s^{\rm MAF}({\rm maf}(m,n,\rho_k) \right]^{z_{sk} v_{sm} w_{sn}}
+\end{equation}
+%
+
+Note that we have simply multiplied of contributions of copy number and minor allele fraction.  This is justified because we inferred the former only from total read counts, while the inference for the latter was \textit{conditioned} on the total read depth of each het.  Thus there is no double-counting of evidence.  This argument is somewhat heuristic because ACNV infers copy number from \textit{target} read counts and minor allele fraction from \textit{SNP} allele counts, but is valid to the extent that total depth at het sites is correlated with depth and the targets they belong to.  For off-target SNPs it is not heuristic at all.
+
+The graphical model is shown in Figure \ref{acnv_caller_fig}.
+
+\begin{figure}
+$
+\begin{array}{c}
+\includegraphics[width=0.8\linewidth]{ACNV_caller_model.png} 
+\end{array}
+$
+\label{acnv_caller_fig}
+\caption{Graphical model for ACNV caller.  ``ACNV" represents posterior probability output of ACNV; $v,w$ are indicators of homolog integer copy numbers; $\rho$ is the set of values of ${\rm purity} \times {\rm cancer~cell~fraction}$; $z$ is the corresponding indicator; $\phi$ is the multinomial prior on homolog counts; $\pi$ is the multinomial prior on $z$; $\alpha$ is a Dirichlet concentration parameter encouraging a sparse set of $\rho$ values.} 
+\end{figure}
+
+We will obtain maximum likelihood estimates of $\rho$ and $\phi$ and give the remaining variables the variational factorized distribution $p(\alpha, \pi, z, v, w) \rightarrow q(\alpha) q(\pi) q(z,v,w)$. We now proceed to carry out the standard recipe of the EM and variational Bayes algorithms.  Denoting one variable or group of variables by $X$, all other variables by $Z$, and the joint probability by $p(X,Z)$, the mean-field posterior on $X$ is
+%
+\begin{equation}
+\ln q(X) = E_{q(Z)}[\ln p(X,Z)] + {\rm const}
+\end{equation}
+%
+For those variables $X$ for which we seek a point estimate and not a full posterior we employ a similar formula
+%
+\begin{equation}
+X = {\rm arg~max} \left[ E_{q(Z)}[\ln p(X,Z)] \right]
+\end{equation}
+%
+
+We will henceforth drop the subscript $q(Z)$ from the expectation $E_{q(Z)}$ -- all expectations are with respect to the factorized distribution.  Following this prescription, we find that the posterior on $\alpha$ is
+%
+\begin{equation}
+q(\alpha) \propto \frac{P(\alpha) \Gamma(\alpha)}{\Gamma(\alpha/K)^K} \exp \left(  \frac{\alpha}{K} \sum_k E \left[ \ln \pi_k \right] \right)
+\label{q_alpha}
+\end{equation}
+%
+The posteriors on $\pi$ and $\phi$ are
+%
+\begin{equation}
+q(\pi) \propto \prod_k \pi_k^{E [\alpha]/K - 1 + \sum_s E \left[ z_{sk} \right]}, \, q(\phi) \propto \prod_j \phi_j^{\sum_s E \left[ v_{sj} + w_{sj} \right]}
+\label{q_pi_phi}
+\end{equation}
+%
+The maximization objective for $\rho$ is
+%
+\begin{equation}
+\rho_k = {\rm arg~max}   \sum_{s, k,n,m} E [z_{sk} v_{sm} w_{sn}] \left[ \ln f_s^{\rm CR}({\rm cr}(m,n,\rho_k) + \ln f_s^{\rm MAF}({\rm maf}(m,n,\rho_k) \right]
+\label{M_rho}
+\end{equation}
+%
+Lastly, $q(z,v,w)$ is a categorical distribution which we evaluate by plugging in values:
+%
+\begin{align}
+E \left[z_{sk} v_{sm} w_{sn} \right] = \frac{\phi_m \phi_n e^{E \left[\ln \pi_k \right]} f_s^{\rm CR}({\rm cr}(m,n,\rho_k) f_s^{\rm MAF}({\rm maf}(m,n,\rho_k)}{\sum_{k,m,n} `` \quad  "}
+\label{E_z_v_w}
+\end{align}
+%
+
+Equations \ref{q_alpha} -- \ref{E_z_v_w} require the expectations $E[\alpha]$, $E[\ln \pi]$, $E \left[ z_{sk} \right]$, $E[v_{sj}]$, $E[w_{sj}]$, and $E [z_{sk} v_{sm} w_{sn}]$.  The last of these is the E step Equation \ref{E_z_v_w}.  Three more follow directly from marginalization:
+%
+\begin{equation}
+E \left[ z_{sk} \right] = \sum_{m,n} E [z_{sk} v_{sm} w_{sn}], \, E[v_{sj}] = E[w_{sj}] = \sum_{k, n} E [z_{sk} v_{sj} w_{sn}]
+\label{marginals}
+\end{equation}
+%
+By inspection, the Dirichlet posterior $q(\pi)$ of Equation \ref{q_pi_phi} yields the following logarithmic moments:
+%
+\begin{equation}
+E [ \ln \pi_k ] = \psi \left( E [\alpha]/K  + \sum_s E \left[ z_{sk} \right] \right) - \psi \left(  E [\alpha]  + \sum_{s,k} E \left[ z_{sk} \right] \right),
+\label{E_pi}
+\end{equation}
+%
+where $\psi$ is the digamma function.  Likewise, $q(\phi)$ is Dirichlet and is maximized with
+%
+\begin{equation}
+\phi_j = \frac{ \sum_s E \left[ v_{sj} + w_{sj} \right] }{ \sum_{s,i} E \left[ v_{si} + w_{si} \right] }
+\label{M_phi}
+\end{equation}
+%
+$E[\alpha]$ is not analytic but requires only a single numerical integral per iteration:
+%
+\begin{equation}
+E[\alpha] = \frac{ \int \alpha ~ q(\alpha) ~ d \alpha}{ \int q(\alpha) ~ d \alpha}
+\label{E_alpha}
+\end{equation}
+%
+
+We therefore have a self-contained iteration scheme in terms of expectations only, Algorithm \ref{caller}.
+
+ \begin{algorithm}
+\begin{algorithmic}[1]
+\State Initialize $E[\alpha] = 1$
+\State Initialize $(\rho_1, \rho_2, \ldots \rho_K) = (1/K, 2/K, \ldots 1)$
+\State Initialize $E[\ln \pi_j] = \ln (1/K)$ for all $j$.
+\State Initialize $\phi$ in some reasonable way, i.e. $\phi_1 > \phi_2 > \phi_0 > \phi_3$.
+\Repeat
+	\State Update $E [z_{sk} v_{sm} w_{sn}]$ via Equation \ref{E_z_v_w}.
+	\State Update $E \left[ z_{sk} \right]$, $E[v_{sj}]$, $E[w_{sj}]$ via Equation \ref{marginals}. 
+	\State Update $E [ \ln \pi_k ] $ via Equation \ref{E_pi}
+	\State Update $\phi$ via Equation \ref{M_phi}
+	\State Update $E [ \alpha ] $ via Equation \ref{E_alpha}
+	\State Update $\rho$ via Equation \ref{M_rho}
+\Until{convergence}
+\end{algorithmic}
+\caption{calling allele counts of ACNV segments}
+\label{caller}
+\end{algorithm}
+
+  Once this converges, the main objects of interest are the posterior probabilities of different allele counts, $P(v_{sm} = 1, w_{sn} = 1) = \sum_k E \left[ z_{sk} v_{sm} w_{sp} \right]$.  For the purposes of guessing phylogeny the fractions $\rho_k$ are also interesting.
+
 \section{Proposed Methods} \label{proposed-methods}
 
 \subsection{Using Panel of Normals for Allelic Fraction Model} \label{allelic-PoN}
