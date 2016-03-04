@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.VariantContextUtils;
@@ -437,7 +438,9 @@ public final class SelectVariants extends VariantWalker {
     private Set<String> IDsToKeep = null;
     private Set<String> IDsToRemove = null;
 
-    private final List<Allele> diploidNoCallAlleles = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);
+    private final List<Allele> diploidNoCallAlleles = GATKVariantContextUtils.noCallAlleles(2);
+
+    private final Map<Integer, Integer> ploidyToNumberOfAlleles = new LinkedHashMap<Integer, Integer>();
 
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
@@ -554,6 +557,9 @@ public final class SelectVariants extends VariantWalker {
                 return;
         }
 
+        // Initialize the cache of PL index to a list of alleles for each ploidy.
+        initalizeAlleleAnyploidIndicesCache(vc);
+
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
         final VariantContext filteredGenotypeToNocall = setFilteredGenotypeToNocall(sub, setFilteredGenotypesToNocall);
 
@@ -571,7 +577,7 @@ public final class SelectVariants extends VariantWalker {
                     }
                 }
             } catch (IllegalArgumentException e) {
-                //The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
+                // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
                 //  expression detected...")
                 throw new UserException(e.getMessage() +
                         "\nSee https://www.broadinstitute.org/gatk/guide/article?id=1255 for documentation on using JEXL in GATK", e);
@@ -582,6 +588,29 @@ public final class SelectVariants extends VariantWalker {
                 vcfWriter.add(filteredGenotypeToNocall);
             }
         }
+    }
+
+    /**
+     * Initialize cache of allele anyploid indices
+     *
+     * Initialize the cache of PL index to a list of alleles for each ploidy.
+     *
+     * @param vc    Variant Context
+    */
+    private void initalizeAlleleAnyploidIndicesCache(final VariantContext vc) {
+        if (vc.getType() != VariantContext.Type.NO_VARIATION) { // Bypass if not a variant
+            for (final Genotype g : vc.getGenotypes()) {
+                if (g.getPloidy() != 0) {
+                    // Make a new entry if the cache does not have an entry for the ploidy or the number of alleles for the cached ploidy is less
+                    // that the
+                    if (!ploidyToNumberOfAlleles.containsKey(g.getPloidy()) || ploidyToNumberOfAlleles.get(g.getPloidy()) < vc.getNAlleles()) {
+                        GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(vc.getNAlleles() - 1, g.getPloidy());
+                        ploidyToNumberOfAlleles.put(g.getPloidy(), vc.getNAlleles());
+                    }
+                }
+            }
+        }
+
     }
 
     /**
@@ -604,11 +633,11 @@ public final class SelectVariants extends VariantWalker {
             compositeFilter = compositeFilter.and(new VariantTypesVariantFilter(selectedTypes));
         }
 
-        if (IDsToKeep != null && IDsToKeep.size() > 0) {
+        if (IDsToKeep != null && !IDsToKeep.isEmpty()) {
             compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(IDsToKeep));
         }
 
-        if (IDsToRemove != null && IDsToRemove.size() > 0) {
+        if (IDsToRemove != null && !IDsToRemove.isEmpty()) {
             compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(IDsToRemove).negate());
         }
 
@@ -1032,7 +1061,6 @@ public final class SelectVariants extends VariantWalker {
      * @param removeUnusedAlternates removes alternate alleles with AC=0
      * @return the subsetted VariantContext
      */
-
     private VariantContext subsetRecord(final VariantContext vc, final boolean preserveAlleles, final boolean removeUnusedAlternates) {
         //subContextFromSamples() always decodes the vc, which is a fairly expensive operation.  Avoid if possible
         if (noSamplesSpecified && !removeUnusedAlternates) {
@@ -1062,7 +1090,7 @@ public final class SelectVariants extends VariantWalker {
             for (final Genotype genotype : newGC) {
                 //Set genotype to no call if it falls in the fraction.
                 if (fractionGenotypes > 0 && randomGenotypes.nextDouble() < fractionGenotypes) {
-                    genotypes.add(new GenotypeBuilder(genotype).alleles(diploidNoCallAlleles).noGQ().make());
+                    genotypes.add(new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).make());
                 }
                 else {
                     genotypes.add(genotype);
@@ -1098,7 +1126,7 @@ public final class SelectVariants extends VariantWalker {
 
         for (final Genotype g : vc.getGenotypes()) {
             if (g.isCalled() && g.isFiltered()) {
-                genotypes.add(new GenotypeBuilder(g).alleles(diploidNoCallAlleles).make());
+                genotypes.add(new GenotypeBuilder(g).alleles(getNoCallAlleles(g.getPloidy())).make());
             }
             else {
                 genotypes.add(g);
@@ -1106,6 +1134,16 @@ public final class SelectVariants extends VariantWalker {
         }
 
         return builder.genotypes(genotypes).make();
+    }
+
+    /**
+     * Get the ploidy number of NO-CALL alleles
+     *
+     * @param ploidy    number of sets of chromosomes
+     * @return  the NO-CALL alleles
+     */
+    private List<Allele> getNoCallAlleles(final int ploidy) {
+        return ploidy == 2 ? diploidNoCallAlleles : GATKVariantContextUtils.noCallAlleles(ploidy);
     }
 
     /*
