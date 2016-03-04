@@ -51,7 +51,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     public static final String TANGENT_BETA_HATS_SHORT_NAME = "BHO";
 
     @Argument(
-            doc = "read counts input file.  This can only contain one sample at a time.",
+            doc = "read counts input file.  This can only contain one sample.",
             shortName = READ_COUNTS_FILE_SHORT_NAME,
             fullName = READ_COUNTS_FILE_FULL_NAME,
             optional = false
@@ -67,7 +67,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     protected File targetFile;
 
     @Argument(
-            doc = "panel Of normals HDF5 file",
+            doc = "panel of normals HDF5 file",
             shortName = ExomeStandardArgumentDefinitions.PON_FILE_SHORT_NAME,
             fullName = ExomeStandardArgumentDefinitions.PON_FILE_LONG_NAME,
             optional = false
@@ -108,7 +108,6 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-
         Utils.regularReadableUserFile(ponFile);
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
@@ -130,23 +129,22 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     /**
      * Writes the pre-tangent-normalization read counts if a file was provided for it.
      *
-     * Please note that this file is written in the target format originally used in recapseg.  In other words, it is
+     * This file is written in the target format originally used in recapseg.  In other words, it is
      *  written as if it was target coverage. If the output file is null, we do not write a file.
      *
      * @param preTangentNormalized the read count collection to write.
      */
     private void writePreTangentNormalizationOutput(final ReadCountCollection preTangentNormalized) {
-        /**
-         * If the output file is null, we do not write a file.
-         */
-        if (preTangentNormalizationOutFile != null) {
-            try {
-                ReadCountCollectionUtils.writeAsTargetCoverage(preTangentNormalizationOutFile, preTangentNormalized, "fileFormat = tsv",
-                        "commandLine = " + getCommandLine(),
-                        "title = Pre tangent normalized coverage profile");
-            } catch (final IOException ex) {
-                throw new UserException.CouldNotCreateOutputFile(preTangentNormalizationOutFile, ex.getMessage());
-            }
+        // If the output file is null, we do not write a file.
+        if (preTangentNormalizationOutFile == null) {
+            return;
+        }
+
+        try {
+            ReadCountCollectionUtils.writeAsTargetCoverage(preTangentNormalizationOutFile, preTangentNormalized, "fileFormat = tsv",
+                    "commandLine = " + getCommandLine(), "title = Pre tangent normalized coverage profile");
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotCreateOutputFile(preTangentNormalizationOutFile, ex.getMessage());
         }
     }
 
@@ -166,7 +164,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         columnNames.addAll(countColumnNames);
         final TableColumnCollection columns = new TableColumnCollection(columnNames);
         try (final TableWriter<Integer> writer = TableUtils.writer(betaHatsOutFile, columns,
-                (i,dataLine) -> dataLine.append(Integer.toString(i)).append(tangentBetaHats.getRow(i)) )) {
+                (i, dataLine) -> dataLine.append(Integer.toString(i)).append(tangentBetaHats.getRow(i)) )) {
             writer.writeComment("fileFormat  = tsv");
             writer.writeComment("commandLine = " + getCommandLine());
             writer.writeComment("title = Tangent normalization Beta Hats");

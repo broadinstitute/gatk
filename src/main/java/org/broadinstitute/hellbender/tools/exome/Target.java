@@ -18,19 +18,12 @@ public class Target implements Locatable, Feature, Serializable {
 
     static final long serialVersionUID = 11337337337L;
 
-    /**
-     * The target name. Always specified; never {@code null}.
-     */
+    // always specified, never null
     private final String name;
 
-    /**
-     * Can be left unspecified ({@code null}).
-     */
+    // interval can be left unspecified (null)
     private final SimpleInterval interval;
 
-    /**
-     *
-     */
     private final TargetAnnotationCollection annotations;
 
     /**
@@ -67,8 +60,7 @@ public class Target implements Locatable, Feature, Serializable {
      * @throws IllegalArgumentException if {@code name} is {@code null}.
      */
     public Target(final String name, final SimpleInterval interval, final TargetAnnotationCollection annotations) {
-        Utils.nonNull(name, "the name cannot be null");
-        this.name = name;
+        this.name = Utils.nonNull(name, "the name cannot be null");
         this.interval = interval;
         this.annotations = annotations;
     }
@@ -89,10 +81,7 @@ public class Target implements Locatable, Feature, Serializable {
         return name;
     }
 
-    /*
-     * Three methods to implement Locatable
-     */
-
+     // Three methods to implement Locatable
     @Override
     public String getContig() {
         if (interval == null) {

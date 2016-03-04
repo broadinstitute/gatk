@@ -16,8 +16,7 @@ public final class Pulldown extends AllelicCountCollection {
     private final SAMFileHeader header;
 
     public Pulldown(final SAMFileHeader header) {
-        Utils.nonNull(header, "SAMFileHeader must be supplied.");
-        this.header = header;
+        this.header = Utils.nonNull(header, "SAMFileHeader must be supplied.");;
     }
 
     /**
@@ -28,8 +27,7 @@ public final class Pulldown extends AllelicCountCollection {
      */
     public Pulldown(final File inputFile, final SAMFileHeader header) {
         super(inputFile);
-        Utils.nonNull(header, "SAMFileHeader must be supplied.");
-        this.header = header;
+        this.header = Utils.nonNull(header, "SAMFileHeader must be supplied.");
     }
 
     /** Returns a new instance of an IntervalList, constructed from the intervals of the internally held

@@ -20,6 +20,13 @@ public class GATKProtectedMathUtilsTest {
         Assert.assertEquals(actual, expected, 1e-10);
     }
 
+	@Test
+    public void meanTest() {
+        Assert.assertEquals(GATKProtectedMathUtils.mean(1,2,3), 2, 1e-10);
+        Assert.assertEquals(GATKProtectedMathUtils.mean(1,2), 1.5, 1e-10);
+        Assert.assertEquals(GATKProtectedMathUtils.mean(new double[] {1,2}), 1.5, 1e-10);
+    }
+
     @Test
     public void interquartileRangeTest() {
         Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[] {1,2,3,4,5}), 3, 0.001);

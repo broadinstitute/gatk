@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Represents a read-count collections.
@@ -81,9 +82,9 @@ public final class ReadCountCollection implements Serializable {
         Utils.nonNull(columnNames,"the column names cannot be null");
         Utils.nonNull(counts,"the counts cannot be null");
         if (columnNames.contains(null)) {
-            throw new IllegalArgumentException("column names contains nulls");
+            throw new IllegalArgumentException("column names contain nulls");
         } else if (targets.contains(null)) {
-            throw new IllegalArgumentException("there is some null targets");
+            throw new IllegalArgumentException("there are some null targets");
         } else if (counts.getRowDimension() != targets.size()) {
             throw new IllegalArgumentException("number of count rows does not match the number of targets");
         } else if (counts.getColumnDimension() != columnNames.size()) {
@@ -145,9 +146,7 @@ public final class ReadCountCollection implements Serializable {
      *
      * @return the result matrix is a mutable live copy of the counts in this collection.
      */
-    public RealMatrix counts() {
-        return counts;
-    }
+    public RealMatrix counts() { return counts; }
 
     /**
      * Subsets the targets in the read-count collection.
@@ -171,37 +170,17 @@ public final class ReadCountCollection implements Serializable {
         Utils.nonNull(targetsToKeep, "the input target set cannot be null");
         if (targetsToKeep.isEmpty()) {
             throw new IllegalArgumentException("the input target subset size must be greater than 0");
-        }
-        if (targetsToKeep.size() > targets.size()) {
+        } else if (!new HashSet<>(targets).containsAll(targetsToKeep)) {
             throw unknownTargetsToKeep(targetsToKeep);
         }
-        if (targetsToKeep.size() == targets.size())  {
-            if (targets.stream().anyMatch(name -> !targetsToKeep.contains(name))) {
-                throw unknownTargetsToKeep(targetsToKeep);
-            } else {
-                return new ReadCountCollection(targets, columnNames, counts.copy());
-            }
-        }
-        final int[] targetsToKeepIndices = new int[targetsToKeep.size()];
-        int nextIndex = 0;
-        final List<Target> resultTargets = new ArrayList<>(targetsToKeep.size());
-        for (int i = 0; i < targets.size(); i++) {
-            final Target target = targets.get(i);
-            if (!targetsToKeep.contains(target)) {
-                continue;
-            }
 
-            if (nextIndex >= targetsToKeepIndices.length) {
-                throw unknownTargetsToKeep(targetsToKeep);
-            } else {
-                targetsToKeepIndices[nextIndex++] = i;
-                resultTargets.add(target);
-            }
+        if (targetsToKeep.size() == targets.size())  {
+            return new ReadCountCollection(targets, columnNames, counts.copy());
         }
-        // check that all targets to be kept were found in this collection:
-        if (nextIndex < targetsToKeep.size()) {
-            throw unknownTargetsToKeep(targetsToKeep);
-        }
+        final int[] targetsToKeepIndices = IntStream.range(0, targets.size())
+                .filter(i -> targetsToKeep.contains(targets.get(i))).toArray();
+        final List<Target> resultTargets = Arrays.stream(targetsToKeepIndices).mapToObj(targets::get).collect(Collectors.toList());
+
         // compose the new counts:
         final double[][] resultCounts = new double[targetsToKeepIndices.length][columnNames.size()];
         for (int i = 0; i < resultCounts.length; i++) {
@@ -224,36 +203,17 @@ public final class ReadCountCollection implements Serializable {
         Utils.nonNull(columnsToKeep, "the set of input columns to keep cannot be null.");
         if (columnsToKeep.isEmpty()) {
             throw new IllegalArgumentException("the number of columns to keep must be greater than 0");
-        }
-        if (columnsToKeep.size() > columnNames.size()) {
+        } else if (!new HashSet<>(columnNames).containsAll(columnsToKeep)) {
             throw unknownColumnToKeepNames(columnsToKeep);
         }
+
         if (columnsToKeep.size() == columnNames.size())  {
-            if (columnNames.stream().anyMatch(name -> !columnsToKeep.contains(name))) {
-                throw unknownColumnToKeepNames(columnsToKeep);
-            } else {
-                return new ReadCountCollection(targets, columnNames, counts.copy());
-            }
+            return new ReadCountCollection(targets, columnNames, counts.copy());
         }
-        final int[] columnsToKeepIndices = new int[columnsToKeep.size()];
-        int nextIndex = 0;
-        final List<String> resultColumnNames = new ArrayList<>(columnsToKeep.size());
-        for (int i = 0; i < columnNames.size(); i++) {
-            final String column = columnNames.get(i);
-            if (!columnsToKeep.contains(column)) {
-                continue;
-            }
-            if (nextIndex >= columnsToKeepIndices.length) {
-                throw unknownColumnToKeepNames(columnsToKeep);
-            } else {
-                columnsToKeepIndices[nextIndex++] = i;
-                resultColumnNames.add(column);
-            }
-        }
-        // check that all the columns to kept were found in the this collection:
-        if (nextIndex < columnsToKeep.size()) {
-            throw unknownColumnToKeepNames(columnsToKeep);
-        }
+
+        final int[] columnsToKeepIndices = IntStream.range(0, columnNames.size())
+                .filter(i -> columnsToKeep.contains(columnNames.get(i))).toArray();
+        final List<String> resultColumnNames = Arrays.stream(columnsToKeepIndices).mapToObj(columnNames::get).collect(Collectors.toList());
 
         final RealMatrix resultCountsM = new Array2DRowRealMatrix(counts.getRowDimension(), columnsToKeepIndices.length);
         for (int i = 0; i < columnsToKeepIndices.length; i++) {
@@ -316,7 +276,6 @@ public final class ReadCountCollection implements Serializable {
             Arrays.fill(weights, 1);
         }
         final int totalWeight = Arrays.stream(weights).sum();
-
 
         final double[] sampleWeightedAverages = new double[counts.getColumnDimension()]; // elements initialized to 0.0
 

@@ -128,19 +128,18 @@ public class AnnotateTargets extends TargetWalker {
 
     @Override
     public void apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final TargetAnnotationCollection inputAnnotations = target.getAnnotations();
-        final Map<TargetAnnotation, String> targetAnnotations = new HashMap<>(annotators.size() + inputAnnotations.size());
+        final TargetAnnotationCollection outputAnnotations = new TargetAnnotationCollection();
         // Add the input annotations:
+        final TargetAnnotationCollection inputAnnotations = target.getAnnotations();
         for (final TargetAnnotation annotation : inputAnnotations.annotationSet()) {
-            targetAnnotations.put(annotation, inputAnnotations.get(annotation));
+            outputAnnotations.put(annotation, inputAnnotations.get(annotation));
         }
         // Calculate and add the requested annotations:
         for (final Map.Entry<TargetAnnotation, TargetAnnotator> annotatorsEntry : annotators.entrySet()) {
-            targetAnnotations.put(annotatorsEntry.getKey(),
+            outputAnnotations.put(annotatorsEntry.getKey(),
                     String.valueOf(annotatorsEntry.getValue().apply(target, readsContext, referenceContext, featureContext)));
         }
         // Compose the new target annotations, the new target and write it to the output.
-        final TargetAnnotationCollection outputAnnotations = new OutputTargetAnnotations(targetAnnotations);
         final Target newTarget = new Target(target.getName(), target.getInterval(), outputAnnotations);
         try {
             outputWriter.writeRecord(newTarget);
@@ -153,11 +152,7 @@ public class AnnotateTargets extends TargetWalker {
         Object apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext);
     }
 
-    /**
-     * Calculate the GC-Content target annotation.
-     */
     private class GCContentAnnotator implements TargetAnnotator {
-
         @Override
         public Double apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
             final Nucleotide.Counter counter = new Nucleotide.Counter();
@@ -165,17 +160,10 @@ public class AnnotateTargets extends TargetWalker {
             final long gcCount = counter.get(Nucleotide.C) + counter.get(Nucleotide.G);
             final long atCount = counter.get(Nucleotide.A) + counter.get(Nucleotide.T);
             final long totalCount = gcCount + atCount;
-            if (totalCount == 0) {
-                return Double.NaN;
-            } else {
-                return gcCount / (double) totalCount;
-            }
+            return totalCount == 0 ? Double.NaN : gcCount / (double) totalCount;
         }
     }
 
-    /**
-     * Calculates the repeat target fraction.
-     */
     private class RepeatTargetAnnotator implements TargetAnnotator {
         @Override
         public Double apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
@@ -196,57 +184,6 @@ public class AnnotateTargets extends TargetWalker {
                 }
                 return repeatedPositions.cardinality() / (double) width;
             }
-        }
-    }
-
-    /**
-     * Class for the output target annotations.
-     *
-     * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
-     */
-    static class OutputTargetAnnotations implements TargetAnnotationCollection {
-        final Map<TargetAnnotation, String> annotations;
-        OutputTargetAnnotations(final Map<TargetAnnotation, String> targetAnnotations) {
-            this.annotations = Collections.unmodifiableMap(targetAnnotations);
-        }
-
-        @Override
-        public int size() {
-            return annotations.size();
-        }
-
-        @Override
-        public boolean hasAnnotation(TargetAnnotation annotation) {
-            return annotations.containsKey(annotation);
-        }
-
-        @Override
-        public double getDouble(final TargetAnnotation annotation) {
-            final String value = annotations.get(annotation);
-            if (value == null) {
-                throw new NoSuchElementException();
-            } else {
-                try {
-                    return Double.parseDouble(value);
-                } catch (final NumberFormatException ex) {
-                    throw new UserException.BadInput("invalid annotation format, expected a double but we found: '" + value + "'");
-                }
-            }
-        }
-
-        @Override
-        public String get(final TargetAnnotation annotation) {
-            final String value = annotations.get(annotation);
-            if (value == null) {
-                throw new NoSuchElementException();
-            } else {
-                return value;
-            }
-        }
-
-        @Override
-        public Set<TargetAnnotation> annotationSet() {
-            return annotations.keySet();
         }
     }
 }

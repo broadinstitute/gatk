@@ -36,7 +36,7 @@ public class TargetTableWriterUnitTest {
             for (final TargetAnnotation annotation : annotationSet) {
                 annotationMap.put(annotation, annotation.name() + "_" + i);
             }
-            final TargetAnnotationCollection annotationCollection = TargetAnnotationCollection.fromMap(annotationMap);
+            final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection(annotationMap);
             subject.writeRecord(new Target("target_" + i, new SimpleInterval("1", (i + 1) * 100, (i + 1) * 100 + 50), annotationCollection));
         }
         subject.close();
@@ -67,7 +67,7 @@ public class TargetTableWriterUnitTest {
             for (final TargetAnnotation annotation : i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet) {
                 annotationMap.put(annotation, annotation.name() + "_" + i);
             }
-            final TargetAnnotationCollection annotationCollection = TargetAnnotationCollection.fromMap(annotationMap);
+            final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection(annotationMap);
             subject.writeRecord(new Target("target_" + i, new SimpleInterval("1", (i + 1) * 100, (i + 1) * 100 + 50), annotationCollection));
         }
         subject.close();
@@ -85,7 +85,7 @@ public class TargetTableWriterUnitTest {
             for (final TargetAnnotation annotation : i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet) {
                 annotationMap.put(annotation, annotation.name() + "_" + i);
             }
-            final TargetAnnotationCollection annotationCollection = TargetAnnotationCollection.fromMap(annotationMap);
+            final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection(annotationMap);
             subject.writeRecord(new Target("target_" + i, new SimpleInterval("1", (i + 1) * 100, (i + 1) * 100 + 50), annotationCollection));
         }
         subject.close();

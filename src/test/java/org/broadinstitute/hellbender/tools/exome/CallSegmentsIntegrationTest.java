@@ -14,9 +14,9 @@ import java.util.List;
  */
 public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
-    private static final File TEST_TARGETS = new File(TEST_DIR,"targets.tsv");
-    private static final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
-    private static final File TEST_SEGMENTS_LEGACY = new File(TEST_DIR,"segments_legacy.tsv");
+    private static final File TEST_TARGETS = new File(TEST_DIR, "targets.tsv");
+    private static final File TEST_SEGMENTS = new File(TEST_DIR, "segments.tsv");
+    private static final File TEST_SEGMENTS_LEGACY = new File(TEST_DIR, "segments_legacy.tsv");
 
     @Test
     public void testCallSegmentsExperimental() {
@@ -31,11 +31,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
-
-        Assert.assertEquals(calls.get(0).getCall(), "+");
-        Assert.assertEquals(calls.get(1).getCall(), "-");
-        Assert.assertEquals(calls.get(2).getCall(), "0");
-        Assert.assertEquals(calls.get(3).getCall(), "0");
+        Assert.assertEquals(calls.stream().map(ModeledSegment::getCall).toArray(), new String[] {"+", "-", "0", "0"});
     }
 
     @Test
@@ -52,11 +48,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
-
-        Assert.assertEquals(calls.get(0).getCall(), "+");
-        Assert.assertEquals(calls.get(1).getCall(), "-");
-        Assert.assertEquals(calls.get(2).getCall(), "0");
-        Assert.assertEquals(calls.get(3).getCall(), "0");
+        Assert.assertEquals(calls.stream().map(ModeledSegment::getCall).toArray(), new String[] {"+", "-", "0", "0"});
     }
 
     @Test
@@ -73,11 +65,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
-
-        Assert.assertEquals(calls.get(0).getCall(), "+");
-        Assert.assertEquals(calls.get(1).getCall(), "-");
-        Assert.assertEquals(calls.get(2).getCall(), "0");
-        Assert.assertEquals(calls.get(3).getCall(), "0");
+        Assert.assertEquals(calls.stream().map(ModeledSegment::getCall).toArray(), new String[] {"+", "-", "0", "0"});
     }
 
     @Test
@@ -94,10 +82,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
-
-        Assert.assertEquals(calls.get(0).getCall(), "+");
-        Assert.assertEquals(calls.get(1).getCall(), "-");
-        Assert.assertEquals(calls.get(2).getCall(), "0");
-        Assert.assertEquals(calls.get(3).getCall(), "0");
+        Assert.assertEquals(calls.stream().map(ModeledSegment::getCall).toArray(), new String[] {"+", "-", "0", "0"});
     }
 }

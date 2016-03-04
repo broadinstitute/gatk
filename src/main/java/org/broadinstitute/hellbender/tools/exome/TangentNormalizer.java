@@ -3,15 +3,16 @@ package org.broadinstitute.hellbender.tools.exome;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
 import org.apache.commons.collections4.list.SetUniqueList;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.mllib.linalg.DenseMatrix;
 import org.apache.spark.mllib.linalg.Matrix;
 import org.apache.spark.mllib.linalg.distributed.RowMatrix;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -27,9 +28,7 @@ import java.util.stream.IntStream;
  * Currently, only supports tangent normalization in the reduced hyperplane, not the logNormal hyperplane
  */
 public final class TangentNormalizer {
-
     private static final Logger logger = LogManager.getLogger(TangentNormalizer.class);
-
 
     /**
      * Minimum target normalized and column centered count possible.
@@ -39,6 +38,8 @@ public final class TangentNormalizer {
      * </p>
      */
     public static double EPSILON = Math.pow(10, -10);
+    public static double LOG_2_EPSILON = Math.log(EPSILON) / Math.log(2.0);
+
     /**
      * Cached inverse of the natural logarithm of 2.
      */
@@ -76,7 +77,6 @@ public final class TangentNormalizer {
         final RealMatrix tangentNormalizationInputCounts = composeTangentNormalizationInputMatrix(tangentNormalizationRawInputCounts);
 
         if (ctx == null) {
-
             // Calculate the beta-hats for the input read count columns (samples).
             logger.info("Calculating beta hats...");
             final RealMatrix tangentBetaHats = pon.betaHats(tangentNormalizationInputCounts, true, EPSILON);
@@ -91,7 +91,6 @@ public final class TangentNormalizer {
             final ReadCountCollection preTangentNormalized = targetMapper.fromPoNtoCaseCountCollection(tangentNormalizationInputCounts, targetFactorNormalizedCounts.columnNames());
 
             return new TangentNormalizationResult(tangentNormalized, preTangentNormalized, tangentBetaHats, targetFactorNormalizedCounts);
-
         } else {
 
             /*
@@ -216,7 +215,7 @@ public final class TangentNormalizer {
      *   <ol>
      *     </li>we divide counts by the column mean,</li>
      *     </li>then we transform value to their log_2,</li>
-     *     </li>and finally we center then around the median.</li>
+     *     </li>and finally we center them around the median.</li>
      *   </ol>
      * </p>
      *
@@ -225,58 +224,32 @@ public final class TangentNormalizer {
      */
     @VisibleForTesting
     static RealMatrix composeTangentNormalizationInputMatrix(final RealMatrix matrix) {
+        final RealMatrix result = matrix.copy();
 
-        final double[] columnInverseMeans = calculateColumnInverseMeans(matrix);
-
-        final double[][] result = log2ColumnMeanCenteredCounts(matrix, columnInverseMeans);
-
-        centerAroundColumnMedian(result);
-
-        return new Array2DRowRealMatrix(result,false);
-    }
-
-    /**
-     * Center the values around the median per column.
-     * @param result the input and output matrix where the first dimension are rows and the second columns.
-     */
-    private static void centerAroundColumnMedian(final double[][] result) {
-        for (int i = 0; i < result[0].length; i++) {
-            final DescriptiveStatistics stats = new DescriptiveStatistics();
-            for (final double[] aResult : result) {
-                stats.addValue(aResult[i]);
+        // step 1: divide by column means and log_2 transform
+        final double[] columnMeans = IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> GATKProtectedMathUtils.mean(result.getColumn(c))).toArray();
+        result.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return truncatedLog2(value / columnMeans[column]);
             }
-            final double median = stats.getPercentile(50);
-            for (int j = 0; j < result.length; j++) {
-                result[j][i] -= median;
-            }
-        }
-    }
+        });
 
-    private static double[][] log2ColumnMeanCenteredCounts(RealMatrix matrix, double[] columnInverseMeans) {
-        final double[][] result = new double[matrix.getRowDimension()][columnInverseMeans.length];
-        // First we divide by column mean then becoming a ratio;
-        // We also log_2 transform it at this point.
-        for (int i = 0; i < result.length; i++) {
-            final double[] inputRow = matrix.getRow(i);
-            for (int j = 0; j < columnInverseMeans.length; j++) {
-                if ((result[i][j] = inputRow[j] * columnInverseMeans[j]) < EPSILON) {
-                    result[i][j] = EPSILON;
-                }
-                result[i][j] = Math.log(result[i][j]) * INV_LN2;
+        // step 2: subtract column medians
+        final double[] columnMedians = IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> new Median().evaluate(result.getColumn(c))).toArray();
+        result.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return value - columnMedians[column];
             }
-        }
+        });
+
         return result;
     }
 
-    private static double[] calculateColumnInverseMeans(RealMatrix matrix) {
-        return IntStream.range(0, matrix.getColumnDimension())
-                .mapToDouble(i ->
-                                1.0 / IntStream.range(0, matrix.getRowDimension())
-                                        .mapToDouble(j -> matrix.getEntry(j, i))
-                                        .average().orElseThrow(
-                                                () -> new IllegalArgumentException("cannot calculate a average for column " + i)
-                                        )
-                ).toArray();
+    private static double truncatedLog2(final double x) {
+        return x < EPSILON ? LOG_2_EPSILON : Math.log(x) * INV_LN2;
     }
-
 }

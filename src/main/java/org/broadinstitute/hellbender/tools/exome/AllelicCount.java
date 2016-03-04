@@ -17,14 +17,11 @@ public final class AllelicCount implements Locatable {
     private final int refReadCount, altReadCount;
 
     public AllelicCount(final SimpleInterval interval, final int refReadCount, final int altReadCount) {
-        Utils.nonNull(interval, "Can't construct AllelicCount with null interval.");
-        if (refReadCount < 0 || altReadCount < 0) {
-            throw new IllegalArgumentException("Can't construct AllelicCount with negative read counts.");
-        }
-        if (refReadCount + altReadCount == 0) {
-            throw new IllegalArgumentException("Can't construct AllelicCount with zero total counts.");
-        }
-        this.interval = interval;
+        ParamUtils.isPositiveOrZero(refReadCount, "Can't construct AllelicCount with negative read counts.");
+        ParamUtils.isPositiveOrZero(altReadCount, "Can't construct AllelicCount with negative read counts.");
+        ParamUtils.isPositive(altReadCount + refReadCount, "Can't construct AllelicCount with zero total counts.");
+
+        this.interval = Utils.nonNull(interval, "Can't construct AllelicCount with null interval.");
         this.refReadCount = refReadCount;
         this.altReadCount = altReadCount;
     }
@@ -88,9 +85,8 @@ public final class AllelicCount implements Locatable {
      * @return      TargetCoverage with coverage given by minor allele fraction
      */
     public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name, final double allelicBias) {
-        Utils.nonNull(name);
         ParamUtils.isPositiveOrZero(allelicBias, "Allelic bias must be non-negative.");
-        return new TargetCoverage(name, new SimpleInterval(interval), estimateMinorAlleleFraction(allelicBias));
+        return new TargetCoverage(Utils.nonNull(name), new SimpleInterval(interval), estimateMinorAlleleFraction(allelicBias));
     }
 
     /**

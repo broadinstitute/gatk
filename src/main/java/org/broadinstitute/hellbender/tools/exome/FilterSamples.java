@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Tool to filter samples based on coverage statistics.
@@ -121,12 +122,10 @@ public class FilterSamples extends CommandLineProgram {
      */
     private List<SampleFilterPredicate> composeFilterPredicateList() {
         final List<SampleFilterPredicate> result = new ArrayList<>(2);
-        if (maximumMeanCoverage != Double.POSITIVE_INFINITY ||
-                minimumMeanCoverage != Double.NEGATIVE_INFINITY) {
+        if (maximumMeanCoverage != Double.POSITIVE_INFINITY || minimumMeanCoverage != Double.NEGATIVE_INFINITY) {
             result.add(new SampleMeanCoverageFilterPredicate());
         }
-        if (maximumCoverageVariance != Double.POSITIVE_INFINITY ||
-                minimumCoverageVariance > 0.0) {
+        if (maximumCoverageVariance != Double.POSITIVE_INFINITY || minimumCoverageVariance > 0.0) {
             result.add(new SampleCoverageVarianceFilterPredicate());
         }
         return result;
@@ -138,18 +137,14 @@ public class FilterSamples extends CommandLineProgram {
         try(final SampleCoverageStatsReader reader = new SampleCoverageStatsReader(inputFile);
             final SampleRejectionRecordWriter rejectionWriter = new SampleRejectionRecordWriter(rejectionFile);
             final SampleListWriter outputWriter = new SampleListWriter(outputFile)) {
-            SampleCoverageStats stats;
-            while ((stats = reader.readRecord()) != null) {
-                final SampleCoverageStats sampleStats = stats;
-                if (filters.stream().anyMatch(filter -> !filter.test(sampleStats))) {
-                    filters.stream()
-                        .filter(filter -> !filter.test(sampleStats))
-                        .forEach(filter -> rejectionWriter.writeRecord(
-                                new SampleRejectionRecord(sampleStats.sample,
-                                        filter.getFilter(),
-                                        filter.rejectReason(sampleStats))));
-                } else {
+            for (final SampleCoverageStats stats : reader) {
+                final List<SampleFilterPredicate> failingFilters = filters.stream()
+                        .filter(f -> !f.test(stats)).collect(Collectors.toList());
+                if (failingFilters.size() == 0) {
                     outputWriter.writeSampleName(stats.sample);
+                } else {
+                    failingFilters.stream().forEach(f -> rejectionWriter.writeRecord(
+                            new SampleRejectionRecord(stats.sample, f.getFilter(), f.rejectReason(stats))));
                 }
             }
             return "SUCCESS";
@@ -166,15 +161,10 @@ public class FilterSamples extends CommandLineProgram {
         SampleFilter getFilter();
     }
 
-    /**
-     * Filter predicate for extreme mean coverage.
-     */
     final class SampleMeanCoverageFilterPredicate implements SampleFilterPredicate {
-
         @Override
         public boolean test(final SampleCoverageStats sampleCoverageStats) {
-            return sampleCoverageStats.mean >= minimumMeanCoverage &&
-                    sampleCoverageStats.mean <= maximumMeanCoverage;
+            return sampleCoverageStats.mean >= minimumMeanCoverage && sampleCoverageStats.mean <= maximumMeanCoverage;
         }
 
         @Override
@@ -188,11 +178,7 @@ public class FilterSamples extends CommandLineProgram {
         }
     }
 
-    /**
-     * Filter predicate for extreme coverage variance.
-     */
     final class SampleCoverageVarianceFilterPredicate implements  SampleFilterPredicate {
-
         @Override
         public String rejectReason(final SampleCoverageStats stats) {
             return String.format("the coverage variance (%g) is outside the non-extreme range [%g, %g]", stats.variance, minimumCoverageVariance, maximumCoverageVariance);
@@ -210,16 +196,12 @@ public class FilterSamples extends CommandLineProgram {
         }
     }
 
-    /**
-     * Sample rejection output record.
-     */
     static final class SampleRejectionRecord {
         public final String sample;
         public final SampleFilter filter;
         public final String reason;
 
-        public SampleRejectionRecord(final String sample, final SampleFilter filter,
-                                     final String reason) {
+        public SampleRejectionRecord(final String sample, final SampleFilter filter, final String reason) {
             this.sample = sample;
             this.filter = filter;
             this.reason = reason;
@@ -235,12 +217,7 @@ public class FilterSamples extends CommandLineProgram {
         private final File file;
 
         /**
-         * Creates a new writer.
-         * <p>
-         *     A {@code null} input file name indicates that no rejection record
-         *     is to be
-         * </p>
-         *
+         * Creates a new writer.  A {@code null} input file name indicates that no rejection record is to be written.
          */
         public SampleRejectionRecordWriter(final File file) {
             this.file = file;
@@ -249,9 +226,7 @@ public class FilterSamples extends CommandLineProgram {
             } else {
                 try {
                     fileWriter = new TableWriter<SampleRejectionRecord>(file, new TableColumnCollection(
-                            REJECTION_SAMPLE_NAME_COLUMN,
-                            REJECTION_FILTER_NAME_COLUMN,
-                            REJECTION_REASON_COLUMN)) {
+                            REJECTION_SAMPLE_NAME_COLUMN, REJECTION_FILTER_NAME_COLUMN, REJECTION_REASON_COLUMN)) {
 
                         @Override
                         protected void composeLine(SampleRejectionRecord record, DataLine dataLine) {

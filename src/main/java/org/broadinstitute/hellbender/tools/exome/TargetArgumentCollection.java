@@ -142,7 +142,7 @@ public final class TargetArgumentCollection {
         final List<Target> fullyAnnotatedTargets = targets.targets().stream()
                 .map(originalTarget -> new Target(originalTarget.getName(),
                                 originalTarget.getInterval(),
-                                new HashTargetAnnotationCollection(annotationsByTarget.get(originalTarget))))
+                                new TargetAnnotationCollection(annotationsByTarget.get(originalTarget))))
                 .collect(Collectors.toList());
 
         return new HashedListTargetCollection<Target>(fullyAnnotatedTargets) {

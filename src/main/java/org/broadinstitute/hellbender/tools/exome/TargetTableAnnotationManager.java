@@ -5,10 +5,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.function.Function;
+import java.util.*;
 
 /**
  * Target table annotation collection.
@@ -21,11 +18,8 @@ import java.util.function.Function;
  */
 final class TargetTableAnnotationManager {
 
-    private Set<TargetAnnotation> annotationSet;
-
-    private final int[] annotationToColumnIndex;
-
-    private final Function<DataLine, Function<String, RuntimeException>> formatAnnotationExceptionFactory;
+    private final EnumMap<TargetAnnotation, Integer> annotationToColumnIndex = new EnumMap<TargetAnnotation, Integer>(TargetAnnotation.class);
+    private final String source;
 
     /**
      * Creates a new target-table annotation manager.
@@ -35,20 +29,14 @@ final class TargetTableAnnotationManager {
      */
     public TargetTableAnnotationManager(final String source, final TableColumnCollection columnCollection) {
         Utils.nonNull(columnCollection);
-        if (source == null) {
-            formatAnnotationExceptionFactory = (dataLine) -> (message) -> new UserException.BadInput(String.format("in target table line %d: %s", dataLine.getLineNumber(), message));
-        } else {
-            formatAnnotationExceptionFactory = (dataLine) -> (message) -> new UserException.BadInput(String.format("in target table '%s', line %d: %s", source, dataLine.getLineNumber(), message));
-        }
+        this.source = source;
 
-        final EnumSet<TargetAnnotation> annotationsPresent = EnumSet.noneOf(TargetAnnotation.class);
-        annotationToColumnIndex = new int[TargetAnnotation.values().length];
         for (final TargetAnnotation annotation : TargetAnnotation.values()) {
-            if ((annotationToColumnIndex[annotation.ordinal()] = columnCollection.indexOf(annotation.column.toString())) != -1) {
-                annotationsPresent.add(annotation);
+            final int columnIndex = columnCollection.indexOf(annotation.column.toString());
+            if (columnIndex != -1) {
+                annotationToColumnIndex.put(annotation, columnIndex);
             }
         }
-        annotationSet = Collections.unmodifiableSet(annotationsPresent);
     }
 
     /**
@@ -57,57 +45,18 @@ final class TargetTableAnnotationManager {
      * @return never {@code null}.
      */
     public TargetAnnotationCollection createTargetAnnotationCollection(final DataLine dataLine) {
+        final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection();
 
-        if (annotationSet.size() == 0) {
-            return TargetAnnotationCollection.NO_ANNOTATION;
-        } else {
-            return new DataLineTargetAnnotationCollection(dataLine);
-        }
-    }
-
-    /**
-     * Target annotation collection for a data-line.
-     */
-    private class DataLineTargetAnnotationCollection implements TargetAnnotationCollection {
-        private final DataLine dataLine;
-
-        private DataLineTargetAnnotationCollection(DataLine dataLine) {
-            this.dataLine = dataLine;
-        }
-
-        @Override
-        public int size() {
-            return annotationSet.size();
-        }
-
-        @Override
-        public boolean hasAnnotation(final TargetAnnotation annotation) {
-            return annotationToColumnIndex[annotation.ordinal()] >= 0;
-        }
-
-        @Override
-        public double getDouble(final TargetAnnotation annotation) {
-            if (hasAnnotation(annotation)) {
-                return dataLine.getDouble(annotationToColumnIndex[annotation.ordinal()], formatAnnotationExceptionFactory.apply(dataLine));
-            } else {
-                throw formatAnnotationExceptionFactory.apply(dataLine).apply(
-                    String.format("not found expected target annotation '%s' in input", annotation.column));
+        for (final Map.Entry<TargetAnnotation, Integer> entry : annotationToColumnIndex.entrySet()) {
+            final TargetAnnotation annotation = entry.getKey();
+            final int columnIndex = entry.getValue();
+            try {
+                annotationCollection.put(annotation, dataLine.get(columnIndex));
+            } catch (final IllegalStateException e) {
+                new UserException.BadInput(String.format("Annotation %s not found in line %d oftarget table file %s.", annotation.toString(), dataLine.getLineNumber(), source));
             }
         }
-
-        @Override
-        public String get(final TargetAnnotation annotation) {
-            if (hasAnnotation(annotation)) {
-                return dataLine.get(annotationToColumnIndex[annotation.ordinal()]);
-            } else {
-                throw formatAnnotationExceptionFactory.apply(dataLine).apply(
-                        String.format("not found expected target annotation '%s' in input", annotation.column));
-            }
-        }
-
-        @Override
-        public Set<TargetAnnotation> annotationSet() {
-            return annotationSet;
-        }
+        return annotationCollection;
     }
+
 }

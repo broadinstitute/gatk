@@ -11,22 +11,22 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Unit tests for {@link HashTargetAnnotationCollection}.
+ * Unit tests for {@link TargetAnnotationCollection}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class HashTargetAnnotationCollectionUnitTest {
+public class TargetAnnotationCollectionUnitTest {
 
     @Test
     public void testCreateNoValueInstance() {
-         final TargetAnnotationCollection subject = new HashTargetAnnotationCollection(Collections.emptyMap());
+         final TargetAnnotationCollection subject = new TargetAnnotationCollection(Collections.emptyMap());
          Assert.assertEquals(subject.size(), 0);
          Assert.assertEquals(subject.annotationSet(), Collections.emptySet());
     }
 
     @Test(dataProvider = "annotations")
     public void testSingleAnnotationCreation(final TargetAnnotation annotation) {
-         final TargetAnnotationCollection subject = new HashTargetAnnotationCollection(Collections.singletonMap(annotation, "text"));
+         final TargetAnnotationCollection subject = new TargetAnnotationCollection(Collections.singletonMap(annotation, "text"));
          Assert.assertEquals(subject.size(), 1);
          Assert.assertTrue(subject.hasAnnotation(annotation));
          for (final TargetAnnotation annotation2 : TargetAnnotation.values()) {
@@ -41,7 +41,7 @@ public class HashTargetAnnotationCollectionUnitTest {
     @Test
     public void testMultipleAnnotationCreation() {
         final Map<TargetAnnotation, String> values = Stream.of(TargetAnnotation.values()).collect(Collectors.toMap(a -> a, a -> "text"));
-        final TargetAnnotationCollection subject = new HashTargetAnnotationCollection(values);
+        final TargetAnnotationCollection subject = new TargetAnnotationCollection(values);
         // change values in input map to check that that does not affect the annotation collection.
         for (final TargetAnnotation annotation : values.keySet()) {
             values.put(annotation, "text2");
@@ -65,7 +65,7 @@ public class HashTargetAnnotationCollectionUnitTest {
     @Test
     public void testMultipleDoubleAnnotationCreation() {
         final Map<TargetAnnotation, String> values = Stream.of(TargetAnnotation.values()).collect(Collectors.toMap(a -> a, a -> "-1.1"));
-        final TargetAnnotationCollection subject = new HashTargetAnnotationCollection(values);
+        final TargetAnnotationCollection subject = new TargetAnnotationCollection(values);
         // change values in input map to check that that does not affect the annotation collection.
         for (final TargetAnnotation annotation : values.keySet()) {
             values.put(annotation, "text2");
@@ -80,7 +80,7 @@ public class HashTargetAnnotationCollectionUnitTest {
 
     @Test(dataProvider = "annotations", expectedExceptions = NoSuchElementException.class)
     public void testAccessNoValueInstanceAnnotation(final TargetAnnotation annotation) {
-        final TargetAnnotationCollection subject = new HashTargetAnnotationCollection(Collections.emptyMap());
+        final TargetAnnotationCollection subject = new TargetAnnotationCollection(Collections.emptyMap());
         subject.get(annotation);
     }
 

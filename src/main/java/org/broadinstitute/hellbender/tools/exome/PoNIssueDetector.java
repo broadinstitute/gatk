@@ -84,19 +84,17 @@ public final class PoNIssueDetector {
     }
 
     /**
-     *  Given a single sample tangent normalization (or other coverage profile), determine whether any contigs look like
+     *  Given a single sample tangent normalization (or other coverage profile), determine whether any contig looks like
      *   it has an arm level event (defined as 25% (or more) of the contig amplified/deleted)
      *
      * @param singleSampleTangentNormalized Tangent normalized data for a single sample.
      * @return never {@code null}
      */
     private static Boolean hasSuspiciousContigs(final ReadCountCollection singleSampleTangentNormalized, final Map<String, Double> contigToMedian) {
-
         final List<String> allContigsPresent = retrieveAllContigsPresent(singleSampleTangentNormalized);
         for (String contig: allContigsPresent) {
             final ReadCountCollection oneContigReadCountCollection = singleSampleTangentNormalized.subsetTargets(singleSampleTangentNormalized.targets().stream().filter(t -> t.getContig().equals(contig)).collect(Collectors.toSet()));
-            final RealMatrix countsAsMatrix = oneContigReadCountCollection.counts();
-            final RealVector counts = countsAsMatrix.getColumnVector(0);
+            final RealVector counts = oneContigReadCountCollection.counts().getColumnVector(0);
             for (int i = 0; i < 4; i++) {
                 final RealVector partitionCounts = counts.getSubVector(i * counts.getDimension() / 4, counts.getDimension() / 4);
                 final double[] partitionArray = DoubleStream.of(partitionCounts.toArray()).map(d -> Math.pow(2, d)).sorted().toArray();

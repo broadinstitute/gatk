@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
-    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");
     private static final File SNP_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-allelic-integration.seg");
@@ -48,23 +48,12 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final File finalSimilarSegmentsFileAsGATKCNV = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + "." + AllelicCNV.GATK_SEG_FILE_TAG + ".seg");
         final File finalSimilarSegmentsFileAsCGAACS = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + "." +  AllelicCNV.CGA_ACS_SEG_FILE_TAG + ".seg");
 
-
-        final List<File> outputFileList = new ArrayList<>();
-        outputFileList.add(finalSNPSegmentsFile);
-        outputFileList.add(unionedSegmentsFile);
-        outputFileList.add(noSmallSegmentsFile);
-        outputFileList.add(initialSimilarSegmentsFile);
-        outputFileList.add(finalSimilarSegmentsFile);
-        outputFileList.add(finalSimilarSegmentsFileAsGATKCNV);
-        outputFileList.add(finalSimilarSegmentsFileAsCGAACS);
-
-        for (final File outputFile: outputFileList) {
-
+        for (final File outputFile : new File[] {finalSNPSegmentsFile, unionedSegmentsFile, noSmallSegmentsFile,
+                initialSimilarSegmentsFile, finalSimilarSegmentsFile, finalSimilarSegmentsFileAsGATKCNV, finalSimilarSegmentsFileAsCGAACS}) {
             // Check that all files are files with a size greater than 0.
             Assert.assertTrue(outputFile.isFile(), outputFile.getAbsolutePath() + " is not a file.");
             Assert.assertTrue(outputFile.length() > 0);
             try {
-
                 //Check that all files have:
                 //  - at least two lines and all either start with "#" or contain at least one "\t"
                 //  - at least two lines with tab (column names + 1 segment)
@@ -72,7 +61,6 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 Assert.assertTrue(outputLines.size() >= 2);
                 Assert.assertEquals(outputLines.stream().filter(l -> l.contains("\t") || l.startsWith("#")).count(), outputLines.size());
                 Assert.assertTrue(outputLines.stream().filter(l -> l.split("\t").length > 2 && !l.startsWith("#")).count() > 2, "File: " + outputFile + " does not seem to have at least one segment and a header.");
-
             } catch (final IOException ioe) {
                 Assert.fail("Could not read file: " + outputFile, ioe);
             }

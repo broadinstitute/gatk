@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 public enum AllelicCountTableColumns {
     CONTIG("CONTIG"), POSITION("POS"), REF_COUNT("REF_COUNT"), ALT_COUNT("ALT_COUNT");
 
-    private String columnName;  //store the column names
+    private String columnName;
 
     AllelicCountTableColumns(String columnName) {this.columnName = columnName; }
 
@@ -19,6 +19,4 @@ public enum AllelicCountTableColumns {
 
     public static final String[] COLUMN_NAME_ARRAY =
             Stream.of(values()).map(AllelicCountTableColumns::toString).toArray(String[]::new);
-
-
 }
