@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 
 import java.util.*;
@@ -125,6 +126,25 @@ public final class PCA {
         final double inverseDenominator = 1.0 / (columnCount - 1.0);
         final double[] variances = DoubleStream.of(svd.getSingularValues()).map(d -> d * d * inverseDenominator).toArray();
         return new PCA(variableNames, sampleNames, centers, eigenVectors, variances);
+    }
+
+    /**
+     * Finds the number of principal components required to account for some proportion of the total variance
+     *
+     * @param proportion the proportion of total variance accounted for
+     * @return the minimum n such that the first n components contain the specified proportion of the variance
+     */
+    public int numComponentsToAccountForVariance(final double proportion) {
+        ParamUtils.inRange(proportion, 0.0, 1.0, "proportion but be between 0 and 1.");
+        final double totalVariance = MathUtils.sum(variances);
+        final double varianceToAccountFor = proportion * totalVariance;
+        int componentsUsed = 0;
+        double varianceAccountedFor = 0;
+        while (varianceAccountedFor < varianceToAccountFor) {
+            varianceAccountedFor += variances[componentsUsed];
+            componentsUsed++;
+        }
+        return componentsUsed;
     }
 
     private static List<String> checkNonNullUniqueNames(final List<String> input, final String roleName) {

@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Tool to remove principal components from coverage data.
@@ -59,6 +58,10 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
 
     public static final String NUM_COMPONENTS_SHORT_NAME = "top";
 
+    public static final String PROPORTION_OF_VARIANCE_FULL_NAME = "proportionOfVariance";
+
+    public static final String PROPORTION_OF_VARIANCE_SHORT_NAME = "propVar";
+
     @Argument(
             doc = "Input target coverage to normalize",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
@@ -84,17 +87,40 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
     protected File outputFile;
 
     @Argument(
-            doc = "Number of principal components to use",
+            doc = "The number of principal components to use.  If a proportion of variance explained is also specified " +
+                    "and implies fewer components, the smaller number is used.",
             fullName = NUM_COMPONENTS_FULL_NAME,
             shortName = NUM_COMPONENTS_SHORT_NAME,
             optional = true
     )
-    protected int numberOfComponentsToUse = Integer.MAX_VALUE;
+    protected int numComponentsRequested = Integer.MAX_VALUE;
+
+    @Argument(
+            doc = "Proportion of the total variance to be explained by the principal components to be subtracted. " +
+                    "If " + NUM_COMPONENTS_FULL_NAME + " is also specified the smaller number is used.",
+            fullName = PROPORTION_OF_VARIANCE_FULL_NAME,
+            shortName = PROPORTION_OF_VARIANCE_SHORT_NAME,
+            optional = true
+    )
+    protected double proportionOfVariance = 1.0;
 
     @Override
     protected Object doWork() {
-        ParamUtils.isPositiveOrZero(numberOfComponentsToUse, "number of components to use must be positive or zero.");
+        ParamUtils.isPositiveOrZero(numComponentsRequested, "number of components to use must be positive or zero.");
+        ParamUtils.inRange(proportionOfVariance, 0, 1, "proportion of variance explained must be between 0 and 1");
         final PCA pca = readPcaInputFile(pcaFile);
+
+        final int totalNumComponents = pca.getVariances().getDimension();
+        final int numComponentsForVariance = pca.numComponentsToAccountForVariance(proportionOfVariance);
+        final int numComponents = Math.min(numComponentsRequested, numComponentsForVariance);
+
+        logger.info(String.format("%d total principal components.", totalNumComponents));
+        logger.info(String.format("%d principal components requested.", Math.min(totalNumComponents,numComponentsRequested)));
+        logger.info(String.format("%d components required to explain proportion %f of variance. ",
+                numComponentsForVariance, proportionOfVariance));
+        logger.info(String.format("Subtracting %d principal components.", numComponents));
+
+
         final ReadCountCollection coverage = readInputCoverage(inputFile);
 
         // Match up the targets in the PCA and the input counts file.
@@ -106,7 +132,6 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
 
         // T x C matrix.
         final RealMatrix eigenVectors = pca.getEigenVectors();
-        final int componentCount = eigenVectors.getColumnDimension();
         final RealVector centers = pca.getCenters();
         // S x T matrix with the counts ready to be multiplied by the eigen-vectors T x C
         final RealMatrix transposedCoverage = composeCoverageMatrixReadyForNormalization(pcaTargetIndexByName, coverageTargetIndexByName, centers, coverage);
@@ -114,7 +139,7 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
         final RealMatrix projection = transposedCoverage.multiply(eigenVectors);
 
         // T x S matrix with the normalized new counts.
-        final RealMatrix resultMatrix = subtractComponentProjectionsAndTranspose(projection, transposedCoverage, eigenVectors);
+        final RealMatrix resultMatrix = subtractComponentProjectionsAndTranspose(projection, transposedCoverage, eigenVectors, numComponents);
 
         // Creates the output read count collection.
         final ReadCountCollection normalizedCoverage = new ReadCountCollection(
@@ -165,7 +190,8 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
      * @param transposedCoverage S (sample) x T (target) matrix with the coverage pre normalization.
      * @return never {@code null}, a S(sample) x T
      */
-    private RealMatrix subtractComponentProjectionsAndTranspose(final RealMatrix projection, final RealMatrix transposedCoverage, final RealMatrix eigenVectors) {
+    private RealMatrix subtractComponentProjectionsAndTranspose(final RealMatrix projection,
+            final RealMatrix transposedCoverage, final RealMatrix eigenVectors, final int numberOfComponentsToUse) {
         final int sampleCount = projection.getRowDimension();
         final int targetCount = transposedCoverage.getColumnDimension();
         final int componentCount = Math.min(numberOfComponentsToUse, projection.getColumnDimension());

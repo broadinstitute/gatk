@@ -63,13 +63,13 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(outputFile.canWrite());
         Assert.assertTrue(outputFile.isFile());
-        assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, Integer.MAX_VALUE);
+        assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, Integer.MAX_VALUE, 1.0);
         outputFile.delete();
     }
 
     @Test
-    public void testRunWithoutAllComponent() throws IOException {
-        for (final int numComponentsToUse : new int[] {0, 1, 2, 5, 10000}) {
+    public void testNumberOfComponents() throws IOException {
+        for (final int numComponentsToUse : new int[] {0, 1, 5, 10000}) {
             final File outputFile = createTempFile("out-file", ".tab");
             outputFile.delete();
 
@@ -83,8 +83,53 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
             Assert.assertTrue(outputFile.exists());
             Assert.assertTrue(outputFile.canWrite());
             Assert.assertTrue(outputFile.isFile());
-            assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, numComponentsToUse);
+            assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, numComponentsToUse, 1.0);
             outputFile.delete();
+        }
+    }
+
+    @Test
+    public void testProportionOfVariance() throws IOException {
+        for (final double proportionOfVariance : new double[] {0, 0.5, 1.0}) {
+            final File outputFile = createTempFile("out-file", ".tab");
+            outputFile.delete();
+
+            final String[] arguments = new String[]{
+                    "-" + SubtractCoverageComponents.PCA_INPUT_SHORT_NAME, TEST_PCA_FILE.getPath(),
+                    "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, TEST_PCA_INPUT_FILE.getPath(),
+                    "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                    "-" + SubtractCoverageComponents.PROPORTION_OF_VARIANCE_SHORT_NAME, Double.toString(proportionOfVariance),
+            };
+            runCommandLine(arguments);
+            Assert.assertTrue(outputFile.exists());
+            Assert.assertTrue(outputFile.canWrite());
+            Assert.assertTrue(outputFile.isFile());
+            assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, Integer.MAX_VALUE, proportionOfVariance);
+            outputFile.delete();
+        }
+    }
+
+    @Test
+    public void testNumberOfComponentsAndProportionOfVariance() throws IOException {
+        for (final int numComponentsToUse : new int[] {0, 1, 5, 10000}) {
+            for (final double proportionOfVariance : new double[]{0, 0.5, 1.0}) {
+                final File outputFile = createTempFile("out-file", ".tab");
+                outputFile.delete();
+
+                final String[] arguments = new String[]{
+                        "-" + SubtractCoverageComponents.PCA_INPUT_SHORT_NAME, TEST_PCA_FILE.getPath(),
+                        "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, TEST_PCA_INPUT_FILE.getPath(),
+                        "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getPath(),
+                        "-" + SubtractCoverageComponents.NUM_COMPONENTS_SHORT_NAME, Integer.toString(numComponentsToUse),
+                        "-" + SubtractCoverageComponents.PROPORTION_OF_VARIANCE_SHORT_NAME, Double.toString(proportionOfVariance),
+                };
+                runCommandLine(arguments);
+                Assert.assertTrue(outputFile.exists());
+                Assert.assertTrue(outputFile.canWrite());
+                Assert.assertTrue(outputFile.isFile());
+                assertCanObtainOriginalValuesByReversingSubtraction(outputFile, TEST_PCA_INPUT_FILE, numComponentsToUse, proportionOfVariance);
+                outputFile.delete();
+            }
         }
     }
 
@@ -104,12 +149,16 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
     }
 
     private void assertCanObtainOriginalValuesByReversingSubtraction(final File outputFile, final File inputFile,
-            final int numComponentsUsed) throws IOException {
+            final int numComponentsRequested, final double proportionOfVariance) throws IOException {
 
         final PCA pca;
         try (final HDF5File pcaFile = new HDF5File(TEST_PCA_FILE, HDF5File.OpenMode.READ_ONLY)) {
             pca = PCA.readHDF5(pcaFile);
         }
+
+
+        final int numComponentsUsed = Math.min(numComponentsRequested,
+                pca.numComponentsToAccountForVariance(proportionOfVariance));
         final RealVector centers = pca.getCenters();
         final List<String> variables = pca.getVariables();
         final List<Target> targets = variables.stream().map(Target::new).collect(Collectors.toList());
