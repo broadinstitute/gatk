@@ -942,13 +942,12 @@ public final class CommandLineParser {
         commandLineString.append(argumentDefinitions.stream()
                 .filter(argumentDefinition -> argumentDefinition.hasBeenSet)
                 .map(ArgumentDefinition::toCommandLineString)
-                .collect(Collectors.joining(" "," ","  ")));
-
-        //next, append args that weren't explicitly set, but have a default value
-        commandLineString.append(argumentDefinitions.stream()
-                .filter(argumentDefinition -> !argumentDefinition.hasBeenSet && !argumentDefinition.defaultValue.equals(NULL_STRING))
-                .map(ArgumentDefinition::toCommandLineString)
-                .collect(Collectors.joining(" ")));
+                .collect(Collectors.joining(" ", " ", "  ")))
+                //next, append args that weren't explicitly set, but have a default value
+                .append(argumentDefinitions.stream()
+                        .filter(argumentDefinition -> !argumentDefinition.hasBeenSet && !argumentDefinition.defaultValue.equals(NULL_STRING))
+                        .map(ArgumentDefinition::toCommandLineString)
+                        .collect(Collectors.joining(" ")));
 
         return toolName + " " + commandLineString.toString();
     }

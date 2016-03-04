@@ -342,8 +342,8 @@ public final class KBestHaplotypeFinder extends AbstractList<KBestHaplotype> {
         out.println("    subgraph cluster_dummy { style = invis; x [label=\"\",shape=none,margin=0] }");
         final StringBuilder referenceCluster = new StringBuilder(1000);
 
-        referenceCluster.append("    subgraph cluster_ref {\n");
-        referenceCluster.append("        node [penwidth=2]\n");
+        referenceCluster.append("    subgraph cluster_ref {\n")
+                .append("        node [penwidth=2]\n");
         for (final KBestSubHaplotypeFinder finder : finderByVertex.values() ) {
             final String id = finder.id();
             final String line = String.format("    %s [label=<%s>]", id, finder.label());

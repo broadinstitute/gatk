@@ -620,33 +620,29 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     @Override
     public String getSAMString() {
         final String contigName = getContig();
-        final StringBuilder sb = new StringBuilder();
 
-        sb.append(getName());
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(Integer.toString(ReadUtils.getSAMFlagsForRead(this)));
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(null == contigName ? SAMRecord.NO_ALIGNMENT_REFERENCE_NAME : contigName);
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(Integer.toString(getStart()));
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(Integer.toString(getMappingQuality()));
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(getCigar().toString());
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(getMateContigDisplayString(contigName));
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(isPaired() ? Integer.toString(getMateStart()) : ReadConstants.UNSET_POSITION);
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(Integer.toString(getFragmentLength())); // getInferredInsertSize
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(getBasesString());
-        sb.append(SAM_FIELD_SEPARATOR);
-        sb.append(ReadUtils.getBaseQualityString(this));
-        sb.append(getAttributesDisplayString());
-
-        sb.append("\n");
-        return sb.toString();
+        return new StringBuilder().append(getName())
+                .append(SAM_FIELD_SEPARATOR)
+                .append(Integer.toString(ReadUtils.getSAMFlagsForRead(this)))
+                .append(SAM_FIELD_SEPARATOR)
+                .append(null == contigName ? SAMRecord.NO_ALIGNMENT_REFERENCE_NAME : contigName)
+                .append(SAM_FIELD_SEPARATOR)
+                .append(Integer.toString(getStart()))
+                .append(SAM_FIELD_SEPARATOR)
+                .append(Integer.toString(getMappingQuality()))
+                .append(SAM_FIELD_SEPARATOR)
+                .append(getCigar().toString())
+                .append(SAM_FIELD_SEPARATOR)
+                .append(getMateContigDisplayString(contigName))
+                .append(SAM_FIELD_SEPARATOR)
+                .append(isPaired() ? Integer.toString(getMateStart()) : ReadConstants.UNSET_POSITION)
+                .append(SAM_FIELD_SEPARATOR)
+                .append(Integer.toString(getFragmentLength())) // getInferredInsertSize
+                .append(SAM_FIELD_SEPARATOR)
+                .append(getBasesString())
+                .append(SAM_FIELD_SEPARATOR)
+                .append(ReadUtils.getBaseQualityString(this))
+                .append(getAttributesDisplayString()).append("\n").toString();
     }
 
     @Override
