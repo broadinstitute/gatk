@@ -13,6 +13,7 @@ plugins {
     id 'maven'
     id 'signing'
     id "jacoco"
+    id "cpp"
     id "de.undercouch.download" version "1.2" //used for downloading GSA lib
     id "com.github.johnrengelman.shadow" version "1.2.3"
     id "com.github.kt3k.coveralls" version "2.6.3"
@@ -22,6 +23,7 @@ plugins {
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
+import org.gradle.internal.os.OperatingSystem
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -73,6 +75,81 @@ compileJava {
 }
 compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror','-Xdiags:verbose']
+}
+
+model {
+  components {
+    VectorLoglessPairHMM(NativeLibrarySpec) {
+      // set location of source files
+      sources.cpp.source {
+        srcDirs "src/main/cpp/VectorLoglessPairHMM"
+        include "*.cc"
+      }
+
+      binaries.withType(SharedLibraryBinarySpec) { binary ->
+        if (System.env.GATK_SKIP_NATIVE_BUILD.toString().toBoolean()) {
+          buildable = false
+          println("INFO: \$GATK_SKIP_NATIVE_BUILD is true, skipping native AVX PairHMM library build.")
+        } else if (!OperatingSystem.current().isLinux() && !OperatingSystem.current().isMacOsX()) {
+          buildable = false
+          println("WARNING: Building the native AVX PairHMM library is not supported on this OS.")
+        } else {
+          cppCompiler.args "-I", "${System.properties['java.home']}/../include"
+          cppCompiler.args "-mavx"
+          cppCompiler.args "-Wall"
+
+          // build with gcov options on Travis
+          if (System.env.CI.toString().toBoolean()) {
+            cppCompiler.args "-g"
+            cppCompiler.args "-O0"
+            cppCompiler.args "--coverage"
+            linker.args "--coverage"
+          } else {
+            cppCompiler.args "-O3"
+          }
+
+          if (OperatingSystem.current().isMacOsX()) {
+            cppCompiler.args "-I", "${System.properties['java.home']}/../include/Darwin"
+          } else {
+            cppCompiler.args "-I", "${System.properties['java.home']}/../include/linux"
+            linker.args "-static-libgcc"
+          }
+
+          task copySharedLib(type: Copy) {
+            from binary.sharedLibraryFile
+            into "$compileJava.destinationDir/lib"
+          }
+          
+          copySharedLib.dependsOn binary.tasks
+          jar.dependsOn copySharedLib
+        }
+      }
+
+      // skip static library build
+      binaries.withType(StaticLibraryBinarySpec) { binary ->
+        buildable = false
+      }
+    }
+  }
+
+  toolChains {
+    if (OperatingSystem.current().isMacOsX()) {
+      clang(Clang)
+    } else {
+      gcc(Gcc)
+    }
+  }
+}
+
+task gcovTestReport(type: Exec){
+    dependsOn test
+    group = "Reporting"
+    description = "Generate gcov C code coverage reports after running tests."
+
+    String reportDir = "$buildDir/reports/gcov"
+    mkdir(reportDir)
+
+    commandLine "gcovr",  "--root=.", "-s", "--html", "--html-details", "--output=$reportDir/index.html"
 }
 
 dependencies {
