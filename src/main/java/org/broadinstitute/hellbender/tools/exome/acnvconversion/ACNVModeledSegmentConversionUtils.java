@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome.acnvconversion;
 
-import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
-import org.broadinstitute.hellbender.tools.exome.Genome;
-import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
+import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,9 +27,23 @@ public final class ACNVModeledSegmentConversionUtils {
         return acnvModeledSegment.stream().map(s -> convertACNVModeledSegmentToModeledSegment(s, genome)).collect(Collectors.toList());
     }
 
+
     private static ModeledSegment convertACNVModeledSegmentToModeledSegment(final ACNVModeledSegment acnvModeledSegment, final Genome genome) {
+
+        final TargetCollection<TargetCoverage> targets = genome.getTargets();
+        return convertACNVModeledSegmentToModeledSegment(acnvModeledSegment, targets);
+    }
+
+    @VisibleForTesting
+    static ModeledSegment convertACNVModeledSegmentToModeledSegment(ACNVModeledSegment acnvModeledSegment, TargetCollection<TargetCoverage> targets) {
+
+        // Make sure that we do not let segment mean become zero
+        double updatedCenter = acnvModeledSegment.getSegmentMeanPosteriorSummary().center();
+        if (Math.pow(2, updatedCenter) <= 0) {
+            updatedCenter = ParamUtils.log2(TangentNormalizer.EPSILON);
+        }
+
         return new ModeledSegment(acnvModeledSegment.getInterval(), ModeledSegment.NO_CALL,
-                genome.getTargets().targetCount(acnvModeledSegment.getInterval()),
-                acnvModeledSegment.getSegmentMeanPosteriorSummary().center());
+                targets.targetCount(acnvModeledSegment.getInterval()), updatedCenter);
     }
 }
