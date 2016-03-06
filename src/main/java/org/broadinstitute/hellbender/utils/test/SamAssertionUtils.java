@@ -36,22 +36,6 @@ public final class SamAssertionUtils {
     }
 
     /**
-     *  causes an exception if the given sam files aren't equal using lenient comparison
-     *  @param actualSam the actual file
-     *  @param expectedSam the expected file
-     *  @param validationStringency how stringently do we validate the files
-     *  @param reference is allowed to be null
-     *
-     * The lenient comparison only checks headers and alignment info {@see SamComparison}. Compares headers, and if headers are compatible enough, compares SAMRecords,
-     * looking only at basic alignment info.
-     * NOTE: Lenient comparisons are a temporary workaround and will be removed in the future
-     */
-    public static void assertSamsEqualLenient(final File actualSam, final File expectedSam, final ValidationStringency validationStringency, final File reference) throws IOException {
-        final String equalLenient = samsEqualLenient(actualSam, expectedSam, validationStringency, reference);
-        Assert.assertNull(equalLenient, "SAM file " + actualSam.getPath() + " differs from expected output:" + expectedSam.getPath() + " " + equalLenient);
-    }
-
-    /**
      * causes an exception if the given sam files aren't equal
      *  @param actualSam the actual file
      *  @param expectedSam the expected file
@@ -78,20 +62,6 @@ public final class SamAssertionUtils {
      */
     public static void assertSamsEqual(final File actualSam, final File expectedSam) throws IOException {
         assertSamsEqual(actualSam, expectedSam, ValidationStringency.DEFAULT_STRINGENCY, null);
-    }
-
-    /**
-     * causes an exception if the given sam files aren't equal using lenient comparison
-     *  @param actualSam the actual file
-     *  @param expectedSam the expected file
-     *  @param reference is allowed to be null
-     *
-     * The lenient comparison only checks headers and alignment info {@see SamComparison}. Compares headers, and if headers are compatible enough, compares SAMRecords,
-     * looking only at basic alignment info.
-     *  NOTE: Lenient comparisons are a temporary workaround and will be removed in the future
-     */
-    public static void assertSamsEqualLenient(final File actualSam, final File expectedSam, final File reference) throws IOException {
-        assertSamsEqualLenient(actualSam, expectedSam, ValidationStringency.DEFAULT_STRINGENCY, reference);
     }
 
     /**
