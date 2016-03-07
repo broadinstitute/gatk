@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModel;
 import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModelArgumentCollection;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -30,7 +29,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgramTest {
+public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CommandLineProgramTest {
 
     private static final File REALISTIC_TARGETS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/hmm/realistic-targets.tab");
 
@@ -45,45 +44,15 @@ public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgra
     }
 
     private static final CopyNumberTriStateHiddenMarkovModel[] TEST_MODELS = new CopyNumberTriStateHiddenMarkovModel[] {
-        new CopyNumberTriStateHiddenMarkovModel(1e-4, 6, -3, 3, 70_000)
+        new CopyNumberTriStateHiddenMarkovModel(1e-4, 70_000, -3, 3)
     };
-
-    /**
-     * Checks that some called segment fits exactly between one or two XHMM called events.
-     * <p>
-     *     XHMM does not output diploid segments, so when we find out in the discovery output we
-     *     make sure that it fits exactly between two events declared by XHMM.
-     * </p>
-     * @param before the XHMM event before (null if {@code between} is not preceeded by any event in the sample.
-     * @param between the diploid call to assess.
-     * @param after the XHMM event that follows {@code between}. If null indicates that {@code between} is the last segment of the sample.
-     * @param targets the target collection.
-     */
-    public static void assertsItFitsInNicely(final XHMMOutputRecord before, final CopyNumberTriStateSegment between, final XHMMOutputRecord after,
-                                             final TargetCollection<Target> targets, final String errorInfo) {
-        Utils.nonNull(between);
-        Assert.assertEquals(between.getCall(), CopyNumberTriState.NEUTRAL);
-        final IndexRange betweenIndexRange = targets.indexRange(between.getInterval());
-        if (before != null) {
-            final IndexRange beforeIndexRange = targets.indexRange(before.interval);
-            Assert.assertTrue(betweenIndexRange.from >= beforeIndexRange.to);
-        } else {
-            Assert.assertTrue(betweenIndexRange.from == 0 || !targets.target(betweenIndexRange.from - 1).getContig().equals(between.getInterval().getContig()));
-        }
-        if (after != null) {
-            final IndexRange afterIndexRange = targets.indexRange(after.interval);
-            Assert.assertTrue(betweenIndexRange.to <= afterIndexRange.from, " " + between.getInterval() + " " + after.interval + " error-info: " + errorInfo);
-        } else {
-            Assert.assertTrue(betweenIndexRange.to == targets.targetCount() || !targets.target(betweenIndexRange.to + 1).getContig().equals(between.getContig()));
-        }
-    }
 
     @Override
     public String getTestedClassName() {
         return DiscoverCopyNumberTriStateSegments.class.getSimpleName();
     }
 
-    @Test(dataProvider = "testBadModelArgumentsData", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider = "testBadModelArgumentsData", expectedExceptions = IllegalArgumentException.class)
     public void testBadModelArguments(final String argumentShortName, final double value) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + argumentShortName);
@@ -108,27 +77,32 @@ public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgra
         }
     }
 
+    //TODO: this test used to contain a tet of concordance with XHMM.  It no longer does that because our model has
+    //TODO: diverged from XHMM's.  Eventually the right thing to do is use the simulateChain() method to generate
+    //TODO: simulated data for some artificial set of CNV segments and to test concordance with those segments.
+    //TODO: however we still use XHMM's emission model, which is both not generative and quite silly.  Once we
+    //TODO: have a generative model of coverage we can modify simulateChain() accordingly and then write a concordance
+    //TODO: test here.  Until then, we do not have an integration test but we do have our ongoing evaluations, which
+    //TODO: show the superiority of our modifications versus the original XHMM model.
     @Test(dataProvider = "simulatedChainData")
-    public void testXhmmConcordance(final HiddenMarkovModelChain chain, final File xhmmOutputFile) {
+    public void testRunCommandLine(final HiddenMarkovModelChain chain, final File xhmmOutputFile) {
         final File inputFile = writeChainInTempFile(chain);
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(inputFile.getAbsolutePath());
-        //final File outputFile = new File("/tmp/333");
         final File outputFile = createTempFile("output", ".tab");
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
+
         // The model arguments:
         arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DELETION_COVERAGE_SHIFT_SHORT_NAME);
         arguments.add(String.valueOf(chain.model.getDeletionMean()));
         arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DUPLICATION_COVERAGE_SHIFT_SHORT_NAME);
         arguments.add(String.valueOf(chain.model.getDuplicationMean()));
-        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_RATE_SHORT_NAME);
-        arguments.add(String.valueOf(chain.model.getEventRate()));
-        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DISTANCE_BETWEEN_TARGETS_IN_SEGMENT_SHORT_NAME);
-        arguments.add(String.valueOf(chain.model.getMeanEventTargetDistance()));
-        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_TARGETS_PER_SEGMENT_SHORT_NAME);
-        arguments.add(String.valueOf(chain.model.getNumberOfTargetsInEvent()));
+        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_START_PROBABILITY_FULL_NAME);
+        arguments.add(String.valueOf(chain.model.getEventStartProbability()));
+        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_EVENT_SIZE_SHORT_NAME);
+        arguments.add(String.valueOf(chain.model.getMeanEventSize()));
         arguments.add("-" + DiscoverCopyNumberTriStateSegments.INPUT_ARE_ZSCORES_SHORT_NAME);
         runCommandLine(arguments.toArray(new String[arguments.size()]));
         Assert.assertTrue(outputFile.exists());
@@ -142,32 +116,6 @@ public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgra
             assertSampleSegmentsCoverAllTargets(sampleRecords, targets);
             assertSampleSegmentsCoordinates(sampleRecords, targets);
         }
-        final List<XHMMOutputRecord> xhmmOutputRecords = readXhmmOutputRecords(xhmmOutputFile);
-        final Map<String, List<XHMMOutputRecord>> xhmmOutputRecordsBySample = xhmmOutputRecords.stream()
-                .collect(Collectors.groupingBy(r -> r.sample));
-        for (final String sample : outputRecordsBySample.keySet()) {
-            assertConcordantCalls(outputRecordsBySample.get(sample), xhmmOutputRecordsBySample.get(sample), targets);
-        }
-
-    }
-
-    private void assertConcordantCalls(final List<CopyNumberTriStateSegmentRecord> ownRecords,
-                                       final List<XHMMOutputRecord> xhmmOutputRecords, final TargetCollection<Target> targets) {
-        Collections.sort(xhmmOutputRecords, Comparator.comparingInt(x -> targets.indexRange(x.interval).from));
-        Collections.sort(ownRecords, Comparator.comparingInt(x -> targets.indexRange(x.getSegment().getInterval()).from));
-
-        int nextOwn = 0; int nextXhmm = 0;
-        XHMMOutputRecord xhmmPrevious = null;
-        while (nextOwn < ownRecords.size()) {
-            if (ownRecords.get(nextOwn).getSegment().getCall() == CopyNumberTriState.NEUTRAL) {
-                assertsItFitsInNicely(xhmmPrevious, ownRecords.get(nextOwn++).getSegment(),
-                        nextXhmm < xhmmOutputRecords.size() ? xhmmOutputRecords.get(nextXhmm) : null, targets, xhmmPrevious != null ?"" + xhmmPrevious.interval : "null");
-            } else {
-                xhmmOutputRecords.get(nextXhmm).assertComparable(ownRecords.get(nextOwn++));
-                xhmmPrevious = xhmmOutputRecords.get(nextXhmm++);
-            }
-        }
-
     }
 
     private void assertSampleSegmentsCoordinates(List<CopyNumberTriStateSegmentRecord> sampleRecords, TargetCollection<Target> targets) {
@@ -219,15 +167,6 @@ public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgra
         }
     }
 
-    private List<XHMMOutputRecord> readXhmmOutputRecords(final File xhmmOutputFile) {
-        try (final XHMMOutputReader reader = new XHMMOutputReader(xhmmOutputFile)) {
-            return reader.stream().collect(Collectors.toList());
-        } catch (final IOException ex) {
-            Assert.fail("could not xhmm output file: " + xhmmOutputFile);
-            throw new RuntimeException(ex);
-        }
-    }
-
     private File writeChainInTempFile(final HiddenMarkovModelChain chain) {
         final File result = createTempFile("chain-",".tab");
         //final File result = new File("/tmp/input");
@@ -258,11 +197,10 @@ public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgra
     @DataProvider(name = "testBadModelArgumentsData")
     public Object[][] testBadModelArgumentsData() {
         return new Object[][] {
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_RATE_SHORT_NAME, -1.0D},
+                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_START_PROBABILITY_FULL_NAME, -1.0D},
                 {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DELETION_COVERAGE_SHIFT_SHORT_NAME, 1.1D},
                 {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DUPLICATION_COVERAGE_SHIFT_SHORT_NAME, -1.1D},
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DISTANCE_BETWEEN_TARGETS_IN_SEGMENT_SHORT_NAME, -1.0D},
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_TARGETS_PER_SEGMENT_SHORT_NAME, -2.0D},
+                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_EVENT_SIZE_SHORT_NAME, -1.0D},
         };
     }
 
@@ -278,7 +216,7 @@ public class DiscoverCopyNumberTriStateIntegrationTest extends CommandLineProgra
     public Object[][] simulateChainData() {
         final Random rdn = new Random(131313);
         final List<Object[]> result = Stream.of(TEST_MODELS)
-                .map(m -> new Object[] { simulateChain(m, REALISTIC_TARGETS, 3, rdn), new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/discover-germline-xhmm-output-4-6-70-3-3.tab") })
+                .map(m -> new Object[] { simulateChain(m, REALISTIC_TARGETS, 100, rdn), new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/discover-germline-xhmm-output-4-6-70-3-3.tab") })
                 .collect(Collectors.toList());
         return result.toArray(new Object[result.size()][]);
     }

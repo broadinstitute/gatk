@@ -384,6 +384,7 @@ We therefore have a self-contained iteration scheme in terms of expectations onl
 
   Once this converges, the main objects of interest are the posterior probabilities of different allele counts, $P(v_{sm} = 1, w_{sn} = 1) = \sum_k E \left[ z_{sk} v_{sm} w_{sp} \right]$.  For the purposes of guessing phylogeny the fractions $\rho_k$ are also interesting.
 
+
 \section{Germline Exome CNVs} \label{germline}
 The GATK treats germline CNVs differently from somatic CNVs.  This is partly due to fundamental differences, such as the absence of subclones in the germline setting.  However, many arbitrary inconsistencies are historic in nature, arising from the germline algorithm's origins in the XHMM method.  It is important to keep this in mind when reading these notes.  The two most significant differences between the GATK's germline and somatic workflows is are the neglect of allelic information (i.e. alt and ref read counts at het sites) in the germline workflow and the use of an HMM for simultaneous segmentation and calling in the germline workflow.  
 
@@ -420,20 +421,31 @@ Z_{st} = X_{st} / {\rm std}(X_{\cdot t})
 The codebase also allows for filtering at each stage of coverage based on target GC and repeat fraction and various coverage descriptive statistics such as mean, standard deviation and interquartile range of targets across samples and vice versa.  However, we do not yet have a sense of best practices for these.  Furthermore, what constitutes best practices will change as we improve the model.
 
 \subsection{Germline HMM} \label{germline-hmm}
-Each sample's Z-score coverage is segmented and called separately via the Viterbi algorithm, which finds the maximum-likelihood solution of an HMM.  The hidden states are neutral, deletion, and duplication -- the XHMM model does not take into account homozygous deletions or multiple duplications.  The input parameters are: (i) the probability $p$ that a target is the start of an event; (ii) the mean number $1/q$ of targets in a CNV; and (iii) the mean distance $D$ between targets in a CNV.  Note that the latter two of these are silly because they depend on the density of targets used.  In particular parameters that are tailored for an exome of 100,000 targets are completely wrong for a small gene panel.  Furthermore, if the density of targets is not uniform across the genome, these parameters might be appropriate only in some parts of the genome.  A much more appropriate, biological, parameter would be the average length (in base pairs) of a CNV.
+Each sample's Z-score coverage is segmented and called separately via the Viterbi algorithm, which finds the maximum-likelihood solution of an HMM.  The hidden states are neutral, deletion, and duplication -- the XHMM model does not take into account homozygous deletions or multiple duplications.  
 
-Anyway, the HMM transition matrix is defined in terms of these parameters as follows.  We let $f = e^{-d/D}$ be a CNV memory attenuation factor between consecutive targets separated by distance $d$.  The transition matrix is
+The HMM's transition matrix is guided by the principle (an approximation, of course) that there is some underlying biological HMM on a \textit{per-base} level and that \textit{per-target} transitions are simply the realization of this underlying HMM on a coarser scale.  The per-base transition matrix is defined by two parameters.  The first is the probability $p$ to to make a transition from a neutral state to a CNV state.  Equivalently, $1/p$ is, roughly, the average separation between CNVs.  The second is the probability $1/D$ that a CNV state ends.  Equivalently, $D$ is the average CNV length in base pairs.   The probability for a CNV to terminate between two consecutive targets a distance $d$ apart is $1 - e^{-d/D}$.
+  
+Letting $f = e^{-1/D}$ the transition matrix $T$ between two adjacent bases is
 %
 \begin{equation}
-\bordermatrix{ {\rm from} \backslash {\rm to} & - & 0 & + \cr
-      - & f(1-q) + (1-f)p & fq+(1-f)(1-2p) & (1-f)p \cr
+T = \bordermatrix{ {\rm from} \backslash {\rm to} & - & 0 & + \cr
+      - & f & 1-f & 0 \cr
       0 & p & 1-2p & p \cr
-      + & (1-f)p & fq+(1-f)(1-2p) & f(1-q)+(1-f)p }
+      + & 0 & 1-f & f}
 \end{equation}
 %
-The middle row simply states the definition of $p$ as the probably of starting an event.  The $- \rightarrow -$ and $+ \rightarrow +$ entries state, when $f=1$, the definition of $q$, and when $f=0$ the memoryless probability to start a new event.  For intermediate $f$ this element is a weighted average of the contributions with and without memory for continuing the CNV.  All remaining entries can be understood similarly.
+We neglect transitions between different types of CNVs at consecutive bases, which are extremely rare.  Note that this in no way precludes CNVs of different types occurring at adjacent targets.  The transition matrix for two targets separated by $d$ bases is $T^d$.  We can compute this very cheaply by first diagonalizing $T$ as $T = U \Sigma V^T$, where $\Lambda$ is a diagonal matrix.  Then $T^d = U^T \Lambda^d U$.  For numerical stability one usually works with log transition probabilities, so we have:
+%
+\begin{align}
+\log \left(T^d \right)_{ij} =& \log \sum_k U^T_ik \Lambda^d_{kk} U_{kj} \\
+				    =& \log \sum_k \Lambda^d_{kk} U_{kj} U_{ki} \\ 
+				    =& \log \sum_k \exp \left( d \log \Lambda_{kk} + \log U_{kj} + \log U_{ki}  \right)
+\end{align}
+%
+In this form we can work entirely in log space and exploit the log-sum-exp trick for stability.
 
-The emission model is as follows.  Each hidden state emits a normally-distributed Z-score.  The means are $-M$, 0, and $+M$ for deletion, neutral, and duplication states, respectively, where $M$ is s user-specified parameter whose default is 3.  Each emission distribution is given unit variance.  This model is quite wrong.  Consider a duplication.  The tangent-normalized coverage ought be be roughly 0.5 times the proportional coverage -- the raw coverage is $3/2$ that of a diploid target, leaving $1/2$ remaining after (ideal) tangent-normalization.  Then division by the target standard deviaton to get a Z-score yields who-knows-what.  Since different targets have different average proportional coverage, the global parameter $M$ is misguided.  Basically, the current model is not a model at all, but a heuristic.
+
+The emission model is as follows.  Each hidden state emits a normally-distributed Z-score.  The means are $-M$, 0, and $+M$ for deletion, neutral, and duplication states, respectively, where $M$ is s user-specified parameter whose default is 3.  Each emission distribution is given unit variance.  This model is quite wrong.  Consider a duplication.  The tangent-normalized coverage ought be be roughly 0.5 times the proportional coverage -- the raw coverage is $3/2$ that of a diploid target, leaving $1/2$ remaining after (ideal) tangent-normalization.  Then division by the target standard deviation to get a Z-score yields who-knows-what.  Since different targets have different average proportional coverage, the global parameter $M$ is misguided.  Basically, the current model is not a model at all, but a heuristic.
 
 
 \section{Proposed Methods} \label{proposed-methods} 

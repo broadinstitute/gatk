@@ -162,7 +162,8 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
         return Iterators.mergeSorted(allSegmentRecordIterators, recordComparator);
     }
 
-    private Map<String, List<CopyNumberTriStateSegment>> calculateBestPathSegments(CopyNumberTriStateHiddenMarkovModel model, ReadCountCollection inputCounts) {
+    private Map<String, List<CopyNumberTriStateSegment>> calculateBestPathSegments(CopyNumberTriStateHiddenMarkovModel model1, ReadCountCollection inputCounts) {
+        final CopyNumberTriStateHiddenMarkovModel model = modelArguments.createModel();
         final List<String> sampleNames = inputCounts.columnNames();
         final Map<String, List<CopyNumberTriStateSegment>> allSegments = new LinkedHashMap<>(sampleNames.size());
         long recordCount = 0;
