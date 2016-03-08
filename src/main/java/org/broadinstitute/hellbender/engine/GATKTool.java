@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.Locatable;
@@ -48,6 +49,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName="createOutputBamMD5", shortName="createOutputBamMD5", doc = "If true, create a MD5 digest for any BAM/SAM/CRAM file created", optional=true)
     public boolean createOutputBamMD5 = false;
+
+    @Argument(fullName="addOutputSAMProgramRecord", shortName="addOutputSAMProgramRecord", doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true)
+    public boolean addOutputSAMProgramRecord = false;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -243,7 +247,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Returns the reference sequence dictionary if there is a reference (hasReference() == true), otherwise null.
      * @return reference sequence dictionary if any, or null
      */
-    public SAMSequenceDictionary getReferenceDictionary() {
+    public final SAMSequenceDictionary getReferenceDictionary() {
         return reference != null ? reference.getSequenceDictionary() : null;
     }
 
@@ -256,7 +260,7 @@ public abstract class GATKTool extends CommandLineProgram {
      *
      * @return best available sequence dictionary given our inputs
      */
-    public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+    public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
         return reference != null ? reference.getSequenceDictionary() : (reads != null ? reads.getSequenceDictionary() : null);
     }
 
@@ -266,7 +270,7 @@ public abstract class GATKTool extends CommandLineProgram {
      *
      * @return SAM header for our source of reads (null if there are no reads)
      */
-    public SAMFileHeader getHeaderForReads() {
+    public final SAMFileHeader getHeaderForReads() {
         return hasReads() ? reads.getHeader() : null;
     }
 
@@ -276,12 +280,25 @@ public abstract class GATKTool extends CommandLineProgram {
      * @param <T> type of Feature in our FeatureInput
      * @return header for the provided FeatureInput (null if we have no sources of Features)
      */
-    public <T extends Feature> Object getHeaderForFeatures( final FeatureInput<T> featureDescriptor ) {
+    public final <T extends Feature> Object getHeaderForFeatures( final FeatureInput<T> featureDescriptor ) {
         return hasFeatures() ? features.getHeader(featureDescriptor) : null;
     }
 
     /**
-     * Initialize our data sources, and make sure that all tool requirements for input data have been satisfied
+     * Initialize our data sources, make sure that all tool requirements for input data have been satisfied
+     * and start the progress meter.
+     *
+     * The data sources are initialized in the following order:
+     *   initializeReference
+     *   initializeReads
+     *   initializeIntervals
+     *   initializeFeatures
+     *
+     * Then, data sources are checked by calls to:
+     *    validateSequenceDictionaries (unless disabled by disableSequenceDictionaryValidation)
+     *    checkToolRequirements
+     *
+     * Subclasses may extend (ie, they should call super and add functionality).
      */
     @Override
     protected void onStartup() {
@@ -379,7 +396,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * @throws UserException if outputFile ends with ".cram" and no reference is provided
      * @return SAMFileWriter
      */
-    public SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
+    public final SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
         if (!hasReference() && IOUtils.isCramFile(outputFile)) {
             throw new UserException.MissingReference("A reference file is required for writing CRAM files");
         }
@@ -388,7 +405,7 @@ public abstract class GATKTool extends CommandLineProgram {
                         ReadUtils.createCommonSAMWriter(
                                 outputFile,
                                 referenceArguments.getReferenceFile(),
-                                getHeaderForReads(),
+                                getHeaderForSAMWriter(),
                                 preSorted,
                                 createOutputBamIndex,
                                 createOutputBamMD5
@@ -397,7 +414,57 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Close all data sources on shutdown
+     * Returns the SAM header suitable for writing SAM/BAM/CRAM files produced by this tool.
+     *
+     * The default implementation calls {@link #getHeaderForReads} (and makes an empty header if that call returns null)
+     * and optionally adds program tag to the header with a program version {@link #getVersion()}, program name {@link #getToolName()}
+     * and command line {@link #getCommandLine()}.
+     *
+     * Subclasses may override.
+     *
+     * @return SAM header for the SAM writer with (optionally, if {@link #addOutputSAMProgramRecord} is true) program record appropriately.
+     */
+    protected SAMFileHeader getHeaderForSAMWriter(){
+        final SAMFileHeader header = getHeaderForReads() == null ? new SAMFileHeader(): getHeaderForReads();
+        if (addOutputSAMProgramRecord) {
+            final SAMProgramRecord programRecord = new SAMProgramRecord(createProgramGroupID(header));
+            programRecord.setProgramVersion(getVersion());
+            programRecord.setCommandLine(getCommandLine());
+            programRecord.setProgramName(getToolName());
+            header.addProgramRecord(programRecord);
+        }
+        return header;
+    }
+
+    /**
+     * Returns the program group ID that will be used in the SAM writer.
+     * Starts with {@link #getToolName} and looks for the first available ID by appending consecutive integers.
+     */
+    private String createProgramGroupID(final SAMFileHeader header) {
+        final String toolName = getToolName();
+
+        String pgID = toolName;
+        SAMProgramRecord record = header.getProgramRecord(pgID);
+        int count = 1;
+        while (record != null){
+            pgID = toolName + "." + String.valueOf(count++);
+            record = header.getProgramRecord(pgID);
+        }
+        return pgID;
+    }
+
+    /**
+     * Returns the name of this GATK tool.
+     * The default implementation return the the string "GATK " followed by the simple name of the class.
+     * Subclasses may override.
+     */
+    public String getToolName() {
+        return "GATK " + getClass().getSimpleName();
+    }
+
+    /**
+     * Close all data sources on shutdown.
+     * Subclasses may extend (ie they must call super).
      */
     @Override
     protected void onShutdown() {
@@ -444,7 +511,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public Object onTraversalDone() { return null; }
 
     @Override
-    protected Object doWork() {
+    protected final Object doWork() {
         onTraversalStart();
         progressMeter.start();
         traverse();
