@@ -101,6 +101,23 @@ public final class CommandLineParserTest {
         Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) < 0);
     }
 
+    class AbbreviatableArgument{
+        public static final String ARGUMENT_NAME = "longNameArgument";
+        @Argument(fullName= ARGUMENT_NAME)
+        public boolean longNameArgument;
+    }
+
+    @Test(expectedExceptions = UserException.CommandLineException.class)
+    public void testAbbreviationsAreRejected() {
+        final AbbreviatableArgument abrv = new AbbreviatableArgument();
+        final CommandLineParser clp = new CommandLineParser(abrv);
+        //argument name is valid when it isn't abbreviated
+        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--" + AbbreviatableArgument.ARGUMENT_NAME}));
+
+        //should throw when the abbreviated name is used
+        clp.parseArguments(System.err, new String[]{"--" + AbbreviatableArgument.ARGUMENT_NAME.substring(0,5)});
+    }
+
     @CommandLineProgramProperties(
             summary = "[oscillation_frequency]\n\nRecalibrates overthruster oscillation. \n",
             oneLineSummary = "Recalibrates the overthruster.",
