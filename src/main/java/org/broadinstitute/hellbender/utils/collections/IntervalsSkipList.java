@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 /**
  * Holds many intervals in memory, with an efficient operation to get
@@ -49,9 +50,9 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
      * hold, but of course if it isn't you'll get an empty result.
      * You may modify the returned list.
      */
-    public ArrayList<T> getOverlapping(SimpleInterval query) {
+    public List<T> getOverlapping(SimpleInterval query) {
         String k = query.getContig();
-        if (!intervals.containsKey(k)) return new ArrayList<T>();
+        if (!intervals.containsKey(k)) return new ArrayList<>();
         return intervals.get(k).getOverlapping(query);
     }
 

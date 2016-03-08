@@ -113,9 +113,11 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String hiSeqBam_1read = getResourceDir() + "overlappingRead.bam";
+        final String hiSeqBam_readNithNoRefBases = getResourceDir() + "NA12878.oq.read_consumes_zero_ref_bases.chr20.bam";
 
         return new Object[][]{
                 // input local, computation local.
+                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_readNithNoRefBases, dbsnp_138_b37_20_21_vcf, "--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_NOREFBASES_RECAL)},
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, "--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST --indels_context_size 4", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
