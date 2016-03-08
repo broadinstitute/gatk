@@ -28,33 +28,25 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         String samFile = fileIn;
         final File outFile = BaseTest.createTempFile(samFile + ".", extOut);
         final File ORIG_BAM = new File(TEST_DATA_DIR, samFile);
+        final File refFile;
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("--input"); args.add(ORIG_BAM.getAbsolutePath());
         args.add("--output"); args.add(outFile.getAbsolutePath());
         if (reference != null) {
-            final File refFile = new File(TEST_DATA_DIR, reference);
+            refFile = new File(TEST_DATA_DIR, reference);
             args.add("-R"); args.add(refFile.getAbsolutePath());
-        };
+        }
+        else {
+            refFile = null;
+        }
         if (testMD5) {
             args.add("--createOutputBamMD5");
             args.add("true");
         }
         runCommandLine(args);
 
-        if (fileIn.endsWith(CramIO.CRAM_FILE_EXTENSION) || extOut.equals(CramIO.CRAM_FILE_EXTENSION)) {
-            final File refFile = new File(TEST_DATA_DIR, reference);
-            if (!fileIn.endsWith(CramIO.CRAM_FILE_EXTENSION)) {
-                // TODO: We still need lenient comparison due to https://github.com/samtools/htsjdk/issues/455
-                // (bam->cram conversion strips out NM/MD tags)
-                SamAssertionUtils.assertSamsEqualLenient(outFile, ORIG_BAM, refFile);
-            }
-            else {
-                SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
-            }
-        } else {
-            SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM);
-        }
+        SamAssertionUtils.assertSamsEqual(outFile, ORIG_BAM, refFile);
 
         if (testMD5) {
             checkMD5asExpected(outFile);

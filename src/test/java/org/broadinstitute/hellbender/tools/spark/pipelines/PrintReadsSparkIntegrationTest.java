@@ -62,13 +62,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         }
         runCommandLine(args);
 
-        // TODO: We still need lenient comparison due to https://github.com/samtools/htsjdk/issues/455
-        // (bam->cram conversion strips out NM/MD tags)
-        if (refFile != null && extOut.equals(CramIO.CRAM_FILE_EXTENSION) && !fileIn.endsWith(CramIO.CRAM_FILE_EXTENSION)) {
-            SamAssertionUtils.assertSamsEqualLenient(outFile, originalFile, refFile);
-        } else {
-            SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
-        }
+        SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
     @Test
