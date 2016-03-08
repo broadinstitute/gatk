@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.util.StatCounter;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -20,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
@@ -82,7 +84,29 @@ public final class CollectVariantQCMetrics extends VariantWalker{
                                     return formatDouble(safeDivide(alts, refs+alts));
                                     }
                 );
+        results.put("dpMean\tdpStDev",             vc -> formatStats(makeGenotypeStats(vc, g -> true,          Genotype::getDP)));
+        results.put("dpMeanHet\tdpStDevHet",       vc -> formatStats(makeGenotypeStats(vc, Genotype::isHet,    Genotype::getDP)));
+        results.put("dpMeanHomVar\tdpStDevHomVar", vc -> formatStats(makeGenotypeStats(vc, Genotype::isHomVar, Genotype::getDP)));
+        results.put("dpMeanHomRef\tdpStDevHomRef", vc -> formatStats(makeGenotypeStats(vc, Genotype::isHomRef, Genotype::getDP)));
+
+        results.put("gqMean\tgqStDev",             vc -> formatStats(makeGenotypeStats(vc, g -> true,          Genotype::getGQ)));
+        results.put("gqMeanHet\tgqStDevHet",       vc -> formatStats(makeGenotypeStats(vc, Genotype::isHet,    Genotype::getGQ)));
+        results.put("gqMeanHomVar\tgqStDevHomVar", vc -> formatStats(makeGenotypeStats(vc, Genotype::isHomVar, Genotype::getGQ)));
+        results.put("gqMeanHomRef\tgqStDevHomRef", vc -> formatStats(makeGenotypeStats(vc, Genotype::isHomRef, Genotype::getGQ)));
         return results;
+    }
+
+    private static String formatStats(final StatCounter statCounter){
+        return formatDouble(statCounter.mean()) +"\t" + formatDouble(statCounter.stdev());
+    }
+
+    private static StatCounter makeGenotypeStats(final VariantContext vc, final Predicate<Genotype> pred, final ToIntFunction<Genotype> f){
+        return vc.getGenotypes().stream()
+                .filter(pred)
+                .mapToInt(f)
+                .collect(() -> new StatCounter(),
+                        StatCounter::merge,
+                        StatCounter::merge);
     }
 
     private static double safeDivide(final int d1, final int d2){
@@ -123,8 +147,8 @@ public final class CollectVariantQCMetrics extends VariantWalker{
         outputStream.println(variant.getContig() + "\t" +
                              variant.getStart() + "\t" +
                              variant.getEnd()  + "\t" +
-                             variant.getReference()  + "\t" +
-                             variant.getAlternateAlleles()  + "\t" +
+                             variant.getReference().getDisplayString()  + "\t" +
+                             variant.getAlternateAlleles().get(0).getDisplayString()  + "\t" +
                              line);
     }
 
