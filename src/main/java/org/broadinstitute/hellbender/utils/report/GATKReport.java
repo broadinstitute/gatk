@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.report;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,7 +16,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * Container class for GATK report tables
@@ -63,6 +66,20 @@ public final class GATKReport {
     public GATKReport(GATKReportTable... tables) {
         for( GATKReportTable table: tables)
             addTable(table);
+    }
+
+    /**
+     * Gets the unique read groups in the table
+     *
+     * @return the unique read groups
+     */
+    public SortedSet<String> getReadGroups() {
+        final GATKReportTable reportTable = getTable(RecalUtils.READGROUP_REPORT_TABLE_TITLE);
+        final SortedSet<String> readGroups = new TreeSet<>();
+        for ( int i = 0; i < reportTable.getNumRows(); i++ ) {
+            readGroups.add(reportTable.get(i, RecalUtils.READGROUP_COLUMN_NAME).toString());
+        }
+        return readGroups;
     }
 
     /**
@@ -152,10 +169,25 @@ public final class GATKReport {
      * @param out the PrintStream to which the tables should be written
      */
     public void print(PrintStream out) {
-        out.println(GATKREPORT_HEADER_PREFIX + getVersion().toString() + SEPARATOR + getTables().size());
-        for (GATKReportTable table : tables.values())
+        out.println(GATKREPORT_HEADER_PREFIX + getVersion() + SEPARATOR + getTables().size());
+        for (GATKReportTable table : tables.values()) {
             table.write(out);
+        }
     }
+
+    /**
+     * Print all tables contained within this container to a PrintStream
+     *
+     * @param out the PrintStream to which the tables should be written
+     */
+    public void print(PrintStream out, GATKReportTable.Sorting sortingWay) {
+        out.println(GATKREPORT_HEADER_PREFIX + getVersion() + SEPARATOR + getTables().size());
+        for (GATKReportTable table : tables.values()) {
+            table.write(out, sortingWay);
+        }
+    }
+
+
 
     public Collection<GATKReportTable> getTables() {
         return tables.values();

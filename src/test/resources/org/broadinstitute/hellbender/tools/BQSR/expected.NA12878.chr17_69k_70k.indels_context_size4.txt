@@ -20,7 +20,7 @@ run_without_dbsnp           false
 solid_nocall_strategy       THROW_EXCEPTION                                                         
 solid_recal_mode            SET_Q_ZERO                                                              
 
-#:GATKTable:3:94:%s:%s:%s:;
+#:GATKTable:3:94:%d:%d:%d:;
 #:GATKTable:Quantized:Quality quantization map
 QualityScore  Count  QuantizedScore
            0      0              12
@@ -125,9 +125,13 @@ ReadGroup          EventType  EmpiricalQuality  EstimatedQReported  Observations
 809R9ABXX101220.5  I                   45.0000             45.0000         23471    0.00
 809R9ABXX101220.5  M                   27.0000             27.0494         23471   49.13
 
-#:GATKTable:6:36:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:6:36:%s:%d:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable1:
 ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Errors
+809R9ABXX101220.5             6  M                    6.0000            15    3.00
+809R9ABXX101220.5             7  M                    7.0000            18    3.00
+809R9ABXX101220.5             8  M                    8.0000            21    3.00
+809R9ABXX101220.5             9  M                    9.0000            15    2.00
 809R9ABXX101220.5            10  M                   10.0000            25    2.00
 809R9ABXX101220.5            11  M                   11.0000            24    3.00
 809R9ABXX101220.5            12  M                   12.0000            33    3.00
@@ -160,14 +164,96 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 809R9ABXX101220.5            39  M                   39.0000             1    0.00
 809R9ABXX101220.5            45  D                   45.0000         23471    0.00
 809R9ABXX101220.5            45  I                   45.0000         23471    0.00
-809R9ABXX101220.5             6  M                    6.0000            15    3.00
-809R9ABXX101220.5             7  M                    7.0000            18    3.00
-809R9ABXX101220.5             8  M                    8.0000            21    3.00
-809R9ABXX101220.5             9  M                    9.0000            15    2.00
 
-#:GATKTable:8:3963:%s:%s:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:8:3963:%s:%d:%s:%s:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable2:
 ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors
+809R9ABXX101220.5             6  -11             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -15             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -22             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -33             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -37             Cycle          M                    6.0000             2    1.00
+809R9ABXX101220.5             6  -55             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -61             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -66             Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  -69             Cycle          M                    6.0000             3    1.00
+809R9ABXX101220.5             6  30              Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  65              Cycle          M                    6.0000             1    1.00
+809R9ABXX101220.5             6  73              Cycle          M                    6.0000             1    0.00
+809R9ABXX101220.5             6  AC              Context        M                    6.0000             5    1.00
+809R9ABXX101220.5             6  CC              Context        M                    6.0000             6    0.00
+809R9ABXX101220.5             6  GC              Context        M                    6.0000             1    1.00
+809R9ABXX101220.5             6  GG              Context        M                    6.0000             3    1.00
+809R9ABXX101220.5             7  -22             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  -29             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  -34             Cycle          M                    7.0000             1    1.00
+809R9ABXX101220.5             7  -35             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  -37             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  -41             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  -47             Cycle          M                    7.0000             1    1.00
+809R9ABXX101220.5             7  -50             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  -54             Cycle          M                    7.0000             2    0.00
+809R9ABXX101220.5             7  -57             Cycle          M                    7.0000             1    1.00
+809R9ABXX101220.5             7  -59             Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  52              Cycle          M                    7.0000             2    0.00
+809R9ABXX101220.5             7  58              Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  62              Cycle          M                    7.0000             2    0.00
+809R9ABXX101220.5             7  72              Cycle          M                    7.0000             1    0.00
+809R9ABXX101220.5             7  AC              Context        M                    7.0000             4    1.00
+809R9ABXX101220.5             7  CC              Context        M                    7.0000             2    0.00
+809R9ABXX101220.5             7  CG              Context        M                    7.0000             2    0.00
+809R9ABXX101220.5             7  GC              Context        M                    7.0000             4    1.00
+809R9ABXX101220.5             7  GG              Context        M                    7.0000             6    1.00
+809R9ABXX101220.5             8  -17             Cycle          M                    8.0000             1    1.00
+809R9ABXX101220.5             8  -18             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -19             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -27             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -28             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -32             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -40             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -41             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -6              Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -63             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -65             Cycle          M                    8.0000             2    1.00
+809R9ABXX101220.5             8  -67             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -69             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -74             Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  -9              Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  39              Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  57              Cycle          M                    8.0000             1    1.00
+809R9ABXX101220.5             8  63              Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  65              Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  71              Cycle          M                    8.0000             1    0.00
+809R9ABXX101220.5             8  AC              Context        M                    8.0000             3    0.00
+809R9ABXX101220.5             8  CA              Context        M                    8.0000             1    1.00
+809R9ABXX101220.5             8  CC              Context        M                    8.0000             1    0.00
+809R9ABXX101220.5             8  CG              Context        M                    8.0000             1    0.00
+809R9ABXX101220.5             8  GA              Context        M                    8.0000             1    0.00
+809R9ABXX101220.5             8  GC              Context        M                    8.0000             4    1.00
+809R9ABXX101220.5             8  GG              Context        M                    8.0000             8    0.00
+809R9ABXX101220.5             8  TA              Context        M                    8.0000             1    1.00
+809R9ABXX101220.5             8  TC              Context        M                    8.0000             1    0.00
+809R9ABXX101220.5             9  -22             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -24             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -29             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -41             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -48             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -50             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -64             Cycle          M                    9.0000             1    1.00
+809R9ABXX101220.5             9  -7              Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -70             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  -72             Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  31              Cycle          M                    9.0000             1    1.00
+809R9ABXX101220.5             9  32              Cycle          M                    9.0000             2    0.00
+809R9ABXX101220.5             9  47              Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  52              Cycle          M                    9.0000             1    0.00
+809R9ABXX101220.5             9  CC              Context        M                    9.0000             1    1.00
+809R9ABXX101220.5             9  CG              Context        M                    9.0000             1    0.00
+809R9ABXX101220.5             9  GA              Context        M                    9.0000             3    0.00
+809R9ABXX101220.5             9  GC              Context        M                    9.0000             3    0.00
+809R9ABXX101220.5             9  GG              Context        M                    9.0000             5    0.00
+809R9ABXX101220.5             9  TA              Context        M                    9.0000             1    1.00
+809R9ABXX101220.5             9  TC              Context        M                    9.0000             1    0.00
 809R9ABXX101220.5            10  -18             Cycle          M                   10.0000             1    0.00
 809R9ABXX101220.5            10  -25             Cycle          M                   10.0000             1    0.00
 809R9ABXX101220.5            10  -26             Cycle          M                   10.0000             1    0.00
@@ -4045,90 +4131,4 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 809R9ABXX101220.5            45  TTTG            Context        I                   45.0000            83    0.00
 809R9ABXX101220.5            45  TTTT            Context        D                   45.0000           230    0.00
 809R9ABXX101220.5            45  TTTT            Context        I                   45.0000           230    0.00
-809R9ABXX101220.5             6  -11             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -15             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -22             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -33             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -37             Cycle          M                    6.0000             2    1.00
-809R9ABXX101220.5             6  -55             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -61             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -66             Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  -69             Cycle          M                    6.0000             3    1.00
-809R9ABXX101220.5             6  30              Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  65              Cycle          M                    6.0000             1    1.00
-809R9ABXX101220.5             6  73              Cycle          M                    6.0000             1    0.00
-809R9ABXX101220.5             6  AC              Context        M                    6.0000             5    1.00
-809R9ABXX101220.5             6  CC              Context        M                    6.0000             6    0.00
-809R9ABXX101220.5             6  GC              Context        M                    6.0000             1    1.00
-809R9ABXX101220.5             6  GG              Context        M                    6.0000             3    1.00
-809R9ABXX101220.5             7  -22             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  -29             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  -34             Cycle          M                    7.0000             1    1.00
-809R9ABXX101220.5             7  -35             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  -37             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  -41             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  -47             Cycle          M                    7.0000             1    1.00
-809R9ABXX101220.5             7  -50             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  -54             Cycle          M                    7.0000             2    0.00
-809R9ABXX101220.5             7  -57             Cycle          M                    7.0000             1    1.00
-809R9ABXX101220.5             7  -59             Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  52              Cycle          M                    7.0000             2    0.00
-809R9ABXX101220.5             7  58              Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  62              Cycle          M                    7.0000             2    0.00
-809R9ABXX101220.5             7  72              Cycle          M                    7.0000             1    0.00
-809R9ABXX101220.5             7  AC              Context        M                    7.0000             4    1.00
-809R9ABXX101220.5             7  CC              Context        M                    7.0000             2    0.00
-809R9ABXX101220.5             7  CG              Context        M                    7.0000             2    0.00
-809R9ABXX101220.5             7  GC              Context        M                    7.0000             4    1.00
-809R9ABXX101220.5             7  GG              Context        M                    7.0000             6    1.00
-809R9ABXX101220.5             8  -17             Cycle          M                    8.0000             1    1.00
-809R9ABXX101220.5             8  -18             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -19             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -27             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -28             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -32             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -40             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -41             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -6              Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -63             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -65             Cycle          M                    8.0000             2    1.00
-809R9ABXX101220.5             8  -67             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -69             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -74             Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  -9              Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  39              Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  57              Cycle          M                    8.0000             1    1.00
-809R9ABXX101220.5             8  63              Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  65              Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  71              Cycle          M                    8.0000             1    0.00
-809R9ABXX101220.5             8  AC              Context        M                    8.0000             3    0.00
-809R9ABXX101220.5             8  CA              Context        M                    8.0000             1    1.00
-809R9ABXX101220.5             8  CC              Context        M                    8.0000             1    0.00
-809R9ABXX101220.5             8  CG              Context        M                    8.0000             1    0.00
-809R9ABXX101220.5             8  GA              Context        M                    8.0000             1    0.00
-809R9ABXX101220.5             8  GC              Context        M                    8.0000             4    1.00
-809R9ABXX101220.5             8  GG              Context        M                    8.0000             8    0.00
-809R9ABXX101220.5             8  TA              Context        M                    8.0000             1    1.00
-809R9ABXX101220.5             8  TC              Context        M                    8.0000             1    0.00
-809R9ABXX101220.5             9  -22             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -24             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -29             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -41             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -48             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -50             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -64             Cycle          M                    9.0000             1    1.00
-809R9ABXX101220.5             9  -7              Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -70             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  -72             Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  31              Cycle          M                    9.0000             1    1.00
-809R9ABXX101220.5             9  32              Cycle          M                    9.0000             2    0.00
-809R9ABXX101220.5             9  47              Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  52              Cycle          M                    9.0000             1    0.00
-809R9ABXX101220.5             9  CC              Context        M                    9.0000             1    1.00
-809R9ABXX101220.5             9  CG              Context        M                    9.0000             1    0.00
-809R9ABXX101220.5             9  GA              Context        M                    9.0000             3    0.00
-809R9ABXX101220.5             9  GC              Context        M                    9.0000             3    0.00
-809R9ABXX101220.5             9  GG              Context        M                    9.0000             5    0.00
-809R9ABXX101220.5             9  TA              Context        M                    9.0000             1    1.00
-809R9ABXX101220.5             9  TC              Context        M                    9.0000             1    0.00
 

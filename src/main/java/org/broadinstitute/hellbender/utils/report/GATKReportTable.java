@@ -6,6 +6,8 @@ import org.broadinstitute.hellbender.utils.text.TextFormattingUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -18,6 +20,38 @@ public final class GATKReportTable {
     private static final String GATKTABLE_HEADER_PREFIX = "#:GATKTable";
     private static final String SEPARATOR = ":";
     private static final String ENDLINE = ":;";
+
+    private static final Comparator<? super Object[]> ROW_COMPARATOR = (objectArr1, objectArr2) -> {
+        final int EQUAL = 0;
+        int result = EQUAL;
+        for (int x = 0; x < objectArr1.length; x++) {
+            if (!Objects.equals(objectArr1[x].getClass(), objectArr2[x].getClass())){
+                result = objectArr1[x].toString().compareTo(objectArr2[x].toString()); //compare by toString if types different
+            } else if (objectArr1[x] instanceof Byte) {
+                result = ((Byte) objectArr1[x]).compareTo((Byte) objectArr2[x]);
+            } else if (objectArr1[x] instanceof Short) {
+                result = ((Short) objectArr1[x]).compareTo((Short) objectArr2[x]);
+            } else if (objectArr1[x] instanceof Integer) {
+                result = ((Integer) objectArr1[x]).compareTo((Integer) objectArr2[x]);
+            } else if (objectArr1[x] instanceof Long) {
+                result = ((Long) objectArr1[x]).compareTo((Long) objectArr2[x]);
+            } else if (objectArr1[x] instanceof BigInteger) {
+                result = ((BigInteger) objectArr1[x]).compareTo((BigInteger) objectArr2[x]);
+            } else if (objectArr1[x] instanceof Float) {
+                result = ((Float) objectArr1[x]).compareTo((Float) objectArr2[x]);
+            } else if (objectArr1[x] instanceof Double) {
+                result = ((Double) objectArr1[x]).compareTo((Double) objectArr2[x]);
+            } else if (objectArr1[x] instanceof BigDecimal) {
+                result = ((BigDecimal) objectArr1[x]).compareTo((BigDecimal) objectArr2[x]);
+            } else { // default uses String comparison
+                result = objectArr1[x].toString().compareTo(objectArr2[x].toString());
+            }
+            if (result != EQUAL) {
+                return result;
+            }
+        }
+        return result;
+    };
 
     private final String tableName;
     private final String tableDescription;
@@ -253,15 +287,6 @@ public final class GATKReportTable {
     }
 
     /**
-     * Add a column to the report
-     *
-     * @param columnName   the name of the column
-     */
-    public void addColumn(String columnName) {
-        addColumn(columnName, "");
-    }
-
-    /**
      * Add a column to the report and the format string used to display the data.
      *
      * @param columnName   the name of the column
@@ -438,6 +463,16 @@ public final class GATKReportTable {
      * @param out the PrintStream to which the table should be written
      */
      void write(final PrintStream out) {
+         write(out, sortingWay);
+     }
+
+    /**
+     * Write the table to the PrintStream, formatted nicely to be human-readable, AWK-able, and R-friendly.
+     *
+     * @param out the PrintStream to which the table should be written
+     * @param sortingWay how to sort the table
+     */
+     void write(final PrintStream out, Sorting sortingWay) {
 
          /*
           * Table header:
@@ -472,32 +507,10 @@ public final class GATKReportTable {
          // write the table body
          switch (sortingWay) {
              case SORT_BY_COLUMN:
-                 Collections.sort(underlyingData, new Comparator<Object[]>() {
-                     //INVARIANT the two arrays are of the same length and corresponding elements are of the same type
-                     @Override
-                     public int compare(Object[] objectArr1, Object[] objectArr2) {
-                         final int EQUAL = 0;
-
-                         int result = EQUAL;
-
-                         int l = objectArr1.length;
-                         for (int x = 0; x < l; x++) {
-                             if (objectArr1[x] instanceof Integer) {
-                                 result = ((Integer) objectArr1[x]).compareTo((Integer) objectArr2[x]);
-                             } else if (objectArr1[x] instanceof Double) {
-                                 result = ((Double) objectArr1[x]).compareTo((Double) objectArr2[x]);
-                             } else { // default uses String comparison
-                                 result = objectArr1[x].toString().compareTo(objectArr2[x].toString());
-                             }
-                             if (result != EQUAL) {
-                                 return result;
-                             }
-                         }
-                         return result;
-                     }
-                 });
-                 for ( final Object[] row : underlyingData )
+                 Collections.sort(underlyingData, ROW_COMPARATOR);
+                 for ( final Object[] row : underlyingData ) {
                      writeRow(out, row);
+                 }
                  break;
              case SORT_BY_ROW:
                  // make sure that there are exactly the correct number of ID mappings
@@ -628,28 +641,7 @@ public final class GATKReportTable {
 
         switch (sortingWay) {
             case SORT_BY_COLUMN:
-                Collections.sort(underlyingData, new Comparator<Object[]>() {
-                    //INVARIANT the two arrays are of the same length and corresponding elements are of the same type
-                    @Override
-                    public int compare(Object[] objectArr1, Object[] objectArr2) {
-                        final int EQUAL = 0;
-                        int result = EQUAL;
-                        int l = objectArr1.length;
-                        for (int x = 0; x < l; x++) {
-                            if (objectArr1[x] instanceof Integer) {
-                                result = ((Integer) objectArr1[x]).compareTo((Integer) objectArr2[x]);
-                            } else if (objectArr1[x] instanceof Double) {
-                                result = ((Double) objectArr1[x]).compareTo((Double) objectArr2[x]);
-                            } else { // default uses String comparison
-                                result = objectArr1[x].toString().compareTo(objectArr2[x].toString());
-                            }
-                            if (result != EQUAL) {
-                                return result;
-                            }
-                        }
-                        return result;
-                    }
-                });
+                Collections.sort(underlyingData, ROW_COMPARATOR);
                 return underlyingData;
             case SORT_BY_ROW:
                 final TreeMap<Object, Integer> sortedMap;

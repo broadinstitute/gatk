@@ -16,7 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest {
+public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest {
 
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
 

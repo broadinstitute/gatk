@@ -1,0 +1,998 @@
+#:GATKReport.v1.1:5
+#:GATKTable:2:16:%s:%s:;
+#:GATKTable:Arguments:Recalibration argument collection values used in this run
+Argument                    Value                                                                                         
+binary_tag_name             null                                                                                          
+covariate                   ReadGroupCovariate,QualityScoreCovariate,ContextCovariate,CycleCovariate
+default_platform            null                                                                                          
+force_platform              null                                                                                          
+indels_context_size         7                                                                                             
+insertions_default_quality  45                                                                                            
+low_quality_tail            2                                                                                             
+mismatches_context_size     7                                                                                             
+mismatches_default_quality  -1                                                                                            
+no_standard_covs            false
+plot_pdf_file               null                                                                                          
+quantizing_levels           16                                                                                            
+recalibration_report        null                                                                                          
+run_without_dbsnp           false                                                                                         
+solid_nocall_strategy       THROW_EXCEPTION                                                                               
+solid_recal_mode            SET_Q_ZERO                                                                                    
+
+#:GATKTable:3:94:%s:%s:%s:;
+#:GATKTable:Quantized:Quality quantization map
+QualityScore  Count       QuantizedScore
+           0           0               7
+           1           0               7
+           2           0               7
+           3           0               7
+           4           0               7
+           5           0               7
+           6     1049199               7
+           7     2753761               7
+           8      918073               7
+           9           0               7
+          10     2052412              11
+          11           0              11
+          12     1335949              11
+          13     1152379              11
+          14     1728744              15
+          15     1964100              15
+          16           0              18
+          17     5782737              18
+          18           0              18
+          19     3166805              18
+          20           0              18
+          21           0              18
+          22     4830716              23
+          23    21194126              23
+          24    11383942              24
+          25     7236977              24
+          26    17992233              26
+          27           0              26
+          28    12221240              28
+          29    26626961              29
+          30    59734172              30
+          31    48561855              31
+          32   104954773              32
+          33    76663413              33
+          34   597092351              34
+          35           0              34
+          36           0              34
+          37           0              34
+          38           0              34
+          39           0              34
+          40  1010396918              40
+          41  1010396918              41
+          42           0              41
+          43           0              41
+          44           0              41
+          45           0              41
+          46           0              41
+          47           0              41
+          48           0              41
+          49           0              41
+          50           0              41
+          51           0              41
+          52           0              41
+          53           0              41
+          54           0              41
+          55           0              41
+          56           0              41
+          57           0              41
+          58           0              41
+          59           0              41
+          60           0              41
+          61           0              41
+          62           0              41
+          63           0              41
+          64           0              41
+          65           0              41
+          66           0              41
+          67           0              41
+          68           0              41
+          69           0              41
+          70           0              41
+          71           0              41
+          72           0              41
+          73           0              41
+          74           0              41
+          75           0              41
+          76           0              41
+          77           0              41
+          78           0              41
+          79           0              41
+          80           0              41
+          81           0              41
+          82           0              41
+          83           0              41
+          84           0              41
+          85           0              41
+          86           0              41
+          87           0              41
+          88           0              41
+          89           0              41
+          90           0              41
+          91           0              41
+          92           0              41
+          93           0              41
+
+#:GATKTable:6:1:%s:%s:%.4f:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable0:
+ReadGroup          EventType  EmpiricalQuality  EstimatedQReported  Observations  Errors    
+20GAVAAXX100126.3  M                   26.0000             26.3945    1010396918  2329303.33
+
+#:GATKTable:6:37:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable1:
+ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Errors   
+20GAVAAXX100126.3             6  M                    6.0000       1049199  257391.64
+20GAVAAXX100126.3             7  M                    7.0000       1283576  271581.06
+20GAVAAXX100126.3             8  M                    7.0000       1470185  281291.50
+20GAVAAXX100126.3             9  M                    8.0000        918073  146686.33
+20GAVAAXX100126.3            10  M                   10.0000       1231605  137508.43
+20GAVAAXX100126.3            11  M                   10.0000        820807   74479.42
+20GAVAAXX100126.3            12  M                   12.0000       1335949   91444.11
+20GAVAAXX100126.3            13  M                   13.0000       1152379   56089.37
+20GAVAAXX100126.3            14  M                   14.0000       1728744   61851.76
+20GAVAAXX100126.3            15  M                   15.0000       1964100   61017.05
+20GAVAAXX100126.3            16  M                   17.0000       3191539   65722.13
+20GAVAAXX100126.3            17  M                   17.0000       2591198   55893.63
+20GAVAAXX100126.3            18  M                   19.0000       3166805   44160.78
+20GAVAAXX100126.3            19  M                   23.0000      10374645   49943.65
+20GAVAAXX100126.3            20  M                   24.0000      11383942   49093.07
+20GAVAAXX100126.3            21  M                   22.0000       4830716   30002.96
+20GAVAAXX100126.3            22  M                   23.0000       5217900   27665.91
+20GAVAAXX100126.3            23  M                   23.0000       5601581   26842.21
+20GAVAAXX100126.3            24  M                   25.0000       7236977   23680.64
+20GAVAAXX100126.3            25  M                   26.0000       8345301   21933.77
+20GAVAAXX100126.3            26  M                   26.0000       9646932   21922.65
+20GAVAAXX100126.3            27  M                   28.0000      12221240   19491.77
+20GAVAAXX100126.3            28  M                   29.0000      16386908   23044.55
+20GAVAAXX100126.3            29  M                   30.0000      20722120   21089.14
+20GAVAAXX100126.3            30  M                   31.0000      33542014   24769.08
+20GAVAAXX100126.3            31  M                   32.0000      58211103   37947.32
+20GAVAAXX100126.3            32  M                   33.0000      76663413   34873.06
+20GAVAAXX100126.3            33  M                   34.0000     190484464   72859.70
+20GAVAAXX100126.3            34  M                   32.0000      46743670   26722.24
+20GAVAAXX100126.3            35  M                   30.0000       7885382    8284.10
+20GAVAAXX100126.3            36  M                   29.0000      10240053   12259.34
+20GAVAAXX100126.3            37  M                   31.0000      15019841   11020.47
+20GAVAAXX100126.3            38  M                   30.0000      31126670   28685.85
+20GAVAAXX100126.3            39  M                   34.0000     401523148  150097.62
+20GAVAAXX100126.3            40  M                   34.0000       5084739    1957.04
+20GAVAAXX100126.3            45  I                   41.0000    1010396918   71924.62
+20GAVAAXX100126.3            45  D                   40.0000    1010396918   96464.40
+
+#:GATKTable:8:830:%s:%s:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:RecalTable2:
+ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors   
+20GAVAAXX100126.3             6  AAAAAAA         Context        M                    5.0000          2670     822.86
+20GAVAAXX100126.3             6  CAAAAAA         Context        M                    6.0000           395      87.03
+20GAVAAXX100126.3             6  GAAAAAA         Context        M                    6.0000           414     115.85
+20GAVAAXX100126.3             6  TAAAAAA         Context        M                    6.0000           395     101.37
+20GAVAAXX100126.3             6  ACAAAAA         Context        M                    7.0000           365      57.29
+20GAVAAXX100126.3             6  CCAAAAA         Context        M                    6.0000           166      40.41
+20GAVAAXX100126.3             6  GCAAAAA         Context        M                    6.0000           157      40.00
+20GAVAAXX100126.3             6  TCAAAAA         Context        M                    7.0000           260      36.15
+20GAVAAXX100126.3             6  AGAAAAA         Context        M                    5.0000           523     160.98
+20GAVAAXX100126.3             6  CGAAAAA         Context        M                    6.0000            17       3.00
+20GAVAAXX100126.3             6  GGAAAAA         Context        M                    6.0000           243      61.37
+20GAVAAXX100126.3             6  TGAAAAA         Context        M                    6.0000           250      58.00
+20GAVAAXX100126.3             6  ATAAAAA         Context        M                    7.0000           307      47.67
+20GAVAAXX100126.3             6  CTAAAAA         Context        M                    7.0000           237      44.00
+20GAVAAXX100126.3             6  GTAAAAA         Context        M                    6.0000           147      30.67
+20GAVAAXX100126.3             6  TTAAAAA         Context        M                    7.0000           381      71.11
+20GAVAAXX100126.3             6  AACAAAA         Context        M                    7.0000           301      45.79
+20GAVAAXX100126.3             6  CACAAAA         Context        M                    7.0000           166      23.09
+20GAVAAXX100126.3             6  GACAAAA         Context        M                    6.0000           130      22.00
+20GAVAAXX100126.3             6  TACAAAA         Context        M                    7.0000           258      30.13
+20GAVAAXX100126.3             6  ACCAAAA         Context        M                    6.0000           152      27.00
+20GAVAAXX100126.3             6  CCCAAAA         Context        M                    6.0000           142      34.19
+20GAVAAXX100126.3             6  GCCAAAA         Context        M                    6.0000            93      22.00
+20GAVAAXX100126.3             6  TCCAAAA         Context        M                    6.0000           147      29.89
+20GAVAAXX100126.3             6  AGCAAAA         Context        M                    6.0000           198      39.25
+20GAVAAXX100126.3             6  CGCAAAA         Context        M                    6.0000            15       4.00
+20GAVAAXX100126.3             6  GGCAAAA         Context        M                    6.0000           128      27.33
+20GAVAAXX100126.3             6  TGCAAAA         Context        M                    6.0000           152      33.00
+20GAVAAXX100126.3             6  ATCAAAA         Context        M                    7.0000           165      29.00
+20GAVAAXX100126.3             6  CTCAAAA         Context        M                    7.0000           203      28.00
+20GAVAAXX100126.3             6  GTCAAAA         Context        M                    6.0000            77      17.00
+20GAVAAXX100126.3             6  TTCAAAA         Context        M                    7.0000           216      37.20
+20GAVAAXX100126.3             6  AAGAAAA         Context        M                    6.0000           555     124.03
+20GAVAAXX100126.3             6  CAGAAAA         Context        M                    6.0000           230      47.46
+20GAVAAXX100126.3             6  GAGAAAA         Context        M                    6.0000           242      51.00
+20GAVAAXX100126.3             6  TAGAAAA         Context        M                    7.0000           227      41.14
+20GAVAAXX100126.3             6  ACGAAAA         Context        M                    6.0000            33       3.00
+20GAVAAXX100126.3             6  CCGAAAA         Context        M                    6.0000            15       8.00
+20GAVAAXX100126.3             6  GCGAAAA         Context        M                    6.0000            18       8.00
+20GAVAAXX100126.3             6  TCGAAAA         Context        M                    6.0000             9       2.00
+20GAVAAXX100126.3             6  AGGAAAA         Context        M                    6.0000           300      67.34
+20GAVAAXX100126.3             6  CGGAAAA         Context        M                    6.0000            20       4.00
+20GAVAAXX100126.3             6  GGGAAAA         Context        M                    6.0000           180      44.25
+20GAVAAXX100126.3             6  TGGAAAA         Context        M                    6.0000           211      48.17
+20GAVAAXX100126.3             6  ATGAAAA         Context        M                    7.0000           246      44.36
+20GAVAAXX100126.3             6  CTGAAAA         Context        M                    7.0000           145      22.00
+20GAVAAXX100126.3             6  GTGAAAA         Context        M                    6.0000           148      43.00
+20GAVAAXX100126.3             6  TTGAAAA         Context        M                    7.0000           217      26.13
+20GAVAAXX100126.3             6  AATAAAA         Context        M                    7.0000           360      66.49
+20GAVAAXX100126.3             6  CATAAAA         Context        M                    7.0000           143      24.13
+20GAVAAXX100126.3             6  GATAAAA         Context        M                    7.0000           118      19.00
+20GAVAAXX100126.3             6  TATAAAA         Context        M                    7.0000           187      28.00
+20GAVAAXX100126.3             6  ACTAAAA         Context        M                    7.0000           189      24.50
+20GAVAAXX100126.3             6  CCTAAAA         Context        M                    6.0000           112      20.00
+20GAVAAXX100126.3             6  GCTAAAA         Context        M                    6.0000            79      22.00
+20GAVAAXX100126.3             6  TCTAAAA         Context        M                    7.0000           145      17.20
+20GAVAAXX100126.3             6  AGTAAAA         Context        M                    6.0000           144      31.33
+20GAVAAXX100126.3             6  CGTAAAA         Context        M                    6.0000            30       5.00
+20GAVAAXX100126.3             6  GGTAAAA         Context        M                    6.0000            80      12.33
+20GAVAAXX100126.3             6  TGTAAAA         Context        M                    7.0000           149      20.00
+20GAVAAXX100126.3             6  ATTAAAA         Context        M                    7.0000           260      41.00
+20GAVAAXX100126.3             6  CTTAAAA         Context        M                    7.0000           144      20.00
+20GAVAAXX100126.3             6  GTTAAAA         Context        M                    6.0000           111      21.00
+20GAVAAXX100126.3             6  TTTAAAA         Context        M                    8.0000           490      61.54
+20GAVAAXX100126.3             6  AAACAAA         Context        M                    7.0000           397      56.11
+20GAVAAXX100126.3             6  CAACAAA         Context        M                    7.0000           175      21.00
+20GAVAAXX100126.3             6  GAACAAA         Context        M                    7.0000           134      21.13
+20GAVAAXX100126.3             6  TAACAAA         Context        M                    7.0000           133      16.20
+20GAVAAXX100126.3             6  ACACAAA         Context        M                    7.0000           181      21.49
+20GAVAAXX100126.3             6  CCACAAA         Context        M                    7.0000           122      19.00
+20GAVAAXX100126.3             6  GCACAAA         Context        M                    6.0000            76      12.00
+20GAVAAXX100126.3             6  TCACAAA         Context        M                    7.0000           114      15.25
+20GAVAAXX100126.3             6  AGACAAA         Context        M                    6.0000           171      35.00
+20GAVAAXX100126.3             6  CGACAAA         Context        M                    6.0000            18       1.00
+20GAVAAXX100126.3             6  GGACAAA         Context        M                    7.0000            97      13.13
+20GAVAAXX100126.3             6  TGACAAA         Context        M                    7.0000           142      17.00
+20GAVAAXX100126.3             6  ATACAAA         Context        M                    8.0000           247      16.00
+20GAVAAXX100126.3             6  CTACAAA         Context        M                    7.0000           129      18.25
+20GAVAAXX100126.3             6  GTACAAA         Context        M                    6.0000            88      14.00
+20GAVAAXX100126.3             6  TTACAAA         Context        M                    7.0000           154      18.14
+20GAVAAXX100126.3             6  AACCAAA         Context        M                    7.0000           163      20.00
+20GAVAAXX100126.3             6  CACCAAA         Context        M                    7.0000           133      14.00
+20GAVAAXX100126.3             6  GACCAAA         Context        M                    6.0000            73      15.00
+20GAVAAXX100126.3             6  TACCAAA         Context        M                    7.0000            98       9.00
+20GAVAAXX100126.3             6  ACCCAAA         Context        M                    7.0000            99       9.00
+20GAVAAXX100126.3             6  CCCCAAA         Context        M                    7.0000           138      16.25
+20GAVAAXX100126.3             6  GCCCAAA         Context        M                    7.0000            92      12.10
+20GAVAAXX100126.3             6  TCCCAAA         Context        M                    8.0000           282      18.00
+20GAVAAXX100126.3             6  AGCCAAA         Context        M                    7.0000           129      21.00
+20GAVAAXX100126.3             6  CGCCAAA         Context        M                    6.0000            10       0.00
+20GAVAAXX100126.3             6  GGCCAAA         Context        M                    6.0000           104      23.00
+20GAVAAXX100126.3             6  TGCCAAA         Context        M                    6.0000           110      20.00
+20GAVAAXX100126.3             6  ATCCAAA         Context        M                    6.0000            97      17.03
+20GAVAAXX100126.3             6  CTCCAAA         Context        M                    7.0000           131      14.00
+20GAVAAXX100126.3             6  GTCCAAA         Context        M                    6.0000            76      14.00
+20GAVAAXX100126.3             6  TTCCAAA         Context        M                    7.0000           180      18.08
+20GAVAAXX100126.3             6  AAGCAAA         Context        M                    7.0000           194      31.00
+20GAVAAXX100126.3             6  CAGCAAA         Context        M                    7.0000           157      23.00
+20GAVAAXX100126.3             6  GAGCAAA         Context        M                    7.0000           125      17.00
+20GAVAAXX100126.3             6  TAGCAAA         Context        M                    6.0000           123      21.00
+20GAVAAXX100126.3             6  ACGCAAA         Context        M                    6.0000            22       4.00
+20GAVAAXX100126.3             6  CCGCAAA         Context        M                    6.0000            11       4.00
+20GAVAAXX100126.3             6  GCGCAAA         Context        M                    6.0000            12       3.00
+20GAVAAXX100126.3             6  TCGCAAA         Context        M                    6.0000            11       3.20
+20GAVAAXX100126.3             6  AGGCAAA         Context        M                    6.0000           178      39.51
+20GAVAAXX100126.3             6  CGGCAAA         Context        M                    6.0000            23       5.14
+20GAVAAXX100126.3             6  GGGCAAA         Context        M                    6.0000            99      17.00
+20GAVAAXX100126.3             6  TGGCAAA         Context        M                    6.0000           123      24.00
+20GAVAAXX100126.3             6  ATGCAAA         Context        M                    7.0000           165      22.58
+20GAVAAXX100126.3             6  CTGCAAA         Context        M                    6.0000           177      41.00
+20GAVAAXX100126.3             6  GTGCAAA         Context        M                    6.0000            85      15.00
+20GAVAAXX100126.3             6  TTGCAAA         Context        M                    7.0000           146      12.00
+20GAVAAXX100126.3             6  AATCAAA         Context        M                    7.0000           161      21.31
+20GAVAAXX100126.3             6  CATCAAA         Context        M                    6.0000           112      21.60
+20GAVAAXX100126.3             6  GATCAAA         Context        M                    6.0000            74      15.00
+20GAVAAXX100126.3             6  TATCAAA         Context        M                    7.0000           130      14.33
+20GAVAAXX100126.3             6  ACTCAAA         Context        M                    7.0000           125      19.00
+20GAVAAXX100126.3             6  CCTCAAA         Context        M                    6.0000           146      27.00
+20GAVAAXX100126.3             6  GCTCAAA         Context        M                    6.0000           108      22.00
+20GAVAAXX100126.3             6  TCTCAAA         Context        M                    8.0000           270      21.00
+20GAVAAXX100126.3             6  AGTCAAA         Context        M                    7.0000            98      13.67
+20GAVAAXX100126.3             6  CGTCAAA         Context        M                    6.0000            18       2.00
+20GAVAAXX100126.3             6  GGTCAAA         Context        M                    6.0000            76      13.00
+20GAVAAXX100126.3             6  TGTCAAA         Context        M                    7.0000           124       8.00
+20GAVAAXX100126.3             6  ATTCAAA         Context        M                    7.0000           176      29.00
+20GAVAAXX100126.3             6  CTTCAAA         Context        M                    7.0000           146      19.13
+20GAVAAXX100126.3             6  GTTCAAA         Context        M                    6.0000           125      22.40
+20GAVAAXX100126.3             6  TTTCAAA         Context        M                    7.0000           258      30.46
+20GAVAAXX100126.3             6  AAAGAAA         Context        M                    6.0000           405      88.96
+20GAVAAXX100126.3             6  CAAGAAA         Context        M                    6.0000           144      26.00
+20GAVAAXX100126.3             6  GAAGAAA         Context        M                    7.0000           207      27.00
+20GAVAAXX100126.3             6  TAAGAAA         Context        M                    7.0000           169      24.14
+20GAVAAXX100126.3             6  ACAGAAA         Context        M                    7.0000           227      29.00
+20GAVAAXX100126.3             6  CCAGAAA         Context        M                    6.0000           130      23.00
+20GAVAAXX100126.3             6  GCAGAAA         Context        M                    6.0000           142      31.25
+20GAVAAXX100126.3             6  TCAGAAA         Context        M                    7.0000           182      27.00
+20GAVAAXX100126.3             6  AGAGAAA         Context        M                    7.0000           247      29.25
+20GAVAAXX100126.3             6  CGAGAAA         Context        M                    6.0000            19       5.00
+20GAVAAXX100126.3             6  GGAGAAA         Context        M                    6.0000           182      37.17
+20GAVAAXX100126.3             6  TGAGAAA         Context        M                    7.0000           155      19.00
+20GAVAAXX100126.3             6  ATAGAAA         Context        M                    6.0000           147      29.00
+20GAVAAXX100126.3             6  CTAGAAA         Context        M                    6.0000           109      20.00
+20GAVAAXX100126.3             6  GTAGAAA         Context        M                    6.0000            89      15.58
+20GAVAAXX100126.3             6  TTAGAAA         Context        M                    7.0000           164      19.00
+20GAVAAXX100126.3             6  AACGAAA         Context        M                    6.0000            22       5.00
+20GAVAAXX100126.3             6  CACGAAA         Context        M                    6.0000            20       5.00
+20GAVAAXX100126.3             6  GACGAAA         Context        M                    6.0000            10       3.00
+20GAVAAXX100126.3             6  TACGAAA         Context        M                    6.0000            20       1.00
+20GAVAAXX100126.3             6  ACCGAAA         Context        M                    6.0000            21       6.00
+20GAVAAXX100126.3             6  CCCGAAA         Context        M                    6.0000             8       0.00
+20GAVAAXX100126.3             6  GCCGAAA         Context        M                    6.0000             7       3.00
+20GAVAAXX100126.3             6  TCCGAAA         Context        M                    6.0000            15       3.00
+20GAVAAXX100126.3             6  AGCGAAA         Context        M                    6.0000            20       4.00
+20GAVAAXX100126.3             6  CGCGAAA         Context        M                    6.0000             3       1.00
+20GAVAAXX100126.3             6  GGCGAAA         Context        M                    6.0000            27       3.00
+20GAVAAXX100126.3             6  TGCGAAA         Context        M                    6.0000            14       5.00
+20GAVAAXX100126.3             6  ATCGAAA         Context        M                    6.0000            22       6.00
+20GAVAAXX100126.3             6  CTCGAAA         Context        M                    5.0000            31      19.00
+20GAVAAXX100126.3             6  GTCGAAA         Context        M                    6.0000             5       3.00
+20GAVAAXX100126.3             6  TTCGAAA         Context        M                    6.0000            19       4.25
+20GAVAAXX100126.3             6  AAGGAAA         Context        M                    7.0000           249      45.40
+20GAVAAXX100126.3             6  CAGGAAA         Context        M                    6.0000           164      32.00
+20GAVAAXX100126.3             6  GAGGAAA         Context        M                    7.0000           172      27.00
+20GAVAAXX100126.3             6  TAGGAAA         Context        M                    7.0000           137      21.00
+20GAVAAXX100126.3             6  ACGGAAA         Context        M                    6.0000            15       2.00
+20GAVAAXX100126.3             6  CCGGAAA         Context        M                    6.0000            22       9.00
+20GAVAAXX100126.3             6  GCGGAAA         Context        M                    6.0000            18       3.00
+20GAVAAXX100126.3             6  TCGGAAA         Context        M                    6.0000            18       6.00
+20GAVAAXX100126.3             6  AGGGAAA         Context        M                    7.0000           177      24.33
+20GAVAAXX100126.3             6  CGGGAAA         Context        M                    6.0000            19       4.00
+20GAVAAXX100126.3             6  GGGGAAA         Context        M                    6.0000           158      37.03
+20GAVAAXX100126.3             6  TGGGAAA         Context        M                    7.0000           173      22.18
+20GAVAAXX100126.3             6  ATGGAAA         Context        M                    7.0000           155      26.00
+20GAVAAXX100126.3             6  CTGGAAA         Context        M                    6.0000           160      31.00
+20GAVAAXX100126.3             6  GTGGAAA         Context        M                    6.0000            96      16.00
+20GAVAAXX100126.3             6  TTGGAAA         Context        M                    7.0000           152      24.00
+20GAVAAXX100126.3             6  AATGAAA         Context        M                    7.0000           216      39.00
+20GAVAAXX100126.3             6  CATGAAA         Context        M                    6.0000           147      30.00
+20GAVAAXX100126.3             6  GATGAAA         Context        M                    7.0000           125      15.00
+20GAVAAXX100126.3             6  TATGAAA         Context        M                    7.0000           144      23.75
+20GAVAAXX100126.3             6  ACTGAAA         Context        M                    7.0000           139      17.00
+20GAVAAXX100126.3             6  CCTGAAA         Context        M                    6.0000           121      22.00
+20GAVAAXX100126.3             6  GCTGAAA         Context        M                    7.0000            97      14.00
+20GAVAAXX100126.3             6  TCTGAAA         Context        M                    7.0000           160      19.00
+20GAVAAXX100126.3             6  AGTGAAA         Context        M                    6.0000           127      26.00
+20GAVAAXX100126.3             6  CGTGAAA         Context        M                    6.0000            21       6.00
+20GAVAAXX100126.3             6  GGTGAAA         Context        M                    7.0000           133      18.45
+20GAVAAXX100126.3             6  TGTGAAA         Context        M                    7.0000           137      21.00
+20GAVAAXX100126.3             6  ATTGAAA         Context        M                    7.0000           125      13.00
+20GAVAAXX100126.3             6  CTTGAAA         Context        M                    5.0000           142      53.07
+20GAVAAXX100126.3             6  GTTGAAA         Context        M                    6.0000            92      14.00
+20GAVAAXX100126.3             6  TTTGAAA         Context        M                    7.0000           241      25.39
+20GAVAAXX100126.3             6  AAATAAA         Context        M                    7.0000           468      63.03
+20GAVAAXX100126.3             6  CAATAAA         Context        M                    7.0000           146      22.00
+20GAVAAXX100126.3             6  GAATAAA         Context        M                    7.0000           188      25.00
+20GAVAAXX100126.3             6  TAATAAA         Context        M                    7.0000           219      26.40
+20GAVAAXX100126.3             6  ACATAAA         Context        M                    7.0000           147      19.00
+20GAVAAXX100126.3             6  CCATAAA         Context        M                    7.0000            95      14.00
+20GAVAAXX100126.3             6  GCATAAA         Context        M                    7.0000            58       4.00
+20GAVAAXX100126.3             6  TCATAAA         Context        M                    7.0000           108      14.00
+20GAVAAXX100126.3             6  AGATAAA         Context        M                    6.0000           139      27.00
+20GAVAAXX100126.3             6  CGATAAA         Context        M                    6.0000            18       3.00
+20GAVAAXX100126.3             6  GGATAAA         Context        M                    6.0000            95      17.35
+20GAVAAXX100126.3             6  TGATAAA         Context        M                    6.0000           109      18.00
+20GAVAAXX100126.3             6  ATATAAA         Context        M                    7.0000           215      23.08
+20GAVAAXX100126.3             6  CTATAAA         Context        M                    7.0000           118      16.13
+20GAVAAXX100126.3             6  GTATAAA         Context        M                    7.0000            85       5.00
+20GAVAAXX100126.3             6  TTATAAA         Context        M                    7.0000           202      25.15
+20GAVAAXX100126.3             6  AACTAAA         Context        M                    6.0000           115      22.00
+20GAVAAXX100126.3             6  CACTAAA         Context        M                    6.0000            82      16.25
+20GAVAAXX100126.3             6  GACTAAA         Context        M                    7.0000            74       9.00
+20GAVAAXX100126.3             6  TACTAAA         Context        M                    8.0000           187      11.00
+20GAVAAXX100126.3             6  ACCTAAA         Context        M                    7.0000            82      11.00
+20GAVAAXX100126.3             6  CCCTAAA         Context        M                    6.0000            59       6.00
+20GAVAAXX100126.3             6  GCCTAAA         Context        M                    7.0000            70       6.00
+20GAVAAXX100126.3             6  TCCTAAA         Context        M                    7.0000           111      17.00
+20GAVAAXX100126.3             6  AGCTAAA         Context        M                    6.0000            76      22.00
+20GAVAAXX100126.3             6  CGCTAAA         Context        M                    6.0000             8       0.00
+20GAVAAXX100126.3             6  GGCTAAA         Context        M                    6.0000            79      24.58
+20GAVAAXX100126.3             6  TGCTAAA         Context        M                    6.0000            93      15.00
+20GAVAAXX100126.3             6  ATCTAAA         Context        M                    7.0000            88       9.00
+20GAVAAXX100126.3             6  CTCTAAA         Context        M                    6.0000            94      24.11
+20GAVAAXX100126.3             6  GTCTAAA         Context        M                    6.0000            69      12.00
+20GAVAAXX100126.3             6  TTCTAAA         Context        M                    7.0000           184      18.00
+20GAVAAXX100126.3             6  AAGTAAA         Context        M                    7.0000           144      16.00
+20GAVAAXX100126.3             6  CAGTAAA         Context        M                    6.0000            99      15.00
+20GAVAAXX100126.3             6  GAGTAAA         Context        M                    7.0000            81       4.00
+20GAVAAXX100126.3             6  TAGTAAA         Context        M                    7.0000            96      13.20
+20GAVAAXX100126.3             6  ACGTAAA         Context        M                    6.0000            14       1.00
+20GAVAAXX100126.3             6  CCGTAAA         Context        M                    6.0000             6       2.00
+20GAVAAXX100126.3             6  GCGTAAA         Context        M                    6.0000            11       2.00
+20GAVAAXX100126.3             6  TCGTAAA         Context        M                    6.0000            22       7.00
+20GAVAAXX100126.3             6  AGGTAAA         Context        M                    6.0000           103      20.00
+20GAVAAXX100126.3             6  CGGTAAA         Context        M                    6.0000            16       6.00
+20GAVAAXX100126.3             6  GGGTAAA         Context        M                    6.0000            70      18.00
+20GAVAAXX100126.3             6  TGGTAAA         Context        M                    7.0000            94      10.08
+20GAVAAXX100126.3             6  ATGTAAA         Context        M                    7.0000           170      23.33
+20GAVAAXX100126.3             6  CTGTAAA         Context        M                    7.0000           168      24.75
+20GAVAAXX100126.3             6  GTGTAAA         Context        M                    6.0000            73      11.00
+20GAVAAXX100126.3             6  TTGTAAA         Context        M                    7.0000           153      12.00
+20GAVAAXX100126.3             6  AATTAAA         Context        M                    7.0000           234      31.00
+20GAVAAXX100126.3             6  CATTAAA         Context        M                    7.0000           153      20.00
+20GAVAAXX100126.3             6  GATTAAA         Context        M                    6.0000            94      19.00
+20GAVAAXX100126.3             6  TATTAAA         Context        M                    7.0000           183      23.18
+20GAVAAXX100126.3             6  ACTTAAA         Context        M                    7.0000           149      16.11
+20GAVAAXX100126.3             6  CCTTAAA         Context        M                    6.0000            81      15.00
+20GAVAAXX100126.3             6  GCTTAAA         Context        M                    6.0000            59       7.00
+20GAVAAXX100126.3             6  TCTTAAA         Context        M                    7.0000           147      14.00
+20GAVAAXX100126.3             6  AGTTAAA         Context        M                    6.0000            92      17.00
+20GAVAAXX100126.3             6  CGTTAAA         Context        M                    6.0000            20       7.00
+20GAVAAXX100126.3             6  GGTTAAA         Context        M                    6.0000            67      14.14
+20GAVAAXX100126.3             6  TGTTAAA         Context        M                    6.0000           120      22.00
+20GAVAAXX100126.3             6  ATTTAAA         Context        M                    7.0000           295      39.00
+20GAVAAXX100126.3             6  CTTTAAA         Context        M                    7.0000           204      30.52
+20GAVAAXX100126.3             6  GTTTAAA         Context        M                    7.0000           128      14.11
+20GAVAAXX100126.3             6  TTTTAAA         Context        M                    8.0000           532      53.05
+20GAVAAXX100126.3             6  AAAACAA         Context        M                    7.0000           338      56.65
+20GAVAAXX100126.3             6  CAAACAA         Context        M                    7.0000           173      28.19
+20GAVAAXX100126.3             6  GAAACAA         Context        M                    7.0000           139      20.80
+20GAVAAXX100126.3             6  TAAACAA         Context        M                    7.0000           153      24.17
+20GAVAAXX100126.3             6  ACAACAA         Context        M                    7.0000           130      17.29
+20GAVAAXX100126.3             6  CCAACAA         Context        M                    6.0000            81      24.00
+20GAVAAXX100126.3             6  GCAACAA         Context        M                    6.0000            84      15.00
+20GAVAAXX100126.3             6  TCAACAA         Context        M                    7.0000            87      11.00
+20GAVAAXX100126.3             6  AGAACAA         Context        M                    7.0000           145      22.00
+20GAVAAXX100126.3             6  CGAACAA         Context        M                    6.0000            14       4.00
+20GAVAAXX100126.3             6  GGAACAA         Context        M                    6.0000            94      23.11
+20GAVAAXX100126.3             6  TGAACAA         Context        M                    7.0000           145      24.00
+20GAVAAXX100126.3             6  ATAACAA         Context        M                    7.0000           133      18.14
+20GAVAAXX100126.3             6  CTAACAA         Context        M                    6.0000            69      18.00
+20GAVAAXX100126.3             6  GTAACAA         Context        M                    6.0000            56       9.00
+20GAVAAXX100126.3             6  TTAACAA         Context        M                    7.0000           120      13.00
+20GAVAAXX100126.3             6  AACACAA         Context        M                    6.0000           121      22.11
+20GAVAAXX100126.3             6  CACACAA         Context        M                    5.0000           147      55.37
+20GAVAAXX100126.3             6  GACACAA         Context        M                    6.0000            89      25.00
+20GAVAAXX100126.3             6  TACACAA         Context        M                    6.0000            98      24.07
+20GAVAAXX100126.3             6  ACCACAA         Context        M                    6.0000            97      18.00
+20GAVAAXX100126.3             6  CCCACAA         Context        M                    6.0000            84      22.00
+20GAVAAXX100126.3             6  GCCACAA         Context        M                    6.0000            66      20.00
+20GAVAAXX100126.3             6  TCCACAA         Context        M                    6.0000            71      15.11
+20GAVAAXX100126.3             6  AGCACAA         Context        M                    6.0000            91      23.25
+20GAVAAXX100126.3             6  CGCACAA         Context        M                    6.0000            16       5.00
+20GAVAAXX100126.3             6  GGCACAA         Context        M                    6.0000            86      20.40
+20GAVAAXX100126.3             6  TGCACAA         Context        M                    6.0000            92      23.00
+20GAVAAXX100126.3             6  ATCACAA         Context        M                    6.0000           128      30.00
+20GAVAAXX100126.3             6  CTCACAA         Context        M                    6.0000           117      31.33
+20GAVAAXX100126.3             6  GTCACAA         Context        M                    6.0000            58      11.00
+20GAVAAXX100126.3             6  TTCACAA         Context        M                    7.0000           112      16.00
+20GAVAAXX100126.3             6  AAGACAA         Context        M                    7.0000           156      24.00
+20GAVAAXX100126.3             6  CAGACAA         Context        M                    6.0000            91      24.00
+20GAVAAXX100126.3             6  GAGACAA         Context        M                    6.0000           115      22.00
+20GAVAAXX100126.3             6  TAGACAA         Context        M                    6.0000            66      16.75
+20GAVAAXX100126.3             6  ACGACAA         Context        M                    6.0000            14       8.00
+20GAVAAXX100126.3             6  CCGACAA         Context        M                    6.0000            14       4.00
+20GAVAAXX100126.3             6  GCGACAA         Context        M                    6.0000            14       6.00
+20GAVAAXX100126.3             6  TCGACAA         Context        M                    6.0000             9       1.00
+20GAVAAXX100126.3             6  AGGACAA         Context        M                    6.0000           112      35.00
+20GAVAAXX100126.3             6  CGGACAA         Context        M                    6.0000             8       2.00
+20GAVAAXX100126.3             6  GGGACAA         Context        M                    6.0000            62      14.00
+20GAVAAXX100126.3             6  TGGACAA         Context        M                    6.0000            88      27.00
+20GAVAAXX100126.3             6  ATGACAA         Context        M                    6.0000            99      15.00
+20GAVAAXX100126.3             6  CTGACAA         Context        M                    6.0000            93      25.00
+20GAVAAXX100126.3             6  GTGACAA         Context        M                    6.0000            46       9.00
+20GAVAAXX100126.3             6  TTGACAA         Context        M                    7.0000            89       6.00
+20GAVAAXX100126.3             6  AATACAA         Context        M                    7.0000           209      26.13
+20GAVAAXX100126.3             6  CATACAA         Context        M                    6.0000            75      13.25
+20GAVAAXX100126.3             6  GATACAA         Context        M                    6.0000            63      10.00
+20GAVAAXX100126.3             6  TATACAA         Context        M                    6.0000            98      18.93
+20GAVAAXX100126.3             6  ACTACAA         Context        M                    6.0000            82      18.00
+20GAVAAXX100126.3             6  CCTACAA         Context        M                    6.0000            65      10.00
+20GAVAAXX100126.3             6  GCTACAA         Context        M                    6.0000            73      14.00
+20GAVAAXX100126.3             6  TCTACAA         Context        M                    6.0000           101      18.00
+20GAVAAXX100126.3             6  AGTACAA         Context        M                    6.0000            69      21.00
+20GAVAAXX100126.3             6  CGTACAA         Context        M                    6.0000            10       3.00
+20GAVAAXX100126.3             6  GGTACAA         Context        M                    6.0000            51       7.00
+20GAVAAXX100126.3             6  TGTACAA         Context        M                    6.0000            77      18.40
+20GAVAAXX100126.3             6  ATTACAA         Context        M                    6.0000           110      32.00
+20GAVAAXX100126.3             6  CTTACAA         Context        M                    7.0000            81      10.00
+20GAVAAXX100126.3             6  GTTACAA         Context        M                    6.0000            58      14.00
+20GAVAAXX100126.3             6  TTTACAA         Context        M                    7.0000           150      23.00
+20GAVAAXX100126.3             6  AAACCAA         Context        M                    6.0000           137      40.51
+20GAVAAXX100126.3             6  CAACCAA         Context        M                    6.0000            84      17.15
+20GAVAAXX100126.3             6  GAACCAA         Context        M                    6.0000            79      18.00
+20GAVAAXX100126.3             6  TAACCAA         Context        M                    6.0000            67      15.00
+20GAVAAXX100126.3             6  ACACCAA         Context        M                    6.0000            88      17.00
+20GAVAAXX100126.3             6  CCACCAA         Context        M                    6.0000           128      34.00
+20GAVAAXX100126.3             6  GCACCAA         Context        M                    6.0000            61      13.00
+20GAVAAXX100126.3             6  TCACCAA         Context        M                    6.0000            80      11.00
+20GAVAAXX100126.3             6  AGACCAA         Context        M                    6.0000            81      21.00
+20GAVAAXX100126.3             6  CGACCAA         Context        M                    6.0000             8       0.00
+20GAVAAXX100126.3             6  GGACCAA         Context        M                    6.0000            35       5.00
+20GAVAAXX100126.3             6  TGACCAA         Context        M                    6.0000            80      17.00
+20GAVAAXX100126.3             6  ATACCAA         Context        M                    6.0000            87      20.00
+20GAVAAXX100126.3             6  CTACCAA         Context        M                    6.0000            70      22.20
+20GAVAAXX100126.3             6  GTACCAA         Context        M                    6.0000            41      10.00
+20GAVAAXX100126.3             6  TTACCAA         Context        M                    6.0000            57       9.33
+20GAVAAXX100126.3             6  AACCCAA         Context        M                    6.0000            97      19.00
+20GAVAAXX100126.3             6  CACCCAA         Context        M                    6.0000            92      23.00
+20GAVAAXX100126.3             6  GACCCAA         Context        M                    6.0000            65      16.00
+20GAVAAXX100126.3             6  TACCCAA         Context        M                    6.0000            71      13.00
+20GAVAAXX100126.3             6  ACCCCAA         Context        M                    7.0000            87      12.22
+20GAVAAXX100126.3             6  CCCCCAA         Context        M                    6.0000            94      20.14
+20GAVAAXX100126.3             6  GCCCCAA         Context        M                    6.0000            67      15.11
+20GAVAAXX100126.3             6  TCCCCAA         Context        M                    6.0000           110      25.00
+20GAVAAXX100126.3             6  AGCCCAA         Context        M                    6.0000            71      22.00
+20GAVAAXX100126.3             6  CGCCCAA         Context        M                    6.0000            32      14.00
+20GAVAAXX100126.3             6  GGCCCAA         Context        M                    5.0000            50      22.00
+20GAVAAXX100126.3             6  TGCCCAA         Context        M                    6.0000           105      27.53
+20GAVAAXX100126.3             6  ATCCCAA         Context        M                    6.0000           115      32.00
+20GAVAAXX100126.3             6  CTCCCAA         Context        M                    7.0000           277      30.00
+20GAVAAXX100126.3             6  GTCCCAA         Context        M                    6.0000            42       8.00
+20GAVAAXX100126.3             6  TTCCCAA         Context        M                    7.0000           131      18.00
+20GAVAAXX100126.3             6  AAGCCAA         Context        M                    6.0000           122      27.00
+20GAVAAXX100126.3             6  CAGCCAA         Context        M                    7.0000           101      12.00
+20GAVAAXX100126.3             6  GAGCCAA         Context        M                    6.0000            71      22.00
+20GAVAAXX100126.3             6  TAGCCAA         Context        M                    6.0000            76      15.00
+20GAVAAXX100126.3             6  ACGCCAA         Context        M                    6.0000            17       6.00
+20GAVAAXX100126.3             6  CCGCCAA         Context        M                    6.0000            19       6.00
+20GAVAAXX100126.3             6  GCGCCAA         Context        M                    6.0000            12       2.33
+20GAVAAXX100126.3             6  TCGCCAA         Context        M                    6.0000            14       4.00
+20GAVAAXX100126.3             6  AGGCCAA         Context        M                    6.0000           116      25.00
+20GAVAAXX100126.3             6  CGGCCAA         Context        M                    6.0000            26       6.00
+20GAVAAXX100126.3             6  GGGCCAA         Context        M                    6.0000            66      10.00
+20GAVAAXX100126.3             6  TGGCCAA         Context        M                    6.0000           120      30.00
+20GAVAAXX100126.3             6  ATGCCAA         Context        M                    6.0000            93      20.00
+20GAVAAXX100126.3             6  CTGCCAA         Context        M                    6.0000           105      25.11
+20GAVAAXX100126.3             6  GTGCCAA         Context        M                    6.0000            72      14.25
+20GAVAAXX100126.3             6  TTGCCAA         Context        M                    7.0000            96      13.00
+20GAVAAXX100126.3             6  AATCCAA         Context        M                    6.0000           119      23.18
+20GAVAAXX100126.3             6  CATCCAA         Context        M                    6.0000            79      23.00
+20GAVAAXX100126.3             6  GATCCAA         Context        M                    6.0000            47      16.00
+20GAVAAXX100126.3             6  TATCCAA         Context        M                    6.0000            75      17.40
+20GAVAAXX100126.3             6  ACTCCAA         Context        M                    6.0000            87      23.14
+20GAVAAXX100126.3             6  CCTCCAA         Context        M                    6.0000           137      25.00
+20GAVAAXX100126.3             6  GCTCCAA         Context        M                    6.0000            75      16.20
+20GAVAAXX100126.3             6  TCTCCAA         Context        M                    6.0000           169      33.00
+20GAVAAXX100126.3             6  AGTCCAA         Context        M                    6.0000            69      13.00
+20GAVAAXX100126.3             6  CGTCCAA         Context        M                    6.0000            14       1.00
+20GAVAAXX100126.3             6  GGTCCAA         Context        M                    6.0000            50      14.00
+20GAVAAXX100126.3             6  TGTCCAA         Context        M                    6.0000            77      13.09
+20GAVAAXX100126.3             6  ATTCCAA         Context        M                    7.0000            99      13.00
+20GAVAAXX100126.3             6  CTTCCAA         Context        M                    7.0000           120      17.00
+20GAVAAXX100126.3             6  GTTCCAA         Context        M                    6.0000            78      11.00
+20GAVAAXX100126.3             6  TTTCCAA         Context        M                    7.0000           166      29.00
+20GAVAAXX100126.3             6  AAAGCAA         Context        M                    7.0000           160      27.00
+20GAVAAXX100126.3             6  CAAGCAA         Context        M                    7.0000           152      20.10
+20GAVAAXX100126.3             6  GAAGCAA         Context        M                    6.0000           100      20.43
+20GAVAAXX100126.3             6  TAAGCAA         Context        M                    6.0000            93      15.00
+20GAVAAXX100126.3             6  ACAGCAA         Context        M                    6.0000           113      24.00
+20GAVAAXX100126.3             6  CCAGCAA         Context        M                    6.0000           120      35.00
+20GAVAAXX100126.3             6  GCAGCAA         Context        M                    6.0000            94      25.00
+20GAVAAXX100126.3             6  TCAGCAA         Context        M                    6.0000           108      23.00
+20GAVAAXX100126.3             6  AGAGCAA         Context        M                    7.0000           134      20.00
+20GAVAAXX100126.3             6  CGAGCAA         Context        M                    6.0000            11       1.00
+20GAVAAXX100126.3             6  GGAGCAA         Context        M                    6.0000            71      15.00
+20GAVAAXX100126.3             6  TGAGCAA         Context        M                    6.0000            96      15.33
+20GAVAAXX100126.3             6  ATAGCAA         Context        M                    7.0000            97      13.00
+20GAVAAXX100126.3             6  CTAGCAA         Context        M                    6.0000            65      17.09
+20GAVAAXX100126.3             6  GTAGCAA         Context        M                    6.0000            49      10.00
+20GAVAAXX100126.3             6  TTAGCAA         Context        M                    7.0000            77      10.00
+20GAVAAXX100126.3             6  AACGCAA         Context        M                    6.0000            17       4.00
+20GAVAAXX100126.3             6  CACGCAA         Context        M                    6.0000            14       4.00
+20GAVAAXX100126.3             6  GACGCAA         Context        M                    6.0000            16       6.00
+20GAVAAXX100126.3             6  TACGCAA         Context        M                    6.0000            14       3.00
+20GAVAAXX100126.3             6  ACCGCAA         Context        M                    6.0000            19       2.00
+20GAVAAXX100126.3             6  CCCGCAA         Context        M                    6.0000            12       3.00
+20GAVAAXX100126.3             6  GCCGCAA         Context        M                    6.0000            10       6.00
+20GAVAAXX100126.3             6  TCCGCAA         Context        M                    6.0000            12       1.00
+20GAVAAXX100126.3             6  AGCGCAA         Context        M                    6.0000            10       3.00
+20GAVAAXX100126.3             6  CGCGCAA         Context        M                    6.0000             3       2.00
+20GAVAAXX100126.3             6  GGCGCAA         Context        M                    6.0000            24       9.00
+20GAVAAXX100126.3             6  TGCGCAA         Context        M                    6.0000            10       4.00
+20GAVAAXX100126.3             6  ATCGCAA         Context        M                    6.0000            25       9.00
+20GAVAAXX100126.3             6  CTCGCAA         Context        M                    6.0000            14       4.00
+20GAVAAXX100126.3             6  GTCGCAA         Context        M                    6.0000             8       3.00
+20GAVAAXX100126.3             6  TTCGCAA         Context        M                    6.0000            19       1.00
+20GAVAAXX100126.3             6  AAGGCAA         Context        M                    6.0000           116      21.00
+20GAVAAXX100126.3             6  CAGGCAA         Context        M                    6.0000           125      41.00
+20GAVAAXX100126.3             6  GAGGCAA         Context        M                    6.0000            96      25.00
+20GAVAAXX100126.3             6  TAGGCAA         Context        M                    6.0000            56      10.00
+20GAVAAXX100126.3             6  ACGGCAA         Context        M                    6.0000            10       1.14
+20GAVAAXX100126.3             6  CCGGCAA         Context        M                    6.0000            15       4.00
+20GAVAAXX100126.3             6  GCGGCAA         Context        M                    6.0000            11       3.00
+20GAVAAXX100126.3             6  TCGGCAA         Context        M                    6.0000             7       2.00
+20GAVAAXX100126.3             6  AGGGCAA         Context        M                    6.0000            97      18.00
+20GAVAAXX100126.3             6  CGGGCAA         Context        M                    6.0000            19       8.00
+20GAVAAXX100126.3             6  GGGGCAA         Context        M                    6.0000            69      21.00
+20GAVAAXX100126.3             6  TGGGCAA         Context        M                    6.0000           132      30.00
+20GAVAAXX100126.3             6  ATGGCAA         Context        M                    6.0000            91      15.40
+20GAVAAXX100126.3             6  CTGGCAA         Context        M                    6.0000            84      18.00
+20GAVAAXX100126.3             6  GTGGCAA         Context        M                    6.0000            65      14.00
+20GAVAAXX100126.3             6  TTGGCAA         Context        M                    6.0000            80      16.00
+20GAVAAXX100126.3             6  AATGCAA         Context        M                    7.0000           109       9.00
+20GAVAAXX100126.3             6  CATGCAA         Context        M                    6.0000            76      15.00
+20GAVAAXX100126.3             6  GATGCAA         Context        M                    6.0000            65      16.00
+20GAVAAXX100126.3             6  TATGCAA         Context        M                    6.0000            91      14.00
+20GAVAAXX100126.3             6  ACTGCAA         Context        M                    7.0000           175      21.25
+20GAVAAXX100126.3             6  CCTGCAA         Context        M                    6.0000            76      11.00
+20GAVAAXX100126.3             6  GCTGCAA         Context        M                    6.0000            66      19.00
+20GAVAAXX100126.3             6  TCTGCAA         Context        M                    6.0000           112      23.00
+20GAVAAXX100126.3             6  AGTGCAA         Context        M                    6.0000            97      20.00
+20GAVAAXX100126.3             6  CGTGCAA         Context        M                    6.0000            22       6.00
+20GAVAAXX100126.3             6  GGTGCAA         Context        M                    6.0000            56      14.00
+20GAVAAXX100126.3             6  TGTGCAA         Context        M                    6.0000            90      15.00
+20GAVAAXX100126.3             6  ATTGCAA         Context        M                    6.0000            97      16.00
+20GAVAAXX100126.3             6  CTTGCAA         Context        M                    6.0000            72      12.00
+20GAVAAXX100126.3             6  GTTGCAA         Context        M                    6.0000            64       9.00
+20GAVAAXX100126.3             6  TTTGCAA         Context        M                    7.0000           141      23.00
+20GAVAAXX100126.3             6  AAATCAA         Context        M                    7.0000           175      22.20
+20GAVAAXX100126.3             6  CAATCAA         Context        M                    6.0000            77      18.00
+20GAVAAXX100126.3             6  GAATCAA         Context        M                    6.0000            86      24.00
+20GAVAAXX100126.3             6  TAATCAA         Context        M                    7.0000            85      10.00
+20GAVAAXX100126.3             6  ACATCAA         Context        M                    6.0000            96      15.00
+20GAVAAXX100126.3             6  CCATCAA         Context        M                    6.0000            83      17.00
+20GAVAAXX100126.3             6  GCATCAA         Context        M                    6.0000            53      11.00
+20GAVAAXX100126.3             6  TCATCAA         Context        M                    6.0000            89      21.00
+20GAVAAXX100126.3             6  AGATCAA         Context        M                    6.0000            73      16.33
+20GAVAAXX100126.3             6  CGATCAA         Context        M                    6.0000             8       1.17
+20GAVAAXX100126.3             6  GGATCAA         Context        M                    6.0000            67      18.00
+20GAVAAXX100126.3             6  TGATCAA         Context        M                    6.0000            66      14.00
+20GAVAAXX100126.3             6  ATATCAA         Context        M                    6.0000           103      17.00
+20GAVAAXX100126.3             6  CTATCAA         Context        M                    6.0000            66      14.00
+20GAVAAXX100126.3             6  GTATCAA         Context        M                    6.0000            47       8.00
+20GAVAAXX100126.3             6  TTATCAA         Context        M                    6.0000           106      23.00
+20GAVAAXX100126.3             6  AACTCAA         Context        M                    7.0000           102      15.13
+20GAVAAXX100126.3             6  CACTCAA         Context        M                    6.0000            80      19.00
+20GAVAAXX100126.3             6  GACTCAA         Context        M                    6.0000            63      17.00
+20GAVAAXX100126.3             6  TACTCAA         Context        M                    6.0000            67      21.00
+20GAVAAXX100126.3             6  ACCTCAA         Context        M                    6.0000            96      17.25
+20GAVAAXX100126.3             6  CCCTCAA         Context        M                    6.0000            72      14.00
+20GAVAAXX100126.3             6  GCCTCAA         Context        M                    6.0000           106      18.00
+20GAVAAXX100126.3             6  TCCTCAA         Context        M                    6.0000            89      20.00
+20GAVAAXX100126.3             6  AGCTCAA         Context        M                    6.0000            74      23.00
+20GAVAAXX100126.3             6  CGCTCAA         Context        M                    6.0000            13       5.00
+20GAVAAXX100126.3             6  GGCTCAA         Context        M                    5.0000           175      75.00
+20GAVAAXX100126.3             6  TGCTCAA         Context        M                    6.0000            95      21.00
+20GAVAAXX100126.3             6  ATCTCAA         Context        M                    6.0000           118      22.00
+20GAVAAXX100126.3             6  CTCTCAA         Context        M                    6.0000            88      13.33
+20GAVAAXX100126.3             6  GTCTCAA         Context        M                    7.0000           171      19.10
+20GAVAAXX100126.3             6  TTCTCAA         Context        M                    6.0000           153      34.00
+20GAVAAXX100126.3             6  AAGTCAA         Context        M                    6.0000            93      14.00
+20GAVAAXX100126.3             6  CAGTCAA         Context        M                    6.0000            71      20.07
+20GAVAAXX100126.3             6  GAGTCAA         Context        M                    6.0000            66      11.00
+20GAVAAXX100126.3             6  TAGTCAA         Context        M                    6.0000            46       7.00
+20GAVAAXX100126.3             6  ACGTCAA         Context        M                    6.0000            11       2.00
+20GAVAAXX100126.3             6  CCGTCAA         Context        M                    6.0000            10       3.00
+20GAVAAXX100126.3             6  GCGTCAA         Context        M                    6.0000            12       3.00
+20GAVAAXX100126.3             6  TCGTCAA         Context        M                    6.0000             8       1.00
+20GAVAAXX100126.3             6  AGGTCAA         Context        M                    6.0000            68      18.00
+20GAVAAXX100126.3             6  CGGTCAA         Context        M                    6.0000             9       1.00
+20GAVAAXX100126.3             6  GGGTCAA         Context        M                    6.0000            63      16.00
+20GAVAAXX100126.3             6  TGGTCAA         Context        M                    6.0000            54       9.00
+20GAVAAXX100126.3             6  ATGTCAA         Context        M                    6.0000            86      20.00
+20GAVAAXX100126.3             6  CTGTCAA         Context        M                    6.0000            93      26.00
+20GAVAAXX100126.3             6  GTGTCAA         Context        M                    6.0000            42       6.00
+20GAVAAXX100126.3             6  TTGTCAA         Context        M                    6.0000            82      15.00
+20GAVAAXX100126.3             6  AATTCAA         Context        M                    7.0000           131      16.17
+20GAVAAXX100126.3             6  CATTCAA         Context        M                    6.0000           100      24.00
+20GAVAAXX100126.3             6  GATTCAA         Context        M                    7.0000            88      11.00
+20GAVAAXX100126.3             6  TATTCAA         Context        M                    7.0000           120      19.00
+20GAVAAXX100126.3             6  ACTTCAA         Context        M                    6.0000           106      23.00
+20GAVAAXX100126.3             6  CCTTCAA         Context        M                    7.0000            99      11.00
+20GAVAAXX100126.3             6  GCTTCAA         Context        M                    6.0000            62      13.00
+20GAVAAXX100126.3             6  TCTTCAA         Context        M                    7.0000           118      13.00
+20GAVAAXX100126.3             6  AGTTCAA         Context        M                    6.0000           112      20.00
+20GAVAAXX100126.3             6  CGTTCAA         Context        M                    6.0000            16       6.00
+20GAVAAXX100126.3             6  GGTTCAA         Context        M                    7.0000           141      17.38
+20GAVAAXX100126.3             6  TGTTCAA         Context        M                    7.0000           105      13.00
+20GAVAAXX100126.3             6  ATTTCAA         Context        M                    7.0000           165      27.15
+20GAVAAXX100126.3             6  CTTTCAA         Context        M                    7.0000           126      19.00
+20GAVAAXX100126.3             6  GTTTCAA         Context        M                    7.0000           104      16.00
+20GAVAAXX100126.3             6  TTTTCAA         Context        M                    7.0000           241      37.52
+20GAVAAXX100126.3             6  AAAAGAA         Context        M                    6.0000           328      76.97
+20GAVAAXX100126.3             6  CAAAGAA         Context        M                    6.0000           157      28.00
+20GAVAAXX100126.3             6  GAAAGAA         Context        M                    7.0000           201      33.00
+20GAVAAXX100126.3             6  TAAAGAA         Context        M                    6.0000           156      28.00
+20GAVAAXX100126.3             6  ACAAGAA         Context        M                    6.0000            91      14.00
+20GAVAAXX100126.3             6  CCAAGAA         Context        M                    6.0000           116      25.00
+20GAVAAXX100126.3             6  GCAAGAA         Context        M                    6.0000           109      26.22
+20GAVAAXX100126.3             6  TCAAGAA         Context        M                    6.0000           118      20.00
+20GAVAAXX100126.3             6  AGAAGAA         Context        M                    7.0000           175      27.67
+20GAVAAXX100126.3             6  CGAAGAA         Context        M                    6.0000            16       7.00
+20GAVAAXX100126.3             6  GGAAGAA         Context        M                    6.0000           149      33.00
+20GAVAAXX100126.3             6  TGAAGAA         Context        M                    6.0000           119      25.67
+20GAVAAXX100126.3             6  ATAAGAA         Context        M                    6.0000           128      28.00
+20GAVAAXX100126.3             6  CTAAGAA         Context        M                    6.0000            90      15.35
+20GAVAAXX100126.3             6  GTAAGAA         Context        M                    6.0000            70      10.00
+20GAVAAXX100126.3             6  TTAAGAA         Context        M                    6.0000           128      25.00
+20GAVAAXX100126.3             6  AACAGAA         Context        M                    6.0000           153      28.14
+20GAVAAXX100126.3             6  CACAGAA         Context        M                    6.0000           142      30.04
+20GAVAAXX100126.3             6  GACAGAA         Context        M                    6.0000            86      19.00
+20GAVAAXX100126.3             6  TACAGAA         Context        M                    7.0000           103      10.00
+20GAVAAXX100126.3             6  ACCAGAA         Context        M                    7.0000           102      15.00
+20GAVAAXX100126.3             6  CCCAGAA         Context        M                    6.0000           128      24.00
+20GAVAAXX100126.3             6  GCCAGAA         Context        M                    6.0000            79      16.00
+20GAVAAXX100126.3             6  TCCAGAA         Context        M                    7.0000            92       7.00
+20GAVAAXX100126.3             6  AGCAGAA         Context        M                    6.0000           130      28.00
+20GAVAAXX100126.3             6  CGCAGAA         Context        M                    6.0000            17       6.00
+20GAVAAXX100126.3             6  GGCAGAA         Context        M                    6.0000           126      41.00
+20GAVAAXX100126.3             6  TGCAGAA         Context        M                    6.0000            98      15.00
+20GAVAAXX100126.3             6  ATCAGAA         Context        M                    6.0000            94      17.00
+20GAVAAXX100126.3             6  CTCAGAA         Context        M                    7.0000           136      23.41
+20GAVAAXX100126.3             6  GTCAGAA         Context        M                    6.0000            77      15.00
+20GAVAAXX100126.3             6  TTCAGAA         Context        M                    7.0000           154      20.00
+20GAVAAXX100126.3             6  AAGAGAA         Context        M                    7.0000           190      32.00
+20GAVAAXX100126.3             6  CAGAGAA         Context        M                    7.0000           172      26.00
+20GAVAAXX100126.3             6  GAGAGAA         Context        M                    7.0000           184      33.76
+20GAVAAXX100126.3             6  TAGAGAA         Context        M                    6.0000           123      27.00
+20GAVAAXX100126.3             6  ACGAGAA         Context        M                    6.0000            22       4.00
+20GAVAAXX100126.3             6  CCGAGAA         Context        M                    6.0000            29      12.00
+20GAVAAXX100126.3             6  GCGAGAA         Context        M                    6.0000            13       5.00
+20GAVAAXX100126.3             6  TCGAGAA         Context        M                    6.0000            19       9.00
+20GAVAAXX100126.3             6  AGGAGAA         Context        M                    7.0000           205      24.00
+20GAVAAXX100126.3             6  CGGAGAA         Context        M                    6.0000            16       4.00
+20GAVAAXX100126.3             6  GGGAGAA         Context        M                    7.0000           137      20.00
+20GAVAAXX100126.3             6  TGGAGAA         Context        M                    7.0000           142      21.00
+20GAVAAXX100126.3             6  ATGAGAA         Context        M                    7.0000           146      18.33
+20GAVAAXX100126.3             6  CTGAGAA         Context        M                    7.0000           154      26.00
+20GAVAAXX100126.3             6  GTGAGAA         Context        M                    7.0000           126      19.33
+20GAVAAXX100126.3             6  TTGAGAA         Context        M                    6.0000           130      32.50
+20GAVAAXX100126.3             6  AATAGAA         Context        M                    7.0000           138      19.00
+20GAVAAXX100126.3             6  CATAGAA         Context        M                    7.0000            81      10.11
+20GAVAAXX100126.3             6  GATAGAA         Context        M                    6.0000            60      12.38
+20GAVAAXX100126.3             6  TATAGAA         Context        M                    7.0000            90      10.00
+20GAVAAXX100126.3             6  ACTAGAA         Context        M                    6.0000            67      11.17
+20GAVAAXX100126.3             6  CCTAGAA         Context        M                    7.0000            67       5.00
+20GAVAAXX100126.3             6  GCTAGAA         Context        M                    6.0000            43      16.00
+20GAVAAXX100126.3             6  TCTAGAA         Context        M                    7.0000            90       8.00
+20GAVAAXX100126.3             6  AGTAGAA         Context        M                    6.0000           128      24.33
+20GAVAAXX100126.3             6  CGTAGAA         Context        M                    6.0000             9       1.00
+20GAVAAXX100126.3             6  GGTAGAA         Context        M                    6.0000            68      18.00
+20GAVAAXX100126.3             6  TGTAGAA         Context        M                    6.0000            69      11.00
+20GAVAAXX100126.3             6  ATTAGAA         Context        M                    6.0000            99      18.00
+20GAVAAXX100126.3             6  CTTAGAA         Context        M                    6.0000            98      15.00
+20GAVAAXX100126.3             6  GTTAGAA         Context        M                    7.0000            60       6.00
+20GAVAAXX100126.3             6  TTTAGAA         Context        M                    7.0000           149      19.00
+20GAVAAXX100126.3             6  AAACGAA         Context        M                    6.0000            33       6.00
+20GAVAAXX100126.3             6  CAACGAA         Context        M                    6.0000            17       2.00
+20GAVAAXX100126.3             6  GAACGAA         Context        M                    6.0000             5       3.00
+20GAVAAXX100126.3             6  TAACGAA         Context        M                    6.0000            15       4.00
+20GAVAAXX100126.3             6  ACACGAA         Context        M                    6.0000            21       3.00
+20GAVAAXX100126.3             6  CCACGAA         Context        M                    6.0000            12       4.00
+20GAVAAXX100126.3             6  GCACGAA         Context        M                    6.0000            13       5.33
+20GAVAAXX100126.3             6  TCACGAA         Context        M                    6.0000            15       3.00
+20GAVAAXX100126.3             6  AGACGAA         Context        M                    6.0000            18       4.00
+20GAVAAXX100126.3             6  CGACGAA         Context        M                    6.0000             5       2.00
+20GAVAAXX100126.3             6  GGACGAA         Context        M                    6.0000            10       3.33
+20GAVAAXX100126.3             6  TGACGAA         Context        M                    6.0000            11       1.00
+20GAVAAXX100126.3             6  ATACGAA         Context        M                    6.0000            19       4.00
+20GAVAAXX100126.3             6  CTACGAA         Context        M                    6.0000            16       4.00
+20GAVAAXX100126.3             6  GTACGAA         Context        M                    6.0000             6       2.00
+20GAVAAXX100126.3             6  TTACGAA         Context        M                    6.0000            13       3.00
+20GAVAAXX100126.3             6  AACCGAA         Context        M                    6.0000            14       3.00
+20GAVAAXX100126.3             6  CACCGAA         Context        M                    6.0000             7       0.00
+20GAVAAXX100126.3             6  GACCGAA         Context        M                    6.0000            10       3.00
+20GAVAAXX100126.3             6  TACCGAA         Context        M                    6.0000            10       2.00
+20GAVAAXX100126.3             6  ACCCGAA         Context        M                    6.0000             9       0.00
+20GAVAAXX100126.3             6  CCCCGAA         Context        M                    6.0000            20       2.75
+20GAVAAXX100126.3             6  GCCCGAA         Context        M                    6.0000             9       7.00
+20GAVAAXX100126.3             6  TCCCGAA         Context        M                    6.0000            20       4.00
+20GAVAAXX100126.3             6  AGCCGAA         Context        M                    6.0000            17       9.00
+20GAVAAXX100126.3             6  CGCCGAA         Context        M                    6.0000             5       4.00
+20GAVAAXX100126.3             6  GGCCGAA         Context        M                    6.0000            15       6.00
+20GAVAAXX100126.3             6  TGCCGAA         Context        M                    6.0000            11       5.00
+20GAVAAXX100126.3             6  ATCCGAA         Context        M                    6.0000            17       3.00
+20GAVAAXX100126.3             6  CTCCGAA         Context        M                    6.0000            11       2.00
+20GAVAAXX100126.3             6  GTCCGAA         Context        M                    6.0000             7       1.00
+20GAVAAXX100126.3             6  TTCCGAA         Context        M                    6.0000            17       3.00
+20GAVAAXX100126.3             6  AAGCGAA         Context        M                    6.0000            21       7.00
+20GAVAAXX100126.3             6  CAGCGAA         Context        M                    6.0000            20       5.00
+20GAVAAXX100126.3             6  GAGCGAA         Context        M                    6.0000            15       7.00
+20GAVAAXX100126.3             6  TAGCGAA         Context        M                    6.0000             9       4.00
+20GAVAAXX100126.3             6  ACGCGAA         Context        M                    6.0000             3       0.00
+20GAVAAXX100126.3             6  CCGCGAA         Context        M                    6.0000             7       1.00
+20GAVAAXX100126.3             6  GCGCGAA         Context        M                    6.0000             3       2.00
+20GAVAAXX100126.3             6  TCGCGAA         Context        M                    6.0000             1       0.00
+20GAVAAXX100126.3             6  AGGCGAA         Context        M                    6.0000            11       1.00
+20GAVAAXX100126.3             6  CGGCGAA         Context        M                    6.0000             4       1.00
+20GAVAAXX100126.3             6  GGGCGAA         Context        M                    6.0000            14       7.00
+20GAVAAXX100126.3             6  TGGCGAA         Context        M                    6.0000            21       6.00
+20GAVAAXX100126.3             6  ATGCGAA         Context        M                    6.0000             8       1.00
+20GAVAAXX100126.3             6  CTGCGAA         Context        M                    6.0000            19       4.00
+20GAVAAXX100126.3             6  GTGCGAA         Context        M                    6.0000             7       1.00
+20GAVAAXX100126.3             6  TTGCGAA         Context        M                    6.0000            15       2.00
+20GAVAAXX100126.3             6  AATCGAA         Context        M                    6.0000            11       2.00
+20GAVAAXX100126.3             6  CATCGAA         Context        M                    6.0000            10       3.00
+20GAVAAXX100126.3             6  GATCGAA         Context        M                    6.0000             9       3.00
+20GAVAAXX100126.3             6  TATCGAA         Context        M                    6.0000            17       0.09
+20GAVAAXX100126.3             6  ACTCGAA         Context        M                    6.0000            13       2.00
+20GAVAAXX100126.3             6  CCTCGAA         Context        M                    6.0000            12       2.00
+20GAVAAXX100126.3             6  GCTCGAA         Context        M                    6.0000             8       1.00
+20GAVAAXX100126.3             6  TCTCGAA         Context        M                    6.0000            47       7.00
+20GAVAAXX100126.3             6  AGTCGAA         Context        M                    6.0000             5       1.00
+20GAVAAXX100126.3             6  GGTCGAA         Context        M                    6.0000             6       3.00
+20GAVAAXX100126.3             6  TGTCGAA         Context        M                    6.0000            12       6.00
+20GAVAAXX100126.3             6  ATTCGAA         Context        M                    6.0000             7       2.00
+20GAVAAXX100126.3             6  CTTCGAA         Context        M                    6.0000            14       2.00
+20GAVAAXX100126.3             6  GTTCGAA         Context        M                    6.0000             7       3.00
+20GAVAAXX100126.3             6  TTTCGAA         Context        M                    6.0000            22       5.00
+20GAVAAXX100126.3             6  AAAGGAA         Context        M                    7.0000           227      34.12
+20GAVAAXX100126.3             6  CAAGGAA         Context        M                    6.0000           112      25.00
+20GAVAAXX100126.3             6  GAAGGAA         Context        M                    7.0000           180      23.04
+20GAVAAXX100126.3             6  TAAGGAA         Context        M                    6.0000            96      16.25
+20GAVAAXX100126.3             6  ACAGGAA         Context        M                    6.0000            94      20.00
+20GAVAAXX100126.3             6  CCAGGAA         Context        M                    6.0000           135      33.00
+20GAVAAXX100126.3             6  GCAGGAA         Context        M                    6.0000           109      36.14
+20GAVAAXX100126.3             6  TCAGGAA         Context        M                    6.0000           148      30.00
+20GAVAAXX100126.3             6  AGAGGAA         Context        M                    6.0000           165      31.00
+20GAVAAXX100126.3             6  CGAGGAA         Context        M                    6.0000            27       8.00
+20GAVAAXX100126.3             6  GGAGGAA         Context        M                    6.0000           140      29.00
+20GAVAAXX100126.3             6  TGAGGAA         Context        M                    7.0000           134      17.00
+20GAVAAXX100126.3             6  ATAGGAA         Context        M                    7.0000            83      10.00
+20GAVAAXX100126.3             6  CTAGGAA         Context        M                    6.0000            71      11.00
+20GAVAAXX100126.3             6  GTAGGAA         Context        M                    6.0000            70      12.20
+20GAVAAXX100126.3             6  TTAGGAA         Context        M                    6.0000            92      19.07
+20GAVAAXX100126.3             6  AACGGAA         Context        M                    6.0000            24       4.67
+20GAVAAXX100126.3             6  CACGGAA         Context        M                    6.0000            24       4.00
+20GAVAAXX100126.3             6  GACGGAA         Context        M                    6.0000            13       3.00
+20GAVAAXX100126.3             6  TACGGAA         Context        M                    6.0000            10       2.00
+20GAVAAXX100126.3             6  ACCGGAA         Context        M                    6.0000             7       1.00
+20GAVAAXX100126.3             6  CCCGGAA         Context        M                    6.0000            12       2.00
+20GAVAAXX100126.3             6  GCCGGAA         Context        M                    6.0000            14       2.00
+20GAVAAXX100126.3             6  TCCGGAA         Context        M                    6.0000            12       2.00
+20GAVAAXX100126.3             6  AGCGGAA         Context        M                    6.0000            14       2.00
+20GAVAAXX100126.3             6  CGCGGAA         Context        M                    6.0000             1       0.00
+20GAVAAXX100126.3             6  GGCGGAA         Context        M                    6.0000            17       9.00
+20GAVAAXX100126.3             6  TGCGGAA         Context        M                    6.0000            14       3.00
+20GAVAAXX100126.3             6  ATCGGAA         Context        M                    6.0000            10       0.00
+20GAVAAXX100126.3             6  CTCGGAA         Context        M                    6.0000            16       5.00
+20GAVAAXX100126.3             6  GTCGGAA         Context        M                    6.0000            11       4.00
+20GAVAAXX100126.3             6  TTCGGAA         Context        M                    6.0000            15       3.00
+20GAVAAXX100126.3             6  AAGGGAA         Context        M                    6.0000           150      27.00
+20GAVAAXX100126.3             6  CAGGGAA         Context        M                    6.0000           124      23.08
+20GAVAAXX100126.3             6  GAGGGAA         Context        M                    7.0000           137      22.00
+20GAVAAXX100126.3             6  TAGGGAA         Context        M                    6.0000            68      12.33
+20GAVAAXX100126.3             6  ACGGGAA         Context        M                    6.0000            20       0.00
+20GAVAAXX100126.3             6  CCGGGAA         Context        M                    6.0000            21       2.00
+20GAVAAXX100126.3             6  GCGGGAA         Context        M                    6.0000            21      11.00
+20GAVAAXX100126.3             6  TCGGGAA         Context        M                    6.0000            20      11.00
+20GAVAAXX100126.3             6  AGGGGAA         Context        M                    7.0000           130      21.17
+20GAVAAXX100126.3             6  CGGGGAA         Context        M                    6.0000            27       6.00
+20GAVAAXX100126.3             6  GGGGGAA         Context        M                    6.0000           141      24.83
+20GAVAAXX100126.3             6  TGGGGAA         Context        M                    6.0000           172      34.00
+20GAVAAXX100126.3             6  ATGGGAA         Context        M                    7.0000           120      14.00
+20GAVAAXX100126.3             6  CTGGGAA         Context        M                    6.0000           145      37.00
+20GAVAAXX100126.3             6  GTGGGAA         Context        M                    6.0000            95      15.00
+20GAVAAXX100126.3             6  TTGGGAA         Context        M                    6.0000           133      25.20
+20GAVAAXX100126.3             6  AATGGAA         Context        M                    7.0000           143      23.58
+20GAVAAXX100126.3             6  CATGGAA         Context        M                    7.0000           100      10.00
+20GAVAAXX100126.3             6  GATGGAA         Context        M                    6.0000           108      18.00
+20GAVAAXX100126.3             6  TATGGAA         Context        M                    7.0000            72       6.00
+20GAVAAXX100126.3             6  ACTGGAA         Context        M                    6.0000           101      17.00
+20GAVAAXX100126.3             6  CCTGGAA         Context        M                    7.0000           125      19.00
+20GAVAAXX100126.3             6  GCTGGAA         Context        M                    6.0000           128      31.00
+20GAVAAXX100126.3             6  TCTGGAA         Context        M                    6.0000           112      21.00
+20GAVAAXX100126.3             6  AGTGGAA         Context        M                    6.0000            74      13.00
+20GAVAAXX100126.3             6  CGTGGAA         Context        M                    6.0000            21       4.00
+20GAVAAXX100126.3             6  GGTGGAA         Context        M                    6.0000            91      19.00
+20GAVAAXX100126.3             6  TGTGGAA         Context        M                    7.0000           109      13.00
+20GAVAAXX100126.3             6  ATTGGAA         Context        M                    6.0000            78      11.22
+20GAVAAXX100126.3             6  CTTGGAA         Context        M                    6.0000            96      19.00
+20GAVAAXX100126.3             6  GTTGGAA         Context        M                    6.0000            59      14.00
+20GAVAAXX100126.3             6  TTTGGAA         Context        M                    7.0000           156      19.41
+20GAVAAXX100126.3             6  AAATGAA         Context        M                    7.0000           245      39.00
+20GAVAAXX100126.3             6  CAATGAA         Context        M                    6.0000           111      22.25
+20GAVAAXX100126.3             6  GAATGAA         Context        M                    7.0000           152      11.19
+20GAVAAXX100126.3             6  TAATGAA         Context        M                    7.0000            98      12.00
+20GAVAAXX100126.3             6  ACATGAA         Context        M                    6.0000           127      25.00
+20GAVAAXX100126.3             6  CCATGAA         Context        M                    6.0000            93      14.00
+20GAVAAXX100126.3             6  GCATGAA         Context        M                    6.0000            87      15.00
+20GAVAAXX100126.3             6  TCATGAA         Context        M                    6.0000           103      16.00
+20GAVAAXX100126.3             6  AGATGAA         Context        M                    6.0000           143      30.14
+20GAVAAXX100126.3             6  CGATGAA         Context        M                    6.0000            20       1.00
+20GAVAAXX100126.3             6  GGATGAA         Context        M                    6.0000           100      23.13
+20GAVAAXX100126.3             6  TGATGAA         Context        M                    7.0000           113      17.00
+20GAVAAXX100126.3             6  ATATGAA         Context        M                    7.0000           145      15.00
+20GAVAAXX100126.3             6  CTATGAA         Context        M                    6.0000            75      12.25
+20GAVAAXX100126.3             6  GTATGAA         Context        M                    6.0000            65      10.00
+20GAVAAXX100126.3             6  TTATGAA         Context        M                    7.0000           123      16.00
+20GAVAAXX100126.3             6  AACTGAA         Context        M                    6.0000           134      23.00
+20GAVAAXX100126.3             6  CACTGAA         Context        M                    7.0000           118      13.00
+20GAVAAXX100126.3             6  GACTGAA         Context        M                    6.0000            70      11.00
+20GAVAAXX100126.3             6  TACTGAA         Context        M                    7.0000            94      10.00
+20GAVAAXX100126.3             6  ACCTGAA         Context        M                    7.0000            89      11.00
+20GAVAAXX100126.3             6  CCCTGAA         Context        M                    6.0000            90      17.00
+20GAVAAXX100126.3             6  GCCTGAA         Context        M                    6.0000            81      16.00
+20GAVAAXX100126.3             6  TCCTGAA         Context        M                    6.0000           120      24.00
+20GAVAAXX100126.3             6  AGCTGAA         Context        M                    6.0000            92      25.33
+20GAVAAXX100126.3             6  CGCTGAA         Context        M                    6.0000            20       1.00
+20GAVAAXX100126.3             6  GGCTGAA         Context        M                    5.0000           120      41.43
+20GAVAAXX100126.3             6  TGCTGAA         Context        M                    7.0000           112      16.00
+20GAVAAXX100126.3             6  ATCTGAA         Context        M                    6.0000           106      21.00
+20GAVAAXX100126.3             6  CTCTGAA         Context        M                    7.0000           137      17.00
+20GAVAAXX100126.3             6  GTCTGAA         Context        M                    6.0000            71      15.00
+20GAVAAXX100126.3             6  TTCTGAA         Context        M                    7.0000           178      26.13
+20GAVAAXX100126.3             6  AAGTGAA         Context        M                    7.0000           122      17.22
+20GAVAAXX100126.3             6  CAGTGAA         Context        M                    6.0000           108      28.00
+20GAVAAXX100126.3             6  GAGTGAA         Context        M                    7.0000            95      12.00
+20GAVAAXX100126.3             6  TAGTGAA         Context        M                    6.0000            68      14.00
+20GAVAAXX100126.3             6  ACGTGAA         Context        M                    6.0000            27       4.00
+20GAVAAXX100126.3             6  CCGTGAA         Context        M                    6.0000            17       3.00
+20GAVAAXX100126.3             6  GCGTGAA         Context        M                    6.0000            10       2.00
+20GAVAAXX100126.3             6  TCGTGAA         Context        M                    6.0000            24       3.00
+20GAVAAXX100126.3             6  AGGTGAA         Context        M                    6.0000            82      15.20
+20GAVAAXX100126.3             6  CGGTGAA         Context        M                    6.0000            17       2.00
+20GAVAAXX100126.3             6  GGGTGAA         Context        M                    6.0000            74      16.00
+20GAVAAXX100126.3             6  TGGTGAA         Context        M                    7.0000           132      14.20
+20GAVAAXX100126.3             6  ATGTGAA         Context        M                    6.0000           107      18.00
+20GAVAAXX100126.3             6  CTGTGAA         Context        M                    7.0000           109      14.00
+20GAVAAXX100126.3             6  GTGTGAA         Context        M                    6.0000            73      14.00
+20GAVAAXX100126.3             6  TTGTGAA         Context        M                    7.0000           123      17.67
+20GAVAAXX100126.3             6  AATTGAA         Context        M                    7.0000           122      16.00
+20GAVAAXX100126.3             6  CATTGAA         Context        M                    7.0000            80      10.40
+20GAVAAXX100126.3             6  GATTGAA         Context        M                    6.0000            58      12.00
+20GAVAAXX100126.3             6  TATTGAA         Context        M                    6.0000            99      15.21
+20GAVAAXX100126.3             6  ACTTGAA         Context        M                    7.0000           107      16.00
+20GAVAAXX100126.3             6  CCTTGAA         Context        M                    7.0000            86      12.00
+20GAVAAXX100126.3             6  GCTTGAA         Context        M                    6.0000            78      13.00
+20GAVAAXX100126.3             6  TCTTGAA         Context        M                    7.0000           147      18.00
+20GAVAAXX100126.3             6  AGTTGAA         Context        M                    7.0000            84       9.00
+20GAVAAXX100126.3             6  CGTTGAA         Context        M                    6.0000            10       0.00
+20GAVAAXX100126.3             6  GGTTGAA         Context        M                    6.0000            52       7.00
+20GAVAAXX100126.3             6  TGTTGAA         Context        M                    7.0000           128      14.00
+20GAVAAXX100126.3             6  ATTTGAA         Context        M                    7.0000           171      17.20
+20GAVAAXX100126.3             6  CTTTGAA         Context        M                    7.0000           146      18.00
+20GAVAAXX100126.3             6  GTTTGAA         Context        M                    7.0000           117      18.00
+20GAVAAXX100126.3             6  TTTTGAA         Context        M                    7.0000           230      37.00
+20GAVAAXX100126.3             6  AAAATAA         Context        M                    6.0000           377      97.68
+20GAVAAXX100126.3             6  CAAATAA         Context        M                    6.0000           159      32.00
+20GAVAAXX100126.3             6  GAAATAA         Context        M                    7.0000           167      26.00
+20GAVAAXX100126.3             6  TAAATAA         Context        M                    6.0000           230      52.00
+20GAVAAXX100126.3             6  ACAATAA         Context        M                    6.0000           114      19.33
+20GAVAAXX100126.3             6  CCAATAA         Context        M                    6.0000            59      15.00
+20GAVAAXX100126.3             6  GCAATAA         Context        M                    6.0000            68      15.00
+20GAVAAXX100126.3             6  TCAATAA         Context        M                    6.0000           121      27.25
+20GAVAAXX100126.3             6  AGAATAA         Context        M                    6.0000           173      49.00
+20GAVAAXX100126.3             6  CGAATAA         Context        M                    6.0000             9       0.00
+20GAVAAXX100126.3             6  GGAATAA         Context        M                    6.0000            87      14.00
+20GAVAAXX100126.3             6  TGAATAA         Context        M                    7.0000           127      21.43
+20GAVAAXX100126.3             6  ATAATAA         Context        M                    7.0000           171      25.67
+20GAVAAXX100126.3             6  CTAATAA         Context        M                    6.0000            79      13.45
+20GAVAAXX100126.3             6  GTAATAA         Context        M                    6.0000            63      14.00
+20GAVAAXX100126.3             6  TTAATAA         Context        M                    7.0000           179      27.00
+20GAVAAXX100126.3             6  AACATAA         Context        M                    6.0000           123      22.14
+20GAVAAXX100126.3             6  CACATAA         Context        M                    6.0000           105      24.00
+20GAVAAXX100126.3             6  GACATAA         Context        M                    6.0000            71      21.00
+20GAVAAXX100126.3             6  TACATAA         Context        M                    6.0000            88      17.00
+20GAVAAXX100126.3             6  ACCATAA         Context        M                    6.0000            68       8.10
+20GAVAAXX100126.3             6  CCCATAA         Context        M                    6.0000            51       5.00
+20GAVAAXX100126.3             6  GCCATAA         Context        M                    6.0000            51       6.00
+20GAVAAXX100126.3             6  TCCATAA         Context        M                    6.0000            68      14.40
+20GAVAAXX100126.3             6  AGCATAA         Context        M                    6.0000            77      11.00
+20GAVAAXX100126.3             6  CGCATAA         Context        M                    6.0000            11       2.00
+20GAVAAXX100126.3             6  GGCATAA         Context        M                    6.0000            44       6.00
+20GAVAAXX100126.3             6  TGCATAA         Context        M                    6.0000            67      11.00
+20GAVAAXX100126.3             6  ATCATAA         Context        M                    6.0000           104      17.00
+20GAVAAXX100126.3             6  CTCATAA         Context        M                    6.0000            66      10.00
+20GAVAAXX100126.3             6  GTCATAA         Context        M                    6.0000            50      11.00
+20GAVAAXX100126.3             6  TTCATAA         Context        M                    7.0000           114      12.50
+20GAVAAXX100126.3             6  AAGATAA         Context        M                    6.0000           133      23.67
+20GAVAAXX100126.3             6  CAGATAA         Context        M                    6.0000            91      17.00
+20GAVAAXX100126.3             6  GAGATAA         Context        M                    6.0000            95      21.00
+20GAVAAXX100126.3             6  TAGATAA         Context        M                    6.0000            90      13.00
+20GAVAAXX100126.3             6  ACGATAA         Context        M                    6.0000            13       4.00
+20GAVAAXX100126.3             6  CCGATAA         Context        M                    6.0000             4       1.00
+20GAVAAXX100126.3             6  GCGATAA         Context        M                    6.0000             9       0.00
+20GAVAAXX100126.3             6  TCGATAA         Context        M                    6.0000            10       1.00
+20GAVAAXX100126.3             6  AGGATAA         Context        M                    6.0000            93      26.00
+20GAVAAXX100126.3             6  CGGATAA         Context        M                    6.0000             7       3.00
+20GAVAAXX100126.3             6  GGGATAA         Context        M                    6.0000            63      10.21
+20GAVAAXX100126.3             6  TGGATAA         Context        M                    6.0000           114      38.00
+20GAVAAXX100126.3             6  ATGATAA         Context        M                    7.0000           104      13.00
+20GAVAAXX100126.3             6  CTGATAA         Context        M                    6.0000            83      13.00
+20GAVAAXX100126.3             6  GTGATAA         Context        M                    6.0000            62       8.17
+20GAVAAXX100126.3             6  TTGATAA         Context        M                    7.0000            83       9.00
+20GAVAAXX100126.3             6  AATATAA         Context        M                    6.0000           161      33.00
+20GAVAAXX100126.3             6  CATATAA         Context        M                    6.0000           101      21.00
+20GAVAAXX100126.3             6  GATATAA         Context        M                    7.0000            73       9.00
+20GAVAAXX100126.3             6  TATATAA         Context        M                    6.0000           163      39.22
+20GAVAAXX100126.3             6  ACTATAA         Context        M                    6.0000            77      12.00
+20GAVAAXX100126.3             6  CCTATAA         Context        M                    6.0000            78      13.00
+20GAVAAXX100126.3             6  GCTATAA         Context        M                    6.0000            58      10.00
+20GAVAAXX100126.3             6  TCTATAA         Context        M                    6.0000            89      16.00
+20GAVAAXX100126.3             6  AGTATAA         Context        M                    6.0000            84      18.17
+20GAVAAXX100126.3             6  CGTATAA         Context        M                    6.0000            11       1.00
+20GAVAAXX100126.3             6  GGTATAA         Context        M                    6.0000            37       4.67
+20GAVAAXX100126.3             6  TGTATAA         Context        M                    6.0000            90      17.67
+20GAVAAXX100126.3             6  ATTATAA         Context        M                    7.0000           140      22.20
+20GAVAAXX100126.3             6  CTTATAA         Context        M                    7.0000            87      11.29
+20GAVAAXX100126.3             6  GTTATAA         Context        M                    6.0000            54       6.00

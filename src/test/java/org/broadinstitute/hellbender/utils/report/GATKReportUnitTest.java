@@ -186,7 +186,7 @@ public final class GATKReportUnitTest extends BaseTest {
         table.set("RZ", "TrueFalse", true);
 
         report1.addTable("Table3", "blah", 1, GATKReportTable.Sorting.SORT_BY_ROW);
-        report1.getTable("Table3").addColumn("a");
+        report1.getTable("Table3").addColumn("a", "%s");
         report1.getTable("Table3").addRowIDMapping("q", 2);
         report1.getTable("Table3").addRowIDMapping("5", 3);
         report1.getTable("Table3").addRowIDMapping("573s", 0);
