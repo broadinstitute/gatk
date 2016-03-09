@@ -55,6 +55,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
         final String b36Reference = getResourceDir() + "human_b36_both.chr1_1k.fasta";
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = getResourceDir() + "overlappingRead.bam";
+        final String hiSeqBam_readNithNoRefBases = getResourceDir() + "NA12878.oq.read_consumes_zero_ref_bases.chr20.bam";
         final String HiSeqBam_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.bam";
         final String HiSeqCram_chr17 = getResourceDir() + "NA12878.chr17_69k_70k.dictFix.cram";
         final String trickyBam_chr20 = getResourceDir() + "CEUTrio.HiSeq.WGS.b37.ch20.4379150-4379157.bam";
@@ -73,6 +74,7 @@ public final class BaseRecalibratorIntegrationTest extends CommandLineProgramTes
 
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_1read, dbsnp_138_b37_20_21_vcf, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
+                {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_readNithNoRefBases, dbsnp_138_b37_20_21_vcf, "", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_NOREFBASES_RECAL)},
 
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--indels_context_size 4",  getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--low_quality_tail 5",     getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},

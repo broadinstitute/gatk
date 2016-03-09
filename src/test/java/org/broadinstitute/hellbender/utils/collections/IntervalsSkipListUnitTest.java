@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.utils.collections;
 
-import static org.testng.Assert.*;
-
 import com.google.common.collect.Lists;
-
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -12,6 +9,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class IntervalsSkipListUnitTest extends BaseTest {
 
@@ -43,7 +41,7 @@ public class IntervalsSkipListUnitTest extends BaseTest {
     @Test(dataProvider = "intervals")
     public void testOverlap(ArrayList<Locatable> input, SimpleInterval query, ArrayList<Locatable> expected) throws Exception {
         IntervalsSkipList<Locatable> ints = new IntervalsSkipList<>(input);
-        ArrayList<Locatable> actual = ints.getOverlapping(query);
+        List<Locatable> actual = ints.getOverlapping(query);
         Assert.assertEquals(
                 actual,
                 expected
