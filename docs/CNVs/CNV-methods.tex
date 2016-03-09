@@ -384,7 +384,59 @@ We therefore have a self-contained iteration scheme in terms of expectations onl
 
   Once this converges, the main objects of interest are the posterior probabilities of different allele counts, $P(v_{sm} = 1, w_{sn} = 1) = \sum_k E \left[ z_{sk} v_{sm} w_{sp} \right]$.  For the purposes of guessing phylogeny the fractions $\rho_k$ are also interesting.
 
-\section{Proposed Methods} \label{proposed-methods}
+\section{Germline Exome CNVs} \label{germline}
+The GATK treats germline CNVs differently from somatic CNVs.  This is partly due to fundamental differences, such as the absence of subclones in the germline setting.  However, many arbitrary inconsistencies are historic in nature, arising from the germline algorithm's origins in the XHMM method.  It is important to keep this in mind when reading these notes.  The two most significant differences between the GATK's germline and somatic workflows is are the neglect of allelic information (i.e. alt and ref read counts at het sites) in the germline workflow and the use of an HMM for simultaneous segmentation and calling in the germline workflow.  
+
+We will treat the HMM as a black box.  Although the GATK has its own implementation, the functionality is standard.  Thus we will only describe how we define its states, initial probabilities, transition probabilities, and emission distributions.  Besides that, it suffices to describe what is done to raw coverage data before it is fed into the HMM.
+
+\subsection{Normalization of raw germline data} \label{germline-normalization}
+The germline model does not separate the creation of a panel of normals from a case workflow.  Rather, it calls CNVs simultaneously for all samples in a cohort.  Its starting point is an $S \times T$ matrix of raw coverage, where $S$ is the number of samples and $T$ is the number of targets.  We then normalize by each sample's average coverage to get an $S \times T$ \textit{proportional coverage} matrix $P$:
+%
+\begin{equation}
+P_{st} = \frac{ \left( {\rm raw~coverage} \right)_{st} } { {\rm average~depth~of~sample~}s}
+\end{equation}
+%
+Next, as in the somatic workflow, we perform principal components analysis (PCA) on the proportional coverage in order to remove noise due to laboratory conditions etc. from the coverage, leaving (we hope) only a CNV signal and a small amount of residual noise.  For purely historical reasons PCA is expressed here in slightly different terms from the somatic case.  PCA yields a length-$T$ mean proportional coverage vector $\mu$ and set of $M$ principal vectors ${\bf v}_k$, also of length $T$, such that the proportional coverage of each sample is approximated by the mean coverage $\mu$ plus a linear combination of the principal components:
+%
+\begin{equation}
+P_s \approx \mu + \sum_{k=1}^M \beta_{sk} {\bf v}_k
+\end{equation}
+%
+Because the principal components capture the shared variation among all samples, we expect them \textit{not} to capture individual variation due to CNVs.  There is necessarily some contamination because the samples we call are the same samples used to decide the principal components -- there is no separate PoN.  Nonetheless, this effect should be small if there are enough samples.  Therefore, the next step is to produce the tangent-normalized coverage $X$, which is again an $S \times T$ matrix:
+%
+\begin{equation}
+X_s = P_s - \mu -  \sum_{k=1}^M \beta_{sk} {\bf v}_k.
+\end{equation}
+%
+(Here a single subscript for a matrix denotes an entire row).
+
+Finally, the tangent-normalized coverage is converted to a Z-score coverage in which each target is mean-centered (tangent-normalization should yield a mean of zero for each target over all samples, so this part is trivial) and divided by the standard deviation of tangent-normalized coverage of that target over all samples:
+%
+\begin{equation}
+Z_{st} = X_{st} / {\rm std}(X_{\cdot t})
+\end{equation}
+%
+
+The codebase also allows for filtering at each stage of coverage based on target GC and repeat fraction and various coverage descriptive statistics such as mean, standard deviation and interquartile range of targets across samples and vice versa.  However, we do not yet have a sense of best practices for these.  Furthermore, what constitutes best practices will change as we improve the model.
+
+\subsection{Germline HMM} \label{germline-hmm}
+Each sample's Z-score coverage is segmented and called separately via the Viterbi algorithm, which finds the maximum-likelihood solution of an HMM.  The hidden states are neutral, deletion, and duplication -- the XHMM model does not take into account homozygous deletions or multiple duplications.  The input parameters are: (i) the probability $p$ that a target is the start of an event; (ii) the mean number $1/q$ of targets in a CNV; and (iii) the mean distance $D$ between targets in a CNV.  Note that the latter two of these are silly because they depend on the density of targets used.  In particular parameters that are tailored for an exome of 100,000 targets are completely wrong for a small gene panel.  Furthermore, if the density of targets is not uniform across the genome, these parameters might be appropriate only in some parts of the genome.  A much more appropriate, biological, parameter would be the average length (in base pairs) of a CNV.
+
+Anyway, the HMM transition matrix is defined in terms of these parameters as follows.  We let $f = e^{-d/D}$ be a CNV memory attenuation factor between consecutive targets separated by distance $d$.  The transition matrix is
+%
+\begin{equation}
+\bordermatrix{ {\rm from} \backslash {\rm to} & - & 0 & + \cr
+      - & f(1-q) + (1-f)p & fq+(1-f)(1-2p) & (1-f)p \cr
+      0 & p & 1-2p & p \cr
+      + & (1-f)p & fq+(1-f)(1-2p) & f(1-q)+(1-f)p }
+\end{equation}
+%
+The middle row simply states the definition of $p$ as the probably of starting an event.  The $- \rightarrow -$ and $+ \rightarrow +$ entries state, when $f=1$, the definition of $q$, and when $f=0$ the memoryless probability to start a new event.  For intermediate $f$ this element is a weighted average of the contributions with and without memory for continuing the CNV.  All remaining entries can be understood similarly.
+
+The emission model is as follows.  Each hidden state emits a normally-distributed Z-score.  The means are $-M$, 0, and $+M$ for deletion, neutral, and duplication states, respectively, where $M$ is s user-specified parameter whose default is 3.  Each emission distribution is given unit variance.  This model is quite wrong.  Consider a duplication.  The tangent-normalized coverage ought be be roughly 0.5 times the proportional coverage -- the raw coverage is $3/2$ that of a diploid target, leaving $1/2$ remaining after (ideal) tangent-normalization.  Then division by the target standard deviaton to get a Z-score yields who-knows-what.  Since different targets have different average proportional coverage, the global parameter $M$ is misguided.  Basically, the current model is not a model at all, but a heuristic.
+
+
+\section{Proposed Methods} \label{proposed-methods} 
 
 \subsection{Using Panel of Normals for Allelic Fraction Model} \label{allelic-PoN}
 
