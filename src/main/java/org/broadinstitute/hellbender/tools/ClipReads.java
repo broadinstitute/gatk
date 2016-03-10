@@ -63,12 +63,12 @@ import java.util.regex.Pattern;
  *
  * <h3>Input</h3>
  * <p>
- *     Any number of BAM files.
+ *     Any number of SAM/BAM/CRAM files.
  * </p>
  *
  * <h3>Output</h3>
  * <p>
- *     A new BAM file containing all of the reads from the input BAMs with the user-specified clipping
+ *     A new SAM/BAM/CRAM file containing all of the reads from the input SAM/BAM/CRAMs with the user-specified clipping
  *     operation applied to each read.
  * </p>
  * <p>
@@ -88,11 +88,11 @@ import java.util.regex.Pattern;
  *
  * <h3>Example</h3>
  * <pre>
- *   java -jar GenomeAnalysisTK.jar \
- *     -T ClipReads \
+ *   gatk-launch \
+ *     ClipReads \
  *     -R reference.fasta \
  *     -I original.bam \
- *     -o clipped.bam \
+ *     -O clipped.bam \
  *     -XF seqsToClip.fasta \
  *     -X CCCCC \
  *     -CT "1-5,11-15" \
@@ -141,7 +141,7 @@ public final class ClipReads extends ReadWalker {
     private final Logger logger = LogManager.getLogger(ClipReads.class);
 
     /**
-     * The output SAM/BAM file will be written here
+     * The output SAM/BAM/CRAM file will be written here
      */
     @Argument(doc = "BAM output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     File OUTPUT;
@@ -214,7 +214,7 @@ public final class ClipReads extends ReadWalker {
     /**
      * Output stream for the stats.
      */
-    private PrintStream out;
+    private PrintStream outputStats;
 
     /**
      * The initialize function.
@@ -278,7 +278,7 @@ public final class ClipReads extends ReadWalker {
         
         accumulator = new ClippingData(sequencesToClip);
         try {
-            out = new PrintStream(STATSOUTPUT);
+            outputStats = STATSOUTPUT == null ? null : new PrintStream(STATSOUTPUT);
         } catch (FileNotFoundException e) {
             throw new UserException.CouldNotCreateOutputFile(STATSOUTPUT, e);
         }
@@ -303,8 +303,9 @@ public final class ClipReads extends ReadWalker {
 
     @Override
     public ClippingData onTraversalSuccess(){
-        if ( out != null ){
-           out.printf(accumulator.toString());
+        if ( outputStats != null ){
+            outputStats.printf(accumulator.toString());
+            outputStats.close();
         }
         if ( outputBam != null ) {
             outputBam.close();
@@ -458,11 +459,7 @@ public final class ClipReads extends ReadWalker {
             return;
 
         GATKRead clippedRead = clipper.clipRead(clippingRepresentation);
-        if (outputBam != null) {
-            outputBam.addRead(clippedRead);
-        } else {
-            out.println(clippedRead.toString());
-        }
+        outputBam.addRead(clippedRead);
 
         accumulator.nTotalReads++;
         accumulator.nTotalBases += clipper.getRead().getLength();
