@@ -207,6 +207,14 @@ public abstract class BaseTest {
     }
 
     /**
+     * @param fileName the name of a file
+     * @return a File resolved using getToolTestDataDir as the parent and fileName
+     */
+    public File getTestFile(String fileName) {
+        return new File(getToolTestDataDir(), fileName);
+    }
+
+    /**
      * Simple generic utility class to creating TestNG data providers:
      *
      * 1: inherit this class, as in

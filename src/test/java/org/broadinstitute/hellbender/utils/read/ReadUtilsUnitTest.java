@@ -395,13 +395,13 @@ public final class ReadUtilsUnitTest extends BaseTest {
     public Object[][] createSAMWriterData() {
         return new Object[][] {
                 // Note: We expect to silently fail to create an index if createIndex is true but sort order is not coord.
-                {new File(getToolTestDataDir(), "query_sorted.bam"),     false,  true, true, false},
-                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),false,  true, true, true},
-                {new File(getToolTestDataDir(), "query_sorted.bam"),     true,   true, true, false},
-                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),true,   true, true, true},
-                {new File(getToolTestDataDir(), "query_sorted.bam"),     true,   true, false, false},
-                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),true,   true, false, true},
-                {new File(getToolTestDataDir(), "coordinate_sorted.bam"),true,   false, false, false}
+                {getTestFile("query_sorted.bam"),     false,  true, true, false},
+                {getTestFile("coordinate_sorted.bam"),false,  true, true, true},
+                {getTestFile("query_sorted.bam"),     true,   true, true, false},
+                {getTestFile("coordinate_sorted.bam"),true,   true, true, true},
+                {getTestFile("query_sorted.bam"),     true,   true, false, false},
+                {getTestFile("coordinate_sorted.bam"),true,   true, false, true},
+                {getTestFile("coordinate_sorted.bam"),true,   false, false, false}
         };
     }
 
@@ -441,10 +441,10 @@ public final class ReadUtilsUnitTest extends BaseTest {
     @DataProvider(name="hasCRAMFileContents")
     public Object[][] createHasCRAMFileContentsData() {
         return new Object[][] {
-                {new File(getToolTestDataDir(), "valid.sam"), false},
-                {new File(getToolTestDataDir(), "coordinate_sorted.bam"), false},
-                {new File(getToolTestDataDir(), "valid.cram"), true},
-                {new File(getToolTestDataDir(), "fake_cram_with_bam_contents.cram"), false}
+                {getTestFile("valid.sam"), false},
+                {getTestFile("coordinate_sorted.bam"), false},
+                {getTestFile("valid.cram"), true},
+                {getTestFile("fake_cram_with_bam_contents.cram"), false}
         };
     }
 

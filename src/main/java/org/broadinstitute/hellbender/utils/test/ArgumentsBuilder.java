@@ -17,8 +17,7 @@ import java.util.List;
 public final class ArgumentsBuilder {
     private final List<String> args= new ArrayList<>();
 
-    public ArgumentsBuilder(){
-    }
+    public ArgumentsBuilder(){}
 
     public ArgumentsBuilder(Object[] args){
         for (Object arg: args){
@@ -34,7 +33,7 @@ public final class ArgumentsBuilder {
      * Add a string to the arguments list
      * Strings are processed specially, they are reformatted to match the new unix style arguments
      * @param arg A string representing one or more arguments
-     * @return
+     * @return the ArgumentsBuilder
      */
     public ArgumentsBuilder add(String arg){
         List<String> chunks = Arrays.asList(StringUtils.split(arg.trim()));
@@ -53,39 +52,44 @@ public final class ArgumentsBuilder {
     /**
      * add an input file argument {@link StandardArgumentDefinitions#INPUT_LONG_NAME}
      */
-    public void addInput(File input) {
+    public ArgumentsBuilder addInput(File input) {
         addFileArgument(StandardArgumentDefinitions.INPUT_LONG_NAME, input);
+        return this;
     }
 
     /**
      * add an output file argument using {@link StandardArgumentDefinitions#OUTPUT_LONG_NAME}
      */
-    public void addOutput(File output) {
+    public ArgumentsBuilder addOutput(File output) {
         addFileArgument(StandardArgumentDefinitions.OUTPUT_LONG_NAME, output);
+        return this;
     }
 
     /**
      * add a reference file argument using {@link StandardArgumentDefinitions#REFERENCE_LONG_NAME}
      */
-    public void addReference(File reference){
+    public ArgumentsBuilder addReference(File reference){
         addFileArgument(StandardArgumentDefinitions.REFERENCE_LONG_NAME, reference);
+        return this;
     }
 
     /**
      * add a vcf file argument using {@link StandardArgumentDefinitions#VARIANT_LONG_NAME}
      */
-    public void addVCF(File fileIn) {
+    public ArgumentsBuilder addVCF(File fileIn) {
         addFileArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME, fileIn);
+        return this;
     }
 
     /**
      * add an argument with a file as its parameter
      */
-    public void addFileArgument(String argumentName, File file){
+    public ArgumentsBuilder addFileArgument(String argumentName, File file){
         Utils.nonNull(file);
         Utils.nonNull(argumentName);
         add("--" + argumentName);
         add(file.getAbsolutePath());
+        return this;
     }
 
     /**
@@ -97,16 +101,14 @@ public final class ArgumentsBuilder {
     }
 
     /**
-     * get the arguments as List<String>
-     * @return
+     * @return the arguments as List<String>
      */
     public List<String> getArgsList(){
         return this.args;
     }
 
     /**
-     * get the arguments as String[]
-     * @return
+     * @return the arguments as String[]
      */
     public String[] getArgsArray(){
         return this.args.toArray(new String[this.args.size()]);
@@ -114,8 +116,7 @@ public final class ArgumentsBuilder {
 
 
     /**
-     * get the arguments as a single String
-     * @return
+     * @return the arguments as a single String
      */
     public String getString() {
         return String.join(" ", args);
