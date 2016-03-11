@@ -31,7 +31,7 @@ env:
   #coveralls repo token
   - secure: RA4LKD82cW+0xPayPVAWSpYqJu5uoPcz7oXXYtYNVuilFmS8PGYx0g/BXs4QMvQsGMt6aMLN8m7lMAPN5XTH/8JSeM3VmQ3mdpgNdP+p3CVlwrapZ2lTq27Wb/E8J1CGEHOg76z716t//FUElyC/gdhS+tfBmXk3YanM5fMXEHs=
   #google API key
-  - secure: GyC3Th11Gryeokc2UucWTS/Rc6AB+4ZRcSzpmLliTEtrCvDt+sXPxTH9z7GKiwqz0Ep91TTot/G8fDdSIUa+50itV1WKGDtkoRAvkG6Mt7bWm+5Cy6ZbPhktX+dWR5ks/9R8EBlJ5oiC6WkMcqlwZ90DftcHYOOF5+4ToCp7HzM=
+  - secure: "eHyDxfcfv6pSIkoqQ9PimiYu9I6vmXJOpY/OkXLkc7ZAUfNTfRVytUGG9Xf/bKKF+Wscm5pIfZJ/TMDG6E3Uyngs9nVK/29QWevcEaLDJy8OdI9OgPZb13hlbM2jbVv5AVBGYcbcNBrTvrTs0MOMOFPEJqZ99xWIj5bzZ/AsIfU="
 matrix:
   fast_finish: true
   allow_failures:
