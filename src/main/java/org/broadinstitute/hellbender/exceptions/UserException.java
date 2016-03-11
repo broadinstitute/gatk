@@ -30,7 +30,7 @@ public class UserException extends RuntimeException {
     }
 
     protected static String formatMessage(String msg) {
-        return "A UserException has occurred:\n\nThis is an error which is likely to be correctable by the user." + msg
+        return "A UserException has occurred:\n\nThis is an error which is likely to be correctable by the user.\n\n" + msg
                 +"\n\n\nRerun with --help to see more information on available options";
     }
 

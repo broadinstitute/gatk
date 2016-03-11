@@ -434,7 +434,7 @@ public final class CommandLineParser {
         }
         if (c.size() >= maxPositionalArguments) {  //we're checking if there is space to add another argument
             throw new UserException.CommandLineException("No more than " + maxPositionalArguments +
-                    " positional arguments may be specified on the command line, but " +c.size() +" were seen.", getCommandLineAsInput());
+                    " positional arguments may be specified on the command line.", getCommandLineAsInput());
         }
         c.add(value);
     }
