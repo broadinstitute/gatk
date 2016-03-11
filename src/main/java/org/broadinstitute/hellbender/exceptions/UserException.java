@@ -87,19 +87,30 @@ public class UserException extends RuntimeException {
         public MissingReference(String message) { super(message); }
     }
 
+
     public static class CommandLineException extends UserException {
         private static final long serialVersionUID = 0L;
 
+        public boolean includesCommandline() {
+            return includesCommandLine;
+        }
+
+        private final boolean includesCommandLine;
+
         public CommandLineException(String message){
-            this(message, "");
+            super(message);
+            this.includesCommandLine = false;
         }
 
         public CommandLineException(String message, String commandLine) {
             super(String.format("Invalid command line: %s\n\n%s", commandLine, message));
+            this.includesCommandLine = true;
+
         }
 
         public CommandLineException(String message, String commandLine, Exception exception) {
-            super(String.format("Invalid command line: %s\n\n%s\n\n", commandLine, message), exception);
+            super(String.format("Invalid command line: %s\n\n%s", commandLine, message), exception);
+            this.includesCommandLine = true;
         }
 
 
@@ -122,11 +133,11 @@ public class UserException extends RuntimeException {
         }
 
         public BadArgumentValue(String arg, String value, String message){
-            super(String.format("Argument %s has a bad value: %s. %s", arg, value,message));
+            super(String.format("Argument %s has a bad value: %s. %s", arg, value, message));
         }
 
-        public BadArgumentValue(String arg, String value, String message, String commandLine){
-            super(String.format("Argument %s has a bad value: %s. %s", arg, value,message), c);
+        public BadArgumentValue(BadArgumentValue e, String commandLine){
+            super(e.getMessage(), commandLine, e);
         }
 
     }

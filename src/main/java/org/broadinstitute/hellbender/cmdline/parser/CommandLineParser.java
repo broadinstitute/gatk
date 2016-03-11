@@ -254,12 +254,16 @@ public final class CommandLineParser {
             assertArgumentsAreValid();
 
             return true;
-        } catch (UserException.MissingArgument e){
+        } catch (final UserException.MissingArgument | UserException.ConflictingMutuallyExclusiveArguments e){
             throw e;
-        } catch (UserException.BadArgumentValue e) {
-            throw new UserException.BadArgumentValue()
-        } catch (UserException.CommandLineException e){
+        } catch (final UserException.BadArgumentValue e) {
+            throw new UserException.BadArgumentValue(e, getCommandLineAsInput());
+        } catch (final UserException.CommandLineException e){
+            if ( e.includesCommandline()){
+                throw e;
+            } else {
                 throw new UserException.CommandLineException(e.getMessage(), getCommandLineAsInput(), e);
+            }
         }
     }
 
@@ -418,7 +422,7 @@ public final class CommandLineParser {
     @SuppressWarnings("unchecked")
     private void setPositionalArgument(final String stringValue) {
         if (positionalArguments == null) {
-            throw new UserException.CommandLineException("Invalid argument '" + stringValue + "'.", getCommandLineAsInput());
+            throw new UserException.CommandLineException("Invalid argument '" + stringValue + "'.  No positional arguments were expected.", getCommandLineAsInput());
         }
         final Object value = constructFromString(getUnderlyingType(positionalArguments), stringValue, POSITIONAL_ARGUMENTS_NAME);
         @SuppressWarnings("rawtypes")
@@ -430,7 +434,7 @@ public final class CommandLineParser {
         }
         if (c.size() >= maxPositionalArguments) {  //we're checking if there is space to add another argument
             throw new UserException.CommandLineException("No more than " + maxPositionalArguments +
-                    " positional arguments may be specified on the command line.", getCommandLineAsInput());
+                    " positional arguments may be specified on the command line, but " +c.size() +" were seen.", getCommandLineAsInput());
         }
         c.add(value);
     }
