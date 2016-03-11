@@ -70,19 +70,18 @@ public class BaseRecalibratorSparkShardedIntegrationTest extends CommandLineProg
         final String HiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String GRCh37RefLocal = b37_reference_20_21;
+        final String more20Sites = getResourceDir() + "bqsr.fakeSitesForTesting.b37.chr20.vcf"; //for testing 2 input files
 
         return new Object[][]{
                 // local computation and files (except for the reference)
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
-
-                // Currently disabled because BaseRecalibratorSpark can't handle more than 1 knownSites file: https://github.com/broadinstitute/gatk/issues/1085
-                // Re-enable once this is fixed.
-                //{new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37, "-knownSites " + moreSites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
-
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--indels_context_size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--low_quality_tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--quantizing_levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
                 {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "--mismatches_context_size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
+
+                //multiple known sites; expected output generated with GATK4 walker BQSR
+                {new BQSRTest(GRCh37Ref, HiSeqBam_chr20, dbSNPb37_chr20, "-knownSites " + more20Sites, localResources + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.2inputs.recal.txt")},
 
                 //// //{new BQSRTest(b36Reference, origQualsBam, dbSNPb36, "-OQ", getResourceDir() + "expected.originalQuals.1kg.chr1.1-1K.1RG.dictFix.OQ.txt")},
 
