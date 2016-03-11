@@ -39,7 +39,7 @@ public class ComputeReadEntropySpark extends GATKSparkTool {
 
         final JavaRDD<GATKRead> reads = getReads();
 
-        reads.map(r -> computeEntropy(r.getBasesString())).saveAsTextFile(out);
+        reads.mapToDouble(r -> computeEntropy(r.getBasesString())).stats();
 
     }
 
