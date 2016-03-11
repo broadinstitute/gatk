@@ -144,6 +144,17 @@ public class TableReaderUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "ordinaryValuesData")
+    public void testToList(final String[] lines) throws IOException {
+        final File testFile = createTestInput(lines);
+        final TableReader<TestTuple> reader = new TestTupleReader(testFile);
+        final List<TestTuple> actual = reader.toList();
+        // make sure is the end and is not close:
+        Assert.assertSame(reader.readRecord(), null);
+        Assert.assertEquals(actual, Arrays.asList(ORDINARY_VALUE_TEST_TUPLES));
+        reader.close();
+    }
+
+    @Test(dataProvider = "ordinaryValuesData")
     public void testStandardValuesUsingReader(final String[] lines) throws IOException {
         final File testFile = createTestInput(lines);
         final TableReader<TestTuple> reader = new TestTupleReader(new FileReader(testFile));

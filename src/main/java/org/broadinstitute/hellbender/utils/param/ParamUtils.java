@@ -324,7 +324,7 @@ public class ParamUtils {
      */
     public static int inRange(final IntRange validRange, final int value, final String definition) {
         Utils.nonNull(validRange);
-        if (!validRange.containsDouble(value)) {
+        if (!validRange.containsInteger(value)) {
             final String prefix = definition == null ? "invalid value" : "invalid value for " + definition;
             throw new IllegalArgumentException(String.format("%s: %d is not in [%d, %d]",
                     prefix, value, validRange.getMinimumInteger(), validRange.getMaximumInteger()));
