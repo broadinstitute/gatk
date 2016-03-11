@@ -94,10 +94,12 @@ public class UserException extends RuntimeException {
             this(message, "");
         }
 
-        public CommandLineException()
-
         public CommandLineException(String message, String commandLine) {
             super(String.format("Invalid command line: %s\n\n%s", commandLine, message));
+        }
+
+        public CommandLineException(String message, String commandLine, Exception exception) {
+            super(String.format("Invalid command line: %s\n\n%s\n\n", commandLine, message), exception);
         }
 
 
@@ -122,6 +124,11 @@ public class UserException extends RuntimeException {
         public BadArgumentValue(String arg, String value, String message){
             super(String.format("Argument %s has a bad value: %s. %s", arg, value,message));
         }
+
+        public BadArgumentValue(String arg, String value, String message, String commandLine){
+            super(String.format("Argument %s has a bad value: %s. %s", arg, value,message), c);
+        }
+
     }
 
     public static class CannotHandleGzippedRef extends UserException {

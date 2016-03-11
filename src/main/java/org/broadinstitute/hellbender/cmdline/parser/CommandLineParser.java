@@ -254,7 +254,11 @@ public final class CommandLineParser {
             assertArgumentsAreValid();
 
             return true;
-        }catch (UserException.CommandLineException e){
+        } catch (UserException.MissingArgument e){
+            throw e;
+        } catch (UserException.BadArgumentValue e) {
+            throw new UserException.BadArgumentValue()
+        } catch (UserException.CommandLineException e){
                 throw new UserException.CommandLineException(e.getMessage(), getCommandLineAsInput(), e);
         }
     }
