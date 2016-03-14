@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
@@ -10,7 +8,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.GenotypeCounts;
+import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -74,60 +73,13 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
 
     @VisibleForTesting
     Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
+        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes);
 
-        final boolean doMultiallelicMapping = !vc.isBiallelic();
-
-        int idxAA = 0, idxAB = 1, idxBB = 2;
-
-        double refCount = 0.0;
-        double hetCount = 0.0;
-        double homCount = 0.0;
-        int sampleCount = 0; // number of samples that have likelihoods
-
-        for ( final Genotype g : genotypes ) {
-            if ( g.isCalled() && g.hasLikelihoods() && g.getPloidy() == 2){  // only work for diploid samples
-                sampleCount++;
-            } else {
-                continue;
-            }
-            final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10(g.getLikelihoods().getAsVector());
-            if (doMultiallelicMapping){
-                if (g.isHetNonRef()) {
-                    //all likelihoods go to homCount
-                    homCount++;
-                    continue;
-                }
-
-                //get alternate allele for each sample
-                final Allele a1 = g.getAllele(0);
-                final Allele a2 = g.getAllele(1);
-                if (a2.isNonReference()) {
-                    final int[] idxVector = vc.getGLIndecesOfAlternateAllele(a2);
-                    idxAA = idxVector[0];
-                    idxAB = idxVector[1];
-                    idxBB = idxVector[2];
-                }
-                //I expect hets to be reference first, but there are no guarantees (e.g. phasing)
-                else if (a1.isNonReference()) {
-                    final int[] idxVector = vc.getGLIndecesOfAlternateAllele(a1);
-                    idxAA = idxVector[0];
-                    idxAB = idxVector[1];
-                    idxBB = idxVector[2];
-                }
-            }
-
-            refCount += normalizedLikelihoods[idxAA];
-            hetCount += normalizedLikelihoods[idxAB];
-            homCount += normalizedLikelihoods[idxBB];
-        }
-
-        /**
-         * Note: all that likelihood normalization etc may have accumulated some error.
-         * We smooth it out my roudning the numbers to integers before the final computation.
-         */
-        refCount = Math.round(refCount);
-        hetCount = Math.round(hetCount);
-        homCount = Math.round(homCount);
+        final int refCount = t.getRefs();
+        final int hetCount = t.getHets();
+        final int homCount = t.getHoms();
+        // number of samples that have likelihoods
+        final int sampleCount = (int) genotypes.stream().filter(g-> GenotypeUtils.isDiploidWithLikelihoods(g)).count();
 
         final double p = ( 2.0 * refCount + hetCount ) / ( 2.0 * (refCount + hetCount + homCount) ); // expected reference allele frequency
         final double q = 1.0 - p; // expected alternative allele frequency
