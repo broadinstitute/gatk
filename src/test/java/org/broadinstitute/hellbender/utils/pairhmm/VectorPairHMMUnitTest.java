@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.text.parsers.BasicInputParser;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,23 +20,28 @@ import java.util.*;
 
 public final class VectorPairHMMUnitTest extends BaseTest {
     private final static boolean DEBUG = false;
-    final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM();
 
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String pairHMMTestData = publicTestDir + "pairhmm-testdata.txt";
 
-    @BeforeClass
+   @BeforeClass
     public void initialize() {
-        avxPairHMM.doNotUseTristateCorrection();
-
         if (!VectorLoglessPairHMM.isAVXSupported()) {
-          throw new org.testng.SkipException("AVX is not supported on this system.");
+          throw new SkipException("AVX is not supported on this system.");
+        } else {
+            try {
+               new VectorLoglessPairHMM();
+            } catch (final Exception e){
+                throw new SkipException("AVX library not available");
+            }
         }
     }
 
     private List<N2MemoryPairHMM> getHMMs() {
-        return Arrays.asList(avxPairHMM);
+        final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM();
+        avxPairHMM.doNotUseTristateCorrection();
+        return Collections.singletonList(avxPairHMM);
     }
 
     // --------------------------------------------------------------------------------

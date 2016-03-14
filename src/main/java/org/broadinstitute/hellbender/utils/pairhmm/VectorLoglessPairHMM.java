@@ -2,15 +2,15 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +22,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
 
     final static Logger logger = Logger.getLogger(VectorLoglessPairHMM.class);
     final static Boolean runningOnMac = System.getProperty("os.name", "unknown").toLowerCase().startsWith("mac");
+    private static final String AVX_NATIVE_CODE_PATH_IN_JAR = "/lib/libVectorLoglessPairHMM";
     long threadLocalSetupTimeDiff = 0;
     long pairHMMSetupTime = 0;
     static Boolean isVectorLoglessPairHMMLibraryLoaded = false;
@@ -101,12 +102,17 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                     logger.info("libVectorLoglessPairHMM found in JVM library path");
                 } catch (UnsatisfiedLinkError e) {
                     //Could not load from Java's library path - try unpacking from jar
-                    logger.debug("libVectorLoglessPairHMM not found in JVM library path - trying to unpack from GATK jar file");
-                    String path = "/lib/libVectorLoglessPairHMM" + (runningOnMac ? ".dylib" : ".so");
-                    File temp = IOUtils.writeTempResource(new Resource(path, VectorLoglessPairHMM.class));
-                    temp.deleteOnExit();
-                    System.load(temp.getAbsolutePath());
-                    logger.info("libVectorLoglessPairHMM unpacked successfully from GATK jar file");
+                    try {
+                        logger.debug("libVectorLoglessPairHMM not found in JVM library path - trying to unpack from GATK jar file");
+                        String path = AVX_NATIVE_CODE_PATH_IN_JAR + (runningOnMac ? ".dylib" : ".so");
+                        File temp = IOUtils.writeTempResource(new Resource(path, VectorLoglessPairHMM.class));
+                        temp.deleteOnExit();
+                        System.load(temp.getAbsolutePath());
+                        logger.info("libVectorLoglessPairHMM unpacked successfully from GATK jar file");
+                    } catch (final Exception furtherException){
+                        throw new UserException.HardwareFeatureException("Machine supports AVX, but failed to load the AVX PairHMM library from the classpath.  " +
+                                "Check that your jar contains native code for your platform or choose a java HMM.", furtherException);
+                    }
                 }
                 logger.info("Using vectorized implementation of PairHMM");
                 isVectorLoglessPairHMMLibraryLoaded = true;

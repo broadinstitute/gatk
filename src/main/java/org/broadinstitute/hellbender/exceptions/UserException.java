@@ -388,5 +388,9 @@ public class UserException extends RuntimeException {
         public HardwareFeatureException(String message) {
             super(message);
         }
+
+        public HardwareFeatureException(String message, Exception e){
+            super(message, e);
+        }
     }
 }
