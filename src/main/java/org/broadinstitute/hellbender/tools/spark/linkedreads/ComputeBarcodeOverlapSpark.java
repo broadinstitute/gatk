@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
+import org.apache.avro.test.Simple;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -13,7 +14,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @CommandLineProgramProperties(
@@ -56,38 +59,35 @@ public class ComputeBarcodeOverlapSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> reads = getReads();
 
 
-        final JavaPairRDD<SimpleInterval, Set<String>> barcodesByWindow = reads.mapToPair(read -> new Tuple2<>(new SimpleInterval(read.getContig(), read.getStart() - read.getStart() % windowsSize + 1, read.getStart() + (windowsSize - read.getStart() % windowsSize)), read)).aggregateByKey(
+        final JavaPairRDD<String, Set<SimpleInterval>> windowsByBarcode = reads
+                .mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), new SimpleInterval(read.getContig(), read.getStart() - read.getStart() % windowsSize + 1, read.getStart() + (windowsSize - read.getStart() % windowsSize))))
+                .aggregateByKey(
                 new HashSet<>(),
-                (barcodeSet, read) -> {
-                    barcodeSet.add(read.getAttributeAsString("BX"));
-                    return barcodeSet;
+                (windowSet, window) -> {
+                    windowSet.add(window);
+                    return windowSet;
                 },
                 (barcodeSet1, barcodeSet2) -> {
                     barcodeSet1.addAll(barcodeSet2);
                     return barcodeSet1;
                 });
-        final JavaPairRDD<Tuple2<SimpleInterval, SimpleInterval>, Integer> barcodeOverlapsByWindowPairs = barcodesByWindow.cartesian(barcodesByWindow).filter(windowPair -> {
-            // only keep windows where the first window comes before the second
-            final SimpleInterval interval1 = windowPair._1._1;
-            final SimpleInterval interval2 = windowPair._2._1;
-            if (interval1.getContig().compareTo(interval2.getContig()) > 0) {
-                return false;
+        final JavaPairRDD<Tuple2<SimpleInterval, SimpleInterval>, Integer> pairCounts = windowsByBarcode.flatMapToPair(windowsForBarcode -> {
+            final List<Tuple2<Tuple2<SimpleInterval, SimpleInterval>, Integer>> results = new ArrayList<>();
+            final Set<SimpleInterval> windows = windowsForBarcode._2;
+            for (final SimpleInterval window1 : windows) {
+                for (final SimpleInterval window2 : windows) {
+                    if (window1.getContig().compareTo(window2.getContig()) > 0) {
+                        continue;
+                    }
+                    if (window1.getContig().equals(window2.getContig()) && window1.getStart() > window2.getStart()) {
+                        continue;
+                    }
+                    results.add(new Tuple2<>(new Tuple2<>(window1, window2), 1));
+                }
             }
-            if (interval1.getContig().compareTo(interval2.getContig()) < 0) {
-                return true;
-            }
-            if (interval1.getStart() < interval2.getStart()) {
-                return true;
-            }
-            return false;
-        }).mapToPair(windowPair -> {
-            final Tuple2<SimpleInterval, SimpleInterval> newkey = new Tuple2<>(windowPair._1._1, windowPair._2._1);
-            final Set<String> combinedSet = windowPair._1()._2();
-            combinedSet.retainAll(windowPair._2._2);
-            return new Tuple2<>(newkey, combinedSet.size());
-        });
+            return results;
+        }).reduceByKey((value1, value2) -> value1 + value2);
 
-
-        barcodeOverlapsByWindowPairs.saveAsObjectFile(out);
+        pairCounts.saveAsTextFile(out);
     }
 }
