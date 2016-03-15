@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -36,6 +37,18 @@ public class ComputeBarcodeOverlapSpark extends GATKSparkTool {
     @Override
     public boolean requiresReads() {
         return true;
+    }
+
+    @Override
+    public ReadFilter makeReadFilter() {
+        return super.makeReadFilter()
+                .and(read -> !read.isUnmapped())
+                .and(read -> !read.failsVendorQualityCheck())
+                .and(GATKRead::isFirstOfPair)
+                .and(read -> !read.isDuplicate())
+                .and(read -> !read.isSecondaryAlignment())
+                .and(read -> !read.isSupplementaryAlignment())
+                .and(read -> read.hasAttribute("BX"));
     }
 
     @Override
