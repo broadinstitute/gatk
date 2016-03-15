@@ -4,7 +4,9 @@ import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -13,6 +15,11 @@ import scala.Tuple2;
 import java.util.HashSet;
 import java.util.Set;
 
+@CommandLineProgramProperties(
+        summary = "Computes barcode overlap between genomic windows",
+        oneLineSummary = "ComputeBarcodeOverlap",
+        programGroup = SparkProgramGroup.class
+)
 public class ComputeBarcodeOverlapSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -70,6 +77,6 @@ public class ComputeBarcodeOverlapSpark extends GATKSparkTool {
         });
 
 
-        barcodeOverlapsByWindowPairs.saveAsTextFile(out);
+        barcodeOverlapsByWindowPairs.saveAsObjectFile(out);
     }
 }
