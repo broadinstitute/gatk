@@ -19,7 +19,7 @@ import java.util.*;
 
 public final class VectorPairHMMUnitTest extends BaseTest {
     private final static boolean DEBUG = false;
-    final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM();
+    final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM(false);
 
     private static final String publicTestDirRelative = "src/test/resources/";
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";

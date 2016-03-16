@@ -6,12 +6,12 @@
 
 using namespace std;
 
-bool use_double = false;
+bool g_useDouble = false;
 
 //Should be called only once for the whole Java process - initializes field ids for the classes JNIReadDataHolderClass
-//and JNIHaplotypeDataHolderClass
-JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM_jniInitializeClassFields
-  (JNIEnv* env, jobject thisObject, jclass readDataHolderClass, jclass haplotypeDataHolderClass)
+//and JNIHaplotypeDataHolderClass as well as double vs. single precision mode
+JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM_jniInitializePairHMM
+  (JNIEnv* env, jobject thisObject, jboolean useDouble, jclass readDataHolderClass, jclass haplotypeDataHolderClass)
 {
   assert(readDataHolderClass);
   assert(haplotypeDataHolderClass);
@@ -35,6 +35,8 @@ JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_VectorLo
   fid = env->GetFieldID(haplotypeDataHolderClass, "haplotypeBases", "[B");
   assert(fid && "JNI pairHMM: Could not get FID for haplotypeBases");
   g_load_time_initializer.m_haplotypeBasesFID = fid;
+
+  g_useDouble = useDouble;
 }
 
 JNIEXPORT void JNICALL initializeHaplotypes
@@ -186,7 +188,7 @@ inline void compute_testcases(vector<testcase>& tc_array, unsigned numTestCases,
   #pragma omp parallel for schedule (dynamic,10000) num_threads(maxNumThreadsToUse)
   for(unsigned tc_idx=0;tc_idx<numTestCases;++tc_idx)
   {
-    float result_avxf = use_double ? 0 : g_compute_full_prob_float(&(tc_array[tc_idx]), 0);
+    float result_avxf = g_useDouble ? 0 : g_compute_full_prob_float(&(tc_array[tc_idx]), 0);
     double result = 0;
     if (result_avxf < MIN_ACCEPTED) {
       double result_avxd = g_compute_full_prob_double(&(tc_array[tc_idx]), 0);
