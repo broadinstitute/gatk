@@ -13,11 +13,11 @@ extern "C" {
 #define org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM_TRISTATE_CORRECTION 3.0
 /*
  * Class:     org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM
- * Method:    jniInitializeClassFields
+ * Method:    jniInitialize
  * Signature: (Ljava/lang/Class;Ljava/lang/Class;J)V
  */
-JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM_jniInitializeClassFields
-  (JNIEnv *, jobject, jclass, jclass);
+JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM_jniInitializePairHMM
+  (JNIEnv *, jobject, jboolean, jclass, jclass);
 
 /*
  * Class:     org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM

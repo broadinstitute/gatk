@@ -51,10 +51,11 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
      * C++ codegets FieldIDs for these classes once and re-uses these IDs for the remainder of the program. Field IDs do not
      * change per JVM session
      *
+     * @param useDouble                if true native pairHMM uses double-precision floating-point, otherwise single-precision
      * @param readDataHolderClass      class type of JNIReadDataHolderClass
      * @param haplotypeDataHolderClass class type of JNIHaplotypeDataHolderClass
      */
-    native void jniInitializeClassFields(Class<?> readDataHolderClass, Class<?> haplotypeDataHolderClass);
+    native void jniInitializePairHMM(boolean useDouble, Class<?> readDataHolderClass, Class<?> haplotypeDataHolderClass);
 
     /**
      * Function to report if AVX is supported on the system.
@@ -83,7 +84,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     }
     
     //The constructor is called only once inside PairHMMLikelihoodCalculationEngine
-    public VectorLoglessPairHMM() throws UserException.HardwareFeatureException {
+    public VectorLoglessPairHMM(boolean useDouble) throws UserException.HardwareFeatureException {
         super();
 
         synchronized (isVectorLoglessPairHMMLibraryLoaded) {
@@ -113,7 +114,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                 isVectorLoglessPairHMMLibraryLoaded = true;
 
                 //need to do this only once
-                jniInitializeClassFields(JNIReadDataHolderClass.class, JNIHaplotypeDataHolderClass.class);
+                jniInitializePairHMM(useDouble, JNIReadDataHolderClass.class, JNIHaplotypeDataHolderClass.class);
             }
         }
     }

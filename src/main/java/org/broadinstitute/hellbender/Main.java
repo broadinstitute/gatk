@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
+import org.broadinstitute.hellbender.utils.EnableFlushToZero;
 
 import java.util.*;
 
@@ -78,6 +79,8 @@ public class Main {
      */
     public static void main(final String[] args) {
         try {
+            // Enable Flush To Zero mode for floating point operations
+            EnableFlushToZero.enable();
             Object result = new Main().instanceMain(args, getPackageList(), "");
             if (result != null) {
               System.out.println("Tool returned:\n" + result);
