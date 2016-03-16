@@ -88,6 +88,6 @@ public class ComputeBarcodeOverlapSpark extends GATKSparkTool {
             return results;
         }).reduceByKey((value1, value2) -> value1 + value2);
 
-        pairCounts.saveAsTextFile(out);
+        pairCounts.saveAsObjectFile(out);
     }
 }
