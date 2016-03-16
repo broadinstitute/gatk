@@ -62,7 +62,7 @@ public final class ApplyBQSR extends ReadWalker{
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputWriter != null ) {
             outputWriter.close();
         }

@@ -22,7 +22,7 @@ public final class CountVariants extends VariantWalker{
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         return count;
     }
 }

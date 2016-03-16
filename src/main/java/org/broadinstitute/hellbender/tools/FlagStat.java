@@ -27,7 +27,7 @@ public final class FlagStat extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         return sum;
     }
 

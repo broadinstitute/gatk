@@ -35,7 +35,7 @@ public final class PrintReads extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputWriter != null ) {
             outputWriter.close();
         }

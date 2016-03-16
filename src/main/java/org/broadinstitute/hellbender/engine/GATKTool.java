@@ -500,15 +500,15 @@ public abstract class GATKTool extends CommandLineProgram {
     public abstract void traverse();
 
     /**
-     * Operations performed immediately after traversal. Should be overridden by tool authors who
-     * need to close local resources, etc., after traversal. Also allows tools to return a value
-     * representing the traversal result, which is printed by the engine.
+     * Operations performed immediately after a successful traversal (ie when no uncaught exceptions were thrown during the traversal).
+     * Should be overridden by tool authors who need to close local resources, etc., after traversal.
+     * Also allows tools to return a value representing the traversal result, which is printed by the engine.
      *
      * Default implementation does nothing and returns null.
      *
      * @return Object representing the traversal result, or null if a tool does not return a value
      */
-    public Object onTraversalDone() { return null; }
+    public Object onTraversalSuccess() { return null; }
 
     @Override
     protected final Object doWork() {
@@ -516,6 +516,6 @@ public abstract class GATKTool extends CommandLineProgram {
         progressMeter.start();
         traverse();
         progressMeter.stop();
-        return onTraversalDone();
+        return onTraversalSuccess();
     }
 }

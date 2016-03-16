@@ -87,7 +87,7 @@ public final class SplitReads extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outs != null ) {
             outs.values().forEach(writer -> writer.close());
         }

@@ -22,7 +22,7 @@ public final class CountBases extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         return count;
     }
 }

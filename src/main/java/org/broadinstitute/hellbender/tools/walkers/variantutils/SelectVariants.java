@@ -588,12 +588,9 @@ public final class SelectVariants extends VariantWalker {
      * Close out the new variants file.
      */
     @Override
-    public Object onTraversalDone() {
-        try {
-            return null;
-        } finally {
-            vcfWriter.close();
-        }
+    public Object onTraversalSuccess() {
+        vcfWriter.close();
+        return null;
     }
 
     /**

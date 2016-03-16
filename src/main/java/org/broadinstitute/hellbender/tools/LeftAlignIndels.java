@@ -84,7 +84,7 @@ public final class LeftAlignIndels extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputWriter != null ) {
             outputWriter.close();
         }
