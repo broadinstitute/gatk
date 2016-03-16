@@ -24,8 +24,8 @@ import java.util.*;
 public class QueryBarcodeOverlapSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "uri for the input file",
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+    @Argument(doc = "uri for the barcode overlap data",
+            shortName = "overlapData", fullName = "overlapData",
             optional = true)
     public String input;
 
@@ -38,6 +38,11 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
             shortName = "interval", fullName = "interval",
             optional = true)
     public String interval;
+
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
@@ -55,7 +60,7 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
             final List<Tuple2<SimpleInterval, Integer>> overlaps = new ArrayList<>();
             final SimpleInterval overlapInterval1 = overlapCountObject._1()._1;
             final SimpleInterval overlapInterval2 = overlapCountObject._1()._2;
-            if (overlapInterval1.equals(queryInterval)) {
+            if (overlapInterval1.equals(queryInterval)) {in
                 overlaps.add(new Tuple2<>(overlapInterval2, overlapCountObject._2));
             } else if (overlapInterval2.equals(queryInterval)) {
                 overlaps.add(new Tuple2<>(overlapInterval1, overlapCountObject._2));
