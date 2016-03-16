@@ -60,7 +60,7 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
             final List<Tuple2<SimpleInterval, Integer>> overlaps = new ArrayList<>();
             final SimpleInterval overlapInterval1 = overlapCountObject._1()._1;
             final SimpleInterval overlapInterval2 = overlapCountObject._1()._2;
-            if (overlapInterval1.equals(queryInterval)) {in
+            if (overlapInterval1.equals(queryInterval)) {
                 overlaps.add(new Tuple2<>(overlapInterval2, overlapCountObject._2));
             } else if (overlapInterval2.equals(queryInterval)) {
                 overlaps.add(new Tuple2<>(overlapInterval1, overlapCountObject._2));
