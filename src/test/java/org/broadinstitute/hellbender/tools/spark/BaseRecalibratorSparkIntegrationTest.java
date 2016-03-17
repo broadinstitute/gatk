@@ -147,7 +147,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @Test(dataProvider = "BQSRTest")
     public void testBQSRSpark(BQSRTest params) throws IOException {
-        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
+        ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 ab.getString(),
                 Arrays.asList(params.expectedFileName));
