@@ -27,12 +27,20 @@ import org.gradle.internal.os.OperatingSystem
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
+applicationDefaultJvmArgs = ["-Dsamjdk.intel_deflater_so_path=build/libs/libIntelDeflater.so"]
+
 task downloadGsaLibFile(type: Download) {
     src 'http://cran.r-project.org/src/contrib/gsalib_2.1.tar.gz'
     dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
     overwrite false
 }
 
+task getIntelDeflater(type:Exec) {
+  workingDir '.'
+  
+  String version="2.1.1"
+  commandLine "/bin/bash", "-c", "wget --no-verbose https://github.com/samtools/htsjdk/archive/" + version + ".zip; unzip -q "+ version +".zip ; mkdir -p build/libs/; cp -v htsjdk-"+ version+"/lib/jni/libIntelDeflater.so build/libs/; rm -f "+ version +".zip; rm -fr htsjdk-"+version+"; "
+}
 
 repositories {
     mavenCentral()
@@ -451,11 +459,11 @@ uploadArchives {
         )
     }
 
+
 task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
-
-installDist.dependsOn downloadGsaLibFile
+installDist.dependsOn downloadGsaLibFile, getIntelDeflater
 build.dependsOn installDist
 check.dependsOn installDist
 
