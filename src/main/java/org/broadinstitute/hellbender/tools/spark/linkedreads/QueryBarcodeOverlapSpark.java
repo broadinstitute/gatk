@@ -101,7 +101,7 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
 
         @Override
         public int compare(final SimpleInterval o1, final SimpleInterval o2) {
-            final int contigComparison = new Integer(referenceSequenceDictionary.getSequenceIndex(o1.getContig())).compareTo(referenceSequenceDictionary.getSequenceIndex(o1.getContig()));
+            final int contigComparison = new Integer(referenceSequenceDictionary.getSequenceIndex(o1.getContig())).compareTo(referenceSequenceDictionary.getSequenceIndex(o2.getContig()));
             if (contigComparison != 0) {
                 return contigComparison;
             } else {
