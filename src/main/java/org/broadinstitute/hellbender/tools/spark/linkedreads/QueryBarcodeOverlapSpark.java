@@ -70,21 +70,34 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
 
         final SAMSequenceDictionary referenceSequenceDictionary = getReferenceSequenceDictionary();
 
-        final List<Tuple2<SimpleInterval, Integer>> results = queryIntervalOverlaps.sortByKey((o1, o2) -> {
+        final List<Tuple2<SimpleInterval, Integer>> results = queryIntervalOverlaps.sortByKey(new SimpleIntervalComparator(referenceSequenceDictionary)).collect();
+
+        try (final PrintWriter writer = new PrintWriter(out)) {
+            for (final Tuple2<SimpleInterval, Integer> window : results) {
+                writer.write(window._1.getContig() + "\t" + window._1.getStart() + "\t" + window._1.getEnd() + "\t" + window._2 + "\n");
+            }
+        } catch (FileNotFoundException e) {
+            throw new GATKException("Couldn't open output file", e);
+        }
+    }
+
+    private static class SimpleIntervalComparator implements Comparator<SimpleInterval>, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private final SAMSequenceDictionary referenceSequenceDictionary;
+
+        public SimpleIntervalComparator(final SAMSequenceDictionary referenceSequenceDictionary) {
+            this.referenceSequenceDictionary = referenceSequenceDictionary;
+        }
+
+        @Override
+        public int compare(final SimpleInterval o1, final SimpleInterval o2) {
             final int contigComparison = new Integer(referenceSequenceDictionary.getSequenceIndex(o1.getContig())).compareTo(referenceSequenceDictionary.getSequenceIndex(o1.getContig()));
             if (contigComparison != 0) {
                 return contigComparison;
             } else {
                 return new Integer(o1.getStart()).compareTo(o2.getStart());
             }
-        }).collect();
-
-        try (final PrintWriter writer = new PrintWriter(out)) {
-            for (Tuple2<SimpleInterval, Integer> window : results) {
-                writer.write(window._1.getContig() + "\t" + window._1.getStart() + "\t" + window._1.getEnd() + "\t" + window._2 + "\n");
-            }
-        } catch (FileNotFoundException e) {
-            throw new GATKException("Couldn't open output file", e);
         }
     }
 }
