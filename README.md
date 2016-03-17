@@ -22,7 +22,7 @@ If you are looking for the codebase of the current production version of GATK, p
 * Java 8
 * Git 2.5 or greater
 * Optional, but recommended:
-    * Gradle 2.11 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
+    * Gradle 2.12 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
       download and use an appropriate gradle version automatically), see examples below.
     * gcc 4.8 or greater (needed for building the native AVX PairHMM shared library)
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
