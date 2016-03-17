@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.cmdline;
 
+import htsjdk.samtools.Defaults;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
@@ -140,6 +141,7 @@ public abstract class CommandLineProgram {
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
                         " " + System.getProperty("java.runtime.version") +
                         "; Version: " + commandLineParser.getVersion() +
+                        " " + (Defaults.USE_ASYNC_IO ? "asyncIO": "syncIO") +
                         " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
             catch (final Exception e) { /* Unpossible! */ }
