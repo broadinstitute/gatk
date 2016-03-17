@@ -158,6 +158,12 @@ If you are looking for the codebase of the current production version of GATK, p
   on a cluster or the cloud by building a Spark jar with `gradle installSpark` and passing the resulting jar in `build/libs/`
   directly to either `spark-submit` or `gcloud`.
 
+* Note: by default, GATK uses asynchronous IO and will use a separate thread for writting read and variant files. On systems with only 1 CPU this may reduce performance. To turn that option off, run GATK like this:
+
+```
+      JAVA_OPTS="-Dsamjdk.use_async_io=false" ./gatk-launch <rest of command>
+```
+
 ##Testing GATK4
 
 * To run all tests, run **`gradle test`**.
