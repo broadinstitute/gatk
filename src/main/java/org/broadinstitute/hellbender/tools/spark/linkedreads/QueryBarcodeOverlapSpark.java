@@ -70,7 +70,16 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
 
         final SAMSequenceDictionary referenceSequenceDictionary = getReferenceSequenceDictionary();
 
-        final List<Tuple2<SimpleInterval, Integer>> results = queryIntervalOverlaps.sortByKey(new SimpleIntervalComparator(referenceSequenceDictionary)).collect();
+        final List<Tuple2<SimpleInterval, Integer>> results = queryIntervalOverlaps.collect();
+
+        final Comparator<Tuple2<SimpleInterval, Integer>> resultsComparator = new Comparator<Tuple2<SimpleInterval, Integer>>() {
+            Comparator<SimpleInterval> simpleIntervalComparator = new SimpleIntervalComparator(referenceSequenceDictionary);
+            @Override
+            public int compare(final Tuple2<SimpleInterval, Integer> pair1, final Tuple2<SimpleInterval, Integer> pair2) {
+                return simpleIntervalComparator.compare(pair1._1, pair2._1);
+            }
+        };
+        Collections.sort(results, resultsComparator);
 
         try (final PrintWriter writer = new PrintWriter(out)) {
             for (final Tuple2<SimpleInterval, Integer> window : results) {
