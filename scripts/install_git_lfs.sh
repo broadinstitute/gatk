@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GIT_LFS_VERSION=v1.1.0
+GIT_LFS_VERSION=v1.1.1
 
 echo "cloning"
 git clone https://github.com/github/git-lfs.git
@@ -27,9 +27,6 @@ echo "install"
 git-lfs/bin/git-lfs install
 
 echo "pull"
-git-lfs/bin/git-lfs pull
-
-echo "pull again to work around https://github.com/github/git-lfs/issues/904"
 git-lfs/bin/git-lfs pull
 
 echo "ls-files"
