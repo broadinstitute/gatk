@@ -17,6 +17,9 @@ import java.util.function.LongSupplier;
  * after processing each record from the primary input, and {@link #stop} at traversal end to print
  * summary statistics.
  *
+ * Note that {@link #start} must only be called once, before any {@link #update(Locatable)}.
+ * Note no {@link #update(Locatable)} must be called after {@link #stop}.
+ *
  * All output is made at INFO level via log4j.
  */
 public final class ProgressMeter {
@@ -96,6 +99,16 @@ public final class ProgressMeter {
     private LongSupplier timeFunction;
 
     /**
+     * Keeps track of whether the progress meter has ever been started.
+     */
+    private boolean started;
+
+    /**
+     * Keeps track of whether the progress meter has been stopped.
+     */
+    private boolean stopped;
+
+    /**
      * Create a progress meter with the default update interval of {@link #DEFAULT_SECONDS_BETWEEN_UPDATES} seconds
      * and the default time function {@link #DEFAULT_TIME_FUNCTION}.
      */
@@ -129,14 +142,24 @@ public final class ProgressMeter {
             throw new IllegalArgumentException("secondsBetweenUpdates must be > 0.0");
         }
 
+        this.started = false;
+        this.stopped = false;
         this.secondsBetweenUpdates = secondsBetweenUpdates;
         this.timeFunction = timeFunction;
     }
 
     /**
      * Start the progress meter and produce preliminary output such as column headings.
+     * @throws IllegalStateException if the meter has been started before or has been stopped already
      */
     public void start() {
+        if (started){
+            throw new IllegalStateException("the progress meter has been started already");
+        }
+        if (stopped){
+            throw new IllegalStateException("the progress meter has been stopped already");
+        }
+        started = true;
         logger.info("Starting traversal");
         printHeader();
 
@@ -153,8 +176,15 @@ public final class ProgressMeter {
      * statistics to the logger roughly every {@link #secondsBetweenUpdates} seconds.
      *
      * @param currentLocus the genomic location of the record just processed or null if the most recent record had no location.
+     * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void update( final Locatable currentLocus ) {
+        if (! started){
+            throw new IllegalStateException("the progress meter has not been started yet");
+        }
+        if (stopped){
+            throw new IllegalStateException("the progress meter has been stopped already");
+        }
         ++numRecordsProcessed;
         if ( numRecordsProcessed % RECORDS_BETWEEN_TIME_CHECKS == 0 ) {
             currentTimeMs = timeFunction.getAsLong();
@@ -169,8 +199,16 @@ public final class ProgressMeter {
 
     /**
      * Stop the progress meter and output summary statistics to the logger
+     * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void stop() {
+        if (! started){
+            throw new IllegalStateException("the progress meter has not been started yet");
+        }
+        if (stopped){
+            throw new IllegalStateException("the progress meter has been stopped already");
+        }
+        this.stopped = true;
         currentTimeMs = timeFunction.getAsLong();
         logger.info(String.format("Traversal complete. Processed %d total records in %.1f minutes.", numRecordsProcessed, elapsedTimeInMinutes()));
     }
@@ -240,4 +278,19 @@ public final class ProgressMeter {
         return currentLocus != null ? currentLocus.getContig() + ":" + currentLocus.getStart() :
                                       "unmapped";
     }
+
+    /**
+     * Returns whether the meter has been started. It returns false before the call to {@link #start} and true forever after.
+     */
+    public boolean started() {
+        return started;
+    }
+
+    /**
+     * Returns whether the meter has been stopped. It returns false before the call to {@link #stop} and true forever after.
+     */
+    public boolean stopped() {
+        return stopped;
+    }
+
 }

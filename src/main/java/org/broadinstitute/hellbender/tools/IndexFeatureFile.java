@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.util.BlockCompressedOutputStream;
-import htsjdk.tribble.AbstractFeatureReader;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
-import htsjdk.tribble.Tribble;
+import htsjdk.tribble.*;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import htsjdk.tribble.index.tabix.TabixFormat;
@@ -21,7 +18,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -61,7 +60,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
 
         // Get the right codec for the file to be indexed. This call will throw an appropriate exception
         // if featureFile is not in a supported format or is unreadable.
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(featureFile);
+        final FeatureCodec<? extends Feature, ?> codec = new ProgressReportingDelegatingCodec<>(FeatureManager.getCodecForFile(featureFile), ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES);
 
         final Index index = createAppropriateIndexInMemory(codec);
         final File indexFile = determineFileName(index);
@@ -127,6 +126,12 @@ public final class IndexFeatureFile extends CommandLineProgram {
     }
 
     private boolean isVCFCodec( final FeatureCodec<? extends Feature, ?> codec ) {
-        return codec.getClass() == VCFCodec.class || codec.getClass() == VCF3Codec.class;
+        if ( codec.getClass() == VCFCodec.class || codec.getClass() == VCF3Codec.class ) {
+            return true;
+        }
+        if (codec.getClass() == ProgressReportingDelegatingCodec.class){
+            return isVCFCodec(((ProgressReportingDelegatingCodec<?,?>)codec).getDelegatee());
+        }
+        return false;
     }
 }
