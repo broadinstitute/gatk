@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
@@ -125,72 +126,6 @@ public abstract class LocusWalker extends GATKTool {
                 }
             );
     }
-
-	/**
-	 * Wrapper for {@link org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState} and intervals to iterate
-	 */
-	protected class IntervalOverlappingIterator implements Iterable<AlignmentContext>, Iterator<AlignmentContext> {
-
-		private final Iterator<AlignmentContext> iterator;
-
-		private final Iterator<SimpleInterval> intervals;
-
-		private SimpleInterval currentInterval;
-
-		private AlignmentContext next;
-
-		/**
-		 * Constructor
-		 *
-		 * @param iterator		underlying iterator
-		 * @param intervals sorted list of intervals to traverse
-		 */
-		public IntervalOverlappingIterator(Iterator<AlignmentContext> iterator, List<SimpleInterval> intervals) {
-			this.iterator = iterator;
-			this.intervals = intervals.iterator();
-			currentInterval = this.intervals.next();
-			advance();
-		}
-
-		@Override
-		public Iterator<AlignmentContext> iterator() {
-			return this;
-		}
-
-		@Override
-		public boolean hasNext() {
-			return next != null;
-		}
-
-		@Override
-		public AlignmentContext next() {
-			if(!hasNext()) {
-				throw new NoSuchElementException();
-			}
-			AlignmentContext toReturn = next;
-			advance();
-			return toReturn;
-		}
-
-		/**
-		 * Advance to the next AlignmentContext
-		 */
-		private void advance() {
-			// all sources are finished
-			if(!iterator.hasNext() || currentInterval == null) {
-				next = null;
-			} else {
-				next = iterator.next();
-				// if the next AlignmentContext is not in the current interval
-				if(!currentInterval.overlaps(next.getLocation())) {
-					// advance the interval and try with the next one
-					currentInterval = (intervals.hasNext()) ? intervals.next() : null;
-					advance();
-				}
-			}
-		}
-
-	}
 
     /**
      * Process an individual AlignmentContext (with optional contextual information). Must be implemented by tool authors.
