@@ -2,6 +2,10 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
@@ -11,7 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * A LocusWalker is a tool that processes reads that overlaps a single position in a reference at a time from
+ * A LocusWalker is a tool that processes reads that overlap a single position in a reference at a time from
  * one or multiple sources of reads, with optional contextual information from a reference and/or sets of
  * variants/Features.
  *
@@ -21,6 +25,14 @@ import java.util.stream.StreamSupport;
  * @author Daniel Gómez-Sánchez (magicDGS)
  */
 public abstract class LocusWalker extends GATKTool {
+
+	@Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
+	public boolean disableAllReadFilters = false;
+
+	/**
+	 * Should the LIBS keep unique reads?
+	 */
+	protected boolean KEEP_UNIQUE_READ_LIST_IN_LIBS = false;
 
 	/**
 	 * LocusWalkers requires read sources
@@ -40,6 +52,23 @@ public abstract class LocusWalker extends GATKTool {
 	}
 
 	/**
+	 * Returns the read filter (simple or composite) that will be applied to the reads in each window.
+	 *
+	 * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.WellformedReadFilter} filter with all default options,
+	 * as well as the {@link ReadFilterLibrary#MAPPED} filter.
+	 *
+	 * Default implementation of {@link #traverse()} calls this method once before iterating
+	 * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+	 *
+	 * Subclasses can override to provide their own filters
+	 * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
+	 */
+	public CountingReadFilter makeReadFilter(){
+		return new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
+				.and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED));
+	}
+
+	/**
 	 * Get the information about how to downsample the reads. By default {@link org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod#NONE} is returned.
 	 * Subclasses should override it to provide own downsampling methods.
 	 *
@@ -55,12 +84,14 @@ public abstract class LocusWalker extends GATKTool {
 	 */
 	@Override
 	protected final void onStartup() {
-		// Overridden only to make final so that concrete tool implementations don't override
 		super.onStartup();
+		if ( hasIntervals() ) {
+			reads.setIntervalsForTraversal(intervalsForTraversal);
+		}
 	}
 
 	/**
-	 * Implementation of AlignmentContext traversal.
+	 * Implementation of locus-based traversal.
 	 * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
 	 *
 	 * The default implementation iterates over all positions in the reference for all samples in the read groups, using
@@ -71,19 +102,24 @@ public abstract class LocusWalker extends GATKTool {
 	 */
 	@Override
 	public void traverse() {
-		final SAMFileHeader header = reads.getHeader();
+		final SAMFileHeader header = getHeaderForReads();
 		// get the samples from the read groups
 		final Set<String> samples = header.getReadGroups().stream()
 										  .map(SAMReadGroupRecord::getSample)
 										  .collect(Collectors.toSet());
+		CountingReadFilter countedFilter = disableAllReadFilters ?
+				new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
+				makeReadFilter();
+		// TODO: wrap reads.iterator() with ReadFilteringIterator and countedFilter
 		// get the LIBS
-		LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), getDownsamplingMethod(), includeDeletions(), false, samples, header);
+		LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), getDownsamplingMethod(), includeDeletions(), KEEP_UNIQUE_READ_LIST_IN_LIBS, samples, header);
+		// TODO: wraps LIBS for iterate using intervalsForTraversal
 		// iterate over each alignment, and apply the function
 		StreamSupport.stream(libs.spliterator(), false)
 			.forEach(alignmentContext -> {
-				final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext.getLocation());
-				apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
-				progressMeter.update(alignmentInterval);
+						final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext.getLocation());
+						apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
+						progressMeter.update(alignmentInterval);
 				}
 			);
 	}
@@ -94,11 +130,11 @@ public abstract class LocusWalker extends GATKTool {
 	 * as possible.
 	 *
 	 * @param alignmentContext current alignment context
-	 * @param referenceContext Reference bases spanning the current read. Will be an empty, but non-null, context object
+	 * @param referenceContext Reference bases spanning the current locus. Will be an empty, but non-null, context object
 	 *                         if there is no backing source of reference data (in which case all queries on it will return
-	 *                         an empty array/iterator). Can request extra bases of context around the current read's interval
+	 *                         an empty array/iterator). Can request extra bases of context around the current locus
 	 *                         by invoking {@link ReferenceContext#setWindow} on this object before calling {@link ReferenceContext#getBases}
-	 * @param featureContext Features spanning the current read. Will be an empty, but non-null, context object
+	 * @param featureContext Features spanning the current locus. Will be an empty, but non-null, context object
 	 *                       if there is no backing source of Feature data (in which case all queries on it will return an
 	 *                       empty List).
 	 */
