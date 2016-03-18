@@ -10,6 +10,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -113,9 +116,8 @@ public abstract class LocusWalker extends GATKTool {
         // TODO: wrap reads.iterator() with ReadFilteringIterator and countedFilter
         // get the LIBS
         LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), getDownsamplingMethod(), includeDeletions(), KEEP_UNIQUE_READ_LIST_IN_LIBS, samples, header);
-        // TODO: wraps LIBS for iterate using intervalsForTraversal
         // iterate over each alignment, and apply the function
-        StreamSupport.stream(libs.spliterator(), false)
+        StreamSupport.stream(new IntervalOverlappingIterator(libs, intervalsForTraversal).spliterator(), false)
             .forEach(alignmentContext -> {
                         final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext.getLocation());
                         apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
@@ -123,6 +125,72 @@ public abstract class LocusWalker extends GATKTool {
                 }
             );
     }
+
+	/**
+	 * Wrapper for {@link org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState} and intervals to iterate
+	 */
+	protected class IntervalOverlappingIterator implements Iterable<AlignmentContext>, Iterator<AlignmentContext> {
+
+		private final Iterator<AlignmentContext> iterator;
+
+		private final Iterator<SimpleInterval> intervals;
+
+		private SimpleInterval currentInterval;
+
+		private AlignmentContext next;
+
+		/**
+		 * Constructor
+		 *
+		 * @param iterator		underlying iterator
+		 * @param intervals sorted list of intervals to traverse
+		 */
+		public IntervalOverlappingIterator(Iterator<AlignmentContext> iterator, List<SimpleInterval> intervals) {
+			this.iterator = iterator;
+			this.intervals = intervals.iterator();
+			currentInterval = this.intervals.next();
+			advance();
+		}
+
+		@Override
+		public Iterator<AlignmentContext> iterator() {
+			return this;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return next != null;
+		}
+
+		@Override
+		public AlignmentContext next() {
+			if(!hasNext()) {
+				throw new NoSuchElementException();
+			}
+			AlignmentContext toReturn = next;
+			advance();
+			return toReturn;
+		}
+
+		/**
+		 * Advance to the next AlignmentContext
+		 */
+		private void advance() {
+			// all sources are finished
+			if(!iterator.hasNext() || currentInterval == null) {
+				next = null;
+			} else {
+				next = iterator.next();
+				// if the next AlignmentContext is not in the current interval
+				if(!currentInterval.overlaps(next.getLocation())) {
+					// advance the interval and try with the next one
+					currentInterval = intervals.next();
+					advance();
+				}
+			}
+		}
+
+	}
 
     /**
      * Process an individual AlignmentContext (with optional contextual information). Must be implemented by tool authors.
