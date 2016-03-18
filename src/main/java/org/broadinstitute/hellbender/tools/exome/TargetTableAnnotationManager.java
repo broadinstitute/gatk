@@ -5,7 +5,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Target table annotation collection.

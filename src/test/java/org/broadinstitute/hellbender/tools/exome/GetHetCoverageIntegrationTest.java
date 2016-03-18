@@ -33,20 +33,37 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
     private static SAMFileHeader normalHeader;
     private static SAMFileHeader tumorHeader;
 
+    private static Pulldown normalHetPulldownExpected;
+    private static Pulldown tumorHetPulldownExpected;
+
+    private static final File normalOutputFile = createTempFile("normal-test", ".txt");
+    private static final File tumorOutputFile = createTempFile("tumor-test", ".txt");
+
     @BeforeClass
     public void initHeaders() throws IOException {
         try (final SamReader normalBamReader = SamReaderFactory.makeDefault().open(NORMAL_BAM_FILE);
              final SamReader tumorBamReader = SamReaderFactory.makeDefault().open(TUMOR_BAM_FILE)) {
             normalHeader = normalBamReader.getFileHeader();
             tumorHeader = tumorBamReader.getFileHeader();
+
+            normalHetPulldownExpected = new Pulldown(normalHeader);
+            normalHetPulldownExpected.add(new SimpleInterval("1", 11522, 11522), 7, 4);
+            normalHetPulldownExpected.add(new SimpleInterval("1", 12098, 12098), 8, 6);
+            normalHetPulldownExpected.add(new SimpleInterval("1", 14630, 14630), 9, 8);
+            normalHetPulldownExpected.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+            normalHetPulldownExpected.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+
+            tumorHetPulldownExpected = new Pulldown(tumorHeader);
+            tumorHetPulldownExpected.add(new SimpleInterval("1", 11522, 11522), 7, 4);
+            tumorHetPulldownExpected.add(new SimpleInterval("1", 12098, 12098), 8, 6);
+            tumorHetPulldownExpected.add(new SimpleInterval("1", 14630, 14630), 9, 8);
+            tumorHetPulldownExpected.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+            tumorHetPulldownExpected.add(new SimpleInterval("2", 14982, 14982), 6, 5);
         }
     }
 
     @Test
     public void testGetHetCoverage() {
-        final File normalOutputFile = createTempFile("normal-test", ".txt");
-        final File tumorOutputFile = createTempFile("tumor-test", ".txt");
-
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
@@ -57,25 +74,50 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         };
         runCommandLine(arguments);
 
-        final Pulldown normalOutputPulldownCLP = new Pulldown(normalOutputFile, normalHeader);
-        final Pulldown tumorOutputPulldownCLP = new Pulldown(tumorOutputFile, tumorHeader);
+        final Pulldown normalOutputPulldownResult = new Pulldown(normalOutputFile, normalHeader);
+        final Pulldown tumorOutputPulldownResult = new Pulldown(tumorOutputFile, tumorHeader);
 
-        Pulldown normalHetPulldown = new Pulldown(normalHeader);
-        normalHetPulldown.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-        normalHetPulldown.add(new SimpleInterval("1", 12098, 12098), 8, 6);
-        normalHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        normalHetPulldown.add(new SimpleInterval("2", 14689, 14689), 6, 9);
-        normalHetPulldown.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+        Assert.assertEquals(normalHetPulldownExpected, normalOutputPulldownResult);
+        Assert.assertEquals(tumorHetPulldownExpected, tumorOutputPulldownResult);
+    }
 
-        Pulldown tumorHetPulldown = new Pulldown(tumorHeader);
-        tumorHetPulldown.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-        tumorHetPulldown.add(new SimpleInterval("1", 12098, 12098), 8, 6);
-        tumorHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        tumorHetPulldown.add(new SimpleInterval("2", 14689, 14689), 6, 9);
-        tumorHetPulldown.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+    @Test
+    public void testGetHetCoverageNormalOnly() {
+        final String[] arguments = {
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath()
+        };
+        runCommandLine(arguments);
 
-        Assert.assertEquals(normalHetPulldown, normalOutputPulldownCLP);
-        Assert.assertEquals(tumorHetPulldown, tumorOutputPulldownCLP);
+        final Pulldown normalOutputPulldownResult = new Pulldown(normalOutputFile, normalHeader);
+
+        Assert.assertEquals(normalHetPulldownExpected, normalOutputPulldownResult);
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testGetHetCoverageMissingTumorBAM() {
+        final String[] arguments = {
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath()
+        };
+        runCommandLine(arguments);
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testGetHetCoverageMissingTumorOutput() {
+        final String[] arguments = {
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME, TUMOR_BAM_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath()
+        };
+        runCommandLine(arguments);
     }
 
     //Regression test for https://github.com/broadinstitute/gatk-protected/issues/373

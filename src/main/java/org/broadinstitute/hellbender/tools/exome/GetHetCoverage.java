@@ -6,18 +6,20 @@ import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
 
 /**
- * Outputs reference/alternate read counts for a tumor sample at heterozygous SNP sites present in a normal sample.
+ * Outputs reference/alternate read counts at heterozygous SNP sites present in a normal sample
+ * (and at the same sites in a tumor sample, if specified).
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample.",
-        oneLineSummary = "Output ref/alt counts for tumor sample at heterozygous SNPs in normal sample.",
+        summary = "Output ref/alt counts at heterozygous SNPs in normal sample (and at same sites in tumor sample, if specified).",
+        oneLineSummary = "Output ref/alt counts at heterozygous SNPs in normal sample (and at same sites in tumor sample, if specified).",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class GetHetCoverage extends CommandLineProgram {
@@ -47,7 +49,7 @@ public final class GetHetCoverage extends CommandLineProgram {
             doc = "BAM file for tumor sample.",
             fullName = ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_SHORT_NAME,
-            optional = false
+            optional = true
     )
     protected File tumorBAMFile;
 
@@ -71,7 +73,7 @@ public final class GetHetCoverage extends CommandLineProgram {
             doc = "Output file for tumor-sample ref/alt read counts (at heterozygous SNPs in normal sample).",
             fullName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME,
-            optional = false
+            optional = true
     )
     protected File tumorHetOutputFile;
 
@@ -108,6 +110,16 @@ public final class GetHetCoverage extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        //if tumor arguments are missing, throw exception (and do not even get normal pulldown)
+        final boolean doTumorPulldown;
+        if (tumorHetOutputFile != null && tumorBAMFile != null) {
+            doTumorPulldown = true;
+        } else if ((tumorHetOutputFile == null) != (tumorBAMFile == null)) {
+            throw new UserException.CommandLineException("Must specify both BAM and output files for tumor pulldown.");
+        } else {
+            doTumorPulldown = false;
+        }
+
         final HetPulldownCalculator hetPulldown = new HetPulldownCalculator(REFERENCE_ARGUMENTS.getReferenceFile(),
                 snpFile, minimumMappingQuality, minimumBaseQuality, VALIDATION_STRINGENCY);
 
@@ -116,12 +128,14 @@ public final class GetHetCoverage extends CommandLineProgram {
         normalHetPulldown.write(normalHetOutputFile);
         logger.info("Normal het pulldown written to " + normalHetOutputFile.toString());
 
-        final IntervalList normalHetIntervals = normalHetPulldown.getIntervals();
+        if (doTumorPulldown) {
+            final IntervalList normalHetIntervals = normalHetPulldown.getIntervals();
 
-        logger.info("Getting tumor het pulldown...");
-        final Pulldown tumorHetPulldown = hetPulldown.getTumor(tumorBAMFile, normalHetIntervals);
-        tumorHetPulldown.write(tumorHetOutputFile);
-        logger.info("Tumor het pulldown written to " + tumorHetOutputFile.toString());
+            logger.info("Getting tumor het pulldown...");
+            final Pulldown tumorHetPulldown = hetPulldown.getTumor(tumorBAMFile, normalHetIntervals);
+            tumorHetPulldown.write(tumorHetOutputFile);
+            logger.info("Tumor het pulldown written to " + tumorHetOutputFile.toString());
+        }
 
         return "SUCCESS";
     }
