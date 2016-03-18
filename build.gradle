@@ -28,6 +28,13 @@ import org.gradle.internal.os.OperatingSystem
 mainClassName = "org.broadinstitute.hellbender.Main"
 applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io=true"]
 
+//Delete the windows script - we never test on Windows so let's not pretend it works
+startScripts {
+    doLast {
+        delete windowsScript
+    }
+}
+
 task downloadGsaLibFile(type: Download) {
     src 'http://cran.r-project.org/src/contrib/gsalib_2.1.tar.gz'
     dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
