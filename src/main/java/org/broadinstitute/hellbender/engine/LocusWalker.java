@@ -10,10 +10,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -116,8 +113,10 @@ public abstract class LocusWalker extends GATKTool {
         // TODO: wrap reads.iterator() with ReadFilteringIterator and countedFilter
         // get the LIBS
         LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), getDownsamplingMethod(), includeDeletions(), KEEP_UNIQUE_READ_LIST_IN_LIBS, samples, header);
+		// prepare the iterator
+		Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator(libs, intervalsForTraversal).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function
-        StreamSupport.stream(new IntervalOverlappingIterator(libs, intervalsForTraversal).spliterator(), false)
+        StreamSupport.stream(iterator, false)
             .forEach(alignmentContext -> {
                         final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext.getLocation());
                         apply(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(features, alignmentInterval));
@@ -184,7 +183,7 @@ public abstract class LocusWalker extends GATKTool {
 				// if the next AlignmentContext is not in the current interval
 				if(!currentInterval.overlaps(next.getLocation())) {
 					// advance the interval and try with the next one
-					currentInterval = intervals.next();
+					currentInterval = (intervals.hasNext()) ? intervals.next() : null;
 					advance();
 				}
 			}
