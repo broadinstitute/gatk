@@ -396,7 +396,7 @@ public final class BAQ implements Serializable {
         // Offset to base alignment quality (BAQ), of the same length as the read sequence.
         // At the i-th read base, BAQi = Qi - (BQi - 64) where Qi is the i-th base quality.
         // so BQi = Qi - BAQi + 64
-        byte[] bqTag = new byte[baq.length];
+        final byte[] bqTag = new byte[baq.length];
         final byte[] baseQualities = read.getBaseQualities();
         for ( int i = 0; i < bqTag.length; i++) {
             final int bq = (int) baseQualities[i] + 64;
@@ -416,7 +416,6 @@ public final class BAQ implements Serializable {
     public static void addBAQTag(GATKRead read, byte[] baq) {
         read.setAttribute(BAQ_TAG, encodeBQTag(read, baq));
     }
-
 
     /**
       * Returns true if the read has a BAQ tag, or false otherwise

@@ -83,7 +83,11 @@ public final class BaseRecalibrationEngine implements Serializable {
         this.recalArgs = recalArgs;
         this.readsHeader = readsHeader;
 
-        baq = new BAQ(recalArgs.BAQGOP); // setup the BAQ object with the provided gap open penalty
+        if (recalArgs.skipBAQ) {
+            baq = null;
+        } else {
+            baq = new BAQ(recalArgs.BAQGOP); // setup the BAQ object with the provided gap open penalty
+        }
 
         covariates = new StandardCovariateList(recalArgs, readsHeader);
 
@@ -120,11 +124,13 @@ public final class BaseRecalibrationEngine implements Serializable {
         int[] isSNP = new int[read.getLength()];
         int[] isInsertion = new int[isSNP.length];
         int[] isDeletion = new int[isSNP.length];
+
+        //Note: this function modifies the isSNP, isInsertion and isDeletion arguments so it can't be skipped, BAQ or no BAQ
         final int nErrors = calculateIsSNPOrIndel(read, refDS, isSNP, isInsertion, isDeletion);
 
-        // note for efficiency regions we don't compute the BAQ array unless we actually have
+        // note for efficiency reasons we don't compute the BAQ array unless we actually have
         // some error to marginalize over.  For ILMN data ~85% of reads have no error
-        final byte[] baqArray = nErrors == 0 ? flatBAQArray(read) : calculateBAQArray(read, refDS);
+        final byte[] baqArray = (nErrors == 0 || recalArgs.skipBAQ) ? flatBAQArray(read) : calculateBAQArray(read, refDS);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
             final ReadCovariates covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates, true, keyCache);
@@ -438,7 +444,6 @@ public final class BaseRecalibrationEngine implements Serializable {
         final int BLOCK_START_UNSET = -1;
 
         final double[] fractionalErrors = new double[baqArray.length];
-        Arrays.fill(fractionalErrors, 0.0);
         boolean inBlock = false;
         int blockStartIndex = BLOCK_START_UNSET;
         int i;
@@ -484,7 +489,7 @@ public final class BaseRecalibrationEngine implements Serializable {
      * @return a BAQ-style non-null byte[] counting NO_BAQ_UNCERTAINTY values
      * // TODO -- could be optimized avoiding this function entirely by using this inline if the calculation code above
      */
-    protected  static byte[] flatBAQArray(final GATKRead read) {
+    protected static byte[] flatBAQArray(final GATKRead read) {
         final byte[] baq = new byte[read.getLength()];
         Arrays.fill(baq, NO_BAQ_UNCERTAINTY);
         return baq;
