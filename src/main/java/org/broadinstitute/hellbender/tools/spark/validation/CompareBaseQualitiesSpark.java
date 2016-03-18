@@ -42,7 +42,7 @@ final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
     protected void runTool(final JavaSparkContext ctx) {
         JavaRDD<GATKRead> firstReads = getReads();
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
-        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, null, getIntervals(), bamPartitionSplitSize);
+        JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, referenceArguments.getReferenceFileName(), getIntervals(), bamPartitionSplitSize);
 
         long firstBamSize = firstReads.count();
         long secondBamSize = secondReads.count();

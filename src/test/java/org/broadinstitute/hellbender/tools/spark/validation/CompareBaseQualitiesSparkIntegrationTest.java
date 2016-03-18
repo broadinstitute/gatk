@@ -35,15 +35,21 @@ public final class CompareBaseQualitiesSparkIntegrationTest extends CommandLineP
         final File outFile = BaseTest.createTempFile(getTestDataDir() + "temp.diff", "txt");
         final File firstBam = new File(resourceDir, "single.read.bam");
         final File secondBam = new File(resourceDir, "another.single.read.bam");
+        final File firstCram = new File(resourceDir, "single.read.cram");
+        final File secondCram = new File(resourceDir, "another.single.read.cram");
+        final File referenceFile = new File(b37_reference_20_21);
         return new Object[][]{
-                {firstBam, firstBam, outFile, "single.read.qual.diff.txt"},
-                {firstBam, secondBam, outFile, "two.reads.qual.diff.txt"},
+                {firstBam, firstBam, null, outFile, "single.read.qual.diff.txt"},
+                {firstBam, secondBam, null, outFile, "two.reads.qual.diff.txt"},
+                {firstCram, secondCram, referenceFile, outFile, "two.reads.qual.diff.txt"},
+                {firstBam, secondCram, referenceFile, outFile, "two.reads.qual.diff.txt"},
+                {firstCram, secondBam, referenceFile, outFile, "two.reads.qual.diff.txt"},
         };
 
     }
 
     @Test(dataProvider = "CompareBasesProvider")
-    public void singleReadDiffTest(File firstBam, File secondBam, File outFile, String diffFile) throws Exception {
+    public void singleReadDiffTest(File firstBam, File secondBam, File referenceFile, File outFile, String diffFile) throws Exception {
         final String resourceDir = getTestDataDir() + "/validation/";
 
         ArgumentsBuilder args = new ArgumentsBuilder();
@@ -53,6 +59,10 @@ public final class CompareBaseQualitiesSparkIntegrationTest extends CommandLineP
         args.add(secondBam.getCanonicalPath());
         args.add("--" + "O");
         args.add(outFile.getCanonicalPath());
+        if (null != referenceFile) {
+            args.add("-R");
+            args.add(referenceFile.getAbsolutePath());
+        }
 
         this.runCommandLine(args.getArgsArray());
 
