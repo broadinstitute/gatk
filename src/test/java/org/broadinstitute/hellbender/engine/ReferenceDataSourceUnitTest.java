@@ -21,7 +21,7 @@ public final class ReferenceDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void testNonExistentReference() {
-        ReferenceDataSource refDataSource = new ReferenceFileSource(new File("/foo/bar/nonexistent.fasta"));
+        new ReferenceFileSource(BaseTest.getSafeNonExistentFile("nonexistent.fasta"));
     }
 
     @Test(expectedExceptions = UserException.MissingReferenceFaiFile.class)

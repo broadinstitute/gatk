@@ -196,4 +196,21 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         );
         spec.executeTest("testReadFiltering_asIntegrationTestSpec", this);
     }
+
+    @Test(expectedExceptions = UserException.MissingReference.class)
+    public void testNonExistentReference() throws Exception {
+        final File inCram = new File(TEST_DATA_DIR, "print_reads.sorted.cram");
+        final File outCram = BaseTest.createTempFile("print_reads_bad_reference", ".cram");
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(inCram.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outCram.getCanonicalPath());
+        args.add("-R");
+        args.add(BaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
+
+        runCommandLine(args.getArgsArray());
+    }
+
 }

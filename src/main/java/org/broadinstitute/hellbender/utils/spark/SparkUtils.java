@@ -8,10 +8,14 @@ import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockCompressedStreamConstants;
 import htsjdk.samtools.util.RuntimeIOException;
 import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 
 import java.io.*;
@@ -81,4 +85,22 @@ public final class SparkUtils {
             throw new RuntimeIOException(ioe);
         }
     }
+
+    /**
+     * Determine if the <code>targetPath</code> exists.
+     * @param ctx JavaSparkContext
+     * @param targetPath the <code>org.apache.hadoop.fs.Path</code> object to check
+     * @return true if the targetPath exists, otherwise false
+     */
+    public static boolean pathExists(final JavaSparkContext ctx, final Path targetPath) {
+        Utils.nonNull(ctx);
+        Utils.nonNull(targetPath);
+        try {
+            final FileSystem fs = targetPath.getFileSystem(ctx.hadoopConfiguration());
+            return fs.exists(targetPath);
+        } catch (IOException e) {
+            throw new UserException("Error validating existence of path " + targetPath + ": " + e.getMessage());
+        }
+    }
+
 }

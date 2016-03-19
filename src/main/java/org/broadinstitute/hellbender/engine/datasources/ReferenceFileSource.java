@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
@@ -26,6 +27,9 @@ public class ReferenceFileSource implements ReferenceSource, Serializable {
      * @param referencePath the local path to the reference file
      */
     public ReferenceFileSource(final String referencePath) {
+        if (!new File(referencePath).exists()) {
+            throw new UserException.MissingReference("The specified fasta file (" + referencePath + ") does not exist.");
+        }
         this.referencePath = referencePath;
     }
 

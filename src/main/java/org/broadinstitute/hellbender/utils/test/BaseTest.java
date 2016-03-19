@@ -307,6 +307,17 @@ public abstract class BaseTest {
     }
 
     /**
+     * Return a File object representing a file with the given name and extension that is guaranteed not to exist.
+     * @param fileNameWithExtension
+     * @return File object representing a file that is guaranteed not to exist
+     */
+    public static File getSafeNonExistentFile(final String fileNameWithExtension) {
+        final File tempDir = createTempDir("nonExistentFileHolder");
+        final File nonExistingFile = new File(tempDir, fileNameWithExtension);
+        return nonExistingFile;
+    }
+
+    /**
      * Creates an empty temp directory which will be deleted on exit after tests are complete
      *
      * @param prefix prefix for the directory name

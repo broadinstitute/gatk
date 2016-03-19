@@ -1,10 +1,16 @@
 package org.broadinstitute.hellbender.utils.spark;
 
 import htsjdk.samtools.*;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -46,5 +52,23 @@ public class SparkUtilsUnitTest extends BaseTest {
         }
 
         Assert.assertEquals(actualCount, expectedReadCount, "Wrong number of reads in final BAM file");
+    }
+
+    @Test
+    public void testPathExists() throws Exception {
+        MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
+            //use the HDFS on the mini cluster
+            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
+            final Path tempPath = new Path(workingDirectory, "testFileExists.txt");
+            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+            Assert.assertFalse(SparkUtils.pathExists(ctx, tempPath));
+            final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
+            final FSDataOutputStream fsOutStream = fs.create(tempPath);
+            fsOutStream.close();
+            fs.deleteOnExit(tempPath);
+            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
+        });
+
     }
 }

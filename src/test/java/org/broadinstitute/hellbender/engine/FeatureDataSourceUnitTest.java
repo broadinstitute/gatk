@@ -29,7 +29,8 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(new File("/foo/bar/nonexistent.vcf"));
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(
+                BaseTest.getSafeNonExistentFile("nonexistent.vcf"));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
