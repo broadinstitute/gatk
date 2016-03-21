@@ -90,7 +90,7 @@ public class Main {
             System.err.println();
             System.err.println("***********************************************************************");
 
-            if( System.getenv(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY).equals("true")) {
+            if( "true".equals(System.getenv(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY)) ) {
                 e.printStackTrace();
             }
             System.exit(USER_EXCEPTION_EXIT_VALUE);
