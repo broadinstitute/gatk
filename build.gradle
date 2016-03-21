@@ -14,7 +14,7 @@ plugins {
     id 'signing'
     id "jacoco"
     id "cpp"
-    id "de.undercouch.download" version "1.2" //used for downloading GSA lib
+    id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib and IntelDeflater
     id "com.github.johnrengelman.shadow" version "1.2.3"
     id "com.github.kt3k.coveralls" version "2.6.3"
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
@@ -35,12 +35,19 @@ startScripts {
     }
 }
 
+applicationDefaultJvmArgs = ["-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so"]
+
 task downloadGsaLibFile(type: Download) {
     src 'http://cran.r-project.org/src/contrib/gsalib_2.1.tar.gz'
     dest "src/main/resources/org/broadinstitute/hellbender/utils/R/gsalib.tar.gz"
     overwrite false
 }
 
+task downloadIntelDeflater(type: Download) {
+    //IntelDeflater is not packages with the rest of HTSJDK so we download it by hand
+    src 'https://github.com/samtools/htsjdk/raw/2.1.1/lib/jni/libIntelDeflater.so'
+    dest 'build/'
+}
 
 repositories {
     mavenCentral()
@@ -459,11 +466,11 @@ uploadArchives {
         )
     }
 
+
 task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
-
-installDist.dependsOn downloadGsaLibFile
+installDist.dependsOn downloadGsaLibFile, downloadIntelDeflater
 build.dependsOn installDist
 check.dependsOn installDist
 
