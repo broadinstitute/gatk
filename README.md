@@ -196,6 +196,8 @@ If you are looking for the codebase of the current production version of GATK, p
       Look for the line that says `See the test report at`.
       If TestNG itself crashes there will be no report generated.
 
+* To output stack traces for `UserException` set the environment variable `GATK_STACKTRACE_ON_USER_EXCEPTION=true`
+
 ##General guidelines for GATK4 developers
 
 * **Do not put private or restricted data into the repo.**

@@ -40,6 +40,7 @@ public class Main {
      * exit value when any unrecoverable exception other than {@link UserException} occurs
      */
     private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 1;
+    private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
     /**
      * The packages we wish to include in our command line *
@@ -78,18 +79,22 @@ public class Main {
      */
     public static void main(final String[] args) {
         try {
-            Object result = new Main().instanceMain(args, getPackageList(), "");
+            final Object result = new Main().instanceMain(args, getPackageList(), "");
             if (result != null) {
               System.out.println("Tool returned:\n" + result);
             }
-        } catch (UserException e){
+        } catch (final UserException e){
             System.err.println("***********************************************************************");
             System.err.println();
             System.err.println(e.getMessage());
             System.err.println();
             System.err.println("***********************************************************************");
+
+            if( System.getenv(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY).equals("true")) {
+                e.printStackTrace();
+            }
             System.exit(USER_EXCEPTION_EXIT_VALUE);
-        } catch (Exception e){
+        } catch (final Exception e){
             e.printStackTrace();
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
