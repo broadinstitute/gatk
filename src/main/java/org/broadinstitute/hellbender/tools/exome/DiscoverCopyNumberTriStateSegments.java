@@ -1,14 +1,18 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.collect.Iterators;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModel;
 import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModelArgumentCollection;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
@@ -37,9 +41,8 @@ import java.util.stream.DoubleStream;
 )
 public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram {
 
-    public static final String INPUT_ARE_ZSCORES_FULL_NAME = "inputAreZscores";
-
-    public static final String INPUT_ARE_ZSCORES_SHORT_NAME = "zscores";
+    public static final String ZSCORE_DIMENSION_FULL_NAME = "standardizeBy";
+    public static final String ZSCORE_DIMENSION_SHORT_NAME = "standardizeBy";
 
     private static final double INV_LN_10 = 1.0 / Math.log(10);
 
@@ -53,13 +56,34 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
     protected CopyNumberTriStateHiddenMarkovModelArgumentCollection modelArguments =
             new CopyNumberTriStateHiddenMarkovModelArgumentCollection();
 
+    /**
+     * Z-scores transformation dimensions.
+     */
+    public enum ZScoreDimension {
+
+        /**
+         * Input coverage must be transformed in z-scores sample by sample.
+         */
+        SAMPLE,
+
+        /**
+         * Input coverage must be transformed in z-scores target by target.
+         */
+        TARGET,
+
+        /**
+         * No transformation must be performed.
+         */
+        NONE
+    }
+
     @Argument(
-            doc = "Indicate whether the input is expressed in z-scores",
-            fullName = INPUT_ARE_ZSCORES_FULL_NAME,
-            shortName = INPUT_ARE_ZSCORES_SHORT_NAME,
-            optional = false
+            doc = "In what dimension to apply the zscore transformation",
+            fullName = ZSCORE_DIMENSION_FULL_NAME,
+            shortName = ZSCORE_DIMENSION_SHORT_NAME,
+            optional = true
     )
-    protected boolean inputAreZscores;
+    protected ZScoreDimension zscoreDimension = ZScoreDimension.SAMPLE;
 
     @Argument(
             doc = "Input counts",
@@ -85,6 +109,7 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
         final CopyNumberTriStateHiddenMarkovModel model = modelArguments.createModel();
         final TargetCollection<Target> targets = targetArguments.readTargetCollection(false);
         final ReadCountCollection inputCounts = readAndSortCountsByTargetCoordinates(targets);
+        applyZScoreTransformation(inputCounts);
         checkForMissingTargetsInInputCounts(targets, inputCounts);
 
         final Map<String, List<CopyNumberTriStateSegment>> allSegmentsBySampleName =
@@ -99,6 +124,46 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
     }
 
     /**
+     * Transform read counts to z-scores.
+     * @param inputCounts the input read-counts, modified in-situ.
+     */
+    private void applyZScoreTransformation(final ReadCountCollection inputCounts) {
+        final RealMatrix counts = inputCounts.counts();
+        switch (zscoreDimension) {
+            case SAMPLE:
+                standardizeBySample(counts);
+                break;
+            case TARGET:
+                standardizeByTarget(counts);
+                break;
+        }
+    }
+
+    private void standardizeByTarget(final RealMatrix counts) {
+        final double[] rowMeans = GATKProtectedMathUtils.rowMeans(counts);
+        final double[] rowStdDevs = GATKProtectedMathUtils.rowStdDevs(counts);
+
+        counts.walkInColumnOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return (value - rowMeans[row]) / rowStdDevs[row];
+            }
+        });
+    }
+
+    private void standardizeBySample(final RealMatrix counts) {
+        final double[] columnMeans = GATKProtectedMathUtils.columnMeans(counts);
+        final double[] columnStdDev = GATKProtectedMathUtils.columnStdDevs(counts);
+
+        counts.walkInColumnOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return (value - columnMeans[column]) / columnStdDev[column];
+            }
+        });
+    }
+
+    /**
      * Writes sorted segments into the output file provided by the user.
      * @param allSegmentsSorted iterator that must produce segment records in order.
      * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotCreateOutputFile if there is any
@@ -106,9 +171,16 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
      */
     private void writeSegmentsInOutputFile(final Iterator<CopyNumberTriStateSegmentRecord> allSegmentsSorted) {
         try (final CopyNumberTriStateSegmentRecordWriter writer = new CopyNumberTriStateSegmentRecordWriter(outputFile)) {
+            long count = 0;
+            final Set<String> samples = new HashSet<>();
             while (allSegmentsSorted.hasNext()) {
-                writer.writeRecord(allSegmentsSorted.next());
+                final CopyNumberTriStateSegmentRecord record = allSegmentsSorted.next();
+                samples.add(record.getSampleName());
+                writer.writeRecord(record);
+                count++;
             }
+            logger.info(String.format("Found a total of %d segments across %d samples", count, samples.size()));
+
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, "problems writing into the output", ex);
         }
@@ -162,121 +234,99 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
         return Iterators.mergeSorted(allSegmentRecordIterators, recordComparator);
     }
 
-    private Map<String, List<CopyNumberTriStateSegment>> calculateBestPathSegments(CopyNumberTriStateHiddenMarkovModel model1, ReadCountCollection inputCounts) {
-        final CopyNumberTriStateHiddenMarkovModel model = modelArguments.createModel();
+    private Map<String, List<CopyNumberTriStateSegment>> calculateBestPathSegments(final CopyNumberTriStateHiddenMarkovModel model, final ReadCountCollection inputCounts) {
         final List<String> sampleNames = inputCounts.columnNames();
         final Map<String, List<CopyNumberTriStateSegment>> allSegments = new LinkedHashMap<>(sampleNames.size());
-        long recordCount = 0;
         final List<Target> targets = inputCounts.targets();
         for (int i = 0; i < sampleNames.size(); i++) {
             final String sampleName = sampleNames.get(i);
-            final double[] inputValues = inputCounts.counts().getColumn(i);
-            final List<CopyNumberTriStateSegment> bestPathSegmentList = getCopyNumberTriStateSegments(model, targets, inputValues);
-            recordCount += bestPathSegmentList.size();
+            final List<Double> inputValues = DoubleStream.of(inputCounts.counts().getColumn(i)).boxed().collect(Collectors.toList());
+            final List<CopyNumberTriState> bestPath = ViterbiAlgorithm.apply(inputValues, targets, model);
+            final List<Pair<IndexRange, CopyNumberTriState>> bestPathTargetIndexRanges = condenseBestPathIntoTargetIndexAndStatePairs(bestPath, targets);
+            final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult = ForwardBackwardAlgorithm.apply(inputValues, targets, model);
+            final List<CopyNumberTriStateSegment> bestPathSegmentList = composeSegments(fbResult, bestPathTargetIndexRanges);
             allSegments.put(sampleName, bestPathSegmentList);
         }
-        logger.info(String.format("Found a total of %d segments across %d samples", recordCount, inputCounts.columnNames().size()));
         return allSegments;
     }
 
     /**
-     * Calculates the list of copy-number change segments as the one present in the
-     * most likely segment sequence given a {@link CopyNumberTriStateHiddenMarkovModel model}.
-     * @param model the HMM model to be used to discover copy-number change segments.
-     * @param targets the input targets sequence.
-     * @param inputValues the input coverage values.
+     * Given a plausible sequence of hidden copy-number states, it condenses it to the corresponding segments represented
+     * as a pair of target index-range (which encloses the targets in the segment) and the hidden copy-number state
+     * for that segment.
+     *
+     * @param bestPath a plausible copy number state sequence across the targets included in {@code targets}.
+     * @param targets the collection of targets to take in consideration. Needed to make sure that segments don't expand
+     *                across contigs.
      * @return never {@code null}.
      */
-    private List<CopyNumberTriStateSegment> getCopyNumberTriStateSegments(final CopyNumberTriStateHiddenMarkovModel model, final List<Target> targets, double[] inputValues) {
-        final double mean = MathUtils.mean(inputValues, 0, inputValues.length);
-        final double stdev =  MathUtils.stddev(inputValues, 0, inputValues.length);
-        final List<Double> inputValuesList = DoubleStream.of(inputValues).boxed().collect(Collectors.toList());
-        final List<Double> standardizedValuesList = inputAreZscores ? inputValuesList :
-                inputValuesList.stream().map(v -> (v - mean) / stdev).collect(Collectors.toList());
-        final List<CopyNumberTriState> bestPath = ViterbiAlgorithm.apply(standardizedValuesList, targets, model);
-        final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult = ForwardBackwardAlgorithm.apply(standardizedValuesList, targets, model);
-        return composeSegments(bestPath, fbResult, inputValuesList);
+    private List<Pair<IndexRange, CopyNumberTriState>> condenseBestPathIntoTargetIndexAndStatePairs(
+            final List<CopyNumberTriState> bestPath, final List<Target> targets) {
+
+        if (bestPath.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // We approximate the expected number of segments as the square root of the path length.
+        // very arbitrary but probably better than assuming there are as many segments as targets.
+        final List<Pair<IndexRange, CopyNumberTriState>> result = new ArrayList<>((int) Math.ceil(Math.sqrt(bestPath.size())));
+
+        int currentStartIndex = 0; // contains the start index of the segment being traversed.
+        final ListIterator<CopyNumberTriState> pathIterator = bestPath.listIterator();
+        final ListIterator<Target> targetIterator = targets.listIterator();
+        String currentContig = targetIterator.next().getContig();
+        CopyNumberTriState currentState = pathIterator.next();
+        while (pathIterator.hasNext()) {
+            final CopyNumberTriState nextState = pathIterator.next();
+            final String nextContig = targetIterator.next().getContig();
+            final boolean contigChanged = ! currentContig.equals(nextContig);
+            final boolean stateChanged = nextState != currentState;
+            if (contigChanged || stateChanged) {
+                final int newCurrentStartIndex = pathIterator.previousIndex();
+                result.add(new ImmutablePair<>(new IndexRange(currentStartIndex, newCurrentStartIndex), currentState));
+                currentStartIndex = newCurrentStartIndex;
+                currentState = nextState;
+                currentContig = nextContig;
+            }
+        }
+        result.add(new ImmutablePair<>(new IndexRange(currentStartIndex, bestPath.size()), currentState));
+        return result;
     }
 
     /**
      * Compose the list of segments based on a inferred best hidden state sequence and
      *   the result of running the forward-backward algorithm.
-     * @param bestPath the best hidden-state path along the int targets and count sequence.
      * @param fbResult the result of the Forward-backward algorithm on the same input data.
+     * @param bestPathSegments the best hidden-state path along the int targets and count sequence.
      * @return never {@code null}.
      */
-    private List<CopyNumberTriStateSegment> composeSegments(final List<CopyNumberTriState> bestPath,
-                                                            final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult,
-                                                            final List<Double> inputValues) {
-        final List<Target> targets = fbResult.positions();
-        // trivial case when the number of targets analyzed is 0.
-        if (targets.size() == 0) {
-            return new ArrayList<>(0);
-        }
-
-        final List<Double> coverage = fbResult.data();
-        final List<CopyNumberTriStateSegment> result = new ArrayList<>(bestPath.size());
-        final List<Target> currentSegmentTargets = new ArrayList<>(bestPath.size());
-        final List<Double> currentSegmentData = new ArrayList<>(bestPath.size());
-        final List<Double> currentSegmentInputValues = new ArrayList<>(bestPath.size());
-        CopyNumberTriState currentSegmentState = bestPath.get(0);
-        Target lastTargetInPreviousSegment = null;
-        currentSegmentTargets.add(targets.get(0));
-        currentSegmentData.add(coverage.get(0));
-        currentSegmentInputValues.add(inputValues.get(0));
-        for (int i = 1; i < targets.size(); i++) {
-            final CopyNumberTriState thisState = bestPath.get(i);
-            final Double thisDatum = coverage.get(i);
-            final Target target = targets.get(i);
-            if (currentSegmentState == thisState
-                    && target.getContig().equals(currentSegmentTargets.get(0).getContig())) {
-                currentSegmentTargets.add(target);
-                currentSegmentData.add(thisDatum);
-                currentSegmentInputValues.add(inputValues.get(i));
-            } else {
-                result.add(composeSegment(currentSegmentTargets, currentSegmentState,
-                                          lastTargetInPreviousSegment, target, fbResult, currentSegmentInputValues));
-                lastTargetInPreviousSegment = currentSegmentTargets.get(currentSegmentTargets.size() - 1);
-                currentSegmentTargets.clear();
-                currentSegmentTargets.add(target);
-                currentSegmentData.clear();
-                currentSegmentData.add(thisDatum);
-                currentSegmentInputValues.clear();
-                currentSegmentInputValues.add(inputValues.get(i));
-                currentSegmentState = thisState;
-            }
-        }
-        result.add(composeSegment(currentSegmentTargets, currentSegmentState,
-                                  lastTargetInPreviousSegment, null, fbResult, currentSegmentInputValues));
-        return result;
+    private List<CopyNumberTriStateSegment> composeSegments(final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult, final List<Pair<IndexRange, CopyNumberTriState>> bestPathSegments) {
+        return bestPathSegments.stream()
+                .map(ir -> composeSegment(fbResult, ir.getLeft(), ir.getRight()))
+                .collect(Collectors.toList());
     }
 
     /**
      * Composes the segment calculating all the corresponding quality scores,
-     *  coverage mean and stddev.
      *
-     * @param targets the targets enclosed in the segment.
-     * @param call the segment called state.
-     * @param precedingTarget the target preceding the segment's start target.
-     * @param followingTarget the target following the segment's last target.
-     * @param fbResult the result of running the Forward-Backward algorithm.
-     * @return never {@code null}.
+     * @param fbResult the {@link ForwardBackwardAlgorithm} execution result object.
+     * @param targetIndexRange the target position index range of the segment.
+     * @param call the call for the segment.
+     * @return never {@code null}
      */
-    private CopyNumberTriStateSegment composeSegment(final List<Target> targets,
-                                                     final CopyNumberTriState call,
-                                                     final Target precedingTarget, final Target followingTarget,
-                                                     final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult,
-                                                     final List<Double> inputValues) {
-        final int length = targets.size();
-        final Target firstTarget = targets.get(0);
-        final double mean = inputValues.stream().mapToDouble(d -> d).average().getAsDouble();
-        final double stdev = inputValues.size() <= 1 ? 0 : Math.sqrt(inputValues.stream().mapToDouble(d -> (d - mean) * (d - mean)).sum() / (length - 1));
-        final double logExactProbability = logExactProbability(firstTarget, length, call, fbResult);
-        final double logSomeProbability = logSomeProbability(firstTarget, length, call, fbResult);
-        final double logStartProbability = logStartProbability(precedingTarget, firstTarget, call, fbResult);
-        final double logEndProbability = logEndProbability(targets.get(length - 1), followingTarget, call, fbResult);
-        final double logNeutralProbability = fbResult.logProbability(firstTarget, Collections.nCopies(targets.size(), CopyNumberTriState.NEUTRAL));
-        return new CopyNumberTriStateSegment(targets, mean, stdev, call,
+    private CopyNumberTriStateSegment composeSegment(final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult,
+                                                     final IndexRange targetIndexRange, final CopyNumberTriState call) {
+        final List<Double> values = fbResult.data().subList(targetIndexRange.from, targetIndexRange.to);
+        final double mean = values.stream().mapToDouble(d -> d).average().orElse(Double.NaN);
+        final double stdDev = GATKProtectedMathUtils.stdDev(values);
+        final List<Target> targets = fbResult.positions().subList(targetIndexRange.from, targetIndexRange.to);
+        final int length = targetIndexRange.size();
+        final double logExactProbability = fbResult.logProbability(targetIndexRange.from, targetIndexRange.to, call);
+        final double logSomeProbability = logSomeProbability(targetIndexRange.from, length, call, fbResult);
+        final double logStartProbability = logStartProbability(targetIndexRange.from, call, fbResult);
+        final double logEndProbability = logEndProbability(targetIndexRange.to - 1, call, fbResult);
+        final double logNeutralProbability = fbResult.logProbability(targetIndexRange.from, Collections.nCopies(targets.size(), CopyNumberTriState.NEUTRAL));
+        return new CopyNumberTriStateSegment(targets, mean, stdDev, call,
                 logToPhredScore(logExactProbability, true),
                 logToPhredScore(logSomeProbability, true),
                 logToPhredScore(logStartProbability, true),
@@ -321,7 +371,8 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
      */
     private double logToPhredScore(final double rawLogProb, final boolean complement) {
         if (rawLogProb > MAX_LOG_PROB) {
-            throw new GATKException(String.format("numerical instability problem: the log-probability is too large: %g > 0.0 (with maximum tolerance %g)", rawLogProb, MAX_LOG_PROB));
+            throw new GATKException(
+                    String.format("numerical instability problem: the log-probability is too large: %g > 0.0 (with maximum tolerance %g)", rawLogProb, MAX_LOG_PROB));
         }
         // make sure that log probs are less than 1 in linear scale.
         // there are cases in that they are just over 0.0 due to float point precision.
@@ -356,17 +407,15 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
      * Calculates the probability of a hidden state switch at the beginning of the segment
      * from a different state to the call state.
      */
-    private double logStartProbability(final Target precedingTarget, final Target firstTarget,
+    private double logStartProbability(final int firstTarget,
                                        final CopyNumberTriState call,
                                        final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        if (precedingTarget == null || !precedingTarget.getContig().equals(firstTarget.getContig())) {
-            // at the very beginning? then we just get the posterior of the first target to
-            // have the call state.
+        if (firstTarget == 0) {
             return fbResult.logProbability(firstTarget, call);
         } else {
             final EnumSet<CopyNumberTriState> onlyCallState = EnumSet.of(call);
             final EnumSet<CopyNumberTriState> allStatesExceptCall = EnumSet.complementOf(onlyCallState);
-            return fbResult.logConstrainedProbability(precedingTarget, Arrays.asList(allStatesExceptCall, onlyCallState));
+            return fbResult.logConstrainedProbability(firstTarget - 1, Arrays.asList(allStatesExceptCall, onlyCallState));
         }
     }
 
@@ -374,10 +423,10 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
      * Calculates the probability of a hidden state switch at the end of the segment
      * from the call state to a different state.
      */
-    private double logEndProbability(final Target lastTarget, final Target followingTarget,
+    private double logEndProbability(final int lastTarget,
                                      final CopyNumberTriState call,
                                      final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        if (followingTarget == null || !followingTarget.getContig().equals(lastTarget.getContig())) {
+        if (lastTarget + 1 == fbResult.positions().size()) {
             return fbResult.logProbability(lastTarget, call);
         } else {
             final EnumSet<CopyNumberTriState> onlyCallState = EnumSet.of(call);
@@ -386,43 +435,7 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
         }
     }
 
-    /**
-     * This method calculates the probability that in a given interval targets/data pairs, we
-     * pass at least once thru the "call state" the way XHMM does.
-     *
-     * <p>
-     *     In XHMM the "Some" quality only considers the copy-neutral and the call state in the calculations.
-     *     So if we are looking into a deletion event, paths that go thru the duplication state are ignored.
-     * </p>
-     * <p>
-     *     XHMM does not give definition for this score when the call state is the neutral state.
-     *     Here we just return 0.
-     * </p>
-     *
-     * @param firstTarget the first target in the segment of interest.
-     * @param call the call for the segment.
-     * @param fbResult the result from running the {@link ForwardBackwardAlgorithm#apply forward-backward algorithm}
-     *                 on the original data.
-     * @return a valid log scaled probability from 0 to -Inf.
-     */
-    private double logXHMMSomeProbability(final Target firstTarget, final int length, final CopyNumberTriState call,
-                                          final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        // trivial case when the segment has length 0.
-        if (length == 0 || call == CopyNumberTriState.NEUTRAL) {
-            return 0;
-        } else {
-            final Set<CopyNumberTriState> callOrNeutralStates =  EnumSet.of(call, CopyNumberTriState.NEUTRAL);
-            final List<Set<CopyNumberTriState>> callOrNeutralConstraints = Collections.nCopies(length, callOrNeutralStates);
-
-            final double logCallOrNeutralProbability = fbResult.logConstrainedProbability(firstTarget, callOrNeutralConstraints);
-            final double logAllNeutralProbability = fbResult.logProbability(firstTarget, Collections.nCopies(length, CopyNumberTriState.NEUTRAL));
-
-            // log-sub-exp trick: log(exp(a) - exp(b)) = a + log(1 - exp(b - a))
-            return logCallOrNeutralProbability + Math.log1p(-Math.exp(logAllNeutralProbability - logCallOrNeutralProbability));
-        }
-    }
-
-    private double logSomeProbability(final Target firstTarget, final int length, final CopyNumberTriState call,
+    private double logSomeProbability(final int firstTarget, final int length, final CopyNumberTriState call,
                                           final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
         // trivial case when the segment has length 0.
         if (length == 0) {
@@ -433,19 +446,6 @@ public final class DiscoverCopyNumberTriStateSegments extends CommandLineProgram
             final double logOtherStates = fbResult.logConstrainedProbability(firstTarget, otherStatesConstraints);
             return logComplement(logOtherStates);
         }
-    }
-
-    /**
-     * Probability of the segment to be in the call state all the way through.
-     *
-     * @param firstTarget the first target in the segment.
-     * @param length the length of the segment in targets.
-     * @param call the call of the segment.
-     * @param fbResult the forward-backward algorithm result object.
-     * @return a log scaled probability between 0 to -Inf.
-     */
-    private double logExactProbability(final Target firstTarget, final int length, final CopyNumberTriState call, final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        return fbResult.logProbability(firstTarget, Collections.nCopies(length, call));
     }
 
     private void checkForMissingTargetsInInputCounts(final TargetCollection<Target> targets, final ReadCountCollection inputCounts) {

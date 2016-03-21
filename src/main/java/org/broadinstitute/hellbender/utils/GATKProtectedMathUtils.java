@@ -4,6 +4,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 
+import java.util.Collection;
 import java.util.stream.IntStream;
 
 /**
@@ -46,10 +47,93 @@ public class GATKProtectedMathUtils {
 
     public static double[] rowMeans(final RealMatrix matrix) {
         Utils.nonNull(matrix);
-        return IntStream.range(0, matrix.getRowDimension()).mapToDouble(r -> mean(matrix.getRow(r))).toArray();
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> mean(matrix.getRow(r))).toArray();
     }
 
     public static double[] rowVariances(final RealMatrix matrix) {
-        return IntStream.range(0, matrix.getRowDimension()).mapToDouble(r -> new Variance().evaluate(matrix.getRow(r))).toArray();
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> varianceEvaluator.evaluate(matrix.getRow(r))).toArray();
+    }
+
+    /**
+     * Calculates the standard deviation per row from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as rows in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] rowStdDevs(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(r -> Math.sqrt(varianceEvaluator.evaluate(matrix.getRow(r)))).toArray();
+    }
+
+    /**
+     * Calculates the mean per column from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as columns in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] columnMeans(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> mean(matrix.getColumn(c))).toArray();
+    }
+
+    /**
+     * Calculates the variances per column from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as columns in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] columnVariances(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> varianceEvaluator.evaluate(matrix.getColumn(c)))
+                .toArray();
+    }
+
+    /**
+     * Calculates the standard deviation per column from a matrix.
+     * @param matrix the input matrix.
+     * @return never {@code null}, an array with as many positions as columns in {@code matrix}.
+     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
+     */
+    public static double[] columnStdDevs(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+        final Variance varianceEvaluator = new Variance();
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> Math.sqrt(varianceEvaluator.evaluate(matrix.getColumn(c)))).toArray();
+    }
+
+    /**
+     * Calculate the standard deviation of a collection of {@link Number} instances.
+     * @param values the input values.
+     * @return the standard deviation.
+     * @throws IllegalArgumentException if {@code values} is {@code null} or it contains {@code null}.
+     */
+    public static double stdDev(final Collection<? extends Number> values) {
+        Utils.nonNull(values);
+        if (values.contains(null)) {
+            throw new IllegalArgumentException("input values must not contain a null");
+        }
+        final double[] doubleValues = values.stream()
+                .mapToDouble(Number::doubleValue).toArray();
+        return stdDev(doubleValues);
+    }
+
+    /**
+     * Calculate the standard deviation of a double array.
+     * @param values the input values.
+     * @return the standard deviation.
+     * @throws IllegalArgumentException if {@code values} is {@code null}.
+     */
+    public static double stdDev(final double ... values) {
+        Utils.nonNull(values);
+        return Math.sqrt(new Variance().evaluate(values));
     }
 }

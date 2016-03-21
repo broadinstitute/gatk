@@ -99,11 +99,12 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CommandLi
         arguments.add(String.valueOf(chain.model.getDeletionMean()));
         arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DUPLICATION_COVERAGE_SHIFT_SHORT_NAME);
         arguments.add(String.valueOf(chain.model.getDuplicationMean()));
-        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_START_PROBABILITY_FULL_NAME);
+        arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_START_PROBABILITY_SHORT_NAME);
         arguments.add(String.valueOf(chain.model.getEventStartProbability()));
         arguments.add("-" + CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_EVENT_SIZE_SHORT_NAME);
         arguments.add(String.valueOf(chain.model.getMeanEventSize()));
-        arguments.add("-" + DiscoverCopyNumberTriStateSegments.INPUT_ARE_ZSCORES_SHORT_NAME);
+        arguments.add("-" + DiscoverCopyNumberTriStateSegments.ZSCORE_DIMENSION_SHORT_NAME);
+        arguments.add(String.valueOf(DiscoverCopyNumberTriStateSegments.ZScoreDimension.NONE.toString()));
         runCommandLine(arguments.toArray(new String[arguments.size()]));
         Assert.assertTrue(outputFile.exists());
         final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(REALISTIC_TARGETS_FILE);
