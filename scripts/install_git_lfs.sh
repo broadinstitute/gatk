@@ -1,38 +1,30 @@
 #!/bin/bash
 
-GIT_LFS_VERSION=v1.1.0
+GIT_LFS_VERSION="1.1.2"
+GIT_LFS_LINK=https://github.com/github/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-amd64-${GIT_LFS_VERSION}.tar.gz
+GIT_LFS="git-lfs-${GIT_LFS_VERSION}/git-lfs"
+echo "downloading and untarring git-lfs binary" 
+wget -qO- $GIT_LFS_LINK | tar xvz
 
-echo "cloning"
-git clone https://github.com/github/git-lfs.git
-
-echo "cd into git-lfs"
-cd git-lfs
-
-echo "checkout commit e8a5cfb85e27c1284a73a2eb8269bd5f5c4d0955"
-git checkout $GIT_LFS_VERSION
-
-echo "scripts/bootstrap"
-script/bootstrap
-
-echo "ls bin"
-ls bin
-
-echo "cd back down"
-cd ..
+echo "ls"
+ls
 
 echo "resetting travis remote"
-git remote set-url origin "git@github.com:broadinstitute/gatk.git"
+git remote set-url origin "https://github.com/broadinstitute/gatk.git"
 
-echo "install"
-git-lfs/bin/git-lfs install
+echo "git lfs install"
+GIT_TRACE=1 $GIT_LFS install
 
-echo "pull"
-git-lfs/bin/git-lfs pull
+echo "fetch"
+GIT_TRACE=1 $GIT_LFS fetch
 
-echo "pull again to work around https://github.com/github/git-lfs/issues/904"
-git-lfs/bin/git-lfs pull
+echo "checkout"
+GIT_TRACE=1 $GIT_LFS checkout
 
 echo "ls-files"
-git-lfs/bin/git-lfs ls-files
+GIT_TRACE=1 $GIT_LFS ls-files
 ls -lah src/test/resources/large/
 md5sum src/test/resources/large/*.*
+
+echo "logs"
+GIT_TRACE=1 $GIT_LFS logs last
