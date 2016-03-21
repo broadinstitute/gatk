@@ -227,8 +227,7 @@ public final class TangentNormalizer {
         final RealMatrix result = matrix.copy();
 
         // step 1: divide by column means and log_2 transform
-        final double[] columnMeans = IntStream.range(0, matrix.getColumnDimension())
-                .mapToDouble(c -> GATKProtectedMathUtils.mean(result.getColumn(c))).toArray();
+        final double[] columnMeans = GATKProtectedMathUtils.columnMeans(matrix);
         result.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
             public double visit(final int row, final int column, final double value) {

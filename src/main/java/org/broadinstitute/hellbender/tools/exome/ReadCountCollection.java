@@ -236,7 +236,7 @@ public final class ReadCountCollection implements Serializable {
     public ReadCountCollection arrangeTargets(final List<Target> targetsInOrder) {
         Utils.nonNull(targetsInOrder);
         if (targetsInOrder.isEmpty()) {
-            throw new IllegalArgumentException(String.format("the input targets list cannot be empty"));
+            throw new IllegalArgumentException("the input targets list cannot be empty");
         }
         final RealMatrix counts = new Array2DRowRealMatrix(targetsInOrder.size(), columnNames.size());
         final Object2IntMap<Target> targetToIndex = new Object2IntOpenHashMap<>(targets.size());
@@ -262,37 +262,39 @@ public final class ReadCountCollection implements Serializable {
      */
     public ReadCountCollection normalizeByColumnAverages(final boolean weightByTargetSize) {
         final RealMatrix normalizedCounts = counts().copy();
-
-        final int[] weights;
-        if (weightByTargetSize) {
-            try {
-                weights = targets.stream().mapToInt(Target::length).toArray();
-            } catch (final IllegalStateException e) {
-                throw new IllegalArgumentException("Weighting by target size requested but at least one target lacks an interval");
-            }
-        } else {
-            weights = new int[targets.size()];
-            Arrays.fill(weights, 1);
-        }
-        final int totalWeight = Arrays.stream(weights).sum();
-
-        final double[] sampleWeightedAverages = new double[counts.getColumnDimension()]; // elements initialized to 0.0
-
-        normalizedCounts.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
-            @Override
-            public void visit(final int target, final int column, final double coverage) {
-                sampleWeightedAverages[column] += weights[target] * coverage / totalWeight;
-            }
-        });
-
+        final double[] columnWeightedMeans = calculateColumnWeightedMeans(weightByTargetSize);
         normalizedCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(final int target, final int column, final double coverage) {
-                return coverage / sampleWeightedAverages[column];
-            }
+                @Override
+                public double visit(final int target, final int column, final double coverage) {
+                    return coverage / columnWeightedMeans[column];
+                }
         });
 
         return new ReadCountCollection(targets, columnNames, normalizedCounts);
+    }
+
+    private double[] calculateColumnWeightedMeans(final boolean weightByTargetSize) {
+        if (!weightByTargetSize) {
+            return GATKProtectedMathUtils.columnMeans(counts);
+        } else {
+            final long[] weights;
+            try {
+                weights = targets.stream().mapToLong(Target::length).toArray();
+            } catch (final IllegalStateException e) {
+                throw new IllegalArgumentException("Weighting by target size requested but at least one target lacks an interval");
+            }
+            final long totalWeight = Arrays.stream(weights).sum();
+
+            final double[] result = new double[counts.getColumnDimension()]; // elements initialized to 0.0
+
+            counts.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
+                @Override
+                public void visit(final int target, final int column, final double coverage) {
+                    result[column] += weights[target] * coverage / totalWeight;
+                }
+            });
+            return result;
+        }
     }
 
     /**
