@@ -56,4 +56,61 @@ public class GATKProtectedMathUtilsTest {
         Assert.assertEquals(rowVariances[2], 1, 1e-8);
     }
 
+    @Test
+    public void testRowStdDevs() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] rowStdDevs = GATKProtectedMathUtils.rowStdDevs(new Array2DRowRealMatrix(array));
+        Assert.assertEquals(rowStdDevs[0], 1, 1e-8);
+        Assert.assertEquals(rowStdDevs[1], 0, 1e-8);
+        Assert.assertEquals(rowStdDevs[2], 1, 1e-8);
+        Assert.assertEquals(rowStdDevs[3], 13.65039682, 1e-8);
+    }
+
+    @Test
+    public void testStdDevsOnAList() {
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(Arrays.asList(1, 2, 3)), 1, 1e-8);
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(Arrays.asList(5, 5, 5)), 0, 1e-8);
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(Arrays.asList(7, 8, 9)), 1, 1e-8);
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(Arrays.asList(-15, 2, 12)), 13.65039682, 1e-8);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testStdDevsOnAListWithNull() {
+        GATKProtectedMathUtils.stdDev(Arrays.asList(1, null, 3));
+    }
+
+    @Test
+    public void testStdDevsOnAnArray() {
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(1, 2, 3), 1, 1e-8);
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(5, 5, 5), 0, 1e-8);
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(7, 8, 9), 1, 1e-8);
+        Assert.assertEquals(GATKProtectedMathUtils.stdDev(-15, 2, 12), 13.65039682, 1e-8);
+    }
+
+    @Test
+    public void testColumnMeans() {
+        final double[][] array = { {1,2,3}, {4,5,6}, {7,8,9}};
+        final double[] columnMeans = GATKProtectedMathUtils.columnMeans(new Array2DRowRealMatrix(array).transpose());
+        Assert.assertEquals(columnMeans, new double[] {2,5,8});
+    }
+
+    @Test
+    public void testColumnVariances() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}};
+        final double[] columnVariances = GATKProtectedMathUtils.columnVariances(new Array2DRowRealMatrix(array).transpose());
+        Assert.assertEquals(columnVariances[0], 1, 1e-8);
+        Assert.assertEquals(columnVariances[1], 0, 1e-8);
+        Assert.assertEquals(columnVariances[2], 1, 1e-8);
+    }
+
+    @Test
+    public void testColumnStdDevs() {
+        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
+        final double[] columnStdDevs = GATKProtectedMathUtils.columnStdDevs(new Array2DRowRealMatrix(array).transpose());
+        Assert.assertEquals(columnStdDevs[0], 1, 1e-8);
+        Assert.assertEquals(columnStdDevs[1], 0, 1e-8);
+        Assert.assertEquals(columnStdDevs[2], 1, 1e-8);
+        Assert.assertEquals(columnStdDevs[3], 13.65039682, 1e-8);
+    }
+
 }

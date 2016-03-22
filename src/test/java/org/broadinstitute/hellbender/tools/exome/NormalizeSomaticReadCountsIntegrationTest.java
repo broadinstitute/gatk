@@ -10,6 +10,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTest;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
 /**
@@ -360,7 +362,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         try (final TableReader<double[]> reader = TableUtils.reader(betaHatsOutput,
                 (columns, fef) -> {
                     if (!columns.matches(0, NormalizeSomaticReadCounts.PON_SAMPLE_BETA_HAT_COLUMN_NAME) ||
-                            !columns.containsAll(input.columnNames().toArray(new String[0])) ||
+                            !columns.containsAll(input.columnNames()) ||
                             columns.columnCount() != input.columnNames().size() + 1) {
                         Assert.fail("Beta-hats has bad header");
                     }
@@ -479,16 +481,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         final double epsilon = TangentNormalizer.EPSILON;
         final RealMatrix outCounts = preTangentNormalized.counts();
         final RealMatrix inCounts = factorNormalized.counts();
-        final double[] columnMeans = new double[inCounts.getColumnDimension()];
-        // calculate column means.
-        for (int i = 0; i < columnMeans.length; i++) {
-            double sum = 0;
-            for (final double x : inCounts.getColumn(i)) {
-                sum += x;
-            }
-            columnMeans[i] = sum / inCounts.getRowDimension();
-            Assert.assertTrue(columnMeans[i] < 0.5);
-        }
+        final double[] columnMeans = GATKProtectedMathUtils.columnMeans(inCounts);
+        Assert.assertTrue(DoubleStream.of(columnMeans).allMatch(d -> d < 0.5));
         final double[][] expected = new double[inCounts.getRowDimension()][inCounts.getColumnDimension()];
         final double[] columnValues = new double[inCounts.getRowDimension()];
         for (int i = 0; i < columnMeans.length; i++) {

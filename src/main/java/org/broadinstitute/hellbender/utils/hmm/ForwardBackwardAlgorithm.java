@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.utils.hmm;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import org.apache.commons.lang.math.IntRange;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,6 +54,18 @@ public final class ForwardBackwardAlgorithm {
          */
         HiddenMarkovModel<D, T, S> model();
 
+
+        /**
+         * Returns the forward probability of the hidden state at certain position.
+         * @param position the query position index.
+         * @param state the query hidden state.
+         * @return a valid probability in log scale (from -Inf to 0).
+         *
+         * @throws IllegalArgumentException if either the {@code state} or the {@code position} are not
+         *  recognized by the model or were not passed to the forward-backward algorithm.
+         */
+        double logForwardProbability(final int position, final S state);
+
         /**
          * Returns the forward probability of the hidden state at certain position.
          * @param position the query position.
@@ -65,6 +79,16 @@ public final class ForwardBackwardAlgorithm {
 
         /**
          * Returns the backward probability of the hidden state at certain position.
+         * @param position the query position index.
+         * @param state the query hidden state.
+         * @return a valid probability in log scale (from -Inf to 0)
+         * @throws IllegalArgumentException if either the {@code state} or the {@code position} are not
+         *  recognized by the model or were not passed to the forward-backward algorithm.
+         */
+        double logBackwardProbability(final int position, final S state);
+
+        /**
+         * Returns the backward probability of the hidden state at certain position.
          * @param position the query position.
          * @param state the query hidden state.
          * @return a valid probability in log scale (from -Inf to 0)
@@ -72,6 +96,16 @@ public final class ForwardBackwardAlgorithm {
          *  recognized by the model or were not passed to the forward-backward algorithm.
          */
         double logBackwardProbability(final T position, final S state);
+
+        /**
+         * Returns the posterior probability of the hidden state at certain position.
+         * @param position the query position index.
+         * @param state the query hidden state.
+         * @return a valid probability in log scale (from -Inf to 0)
+         * @throws IllegalArgumentException if either the {@code state} or the {@code position} are not
+         *  recognized by the model or were not passed to the forward-backward algorithm.
+         */
+        double logProbability(final int position, final S state);
 
         /**
          * Returns the posterior probability of the hidden state at certain position.
@@ -94,6 +128,33 @@ public final class ForwardBackwardAlgorithm {
         double logProbability(final List<S> states);
 
         /**
+         * Returns the posterior probability that the hidden state takes on a constant value along
+         * a position interval.
+         * @param from the starting position index for the query interval (inclusive).
+         * @param to the stop position index for the query interval (exclusive).
+         * @param state the query constant hidden state.
+         * @return a valid probability in log scale (from -Inf to 0)
+         * @throws IllegalArgumentException if {@code state}, is not a valid state in the underlying model or
+         * the {@code from} and {@code to} do not represent a valid position index range.
+         */
+        default double logProbability(final int from, final int to, final S state) {
+            ParamUtils.inRange(to, from, positions().size(), "the 'to' index must be between 'from' and the length of the data/position sequence");
+            return logProbability(from, Collections.nCopies(to - from, state));
+        }
+
+        /**
+         * Returns the posterior probability of a sequence of hidden states starting at a particular position.
+         * @param from the starting position index, so that the first element in {@code states} corresponds to the
+         *             state at this position.
+         * @param states the list of states.
+         * @return a valid probability in log scale (from -Inf to 0)
+         * @throws IllegalArgumentException if {@code states}, is {@code null}, contains some value not recognized
+         * as a hidden state by the model, or the {@code states} sequence is too long and would go beyond the last
+         * position.
+         */
+        double logProbability(final int from, final List<S> states);
+
+        /**
          * Returns the posterior probability of a sequence of hidden states starting at a particular position.
          * @param from the starting position, so that the first element in {@code states} corresponds to the
          *             state at this position.
@@ -105,6 +166,17 @@ public final class ForwardBackwardAlgorithm {
          */
         double logProbability(final T from, final List<S> states);
 
+        /**
+         * Return the posterior probability of a sequence of hidden state constraints.
+         *
+         * @param from the first position index, that corresponds to the first constraint in {@code stateConstraints}
+         * @param stateConstraints the query constrain sequence.
+         * @return a log scaled probability between 0 and -Inf.
+         * @throws IllegalArgumentException if {@code stateConstraints} is {@code null}, it contains a {@code null}
+         *  set or any of the states in any of the sets in {@code stateConstraints} is not recognized by the model or
+         *  {@code from} is not a valid position in the original data/position sequence.
+         */
+        double logConstrainedProbability(final int from, final List<Set<S>> stateConstraints);
 
         /**
          * Return the posterior probability of a sequence of hidden state constraints.
@@ -124,6 +196,27 @@ public final class ForwardBackwardAlgorithm {
          * @return a valid probability in log scale (from -Inf to 0)
          */
         double logDataLikelihood();
+
+        /**
+         * Returns the likelihood of the original data given the model as evaluated at a particular
+         * position.
+         *
+         * <p>
+         * Although in theory one does not need to indicate a position to evaluate the data-likelihood
+         * in practice, lack of float point precision may make those small differences important (e.g.
+         * some computations with small probabilities may result in a probability just over 1.0 which makes
+         * no sense).
+         * </p>
+         * <p>
+         * As a rule of thumb, to avoid such problems you should request the data-likelihood at the target
+         * from which you evaluate the backward probability.
+         * </p>
+         *
+         * @param position the position.
+         * @return a valid log scaled probability from -Inf to 0.
+         * @throws IllegalArgumentException if {@code target} is unknown to the model.
+         */
+        double logDataLikelihood(final int position);
 
         /**
          * Returns the likelihood of the original data given the model as evaluated at a particular
@@ -321,18 +414,19 @@ public final class ForwardBackwardAlgorithm {
         private final List<D> data;
 
         private final List<T> positions;
+        private final IntRange positionIndexRange;
 
         private final HiddenMarkovModel<D, T, S> model;
 
         private final Object2IntMap<T> positionIndex;
         private final Object2IntMap<S> stateIndex;
 
-        private final int numStates;
-
         private final double[][] logForwardProbabilities;
 
         private final double[][] logBackwardProbabilities;
         private final double[] logDataLikelihood;
+
+
 
         private ArrayResult(final List<D> data, final List<T> positions,
                             final HiddenMarkovModel<D, T, S> model,
@@ -340,10 +434,10 @@ public final class ForwardBackwardAlgorithm {
                             final double[][] logBackwardProbabilities) {
             this.data = Collections.unmodifiableList(new ArrayList<>(data));
             this.positions = Collections.unmodifiableList(new ArrayList<>(positions));
+            this.positionIndexRange = new IntRange(0, positions.size() - 1);
             this.model = model;
             this.positionIndex = composeIndexMap(this.positions);
             this.stateIndex = composeIndexMap(model.hiddenStates());
-            this.numStates = stateIndex.size();
             this.logBackwardProbabilities = logBackwardProbabilities;
             this.logForwardProbabilities = logForwardProbabilities;
             this.logDataLikelihood = calculateLogDataLikelihood(logForwardProbabilities, logBackwardProbabilities);
@@ -406,29 +500,40 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
+        public double logForwardProbability(final int positionIndex, final S state) {
+            ParamUtils.inRange(positionIndexRange, positionIndex, "position index");
+            final int stateIndex = validStateIndex(state);
+            return logForwardProbabilities[positionIndex][stateIndex];
+        }
+
+        @Override
         public double logForwardProbability(final T position, final S state) {
-            final int stateIndex = this.stateIndex.getOrDefault(state, -1);
-            final int positionIndex = this.positionIndex.getOrDefault(position, -1);
-            if (stateIndex == -1) {
-                throw new IllegalArgumentException("the input state is not recognized by the model");
-            } else if (positionIndex == -1) {
-                throw new IllegalArgumentException("unknown input position");
-            } else {
-                return logForwardProbabilities[positionIndex][stateIndex];
-            }
+            final int positionIndex = validPositionIndex(position);
+            final int stateIndex = validStateIndex(state);
+            return logForwardProbabilities[positionIndex][stateIndex];
+        }
+
+        @Override
+        public double logBackwardProbability(final int positionIndex, S state) {
+            ParamUtils.inRange(positionIndexRange, positionIndex, "position index");
+            final int stateIndex = validStateIndex(state);
+            return logBackwardProbabilities[positionIndex][stateIndex];
         }
 
         @Override
         public double logBackwardProbability(final T position, final S state) {
-            final int stateIndex = this.stateIndex.getOrDefault(state, -1);
-            final int positionIndex = this.positionIndex.getOrDefault(position, -1);
-            if (stateIndex == -1) {
-                throw new IllegalArgumentException("the input state is not recognized by the model");
-            } else if (positionIndex == -1) {
-                throw new IllegalArgumentException("unknown input position");
-            } else {
-                return logBackwardProbabilities[positionIndex][stateIndex];
-            }
+            final int stateIndex = validStateIndex(state);
+            final int positionIndex = validPositionIndex(position);
+            return logBackwardProbabilities[positionIndex][stateIndex];
+        }
+
+        @Override
+        public double logProbability(final int positionIndex, final S state) {
+            final int stateIndex = validStateIndex(state);
+            ParamUtils.inRange(positionIndexRange, positionIndex, "position index");
+            return logBackwardProbabilities[positionIndex][stateIndex]
+                    + logForwardProbabilities[positionIndex][stateIndex]
+                    - logDataLikelihood[positionIndex];
         }
 
         @Override
@@ -453,22 +558,20 @@ public final class ForwardBackwardAlgorithm {
             } else if (states.size() == 0) {
                 return 0;
             } else {
-                return logProbability(positions.get(0), states);
+                return logProbability(0, states);
             }
         }
 
         @Override
-        public double logProbability(final T position, final List<S> states) {
+        public double logProbability(final int startIndex, final List<S> states) {
+            ParamUtils.inRange(positionIndexRange, startIndex, "position index");
             Utils.nonNull(states, "the input states sequence cannot be null");
             if (states.size() == 0) {
                 return 0;
             } else {
                 final int statesLength = states.size();
-                final int startIndex = positionIndex.get(position);
                 final int lastIndex = statesLength + startIndex - 1;
-                if (startIndex == -1) {
-                    throw new IllegalArgumentException("the input position " + position + " is nowhere to be found in the original position sequence");
-                } else if (lastIndex >= data.size()) {
+                if (lastIndex >= data.size()) {
                     throw new IllegalArgumentException("the input state sequence is too long");
                 }
                 double result = logForwardProbability(positions.get(startIndex), states.get(0));
@@ -483,17 +586,20 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
-        public double logConstrainedProbability(final T position, final List<Set<S>> stateConstraints) {
+        public double logProbability(final T position, final List<S> states) {
+            return logProbability(validPositionIndex(position), states);
+        }
+
+        @Override
+        public double logConstrainedProbability(final int startIndex, final List<Set<S>> stateConstraints) {
+            ParamUtils.inRange(positionIndexRange, startIndex, "position index");
             Utils.nonNull(stateConstraints, "the input state constraints sequence cannot be null");
             if (stateConstraints.size() == 0) {
                 return 0;
             } else {
                 final int length = stateConstraints.size();
-                final int startIndex = positionIndex.get(position);
                 final int lastIndex = length + startIndex - 1;
-                if (startIndex == -1) {
-                    throw new IllegalArgumentException("the input position " + position + " is nowhere to be found in the original position sequence");
-                } else if (lastIndex >= data.size()) {
+                if (lastIndex >= data.size()) {
                     throw new IllegalArgumentException("the input state sequence is too long");
                 }
                 // calculate the likelihoods of each state at the first position using the forward-probabilities.
@@ -518,14 +624,14 @@ public final class ForwardBackwardAlgorithm {
                     // by the emission probability of the current datum.
                     currentLikelihoods = currentStates.stream()
                             .mapToDouble(thisState ->
-                                GATKProtectedMathUtils.naturalLogSumExp(IntStream.range(0, previousStates.size())
-                                        .mapToDouble(previousStateIndex -> {
-                                            final S previousState = previousStates.get(previousStateIndex);
-                                            return previousLikelihoods[previousStateIndex]
-                                                 + model.logTransitionProbability(previousState, previousPosition,
-                                                                                     thisState, thisPosition);
-                                        }).toArray())
-                                    + model.logEmissionProbability(thisData, thisState, thisPosition)
+                                    GATKProtectedMathUtils.naturalLogSumExp(IntStream.range(0, previousStates.size())
+                                            .mapToDouble(previousStateIndex -> {
+                                                final S previousState = previousStates.get(previousStateIndex);
+                                                return previousLikelihoods[previousStateIndex]
+                                                        + model.logTransitionProbability(previousState, previousPosition,
+                                                        thisState, thisPosition);
+                                            }).toArray())
+                                            + model.logEmissionProbability(thisData, thisState, thisPosition)
                             ).toArray();
                 }
 
@@ -539,18 +645,52 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
+        public double logConstrainedProbability(final T position, final List<Set<S>> stateConstraints) {
+            return logConstrainedProbability(validPositionIndex(position), stateConstraints);
+        }
+
+        @Override
         public double logDataLikelihood() {
             return logDataLikelihood.length == 0 ? 0 : logDataLikelihood[0];
         }
 
         @Override
-        public double logDataLikelihood(final T target) {
-            final int targetIndex = this.positionIndex.getOrDefault(target, -1);
-            if (targetIndex == -1) {
-                throw new IllegalArgumentException("unknown target " + target);
-            } else {
-                return logDataLikelihood[targetIndex];
+        public double logDataLikelihood(final int positionIndex) {
+            ParamUtils.inRange(positionIndexRange, positionIndex, "position index");
+            return logDataLikelihood[positionIndex];
+        }
+
+        @Override
+        public double logDataLikelihood(final T position) {
+            return logDataLikelihood[validPositionIndex(position)];
+        }
+
+        /**
+         * Translates a model hidden state to its index.
+         * @param state the input state object.
+         * @return 0 or greater.
+         * @throws IllegalArgumentException if the input state is not recognized by the model.
+         */
+        private int validStateIndex(final S state) {
+            final int stateIndex = this.stateIndex.getOrDefault(state, -1);
+            if (stateIndex == -1) {
+                throw new IllegalArgumentException("the input state is not recognized by the model");
             }
+            return stateIndex;
+        }
+
+        /**
+         * Translates a sequence position into its index.
+         * @param position the input state object.
+         * @return 0 or greater.
+         * @throws IllegalArgumentException if the input position is not part of the original FWBW algorithm input.
+         */
+        private int validPositionIndex(final T position) {
+            final int positionIndex = this.positionIndex.getOrDefault(position, -1);
+            if (positionIndex == -1) {
+                throw new IllegalArgumentException("the input position is not recognized by the model");
+            }
+            return positionIndex;
         }
     }
 

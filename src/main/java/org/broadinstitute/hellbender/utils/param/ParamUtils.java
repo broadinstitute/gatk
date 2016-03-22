@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.param;
 
 import com.google.common.primitives.Doubles;
 import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
 import org.apache.commons.math3.util.MathUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -297,14 +298,37 @@ public class ParamUtils {
      * @param validRange the valid range for the parameter value.
      * @param value the parameter value itself.
      * @param definition a human friendly description of the parameter to be used in an explanatory exception.
-     *
+     * @return the input value.
      * @throws IllegalArgumentException if the value provided is in-valid.
      */
-    public static void inRange(final DoubleRange validRange, final double value, final String definition) {
+    public static double inRange(final DoubleRange validRange, final double value, final String definition) {
         Utils.nonNull(validRange);
         if (!validRange.containsDouble(value)) {
             throw new IllegalArgumentException(String.format("invalid value for %s: %g is not in [%g, %g]",
                     definition, value, validRange.getMinimumDouble(), validRange.getMaximumDouble()));
         }
+        return value;
+    }
+
+    /**
+     * Validates the value of a parameter.
+     * <p>
+     * An invalid value will result in an {@link IllegalArgumentException}.
+     * </p>
+     *
+     * @param validRange the valid range for the parameter value.
+     * @param value the parameter value itself.
+     * @param definition a human friendly description of the parameter to be used in an explanatory exception.
+     * @return the input value.
+     * @throws IllegalArgumentException if the value provided is in-valid.
+     */
+    public static int inRange(final IntRange validRange, final int value, final String definition) {
+        Utils.nonNull(validRange);
+        if (!validRange.containsDouble(value)) {
+            final String prefix = definition == null ? "invalid value" : "invalid value for " + definition;
+            throw new IllegalArgumentException(String.format("%s: %d is not in [%d, %d]",
+                    prefix, value, validRange.getMinimumInteger(), validRange.getMaximumInteger()));
+        }
+        return value;
     }
 }
