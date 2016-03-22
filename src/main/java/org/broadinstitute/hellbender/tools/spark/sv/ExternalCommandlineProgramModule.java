@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.base.Throwables;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import scala.Tuple3;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -19,21 +17,69 @@ public abstract class ExternalCommandlineProgramModule {
     public ExternalCommandlineProgramModule(){  }
 
     /**
-     * Return status of running the underlying program:
-     * STARTFAIL:       program failed to start
-     * INTERRUPTION:    program was interrupted
-     * STDIOFAIL:       failed to capture stdout and stderr of the program
-     * PGRAIL:          program failed for some other reasons; error messages will be logged separately
+     * Runtime information of this module collected throughout its run.
      */
-    public enum ReturnStatus{
-        SUCCESS, STARTFAIL, INTERRUPTION, STDIOFAIL, PGFAIL
+    public static final class RuntimeInfo implements Serializable{
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * Return status of running the underlying program:
+         * STARTFAIL:       program failed to start
+         * INTERRUPTION:    program was interrupted
+         * STDIOFAIL:       failed to capture stdout and stderr of the program
+         * PGRAIL:          program failed for some other reasons; error messages will be logged separately
+         */
+        public enum ReturnStatus{
+            SUCCESS, STARTFAIL, INTERRUPTION, STDIOFAIL, PGFAIL
+        }
+        public final ReturnStatus returnStatus;
+        public final String stdoutMsg;
+        public final String stderrMsg;
+        public final String moduleName;
+
+        public RuntimeInfo(final String moduleName,
+                           final ReturnStatus status,
+                           final String stdoutMsg,
+                           final String stderrMsg){
+
+            this.moduleName   = moduleName;
+            this.returnStatus = status;
+            this.stdoutMsg    = stdoutMsg;
+            this.stderrMsg    = stderrMsg;
+        }
+
+        // for parsing contents to human readable string
+        @Override
+        public String toString(){
+            String result = moduleName + "\t";
+            switch (returnStatus){
+                case STARTFAIL:
+                    result += " failed to start.\n"; break;
+                case INTERRUPTION:
+                    result += " was interrupted.\n"; break;
+                case STDIOFAIL:
+                    result += " stdout and stderr wasn't successfully captured.\n"; break;
+                case PGFAIL:
+                    result += " returned with non-zero exit status, see stderr message for detailed return status.\n"; break;
+                default://SUCCESS
+                    result += " successfully executed.\n";
+            }
+            result += " Module stdout message: \n";
+            result += null!=stdoutMsg ? stdoutMsg+"\n" : "is empty\n";
+
+            result += " Module stderr message: \n";
+            result += null!=stderrMsg ? stderrMsg+"\n" : "is empty\n";
+            return result;
+        }
     }
+
+    abstract public String getModuleName();
 
     /**
      * Builds the initial argument list for the command line (e.g. "bwa mem").
      * @return a list of strings having the names of requested tools
      */
-    abstract List<String> initializeCommands(final Path pathToProgram);
+    abstract public List<String> initializeCommands(final Path pathToProgram);
 
     /**
      * Function to execute the command line program, if available, on the provided arguments.
@@ -44,10 +90,10 @@ public abstract class ExternalCommandlineProgramModule {
      * @return                          exit status of running the process, paired with stdout and stderr strings of the process
      *                                  except for case SUCCESS, accompanying stdout is null, and stderr contains error message
      */
-    public Tuple3<ReturnStatus, String, String> run(final Path pathToProgram,
-                                                    final File directoryToWorkIn,
-                                                    final List<String> runtimeArguments,
-                                                    final String... workingEnvironmentArgs) {
+    public RuntimeInfo run(final Path pathToProgram,
+                           final File directoryToWorkIn,
+                           final List<String> runtimeArguments,
+                           final String... workingEnvironmentArgs) {
 
         List<String> commands = initializeCommands(pathToProgram);
         if(null!=runtimeArguments && !runtimeArguments.isEmpty()){
@@ -77,20 +123,21 @@ public abstract class ExternalCommandlineProgramModule {
                 out = FileUtils.readFileToString(stdoutFile, Charset.defaultCharset());
                 err = FileUtils.readFileToString(stderrFile, Charset.defaultCharset());
             }catch (final IOException ex){
-                return new Tuple3<>(ReturnStatus.STDIOFAIL, null, ex.getMessage());
+                return new RuntimeInfo(getModuleName(), RuntimeInfo.ReturnStatus.STDIOFAIL, null, ex.getMessage());
             }
 
             if(0!=exitStatus){
-                return new Tuple3<>(ReturnStatus.PGFAIL,
-                                    null,
-                                    "Program returned exit status " + exitStatus + "\n" + String.join(" ", commands) + "\n" + out + "\n" + err);
+                return new RuntimeInfo(getModuleName(),
+                                       RuntimeInfo.ReturnStatus.PGFAIL,
+                                       null,
+                                       "Program returned exit status " + exitStatus + "\n" + String.join(" ", commands) + "\n" + out + "\n" + err);
             }
 
-            return new Tuple3<>(ReturnStatus.SUCCESS, out, err);
+            return new RuntimeInfo(getModuleName(), RuntimeInfo.ReturnStatus.SUCCESS, out, err);
         } catch (final IOException e){
-            return new Tuple3<>(ReturnStatus.STARTFAIL, null, e.getMessage() + Throwables.getStackTraceAsString(e));
+            return new RuntimeInfo(getModuleName(), RuntimeInfo.ReturnStatus.STARTFAIL, null, e.getMessage() + Throwables.getStackTraceAsString(e));
         } catch (final InterruptedException e){
-            return new Tuple3<>(ReturnStatus.INTERRUPTION, null, e.getMessage() + Throwables.getStackTraceAsString(e));
+            return new RuntimeInfo(getModuleName(), RuntimeInfo.ReturnStatus.INTERRUPTION, null, e.getMessage() + Throwables.getStackTraceAsString(e));
         }
     }
 

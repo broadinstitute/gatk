@@ -11,6 +11,11 @@ import java.util.List;
 public final class BWAMEMModule extends ExternalCommandlineProgramModule {
 
     @Override
+    public String getModuleName(){
+        return "bwa mem";
+    }
+
+    @Override
     public List<String> initializeCommands(final Path pathToProgram){
         final ArrayList<String> res = new ArrayList<>();
         res.add(pathToProgram.toString());
