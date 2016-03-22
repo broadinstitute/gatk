@@ -143,7 +143,7 @@ public final class KBestHaplotypeFinder extends AbstractList<KBestHaplotype> {
         boolean foundSomePath = false;
         for (final SeqVertex source : sources) {
             final Set<SeqVertex> parentVertices = new HashSet<>(original.vertexSet().size());
-            foundSomePath = findGuiltyVerticesAndEdgesToRemoveCycles(original, source, sinks, edgesToRemove, vertexToRemove, parentVertices) | foundSomePath;
+            foundSomePath = findGuiltyVerticesAndEdgesToRemoveCycles(original, source, sinks, edgesToRemove, vertexToRemove, parentVertices) || foundSomePath;
         }
 
         if (!foundSomePath) {
