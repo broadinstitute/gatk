@@ -1,5 +1,0 @@
-machine:
-  java:
-    version: oraclejdk8
-  environment:
-    GRADLE_OPTS: -Xmx512m -XX:MaxPermSize=512m
