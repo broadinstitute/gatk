@@ -313,7 +313,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
 
             int groupsProcessed = 0;
             long lastLogTime = System.currentTimeMillis();
-            final int meanGroupSize = Math.max(1, (recordsRead / 2) / (int) pow(4, MIN_IDENTICAL_BASES * 2));
+            final int meanGroupSize = Math.max(1, (recordsRead / 2) / (int) pow(4.0, (double) MIN_IDENTICAL_BASES * 2));
 
             while (iterator.hasNext()) {
                 // Get the next group and split it apart by library
