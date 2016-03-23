@@ -1,0 +1,5 @@
+GATK3 total:    19910
+GATK4 total:    19916
+Concordant:    19882
+3 Discordant 4:       28
+4 Discordant 3:       34

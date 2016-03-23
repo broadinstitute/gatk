@@ -1,0 +1,10 @@
+Times on gsa6 (both using AVX PairHMM):
+
+VCF MODE:
+GATK3: 1.73 min
+GATK4: 3.74 min
+
+GVCF MODE:
+GATK3: 4.64 min
+GATK4: 5.45 min
+

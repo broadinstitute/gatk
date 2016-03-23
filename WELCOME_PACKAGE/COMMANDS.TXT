@@ -1,0 +1,20 @@
+GATK4:
+
+VCF MODE:
+./gatk-launch HaplotypeCaller -R src/test/resources/large/human_g1k_v37.20.21.fasta -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -O out.vcf
+
+GVCF MODE:
+./gatk-launch HaplotypeCaller -R src/test/resources/large/human_g1k_v37.20.21.fasta -I src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -ERC GVCF -O out.g.vcf
+
+GATK3:
+
+VCF MODE:
+java -jar GATK3.4-46.jar -T HaplotypeCaller -R hellbender/src/test/resources/large/human_g1k_v37.20.21.fasta -I hellbender/src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -dt NONE --maxReadsInRegionPerSample 100000000 --minReadsPerAlignmentStart 100000 -o out.vcf
+
+GVCF MODE:
+java -jar GATK3.4-46.jar -T HaplotypeCaller -R hellbender/src/test/resources/large/human_g1k_v37.20.21.fasta -I hellbender/src/test/resources/large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -dt NONE --maxReadsInRegionPerSample 100000000 --minReadsPerAlignmentStart 100000 -ERC GVCF -o out.g.vcf
+
+
+Concordance Script:
+./concordance.sh <gatk3_vcf> <gatk4_vcf>
+
