@@ -216,7 +216,7 @@ public final class SWPairwiseAlignment {
         if ( cutoff ) {
             MATRIX_MIN_CUTOFF = 0;
         } else {
-            MATRIX_MIN_CUTOFF = (int) -1e8;
+            MATRIX_MIN_CUTOFF = (int) -1.0e8;
         }
 
         final int lowInitValue= Integer.MIN_VALUE/2;
@@ -247,15 +247,25 @@ public final class SWPairwiseAlignment {
         }
         // build smith-waterman matrix and keep backtrack info:
         int[] curRow=sw[0];
-        for ( int i = 1; i <sw.length ; i++ ) {
+
+        //field access is pricey if done enough times so we extract those out
+        final int w_open = parameters.w_open;
+        final int w_extend = parameters.w_extend;
+        final int w_match = parameters.w_match;
+        final int w_mismatch = parameters.w_mismatch;
+
+        //array length checks are expensive in tight loops so extract the length out
+        for ( int i = 1, sw_length = sw.length; i < sw_length ; i++ ) {
             final byte a_base = reference[i-1]; // letter in a at the current pos
             final int[] lastRow=curRow;
             curRow=sw[i];
             final int[] curBackTrackRow=btrack[i];
-            for ( int j = 1; j < curRow.length; j++) {
+
+            //array length checks are expensive in tight loops so extract the length out
+            for ( int j = 1, curRow_length = curRow.length; j < curRow_length; j++) {
                 final byte b_base = alternate[j-1]; // letter in b at the current pos
                 // in other words, step_diag = sw[i-1][j-1] + wd(a_base,b_base);
-                final int step_diag = lastRow[j-1] + wd(a_base,b_base);
+                final int step_diag = lastRow[j-1] + (a_base == b_base ? w_match : w_mismatch);
 
                 // optimized "traversal" of all the matrix cells above the current one (i.e. traversing
                 // all 'step down' events that would end in the current cell. The optimized code
@@ -263,8 +273,8 @@ public final class SWPairwiseAlignment {
                 // the optimization works ONLY for linear w(k)=wopen+(k-1)*wextend!!!!
 
                 // if a gap (length 1) was just opened above, this is the cost of arriving to the current cell:
-                int prev_gap = lastRow[j]+parameters.w_open;
-                best_gap_v[j] += parameters.w_extend; // for the gaps that were already opened earlier, extending them by 1 costs w_extend
+                int prev_gap = lastRow[j] + w_open;
+                best_gap_v[j] += w_extend; // for the gaps that were already opened earlier, extending them by 1 costs w_extend
                  if (  prev_gap > best_gap_v[j]  ) {
                     // opening a gap just before the current cell results in better score than extending by one
                     // the best previously opened gap. This will hold for ALL cells below: since any gap
@@ -285,8 +295,8 @@ public final class SWPairwiseAlignment {
                 // does exactly the same thing as the commented out loop below. IMPORTANT:
                 // the optimization works ONLY for linear w(k)=wopen+(k-1)*wextend!!!!
 
-                prev_gap =curRow[j-1]  + parameters.w_open; // what would it cost us to open length 1 gap just to the left from current cell
-                best_gap_h[i] += parameters.w_extend; // previous best gap would cost us that much if extended by another base
+                prev_gap =curRow[j-1]  + w_open; // what would it cost us to open length 1 gap just to the left from current cell
+                best_gap_h[i] += w_extend; // previous best gap would cost us that much if extended by another base
                 if ( prev_gap > best_gap_h[i] ) {
                     // newly opened gap is better (score-wise) than any previous gap with the same row index i; since
                     // gap penalty is linear with k, this new gap location is going to remain better than any previous ones

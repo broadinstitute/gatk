@@ -123,8 +123,25 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
     public boolean containsVertex(final T v) {
         Utils.nonNull(v, "Vertex cannot be null");
 
-        // TODO -- warning this is expensive.  Need to do vertex caching
-        return getVertices().contains(v);
+        if ( getEdges().isEmpty() ) {
+            return false;
+        } else {
+            boolean first = true;
+            for ( final E e : getEdges() ) {
+                if ( first ) {
+                    final T source = graph.getEdgeSource(e);
+                    if (v.equals(source)){
+                        return true;
+                    }
+                    first = false;
+                }
+                final T target = graph.getEdgeTarget(e);
+                if (v.equals(target)){
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     @Override
