@@ -535,8 +535,7 @@ public final class GATKVariantContextUtils {
         // look forward on the test string
         for (int start = testString.length - repeatUnit.length; start >= 0; start -= repeatUnit.length) {
             int end = start + repeatUnit.length;
-            byte[] unit = Arrays.copyOfRange(testString,start, end);
-            if(Arrays.equals(unit,repeatUnit))
+            if (equal(testString, start, end, repeatUnit))
                 numRepeats++;
             else
                 break;
