@@ -312,7 +312,7 @@ source("scripts/install_R_packages.R")
     
 ##Setting up profiling using JProfiler (not using IntelliJ)
     
-   * Build th GATK using `./gradlew installAll`
+   * Build GATK using `./gradlew installAll`
 
    * In the "Session Settings" windown, select the `all` GATK4 jar, eg `~/gatk/build/libs/gatk-all-4.alpha-196-gb542813-SNAPSHOT-spark.jar` for "Main class or executable JAR" and enter the right "Arguments"
 
