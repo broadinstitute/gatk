@@ -67,7 +67,22 @@ public final class Kmer {
         this.bases = bases;
         this.start = start;
         this.length = length;
-        this.hash = new String(bases, start, length).hashCode();
+        this.hash = hashCode(bases, start, length);
+    }
+
+    /**
+     *  Compute the hashcode of this KMer
+     *  Equivalent to new String(bases, start, length).hashCode()
+     */
+    private static int hashCode(final byte[] bases, final int start, final int length) {
+        if (length == 0){
+            return 0;
+        }
+        int h = 0;
+        for (int i = start, stop = start + length; i < stop; i++) {
+            h = 31 * h + bases[i];
+        }
+        return h;
     }
 
     /**

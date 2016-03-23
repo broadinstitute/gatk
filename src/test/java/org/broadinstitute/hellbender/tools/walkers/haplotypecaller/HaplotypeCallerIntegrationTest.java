@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
@@ -21,7 +23,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = new String[] {
             "-I", NA12878_20_21_WGS_bam,
             "-R", b37_reference_20_21,
-            "-O", output.getAbsolutePath()
+            "-O", output.getAbsolutePath(),
+            "--" + StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.INFO.toString()
         };
 
         runCommandLine(args);
@@ -39,6 +42,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-I", NA12878_20_21_WGS_bam,
                 "-R", b37_reference_20_21,
                 "-O", output.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.INFO.toString(),
                 "-ERC", "GVCF"
         };
 

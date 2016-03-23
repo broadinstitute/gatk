@@ -523,8 +523,7 @@ public final class GATKVariantContextUtils {
             // look forward on the test string
             for (int start = 0; start < testString.length; start += repeatUnit.length) {
                 int end = start + repeatUnit.length;
-                byte[] unit = Arrays.copyOfRange(testString,start, end);
-                if(Arrays.equals(unit,repeatUnit))
+                if(equal(testString, start, end, repeatUnit))
                     numRepeats++;
                 else
                     break;
@@ -536,8 +535,7 @@ public final class GATKVariantContextUtils {
         // look forward on the test string
         for (int start = testString.length - repeatUnit.length; start >= 0; start -= repeatUnit.length) {
             int end = start + repeatUnit.length;
-            byte[] unit = Arrays.copyOfRange(testString,start, end);
-            if(Arrays.equals(unit,repeatUnit))
+            if (equal(testString, start, end, repeatUnit))
                 numRepeats++;
             else
                 break;
@@ -545,6 +543,24 @@ public final class GATKVariantContextUtils {
         return numRepeats;
     }
 
+    private static boolean equal(final byte[] arr1, final int from, final int to, final byte[] arr2){
+        if (arr1.length < to){
+            return false;
+        }
+        if (arr2.length != (to - from)) {
+            return false;
+        }
+        //here: arr2.length == to - from so arr2.length + from = to
+
+        final int copyLength = Math.min(arr1.length, to) - from;
+        final int to2 = from + copyLength;
+        for (int i = from; i < to2; i++) {
+            if (arr1[i] != arr2[i - from]) {
+                return false;
+            }
+        }
+        return true;
+    }
     /**
      * Helper function for isTandemRepeat that checks that allele matches somewhere on the reference
      * @param ref

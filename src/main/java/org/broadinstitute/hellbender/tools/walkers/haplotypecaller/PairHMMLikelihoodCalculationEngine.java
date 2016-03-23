@@ -334,7 +334,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     @VisibleForTesting
     static Pair<byte[], Integer> findTandemRepeatUnits(final byte[] readBases, final int offset) {
         int maxBW = 0;
-        byte[] bestBWRepeatUnit = new byte[]{readBases[offset]};
+        byte[] bestBWRepeatUnit = {readBases[offset]};
         for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
             // fix repeat unit length
             //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
@@ -354,7 +354,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         int maxRL = maxBW;
 
         if (offset < readBases.length-1) {
-            byte[] bestFWRepeatUnit = new byte[]{readBases[offset+1]};
+            byte[] bestFWRepeatUnit = {readBases[offset+1]};
             int maxFW = 0;
             for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
                 // fix repeat unit length

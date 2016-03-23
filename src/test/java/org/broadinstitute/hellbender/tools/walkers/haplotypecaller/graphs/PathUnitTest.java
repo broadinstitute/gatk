@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import htsjdk.samtools.Cigar;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.Path;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -45,6 +41,15 @@ public final class PathUnitTest extends BaseTest {
         Assert.assertEquals(path2.length(), 2);
 
         Assert.assertTrue(path2.containsVertex(v1));
+        Assert.assertTrue(path2.containsVertex(v2));
+        Assert.assertTrue(path2.containsVertex(v3));
+        Assert.assertFalse(path2.containsVertex(v4));
+
+        Assert.assertFalse(path.containsVertex(v1));
+        Assert.assertFalse(path.containsVertex(v2));
+        Assert.assertFalse(path.containsVertex(v3));
+        Assert.assertFalse(path.containsVertex(v4));
+
         Assert.assertFalse(path2.pathsAreTheSame(path1));
         Assert.assertTrue(path1.pathsAreTheSame(path1));
         path2.toString();//just test not blowing up - we dont' make any claims about the toString code

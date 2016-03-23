@@ -268,6 +268,12 @@ public final class CigarUtils {
             return new Cigar(Arrays.asList(new CigarElement(refSeq.length, CigarOperator.D)));
         }
 
+        if (Arrays.equals(refSeq, altSeq)){
+            final Cigar matching = new Cigar();
+            matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
+            return matching;
+        }
+
         final Cigar nonStandard;
 
         final String paddedRef = SW_PAD + new String(refSeq) + SW_PAD;
@@ -277,7 +283,6 @@ public final class CigarUtils {
         if ( isSWFailure(alignment) ) {
             return null;
         }
-
 
         // cut off the padding bases
         final int baseStart = SW_PAD.length();
