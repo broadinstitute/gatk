@@ -302,6 +302,20 @@ source("scripts/install_R_packages.R")
 
 * In future debugging sessions, you can simply adjust the "Program Arguments" in the "GATK debug" configuration as needed
 
+##Setting up profiling using JProfiler from IntelliJ
+
+   * JProfiler has great integration with IntelliJ (we're using IntelliJ Ultimate 2016.1) so the setup is trivial.
+   
+   * Follow the instructions above for creating an IntelliJ project for GATK
+   
+   * Right click on a test method/class/package and select "Profile" 
+    
+##Setting up profiling using JProfiler (not using IntelliJ)
+    
+   * Build GATK using `./gradlew installAll`
+
+   * In the "Session Settings" windown, select the `all` GATK4 jar, eg `~/gatk/build/libs/gatk-all-4.alpha-196-gb542813-SNAPSHOT-spark.jar` for "Main class or executable JAR" and enter the right "Arguments"
+
 ##Updating the Intellij project when dependencies change
 If there are dependency changes in `build.gradle` it is necessary to refresh the gradle project. This is easily done with the following steps.
 
