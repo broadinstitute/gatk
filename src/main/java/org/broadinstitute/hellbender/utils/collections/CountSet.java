@@ -132,7 +132,7 @@ public final class CountSet implements Set<Integer> {
         //TODO to be optimized to add missing sub-ranges in one go:
         boolean result = false;
         for (int i = lowEnd; i <= highEnd; i++) {
-            result = add(i) | result;
+            result = add(i) || result;
         }
         return result;
     }
@@ -163,7 +163,7 @@ public final class CountSet implements Set<Integer> {
         ensureCapacity(size + values.length);
         boolean result = false;
         for (final int v : values) {
-            result = add(v) | result;
+            result = add(v) || result;
         }
         return result;
     }
@@ -173,7 +173,7 @@ public final class CountSet implements Set<Integer> {
         ensureCapacity(size + numbers.size());
         boolean result = false;
         for (final Number n : numbers) {
-            result = add(n.intValue()) | result;
+            result = add(n.intValue()) || result;
         }
         return result;
     }
@@ -194,7 +194,7 @@ public final class CountSet implements Set<Integer> {
         ensureCapacity(size + source.length);
         boolean result = false;
         for (int i = fromIndex; i < toIndex; i++) {
-            result = add(source[i]) | result;
+            result = add(source[i]) || result;
         }
         return result;
     }
@@ -405,7 +405,7 @@ public final class CountSet implements Set<Integer> {
     public boolean removeAll(final Collection<?> c) {
         boolean result = false;
         for (final Object o : c) {
-            result = remove(o) | result;
+            result = remove(o) || result;
         }
         return result;
     }
