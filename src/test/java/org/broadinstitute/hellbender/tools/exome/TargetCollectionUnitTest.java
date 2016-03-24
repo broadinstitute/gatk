@@ -265,7 +265,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
             List<SimpleInterval> intervals = new ArrayList<>(numberOfTargets);
             final String contig = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceName();
             final int contigLength = TargetsToolsTestUtils.REFERENCE_DICTIONARY.getSequence(0).getSequenceLength();
-            final float avgSlotSize = contigLength / numberOfTargets;
+            final float avgSlotSize = (float) contigLength / numberOfTargets;
 
             int nextBasePos = 0;
             for (int i = 0; i < numberOfTargets; i++) {
