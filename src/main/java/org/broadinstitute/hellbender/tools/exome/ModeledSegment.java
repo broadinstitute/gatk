@@ -27,8 +27,7 @@ public class ModeledSegment extends Segment<String> {
     }
 
     /**
-     *  Get segment mean in log2 space
-     * @return
+     * Get the segment mean in log2 space
      */
     public double getSegmentMean() {
         return mean;
@@ -36,8 +35,6 @@ public class ModeledSegment extends Segment<String> {
 
     /**
      * Set the segment mean in log2 space
-     *
-     * @param segmentMean
      */
     public void setSegmentMean(final double segmentMean) {
         this.mean = segmentMean;
@@ -45,8 +42,6 @@ public class ModeledSegment extends Segment<String> {
 
     /**
      * Get the segment mean in non-logged space
-     *
-     * @return
      */
     public double getSegmentMeanInCRSpace() {
         return Math.pow(2, mean);
@@ -54,8 +49,6 @@ public class ModeledSegment extends Segment<String> {
 
     /**
      * Get the segment mean in logged space
-     *
-     * @return
      */
     public double getSegmentMeanInLog2CRSpace() {
         return getSegmentMean();

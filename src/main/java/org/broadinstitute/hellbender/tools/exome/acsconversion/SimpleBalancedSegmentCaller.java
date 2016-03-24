@@ -14,6 +14,6 @@ public class SimpleBalancedSegmentCaller implements BalancedSegmentCaller{
      * @return whether this segment should be considered balanced
      */
     public boolean isSegmentBalanced(final ACNVModeledSegment segment) {
-        return segment.getMinorAlleleFractionPosteriorSummary().upper() > 0.49;
+        return segment.getMinorAlleleFractionPosteriorSummary().getUpper() > 0.49;
     }
 }

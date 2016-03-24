@@ -1,4 +1,4 @@
-#NOTE: the Java wrapper for this script first sources plotting.R
+#NOTE: the Java wrapper for this script first sources CNV_plotting_library.R
 options(error = quote({dump.frames(dumpto = "plotting_dump", to.file = TRUE); q()}))    # Useful for debugging
 
 library(optparse)

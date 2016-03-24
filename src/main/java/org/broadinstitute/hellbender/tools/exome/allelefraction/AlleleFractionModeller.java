@@ -332,7 +332,7 @@ public final class AlleleFractionModeller {
             final int j = segment;
             final List<Double> minorFractionSamples =
                     minorFractionsSamples.stream().map(s -> s.get(j)).collect(Collectors.toList());
-            posteriorSummaries.add(PosteriorSummary.calculateHighestPosteriorDensitySummary(minorFractionSamples, credibleIntervalAlpha, ctx));
+            posteriorSummaries.add(PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(minorFractionSamples, credibleIntervalAlpha, ctx));
         }
         return posteriorSummaries;
     }
