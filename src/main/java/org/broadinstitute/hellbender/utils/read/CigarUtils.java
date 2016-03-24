@@ -268,6 +268,14 @@ public final class CigarUtils {
             return new Cigar(Arrays.asList(new CigarElement(refSeq.length, CigarOperator.D)));
         }
 
+        //Note: this is a performance optimization.
+        // If two strings are equal (a O(n) check) then it's trivial to get CIGAR for them.
+        if (Arrays.equals(refSeq, altSeq)){
+            final Cigar matching = new Cigar();
+            matching.add(new CigarElement(refSeq.length, CigarOperator.MATCH_OR_MISMATCH));
+            return matching;
+        }
+
         final Cigar nonStandard;
 
         final String paddedRef = SW_PAD + new String(refSeq) + SW_PAD;
