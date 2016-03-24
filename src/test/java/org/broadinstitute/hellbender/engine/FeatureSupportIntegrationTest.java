@@ -57,13 +57,14 @@ public final class FeatureSupportIntegrationTest extends CommandLineProgramTest 
 
     @Test
     public void testFeaturesAsIntervalsNonExistentFile() throws IOException {
+        // Non-existent files should be interpreted as interval strings and fail interval parsing
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -R " + hg19MiniReference +
                 " -I " + FEATURE_INTEGRATION_TEST_DIRECTORY + "reads_data_source_test1.bam" +
                 " -L " + publicTestDir + "non_existent_file.vcf" +
                 " -O %s",
                 1,
-                UserException.CouldNotReadInputFile.class
+                UserException.MalformedGenomeLoc.class
         );
         testSpec.executeTest("testFeaturesAsIntervals", this);
     }
