@@ -773,6 +773,43 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     }
 
     @Test
+    public void testFindNumberOfRepetitions() throws Exception {
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("ATG".getBytes(), "ATGATGATGATG".getBytes(), true),4);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("G".getBytes(), "ATGATGATGATG".getBytes(), true),0);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("T".getBytes(), "T".getBytes(), true),1);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "ATGATGATCATG".getBytes(), true),1);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("CCC".getBytes(), "CCCCCCCC".getBytes(), true),2);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("CCCCCCCC".getBytes(), "CCC".getBytes(), true),0);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "AT".getBytes(), true), 1);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "".getBytes(), true), 0); //empty test string
+
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "GATAT".getBytes(), false), 2);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("ATG".getBytes(), "ATGATGATGATG".getBytes(), false),4);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("G".getBytes(), "ATGATGATGATG".getBytes(), false),1);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("T".getBytes(), "T".getBytes(), false),1);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "ATGATGATCATG".getBytes(), false),0);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("CCC".getBytes(), "CCCCCCCC".getBytes(), false),2);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("CCCCCCCC".getBytes(), "CCC".getBytes(), false),0);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "AT".getBytes(), false), 1);
+        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "".getBytes(), false), 0); //empty test string
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testFindNumberOfRepetitionsNullArg1() throws Exception {
+        GATKVariantContextUtils.findNumberOfRepetitions(null, "AT".getBytes(), false);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testFindNumberOfRepetitionsNullArg2() throws Exception {
+        GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), null, false);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testFindNumberOfRepetitionsEmptyArg1() throws Exception {
+        GATKVariantContextUtils.findNumberOfRepetitions("".getBytes(), "AT".getBytes(), false);
+    }
+
+    @Test
     public void testRepeatAllele() {
         Allele nullR = Allele.create("A", true);
         Allele nullA = Allele.create("A", false);
@@ -794,12 +831,6 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
 
         Pair<List<Integer>,byte[]> result;
         byte[] refBytes = "TATCATCATCGGA".getBytes();
-
-        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("ATG".getBytes(), "ATGATGATGATG".getBytes(), true),4);
-        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("G".getBytes(), "ATGATGATGATG".getBytes(), true),0);
-        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("T".getBytes(), "T".getBytes(), true),1);
-        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("AT".getBytes(), "ATGATGATCATG".getBytes(), true),1);
-        Assert.assertEquals(GATKVariantContextUtils.findNumberOfRepetitions("CCC".getBytes(), "CCCCCCCC".getBytes(), true),2);
 
         Assert.assertEquals(GATKVariantContextUtils.findRepeatedSubstring("ATG".getBytes()),3);
         Assert.assertEquals(GATKVariantContextUtils.findRepeatedSubstring("AAA".getBytes()),1);
