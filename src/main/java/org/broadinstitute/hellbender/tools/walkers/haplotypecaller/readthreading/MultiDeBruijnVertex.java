@@ -21,6 +21,7 @@ public final class MultiDeBruijnVertex extends BaseVertex {
 
     private final List<String> reads = new LinkedList<>();
     private final boolean mergeIdenticalNodes;
+    private final int hashCode;
 
     /**
      * Create a new MultiDeBruijnVertex with kmer sequence
@@ -30,6 +31,9 @@ public final class MultiDeBruijnVertex extends BaseVertex {
     public MultiDeBruijnVertex(final byte[] sequence, final boolean mergeIdenticalNodes) {
         super(sequence);
         this.mergeIdenticalNodes = mergeIdenticalNodes;
+
+        //cache hashcode because its computation shows on profiler
+        this.hashCode = mergeIdenticalNodes ? super.hashCode() : System.identityHashCode(this);
     }
 
     /**
@@ -51,13 +55,8 @@ public final class MultiDeBruijnVertex extends BaseVertex {
 
     @Override
     public int hashCode() {
-        if (mergeIdenticalNodes) {
-            return super.hashCode();
-        } else {
-            return System.identityHashCode(this);
-        }
+        return hashCode;
     }
-
 
     @Override
     public String toString() {

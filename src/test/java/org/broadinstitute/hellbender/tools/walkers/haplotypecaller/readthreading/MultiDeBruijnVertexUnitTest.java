@@ -7,7 +7,14 @@ import java.util.Arrays;
 
 public final class MultiDeBruijnVertexUnitTest {
 
-   @Test
+    @Test
+    public void testMergingIdenticals() {
+        final MultiDeBruijnVertex v1 = new MultiDeBruijnVertex("fred".getBytes(), true);
+        final MultiDeBruijnVertex v2 = new MultiDeBruijnVertex("fred".getBytes(), true);
+        Assert.assertEquals(v1, v2);
+    }
+
+    @Test
     public void test(){
        final MultiDeBruijnVertex v1 = new MultiDeBruijnVertex("fred".getBytes());
        final MultiDeBruijnVertex v2 = new MultiDeBruijnVertex("fred".getBytes());
@@ -25,9 +32,13 @@ public final class MultiDeBruijnVertexUnitTest {
        Assert.assertEquals(v1.getAdditionalInfo(), v2.getAdditionalInfo());
        Assert.assertTrue(Arrays.equals(v1.getSequence(), v2.getSequence()));
        Assert.assertEquals(v1.hasAmbiguousSequence(), v2.hasAmbiguousSequence());
-       v1.toString();//not blow up - we dont check the string
-   }
+       Assert.assertNotNull(v1.toString());//not blow up - we dont check the string
 
+        v1.addRead("fred");
+        Assert.assertEquals(v1.getAdditionalInfo(), "");
+        v1.setAdditionalInfo("some info");
+        Assert.assertEquals(v1.getAdditionalInfo(), "some info");
+   }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullRead(){
