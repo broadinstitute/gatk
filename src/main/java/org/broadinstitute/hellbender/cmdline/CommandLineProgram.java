@@ -142,6 +142,7 @@ public abstract class CommandLineProgram {
                         " " + System.getProperty("java.runtime.version") +
                         "; Version: " + commandLineParser.getVersion() +
                         " " + (Defaults.USE_ASYNC_IO ? "asyncIO": "syncIO") +
+                        " " + "DefaultBAMCompressionLevel: " + Defaults.COMPRESSION_LEVEL +
                         " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
             catch (final Exception e) { /* Unpossible! */ }
