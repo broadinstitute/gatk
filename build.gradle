@@ -26,6 +26,8 @@ import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
 
 mainClassName = "org.broadinstitute.hellbender.Main"
+
+//Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
 applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io=false", "-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so", "-Dsamjdk.compression_level=1"]
 
 //Delete the windows script - we never test on Windows so let's not pretend it works
@@ -255,28 +257,6 @@ jar {
 }
 
 
-task testAll(type: Test){
-    useTestNG{}
-
-    systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
-
-    // set heap size for the test JVM(s)
-    minHeapSize = "1G"
-    maxHeapSize = "1.5G"
-    jvmArgs '-Xmx2G'
-
-    // show standard out and standard error of the test JVM(s) on the console
-    testLogging.showStandardStreams = true
-    beforeTest { descriptor ->
-        logger.lifecycle("Running Test: " + descriptor)
-    }
-
-    // listen to standard out and standard error of the test JVM(s)
-    onOutput { descriptor, event ->
-        logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
-    }
-}
-
 test {
     String CI = "$System.env.CI"
     String CLOUD = "$System.env.CLOUD"
@@ -302,6 +282,9 @@ test {
         }
     }
 
+    systemProperty "samjdk.use_async_io", "false"
+    systemProperty "samjdk.intel_deflater_so_path", "build/libIntelDeflater.so"
+    systemProperty "samjdk.compression_level", "1"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
     // set heap size for the test JVM(s)
