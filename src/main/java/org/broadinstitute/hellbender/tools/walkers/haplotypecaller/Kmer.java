@@ -67,7 +67,22 @@ public final class Kmer {
         this.bases = bases;
         this.start = start;
         this.length = length;
-        this.hash = new String(bases, start, length).hashCode();
+        this.hash = hashCode(bases, start, length);
+    }
+
+    /**
+     *  Compute the hashcode for a KMer.
+     *  Equivalent to <code>new String(bases, start, length).hashCode()</code>
+     */
+    private static int hashCode(final byte[] bases, final int start, final int length) {
+        if (length == 0){
+            return 0;
+        }
+        int h = 0;
+        for (int i = start, stop = start + length; i < stop; i++) {
+            h = 31 * h + bases[i];
+        }
+        return h;
     }
 
     /**
@@ -114,7 +129,7 @@ public final class Kmer {
      * differingBases = {'G','G'}
      * @param other                 Other k-mer to test
      * @param maxDistance           Maximum distance to search. If this and other k-mers are beyond this Hamming distance,
-     *                              search is aborted and a null is returned
+     *                              search is aborted and -1 is returned
      * @param differingIndeces      Array with indices of differing bytes in array
      * @param differingBases        Actual differing bases
      * @return                      Set of mappings of form (int->byte), where each elements represents index
