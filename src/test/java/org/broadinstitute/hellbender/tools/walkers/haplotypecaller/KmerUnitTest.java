@@ -51,6 +51,24 @@ public final class KmerUnitTest extends BaseTest {
         Assert.assertEquals(new String(kmer.bases()), expected);
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNegativeStart() throws Exception {
+        final byte[] bases = "ACGTACGT".getBytes();
+        new Kmer(bases, -2, 3);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNegativeLength() throws Exception {
+        final byte[] bases = "ACGTACGT".getBytes();
+        new Kmer(bases, 2, -3);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testEndTooFar() throws Exception {
+        final byte[] bases = "ACGTACGT".getBytes();
+        new Kmer(bases, 2, 10);
+    }
+
     @Test
     public void testEquals() {
         final byte[] bases = "ACGTACGT".getBytes();
@@ -58,6 +76,8 @@ public final class KmerUnitTest extends BaseTest {
         final Kmer eq2 = new Kmer(bases, 4, 3);
         final Kmer eq4 = new Kmer(new Kmer(bases, 4, 3).bases());
         final Kmer neq = new Kmer(bases, 1, 3);
+
+        Assert.assertNotEquals(eq1, "FRED");
 
 //        for ( final Kmer eq : Arrays.asList(eq1, eq2) ) { // TODO -- deal with me
         for ( final Kmer eq : Arrays.asList(eq1, eq2, eq4) ) {
@@ -77,6 +97,30 @@ public final class KmerUnitTest extends BaseTest {
                 Assert.assertEquals(new String(one.subKmer(start, length).bases()), bases.substring(start, start + length));
             }
         }
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void getDifferingPositions() throws Exception {
+        final byte[] bases = "ACGTACGT".getBytes();
+        final Kmer eq1 = new Kmer(bases, 0, 3);
+        final byte[] newBases = bases.clone();
+        final int[] differingIndices = new int[newBases.length];
+        final byte[] differingBases = new byte[newBases.length];
+
+        eq1.getDifferingPositions(eq1, -2, differingIndices, differingBases);
+    }
+
+    @Test
+    public void testStringsTooFar() throws Exception {
+        final byte[] bases  = "ACGTACGT".getBytes();
+        final byte[] bases2 = "TGCATGCA".getBytes();
+        final Kmer eq1 = new Kmer(bases, 0, 3);
+        final Kmer eq2 = new Kmer(bases2, 0, 3);
+        final byte[] newBases = bases2;
+        final int[] differingIndices = new int[newBases.length];
+        final byte[] differingBases = new byte[newBases.length];
+
+        Assert.assertEquals(eq1.getDifferingPositions(eq2, 1, differingIndices, differingBases), -1);
     }
 
     @Test
