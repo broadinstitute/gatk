@@ -176,18 +176,15 @@ public final class IntervalUtils {
                 throw new UserException.MalformedFile(new File(arg), "Interval file could not be parsed in any supported format.", e);
             }
         }
-        // If it's neither a Feature-containing file nor an interval file, but is an existing file, throw an error
+        // If it's neither a Feature-containing file nor an interval file, but is an existing file, throw an error.
+        // Note that since contigs can contain periods in their names, we can't use the mere presence of an "extension"
+        // as evidence that the user intended the String to be interpreted as a file.
         else if ( new File(arg).exists() ) {
             throw new UserException.CouldNotReadInputFile(arg, String.format("The file %s exists, but does not contain Features " +
                     "(ie., is not in a supported Feature file format such as vcf, bcf, or bed), " +
                     "and does not have one of the supported interval file extensions (" + INTERVAL_FILE_EXTENSIONS + "). " +
                     "Please rename your file with the appropriate extension. If %s is NOT supposed to be a file, " +
                     "please move or rename the file at location %s", arg, arg, new File(arg).getAbsolutePath()));
-        }
-        // If it's not an existing file, but looks like it was supposed to be a file (ie., it has an extension), throw an error.
-        // This works because '.' is not an allowable character in interval strings.
-        else if ( arg.indexOf('.') != -1 ) {
-            throw new UserException.CouldNotReadInputFile("The file " + arg + " does not exist");
         }
         // Otherwise treat as an interval -> parse and add to raw interval list
         else {

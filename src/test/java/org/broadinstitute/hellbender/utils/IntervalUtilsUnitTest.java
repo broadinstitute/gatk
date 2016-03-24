@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.collect.Lists;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Interval;
@@ -384,6 +385,21 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testMissingIntervalFile() {
         IntervalUtils.isIntervalFile(BaseTest.publicTestDir + "no_such_intervals.list");
+    }
+
+    @Test
+    public void testParseIntervalWithPeriodInContigName() {
+        // Make sure that we don't interpret contigs with periods in their name as files
+        final String contigName = "GL000249.1";
+        final SAMSequenceRecord contigRecord = new SAMSequenceRecord(contigName, 100);
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(contigRecord));
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+
+        final List<GenomeLoc> result = IntervalUtils.parseIntervalArguments(parser, contigName);
+        Assert.assertEquals(result.size(), 1);
+        Assert.assertEquals(result.get(0).getContig(), contigName);
+        Assert.assertEquals(result.get(0).getStart(), 1);
+        Assert.assertEquals(result.get(0).getEnd(), 100);
     }
 
     @Test
@@ -1112,7 +1128,10 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertEquals(actualIntervals, expectedIntervals, "Wrong intervals loaded from Feature file " + featureFile.getAbsolutePath());
     }
 
-    @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
+    // Note: because the file does not exist and all characters are allowed in contig names,
+    // we will not know that this is supposed to be interpreted as a file.
+    // So we'll blow up with MalformedGenomeLoc and not anything related to files
+    @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testLoadIntervalsFromNonExistentFile() {
         IntervalUtils.loadIntervals(Arrays.asList(publicTestDir + "non_existent_file.vcf"), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
