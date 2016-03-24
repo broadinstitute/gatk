@@ -26,7 +26,7 @@ import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
 
 mainClassName = "org.broadinstitute.hellbender.Main"
-applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io=true"]
+applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io=true", "-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so"]
 
 //Delete the windows script - we never test on Windows so let's not pretend it works
 startScripts {
@@ -34,8 +34,6 @@ startScripts {
         delete windowsScript
     }
 }
-
-applicationDefaultJvmArgs = ["-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so"]
 
 task downloadGsaLibFile(type: Download) {
     src 'http://cran.r-project.org/src/contrib/gsalib_2.1.tar.gz'
