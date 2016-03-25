@@ -122,9 +122,7 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
      */
     public boolean containsVertex(final T v) {
         Utils.nonNull(v, "Vertex cannot be null");
-
-        // TODO -- warning this is expensive.  Need to do vertex caching
-        return getVertices().contains(v);
+        return v.equals(getFirstVertex()) || edgesInOrder.stream().map(graph::getEdgeTarget).anyMatch(v::equals);
     }
 
     @Override
@@ -142,30 +140,21 @@ public final class Path<T extends BaseVertex, E extends BaseEdge> {
     }
 
     /**
-     * Get the edges of this path in order
+     * Get the edges of this path in order.
+     * Returns an unmodifiable view of the underlying list
      * @return a non-null list of edges
      */
-    public Collection<E> getEdges() { return edgesInOrder; }
+    public List<E> getEdges() { return Collections.unmodifiableList(edgesInOrder); }
 
     /**
      * Get the list of vertices in this path in order defined by the edges of the path
      * @return a non-null, non-empty list of vertices
      */
     public List<T> getVertices() {
-        if ( getEdges().isEmpty() ) {
-            return Collections.singletonList(lastVertex);
-        } else {
-            final LinkedList<T> vertices = new LinkedList<>();
-            boolean first = true;
-            for ( final E e : getEdges() ) {
-                if ( first ) {
-                    vertices.add(graph.getEdgeSource(e));
-                    first = false;
-                }
-                vertices.add(graph.getEdgeTarget(e));
-            }
-            return vertices;
-        }
+        final List<T> result = new ArrayList<>(edgesInOrder.size()+1);
+        result.add(getFirstVertex());
+        result.addAll(edgesInOrder.stream().map(graph::getEdgeTarget).collect(Collectors.toList()));
+        return result;
     }
 
     /**
