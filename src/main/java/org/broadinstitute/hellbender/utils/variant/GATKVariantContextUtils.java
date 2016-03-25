@@ -415,17 +415,21 @@ public final class GATKVariantContextUtils {
      * @param refBasesStartingAtVCWithPad
      * @return
      */
-    public static Pair<List<Integer>,byte[]> getNumTandemRepeatUnits(final VariantContext vc, final byte[] refBasesStartingAtVCWithPad) {
+    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final VariantContext vc, final byte[] refBasesStartingAtVCWithPad) {
+        Utils.nonNull(vc);
+        Utils.nonNull(refBasesStartingAtVCWithPad);
+
+        if ( ! vc.isIndel() ){ // only indels are tandem repeats
+            return null;
+        }
         final boolean VERBOSE = false;
         final String refBasesStartingAtVCWithoutPad = new String(refBasesStartingAtVCWithPad).substring(1);
-        if ( ! vc.isIndel() ) // only indels are tandem repeats
-            return null;
 
         final Allele refAllele = vc.getReference();
         final byte[] refAlleleBases = Arrays.copyOfRange(refAllele.getBases(), 1, refAllele.length());
 
         byte[] repeatUnit = null;
-        final ArrayList<Integer> lengths = new ArrayList<>();
+        final List<Integer> lengths = new ArrayList<>();
 
         for ( final Allele allele : vc.getAlternateAlleles() ) {
             Pair<int[],byte[]> result = getNumTandemRepeatUnits(refAlleleBases, Arrays.copyOfRange(allele.getBases(), 1, allele.length()), refBasesStartingAtVCWithoutPad.getBytes());
@@ -512,38 +516,53 @@ public final class GATKVariantContextUtils {
     /**
      * Helper routine that finds number of repetitions a string consists of.
      * For example, for string ATAT and repeat unit AT, number of repetitions = 2
-     * @param repeatUnit             Substring
-     * @param testString             String to test
-     * @oaram lookForward            Look for repetitions forward (at beginning of string) or backward (at end of string)
-     * @return                       Number of repetitions (0 if testString is not a concatenation of n repeatUnit's
+     * @param repeatUnit             Non-empty substring represented by byte array
+     * @param testString             String to test (represented by byte array), may be empty
+     * @param leadingRepeats         Look for leading (at the beginning of string) or trailing (at end of string) repetitions
+     * For example:
+     *    GATAT has 2 trailing repeats of A but 0 leading repeats of AT
+     *    ATATG has 0 leading repeats of A but 2 forward repeats of AT
+     *    CCCCCCCC has to forward and 2 trailing repeats of CCC
+     *
+     * @return  Number of repetitions (0 if testString is not a concatenation of n repeatUnit's, including the case of empty testString)
      */
-    public static int findNumberOfRepetitions(byte[] repeatUnit, byte[] testString, boolean lookForward) {
-        int numRepeats = 0;
-        if (lookForward) {
+    public static int findNumberOfRepetitions(byte[] repeatUnit, byte[] testString, boolean leadingRepeats) {
+        Utils.nonNull(repeatUnit, "repeatUnit");
+        Utils.nonNull(testString, "testString");
+        Utils.validateArg(repeatUnit.length != 0, "empty repeatUnit");
+        if (testString.length == 0){
+            return 0;
+        }
+        final int repeatLength = repeatUnit.length;
+        final int testLength = testString.length;
+        final int lengthDifference = testLength - repeatLength;
+
+        if (leadingRepeats) {
+            int numRepeats = 0;
             // look forward on the test string
-            for (int start = 0; start < testString.length; start += repeatUnit.length) {
-                int end = start + repeatUnit.length;
-                byte[] unit = Arrays.copyOfRange(testString,start, end);
-                if(Arrays.equals(unit,repeatUnit))
+            for (int start = 0; start <= lengthDifference; start += repeatLength) {
+                if(Utils.equalRange(testString, start, repeatUnit, 0, repeatLength)) {
                     numRepeats++;
-                else
+                } else {
                     break;
+                }
+            }
+            return numRepeats;
+        } else {
+            // look backward. For example, if repeatUnit = AT and testString = GATAT, number of repeat units is still 2
+            int numRepeats = 0;
+            // look backward on the test string
+            for (int start = lengthDifference; start >= 0; start -= repeatLength) {
+                if (Utils.equalRange(testString, start, repeatUnit, 0, repeatLength)) {
+                    numRepeats++;
+                } else {
+                    break;
+                }
             }
             return numRepeats;
         }
-
-        // look backward. For example, if repeatUnit = AT and testString = GATAT, number of repeat units is still 2
-        // look forward on the test string
-        for (int start = testString.length - repeatUnit.length; start >= 0; start -= repeatUnit.length) {
-            int end = start + repeatUnit.length;
-            byte[] unit = Arrays.copyOfRange(testString,start, end);
-            if(Arrays.equals(unit,repeatUnit))
-                numRepeats++;
-            else
-                break;
-        }
-        return numRepeats;
     }
+
 
     /**
      * Helper function for isTandemRepeat that checks that allele matches somewhere on the reference

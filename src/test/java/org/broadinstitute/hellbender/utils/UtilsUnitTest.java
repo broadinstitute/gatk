@@ -474,4 +474,36 @@ public final class UtilsUnitTest extends BaseTest {
                 {"romeo+juliette" , "01111010111001" },
         };
     }
+
+    @DataProvider(name = "testEqualRange")
+    public Object[][] testEqualRange(){
+        final Object[][] result = {
+            {"ATGATGATGATG".getBytes(), 0, 3, "ATG".getBytes(), true},
+            {"ATGATGATGATG".getBytes(), 3, 6, "ATG".getBytes(), true},
+            {"ATGATGATGATG".getBytes(), 9, 12, "ATG".getBytes(), true},
+
+            {"ATGATGATGATG".getBytes(), 0, 1, "G".getBytes(), false},
+            {"ATGATGATCATG".getBytes(), 0, 2, "AT".getBytes(), true},
+            {"ATGATGATCATG".getBytes(), 2, 4, "AT".getBytes(), false},
+
+            {"T".getBytes(), 0, 1, "T".getBytes(), true},
+
+            {"CCCCCCCC".getBytes(), 0, 3, "CCC".getBytes(), true},
+            {"CCCCCCCC".getBytes(), 5, 8, "CCC".getBytes(), true},
+
+            {"GATAT".getBytes(), 3, 5, "AT".getBytes(), true},
+            {"GATAT".getBytes(), 1, 3, "AT".getBytes(), true},
+
+            {"ATGATGATGATG".getBytes(), 11, 12, "G".getBytes(), true},
+            {"ATGATGATGATG".getBytes(), 10, 11, "G".getBytes(), false},
+            {"ATGATGATCATG".getBytes(), 10, 12, "AT".getBytes(), false},
+        };
+        return result;
+    }
+
+    @Test(dataProvider = "testEqualRange")
+    public void testEqualRange(byte[] arr1, int from, int to, byte[] arr2, boolean expected) throws Exception {
+        //Note 'from' is inclusive, 'to' is exclusive
+        Assert.assertEquals(Utils.equalRange(arr1, from, arr2, 0, to - from), expected);
+    }
 }
