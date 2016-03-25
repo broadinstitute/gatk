@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools;
 import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ public class ApplyBQSRUniqueArgumentCollection implements ArgumentCollectionDefi
      * The two types of binning should not be used together.
      */
     @Advanced
-    @Argument(fullName="static_quantized_quals", shortName = "SQQ", doc = "Use static quantized quality scores to a given number of levels (with -BQSR)", optional=true, mutex = "quantize_quals")
+    @Argument(fullName="static_quantized_quals", shortName = "SQQ", doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true, mutex = "quantize_quals")
     public List<Integer> staticQuantizationQuals = new ArrayList<>();
 
     /**
