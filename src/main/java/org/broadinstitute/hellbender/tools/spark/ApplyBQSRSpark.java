@@ -34,7 +34,7 @@ public final class ApplyBQSRSpark extends GATKSparkTool {
      * The covariates tables are produced by the BaseRecalibrator tool.
      * Please be aware that you should only run recalibration with the covariates file created on the same input bam(s).
      */
-    @Argument(fullName="bqsr_recal_file", shortName="bqsr", doc="Input covariates table file for base quality score recalibration")
+    @Argument(fullName= StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, shortName= StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME, doc="Input covariates table file for base quality score recalibration")
     private String bqsrRecalFile;
 
     @ArgumentCollection

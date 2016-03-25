@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
@@ -43,7 +44,7 @@ import java.util.Optional;
  *         <td>Second pass recalibration tables
  *             results from the application of {@link org.broadinstitute.hellbender.transformers.BQSRReadTransformer}
  *             on the alignment recalibrated using the first pass tables</td></tr>
- *       <tr><td>Input</td><td>-BQSR</td><td>BQSR</td><td style="color: #000000">Black</td>
+ *       <tr><td>Input</td><td>-bqsr</td><td>BQSR</td><td style="color: #000000">Black</td>
  *           <td>Any recalibration table without a specific role</td></tr>
  *     </tbody>
  * </table>
@@ -82,7 +83,7 @@ import java.util.Optional;
  * java -jar GenomeAnalysisTK.jar \
  *      -T AnalyzeCovariates \
  *      -R myrefernce.fasta \
- *      -BQSR myrecal.table \
+ *      -bqsr myrecal.table \
  *      -plots BQSR.pdf
  * </pre>
  *
@@ -108,7 +109,7 @@ import java.util.Optional;
  *      -T AnalyzeCovariates \
  *      -R myrefernce.fasta \
  *      -ignoreLMT \
- *      -BQSR recal1.table \   # you can discard any two
+ *      -bqsr recal1.table \   # you can discard any two
  *      -before recal2.table \
  *      -after recal3.table \
  *      -plots myrecals.pdf
@@ -130,7 +131,7 @@ import java.util.Optional;
  * # Generate the second pass recalibration table file.
  * java -jar GenomeAnalysisTK.jar \
  *      -T BaseRecalibrator \
- *      -BQSR firstpass.table \
+ *      -bqsr firstpass.table \
  *      -R myreference.fasta \
  *      -I myinput.bam \
  *      -knownSites bundle/my-trusted-snps.vcf \
@@ -200,7 +201,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
      * (see Best Practices workflow documentation). The covariates tables are produced by the BaseRecalibrator tool.
      * Please be aware that you should only run recalibration with the covariates file created on the same input bam(s).
      */
-    @Argument(fullName="bqsr_recal_table", shortName="bqsr", optional=true, doc="Input covariates table file for on-the-fly base quality score recalibration")
+    @Argument(fullName= StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME, shortName=StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME, optional=true, doc="Input covariates table file for on-the-fly base quality score recalibration")
     public File BQSR_RECAL_FILE = null;
 
     /**
@@ -218,7 +219,8 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         checkInputReportFile("after",afterFile);
         if (BQSR_RECAL_FILE == null && beforeFile == null && afterFile == null) {
             throw new UserException("you must provide at least one recalibration report file "
-                    + "(arguments -BQSR, -" + BEFORE_ARG_SHORT_NAME + " or -" + AFTER_ARG_SHORT_NAME);
+                    + "(arguments -" + StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME +
+                    ", -" + BEFORE_ARG_SHORT_NAME + " or -" + AFTER_ARG_SHORT_NAME);
         }
 
         checkOutputFile(PDF_ARG_SHORT_NAME,pdfFile);

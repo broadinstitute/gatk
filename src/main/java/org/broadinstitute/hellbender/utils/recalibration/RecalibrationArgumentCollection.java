@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -73,7 +74,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public byte LOW_QUAL_TAIL = 2;
 
     /**
-     * BQSR generates a quantization table for quick quantization later by subsequent tools. BQSR does not quantize the base qualities, this is done by the engine with the -qq or -BQSR options.
+     * BQSR generates a quantization table for quick quantization later by subsequent tools. BQSR does not quantize the base qualities, this is done by the engine with the -qq or -bqsr options.
      * This parameter tells BQSR the number of levels of quantization to use to build the quantization table.
      */
     @Argument(fullName = "quantizing_levels", shortName = "ql", optional = true, doc = "number of distinct quality scores in the quantized output")
@@ -95,7 +96,7 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
      * but when you select a subset of these reads based on their ability to align to the reference and their dinucleotide effect,
      * your Q2 bin can be elevated to Q8 or Q10, leading to issues downstream.
      */
-    @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -BQSR)", optional = true)
+    @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -" + StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME + ")", optional = true)
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
 

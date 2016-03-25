@@ -39,4 +39,7 @@ public final class StandardArgumentDefinitions {
     public static final String USE_ORIGINAL_QUALITIES_SHORT_NAME = "OQ";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
+
+    public static final String BQSR_TABLE_SHORT_NAME = "bqsr";
+    public static final String BQSR_TABLE_LONG_NAME = "bqsr_recal_file";
 }
