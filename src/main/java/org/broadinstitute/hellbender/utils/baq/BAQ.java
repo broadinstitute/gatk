@@ -74,8 +74,6 @@ public final class BAQ implements Serializable {
 
     public static final int DEFAULT_BANDWIDTH = 7;
 
-    public static final boolean DEFAULT_INCLUDE_CLIPPED_BASES = false;
-
     /*  Takes a Phred Scale quality score and returns the error probability.
      *
      *  Quick conversion function to maintain internal structure of BAQ calculation on
@@ -84,12 +82,11 @@ public final class BAQ implements Serializable {
      *  @param x phred scaled score
      *  @return probability of incorrect base call
      */
-    private double convertFromPhredScale(double x) { return (Math.pow(10, (-x) / 10.));}
+    private static double convertFromPhredScale(double x) { return (Math.pow(10, (-x) / 10.));}
 
     public double cd = -1;      // gap open probability [1e-3]
     private double ce = 0.1;    // gap extension probability [0.1]
     private int cb = DEFAULT_BANDWIDTH;   // band width [7]
-    private boolean includeClippedBases = DEFAULT_INCLUDE_CLIPPED_BASES;
 
     public byte getMinBaseQual() {
         return minBaseQual;
@@ -127,8 +124,6 @@ public final class BAQ implements Serializable {
         initializeCachedData();
     }
 
-
-
     /**
      * Create a new HmmGlocal object with specified parameters
      *
@@ -137,10 +132,9 @@ public final class BAQ implements Serializable {
      * @param b band width
      * @param minBaseQual All bases with Q < minBaseQual are up'd to this value
      */
-	public BAQ(final double d, final double e, final int b, final byte minBaseQual, boolean includeClippedBases) {
+	public BAQ(final double d, final double e, final int b, final byte minBaseQual) {
 		cd = d; ce = e; cb = b;
         this.minBaseQual = minBaseQual;
-        this.includeClippedBases = includeClippedBases;
         initializeCachedData();
 	}
 
@@ -362,14 +356,6 @@ public final class BAQ implements Serializable {
         return state >> 2;
     }
 
-    /**
-     * helper routine for hmm_glocal
-     *
-     * @param b
-     * @param i
-     * @param k
-     * @return
-     */
     private static int set_u(final int b, final int i, final int k) {
 		int x = i - b;
 		x = x > 0 ? x : 0;
@@ -399,8 +385,8 @@ public final class BAQ implements Serializable {
         final byte[] bqTag = new byte[baq.length];
         final byte[] baseQualities = read.getBaseQualities();
         for ( int i = 0; i < bqTag.length; i++) {
-            final int bq = (int) baseQualities[i] + 64;
-            final int baq_i = (int)baq[i];
+            final int bq = baseQualities[i] + 64;
+            final int baq_i = baq[i];
             final int tag = bq - baq_i;
             // problem with the calculation of the correction factor; this is our problem
             if ( tag < 0 )
@@ -419,8 +405,6 @@ public final class BAQ implements Serializable {
 
     /**
       * Returns true if the read has a BAQ tag, or false otherwise
-      * @param read
-      * @return
       */
     public static boolean hasBAQTag(GATKRead read) {
         return read.getAttributeAsString(BAQ_TAG) != null;
@@ -444,8 +428,8 @@ public final class BAQ implements Serializable {
             // At the i-th read base, BAQi = Qi - (BQi - 64) where Qi is the i-th base quality.
             newQuals = overwriteOriginalQuals ? rawQuals : new byte[rawQuals.length];
             for ( int i = 0; i < rawQuals.length; i++) {
-                int rawQual = (int)rawQuals[i];
-                int baq_delta = (int)baq[i] - 64;
+                int rawQual = rawQuals[i];
+                int baq_delta = baq[i] - 64;
                 int newval =  rawQual - baq_delta;
                 if ( newval < 0 )
                     throw new UserException.MalformedRead(read, "BAQ tag error: the BAQ value is larger than the base quality");
@@ -474,7 +458,7 @@ public final class BAQ implements Serializable {
         if ( baq != null ) {
             // Offset to base alignment quality (BAQ), of the same length as the read sequence.
             // At the i-th read base, BAQi = Qi - (BQi - 64) where Qi is the i-th base quality.
-            int baq_delta = (int)baq[offset] - 64;
+            int baq_delta = baq[offset] - 64;
             int newval =  rawQual - baq_delta;
             if ( newval < 0 )
                 throw new UserException.MalformedRead(read, "BAQ tag error: the BAQ value is larger than the base quality");
@@ -512,36 +496,31 @@ public final class BAQ implements Serializable {
      *
      * @param read read that is going to be input to BAQ
      * @param bandWidth band width being used by the BAQ algorithm
-     * @param includeClippedBases true if the BAQ algorithm is configured to include clipped bases, otherwise false
      * @return an interval representing the span of reference bases required by BAQ for the given read
      */
-    public static SimpleInterval getReferenceWindowForRead( final GATKRead read, final int bandWidth, final boolean includeClippedBases ) {
+    public static SimpleInterval getReferenceWindowForRead( final GATKRead read, final int bandWidth ) {
         // start is alignment start - band width / 2 - size of first I element, if there is one.  Stop is similar
         final int offset = bandWidth / 2;
-        final int readStart = includeClippedBases ? read.getUnclippedStart() : read.getStart();
+        final int readStart = read.getStart();
         final int start = Math.max(readStart - offset - ReadUtils.getFirstInsertionOffset(read), 1);
-        final int stop = (includeClippedBases ? read.getUnclippedEnd() : read.getEnd()) + offset + ReadUtils.getLastInsertionOffset(read);
+        final int stop = read.getEnd() + offset + ReadUtils.getLastInsertionOffset(read);
 
         return new SimpleInterval(read.getContig(), start, stop);
     }
 
     public BAQCalculationResult calcBAQFromHMM(GATKRead read, ReferenceDataSource refDS) {
-        final SimpleInterval referenceWindow = getReferenceWindowForRead(read, getBandWidth(), includeClippedBases);
+        final SimpleInterval referenceWindow = getReferenceWindowForRead(read, getBandWidth());
 
         if ( referenceWindow.getEnd() > refDS.getSequenceDictionary().getSequence(read.getContig()).getSequenceLength() ) {
             return null;
         } else {
             // now that we have the start and stop, get the reference sequence covering it
-            ReferenceSequence refSeq = refDS.queryAndPrefetch(referenceWindow.getContig(), referenceWindow.getStart(), referenceWindow.getEnd());
-            return calcBAQFromHMM(read, refSeq.getBases(), (referenceWindow.getStart() - (includeClippedBases ? read.getUnclippedStart() : read.getStart())));
+            final ReferenceSequence refSeq = refDS.queryAndPrefetch(referenceWindow.getContig(), referenceWindow.getStart(), referenceWindow.getEnd());
+            return calcBAQFromHMM(read, refSeq.getBases(), (referenceWindow.getStart() - read.getStart()));
         }
     }
 
-//    final SimpleTimer total = new SimpleTimer();
-//    final SimpleTimer local = new SimpleTimer();
-//    int n = 0;
     public BAQCalculationResult calcBAQFromHMM(byte[] ref, byte[] query, byte[] quals, int queryStart, int queryEnd ) {
-//        total.restart();
         if ( queryStart < 0 ) throw new GATKException("BUG: queryStart < 0: " + queryStart);
         if ( queryEnd < 0 ) throw new GATKException("BUG: queryEnd < 0: " + queryEnd);
         if ( queryEnd < queryStart ) throw new GATKException("BUG: queryStart < queryEnd : " + queryStart + " end =" + queryEnd);
@@ -549,12 +528,7 @@ public final class BAQ implements Serializable {
         // note -- assumes ref is offset from the *CLIPPED* start
         BAQCalculationResult baqResult = new BAQCalculationResult(query, quals, ref);
         int queryLen = queryEnd - queryStart;
-//        local.restart();
         hmm_glocal(baqResult.refBases, baqResult.readBases, queryStart, queryLen, baqResult.rawQuals, baqResult.state, baqResult.bq);
-//        local.stop();
-//        total.stop();
-//        if ( n++ % 100000 == 0 )
-//            logger.info("n = " + n + ": Total " + total.getElapsedTimeNano() + " local " + local.getElapsedTimeNano());
         return baqResult;
     }
 
@@ -576,9 +550,10 @@ public final class BAQ implements Serializable {
                 case I : case S: case M: case EQ: case X:
                     int prev = readI;
                     readI += elt.getLength();
-                    if ( includeClippedBases || elt.getOperator() != CigarOperator.S) {
-                        if ( queryStart == -1 )
+                    if ( elt.getOperator() != CigarOperator.S) {
+                        if ( queryStart == -1 ) {
                             queryStart = prev;
+                        }
                         queryStop = readI;
                     }
                     // in the else case we aren't including soft clipped bases, so we don't update
@@ -626,7 +601,7 @@ public final class BAQ implements Serializable {
                     readI += l;
                     break;
                 case D : refI += l; break;
-                case M :
+                case M : case EQ:case X:  //all three operators are equivalent here.
                     for (int i = readI; i < readI + l; i++) {
                         int expectedPos = refI - refOffset + (i - readI);
                         baqResult.bq[i] = capBaseByBAQ( baqResult.rawQuals[i], baqResult.bq[i], baqResult.state[i], expectedPos );
