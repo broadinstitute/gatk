@@ -164,10 +164,16 @@ If you are looking for the codebase of the current production version of GATK, p
    JAVA_OPTS="-XX:+PrintGCDetails" ./gatk-launch ApplyBQSR --help
 ```
 
-* By default, GATK (non-spark) uses asynchronous IO and will use a separate thread for writting read and variant files. On systems with only 1 CPU this may reduce performance. To turn that option off, run GATK like this:
+* By default, GATK (non-spark) uses asynchronous IO and will use a separate thread for writing read and variant files. On systems with only 1 CPU this may reduce performance. To turn that option off, run GATK like this:
 
 ```
    JAVA_OPTS="-Dsamjdk.use_async_io=false" ./gatk-launch <rest of command>
+```
+
+* By default, GATK (non-spark) uses compression level 1 for writing BAM files (fastest code but least compressed files). Level 1 BAM files are only 10% larger than level 5 but they take less than half as much time to create. To change the default compression level, run GATK like this:
+
+```
+   JAVA_OPTS="-Dsamjdk.compression_level=5" ./gatk-launch <rest of command>
 ```
 
 ##Testing GATK4
