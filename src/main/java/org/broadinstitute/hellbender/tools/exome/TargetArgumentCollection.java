@@ -108,7 +108,7 @@ public final class TargetArgumentCollection {
      * @throws UserException.BadArgumentValue if {@code optional} is {@code false} and no target file
      *   was provided or cannot be resolved otherwise.
      */
-    protected TargetCollection<Target> readTargetCollection(final boolean optional) {
+    public TargetCollection<Target> readTargetCollection(final boolean optional) {
         final File resolveFile = getTargetsFile();
         if (resolveFile != null) {
             if (targetAnnotations.isEmpty()) {

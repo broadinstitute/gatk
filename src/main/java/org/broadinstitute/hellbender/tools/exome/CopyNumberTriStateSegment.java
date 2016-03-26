@@ -140,4 +140,10 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
         this.endQuality = stopQuality;
         this.eventQuality = eventQuality;
     }
+
+    public String toString() {
+        return String.format("{interval: %s, targetCount: %d, call: %s, mean: %.2f, stdev: %.2f, EQ: %.2f, SQ: %.2f, LQ: %.2f, RQ: %.2f, NDQ: %.2f}",
+                interval, targetCount, call, mean,
+                stdev, exactQuality, someQuality, startQuality, endQuality, eventQuality);
+    }
 }
