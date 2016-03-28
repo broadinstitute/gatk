@@ -239,9 +239,7 @@ test {
     }
 
     // set heap size for the test JVM(s)
-    minHeapSize = "1G"
-    maxHeapSize = "1.5G"
-    jvmArgs = ['-Xmx2G']
+    jvmArgs = ['-Xmx6G']
   
     String CI = "$System.env.CI"
 
