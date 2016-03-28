@@ -44,6 +44,7 @@ task downloadGsaLibFile(type: Download) {
 
 repositories {
     mavenCentral()
+    mavenLocal()
     jcenter()
 
     maven {
@@ -101,6 +102,8 @@ dependencies {
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:2.5.0'
+    // using the snapshot version so we can get to the new NIO stuff
+    compile 'com.google.gcloud:gcloud-java-nio:0.1.6-SNAPSHOT'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
