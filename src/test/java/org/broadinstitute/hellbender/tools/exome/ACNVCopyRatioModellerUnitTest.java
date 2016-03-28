@@ -143,9 +143,9 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
                 modeller.getSegmentMeansPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         final double[] meanPosteriorStandardDeviations = new double[numSegments];
         for (int segment = 0; segment < numSegments; segment++) {
-            final double meanPosteriorMean = meanPosteriorSummaries.get(segment).center();
+            final double meanPosteriorMean = meanPosteriorSummaries.get(segment).getCenter();
             final double meanPosteriorStandardDeviation =
-                    (meanPosteriorSummaries.get(segment).upper() - meanPosteriorSummaries.get(segment).lower()) / 2.;
+                    (meanPosteriorSummaries.get(segment).getUpper() - meanPosteriorSummaries.get(segment).getLower()) / 2.;
             meanPosteriorStandardDeviations[segment] = meanPosteriorStandardDeviation;
             final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorMean - meansTruth.get(segment));
             if (absoluteDifferenceFromTruth > meanPosteriorStandardDeviation) {

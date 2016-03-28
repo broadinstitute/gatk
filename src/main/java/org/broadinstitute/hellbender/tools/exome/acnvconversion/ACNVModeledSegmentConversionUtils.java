@@ -42,7 +42,7 @@ public final class ACNVModeledSegmentConversionUtils {
     static ModeledSegment convertACNVModeledSegmentToModeledSegment(ACNVModeledSegment acnvModeledSegment, TargetCollection<TargetCoverage> targets) {
 
         // Make sure that we do not let segment mean become zero
-        final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().center(), ParamUtils.log2(TangentNormalizer.EPSILON));
+        final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().getCenter(), ParamUtils.log2(TangentNormalizer.EPSILON));
 
         return new ModeledSegment(acnvModeledSegment.getInterval(), ModeledSegment.NO_CALL,
                 targets.targetCount(acnvModeledSegment.getInterval()), updatedCenter);

@@ -19,12 +19,12 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
- * Tests for {@link PosteriorSummary}.  Tests that posterior mode and highest-posterior-density credible interval
+ * Tests for {@link PosteriorSummaryUtils}.  Tests that posterior mode and highest-posterior-density credible interval
  * are recovered for samples drawn from various posterior distributions.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class PosteriorSummaryUnitTest extends BaseTest {
+public final class PosteriorSummaryUtilsUnitTest extends BaseTest {
     private static final int RANDOM_SEED = 42;
     private static final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
@@ -70,7 +70,7 @@ public final class PosteriorSummaryUnitTest extends BaseTest {
                                                             final PosteriorSummary expected) {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final PosteriorSummary result =
-                PosteriorSummary.calculateHighestPosteriorDensitySummary(samples, credibleIntervalAlpha, ctx);
+                PosteriorSummaryUtils.calculateHighestPosteriorDensitySummary(samples, credibleIntervalAlpha, ctx);
         assertEquals(result, expected, relativeError);
     }
 
@@ -80,8 +80,8 @@ public final class PosteriorSummaryUnitTest extends BaseTest {
                                            final double relativeError,
                                            final PosteriorSummary expected) {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final double result = PosteriorSummary.calculatePosteriorMode(samples, ctx);
-        Assert.assertTrue(withinRelativeError(result, expected.center(), relativeError));
+        final double result = PosteriorSummaryUtils.calculatePosteriorMode(samples, ctx);
+        Assert.assertTrue(withinRelativeError(result, expected.getCenter(), relativeError));
 
     }
 
@@ -96,8 +96,8 @@ public final class PosteriorSummaryUnitTest extends BaseTest {
         return Arrays.stream(array).boxed().collect(Collectors.toList());   }
 
     private static void assertEquals(final PosteriorSummary result, final PosteriorSummary expected, final double relativeError) {
-        Assert.assertTrue(withinRelativeError(result.center(), expected.center(), relativeError));
-        Assert.assertTrue(withinRelativeError(result.lower(), expected.lower(), relativeError));
-        Assert.assertTrue(withinRelativeError(result.upper(), expected.upper(), relativeError));
+        Assert.assertTrue(withinRelativeError(result.getCenter(), expected.getCenter(), relativeError));
+        Assert.assertTrue(withinRelativeError(result.getLower(), expected.getLower(), relativeError));
+        Assert.assertTrue(withinRelativeError(result.getUpper(), expected.getUpper(), relativeError));
     }
 }

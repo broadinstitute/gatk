@@ -680,12 +680,12 @@ public final class SegmentMergeUtils {
         //intervalThreshold times the credible-interval width of either summary
         private static boolean areSimilar(final PosteriorSummary summary1, final PosteriorSummary summary2,
                                           final double intervalThreshold) {
-            if (Double.isNaN(summary1.center()) || Double.isNaN(summary2.center())) {
+            if (Double.isNaN(summary1.getCenter()) || Double.isNaN(summary2.getCenter())) {
                 return true;
             }
-            final double absoluteDifference = Math.abs(summary1.center() - summary2.center());
-            return absoluteDifference < intervalThreshold * (summary1.upper() - summary1.lower()) ||
-                    absoluteDifference < intervalThreshold * (summary2.upper() - summary2.lower());
+            final double absoluteDifference = Math.abs(summary1.getCenter() - summary2.getCenter());
+            return absoluteDifference < intervalThreshold * (summary1.getUpper() - summary1.getLower()) ||
+                    absoluteDifference < intervalThreshold * (summary2.getUpper() - summary2.getLower());
         }
 
         //checks similarity of modeled segments to within credible-interval thresholds for segment mean and minor allele fraction
@@ -697,19 +697,19 @@ public final class SegmentMergeUtils {
 
         //merges posterior summaries naively by approximating posteriors as normal
         private static PosteriorSummary merge(final PosteriorSummary summary1, final PosteriorSummary summary2) {
-            if (Double.isNaN(summary1.center()) && !Double.isNaN(summary2.center())) {
+            if (Double.isNaN(summary1.getCenter()) && !Double.isNaN(summary2.getCenter())) {
                 return summary2;
             }
-            if ((!Double.isNaN(summary1.center()) && Double.isNaN(summary2.center())) ||
-                    (Double.isNaN(summary1.center()) && Double.isNaN(summary2.center()))) {
+            if ((!Double.isNaN(summary1.getCenter()) && Double.isNaN(summary2.getCenter())) ||
+                    (Double.isNaN(summary1.getCenter()) && Double.isNaN(summary2.getCenter()))) {
                 return summary1;
             }
             //use credible half-interval as standard deviation
-            final double standardDeviation1 = (summary1.upper() - summary1.lower()) / 2.;
-            final double standardDeviation2 = (summary2.upper() - summary2.lower()) / 2.;
+            final double standardDeviation1 = (summary1.getUpper() - summary1.getLower()) / 2.;
+            final double standardDeviation2 = (summary2.getUpper() - summary2.getLower()) / 2.;
             final double variance = 1. / (1. / Math.pow(standardDeviation1, 2.) + 1. / Math.pow(standardDeviation2, 2.));
             final double mean =
-                    (summary1.center() / Math.pow(standardDeviation1, 2.) + summary2.center() / Math.pow(standardDeviation2, 2.))
+                    (summary1.getCenter() / Math.pow(standardDeviation1, 2.) + summary2.getCenter() / Math.pow(standardDeviation2, 2.))
                             * variance;
             final double standardDeviation = Math.sqrt(variance);
             return new PosteriorSummary(mean, mean - standardDeviation, mean + standardDeviation);

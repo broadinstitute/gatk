@@ -263,7 +263,7 @@ public final class ACNVCopyRatioModeller {
             final int j = segment;
             final List<Double> meanSamples =
                     segmentMeansSamples.stream().map(s -> s.getMeanInSegment(j)).collect(Collectors.toList());
-            posteriorSummaries.add(PosteriorSummary.calculateHighestPosteriorDensitySummary(meanSamples, credibleIntervalAlpha, ctx));
+            posteriorSummaries.add(PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(meanSamples, credibleIntervalAlpha, ctx));
         }
         return posteriorSummaries;
     }

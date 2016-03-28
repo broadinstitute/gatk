@@ -1108,23 +1108,23 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                 final ACNVModeledSegment expectedSegment = expectedMergedSegments.get(i);
                 Assert.assertEquals(resultSegment.getInterval(), expectedSegment.getInterval());
                 Assert.assertEquals(
-                        resultSegment.getSegmentMeanPosteriorSummary().center(),
-                        expectedSegment.getSegmentMeanPosteriorSummary().center(), 0.001);
+                        resultSegment.getSegmentMeanPosteriorSummary().getCenter(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().getCenter(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getSegmentMeanPosteriorSummary().lower(),
-                        expectedSegment.getSegmentMeanPosteriorSummary().lower(), 0.001);
+                        resultSegment.getSegmentMeanPosteriorSummary().getLower(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().getLower(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getSegmentMeanPosteriorSummary().upper(),
-                        expectedSegment.getSegmentMeanPosteriorSummary().upper(), 0.001);
+                        resultSegment.getSegmentMeanPosteriorSummary().getUpper(),
+                        expectedSegment.getSegmentMeanPosteriorSummary().getUpper(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getMinorAlleleFractionPosteriorSummary().center(),
-                        expectedSegment.getMinorAlleleFractionPosteriorSummary().center(), 0.001);
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().getCenter(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().getCenter(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getMinorAlleleFractionPosteriorSummary().lower(),
-                        expectedSegment.getMinorAlleleFractionPosteriorSummary().lower(), 0.001);
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().getLower(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().getLower(), 0.001);
                 Assert.assertEquals(
-                        resultSegment.getMinorAlleleFractionPosteriorSummary().upper(),
-                        expectedSegment.getMinorAlleleFractionPosteriorSummary().upper(), 0.001);
+                        resultSegment.getMinorAlleleFractionPosteriorSummary().getUpper(),
+                        expectedSegment.getMinorAlleleFractionPosteriorSummary().getUpper(), 0.001);
             }
         }
     }
