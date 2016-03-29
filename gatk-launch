@@ -183,7 +183,7 @@ def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
 
         sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + " ".join(sparkArgs) +" -> " + " ".join(dataprocargs) +"\n" )
 
-        cmd = [ "gcloud", "beta", "dataproc", "jobs", "submit", "spark"] \
+        cmd = [ "gcloud", "dataproc", "jobs", "submit", "spark"] \
               + dataprocargs \
               + ["--jar", jarPath] \
               + gatkArgs + ["--sparkMaster", "yarn-client"]
