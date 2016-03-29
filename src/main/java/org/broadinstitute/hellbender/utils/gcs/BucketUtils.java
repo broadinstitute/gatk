@@ -7,6 +7,7 @@ import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
 import com.google.common.io.ByteStreams;
+import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Tribble;
 import htsjdk.tribble.util.TabixUtils;
@@ -21,8 +22,17 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.channels.Channels;
+import java.nio.file.NoSuchFileException;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -295,13 +305,23 @@ public final class BucketUtils {
      * @return the total size of all files in bytes
      */
     public static long dirSize(String path, PipelineOptions popts) {
-        // GCS case
-        if (isCloudStorageUrl(path)) {
-            // TODO: implement directory listing
-            throw new UnsupportedOperationException("Directory size listing not supported on GCS.");
-        }
-        // local file or HDFS case
         try {
+            // GCS case
+            if (isCloudStorageUrl(path)) {
+                final GcsUtil gcsUtil = new GcsUtil.GcsUtilFactory().create(popts);
+                final List<GcsPath> pathsInDir = gcsUtil.expand(GcsPath.fromUri(path));
+                return pathsInDir.stream().mapToLong((path1) -> {
+                    try {
+                        return gcsUtil.fileSize(path1);
+                    } catch( final NoSuchFileException e) {
+                        return 0;
+                    } catch( final IOException e) {
+                        throw new RuntimeIOException(e);
+                    }
+                }).sum();
+
+            }
+            // local file or HDFS case
             Path hadoopPath = new Path(path);
             FileSystem fs = new Path(path).getFileSystem(new Configuration());
             FileStatus status = fs.getFileStatus(hadoopPath);
@@ -319,7 +339,7 @@ public final class BucketUtils {
                 size += status.getLen();
             }
             return size;
-        } catch (IOException e) {
+        } catch (RuntimeIOException | IOException e) {
             throw new UserException("Failed to determine total input size of " + path + "\n Caused by:" + e.getMessage(), e);
         }
     }
