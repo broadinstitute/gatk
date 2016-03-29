@@ -188,8 +188,10 @@ If you are looking for the codebase of the current production version of GATK, p
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
       to the test data.
 
-* To run just a single test class, run **`gradle test -Dtest.single=MyTestClass`**
-    * example: `gradle test -Dtest.single=ReadUtilsUnitTest`
+* To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)), e.g.,
+    * `gradle test --tests *SomeSpecificTestClass`
+    * `gradle test --tests all.in.specific.package*`
+    * `gradle test --tests *SomeTest.someSpecificTestMethod`
 
 * To run tests and compute coverage reports, run **`gradle jacocoTestReport`**. The report is then in `build/reports/jacoco/test/html/index.html`.
   (IntelliJ 14 has a good coverage tool that is preferable for development).
