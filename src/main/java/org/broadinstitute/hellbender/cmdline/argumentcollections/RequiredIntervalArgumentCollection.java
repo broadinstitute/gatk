@@ -23,6 +23,10 @@ public final class RequiredIntervalArgumentCollection extends IntervalArgumentCo
 
     @Override
     protected void addToIntervalStrings(String newInterval) {
+        if ( traversalParameters != null ) {
+            throw new IllegalStateException("addToIntervalStrings() cannot be called after interval parsing is complete");
+        }
+
         intervalStrings.add(newInterval);
     }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -91,12 +92,33 @@ public final class IntervalUtils {
         final List<SimpleInterval> convertedIntervals = new ArrayList<>(genomeLocIntervals.size());
         for ( final GenomeLoc genomeLoc : genomeLocIntervals ) {
             if ( genomeLoc.isUnmapped() ) {
-                throw new UserException("Unmapped intervals are not currently supported");
+                throw new UserException("Unmapped intervals cannot be converted to SimpleIntervals");
             }
 
             convertedIntervals.add(new SimpleInterval(genomeLoc));
         }
         return convertedIntervals;
+    }
+
+    /**
+     * Converts an interval in SimpleInterval format into an htsjdk QueryInterval.
+     *
+     * In doing so, a header lookup is performed to convert from contig name to index
+     *
+     * @param interval interval to convert
+     * @param sequenceDictionary sequence dictionary used to perform the conversion
+     * @return an equivalent interval in QueryInterval format
+     */
+    public static QueryInterval convertSimpleIntervalToQueryInterval( final SimpleInterval interval, final SAMSequenceDictionary sequenceDictionary ) {
+        Utils.nonNull(interval);
+        Utils.nonNull(sequenceDictionary);
+
+        final int contigIndex = sequenceDictionary.getSequenceIndex(interval.getContig());
+        if ( contigIndex == -1 ) {
+            throw new UserException("Contig " + interval.getContig() + " not present in reads sequence dictionary");
+        }
+
+        return new QueryInterval(contigIndex, interval.getStart(), interval.getEnd());
     }
 
     public static GenomeLocSortedSet loadIntervals(
@@ -154,11 +176,6 @@ public final class IntervalUtils {
             throw new UserException.BadArgumentValue("-L " + arg, "The legacy -L \"interval1;interval2\" syntax " +
                     "is no longer supported. Please use one -L argument for each " +
                     "interval or an interval file instead.");
-        }
-
-        if ( isUnmapped(arg) ) {
-            throw new UserException.BadArgumentValue("-L/-XL", arg, "Currently the only way to view unmapped intervals " +
-                    "is to perform a traversal of the entire file without specifying any intervals");
         }
         // If it's a Feature-containing file, convert it to a list of intervals
         else if ( FeatureManager.isFeatureFile(new File(arg)) ) {
@@ -277,15 +294,6 @@ public final class IntervalUtils {
         }
 
         return ret;
-    }
-
-    /**
-     * Returns true if the interval string is the "unmapped" interval
-     * @param interval Interval to check
-     * @return true if the interval string is the "unmapped" interval
-     */
-    public static boolean isUnmapped(final String interval) {
-        return (interval != null && interval.trim().toLowerCase().equals("unmapped"));
     }
 
     /**
@@ -831,86 +839,6 @@ public final class IntervalUtils {
             size += loc.size();
         }
         return size;
-    }
-
-    public static void writeFlankingIntervals(final File reference, final File inputIntervals, final File flankingIntervals, final int basePairs) {
-        final ReferenceSequenceFile referenceSequenceFile = createReference(reference);
-        final GenomeLocParser parser = new GenomeLocParser(referenceSequenceFile);
-        final List<GenomeLoc> originalList = intervalFileToList(parser, inputIntervals.getAbsolutePath());
-
-        if (originalList.isEmpty()) {
-            throw new UserException.MalformedFile(inputIntervals, "File contains no intervals");
-        }
-
-        final List<GenomeLoc> flankingList = getFlankingIntervals(parser, originalList, basePairs);
-
-        if (flankingList.isEmpty()) {
-            throw new UserException.MalformedFile(inputIntervals, "Unable to produce any flanks for the intervals");
-        }
-
-        final SAMFileHeader samFileHeader = new SAMFileHeader();
-        samFileHeader.setSequenceDictionary(referenceSequenceFile.getSequenceDictionary());
-        final IntervalList intervalList = new IntervalList(samFileHeader);
-        int i = 0;
-        for (final GenomeLoc loc: flankingList) {
-            intervalList.add(toInterval(loc, ++i));
-        }
-        intervalList.write(flankingIntervals);
-    }
-
-    /**
-     * Returns a list of intervals between the passed int locs. Does not extend UNMAPPED locs.
-     * @param parser A genome loc parser for creating the new intervals
-     * @param locs Original genome locs
-     * @param basePairs Number of base pairs on each side of loc
-     * @return The list of intervals between the locs
-     */
-    public static List<GenomeLoc> getFlankingIntervals(final GenomeLocParser parser, final List<GenomeLoc> locs, final int basePairs) {
-        final List<GenomeLoc> sorted = sortAndMergeIntervals(parser, locs, IntervalMergingRule.ALL).toList();
-
-        if (sorted.size() == 0) {
-            return Collections.emptyList();
-        }
-
-        final LinkedHashMap<String, List<GenomeLoc>> locsByContig = splitByContig(sorted);
-        final List<GenomeLoc> expanded = new ArrayList<>();
-        for (final Map.Entry<String, List<GenomeLoc>> contig: locsByContig.entrySet()) {
-            final List<GenomeLoc> contigLocs = contig.getValue();
-            final int contigLocsSize = contigLocs.size();
-
-            GenomeLoc startLoc, stopLoc;
-
-            // Create loc at start of the list
-            startLoc = parser.createGenomeLocAtStart(contigLocs.get(0), basePairs);
-            if (startLoc != null) {
-                expanded.add(startLoc);
-            }
-
-            // Create locs between each loc[i] and loc[i+1]
-            for (int i = 0; i < contigLocsSize - 1; i++) {
-                stopLoc = parser.createGenomeLocAtStop(contigLocs.get(i), basePairs);
-                startLoc = parser.createGenomeLocAtStart(contigLocs.get(i + 1), basePairs);
-                if (stopLoc.getStop() + 1 >= startLoc.getStart()) {
-                    // NOTE: This is different than GenomeLoc.merge()
-                    // merge() returns a loc which covers the entire range of stop and start,
-                    // possibly returning positions inside loc(i) or loc(i+1)
-                    // We want to make sure that the start of the stopLoc is used, and the stop of the startLoc
-                    final GenomeLoc merged = parser.createGenomeLoc(
-                            stopLoc.getContig(), stopLoc.getStart(), startLoc.getStop());
-                    expanded.add(merged);
-                } else {
-                    expanded.add(stopLoc);
-                    expanded.add(startLoc);
-                }
-            }
-
-            // Create loc at the end of the list
-            stopLoc = parser.createGenomeLocAtStop(contigLocs.get(contigLocsSize - 1), basePairs);
-            if (stopLoc != null) {
-                expanded.add(stopLoc);
-            }
-        }
-        return expanded;
     }
 
     /**

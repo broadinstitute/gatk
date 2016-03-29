@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
@@ -35,9 +37,11 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
 
     /**
      * Add an extra interval string to the intervals to include.
-     * primarily for testing
+     * ONLY for testing -- will throw if called after interval parsing has been performed.
      */
+    @VisibleForTesting
     protected abstract void addToIntervalStrings(String newInterval);
+
     /**
      * Use this argument to exclude certain parts of the genome from the analysis (like -L, but the opposite).
      * This argument can be specified multiple times. You can use samtools-style intervals either explicitly on the
@@ -68,25 +72,44 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
     protected int intervalPadding = 0;
 
     /**
+     * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records
+     * should be returned. Lazily initialized.
+     */
+    protected TraversalParameters traversalParameters = null;
+
+    /**
      * Get the intervals specified on the command line.
      * @param sequenceDict used to validate intervals
      * @return a list of the given intervals after processing and validation
      */
-    public List<SimpleInterval> getIntervals(SAMSequenceDictionary sequenceDict){
-        return getIntervals(new GenomeLocParser(sequenceDict));
+    public List<SimpleInterval> getIntervals( final SAMSequenceDictionary sequenceDict ){
+        return getTraversalParameters(sequenceDict).getIntervalsForTraversal();
     }
 
     /**
-     * Get the intervals specified on the command line.
-     * @param genomeLocParser used to validate the intervals
-     * @return list of the given intervals after processing and validation
+     * Returns the full set of traversal parameters specified on the command line, including the parsed intervals
+     * and a flag indicating whether unmapped records were requested.
+     *
+     * @param sequenceDict used to validate intervals
+     * @return the full set of traversal parameters specified on the command line
      */
-    public List<SimpleInterval> getIntervals(final GenomeLocParser genomeLocParser) {
-        // return if no interval arguments at all
-        if (!intervalsSpecified()) {
-            throw new GATKException("Cannot call getIntervals() without specifying either intervals to include or exclude.");
+    public TraversalParameters getTraversalParameters( final SAMSequenceDictionary sequenceDict ) {
+        if ( ! intervalsSpecified() ) {
+            throw new GATKException("Cannot call getTraversalParameters() without specifying either intervals to include or exclude.");
         }
 
+        if ( traversalParameters == null ) {
+            parseIntervals(new GenomeLocParser(sequenceDict));
+        }
+
+        return traversalParameters;
+    }
+
+    private void parseIntervals(final GenomeLocParser genomeLocParser) {
+        // return if no interval arguments at all
+        if (!intervalsSpecified()) {
+            throw new GATKException("Cannot call parseIntervals() without specifying either intervals to include or exclude.");
+        }
 
         GenomeLocSortedSet includeSortedSet;
         if (getIntervalStrings().isEmpty()){
@@ -100,8 +123,11 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
                 throw new UserException.BadArgumentValue("-L, --interval_set_rule", getIntervalStrings()+","+intervalSetRule, "The specified intervals had an empty intersection");
             }
         }
-        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, 0, genomeLocParser);
 
+        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, 0, genomeLocParser);
+        if ( excludeSortedSet.contains(GenomeLoc.UNMAPPED) ) {
+            throw new UserException("-XL unmapped is not currently supported");
+        }
 
         GenomeLocSortedSet intervals;
         // if no exclude arguments, can return the included set directly
@@ -124,7 +150,15 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
         }
 
         logger.info(String.format("Processing %d bp from intervals", intervals.coveredSize()));
-        return IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList());
+
+        // Separate out requests for unmapped records from the rest of the intervals.
+        boolean traverseUnmapped = false;
+        if ( intervals.contains(GenomeLoc.UNMAPPED) ) {
+            traverseUnmapped = true;
+            intervals.remove(GenomeLoc.UNMAPPED);
+        }
+
+        traversalParameters = new TraversalParameters(IntervalUtils.convertGenomeLocsToSimpleIntervals(intervals.toList()), traverseUnmapped);
     }
 
 

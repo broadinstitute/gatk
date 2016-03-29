@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import com.google.common.collect.Lists;
 
+import htsjdk.samtools.QueryInterval;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -366,6 +367,28 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertEquals(hg19ReferenceLocs.size(), 4);
         Assert.assertEquals(intervalStringsToGenomeLocs("1", "2", "3").size(), 3);
         Assert.assertEquals(intervalStringsToGenomeLocs("1:1-2", "1:4-5", "2:1-1", "3:2-2").size(), 4);
+    }
+
+    @Test
+    public void testParseUnmappedIntervalArgument() {
+        final SAMSequenceRecord contigRecord = new SAMSequenceRecord("1", 100);
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(contigRecord));
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+
+        List<GenomeLoc> unmappedLoc = IntervalUtils.parseIntervalArguments(parser, "unmapped");
+        Assert.assertTrue(unmappedLoc.size() == 1);
+        Assert.assertTrue(unmappedLoc.get(0).isUnmapped());
+    }
+
+    @Test
+    public void testParseUnmappedIntervalArgumentInIntervalFile() {
+        final SAMSequenceRecord contigRecord = new SAMSequenceRecord("1", 100);
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(contigRecord));
+        final GenomeLocParser parser = new GenomeLocParser(dictionary);
+
+        List<GenomeLoc> unmappedLoc = IntervalUtils.parseIntervalArguments(parser, publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_unmapped.intervals");
+        Assert.assertTrue(unmappedLoc.size() == 1);
+        Assert.assertTrue(unmappedLoc.get(0).isUnmapped());
     }
 
     @Test
@@ -834,228 +857,6 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
     }
 
-    /*
-    Split into tests that can be written to files and tested by writeFlankingIntervals,
-    and lists that cannot but are still handled by getFlankingIntervals.
-    */
-    private static abstract class FlankingIntervalsTestData extends TestDataProvider {
-        final public File referenceFile;
-        final public GenomeLocParser parser;
-        final int basePairs;
-        final List<GenomeLoc> original;
-        final List<GenomeLoc> expected;
-
-        protected FlankingIntervalsTestData(Class<?> clazz, String name, File referenceFile, GenomeLocParser parser,
-                                            int basePairs, List<String> original, List<String> expected) {
-            super(clazz, name);
-            this.referenceFile = referenceFile;
-            this.parser = parser;
-            this.basePairs = basePairs;
-            this.original = parse(parser, original);
-            this.expected = parse(parser, expected);
-        }
-
-        private static List<GenomeLoc> parse(GenomeLocParser parser, List<String> locs) {
-            List<GenomeLoc> parsed = new ArrayList<>();
-            for (String loc: locs)
-                parsed.add("unmapped".equals(loc) ? GenomeLoc.UNMAPPED : parser.parseGenomeLoc(loc));
-            return parsed;
-        }
-    }
-
-    private static class FlankingIntervalsFile extends FlankingIntervalsTestData {
-        public FlankingIntervalsFile(String name, File referenceFile, GenomeLocParser parser,
-                                     int basePairs, List<String> original, List<String> expected) {
-            super(FlankingIntervalsFile.class, name, referenceFile, parser, basePairs, original, expected);
-        }
-    }
-
-    private static class FlankingIntervalsList extends FlankingIntervalsTestData {
-        public FlankingIntervalsList(String name, File referenceFile, GenomeLocParser parser,
-                                     int basePairs, List<String> original, List<String> expected) {
-            super(FlankingIntervalsList.class, name, referenceFile, parser, basePairs, original, expected);
-        }
-    }
-
-    /* Intervals where the original and the flanks can be written to files. */
-    @DataProvider(name = "flankingIntervalsFiles")
-    public Object[][] getFlankingIntervalsFiles() {
-        File hg19ReferenceFile = new File(BaseTest.exampleReference);
-        int hg19Length1 = hg19GenomeLocParser.getContigInfo("1").getSequenceLength();
-
-        new FlankingIntervalsFile("atStartBase1", hg19ReferenceFile, hg19GenomeLocParser, 1,
-                Arrays.asList("1:1"),
-                Arrays.asList("1:2"));
-
-        new FlankingIntervalsFile("atStartBase50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:1"),
-                Arrays.asList("1:2-51"));
-
-        new FlankingIntervalsFile("atStartRange50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:1-10"),
-                Arrays.asList("1:11-60"));
-
-        new FlankingIntervalsFile("atEndBase1", hg19ReferenceFile, hg19GenomeLocParser, 1,
-                Arrays.asList("1:" + hg19Length1),
-                Arrays.asList("1:" + (hg19Length1 - 1)));
-
-        new FlankingIntervalsFile("atEndBase50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:" + hg19Length1),
-                Arrays.asList(String.format("1:%d-%d", hg19Length1 - 50, hg19Length1 - 1)));
-
-        new FlankingIntervalsFile("atEndRange50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList(String.format("1:%d-%d", hg19Length1 - 10, hg19Length1)),
-                Arrays.asList(String.format("1:%d-%d", hg19Length1 - 60, hg19Length1 - 11)));
-
-        new FlankingIntervalsFile("nearStartBase1", hg19ReferenceFile, hg19GenomeLocParser, 1,
-                Arrays.asList("1:2"),
-                Arrays.asList("1:1", "1:3"));
-
-        new FlankingIntervalsFile("nearStartRange50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:21-30"),
-                Arrays.asList("1:1-20", "1:31-80"));
-
-        new FlankingIntervalsFile("nearEndBase1", hg19ReferenceFile, hg19GenomeLocParser, 1,
-                Arrays.asList("1:" + (hg19Length1 - 1)),
-                Arrays.asList("1:" + (hg19Length1 - 2), "1:" + hg19Length1));
-
-        new FlankingIntervalsFile("nearEndRange50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList(String.format("1:%d-%d", hg19Length1 - 30, hg19Length1 - 21)),
-                Arrays.asList(
-                        String.format("1:%d-%d", hg19Length1 - 80, hg19Length1 - 31),
-                        String.format("1:%d-%d", hg19Length1 - 20, hg19Length1)));
-
-        new FlankingIntervalsFile("beyondStartBase1", hg19ReferenceFile, hg19GenomeLocParser, 1,
-                Arrays.asList("1:3"),
-                Arrays.asList("1:2", "1:4"));
-
-        new FlankingIntervalsFile("beyondStartRange50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200"),
-                Arrays.asList("1:51-100", "1:201-250"));
-
-        new FlankingIntervalsFile("beyondEndBase1", hg19ReferenceFile, hg19GenomeLocParser, 1,
-                Arrays.asList("1:" + (hg19Length1 - 3)),
-                Arrays.asList("1:" + (hg19Length1 - 4), "1:" + (hg19Length1 - 2)));
-
-        new FlankingIntervalsFile("beyondEndRange50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList(String.format("1:%d-%d", hg19Length1 - 200, hg19Length1 - 101)),
-                Arrays.asList(
-                        String.format("1:%d-%d", hg19Length1 - 250, hg19Length1 - 201),
-                        String.format("1:%d-%d", hg19Length1 - 100, hg19Length1 - 51)));
-
-        new FlankingIntervalsFile("betweenFar50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "1:401-500"),
-                Arrays.asList("1:51-100", "1:201-250", "1:351-400", "1:501-550"));
-
-        new FlankingIntervalsFile("betweenSpan50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "1:301-400"),
-                Arrays.asList("1:51-100", "1:201-300", "1:401-450"));
-
-        new FlankingIntervalsFile("betweenOverlap50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "1:271-400"),
-                Arrays.asList("1:51-100", "1:201-270", "1:401-450"));
-
-        new FlankingIntervalsFile("betweenShort50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "1:221-400"),
-                Arrays.asList("1:51-100", "1:201-220", "1:401-450"));
-
-        new FlankingIntervalsFile("betweenNone50", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "1:121-400"),
-                Arrays.asList("1:51-100", "1:401-450"));
-
-        new FlankingIntervalsFile("twoContigs", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "2:301-400"),
-                Arrays.asList("1:51-100", "1:201-250", "2:251-300", "2:401-450"));
-
-        // Explicit testing a problematic agilent target pair
-        new FlankingIntervalsFile("badAgilent", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("2:6257-6411", "2:6487-6628"),
-                // wrong!    ("2:6206-6256", "2:6412-6462", "2:6436-6486", "2:6629-6679")
-                Arrays.asList("2:6207-6256", "2:6412-6486", "2:6629-6678"));
-
-        return TestDataProvider.getTests(FlankingIntervalsFile.class);
-    }
-
-    /* Intervals where either the original and/or the flanks cannot be written to a file. */
-    @DataProvider(name = "flankingIntervalsLists")
-    public Object[][] getFlankingIntervalsLists() {
-        File hg19ReferenceFile = new File(BaseTest.exampleReference);
-        List<String> empty = Collections.emptyList();
-
-        new FlankingIntervalsList("empty", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                empty,
-                empty);
-
-        new FlankingIntervalsList("unmapped", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("unmapped"),
-                empty);
-
-        new FlankingIntervalsList("fullContig", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1"),
-                empty);
-
-        new FlankingIntervalsList("fullContigs", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1", "2", "3"),
-                empty);
-
-        new FlankingIntervalsList("betweenWithUnmapped", hg19ReferenceFile, hg19GenomeLocParser, 50,
-                Arrays.asList("1:101-200", "1:301-400", "unmapped"),
-                Arrays.asList("1:51-100", "1:201-300", "1:401-450"));
-
-        return TestDataProvider.getTests(FlankingIntervalsList.class);
-    }
-
-    @Test(dataProvider = "flankingIntervalsFiles")
-    public void testWriteFlankingIntervals(FlankingIntervalsTestData data) throws Exception {
-        File originalFile = createTempFile("original.", ".intervals");
-        File flankingFile = createTempFile("flanking.", ".intervals");
-        try {
-            List<String> lines = new ArrayList<>();
-            for (GenomeLoc loc: data.original)
-                lines.add(loc.toString());
-            FileUtils.writeLines(originalFile, lines);
-
-            IntervalUtils.writeFlankingIntervals(data.referenceFile, originalFile, flankingFile, data.basePairs);
-
-            List<GenomeLoc> actual = IntervalUtils.intervalFileToList(data.parser, flankingFile.getAbsolutePath());
-
-            String description = String.format("%n      name: %s%n  original: %s%n    actual: %s%n  expected: %s%n",
-                    data.toString(), data.original, actual, data.expected);
-            Assert.assertEquals(actual, data.expected, description);
-        } finally {
-            FileUtils.deleteQuietly(originalFile);
-            FileUtils.deleteQuietly(flankingFile);
-        }
-    }
-
-    @Test(dataProvider = "flankingIntervalsLists", expectedExceptions = UserException.class)
-    public void testWritingBadFlankingIntervals(FlankingIntervalsTestData data) throws Exception {
-        File originalFile = createTempFile("original.", ".intervals");
-        File flankingFile = createTempFile("flanking.", ".intervals");
-        try {
-            List<String> lines = new ArrayList<>();
-            for (GenomeLoc loc: data.original)
-                lines.add(loc.toString());
-            FileUtils.writeLines(originalFile, lines);
-
-            // Should throw a user exception on bad input if either the original
-            // intervals are empty or if the flanking intervals are empty
-            IntervalUtils.writeFlankingIntervals(data.referenceFile, originalFile, flankingFile, data.basePairs);
-        } finally {
-            FileUtils.deleteQuietly(originalFile);
-            FileUtils.deleteQuietly(flankingFile);
-        }
-    }
-
-    @Test(dataProvider = "flankingIntervalsLists")
-    public void testGetFlankingIntervals(FlankingIntervalsTestData data) {
-        List<GenomeLoc> actual = IntervalUtils.getFlankingIntervals(data.parser, data.original, data.basePairs);
-        String description = String.format("%n      name: %s%n  original: %s%n    actual: %s%n  expected: %s%n",
-                data.toString(), data.original, actual, data.expected);
-        Assert.assertEquals(actual, data.expected, description);
-    }
-
-
     @DataProvider(name="invalidIntervalTestData")
     public Object[][] invalidIntervalDataProvider() throws Exception {
         File fastaFile = new File(publicTestDir + "exampleFASTA.fasta");
@@ -1383,5 +1184,17 @@ public final class IntervalUtilsUnitTest extends BaseTest {
                 IntervalUtils.endOfShard(index, shardSize),
                 shardEnd
         );
+    }
+
+    @Test
+    public void testConvertSimpleIntervalToQueryInterval() {
+        final SAMSequenceRecord contigRecord = new SAMSequenceRecord("1", 100);
+        final SAMSequenceDictionary dictionary = new SAMSequenceDictionary(Arrays.asList(contigRecord));
+        final SimpleInterval originalInterval = new SimpleInterval("1", 5, 10);
+
+        final QueryInterval convertedInterval = IntervalUtils.convertSimpleIntervalToQueryInterval(originalInterval, dictionary);
+        Assert.assertEquals(convertedInterval.referenceIndex, 0);
+        Assert.assertEquals(convertedInterval.start, 5);
+        Assert.assertEquals(convertedInterval.end, 10);
     }
 }

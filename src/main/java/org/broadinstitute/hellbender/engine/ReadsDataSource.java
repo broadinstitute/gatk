@@ -5,10 +5,12 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
+import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
@@ -18,7 +20,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Manages traversals and queries over sources of reads (for now, SAM/BAM files only).
+ * Manages traversals and queries over sources of reads (for now, SAM/BAM/CRAM files only).
  *
  * Two basic operations are available:
  *
@@ -42,19 +44,23 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     private final Map<SamReader, File> backingFiles;
 
     /**
-     * Interval set to bound iteration over this data source. Null if iteration is unbounded.
-     * Only reads that overlap these intervals will be returned during a full iteration.
-     * Individual queries are unaffected by these intervals, however.
+     * Only reads that overlap these intervals (and unmapped reads, if {@link #traverseUnmapped} is set) will be returned
+     * during a full iteration. Null if iteration is unbounded.
+     *
+     * Individual queries are unaffected by these intervals -- only traversals initiated via {@link #iterator} are affected.
      */
-    private List<SimpleInterval> intervals;
+    private List<SimpleInterval> intervalsForTraversal;
 
     /**
-     * Bounding intervals in htsjdk-compatible form after processing to sort and merge adjacent/overlapping
-     * intervals (as required by htsjdk). Null if iteration is unbounded. Only reads that overlap these
-     * intervals will be returned during a full iteration. Individual queries are unaffected by these
-     * intervals, however.
+     * If true, restrict traversals to unmapped reads (and reads overlapping any {@link #intervalsForTraversal}, if set).
+     * False if iteration is unbounded or bounded only by our {@link #intervalsForTraversal}.
+     *
+     * Note that this setting covers only unmapped reads that have no position -- unmapped reads that are assigned the
+     * position of their mates will be returned by queries overlapping that position.
+     *
+     * Individual queries are unaffected by this setting  -- only traversals initiated via {@link #iterator} are affected.
      */
-    private QueryInterval[] preparedIntervals;
+    private boolean traverseUnmapped;
 
     /**
      * Used to create a merged Sam header when we're dealing with multiple readers. Null if we only have a single reader.
@@ -102,13 +108,13 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
-    public ReadsDataSource( final List<File> samFiles, SamReaderFactory customSamReaderFactory) {
+    public ReadsDataSource( final List<File> samFiles, SamReaderFactory customSamReaderFactory ) {
         if ( samFiles == null || samFiles.size() == 0 ) {
             throw new IllegalArgumentException("ReadsDataSource cannot be created from empty file list");
         }
 
         readers = new LinkedHashMap<>(samFiles.size() * 2);
-        backingFiles = new LinkedHashMap<>(samFiles.size() *2);
+        backingFiles = new LinkedHashMap<>(samFiles.size() * 2);
         indicesAvailable = true;
 
         final SamReaderFactory samReaderFactory =
@@ -146,20 +152,50 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *
      * @param intervals Our next full traversal will return only reads overlapping these intervals
      */
-    public void setIntervalsForTraversal( final List<SimpleInterval> intervals ){
-        // Treat null and empty interval lists the same
-        this.intervals = (intervals != null && ! intervals.isEmpty()) ? intervals : null;
+    public void setTraversalBounds( final List<SimpleInterval> intervals ) {
+        setTraversalBounds(intervals, false);
+    }
 
-        if ( this.intervals != null ) {
-            if ( ! indicesAvailable ) {
-                raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
-            }
-            logger.info("Preparing intervals for traversal");
-            preparedIntervals = prepareIntervalsForTraversal();
+    /**
+     * Restricts a traversal of this data source via {@link #iterator} to only return reads that overlap the given intervals,
+     * and to unmapped reads if specified.
+     *
+     * Calls to {@link #query} are not affected by this method.
+     *
+     * @param traversalParameters set of traversal parameters to control which reads get returned by the next call
+     *                            to {@link #iterator}
+     */
+    public void setTraversalBounds( final TraversalParameters traversalParameters ) {
+        setTraversalBounds(traversalParameters.getIntervalsForTraversal(), traversalParameters.traverseUnmappedReads());
+    }
+
+    /**
+     * Restricts a traversal of this data source via {@link #iterator} to only return reads that overlap the given intervals,
+     * and to unmapped reads if specified.
+     *
+     * Calls to {@link #query} are not affected by this method.
+     *
+     * @param intervals Our next full traversal will return reads overlapping these intervals
+     * @param traverseUnmapped Our next full traversal will return unmapped reads (this affects only unmapped reads that
+     *                         have no position -- unmapped reads that have the position of their mapped mates will be
+     *                         included if the interval overlapping that position is included).
+     */
+    public void setTraversalBounds( final List<SimpleInterval> intervals, final boolean traverseUnmapped ) {
+        // Set intervalsForTraversal to null if intervals is either null or empty
+        this.intervalsForTraversal = intervals != null && ! intervals.isEmpty() ? intervals : null;
+        this.traverseUnmapped = traverseUnmapped;
+
+        if ( traversalIsBounded() && ! indicesAvailable ) {
+            raiseExceptionForMissingIndex("Traversal by intervals was requested but some input files are not indexed.");
         }
-        else {
-            preparedIntervals = null;
-        }
+    }
+
+    /**
+     * @return True if traversals initiated via {@link #iterator} will be restricted to reads that overlap intervals
+     *         as configured via {@link #setTraversalBounds}, otherwise false
+     */
+    public boolean traversalIsBounded() {
+        return intervalsForTraversal != null || traverseUnmapped;
     }
 
     private void raiseExceptionForMissingIndex(String reason) {
@@ -174,32 +210,44 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     }
 
     /**
-     * Iterate over all reads in this data source. If intervals were provided via {@link #setIntervalsForTraversal(List)},
+     * Iterate over all reads in this data source. If intervals were provided via {@link #setTraversalBounds},
      * iteration is limited to reads that overlap that set of intervals.
      *
-     * @return An iterator over the reads in this data source, limited to reads that overlap the intervals supplied via {@link #setIntervalsForTraversal(List)} (if intervals were provided)
+     * @return An iterator over the reads in this data source, limited to reads that overlap the intervals supplied
+     *         via {@link #setTraversalBounds} (if intervals were provided)
      */
     @Override
     public Iterator<GATKRead> iterator() {
         logger.debug("Preparing readers for traversal");
-        final Iterator<GATKRead> traversalIter = prepareIteratorsForTraversal(preparedIntervals);
-
-        return traversalIter;
+        return prepareIteratorsForTraversal(intervalsForTraversal, traverseUnmapped);
     }
 
     /**
-     * Query reads over a specific interval. This operation is not affected by the intervals supplied at construction.
+     * Query reads over a specific interval. This operation is not affected by prior calls to
+     * {@link #setTraversalBounds}
      *
      * @param interval The interval over which to query
      * @return Iterator over reads overlapping the query interval
      */
     @Override
     public Iterator<GATKRead> query( final SimpleInterval interval ) {
-        if ( ! indicesAvailable )
+        if ( ! indicesAvailable ) {
             raiseExceptionForMissingIndex("Cannot query reads data source by interval unless all files are indexed");
+        }
 
-        final QueryInterval[] queryInterval = { convertIntervalToQueryInterval(interval) };
-        return prepareIteratorsForTraversal(queryInterval);
+        return prepareIteratorsForTraversal(Arrays.asList(interval));
+    }
+
+    /**
+     * @return An iterator over just the unmapped reads with no assigned position. This operation is not affected
+     *         by prior calls to {@link #setTraversalBounds}. The underlying file must be indexed.
+     */
+    public Iterator<GATKRead> queryUnmapped() {
+        if ( ! indicesAvailable ) {
+            raiseExceptionForMissingIndex("Cannot query reads data source by interval unless all files are indexed");
+        }
+
+        return prepareIteratorsForTraversal(null, true);
     }
 
     /**
@@ -221,15 +269,27 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @param queryIntervals Intervals to bound the iteration (reads must overlap one of these intervals). If null, iteration is unbounded.
      * @return Iterator over all reads in this data source, limited to overlap with the supplied intervals
      */
-    private Iterator<GATKRead> prepareIteratorsForTraversal( final QueryInterval[] queryIntervals ) {
+    private Iterator<GATKRead> prepareIteratorsForTraversal( final List<SimpleInterval> queryIntervals ) {
+        return prepareIteratorsForTraversal(queryIntervals, false);
+    }
+
+    /**
+     * Prepare iterators over all readers in response to a request for a complete iteration or query
+     *
+     * @param queryIntervals Intervals to bound the iteration (reads must overlap one of these intervals). If null, iteration is unbounded.
+     * @return Iterator over all reads in this data source, limited to overlap with the supplied intervals
+     */
+    private Iterator<GATKRead> prepareIteratorsForTraversal( final List<SimpleInterval> queryIntervals, final boolean queryUnmapped ) {
         // htsjdk requires that only one iterator be open at a time per reader, so close out
         // any previous iterations
         closePreviousIterationsIfNecessary();
 
+        final boolean traversalIsBounded = (queryIntervals != null && ! queryIntervals.isEmpty()) || queryUnmapped;
+
         // Set up an iterator for each reader, bounded to overlap with the supplied intervals if there are any
         for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readers.entrySet() ) {
-            readerEntry.setValue(queryIntervals == null ? readerEntry.getKey().iterator() :
-                                                          readerEntry.getKey().queryOverlapping(queryIntervals));
+            readerEntry.setValue(traversalIsBounded ? new SamReaderQueryingIterator(readerEntry.getKey(), queryIntervals, queryUnmapped) :
+                                                      readerEntry.getKey().iterator());
         }
 
         // Create a merging iterator over all readers if necessary. In the case where there's only a single reader,
@@ -243,43 +303,6 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         }
 
         return new SAMRecordToReadIterator(startingIterator);
-    }
-
-    /**
-     * Converts our intervals from GATK format into htsjdk-compatible "QueryInterval" format suitable for
-     * querying overlapping reads
-     *
-     * @return intervals converted into htsjdk QueryInterval format
-     */
-    private QueryInterval[] prepareIntervalsForTraversal() {
-        QueryInterval[] convertedIntervals = new QueryInterval[intervals.size()];
-
-        // Convert each SimpleInterval to a QueryInterval
-        int intervalIndex = 0;
-        for ( SimpleInterval interval : intervals ) {
-            convertedIntervals[intervalIndex] = convertIntervalToQueryInterval(interval);
-            ++intervalIndex;
-        }
-
-        // Intervals must be optimized (sorted and merged) in order to use the htsjdk query API
-        return QueryInterval.optimizeIntervals(convertedIntervals);
-    }
-
-    /**
-     * Converts an interval in SimpleInterval format into an htsjdk QueryInterval.
-     *
-     * In doing so, a header lookup is performed to convert from contig name to index
-     *
-     * @param interval interval to convert
-     * @return an equivalent interval in QueryInterval format
-     */
-    private QueryInterval convertIntervalToQueryInterval( final SimpleInterval interval ) {
-        final int contigIndex = getHeader().getSequenceIndex(interval.getContig());
-        if ( contigIndex == -1 ) {
-            throw new UserException("Contig " + interval.getContig() + " not present in reads sequence dictionary");
-        }
-
-        return new QueryInterval(contigIndex, interval.getStart(), interval.getEnd());
     }
 
     /**

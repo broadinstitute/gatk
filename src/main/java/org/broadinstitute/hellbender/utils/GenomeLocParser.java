@@ -17,6 +17,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 public final class GenomeLocParser {
     private static final Logger logger = LogManager.getLogger(GenomeLocParser.class);
 
+    public static final String UNMAPPED_LOC_NAME = "unmapped";
+
     /**
      * How much validation should we do at runtime with this parser?
      */
@@ -291,6 +293,10 @@ public final class GenomeLocParser {
         //System.out.printf("Parsing location '%s'%n", str);
 
         try {
+            if ( isUnmappedGenomeLocString(str) ) {
+                return GenomeLoc.UNMAPPED;
+            }
+
             final Locatable locatable = new SimpleInterval(str);
             final String contig = locatable.getContig();
             final int start = locatable.getStart();
@@ -309,6 +315,14 @@ public final class GenomeLocParser {
         } catch (IllegalArgumentException | UserException e){
             throw new UserException.MalformedGenomeLoc("Failed to parse Genome Location string: " + str, e);
         }
+    }
+
+    /**
+     * @param str String to check
+     * @return true if str equals {@link #UNMAPPED_LOC_NAME} (ignoring case)
+     */
+    public static boolean isUnmappedGenomeLocString(final String str) {
+        return str != null && str.trim().equalsIgnoreCase(UNMAPPED_LOC_NAME);
     }
 
 

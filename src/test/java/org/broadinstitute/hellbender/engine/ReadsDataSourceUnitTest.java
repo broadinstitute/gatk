@@ -13,10 +13,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public final class ReadsDataSourceUnitTest extends BaseTest {
     private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
@@ -53,7 +50,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         final File unindexed = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
         Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file. " + unindexed.getAbsolutePath());
         ReadsDataSource readsSource = new ReadsDataSource(unindexed);
-        readsSource.setIntervalsForTraversal(Arrays.asList(new SimpleInterval("1", 1, 5)));
+        readsSource.setTraversalBounds(Arrays.asList(new SimpleInterval("1", 1, 5)));
     }
 
     @Test(expectedExceptions = UserException.class)
@@ -147,7 +144,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
     public void testSingleFileTraversalWithIntervals( final File samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
-            readsSource.setIntervalsForTraversal(intervals);
+            readsSource.setTraversalBounds(intervals);
 
             List<GATKRead> reads = new ArrayList<>();
             for ( GATKRead read : readsSource ) {
@@ -279,7 +276,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
     public void testMultipleFilesTraversalWithIntervals( final List<File> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
-            readsSource.setIntervalsForTraversal(intervals);
+            readsSource.setTraversalBounds(intervals);
 
             List<GATKRead> reads = new ArrayList<>();
             for (GATKRead read : readsSource) {
@@ -339,6 +336,113 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
                 Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFiles + " not equal to expected read");
+            }
+        }
+    }
+
+    @DataProvider(name = "TraversalWithUnmappedReadsTestData")
+    public Object[][] traversalWithUnmappedReadsTestData() {
+        // This bam has only mapped reads
+        final File mappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+
+        // This bam has mapped reads from various contigs, plus a few unmapped reads with no mapped mate
+        final File unmappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
+
+        // This is a snippet of the CEUTrio.HiSeq.WGS.b37.NA12878 bam from large, with mapped reads
+        // from chromosome 20 (with one mapped read having an unmapped mate), plus several unmapped
+        // reads with no mapped mate.
+        final File ceuSnippet = new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
+
+        return new Object[][] {
+                // One interval, no unmapped
+                { unmappedBam, Arrays.asList(new SimpleInterval("1", 200, 1000)), false, Arrays.asList("a", "b", "c", "d") },
+                // One interval, with unmapped
+                { unmappedBam, Arrays.asList(new SimpleInterval("1", 200, 1000)), true, Arrays.asList("a", "b", "c", "d", "u1", "u2", "u3", "u4", "u5") },
+                // Multiple intervals, no unmapped
+                { unmappedBam, Arrays.asList(new SimpleInterval("1", 200, 1000), new SimpleInterval("2", 500, 700), new SimpleInterval("4", 700, 701)), false, Arrays.asList("a", "b", "c", "d", "f", "g", "h", "k") },
+                // Multiple intervals, with unmapped
+                { unmappedBam, Arrays.asList(new SimpleInterval("1", 200, 1000), new SimpleInterval("2", 500, 700), new SimpleInterval("4", 700, 701)), true, Arrays.asList("a", "b", "c", "d", "f", "g", "h", "k", "u1", "u2", "u3", "u4", "u5") },
+                // Interval with no overlapping reads, no unmapped
+                { unmappedBam, Arrays.asList(new SimpleInterval("1", 3000, 4000)), false, Collections.<String>emptyList() },
+                // Interval with no overlapping reads, with unmapped
+                { unmappedBam, Arrays.asList(new SimpleInterval("1", 3000, 4000)), true, Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                // Interval with no overlapping reads, with unmapped, but no unmapped reads in bam
+                { mappedBam, Arrays.asList(new SimpleInterval("1", 3000, 4000)), true, Collections.<String>emptyList() },
+                // Interval with overlapping reads, with unmapped, but no unmapped reads in bam
+                { mappedBam, Arrays.asList(new SimpleInterval("1", 200, 1000)), true, Arrays.asList("a", "b", "c", "d") },
+                // Null intervals, with unmapped
+                { unmappedBam, null, true, Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                // Empty intervals, with unmapped
+                { unmappedBam, Collections.<SimpleInterval>emptyList(), true, Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                // Null intervals, with unmapped, but no unmapped reads in bam
+                { mappedBam, null, true, Collections.<String>emptyList() },
+                // Empty intervals, with unmapped, but no unmapped reads in bam
+                { mappedBam, Collections.<SimpleInterval>emptyList(), true, Collections.<String>emptyList() },
+                // Null intervals, no unmapped (an unbounded traversal, so we expect all the reads)
+                { unmappedBam, null, false, Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "u1", "u2", "u3", "u4", "u5") },
+                // Empty intervals, no unmapped (an unbounded traversal, so we expect all the reads)
+                { unmappedBam, Collections.<SimpleInterval>emptyList(), false, Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "u1", "u2", "u3", "u4", "u5") },
+                // Interval containing mapped read with unmapped mate, no unmapped
+                { ceuSnippet, Arrays.asList(new SimpleInterval("20", 10000011, 10000013)), false, Arrays.asList("a", "b", "c", "d", "e", "f", "f")},
+                // Interval containing mapped read with unmapped mate, with unmapped
+                { ceuSnippet, Arrays.asList(new SimpleInterval("20", 10000011, 10000013)), true, Arrays.asList("a", "b", "c", "d", "e", "f", "f", "g", "h", "h", "i", "i")},
+                // Interval not containing mapped read with unmapped mate, no unmapped
+                { ceuSnippet, Arrays.asList(new SimpleInterval("20", 10000009, 10000011)), false, Arrays.asList("a", "b", "c", "d", "e")},
+                // Interval not containing mapped read with unmapped mate, with unmapped
+                { ceuSnippet, Arrays.asList(new SimpleInterval("20", 10000009, 10000011)), true, Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i")}
+        };
+    }
+
+    @Test(dataProvider = "TraversalWithUnmappedReadsTestData")
+    public void testTraversalWithUnmappedReads( final File samFile, final List<SimpleInterval> queryIntervals, final boolean queryUnmapped, final List<String> expectedReadNames ) {
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            readsSource.setTraversalBounds(queryIntervals, queryUnmapped);
+
+            if ( (queryIntervals != null && ! queryIntervals.isEmpty()) || queryUnmapped ) {
+                Assert.assertTrue(readsSource.traversalIsBounded());
+            }
+            else {
+                Assert.assertFalse(readsSource.traversalIsBounded());
+            }
+
+            List<GATKRead> reads = new ArrayList<>();
+            for ( GATKRead read : readsSource ) {
+                reads.add(read);
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.getAbsolutePath());
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.getAbsolutePath() + " not equal to expected read");
+            }
+        }
+    }
+
+    @DataProvider(name = "QueryUnmappedTestData")
+    public Object[][] queryUnmappedTestData() {
+        return new Object[][] {
+                { new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                { new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam"), Arrays.asList("g", "h", "h", "i", "i") }
+        };
+    }
+
+    @Test(dataProvider = "QueryUnmappedTestData")
+    public void testQueryUnmapped( final File samFile, final List<String> expectedReadNames ) {
+        try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            List<GATKRead> reads = new ArrayList<>();
+            Iterator<GATKRead> queryIterator = readsSource.queryUnmapped();
+            while (queryIterator.hasNext()) {
+                reads.add(queryIterator.next());
+            }
+
+            // Make sure we got the right number of reads
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in queryUnmapped on " + samFile.getAbsolutePath());
+
+            // Make sure we got the reads we expected in the right order
+            for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in queryUnmapped on " + samFile.getAbsolutePath() + " not equal to expected read");
             }
         }
     }
