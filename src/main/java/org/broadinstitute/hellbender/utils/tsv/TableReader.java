@@ -6,10 +6,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -464,6 +462,19 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      */
     public Stream<R> stream() {
         return StreamSupport.stream(spliterator(), false);
+    }
+
+
+    /**
+     * Read the remaining records into a list.
+     * <p>
+     *     Notice that this operation does not close the reader.
+     * </p>
+     *
+     * @return never {@code null}, but potentially empty.
+     */
+    public List<R> toList() {
+        return stream().collect(Collectors.toList());
     }
 
     /**
