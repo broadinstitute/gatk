@@ -1,159 +1,85 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.apache.commons.math3.special.Gamma;
-import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import htsjdk.samtools.util.Log;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
-import static java.lang.Math.log;
-
 /**
- * Test the likelihood methods and MCMC inference of the {@link AlleleFractionModeller} <p>
+ * Tests the MCMC inference of the {@link AlleleFractionModeller}.
  *
- * We subject the likelihood (with bias marginalized out) to several tests.  Recall that the exact likelihood is:
- * <p>
- * if indicator == ALT_MINOR:
- * <p>
- * log { [beta^alpha / Gamma(alpha)][(1-pi)/2] * int_{0 to infty} f^a * (1-f)^r * lambda^(alpha + r - 1) * exp(-beta*lambda)/(f + (1-f)*lambda)^n d lambda }
- * ,<p> if indicator == REF_MINOR same as ALT_MINOR but with f <--> 1 - f </p>
- * ,<p>if indicator == OUTLIER, log {pi * a!r!/(n+1)!} </p>
- * where alpha = mu*beta and n = a + r.
- * @author David Benjamin
+ * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class AlleleFractionModellerUnitTest {
-    private static final SimpleInterval DUMMY = new SimpleInterval("dummy", 1, 2);
-    private static final double EPSILON = 1e-10;
+public final class AlleleFractionModellerUnitTest extends BaseTest {
+    private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
-    //if f is very close to 0 we have an analytic result for comparison
+    // test data is a "normal" PON generated from 50 normals simulated from the allele-fraction model with alpha = 65 and beta = 60
+    // and a PON with "bad SNPs" described below
+    private static final File ALLELIC_PON_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
+    private static final File ALLELIC_PON_WITH_BAD_SNPS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-bad.tsv");
+
+    private static final File SAMPLE_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-sample-normal.tsv");
+    private static final File SAMPLE_WITH_BAD_SNPS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-sample-bad.tsv");
+    private static final File SAMPLE_WITH_EVENT_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-sample-event.tsv");
+
+    private static final File SEGMENTS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-segments.seg");
+
+    /**
+     * Test MCMC inference on simulated data.  Note that hyperparameter values used to generate the data should be recovered
+     * along with outlier probability and minor fractions.
+     */
     @Test
-    public void testHetLogLikelihoodMinorFractionNearZero() {
-        final double pi = 0.01; //pi is just a prefactor so we don't need to test it thoroughly here
-        for (final double f : Arrays.asList(1e-6, 1e-7, 1e-8)) {
-            for (final double mean : Arrays.asList(0.9, 1.0, 1.1)) {
-                for (final double variance : Arrays.asList(0.01, 0.005, 0.001)) {
-                    final double alpha = mean * mean / variance;
-                    final double beta = mean / variance;
-                    final AlleleFractionState state = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi, f);
-                    for (final int a : Arrays.asList(1, 2, 3)) {  //alt count
-                        for (final int r : Arrays.asList(50, 100, 200)) { //ref count
-                            final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double actual = AlleleFractionModeller.hetLogLikelihood(state, 0, count, AlleleFractionIndicator.ALT_MINOR);
-                            final double expected = a * log(beta) + Gamma.logGamma(alpha - a) - Gamma.logGamma(alpha)
-                                    + log((1 - pi) / 2) + a * log(f / (1 - f));
-                            Assert.assertEquals(actual, expected, 1e-3);
-                        }
-                    }
-                }
-            }
-        }
+    public void testMCMCWithoutAllelicPON() {
+        final double meanBiasSimulated = 1.2;
+        final double biasVarianceSimulated = 0.04;
+        testMCMC(meanBiasSimulated, biasVarianceSimulated, meanBiasSimulated, biasVarianceSimulated, AllelicPanelOfNormals.EMPTY_PON);
     }
 
-    // if f is very close to 1 we have an analytic result for comparison
+    /**
+     * Test MCMC inference on simulated data using an allelic PON.  Note that these MCMC tests were written to use
+     * simulated hets before the allelic PON was introduced.  Rather than generate a simulated PON on the fly,
+     * we simply use a fixed simulated PON loaded from a file and check that its MLE hyperparameters are "sampled"
+     * correctly by simply taking the MLE PON values---i.e., the PON does not actually cover the simulated sites and
+     * hence is not used to correct reference bias in the simulated data in any way.
+     * This latter functionality is tested on fixed data loaded from files in
+     * {@link AlleleFractionModellerUnitTest#testBiasCorrection} instead.
+     */
     @Test
-    public void testHetLogLikelihoodMinorFractionNearOne() {
-        final double pi = 0.01; //pi is just a prefactor so we don't need to test it thoroughly here
-        for (final double f : Arrays.asList(1 - 1e-6, 1 - 1e-7, 1 - 1e-8)) {
-            for (final double mean : Arrays.asList(0.9, 1.0, 1.1)) {
-                for (final double variance : Arrays.asList(0.01, 0.005, 0.001)) {
-                    final double alpha = mean * mean / variance;
-                    final double beta = mean / variance;
-                    final AlleleFractionState state = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi, f);
-                    for (final int a : Arrays.asList(1, 10, 20)) {  //alt count
-                        for (final int r : Arrays.asList(1, 10, 20)) { //ref count
-                            final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double actual = AlleleFractionModeller.hetLogLikelihood(state, 0, count, AlleleFractionIndicator.ALT_MINOR);
-                            final double expected = -r * log(beta) + Gamma.logGamma(alpha + r) - Gamma.logGamma(alpha)
-                                    + log((1 - pi) / 2) - r * log(f / (1 - f));
-                            Assert.assertEquals(actual, expected,1e-4);
-                        }
-                    }
-                }
-            }
-        }
+    public void testMCMCWithAllelicPON() {
+        final double meanBiasSimulated = 1.2;
+        final double biasVarianceSimulated = 0.04;
+        final double meanBiasOfPON = 1.083;         // PON generated with alpha = 65
+        final double biasVarianceOfPON = 0.0181;    // PON generated with beta = 60
+        final AllelicPanelOfNormals allelicPON = new AllelicPanelOfNormals(ALLELIC_PON_NORMAL_FILE);
+        testMCMC(meanBiasSimulated, biasVarianceSimulated, meanBiasOfPON, biasVarianceOfPON, allelicPON);
     }
 
-    //if variance is tiny we can approximate lambda ~ mu in the tricky part of the integral to get an analytic result
-    @Test
-    public void testHetLogLikelihoodTightDistribution() {
-        final double pi = 0.01; //pi is just a prefactor so we don't need to test it thoroughly here
-        for (final double f : Arrays.asList(0.1, 0.2, 0.3)) {
-            for (final double mean : Arrays.asList(0.9, 1.0, 1.1)) {
-                for (final double variance : Arrays.asList(1e-6, 1e-7, 1e-8)) {
-                    final AlleleFractionState state = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi, f);
-                    for (final int a : Arrays.asList(1, 10, 20)) {  //alt count
-                        for (final int r : Arrays.asList(1, 10, 20)) { //ref count
-                            final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double actual = AlleleFractionModeller.hetLogLikelihood(state, 0, count, AlleleFractionIndicator.ALT_MINOR);
-                            final double expected = log((1 - pi) / 2) + a * log(f) + r * log(1-f) + r * log(mean) - (a+r) * log(f + (1-f)*mean);
-                            Assert.assertEquals(actual, expected, 1e-3);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    private void testMCMC(final double meanBiasSimulated, final double biasVarianceSimulated,
+                          final double meanBiasExpected, final double biasVarianceExpected,
+                          final AllelicPanelOfNormals allelicPON) {
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
-    //ALT_MINOR <--> REF_MINOR is equivalent to f <--> 1 - f
-    @Test
-    public void testRefMinor() {
-        final double pi = 0.01; //pi is just a prefactor so we don't need to test it thoroughly here
-        for (final double f : Arrays.asList(0.1, 0.2, 0.3)) {
-            for (final double mean : Arrays.asList(0.9, 1.0, 1.1)) {
-                for (final double variance : Arrays.asList(0.02, 0.01)) {
-                    final AlleleFractionState altMinorState = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi, f);
-                    final AlleleFractionState refMinorState = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi, 1 - f);
-                    for (final int a : Arrays.asList(1, 10, 20)) {  //alt count
-                        for (final int r : Arrays.asList(1, 10, 20)) { //ref count
-                            final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double altMinorLk = AlleleFractionModeller.hetLogLikelihood(altMinorState, 0, count, AlleleFractionIndicator.ALT_MINOR);
-                            final double refMinorLk = AlleleFractionModeller.hetLogLikelihood(refMinorState, 0, count, AlleleFractionIndicator.REF_MINOR);
-                            Assert.assertEquals(altMinorLk, refMinorLk, 1e-10);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @Test
-    public void testHetLogLikelihoodOutlierProbabilityDependence() {
-        final AllelicCount count = new AllelicCount(DUMMY, 11, 37);
-        final double f = 0.25;
-        final double mean = 1.0;
-        final double variance = 0.01;
-        final double pi1 = 0.1;
-        final double pi2 = 0.2;
-        final double pi3 = 0.3;
-
-        final AlleleFractionState state1 = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi1, f);
-        final AlleleFractionState state2 = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi2, f);
-        final AlleleFractionState state3 = AlleleFractionModeller.makeSingleSegmentState(mean, variance, pi3, f);
-
-        final double lk1 = AlleleFractionModeller.hetLogLikelihood(state1, 0, count, AlleleFractionIndicator.ALT_MINOR);
-        final double lk2 = AlleleFractionModeller.hetLogLikelihood(state2, 0, count, AlleleFractionIndicator.ALT_MINOR);
-        final double lk3 = AlleleFractionModeller.hetLogLikelihood(state3, 0, count, AlleleFractionIndicator.ALT_MINOR);
-
-        Assert.assertEquals(lk2 - lk1, log(1 - pi2) - log(1 - pi1), EPSILON);
-        Assert.assertEquals(lk3 - lk2, log(1 - pi3) - log(1 - pi2), EPSILON);
-    }
-
-    @Test
-    public void testMCMC() {
-        final int numSamples = 300;
-        final int numBurnIn = 100;
+        final int numSamples = 150;
+        final int numBurnIn = 50;
 
         final double averageHetsPerSegment = 50;
         final int numSegments = 100;
         final int averageDepth = 50;
 
-        final double meanBias = 1.1;
-        final double biasVariance = 0.01;
         final double outlierProbability = 0.02;
 
         // note: the following tolerances could actually be made much smaller if we used more segments and/or
@@ -163,11 +89,10 @@ public final class AlleleFractionModellerUnitTest {
         final double biasVarianceTolerance = 0.01;
         final double outlierProbabilityTolerance = 0.02;
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments,
-                averageDepth, meanBias, biasVariance, outlierProbability);
+                averageDepth, meanBiasSimulated, biasVarianceSimulated, outlierProbability);
 
-        final AlleleFractionModeller model = new AlleleFractionModeller(simulatedData.getSegmentedModel());
+        final AlleleFractionModeller model = new AlleleFractionModeller(simulatedData.getSegmentedModel(), allelicPON);
         model.fitMCMC(numSamples, numBurnIn);
-
 
         final List<Double> meanBiasSamples = model.getmeanBiasSamples();
         Assert.assertEquals(meanBiasSamples.size(), numSamples - numBurnIn);
@@ -198,90 +123,93 @@ public final class AlleleFractionModellerUnitTest {
             totalSegmentError += Math.abs(mcmcMinorFractions.get(segment) - simulatedData.getTrueState().minorFractionInSegment(segment));
         }
 
-        Assert.assertEquals(mcmcMeanBias, meanBias, meanBiasTolerance);
-        Assert.assertEquals(mcmcBiasVariance, biasVariance, biasVarianceTolerance);
+        Assert.assertEquals(mcmcMeanBias, meanBiasExpected, meanBiasTolerance);
+        Assert.assertEquals(mcmcBiasVariance, biasVarianceExpected, biasVarianceTolerance);
         Assert.assertEquals(mcmcOutlierProbabilityr, outlierProbability, outlierProbabilityTolerance);
         Assert.assertEquals(totalSegmentError / numSegments, 0.0, minorFractionTolerance);
     }
 
-    @Test
-    public void testSamplers() {
-        final int randomSeed = 15;
-        final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(randomSeed));
-        final int numSamples = 500;
-        final double averageHetsPerSegment = 20;
-        final int numSegments = 100;
-        final int averageDepth = 50;
-        final double meanBias = 1.1;
-        final double biasVariance = 0.01;
-        final double outlierProbability = 0.02;
+    @DataProvider(name = "biasCorrection")
+    public Object[][] dataBiasCorrection() {
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+        final AllelicCountCollection sampleNormal = new AllelicCountCollection(SAMPLE_NORMAL_FILE);
+        final AllelicCountCollection sampleWithBadSNPs = new AllelicCountCollection(SAMPLE_WITH_BAD_SNPS_FILE);
+        final AllelicCountCollection sampleWithEvent = new AllelicCountCollection(SAMPLE_WITH_EVENT_FILE);
 
-        // note: the following tolerances could actually be made much smaller if we used more segments and/or
-        // more hets -- most of the error is the sampling error of a finite simulated data set, not numerical error of MCMC
-        final double meanBiasTolerance = 0.02;
-        final double biasVarianceTolerance = 0.01;
-        final double outlierProbabilityTolerance = 0.02;
+        final AllelicPanelOfNormals allelicPONNormal = new AllelicPanelOfNormals(ALLELIC_PON_NORMAL_FILE);
+        final AllelicPanelOfNormals allelicPONWithBadSNPs = new AllelicPanelOfNormals(ALLELIC_PON_WITH_BAD_SNPS_FILE);
 
-        // as for the minor fraction tolerance, the "truth data" assigns some value of f for each segment
-        // but we draw actual read counts for each het from a binomial (ignoring bias) with total number ~ d = average depth
-        // and minor allele probability f.  this implies a variance ~ f(1-f)*d in the total minor read count for a het
-        // and a variance f(1-f)*d*N, where N is average hets per segment, per segment.  We divide by the total number of reads,
-        // roughly N*d, to get an empirical minor fraction of the segment.  This estimator thus has variance f(1-f)/(N*d).
-        // averaging from 0 < f < 1/2 gives an average variance of 5/(24*N*d).  Assuming normality,
-        // the absolute value of this sampling error (i.e. inherent to the simulated data and having nothing to do with
-        // the MCMC or the model) has mean sqrt[5 / (12*pi*N*d)]
-        final double MINOR_FRACTION_SAMPLING_ERROR = Math.sqrt(5.0 / (12.0 * 3.14 * averageHetsPerSegment * averageDepth));
-        final double MINOR_FRACTION_TOLERANCE = MINOR_FRACTION_SAMPLING_ERROR;
+        final double minorFractionExpectedInMiddleSegmentNormal = 0.5;
+        final double minorFractionExpectedInMiddleSegmentWithBadSNPsAndNormalPON = 0.4;
+        final double minorFractionExpectedInMiddleSegmentWithEvent = 0.33;
 
-        final AlleleFractionSimulatedData SIMULATED_DATA = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments, averageDepth, meanBias, biasVariance, outlierProbability);
-        final AlleleFractionState INITIAL_STATE = SIMULATED_DATA.getTrueState();
-        final AlleleFractionData DATA = new AlleleFractionData(SIMULATED_DATA.getSegmentedModel());
+        return new Object[][]{
+                {sampleNormal, allelicPONNormal, minorFractionExpectedInMiddleSegmentNormal},
+                {sampleWithBadSNPs, allelicPONNormal, minorFractionExpectedInMiddleSegmentWithBadSNPsAndNormalPON},
+                {sampleWithEvent, allelicPONNormal, minorFractionExpectedInMiddleSegmentWithEvent},
+                {sampleWithBadSNPs, allelicPONWithBadSNPs, minorFractionExpectedInMiddleSegmentNormal}
+        };
+    }
 
-        final AlleleFractionModeller.MeanBiasSampler meanBiasSampler =
-                new AlleleFractionModeller.MeanBiasSampler(INITIAL_STATE.meanBias(), 0.01);
-        final AlleleFractionModeller.BiasVarianceSampler biasVarianceSampler =
-                new AlleleFractionModeller.BiasVarianceSampler(INITIAL_STATE.biasVariance(), 0.01);
-        final AlleleFractionModeller.OutlierProbabilitySampler outlierProbabilitySampler =
-                new AlleleFractionModeller.OutlierProbabilitySampler(INITIAL_STATE.outlierProbability(), 0.01);
-        final AlleleFractionModeller.MinorFractionsSampler minorFractionsSampler =
-                new AlleleFractionModeller.MinorFractionsSampler(INITIAL_STATE.minorFractions(), Collections.nCopies(numSegments,0.01));
+    /**
+     * Tests that the allelic PoN is appropriately used to correct reference bias.  The basic set up for the test data is
+     * simulated hets at 1000 sites (1:1-1000) across 3 segments.  The outer two segments are balanced with
+     * minor-allele fraction = 0.5; however, in the middle segment consisting of 100 sites (1:451-550), all of the sites
+     *
+     * <p>
+     *     1) are balanced and have biases identical to the sites in the other two segments,
+     *     which are drawn from a gamma distribution with alpha = 65, beta = 60 -> mean bias = 1.083 ("SAMPLE_NORMAL")
+     * </p>
+     *
+     * <p>
+     *     2) are balanced and have relatively high biases,
+     *     which are drawn from a gamma distribution with alpha = 9, beta = 6 -> mean bias = 1.5 ("SAMPLE_WITH_BAD_SNPS")
+     * </p>
+     *
+     * <p>
+     *     3) have minor-allele fraction = 0.33, copy ratio = 1.5, and biases identical to the sites in the other two segments,
+     *     which are drawn from a gamma distribution with alpha = 65, beta = 60 -> mean bias = 1.083 ("SAMPLE_EVENT").
+     * </p>
+     *
+     * In this segment, using a PON that doesn't know about the high reference bias of these sites ("ALLELIC_PON_NORMAL")
+     * we should infer a minor-allele fraction of 6 / (6 + 9) = 0.40 in scenario 2; however, with a PON that does know
+     * about the high bias at these sites ("ALLELIC_PON_WITH_BAD_SNPS") we correctly infer that all of the segments are balanced.
+     *
+     * <p>
+     *     Note that alpha and beta are not actually correctly recovered in this PON via MLE because the biases
+     *     drawn from a mixture of gamma distributions (as opposed to a single gamma distribution as assumed in the model).
+     *     TODO https://github.com/broadinstitute/gatk-protected/issues/421
+     * </p>
+     */
+    @Test(dataProvider = "biasCorrection")
+    public void testBiasCorrection(final AllelicCountCollection sample,
+                                   final AllelicPanelOfNormals allelicPON,
+                                   final double minorFractionExpectedInMiddleSegment) {
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        final AlleleFractionState state = INITIAL_STATE.copy(AlleleFractionState.class);
-        final List<Double> meanBiasSamples = new ArrayList<>();
-        final List<Double> biasVarianceSamples = new ArrayList<>();
-        final List<Double> outlierProbabilitySamples = new ArrayList<>();
-        final List<AlleleFractionState.MinorFractions> minorFractionsSamples = new ArrayList<>();
-        for (int n = 0; n < numSamples; n++) {
-            meanBiasSamples.add(meanBiasSampler.sample(rng, state, DATA));
-            biasVarianceSamples.add(biasVarianceSampler.sample(rng, state, DATA));
-            outlierProbabilitySamples.add(outlierProbabilitySampler.sample(rng, state, DATA));
-            minorFractionsSamples.add(minorFractionsSampler.sample(rng, state, DATA));
+        final double minorFractionTolerance = 0.025;
+
+        // set up test data
+        final List<TargetCoverage> emptyTargets = new ArrayList<>();    // no targets in test data
+        final Genome genome = new Genome(emptyTargets, sample.getCounts(), "test");
+        final List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_FILE);
+        final SegmentedModel segmentedModel = new SegmentedModel(segments, genome);
+
+        final int numSamples = 100;
+        final int numBurnIn = 25;
+        final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedModel, allelicPON);
+        modeller.fitMCMC(numSamples, numBurnIn);
+
+        final double credibleAlpha = 0.05;
+        final List<PosteriorSummary> minorAlleleFractionPosteriorSummaries =
+                modeller.getMinorAlleleFractionsPosteriorSummaries(credibleAlpha, ctx);
+        final List<Double> minorFractionsResult = minorAlleleFractionPosteriorSummaries.stream().map(PosteriorSummary::getCenter).collect(Collectors.toList());
+
+        final double minorFractionBalanced = 0.5;
+        final List<Double> minorFractionsExpected = Arrays.asList(minorFractionBalanced, minorFractionExpectedInMiddleSegment, minorFractionBalanced);
+        for (int segment = 0; segment < 3; segment++) {
+            Assert.assertEquals(minorFractionsResult.get(segment), minorFractionsExpected.get(segment), minorFractionTolerance);
         }
-
-        final double estimatedMeanBias = meanBiasSamples.stream().mapToDouble(x -> x).average().getAsDouble();
-        Assert.assertEquals(estimatedMeanBias, meanBias, meanBiasTolerance);
-
-        final double estimatedBiasVariance = biasVarianceSamples.stream().mapToDouble(x -> x).average().getAsDouble();
-        Assert.assertEquals(estimatedBiasVariance, biasVariance, biasVarianceTolerance);
-
-        final double estimatedOutlierProbability = outlierProbabilitySamples.stream().mapToDouble(x -> x).average().getAsDouble();
-        Assert.assertEquals(estimatedOutlierProbability, outlierProbability, outlierProbabilityTolerance);
-
-        final List<List<Double>> samplesBySegment = new ArrayList<>();
-        for (int segment = 0; segment < numSegments; segment++) {
-            final int seg = segment;    //to allow use in the following lambda
-            samplesBySegment.add(minorFractionsSamples.stream().map(s -> s.get(seg)).collect(Collectors.toList()));
-        }
-
-        final List<Double> estimatedMinorFractions = samplesBySegment
-                .stream().map(list -> list.stream().mapToDouble(x -> x).average().getAsDouble())
-                .collect(Collectors.toList());
-
-        double totalSegmentError = 0.0;
-        for (int segment = 0; segment < numSegments; segment++) {
-            totalSegmentError += Math.abs(estimatedMinorFractions.get(segment) - INITIAL_STATE.minorFractionInSegment(segment));
-        }
-
-        Assert.assertEquals(totalSegmentError / numSegments, 0.0, MINOR_FRACTION_TOLERANCE);
     }
 }

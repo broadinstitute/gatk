@@ -59,7 +59,7 @@ public final class PosteriorSummaryUtilsUnitTest extends BaseTest {
                 {betaSamplesMAF, 0.32, 0.05, new PosteriorSummary(0.415, 0.312, 0.5)},
                 {betaSamplesMAF, 0.05, 0.05, new PosteriorSummary(0.415, 0.191, 0.5)},
                 {identicalSamples, 0.32, 0.01, new PosteriorSummary(1., 1., 1.)},
-                {withNaNSamples, 0.32, 0.01, new PosteriorSummary(Double.NaN, Double.NaN, Double.NaN)},
+                {withNaNSamples, 0.32, 0.01, new PosteriorSummary(Double.NaN, Double.NaN, Double.NaN)}
         };
     }
 

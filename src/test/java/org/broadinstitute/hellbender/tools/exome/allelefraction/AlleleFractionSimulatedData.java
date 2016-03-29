@@ -4,7 +4,8 @@ import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
-import org.apache.commons.math3.random.Well19937a;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.tools.exome.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
@@ -23,14 +24,10 @@ import java.util.stream.IntStream;
 public final class AlleleFractionSimulatedData {
     private static final int MIN_HETS_PER_SEGMENT = 3;
     private static final int RANDOM_SEED = 13;
-    private static final int SEGMENT_LENGTHS_SEED = 17;
-    private static final int DEPTHS_SEED = 19;
-    private static final int MINOR_FRACTION_SEED = 23;
-    private static final int BIAS_SEED = 29;
-    private static final Random rng = new Random(RANDOM_SEED);
+    private static final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
-    private static PoissonDistribution makePoisson(final int seed, final double mean) {
-        return new PoissonDistribution(new Well19937a(seed), mean, PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
+    private static PoissonDistribution makePoisson(final RandomGenerator rng, final double mean) {
+        return new PoissonDistribution(rng, mean, PoissonDistribution.DEFAULT_EPSILON, PoissonDistribution.DEFAULT_MAX_ITERATIONS);
     }
 
     private final AlleleFractionState trueState;
@@ -39,19 +36,20 @@ public final class AlleleFractionSimulatedData {
 
     public AlleleFractionSimulatedData(final double averageHetsPerSegment, final int numSegments,
             final double averageDepth, final double biasMean, final double biasVariance, final double outlierProbability) {
+        rng.setSeed(RANDOM_SEED);
         this.numSegments = numSegments;
         final AlleleFractionState.MinorFractions minorFractions = new AlleleFractionState.MinorFractions();
         final List<AllelicCount> alleleCounts = new ArrayList<>();
         final List<SimpleInterval> segments = new ArrayList<>();
 
-        final PoissonDistribution segmentLengthGenerator = makePoisson(SEGMENT_LENGTHS_SEED, averageHetsPerSegment);
-        final PoissonDistribution readDepthGenerator = makePoisson(DEPTHS_SEED, averageDepth);
-        final UniformRealDistribution minorFractionGenerator = new UniformRealDistribution(new Well19937a(MINOR_FRACTION_SEED), 0.0, 0.5);
+        final PoissonDistribution segmentLengthGenerator = makePoisson(rng, averageHetsPerSegment);
+        final PoissonDistribution readDepthGenerator = makePoisson(rng, averageDepth);
+        final UniformRealDistribution minorFractionGenerator = new UniformRealDistribution(rng, 0.0, 0.5);
 
         //translate to ApacheCommons' parametrization of the gamma distribution
         final double gammaShape = biasMean * biasMean / biasVariance;
         final double gammaScale = biasVariance / biasMean;
-        final GammaDistribution biasGenerator = new GammaDistribution(new Well19937a(BIAS_SEED), gammaShape, gammaScale);
+        final GammaDistribution biasGenerator = new GammaDistribution(rng, gammaShape, gammaScale);
 
         for (int segment = 0; segment < numSegments; segment++) {
             // calculate the range of het indices for this segment
@@ -72,7 +70,7 @@ public final class AlleleFractionSimulatedData {
                 final double pAlt = rng.nextDouble() < outlierProbability ? rng.nextDouble() : altFraction / (altFraction + (1 - altFraction) * bias);
 
                 final int numReads = readDepthGenerator.sample();
-                final int numAltReads = new BinomialDistribution(numReads, pAlt).sample();
+                final int numAltReads = new BinomialDistribution(rng, numReads, pAlt).sample();
                 final int numRefReads = numReads - numAltReads;
                 alleleCounts.add(new AllelicCount(new SimpleInterval(Integer.toString(segment), het, het), numRefReads, numAltReads));
             }

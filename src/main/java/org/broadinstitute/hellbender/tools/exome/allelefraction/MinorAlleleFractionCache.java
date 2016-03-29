@@ -36,14 +36,14 @@ public final class MinorAlleleFractionCache {
         if (cache.containsKey(key)) {
             return cache.get(key);
         } else {
-            final double minorAlleleFraction = calculateMinorAlleleFraction(a, r, allelicBias);
+            final double minorAlleleFraction = estimateMinorAlleleFraction(a, r, allelicBias);
             cache.put(key, minorAlleleFraction);
             return minorAlleleFraction;
         }
     }
 
     //See docs/CNVs/CNV-methods.pdf for derivation of likelihood
-    private static double calculateMinorAlleleFraction(final int a, final int r, final double bias) {
+    private static double estimateMinorAlleleFraction(final int a, final int r, final double bias) {
         final double altFraction = (double) a / (a + r);
         final double initialEstimate = altFraction < 0.5 ? altFraction : 1. - altFraction;
         final SearchInterval searchInterval = new SearchInterval(0.0, 0.5, initialEstimate);
@@ -51,9 +51,9 @@ public final class MinorAlleleFractionCache {
         // work in log space to avoid underflow
         final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(f -> {
             final double logf = Math.log(f);
-            final double logOneMinusf = Math.log(1.-f);
+            final double logOneMinusf = Math.log(1. - f);
             final double logBias = Math.log(bias);
-            final double logAltMinorDenominatorTerm = Math.log(f + (1.-f)*bias);
+            final double logAltMinorDenominatorTerm = Math.log(f + (1. - f)*bias);
             final double logRefMinorDenominatorTerm = Math.log(1. - f + f*bias);
             final double altMinorLogLikelihood =
                     a * logf + r * (logOneMinusf + logBias) - (a + r) * logAltMinorDenominatorTerm;

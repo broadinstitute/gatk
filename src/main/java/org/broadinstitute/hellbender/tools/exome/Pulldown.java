@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -34,7 +35,8 @@ public final class Pulldown extends AllelicCountCollection {
      * AllelicCounts.  This IntervalList is modifiable and does not change with the state of the Pulldown.   */
     public IntervalList getIntervals() {
         final IntervalList intervals = new IntervalList(header);
-        intervals.addall(getCounts().stream().map(AllelicCount::getInterval).collect(Collectors.toList()));
+        intervals.addall(getCounts().stream().map(AllelicCount::getInterval)
+                .map(si -> new Interval(si.getContig(), si.getStart(), si.getEnd())).collect(Collectors.toList()));
         return intervals;
     }
 

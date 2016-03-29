@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionData;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionInitializer;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionState;
+import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
@@ -105,6 +106,14 @@ public class AllelicCNV extends SparkCommandLineProgram {
             optional = false
     )
     protected File targetSegmentsFile;
+
+    @Argument(
+            doc = "Input file for allelic-bias panel of normals.",
+            fullName = ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_SHORT_NAME,
+            optional = true
+    )
+    protected File allelicPONFile;
 
     @Argument(
             doc = "Prefix for output files. Will also be used as the sample name if that is not provided." +
@@ -214,6 +223,10 @@ public class AllelicCNV extends SparkCommandLineProgram {
         logger.info("Loading input files...");
         final Genome genome = new Genome(targetCoveragesFile, snpCountsFile, sampleName);
 
+        //load allelic-bias panel of normals if provided
+        final AllelicPanelOfNormals allelicPON =
+                allelicPONFile != null ? new AllelicPanelOfNormals(allelicPONFile) : AllelicPanelOfNormals.EMPTY_PON;
+
         //load target-coverage segments from input file
         final List<ModeledSegment> targetSegmentsWithCalls =
                 SegmentUtils.readModeledSegmentsFromSegmentFile(targetSegmentsFile);
@@ -242,8 +255,9 @@ public class AllelicCNV extends SparkCommandLineProgram {
         segmentedModel.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedModelFile);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
-        final ACNVModeller modeller = new ACNVModeller(segmentedModel,
+        final ACNVModeller modeller = new ACNVModeller(segmentedModel, allelicPON,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
+
         final File initialModeledSegmentsFile = new File(outputPrefix + "-" + INITIAL_SEG_FILE_TAG + ".seg");
         modeller.writeACNVModeledSegmentFile(initialModeledSegmentsFile);
 
