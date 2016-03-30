@@ -1,10 +1,7 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.hellbender.cmdline.ClassFinder;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 
@@ -181,6 +178,9 @@ public class Main {
             final CommandLineProgramProperties property = getProgramProperty(clazz);
             if (null == property) {
                 throw new RuntimeException(String.format("The class '%s' is missing the required CommandLineProgramProperties annotation.", clazz.getSimpleName()));
+            }
+            if (clazz.isAnnotationPresent(Hidden.class)){ //skip hidden programs
+                continue;
             }
             programsToProperty.put(clazz, property);
             // Get the command line program group for the command line property
