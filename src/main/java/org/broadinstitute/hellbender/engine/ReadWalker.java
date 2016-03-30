@@ -44,7 +44,7 @@ public abstract class ReadWalker extends GATKTool {
         super.onStartup();
 
         if ( hasIntervals() ) {
-            reads.setIntervalsForTraversal(intervalsForTraversal);
+            reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
         }
     }
 

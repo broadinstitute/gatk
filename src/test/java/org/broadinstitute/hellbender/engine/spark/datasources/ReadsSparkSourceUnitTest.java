@@ -221,7 +221,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         }
 
         ReadsDataSource bam2 = new ReadsDataSource(new File(bam), samReaderFactory);
-        bam2.setIntervalsForTraversal(intervals);
+        bam2.setTraversalBounds(intervals);
         List<GATKRead> records = Lists.newArrayList();
         for ( GATKRead read : bam2 ) {
             records.add(read);
