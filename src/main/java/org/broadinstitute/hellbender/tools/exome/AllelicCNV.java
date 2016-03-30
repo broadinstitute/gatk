@@ -107,7 +107,9 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected File targetSegmentsFile;
 
     @Argument(
-            doc = "Prefix for output files. Will also be used as sample name if that is not provided.",
+            doc = "Prefix for output files. Will also be used as the sample name if that is not provided." +
+                    "(Note: if this is a file path or contains slashes (/), " +
+                    "the string after the final slash will be used as the sample name if that is not provided.)",
             fullName = OUTPUT_PREFIX_LONG_NAME,
             shortName = OUTPUT_PREFIX_SHORT_NAME,
             optional = false
@@ -203,7 +205,8 @@ public class AllelicCNV extends SparkCommandLineProgram {
                 (ctx.getLocalProperty("logLevel") != null) ? ctx.getLocalProperty("logLevel") : "INFO";
         ctx.setLogLevel("WARN");
 
-        final String sampleName = outputPrefix;
+        //the string after the final slash in the output prefix (which may be an absolute file path) will be used as the sample name
+        final String sampleName = outputPrefix.substring(outputPrefix.lastIndexOf("/") + 1);
 
         logger.info("Starting workflow for " + sampleName + "...");
 
