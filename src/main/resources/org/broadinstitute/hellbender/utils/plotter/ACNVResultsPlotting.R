@@ -21,6 +21,11 @@ output_file=opt[["output_dir"]]
 sex_chrs=as.logical(opt[["sex_chrs"]])
 num_chromosomes = ifelse(sex_chrs, 24, 22)
 
+#check input files exist.  If not, quit with error code that GATK will pick up
+if (!all(file.exists(c(snp_counts_file, coverage_file, segments_file)))) {
+    quit(save = "no", status = 1, runLast = FALSE)
+}
+
 create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, segments_file, output_dir, num_chromosomes) {
 	#set up coverage, snps, and segments data frames
 	snp_counts = read.table(snp_counts_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
@@ -40,6 +45,12 @@ create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, s
     SetUpPlot("Tangent-Normalized Coverage", 0, 4, "Chromosome", TRUE, num_chromosomes)
     PlotCopyRatioWithSegments(coverage, segments, TRUE)
     dev.off()
+
+    #check for created file and quit with error code if not found
+    if (!file.exists(plot_file_name)) {
+        quit(save = "no", status = 1, runLast = FALSE)
+    }
 }
 
 create_acnv_plots_file(sample_name, snp_counts_file, coverage_file, segments_file, output_file, num_chromosomes)
+

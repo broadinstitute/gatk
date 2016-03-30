@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.plotter;
 
+import org.broadinstitute.hellbender.utils.R.RScriptExecutorException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -38,5 +39,12 @@ public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
+    }
+
+    @Test(expectedExceptions = RScriptExecutorException.class)
+    public void testMissingInput() throws IOException {
+        File tDir = IOUtils.tempDir("Test", "Plotting");
+        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, "Non-existent-file",
+                TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", false, false);
     }
 }
