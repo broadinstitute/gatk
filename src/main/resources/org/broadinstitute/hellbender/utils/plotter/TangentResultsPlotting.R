@@ -23,6 +23,11 @@ log_input=as.logical(opt[["log2_input"]])
 sex_chrs=as.logical(opt[["sex_chrs"]])
 num_chromosomes = ifelse(sex_chrs, 24, 22)
 
+#check input files exist.  If not, quit with error code that GATK will pick up
+if (!all(file.exists(c(tn_file, pre_tn_file, segments_file)))) {
+    quit(save = "no", status = 1, runLast = FALSE)
+}
+
 QC = function(dat) {
     return(median(abs(diff(dat))))
 }
@@ -66,6 +71,11 @@ create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, segments
         SetUpPlot("Copy-Ratio", 0, ifelse(i == 1, 4, max(tn$VALUE)), paste("Post Tangent Normalization, QC = ", round(postQc, 3), sep=""), TRUE, num_chromosomes)
         PlotCopyRatio(tn, post_color_green)
         dev.off()
+    }
+
+    #check for created files and quit with error code if not found
+    if (!all(file.exists(c(plot.fns, plot.fn)))) {
+       quit(save = "no", status = 1, runLast = FALSE)
     }
 }
 
