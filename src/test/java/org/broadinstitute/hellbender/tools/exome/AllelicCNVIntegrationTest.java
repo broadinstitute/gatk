@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
+import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -60,6 +62,13 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 Assert.assertTrue(outputLines.size() >= 2);
                 Assert.assertEquals(outputLines.stream().filter(l -> l.contains("\t") || l.startsWith("#")).count(), outputLines.size());
                 Assert.assertTrue(outputLines.stream().filter(l -> l.split("\t").length > 2 && !l.startsWith("#")).count() > 2, "File: " + outputFile + " does not seem to have at least one segment and a header.");
+                //Check that sample names, if present in segment files, do not contain "/"
+                try {
+                    final List<String> sampleNamesInOutputFile = SampleNameFinder.determineSampleNamesFromSegmentFile(outputFile);
+                    sampleNamesInOutputFile.stream().forEach(n -> Assert.assertFalse(n.contains("/")));
+                } catch (final UserException.BadInput e) {
+                    //this exception is expected if segment file does not contain sample name (e.g., ACS seg file), so we do nothing
+                }
             } catch (final IOException ioe) {
                 Assert.fail("Could not read file: " + outputFile, ioe);
             }
