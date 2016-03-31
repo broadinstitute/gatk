@@ -112,7 +112,7 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected ValidationStringency VALIDATION_STRINGENCY = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
     @Argument(
-            doc = "Minimum raw number of reads that must be present to even be considered as a het.",
+            doc = "Minimum raw number of reads that must be present at a site for it to be considered for het compatibility.",
             shortName = MINIMUM_READ_COUNT_SHORT_NAME,
             fullName = MINIMUM_READ_COUNT_FULL_NAME,
             optional = true
