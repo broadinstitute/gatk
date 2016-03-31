@@ -461,7 +461,7 @@ public final class ReadThreadingAssembler {
     private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final ReadThreadingGraph rtgraph) {
         printDebugGraphTransform(rtgraph, refHaplotype.getLocation() + "-sequenceGraph." + kmerSize + ".0.0.raw_readthreading_graph.dot");
 
-        // go through and prune all of the chains where all edges have <= pruneFactor.  This must occur
+        // prune all of the chains where all edges have multiplicity < pruneFactor.  This must occur
         // before recoverDanglingTails in the graph, so that we don't spend a ton of time recovering
         // tails that we'll ultimately just trim away anyway, as the dangling tail edges have weight of 1
         rtgraph.pruneLowWeightChains(pruneFactor);
