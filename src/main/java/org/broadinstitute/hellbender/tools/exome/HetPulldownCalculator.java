@@ -38,8 +38,7 @@ public final class HetPulldownCalculator {
     private static final int NUMBER_OF_LOG_UPDATES = 20;    //sets (approximate) number of status updates printed to log
     private static final double HET_ALLELE_FRACTION = 0.5;
 
-    //set read-depth thresholds for pulldown, interval threshold for indexing for SamLocusIterator
-    private static final int READ_DEPTH_THRESHOLD = 10;
+    //set interval threshold for indexing for SamLocusIterator
     private static final int MAX_INTERVALS_FOR_INDEX = 25000;
 
     /**
@@ -140,16 +139,16 @@ public final class HetPulldownCalculator {
     /**
      * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a normal sample.
      */
-    public Pulldown getNormal(final File normalBAMFile, final double pvalThreshold) {
+    public Pulldown getNormal(final File normalBAMFile, final double pvalThreshold, final int minReadCount) {
         ParamUtils.inRange(pvalThreshold, 0., 1., "p-value threshold must be in [0, 1].");
-        return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, pvalThreshold);
+        return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, pvalThreshold, minReadCount);
     }
 
     /**
      * Calls {@link HetPulldownCalculator#getHetPulldown} with flags set for a tumor sample.
      */
-    public Pulldown getTumor(final File tumorBAMFile, final IntervalList normalHetIntervals) {
-        return getHetPulldown(tumorBAMFile, normalHetIntervals, SampleType.TUMOR, -1);
+    public Pulldown getTumor(final File tumorBAMFile, final IntervalList normalHetIntervals, final int minReadCount) {
+        return getHetPulldown(tumorBAMFile, normalHetIntervals, SampleType.TUMOR, -1, minReadCount);
     }
 
     /**
@@ -180,10 +179,11 @@ public final class HetPulldownCalculator {
      * @param sampleType        flag indicating type of sample (SampleType.NORMAL or SampleType.TUMOR)
      *                          (determines whether to perform binomial test)
      * @param pvalThreshold     p-value threshold for two-sided binomial test, used for normal sample
+     * @param minimumRawReads   minimum number of total reads that must be present at a het site
      * @return                  Pulldown of heterozygous SNP sites in 1-based format
      */
     private Pulldown getHetPulldown(final File bamFile, final IntervalList snpIntervals, final SampleType sampleType,
-                                    final double pvalThreshold) {
+                                    final double pvalThreshold, final int minimumRawReads) {
         try (final SamReader bamReader = SamReaderFactory.makeDefault().validationStringency(validationStringency)
                 .referenceSequence(refFile).open(bamFile);
              final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
@@ -218,7 +218,7 @@ public final class HetPulldownCalculator {
 
                 //include N, etc. reads here
                 final int totalReadCount = locus.getRecordAndPositions().size();
-                if (totalReadCount <= READ_DEPTH_THRESHOLD) {
+                if (totalReadCount < minimumRawReads) {
                     continue;
                 }
 

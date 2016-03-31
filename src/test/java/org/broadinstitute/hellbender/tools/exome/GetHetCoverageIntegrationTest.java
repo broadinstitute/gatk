@@ -70,7 +70,10 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
                 "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME, tumorOutputFile.getAbsolutePath(),
+
+                // Non-default value of 10, since test data was calculated with 10
+                "-" + GetHetCoverage.MINIMUM_READ_COUNT_FULL_NAME, Integer.toString(10),
         };
         runCommandLine(arguments);
 
@@ -87,7 +90,10 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME, SNP_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REF_FILE.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath()
+                "-" + ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME, normalOutputFile.getAbsolutePath(),
+
+                // Non-default value of 10, since test data was calculated with 10
+                "-" + GetHetCoverage.MINIMUM_READ_COUNT_FULL_NAME, Integer.toString(10),
         };
         runCommandLine(arguments);
 
