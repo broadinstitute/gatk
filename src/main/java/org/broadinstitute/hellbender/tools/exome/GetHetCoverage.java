@@ -33,6 +33,9 @@ public final class GetHetCoverage extends CommandLineProgram {
     protected static final String MINIMUM_BASE_QUALITY_SHORT_NAME = "minBQ";
     protected static final String MINIMUM_BASE_QUALITY_FULL_NAME = "minimumBaseQuality";
 
+    protected static final String MINIMUM_READ_COUNT_SHORT_NAME = "minRC";
+    protected static final String MINIMUM_READ_COUNT_FULL_NAME = "minimumReadCount";
+
     @ArgumentCollection
     protected static final ReferenceInputArgumentCollection REFERENCE_ARGUMENTS =
             new RequiredReferenceInputArgumentCollection();
@@ -108,6 +111,14 @@ public final class GetHetCoverage extends CommandLineProgram {
             common=true)
     protected ValidationStringency VALIDATION_STRINGENCY = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
+    @Argument(
+            doc = "Minimum raw number of reads that must be present to even be considered as a het.",
+            shortName = MINIMUM_READ_COUNT_SHORT_NAME,
+            fullName = MINIMUM_READ_COUNT_FULL_NAME,
+            optional = true
+    )
+    protected int minimumRawReads = 15;
+
     @Override
     protected Object doWork() {
         //if tumor arguments are missing, throw exception (and do not even get normal pulldown)
@@ -124,7 +135,7 @@ public final class GetHetCoverage extends CommandLineProgram {
                 snpFile, minimumMappingQuality, minimumBaseQuality, VALIDATION_STRINGENCY);
 
         logger.info("Getting normal het pulldown...");
-        final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, pvalThreshold);
+        final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, pvalThreshold, minimumRawReads);
         normalHetPulldown.write(normalHetOutputFile);
         logger.info("Normal het pulldown written to " + normalHetOutputFile.toString());
 
@@ -132,7 +143,7 @@ public final class GetHetCoverage extends CommandLineProgram {
             final IntervalList normalHetIntervals = normalHetPulldown.getIntervals();
 
             logger.info("Getting tumor het pulldown...");
-            final Pulldown tumorHetPulldown = hetPulldown.getTumor(tumorBAMFile, normalHetIntervals);
+            final Pulldown tumorHetPulldown = hetPulldown.getTumor(tumorBAMFile, normalHetIntervals, minimumRawReads);
             tumorHetPulldown.write(tumorHetOutputFile);
             logger.info("Tumor het pulldown written to " + tumorHetOutputFile.toString());
         }

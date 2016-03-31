@@ -149,18 +149,18 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputGetNormalHetPulldown")
     public void testGetNormalHetPulldown(final double pvalThreshold, final Pulldown expected) {
-        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, pvalThreshold);
+        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, pvalThreshold, 10);
         Assert.assertEquals(result, expected);
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testGetHetPulldownWithUnsortedBAMFile() {
-        final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, 0.05);
+        final Pulldown result = calculator.getNormal(NORMAL_UNSORTED_BAM_FILE, 0.05, 10);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadpValue() {
-        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, -1);
+        final Pulldown result = calculator.getNormal(NORMAL_BAM_FILE, -1, 10);
     }
 
     @DataProvider(name = "inputGetTumorHetPulldown")
@@ -184,10 +184,33 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
         };
     }
 
+    @DataProvider(name = "inputGetTumorHetPulldownMin15")
+    public Object[][] inputGetTumorHetPulldown15() {
+        final Pulldown tumorHetPulldown = new Pulldown(normalHeader);
+        tumorHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
+        tumorHetPulldown.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+
+        final IntervalList normalHetIntervals = new IntervalList(tumorHeader);
+        normalHetIntervals.add(new Interval("1", 14630, 14630));
+        normalHetIntervals.add(new Interval("2", 14689, 14689));
+
+        return new Object[][]{
+                {normalHetIntervals, tumorHetPulldown}
+        };
+    }
+
+
     @Test(dataProvider = "inputGetTumorHetPulldown")
     public void testGetTumorHetPulldown(final IntervalList normalHetIntervals,
                                         final Pulldown expected) {
-        final Pulldown result = calculator.getTumor(TUMOR_BAM_FILE, normalHetIntervals);
+        final Pulldown result = calculator.getTumor(TUMOR_BAM_FILE, normalHetIntervals, 10);
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test(dataProvider = "inputGetTumorHetPulldownMin15")
+    public void testGetTumorHetPulldown15(final IntervalList normalHetIntervals,
+                                        final Pulldown expected) {
+        final Pulldown result = calculator.getTumor(TUMOR_BAM_FILE, normalHetIntervals, 15);
         Assert.assertEquals(result, expected);
     }
 }
