@@ -5,11 +5,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.*;
 
 /**
- * Prune all chains from this graph where all edges in the path have multiplicity <= pruneFactor
+ * Prune all chains from this graph where all edges in the path have multiplicity < pruneFactor
  *
- * Unlike pruneGraph, this function will remove only linear chains in the graph where all edges have weight <= pruneFactor.
+ * Unlike pruneGraph, this function will remove only linear chains in the graph where all edges have weight < pruneFactor.
  *
- * For A -[1]> B -[1]> C -[1]> D would be removed with pruneFactor 1
+ * For A -[1]> B -[1]> C -[1]> D would be removed with pruneFactor 2
  * but A -[1]> B -[2]> C -[1]> D would not be because the linear chain includes an edge with weight >= 2
  *
  */
@@ -35,7 +35,7 @@ public final class LowWeightChainPruner<V extends BaseVertex, E extends BaseEdge
 
             for ( final Path<V,E> linearChain : getLinearChains(graph) ) {
                 if( mustBeKept(linearChain, pruneFactor) ) {
-                    // we must keep edges in any path that contains a reference edge or an edge with weight > pruneFactor
+                    // we must keep edges in any path that contains a reference edge or an edge with weight >= pruneFactor
                     edgesToKeep.addAll(linearChain.getEdges());
                 }
             }
@@ -50,8 +50,8 @@ public final class LowWeightChainPruner<V extends BaseVertex, E extends BaseEdge
     }
 
     /**
-     * Traverse the edges in the path and determine if any are either ref edges or have weight above or equal to
-     * the pruning factor and should therefore not be pruned away.
+     * Traverse the edges in the path and determine if any are either ref edges or have weight >= pruneFactor
+     * and should therefore not be pruned away.
      *
      * @param path the path in question
      * @param pruneFactor the integer pruning factor

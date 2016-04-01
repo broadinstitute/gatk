@@ -376,7 +376,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         for( final E edge : edgeSet() ) {
             final String edgeString =  String.format("\t%s -> %s ", getEdgeSource(edge).toString(), getEdgeTarget(edge).toString());
             final String edgeLabelString;
-            if (edge.getMultiplicity() > 0 && edge.getMultiplicity() <= pruneFactor){
+            if (edge.getMultiplicity() > 0 && edge.getMultiplicity() < pruneFactor){
                 edgeLabelString = String.format("[style=dotted,color=grey,label=\"%s\"];", edge.getDotLabel());
             } else {
                 edgeLabelString = String.format("[label=\"%s\"];", edge.getDotLabel());
@@ -433,7 +433,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
     }
 
     /**
-     * Prune all chains from this graph where any edge in the path has multiplicity < pruneFactor
+     * Prune all chains from this graph where all edges in the path have multiplicity < pruneFactor
      *
      * @see LowWeightChainPruner for more information
      *
