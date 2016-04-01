@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.hellbender.cmdline.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
@@ -99,6 +100,9 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -" + StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME + ")", optional = true)
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
+    @Hidden
+    @Argument(fullName = "skipBAQ", shortName = "skipBAQ", doc = "don't do BAQ correction")
+    public boolean skipBAQ = false;
 
     // --------------------------------------------------------------------------------------------------------------
     //
