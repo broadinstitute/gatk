@@ -72,7 +72,7 @@ public class ExampleLocusWalker extends LocusWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         if ( outputStream != null )
             outputStream.close();
 

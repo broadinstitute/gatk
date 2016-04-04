@@ -34,7 +34,7 @@ public abstract class LocusWalker extends GATKTool {
     /**
      * Should the LIBS keep unique reads?
      */
-    protected boolean KEEP_UNIQUE_READ_LIST_IN_LIBS = false;
+    protected static boolean KEEP_UNIQUE_READ_LIST_IN_LIBS = false;
 
     /**
      * LocusWalkers requires read sources
@@ -72,7 +72,7 @@ public abstract class LocusWalker extends GATKTool {
 
     /**
      * Get the information about how to downsample the reads. By default {@link org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod#NONE} is returned.
-     * Subclasses should override it to provide own downsampling methods.
+     * Subclasses should override it to provide their own downsampling methods.
      *
      * @return the downsampling method for the reads
      */
@@ -88,7 +88,7 @@ public abstract class LocusWalker extends GATKTool {
     protected final void onStartup() {
         super.onStartup();
         if ( hasIntervals() ) {
-            reads.setIntervalsForTraversal(intervalsForTraversal);
+			reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
         }
     }
 
@@ -96,11 +96,9 @@ public abstract class LocusWalker extends GATKTool {
      * Implementation of locus-based traversal.
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      *
-     * The default implementation iterates over all positions in the reference for all samples in the read groups, using
+     * The default implementation iterates over all positions in the reference covered by reads for all samples in the read groups, using
      * the downsampling method provided by {@link #getDownsamplingMethod()}
      * and including deletions if {@link #includeDeletions()} returns {@code true}.
-     *
-     * {@link #intervalsForTraversal} are not used in this implementation
      */
     @Override
     public void traverse() {
@@ -112,11 +110,10 @@ public abstract class LocusWalker extends GATKTool {
         CountingReadFilter countedFilter = disableAllReadFilters ?
                 new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
                 makeReadFilter();
-        // TODO: wrap reads.iterator() with ReadFilteringIterator and countedFilter
         // get the LIBS
         LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), KEEP_UNIQUE_READ_LIST_IN_LIBS, samples, header);
 		// prepare the iterator
-		Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
+		Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function
         StreamSupport.stream(iterator, false)
             .forEach(alignmentContext -> {
@@ -125,6 +122,7 @@ public abstract class LocusWalker extends GATKTool {
                         progressMeter.update(alignmentInterval);
                 }
             );
+		logger.info(countedFilter.getSummaryLine());
     }
 
     /**
