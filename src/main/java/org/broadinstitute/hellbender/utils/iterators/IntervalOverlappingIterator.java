@@ -1,33 +1,10 @@
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2015 Daniel Gómez-Sánchez
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
 package org.broadinstitute.hellbender.utils.iterators;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
-import org.broadinstitute.hellbender.utils.HasGenomeLocation;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Iterator;
 import java.util.List;
@@ -39,7 +16,7 @@ import java.util.NoSuchElementException;
  *
  * @author Daniel Gómez-Sánchez (magicDGS)
  */
-public class IntervalOverlappingIterator<T extends Locatable & HasGenomeLocation> implements Iterable<T>, Iterator<T> {
+public class IntervalOverlappingIterator<T extends Locatable> implements Iterable<T>, Iterator<T> {
 
 	// underlying iterator
 	private final Iterator<T> iterator;
@@ -50,18 +27,27 @@ public class IntervalOverlappingIterator<T extends Locatable & HasGenomeLocation
 	// the current interval to check
 	private SimpleInterval currentInterval;
 
+	// the sequence dictionary to get contig ordering
+	private final SAMSequenceDictionary dictionary;
+
 	// the next object to return
 	private T next;
 
 	/**
 	 * Wraps an iterator to be filter by a sorted list of intervals
 	 *
-	 * @param iterator		underlying iterator
-	 * @param intervals sorted list of intervals to traverse
+	 * @param iterator   underlying iterator
+	 * @param intervals  sorted list of intervals to traverse
+	 * @param dictionary sequence dictionary indicating the ordering of contigs
 	 */
-	public IntervalOverlappingIterator(Iterator<T> iterator, List<SimpleInterval> intervals) {
+	public IntervalOverlappingIterator(Iterator<T> iterator, List<SimpleInterval> intervals,
+		SAMSequenceDictionary dictionary) {
+		Utils.nonNull(iterator);
+		Utils.nonEmpty(intervals);
+		Utils.nonNull(dictionary);
 		this.iterator = iterator;
 		this.intervals = intervals.iterator();
+		this.dictionary = dictionary;
 		currentInterval = this.intervals.next();
 		advance();
 	}
@@ -78,7 +64,7 @@ public class IntervalOverlappingIterator<T extends Locatable & HasGenomeLocation
 
 	@Override
 	public T next() {
-		if(!hasNext()) {
+		if (!hasNext()) {
 			throw new NoSuchElementException();
 		}
 		T toReturn = next;
@@ -87,21 +73,29 @@ public class IntervalOverlappingIterator<T extends Locatable & HasGenomeLocation
 	}
 
 	/**
-	 * Advance to the next AlignmentContext
+	 * Advance to the next location, setting next to null if there is no more records
 	 */
 	private void advance() {
-		// all sources are finished
-		if(!iterator.hasNext() || currentInterval == null) {
-			next = null;
-		} else {
-			next = iterator.next();
-			Locatable loc = (next instanceof Locatable) ? next : next.getLocation();
-			// if the next AlignmentContext is not in the current interval
-			if(!currentInterval.overlaps(loc)) {
-				// advance the interval and try with the next one
-				currentInterval = (intervals.hasNext()) ? intervals.next() : null;
-				advance();
+		// get the next record to check
+		next = (iterator.hasNext()) ? iterator.next() : null;
+		// iterate till next or current interval is null
+		while(next != null && currentInterval != null) {
+			if(currentInterval.overlaps(next)) {
+				// keep the next because it overlaps
+				return;
+			} else {
+				int comparison = IntervalUtils.compareLocatables(currentInterval, next, dictionary);
+				// only advance if the current interval is before the next record
+				if(comparison < 0) {
+					// advance the interval and try with th next one
+					currentInterval = (intervals.hasNext()) ? intervals.next() : null;
+				} else if(comparison > 0)  {
+					// advance the location
+					next = (iterator.hasNext()) ? iterator.next() : null;
+				}
 			}
 		}
+		// if the value of next overlaps some interval, the method should return before this point
+		next = null;
 	}
 }

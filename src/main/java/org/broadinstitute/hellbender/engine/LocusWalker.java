@@ -116,7 +116,7 @@ public abstract class LocusWalker extends GATKTool {
         // get the LIBS
         LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), KEEP_UNIQUE_READ_LIST_IN_LIBS, samples, header);
 		// prepare the iterator
-		Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator(libs, intervalsForTraversal).spliterator() : libs.spliterator();
+		Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function
         StreamSupport.stream(iterator, false)
             .forEach(alignmentContext -> {
