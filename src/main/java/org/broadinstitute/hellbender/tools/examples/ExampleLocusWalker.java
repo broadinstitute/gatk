@@ -50,23 +50,23 @@ public class ExampleLocusWalker extends LocusWalker {
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         // Get pileup and counts
         ReadPileup pileup = alignmentContext.getBasePileup();
-		// print the locus and coverage
+        // print the locus and coverage
         outputStream.printf("Current locus %s:%d (coverage=%s)\n", alignmentContext.getContig(),
-			alignmentContext.getPosition(), pileup.size());
-		// print the reference context if available
+            alignmentContext.getPosition(), pileup.size());
+        // print the reference context if available
         if ( referenceContext.hasBackingDataSource() ) {
             outputStream.println("\tReference base(s): " + new String(referenceContext.getBases()));
         }
-		// print the overlapping variants if there are some
+        // print the overlapping variants if there are some
         if(featureContext.hasBackingDataSource()) {
-			List<VariantContext> vars = featureContext.getValues(variants);
-			if(!vars.isEmpty()) {
-				outputStream.println("\tOverlapping variant(s):");
-				for (VariantContext variant : vars) {
-					outputStream.printf("\t\t%s:%d-%d, Ref:%s, Alt(s):%s\n", variant.getContig(), variant.getStart(),
-						variant.getEnd(), variant.getReference(), variant.getAlternateAlleles());
-				}
-			}
+            List<VariantContext> vars = featureContext.getValues(variants);
+            if(!vars.isEmpty()) {
+                outputStream.println("\tOverlapping variant(s):");
+                for (VariantContext variant : vars) {
+                    outputStream.printf("\t\t%s:%d-%d, Ref:%s, Alt(s):%s\n", variant.getContig(), variant.getStart(),
+                        variant.getEnd(), variant.getReference(), variant.getAlternateAlleles());
+                }
+            }
         }
         outputStream.println();
     }
