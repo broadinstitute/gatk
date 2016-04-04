@@ -19,12 +19,18 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleFractionData implements DataCollection {
+    private final AllelicPanelOfNormals allelicPON;
     private final List<AllelicCount> allelicCounts; // allelic counts indexed by het
     private final List<Integer> hetIndices; // the numbers 0, 1, 2 . . . N_hets
     private final List<Integer> startHetsPerSegment = new ArrayList<>();
     private final List<Integer> numHetsPerSegment = new ArrayList<>();
 
     public AlleleFractionData(final SegmentedModel segmentedModel) {
+        this(segmentedModel, AllelicPanelOfNormals.EMPTY_PON);
+    }
+
+    public AlleleFractionData(final SegmentedModel segmentedModel, final AllelicPanelOfNormals allelicPON) {
+        this.allelicPON = allelicPON;
         allelicCounts = new ArrayList<>();
         final List<SimpleInterval> segmentIntervals = segmentedModel.getSegments();
         final TargetCollection<AllelicCount> alleleCounts = segmentedModel.getGenome().getSNPs();
@@ -40,6 +46,8 @@ public final class AlleleFractionData implements DataCollection {
 
         hetIndices = IntStream.range(0, allelicCounts.size()).boxed().collect(Collectors.toList());
     }
+
+    public AllelicPanelOfNormals getPON() { return allelicPON; }
 
     public List<AllelicCount> getAllelicCounts() { return allelicCounts; }
 

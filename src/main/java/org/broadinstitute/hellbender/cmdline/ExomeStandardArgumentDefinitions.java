@@ -32,6 +32,9 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String PON_FILE_SHORT_NAME = "PON";
     public static final String PON_FILE_LONG_NAME = "panelOfNormals";
 
+    public static final String ALLELIC_PON_FILE_SHORT_NAME = "aPON";
+    public static final String ALLELIC_PON_FILE_LONG_NAME = "allelicPanelOfNormals";
+
     //are inputs in log_2 space
     public static final String LOG2_LONG_NAME= "log2Input";
     public static final String LOG2_SHORT_NAME = "LOG";

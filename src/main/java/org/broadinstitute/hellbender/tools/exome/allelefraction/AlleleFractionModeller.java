@@ -1,23 +1,15 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.primitives.Doubles;
-import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.special.Gamma;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.tools.exome.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static java.lang.Math.log;
-import static java.lang.Math.sqrt;
-import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
-import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
 
 /**
  * Given a {@link org.broadinstitute.hellbender.tools.exome.SegmentedModel} and counts of alt and ref reads over a list of het sites,
@@ -59,104 +51,13 @@ public final class AlleleFractionModeller {
     private final List<AlleleFractionState.MinorFractions> minorFractionsSamples = new ArrayList<>();
     private final int numSegments;
 
-    // INNER SAMPLER CLASSES -------------------------------------------------------------------------------------------
-    // sample mean bias
-    @VisibleForTesting
-    protected static final class MeanBiasSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
-        private final AdaptiveMetropolisSampler sampler;
-
-        public MeanBiasSampler(final double initialMeanBias, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialMeanBias, initialStepSize, 0, Double.POSITIVE_INFINITY);
-        }
-
-        public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            return sampler.sample(x -> logLikelihood(state.shallowCopyWithProposedMeanBias(x), data));
-        }
-    }
-
-    // sample bias variance
-    @VisibleForTesting
-    protected static final class BiasVarianceSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
-        private final AdaptiveMetropolisSampler sampler;
-
-        public BiasVarianceSampler(final double initialBiasVariance, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialBiasVariance, initialStepSize, 0, Double.POSITIVE_INFINITY);
-        }
-
-        public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            return sampler.sample(x -> logLikelihood(state.shallowCopyWithProposedBiasVariance(x), data));
-        }
-    }
-
-    // sample outlier probability
-    @VisibleForTesting
-    protected static final class OutlierProbabilitySampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
-        private final AdaptiveMetropolisSampler sampler;
-
-        public OutlierProbabilitySampler(final double initialOutlierProbability, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialOutlierProbability, initialStepSize, 0, Double.POSITIVE_INFINITY);
-        }
-
-        public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            return sampler.sample(x -> logLikelihood(state.shallowCopyWithProposedOutlierProbability(x), data));
-        }
-    }
-
-    private static Function<Double, Double> logConditionalOnMinorFraction(final AlleleFractionState state,
-            final AlleleFractionData data, final int segment) {
-        return minorFraction -> {
-            final AlleleFractionState proposal = makeSingleSegmentState(state.meanBias(),
-                    state.biasVariance(), state.outlierProbability(), minorFraction);
-            return segmentLogLikelihood(proposal, 0, data.countsInSegment(segment));
-        };
-    }
-
-    // sample minor fraction of a single segment
-    private static final class PerSegmentMinorFractionSampler implements Sampler<Double, AlleleFractionState, AlleleFractionData> {
-        private static final double MAX_MINOR_FRACTION = 0.5;   //by definition!
-        private final AdaptiveMetropolisSampler sampler;
-
-        private final int segmentIndex;
-
-        public PerSegmentMinorFractionSampler(final int segmentIndex, final double initialMinorFraction, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialMinorFraction, initialStepSize, 0, MAX_MINOR_FRACTION);
-            this.segmentIndex = segmentIndex;
-        }
-
-        public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            if (data.numHetsInSegment(segmentIndex) == 0) {
-                return Double.NaN;
-            }
-            return sampler.sample(logConditionalOnMinorFraction(state, data, segmentIndex));
-        }
-    }
-
-    // sample minor fractions of all segments
-    @VisibleForTesting
-    protected static final class MinorFractionsSampler implements Sampler<AlleleFractionState.MinorFractions, AlleleFractionState, AlleleFractionData> {
-        private final List<PerSegmentMinorFractionSampler> perSegmentSamplers = new ArrayList<>();
-        private final int numSegments;
-
-        public MinorFractionsSampler(final AlleleFractionState.MinorFractions initialMinorFractions,
-                                     final List<Double> initialStepSizes) {
-            this.numSegments = initialMinorFractions.size();
-            for (int segment = 0; segment < numSegments; segment++) {
-                perSegmentSamplers.add(new PerSegmentMinorFractionSampler(segment, initialMinorFractions.get(segment),
-                        initialStepSizes.get(segment)));
-            }
-        }
-
-        public AlleleFractionState.MinorFractions sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            return new AlleleFractionState.MinorFractions(perSegmentSamplers.stream()
-                    .map(sampler -> sampler.sample(rng, state, data)).collect(Collectors.toList()));
-        }
-    }
-
-    // END OF INNER SAMPLER CLASSES SECTION ----------------------------------------------------------------------------
-
     public AlleleFractionModeller(final SegmentedModel segmentedModel) {
+        this(segmentedModel, AllelicPanelOfNormals.EMPTY_PON);
+    }
+
+    public AlleleFractionModeller(final SegmentedModel segmentedModel, final AllelicPanelOfNormals allelicPON) {
         this.segmentedModel = segmentedModel;
-        final AlleleFractionData data = new AlleleFractionData(segmentedModel);
+        final AlleleFractionData data = new AlleleFractionData(segmentedModel, allelicPON);
         numSegments = data.numSegments();
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
 
@@ -164,23 +65,23 @@ public final class AlleleFractionModeller {
         // if we approximate conditionals as normal we can guess the width from the curvature at the mode
 
         final double meanBiasInitialStepSize = estimateWidthAtMode(meanBias ->
-                logLikelihood(initialState.shallowCopyWithProposedMeanBias(meanBias), data), initialState.meanBias());
+                AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(meanBias), data), initialState.meanBias());
         final double biasVarianceInitialStepSize = estimateWidthAtMode(biasVariance ->
-                logLikelihood(initialState.shallowCopyWithProposedBiasVariance(biasVariance), data), initialState.biasVariance());
+                AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedBiasVariance(biasVariance), data), initialState.biasVariance());
         final double outlierProbabilityInitialStepSize = estimateWidthAtMode(outlierProbability ->
-                logLikelihood(initialState.shallowCopyWithProposedMeanBias(outlierProbability), data), initialState.outlierProbability());
+                AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(outlierProbability), data), initialState.outlierProbability());
         final List<Double> minorFractionsInitialStepSizes = IntStream.range(0, numSegments).mapToDouble(segment ->
-                estimateWidthAtMode(logConditionalOnMinorFraction(initialState, data, segment), initialState.minorFractionInSegment(segment)))
+                estimateWidthAtMode(AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(initialState, data, segment), initialState.minorFractionInSegment(segment)))
                 .boxed().collect(Collectors.toList());
 
         final Sampler<Double, AlleleFractionState, AlleleFractionData> meanBiasSampler =
-                new MeanBiasSampler(initialState.meanBias(), meanBiasInitialStepSize);
+                new AlleleFractionSamplers.MeanBiasSampler(initialState, meanBiasInitialStepSize);
         final Sampler<Double, AlleleFractionState, AlleleFractionData> biasVarianceSampler =
-                new BiasVarianceSampler(initialState.biasVariance(), biasVarianceInitialStepSize);
+                new AlleleFractionSamplers.BiasVarianceSampler(initialState, biasVarianceInitialStepSize);
         final Sampler<Double, AlleleFractionState, AlleleFractionData> outlierProbabilitySampler =
-                new OutlierProbabilitySampler(initialState.outlierProbability(), outlierProbabilityInitialStepSize);
+                new AlleleFractionSamplers.OutlierProbabilitySampler(initialState, outlierProbabilityInitialStepSize);
         final Sampler<AlleleFractionState.MinorFractions, AlleleFractionState, AlleleFractionData> minorFractionsSampler =
-                new MinorFractionsSampler(initialState.minorFractions(), minorFractionsInitialStepSizes);
+                new AlleleFractionSamplers.MinorFractionsSampler(initialState, minorFractionsInitialStepSizes);
 
         model = new ParameterizedModel.GibbsBuilder<>(initialState, data, AlleleFractionState.class)
                 .addParameterSampler(AlleleFractionState.MEAN_BIAS_NAME, meanBiasSampler, Double.class)
@@ -188,97 +89,6 @@ public final class AlleleFractionModeller {
                 .addParameterSampler(AlleleFractionState.P_OUTLIER_NAME, outlierProbabilitySampler, Double.class)
                 .addParameterSampler(AlleleFractionState.MINOR_FRACTIONS_NAME, minorFractionsSampler, AlleleFractionState.MinorFractions.class)
                 .build();
-    }
-
-    /**
-     * Compute the log-likelihood of a alt reads and r ref reads given minor fraction f and gamma hyperparameters
-     * (specifying the distribution on allelic biases) mu (mean) and beta (rate = mean/variance) and given
-     * an alt minor, ref minor, or outlier indicator state.  Note that this is a partially collapsed log-likelihood in that the
-     * latent variable corresponding to the allelic bias at this site has been marginalized out but the indicator
-     * variable has not been marginalized out.
-     * <p>
-     * See docs/CNVs/CNV-methods.pdf for derivation.
-     * <p>
-     * Finally, note that this is a static method and does not get mu, beta, and minorFraction from an AlleleFractionState object
-     * We need such functionality because MCMC evaluates the likelihood under proposed parameter changes.
-     *
-     * @param state allele fraction state
-     * @param segment index of segment containijng this het site
-     * @param count AllelicCount of alt and ref reads
-     * @param indicator the hidden state (alt minor / ref minor / outlier)
-     *
-     * @return if indicator == ALT_MINOR:
-     * <p>
-     * log { [beta^alpha / Gamma(alpha)][(1-pi)/2] * int_{0 to infty} f^a * (1-f)^r * lambda^(alpha + r - 1) * exp(-beta*lambda)/(f + (1-f)*lambda)^n d lambda }
-     * <p>
-     * if indicator == REF_MINOR, same as ALT_MINOR but with f <--> 1 - f
-     * <p>
-     * if indicator == OUTLIER log {pi * a!r!/(n+1)!}
-     * <p>
-     * where alpha = mu*beta and n = a + r
-     */
-    public static double hetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count, final AlleleFractionIndicator indicator) {
-        final double mu = state.meanBias();
-        final double beta = state.meanBias() / state.biasVariance();
-        final double alpha = mu * beta;
-        final double pi = state.outlierProbability();
-        final double minorFraction = state.minorFractionInSegment(segment);
-        final int a = count.getAltReadCount();
-        final int r = count.getRefReadCount();
-
-        if (indicator == AlleleFractionIndicator.OUTLIER) {
-            return log(pi) + log10ToLog(log10Factorial(a) + log10Factorial(r) - log10Factorial(a + r + 1));
-        } else {
-            final double f = indicator == AlleleFractionIndicator.ALT_MINOR ? minorFraction : 1 - minorFraction;
-            final int n = a + r;
-            final double w = (1 - f) * (a - alpha + 1) + beta * f;
-            final double lambda0 = (sqrt(w * w + 4 * beta * f * (1 - f) * (r + alpha - 1)) - w) / (2 * beta * (1 - f));
-            final double y = (1 - f)/(f + (1 - f) * lambda0);
-            final double kappa = n * y * y - (r + alpha - 1) / (lambda0 * lambda0);
-            final double rho = 1 - kappa * lambda0 * lambda0;
-            final double tau = -kappa * lambda0;
-            final double logc = alpha*log(beta) - Gamma.logGamma(alpha) + a * log(f) + r * log(1 - f)
-                    + (r + alpha - rho) * log(lambda0) + (tau - beta) * lambda0 - n * log(f + (1 - f) * lambda0);
-
-            return log((1 - pi) / 2) + logc + Gamma.logGamma(rho) - rho * log(tau);
-        }
-    }
-
-    /**
-     * the log likelihood summed (marginalized) over indicator states, which we use in the fully collapsed model
-     * in which latent variables (bias and indicator) are marginalized out
-     *
-     * @param state allele fraction state
-     * @param segment index of segment containing this het site
-     * @param count AllelicCount of alt and ref reads
-     * @return the log of the likelihood at this het site, marginalized over indicator states.
-     */
-    public static double collapsedHetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count) {
-        return logSumLog(hetLogLikelihood(state, segment, count, AlleleFractionIndicator.ALT_MINOR),
-                hetLogLikelihood(state, segment, count, AlleleFractionIndicator.REF_MINOR),
-                hetLogLikelihood(state, segment, count, AlleleFractionIndicator.OUTLIER));
-    }
-
-    /**
-     * the log-likelihood of all the hets in a segment
-     *
-     * @param state allele fraction state
-     * @param segment index of segment containijng this het site
-     * @param counts AllelicCount of alt and ref reads in this segment
-     * @return the sum of log-likelihoods over all het sites in a segment
-     */
-    public static double segmentLogLikelihood(final AlleleFractionState state, final int segment, final Collection<AllelicCount> counts) {
-        return counts.stream().mapToDouble(c -> collapsedHetLogLikelihood(state, segment, c)).sum();
-    }
-
-    /**
-     * the total log likelihood of all segments
-     * @param state current state
-     * @param data data
-     * @return sum of log likelihoods of all segments
-     */
-    public static double logLikelihood(final AlleleFractionState state, final AlleleFractionData data) {
-        return IntStream.range(0, data.numSegments()).mapToDouble(s -> segmentLogLikelihood(state, s, data.countsInSegment(s))).sum();
     }
 
     /**
@@ -300,14 +110,6 @@ public final class AlleleFractionModeller {
         minorFractionsSamples.addAll(gibbsSampler.getSamples(AlleleFractionState.MINOR_FRACTIONS_NAME, AlleleFractionState.MinorFractions.class, numBurnIn));
     }
 
-    /**
-     * Returns the {@link SegmentedModel} held internally.
-     * @return the {@link SegmentedModel} held internally
-     */
-    public SegmentedModel getSegmentedModel() {
-        return segmentedModel;
-    }
-
     public List<Double> getmeanBiasSamples() {
         return Collections.unmodifiableList(meanBiasSamples);
     }
@@ -316,6 +118,18 @@ public final class AlleleFractionModeller {
     }
     public List<Double> getOutlierProbabilitySamples() { return Collections.unmodifiableList(outlierProbabilitySamples); }
     public List<AlleleFractionState.MinorFractions> getMinorFractionsSamples() { return Collections.unmodifiableList(minorFractionsSamples); }
+
+    public List<List<Double>> getMinorFractionSamplesBySegment() {
+        final List<List<Double>> result = new ArrayList<>();
+        for (int segment = 0; segment < numSegments; segment++) {
+            final List<Double> thisSegment = new ArrayList<>();
+            for (final AlleleFractionState.MinorFractions sample : minorFractionsSamples) {
+                thisSegment.add(sample.get(segment));
+            }
+            result.add(thisSegment);
+        }
+        return result;
+    }
 
     /**
      * Returns a list of {@link PosteriorSummary} elements summarizing the minor-allele-fraction posterior for each segment.
@@ -335,30 +149,6 @@ public final class AlleleFractionModeller {
             posteriorSummaries.add(PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(minorFractionSamples, credibleIntervalAlpha, ctx));
         }
         return posteriorSummaries;
-    }
-
-    public List<List<Double>> getMinorFractionSamplesBySegment() {
-        final List<List<Double>> result = new ArrayList<>();
-        for (int segment = 0; segment < numSegments; segment++) {
-            final List<Double> thisSegment = new ArrayList<>();
-            for (final AlleleFractionState.MinorFractions sample : minorFractionsSamples) {
-                thisSegment.add(sample.get(segment));
-            }
-            result.add(thisSegment);
-        }
-        return result;
-    }
-
-    //compute log(e^a + e^b + e^c) = log(e^M [e^(a-M) + e^(b-M) + e^(c-M)]) where M = max(a,b,c)
-    private static double logSumLog(final double a, final double b, final double c) {
-        final double maxValue = Doubles.max(a, b, c);
-        return maxValue + Math.log(Math.exp(a-maxValue) + Math.exp(b-maxValue) + Math.exp(c-maxValue));
-    }
-
-    public static AlleleFractionState makeSingleSegmentState(final double meanBias, final double biasVariance,
-                                                             final double outlierProbability, final double minorFraction) {
-        return new AlleleFractionState(meanBias, biasVariance, outlierProbability,
-                new AlleleFractionState.MinorFractions(Arrays.asList(minorFraction)));
     }
 
     //guess the width of a probability distribution given the position of its mode using a gaussian approximation

@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.mcmc.Parameter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -57,12 +58,20 @@ public final class AlleleFractionState extends AbstractParameterizedState {
     }
 
     public AlleleFractionState(final double meanBias, final double biasVariance, final double outlierProbability,
-            final MinorFractions minorFractions) {
+                               final MinorFractions minorFractions) {
         super(Arrays.asList(
                 new Parameter<>(MEAN_BIAS_NAME, meanBias),
                 new Parameter<>(BIAS_VARIANCE_NAME, biasVariance),
                 new Parameter<>(P_OUTLIER_NAME, outlierProbability),
                 new Parameter<>(MINOR_FRACTIONS_NAME, minorFractions)));
+    }
+
+    /**
+     * Constructs a single-segment state.
+     */
+    public AlleleFractionState(final double meanBias, final double biasVariance, final double outlierProbability,
+                               final double minorFraction) {
+        this(meanBias, biasVariance, outlierProbability, new AlleleFractionState.MinorFractions(Collections.singletonList(minorFraction)));
     }
 
     public double meanBias() {

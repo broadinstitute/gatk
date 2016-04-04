@@ -19,11 +19,12 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");
     private static final File SNP_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-allelic-integration.seg");
+    private static final File ALLELIC_PON_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
     private static final String SAMPLE_NAME = "test";
 
     @Test
-    public void testACNV() {
-        final File tempDir = createTempDir("allelic-integration-" + SAMPLE_NAME);
+    public void testACNVWithoutAllelicPON() {
+        final File tempDir = createTempDir("acnv-integration-without-pon-" + SAMPLE_NAME);
         final String tempDirPath = tempDir.getAbsolutePath();
         final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
 
@@ -38,9 +39,35 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + AllelicCNV.NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
                 "--verbosity", "INFO",
         };
+        testACNV(arguments, outputPrefix);
+    }
+
+    @Test
+    public void testACNVWithAllelicPON() {
+        final File tempDir = createTempDir("acnv-integration-with-pon-" + SAMPLE_NAME);
+        final String tempDirPath = tempDir.getAbsolutePath();
+        final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
+
+        final String[] arguments = {
+                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_LONG_NAME, ALLELIC_PON_NORMAL_FILE.getAbsolutePath(),
+                "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
+                "--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "25",
+                "--" + AllelicCNV.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
+                "--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
+                "--" + AllelicCNV.NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
+                "--verbosity", "INFO",
+        };
+        testACNV(arguments, outputPrefix);
+    }
+
+    private void testACNV(final String[] arguments, final String outputPrefix) {
         runCommandLine(arguments);
 
         //only check that files are created, do not check for correctness of results
+        //TODO add checks for correctness
         final File finalSNPSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SNP_MAF_SEG_FILE_TAG + ".seg");
         final File unionedSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.UNION_SEG_FILE_TAG + ".seg");
         final File noSmallSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.SMALL_MERGED_SEG_FILE_TAG + ".seg");

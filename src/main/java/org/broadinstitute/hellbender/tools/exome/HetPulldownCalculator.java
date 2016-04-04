@@ -13,12 +13,14 @@ import org.apache.commons.math3.stat.inference.BinomialTest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Gets heterozygous SNP pulldown for normal and tumor samples.
@@ -26,6 +28,8 @@ import java.util.*;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class HetPulldownCalculator {
+    public static final Nucleotide[] BASES = {Nucleotide.A, Nucleotide.C, Nucleotide.G, Nucleotide.T};
+
     private final Logger logger = LogManager.getLogger(HetPulldownCalculator.class);
 
     private final File refFile;
@@ -71,38 +75,16 @@ public final class HetPulldownCalculator {
     }
 
     /**
-     * Returns map of base-pair counts at a given locus.  Only includes ACGT counts.
+     * Returns base-pair counts at a given locus.
      * @param locus locus
-     * @return      map of base-pair counts
+     * @return      base-pair counts
      */
-    public static Map<Character,Integer> getPileupBaseCounts(final SamLocusIterator.LocusInfo locus) {
-        int aCount = 0, cCount = 0, gCount = 0, tCount = 0;
-
+    static Nucleotide.Counter getPileupBaseCounts(final SamLocusIterator.LocusInfo locus) {
+        final Nucleotide.Counter result = new Nucleotide.Counter();
         for (final SamLocusIterator.RecordAndOffset rec : locus.getRecordAndPositions()) {
-            switch (Character.toUpperCase(rec.getReadBase())) {
-                case 'A':
-                    ++aCount;
-                    break;
-                case 'C':
-                    ++cCount;
-                    break;
-                case 'G':
-                    ++gCount;
-                    break;
-                case 'T':
-                    ++tCount;
-                    break;
-                default:
-                    break;
-            }
+            result.add(rec.getReadBase());
         }
-
-        Map<Character,Integer> baseCounts = new HashMap<>();
-        baseCounts.put('A', aCount);
-        baseCounts.put('C', cCount);
-        baseCounts.put('G', gCount);
-        baseCounts.put('T', tCount);
-        return baseCounts;
+        return result;
     }
 
     /**
@@ -116,15 +98,15 @@ public final class HetPulldownCalculator {
      *     that the heterozygous allele fraction is 0.5 (i.e., SNP is likely to be homozygous) and return false,
      *     otherwise return true.
      * </p>
-     * @param baseCounts        map of base-pair counts
+     * @param baseCounts        base-pair counts
      * @param totalBaseCount    total base-pair counts (excluding N, etc.)
      * @param pvalThreshold     p-value threshold for two-sided binomial test (should be in [0, 1], but no check is performed)
      * @return                  boolean compatibility with heterozygous allele fraction
      */
     @VisibleForTesting
-    protected static boolean isPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCount,
+    protected static boolean isPileupHetCompatible(final Nucleotide.Counter baseCounts, final int totalBaseCount,
                                                    final double pvalThreshold) {
-        final int majorReadCount = Collections.max(baseCounts.values());
+        final int majorReadCount = Arrays.stream(BASES).mapToInt(b -> (int) baseCounts.get(b)).max().getAsInt();
 
         if (majorReadCount == 0 || totalBaseCount - majorReadCount == 0) {
             return false;
@@ -222,17 +204,17 @@ public final class HetPulldownCalculator {
                     continue;
                 }
 
-                final Map<Character, Integer> baseCounts = getPileupBaseCounts(locus);
+                final Nucleotide.Counter baseCounts = getPileupBaseCounts(locus);
                 //only include total ACGT counts in binomial test (exclude N, etc.)
-                final int totalBaseCount = baseCounts.values().stream().mapToInt(Number::intValue).sum();
+                final int totalBaseCount = Arrays.stream(BASES).mapToInt(b -> (int) baseCounts.get(b)).sum();
 
                 if (sampleType == SampleType.NORMAL &&
                         !isPileupHetCompatible(baseCounts, totalBaseCount, pvalThreshold)) {
                     continue;
                 }
 
-                final char refBase = (char) refWalker.get(locus.getSequenceIndex()).getBases()[locus.getPosition() - 1];
-                final int refReadCount = baseCounts.get(refBase);
+                final Nucleotide refBase = Nucleotide.valueOf(refWalker.get(locus.getSequenceIndex()).getBases()[locus.getPosition() - 1]);
+                final int refReadCount = (int) baseCounts.get(refBase);
                 final int altReadCount = totalBaseCount - refReadCount;
 
                 hetPulldown.add(new SimpleInterval(locus.getSequenceName(), locus.getPosition(), locus.getPosition()),

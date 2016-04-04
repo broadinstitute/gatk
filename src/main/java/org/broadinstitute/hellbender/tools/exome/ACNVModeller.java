@@ -6,6 +6,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.acnvconversion.ACNVModeledSegmentConversionUtils;
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionModeller;
+import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 
@@ -26,6 +27,7 @@ public final class ACNVModeller {
     public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 
     private SegmentedModel segmentedModel;
+    private final AllelicPanelOfNormals allelicPON;
     private final List<ACNVModeledSegment> segments = new ArrayList<>();
 
     private final int numSamplesCopyRatio;
@@ -54,7 +56,28 @@ public final class ACNVModeller {
                         final int numSamplesCopyRatio, final int numBurnInCopyRatio,
                         final int numSamplesAlleleFraction, final int numBurnInAlleleFraction,
                         final JavaSparkContext ctx) {
+        this(segmentedModel, AllelicPanelOfNormals.EMPTY_PON, numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
+    }
+
+    /**
+     * Constructs a copy-ratio and allele-fraction modeller for a {@link SegmentedModel},
+     * specifying number of total samples and number of burn-in samples for Markov-Chain Monte Carlo model fitting.
+     * An initial model fit is performed.
+     *
+     * @param segmentedModel            contains segments, target coverages, and SNP counts to model
+     * @param allelicPON                allelic-bias panel of normals
+     * @param numSamplesCopyRatio       number of total samples for copy-ratio model MCMC
+     * @param numBurnInCopyRatio        number of burn-in samples to discard for copy-ratio model MCMC
+     * @param numSamplesAlleleFraction  number of total samples for allele-fraction model MCMC
+     * @param numBurnInAlleleFraction   number of burn-in samples to discard for allele-fraction model MCMC
+     * @param ctx                       JavaSparkContext, used for kernel density estimation in {@link PosteriorSummary}
+     */
+    public ACNVModeller(final SegmentedModel segmentedModel, final AllelicPanelOfNormals allelicPON,
+                        final int numSamplesCopyRatio, final int numBurnInCopyRatio,
+                        final int numSamplesAlleleFraction, final int numBurnInAlleleFraction,
+                        final JavaSparkContext ctx) {
         this.segmentedModel = segmentedModel;
+        this.allelicPON = allelicPON;
         this.numSamplesCopyRatio = numSamplesCopyRatio;
         this.numBurnInCopyRatio = numBurnInCopyRatio;
         this.numSamplesAlleleFraction = numSamplesAlleleFraction;
@@ -92,12 +115,12 @@ public final class ACNVModeller {
         final ACNVCopyRatioModeller copyRatioModeller = new ACNVCopyRatioModeller(segmentedModel);
         copyRatioModeller.fitMCMC(numSamplesCopyRatio, numBurnInCopyRatio);
         logger.info("Fitting allele-fraction model...");
-        final AlleleFractionModeller alleleFractionModeller = new AlleleFractionModeller(segmentedModel);
+        final AlleleFractionModeller alleleFractionModeller = new AlleleFractionModeller(segmentedModel, allelicPON);
         alleleFractionModeller.fitMCMC(numSamplesAlleleFraction, numBurnInAlleleFraction);
 
         //update list of ACNVModeledSegment with new PosteriorSummaries
         segments.clear();
-        final List<SimpleInterval> unmodeledSegments = copyRatioModeller.getSegmentedModel().getSegments();
+        final List<SimpleInterval> unmodeledSegments = segmentedModel.getSegments();
         final List<PosteriorSummary> segmentMeansPosteriorSummaries =
                 copyRatioModeller.getSegmentMeansPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         final List<PosteriorSummary> minorAlleleFractionsPosteriorSummaries =

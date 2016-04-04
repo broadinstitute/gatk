@@ -5,6 +5,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.SamLocusIterator;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -14,8 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.stream.IntStream;
 
 /**
  * Unit tests for {@link HetPulldownCalculator}.  Uses BAM and SNP files generated from hg19mini using wgsim.
@@ -49,15 +49,22 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
         }
     }
 
-    private static Map<Character, Integer> makeBaseCounts(final int aCount, final int cCount,
-                                                          final int gCount, final int tCount) {
-        final Map<Character, Integer> baseCounts = new HashMap<>();
-        baseCounts.put('A', aCount);
-        baseCounts.put('C', cCount);
-        baseCounts.put('G', gCount);
-        baseCounts.put('T', tCount);
+    private static Nucleotide.Counter makeBaseCounts(final int aCount, final int cCount,
+                                                     final int gCount, final int tCount) {
+        final Nucleotide.Counter baseCounts = new Nucleotide.Counter();
+        IntStream.range(0, aCount).forEach(i -> baseCounts.add(Nucleotide.A));
+        IntStream.range(0, cCount).forEach(i -> baseCounts.add(Nucleotide.C));
+        IntStream.range(0, gCount).forEach(i -> baseCounts.add(Nucleotide.G));
+        IntStream.range(0, tCount).forEach(i -> baseCounts.add(Nucleotide.T));
         return baseCounts;
     }
+
+    private static void assertEqualBaseCounts(final Nucleotide.Counter actual, final Nucleotide.Counter expected) {
+        for (final Nucleotide base : HetPulldownCalculator.BASES) {
+            Assert.assertEquals(actual.get(base), expected.get(base));
+        }
+    }
+
 
     @DataProvider(name = "inputGetPileupBaseCount")
     public Object[][] inputGetPileupBaseCount() throws IOException {
@@ -70,10 +77,10 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
             final SamLocusIterator locusIterator = new SamLocusIterator(bamReader, intervals);
 
-            final Map<Character, Integer> baseCounts1 = makeBaseCounts(0, 0, 0, 0);
-            final Map<Character, Integer> baseCounts2 = makeBaseCounts(0, 9, 0, 0);
-            final Map<Character, Integer> baseCounts3 = makeBaseCounts(12, 0, 0, 0);
-            final Map<Character, Integer> baseCounts4 = makeBaseCounts(0, 0, 8, 9);
+            final Nucleotide.Counter baseCounts1 = makeBaseCounts(0, 0, 0, 0);
+            final Nucleotide.Counter baseCounts2 = makeBaseCounts(0, 9, 0, 0);
+            final Nucleotide.Counter baseCounts3 = makeBaseCounts(12, 0, 0, 0);
+            final Nucleotide.Counter baseCounts4 = makeBaseCounts(0, 0, 8, 9);
 
             if (!locusIterator.hasNext()) {
                 throw new SAMException("Can't get locus to start iteration. Check that " + NORMAL_BAM_FILE.toString()
@@ -96,17 +103,17 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
 
     @Test(dataProvider = "inputGetPileupBaseCount")
     public void testGetPileupBaseCount(final SamLocusIterator.LocusInfo locus,
-                                       final Map<Character, Integer> expected) {
-        final Map<Character, Integer> result = HetPulldownCalculator.getPileupBaseCounts(locus);
-        Assert.assertEquals(result, expected);
+                                       final Nucleotide.Counter expected) {
+        final Nucleotide.Counter result = HetPulldownCalculator.getPileupBaseCounts(locus);
+        assertEqualBaseCounts(result, expected);
     }
 
     @DataProvider(name = "inputIsPileupHetCompatible")
     public Object[][] inputIsPileupHetCompatible() {
-        final Map<Character, Integer> baseCountsUsualHet = makeBaseCounts(50, 50, 0, 0);
-        final Map<Character, Integer> baseCountsUsualHom = makeBaseCounts(50, 1, 0, 0);
-        final Map<Character, Integer> baseCountsEdgeHom = makeBaseCounts(21, 1, 0, 8);
-        final Map<Character, Integer> baseCountsEmpty = makeBaseCounts(0, 0, 0, 0);
+        final Nucleotide.Counter baseCountsUsualHet = makeBaseCounts(50, 50, 0, 0);
+        final Nucleotide.Counter baseCountsUsualHom = makeBaseCounts(50, 1, 0, 0);
+        final Nucleotide.Counter baseCountsEdgeHom = makeBaseCounts(21, 1, 0, 8);
+        final Nucleotide.Counter baseCountsEmpty = makeBaseCounts(0, 0, 0, 0);
 
         //if pval < pvalThreshold, expected = false
         return new Object[][]{
@@ -119,7 +126,7 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "inputIsPileupHetCompatible")
-    public void testIsPileupHetCompatible(final Map<Character, Integer> baseCounts, final int totalBaseCounts,
+    public void testIsPileupHetCompatible(final Nucleotide.Counter baseCounts, final int totalBaseCounts,
                                           final double pvalThreshold,
                                           final boolean expected) {
         final boolean result = HetPulldownCalculator.isPileupHetCompatible(baseCounts, totalBaseCounts,

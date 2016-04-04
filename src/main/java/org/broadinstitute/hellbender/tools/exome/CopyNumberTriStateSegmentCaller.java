@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModel;
 import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModelArgumentCollection;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
@@ -19,7 +18,6 @@ import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.IntStream;
 
 /**
  * Parent class for those tools that perform calls CNV segment based on a {@link CopyNumberTriStateHiddenMarkovModel}.

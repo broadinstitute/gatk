@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.MinorAlleleFractionCache;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -35,8 +34,8 @@ public final class AllelicCount implements Locatable {
     @Override
     public int getEnd() {return interval.getEnd(); }
 
-    public Interval getInterval() {
-        return new Interval(interval.getContig(), interval.getStart(), interval.getEnd());
+    public SimpleInterval getInterval() {
+        return interval;
     }
 
     public int getRefReadCount() {  return refReadCount;        }
