@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 /**
  * Bundles together a pileup and a location.
  */
-public final class AlignmentContext implements HasGenomeLocation {
+public final class AlignmentContext implements Locatable, HasGenomeLocation {
     private final Locatable loc;
     private final ReadPileup basePileup;
 
@@ -19,6 +19,12 @@ public final class AlignmentContext implements HasGenomeLocation {
         this.loc = loc;
         this.basePileup = basePileup;
     }
+
+	@Override
+	public int getStart() {	return getLocation().getStart(); }
+
+	@Override
+	public int getEnd() { return getLocation().getEnd(); }
 
     /**
      * How many reads cover this locus?
