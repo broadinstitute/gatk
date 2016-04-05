@@ -106,9 +106,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 out.append(results.stream().map(r -> String.valueOf(r.start)).collect(Collectors.joining(",")));
                 out.append("\t");
                 out.append(results.stream().map(r -> String.valueOf(r.end)).collect(Collectors.joining(",")));
-
-                // todo: string rep of node
-                out.append(node.getValue());
                 outputLines.add(out.toString());
             }
         }
@@ -128,9 +125,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         int start = read.getStart();
         int end = read.getEnd();
         List<ReadInfo> value = new ArrayList<>();
-        final ReadInfo readInfo = new ReadInfo();
-        readInfo.start = read.getStart();
-        readInfo.end = read.getEnd();
+        final ReadInfo readInfo = new ReadInfo(read.getStart(), read.getEnd());
         value.add(readInfo);
         if (iterator.hasNext()) {
             final IntervalTree.Node<List<ReadInfo>> next = iterator.next();
@@ -197,6 +192,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     static class ReadInfo {
+        public ReadInfo(final int start, final int end) {
+            this.start = start;
+            this.end = end;
+        }
+
         int start;
         int end;
     }
