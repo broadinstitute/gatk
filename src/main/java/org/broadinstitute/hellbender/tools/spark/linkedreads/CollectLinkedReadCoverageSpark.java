@@ -103,9 +103,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 List<ReadInfo> results = node.getValue();
                 results.sort((o1, o2) -> new Integer(o1.start).compareTo(o2.start));
                 out.append("\t");
-                out.append(results.stream().map(r -> String.valueOf(r.start)).collect(Collectors.joining(",")));
+                out.append(results.stream().map(r -> String.valueOf(r.end - r.start)).collect(Collectors.joining(",")));
                 out.append("\t");
-                out.append(results.stream().map(r -> String.valueOf(r.end)).collect(Collectors.joining(",")));
+                out.append(results.stream().map(r -> String.valueOf(r.start - node.getStart())).collect(Collectors.joining(",")));
                 outputLines.add(out.toString());
             }
         }
