@@ -44,7 +44,7 @@ public final class NioTests extends BaseTest {
    * - the code is running on a Google Cloud Compute machine.
    * (see http://gcloud-python.readthedocs.org/en/latest/gcloud-auth.html)
    */
-  @Test
+  @Test(groups = {"cloud"})
   public void openPrivateFileUsingDefaultCredentials() throws IOException {
     // this file, potentially unlike the others in the set, is not marked as "Public link".
     final String privateFile = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/private_file.txt";
@@ -57,7 +57,7 @@ public final class NioTests extends BaseTest {
    * Opening the private file even when the user is not logged in on gcloud should work
    * when we provide explicit credentials.
    */
-  @Test
+  @Test(groups = {"cloud"})
   public void openPrivateFileWithExplicitCredentials() throws IOException {
     // this file, potentially unlike the others in the set, is not marked as "Public link".
     final String privateFile = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/private_file.txt";
@@ -74,7 +74,7 @@ public final class NioTests extends BaseTest {
    * Using explicit credentials only works on that access, they are not kept.
    * This test will fail if default credentials are available.
    */
-  @Test(enabled = false, expectedExceptions = { StorageException.class })
+  @Test(enabled = false, groups = {"cloud"}, expectedExceptions = { StorageException.class })
   public void explicitCredentialsAreNotKept() throws IOException {
     // this file, potentially unlike the others in the set, is not marked as "Public link".
     final String privateFile = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/private_file.txt";
