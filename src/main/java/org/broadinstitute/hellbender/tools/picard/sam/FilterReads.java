@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.filter.AlignedFilter;
-import htsjdk.samtools.filter.FilteringIterator;
+import htsjdk.samtools.filter.FilteringSamIterator;
 import htsjdk.samtools.filter.ReadNameFilter;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.Logger;
@@ -81,7 +81,7 @@ public final class FilterReads extends PicardCommandLineProgram {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME)
     public File OUTPUT;
 
-    private void filterReads(final FilteringIterator filteringIterator) {
+    private void filterReads(final FilteringSamIterator filteringIterator) {
 
         // get OUTPUT header from INPUT and overwrite it if necessary
         final SAMFileHeader fileHeader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).getFileHeader(INPUT);
@@ -139,19 +139,19 @@ public final class FilterReads extends PicardCommandLineProgram {
 
             switch (FILTER) {
                 case includeAligned:
-                    filterReads(new FilteringIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
+                    filterReads(new FilteringSamIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
                             new AlignedFilter(true), true));
                     break;
                 case excludeAligned:
-                    filterReads(new FilteringIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
+                    filterReads(new FilteringSamIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
                             new AlignedFilter(false), true));
                     break;
                 case includeReadList:
-                    filterReads(new FilteringIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
+                    filterReads(new FilteringSamIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
                             new ReadNameFilter(READ_LIST_FILE, true)));
                     break;
                 case excludeReadList:
-                    filterReads(new FilteringIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
+                    filterReads(new FilteringSamIterator(SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT).iterator(),
                             new ReadNameFilter(READ_LIST_FILE, false)));
                     break;
                 default:

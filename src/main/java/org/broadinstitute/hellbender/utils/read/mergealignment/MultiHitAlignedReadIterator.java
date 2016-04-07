@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.mergealignment;
 
 import htsjdk.samtools.*;
-import htsjdk.samtools.filter.FilteringIterator;
+import htsjdk.samtools.filter.FilteringSamIterator;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.PeekableIterator;
@@ -38,7 +38,7 @@ public final class MultiHitAlignedReadIterator implements CloseableIterator<Hits
     MultiHitAlignedReadIterator(final CloseableIterator<SAMRecord> querynameOrderIterator,
                                 final PrimaryAlignmentSelectionStrategy primaryAlignmentSelectionStrategy) {
         this.primaryAlignmentSelectionStrategy = primaryAlignmentSelectionStrategy;
-        peekIterator = new PeekableIterator<>(new FilteringIterator(querynameOrderIterator,
+        peekIterator = new PeekableIterator<>(new FilteringSamIterator(querynameOrderIterator,
                 new SamRecordFilter() {
                     // Filter unmapped reads.
                     public boolean filterOut(final SAMRecord record) {

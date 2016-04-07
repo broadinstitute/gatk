@@ -10,7 +10,7 @@ import htsjdk.samtools.SAMRecordUtil;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
-import htsjdk.samtools.filter.FilteringIterator;
+import htsjdk.samtools.filter.FilteringSamIterator;
 import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -208,7 +208,7 @@ public final class RevertSam extends PicardCommandLineProgram {
                         throw new UnsupportedOperationException();
                     }
                 };
-                readGroupToFormat.put(rg, QualityEncodingDetector.detect(QualityEncodingDetector.DEFAULT_MAX_RECORDS_TO_ITERATE, new FilteringIterator(reader.iterator(), filter), RESTORE_ORIGINAL_QUALITIES));
+                readGroupToFormat.put(rg, QualityEncodingDetector.detect(QualityEncodingDetector.DEFAULT_MAX_RECORDS_TO_ITERATE, new FilteringSamIterator(reader.iterator(), filter), RESTORE_ORIGINAL_QUALITIES));
                 CloserUtil.close(reader);
             }
             for (final SAMReadGroupRecord r : readGroupToFormat.keySet()) {

@@ -5,6 +5,8 @@ buildscript {
         mavenCentral()
         jcenter() // for shadow plugin
      }
+
+
 }
 
 plugins {
@@ -21,9 +23,11 @@ plugins {
 
 }
 
+project.ext.set("htsjdkVersion", "2.2.1")
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
+
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -45,8 +49,9 @@ task downloadGsaLibFile(type: Download) {
 
 task downloadIntelDeflater(type: Download) {
     //IntelDeflater is not packages with the rest of HTSJDK so we download it by hand
-    src 'https://github.com/samtools/htsjdk/raw/2.1.1/lib/jni/libIntelDeflater.so'
+    src 'https://github.com/samtools/htsjdk/raw/' + project.htsjdkVersion + '/lib/jni/libIntelDeflater.so'
     dest 'build/'
+
 }
 
 repositories {
@@ -169,7 +174,7 @@ task gcovTestReport(type: Exec){
 
 dependencies {
     compile 'com.google.guava:guava:18.0'
-    compile 'com.github.samtools:htsjdk:2.1.1'
+    compile 'com.github.samtools:htsjdk:' + project.htsjdkVersion
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
