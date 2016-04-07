@@ -72,8 +72,9 @@ public final class NioTests extends BaseTest {
 
   /**
    * Using explicit credentials only works on that access, they are not kept.
+   * This test will fail if default credentials are available.
    */
-  @Test(expectedExceptions = { StorageException.class })
+  @Test(enabled = false, expectedExceptions = { StorageException.class })
   public void explicitCredentialsAreNotKept() throws IOException {
     // this file, potentially unlike the others in the set, is not marked as "Public link".
     final String privateFile = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/private_file.txt";
