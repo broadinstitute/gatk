@@ -26,8 +26,8 @@ import java.util.stream.Collectors;
 public class FindLinkedRegionsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "uri for the input linked reads file",
-            shortName = "linked reads file", fullName = "Linked reads file created by CollectLinkedReadCoverage tool",
+    @Argument(doc = "Linked reads file created by CollectLinkedReadCoverage tool",
+            shortName = "linkedReadsFile", fullName = "linkedReadsFile",
             optional = false)
     public String linkedReadsFile;
 
