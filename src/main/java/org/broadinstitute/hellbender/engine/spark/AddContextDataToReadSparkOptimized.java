@@ -155,7 +155,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
         ArrayList<ReadContextData> readContext = new ArrayList<>();
         for (GATKRead r : shard.reads) {
             SimpleInterval readInterval = new SimpleInterval(r);
-            ArrayList<GATKVariant> variantsOverlappingThisRead = shard.variantsOverlapping(readInterval);
+            List<GATKVariant> variantsOverlappingThisRead = shard.variantsOverlapping(readInterval);
             // we pass all the bases. That's better because this way it's just a shared
             // pointer instead of being an array copy. Downstream processing is fine with having
             // extra bases (it expects a few, actually).
