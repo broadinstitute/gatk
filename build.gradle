@@ -107,7 +107,7 @@ check.dependsOn installDist
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:gatk:broad-production-1-44-g230b706-SNAPSHOT'
+    compile 'org.broadinstitute:gatk:broad-production-1-48-g05b31ca-SNAPSHOT'
     compile 'com.opencsv:opencsv:3.4'
     compile 'org.ojalgo:ojalgo:39.0'
     compile ('org.apache.spark:spark-mllib_2.10:1.5.0') {
@@ -171,6 +171,26 @@ configurations {
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
+}
+
+def findJarByName(Configuration config, String name) {
+    config.find { File file -> file.name.startsWith(name)}
+}
+
+final GATK_LAUNCH = "gatk-launch"
+task setupGatkLaunch(type: Copy) {
+    def gatkJar =  findJarByName(configurations.compile, 'gatk')
+
+    from {
+        zipTree( gatkJar ).matching{ include GATK_LAUNCH }.singleFile
+    }
+    into "$projectDir"
+    outputs.file "$projectDir/$GATK_LAUNCH"
+    description = "extract gatk-launch script from the gatk jar"
+}
+
+clean{
+    delete GATK_LAUNCH //add gatk-launch script to things that need cleaning up since it isn't included automatically
 }
 
 sourceCompatibility = 1.8
@@ -322,3 +342,4 @@ task sparkJar(type: ShadowJar) {
     }
 }
 
+tasks.withType(Jar) { dependsOn setupGatkLaunch }
