@@ -221,7 +221,7 @@ logger.info("build for version:" + version);
 group = 'org.broadinstitute'
 
 
-jar {
+tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
                 'Implementation-Version': version,
