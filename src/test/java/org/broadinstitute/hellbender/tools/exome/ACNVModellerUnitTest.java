@@ -25,7 +25,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
     private static final String SAMPLE_NAME = "test";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
             + "coverages-for-acnv-modeller.tsv");
-    private static final File SNP_COUNTS_FILE = new File(TEST_SUB_DIR
+    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR
             + "snps-for-acnv-modeller.tsv");
     private static final File SEGMENT_FILE =
             new File(TEST_SUB_DIR + "segments-for-acnv-modeller.seg");
@@ -94,7 +94,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
-        final Genome genome = new Genome(COVERAGES_FILE, SNP_COUNTS_FILE, SAMPLE_NAME);
+        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor

@@ -4,12 +4,11 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Target table file reader.
@@ -48,11 +47,7 @@ public final class TargetTableReader extends TableReader<Target> {
 
     @Override
     protected void processColumns(final TableColumnCollection columns) {
-        if (!columns.containsAll(TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY)) {
-            throw formatException("Bad header: missing required columns: "
-                    + Stream.of(TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY)
-                            .filter(c -> !columns.contains(c)).collect(Collectors.joining(", ")));
-        }
+        TableUtils.checkMandatoryColumns(columns, TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY, this::formatException);
         annotationCollection = new TargetTableAnnotationManager(getSource(), columns);
     }
 

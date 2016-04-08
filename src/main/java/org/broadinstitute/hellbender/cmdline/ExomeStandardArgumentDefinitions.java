@@ -20,8 +20,12 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String TUMOR_BAM_FILE_SHORT_NAME = "T";
     public static final String TUMOR_BAM_FILE_LONG_NAME = "tumor";
 
+    //IntervalList of common SNP sites
     public static final String SNP_FILE_SHORT_NAME = "SNP";
     public static final String SNP_FILE_LONG_NAME = "snpIntervals";
+
+    public static final String ALLELIC_COUNTS_FILE_LONG_NAME = "hets";
+    public static final String ALLELIC_COUNTS_FILE_SHORT_NAME = "HET";
 
     public static final String NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME = "normalHets";
     public static final String NORMAL_ALLELIC_COUNTS_FILE_SHORT_NAME = "NHET";

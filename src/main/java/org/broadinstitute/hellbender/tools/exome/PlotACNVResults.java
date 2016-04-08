@@ -15,8 +15,8 @@ public final class PlotACNVResults extends CommandLineProgram {
 
     @Argument(
             doc = "File of het SNP positions, ref counts, and alt counts, produced by GetHetCoverage.",
-            shortName = ExomeStandardArgumentDefinitions.SNP_FILE_SHORT_NAME,
-            fullName =  ExomeStandardArgumentDefinitions.SNP_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.ALLELIC_COUNTS_FILE_SHORT_NAME,
+            fullName =  ExomeStandardArgumentDefinitions.ALLELIC_COUNTS_FILE_LONG_NAME,
             optional = false
     )
     protected String snpCountsFile;
