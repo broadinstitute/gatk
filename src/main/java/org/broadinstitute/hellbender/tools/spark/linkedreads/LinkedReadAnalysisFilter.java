@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 public class LinkedReadAnalysisFilter implements ReadFilter {
+    private static final long serialVersionUID = 1l;
 
     ReadFilter filter;
 
