@@ -43,14 +43,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     @Override
     public ReadFilter makeReadFilter() {
-        return super.makeReadFilter()
-                .and(read -> !read.isUnmapped())
-                .and(read -> !read.failsVendorQualityCheck())
-                .and(GATKRead::isFirstOfPair)
-                .and(read -> !read.isDuplicate())
-                .and(read -> !read.isSecondaryAlignment())
-                .and(read -> !read.isSupplementaryAlignment())
-                .and(read -> read.hasAttribute("BX"));
+        return super.makeReadFilter().and(new LinkedReadAnalysisFilter());
     }
 
     @Override
