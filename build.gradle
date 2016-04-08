@@ -32,7 +32,7 @@ import org.gradle.internal.os.OperatingSystem
 mainClassName = "org.broadinstitute.hellbender.Main"
 
 //Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
-applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io=false", "-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so", "-Dsamjdk.compression_level=1"]
+applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_samtools=true", "-Dsamjdk.use_async_io_tribble=false", "-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so", "-Dsamjdk.compression_level=1"]
 
 //Delete the windows script - we never test on Windows so let's not pretend it works
 startScripts {
@@ -223,7 +223,8 @@ test {
         }
     }
 
-    systemProperty "samjdk.use_async_io", "false"
+    systemProperty "samjdk.use_async_io_samtools", "true"
+    systemProperty "samjdk.use_async_io_tribble", "false"
     systemProperty "samjdk.intel_deflater_so_path", "build/libIntelDeflater.so"
     systemProperty "samjdk.compression_level", "1"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")

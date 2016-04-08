@@ -140,10 +140,13 @@ public abstract class CommandLineProgram {
                         " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
                         " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + commandLineParser.getVersion() +
-                        " " + (Defaults.USE_ASYNC_IO ? "asyncIO": "syncIO") +
-                        " " + "DefaultBAMCompressionLevel: " + Defaults.COMPRESSION_LEVEL +
-                        " " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
+                        "; Version: " + commandLineParser.getVersion());
+
+                Defaults.allDefaults().entrySet().stream().forEach(e->
+                        logger.info(Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
+                );
+
+                logger.info("Deflater " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
             catch (final Exception e) { /* Unpossible! */ }
         }
