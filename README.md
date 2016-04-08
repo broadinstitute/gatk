@@ -14,11 +14,12 @@ Requirements
 
 * Java 8
 
-* Gradle 2.7
-
 * HDF5 1.8.13 
 
 * HDF5-Java JNI Libraries Release 2.9 (2.11 for Macs)
+
+* Gradle 2.12 is needed for building the GATK. We recommend using the `./gradlew` script which will 
+download and use an appropriate gradle version automatically
 
 
 Read GATK 4 README
@@ -126,10 +127,10 @@ ${HDF5_DIR}/hdfview_install_linux64.bin
 #  or put the jar location in your ~/.gradle/gradle.properties
 #  custom.jar.dir=${HDF5_DIR}/HDFView/lib
 
-gradle -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib build.gradle shadowJar
+./gradlew -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib build.gradle shadowJar
 ```
 
-### Get ```gradle test``` to work.
+### Get ```./gradlew test``` to work.
 
 The VM will search for the JNI library in the path indicated by the ```java.library.path``` system property which
 by default is set to the system "standard" library locations (e.g. /usr/lib will be included in most Unix flavors).
@@ -149,7 +150,7 @@ but is best to avoid it all together as in the future we might want to use gradl
 
 ### Create the jar file
 
-`` gradle shadowJar ``
+`` ./gradlew shadowJar ``
 
 A jar file will appear in ``build/libs``.
 

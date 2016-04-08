@@ -20,11 +20,6 @@ env:
 
   - secure: Da9Brv5WKCE3z0bp5u52X1Rqul5C/r7idGj/yLhHnlEvHXPDQHaGXEQw4fNhRkB586lx6xilO8sra2FHoLDMKsqwE0h2+NKsrHQepTSFOR/fp/otoA/kiBue23ZfhsAEFn/uliVU36xLkt+LsyVqSKa+9JKDA5z1hXSemXGGVGw=
 before_install:
-- wget -N https://downloads.gradle.org/distributions/gradle-2.7-bin.zip
-- unzip gradle-2.7-bin.zip
-- export PATH=`pwd`/gradle-2.7/bin:$PATH
-- gradle --version
-
 # Grab the HDF5 2.9 (64-bit) binary and install it.
 #  shared libs are in /hdf5/HDFView/lib/linux/
 #  jars are in /hdf5/HDFView/lib/
@@ -55,7 +50,7 @@ before_install:
 - sudo Rscript scripts/install_R_packages.R
 
 after_success:
-- gradle jacocoTestReport coveralls
+- ./gradlew jacocoTestReport coveralls
 
 after_failure:
 - dmesg | tail -100

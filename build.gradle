@@ -2,25 +2,16 @@ buildscript {
     repositories {
         mavenCentral()
     }
-
-    dependencies {
-        classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.3.1'
-        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.2'
-    }
 }
 
 plugins {
-    id "de.undercouch.download" version "1.2"
+    id "java"  // set up default java compile and test tasks
+    id "application"  // provides installDist
+    id "jacoco"  // record code coverage during test execution
+    id "com.github.johnrengelman.shadow" version "1.2.3"  //used to build the shadow and sparkJars
+    id "com.github.kt3k.coveralls" version "2.6.3"  // report coverage data to coveralls
+    id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
 }
-
-apply plugin: 'java'
-apply plugin: 'idea'
-apply plugin: 'application'
-apply plugin: "jacoco"
-apply plugin: 'com.github.kt3k.coveralls'
-apply plugin: 'maven'
-apply plugin: 'signing'
-apply plugin: 'com.github.johnrengelman.shadow'
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -110,8 +101,8 @@ compileTestJava {
    options.compilerArgs = ['-proc:none', '-Xlint:all', '-Werror']
 }
 
-build.dependsOn installApp
-check.dependsOn installApp
+build.dependsOn installDist
+check.dependsOn installDist
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
@@ -164,6 +155,22 @@ configurations {
     compile.exclude module: 'javax.servlet'
     compile.exclude module: 'servlet-api'
     compile.exclude group: 'com.esotericsoftware.kryo'
+
+    sparkConfiguration {
+        extendsFrom runtime
+        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
+        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
+        exclude group: 'org.apache.hadoop'
+        exclude module: 'spark-core_2.10'
+        exclude group: 'org.slf4j'
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+        exclude group: 'com.esotericsoftware.kryo'
+        exclude module: 'spark-mllib_2.10'
+        exclude group: 'org.scala-lang'
+        exclude module: 'kryo'
+    }
 }
 
 sourceCompatibility = 1.8
@@ -273,21 +280,14 @@ test {
     }
 }
 
-
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.7'
+    gradleVersion = '2.12'
 }
 
-shadowJar {
-    manifest {
-        attributes 'Implementation-Title': 'Hellbender-Protected-Tools',
-                'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
-    }
+tasks.withType(ShadowJar) {
+    from(project.sourceSets.main.output)
     baseName = project.name + '-all'
     mergeServiceFiles()
-    classifier = 'spark_standalone'
-    zip64 true
 
     // Suggested by the akka devs to make sure that we do not get the spark configuration error.
     // http://doc.akka.io/docs/akka/snapshot/general/configuration.html#When_using_JarJar__OneJar__Assembly_or_any_jar-bundler
@@ -295,46 +295,19 @@ shadowJar {
         resource = 'reference.conf'
     }
 
-    // This has been added to ensure that Spark will produce info messages (by default)
-    exclude 'log4j.properties'
 
-    doLast {
-        // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
-        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
-        // Please note that this will cause failures in Windows, which does not support symlinks.
-        createAllSymlinks(destinationDir.toString(), archivePath, "")
-    }
-}
-
-tasks.withType(ShadowJar) {
-    manifest {
-        attributes 'Implementation-Title': 'Hellbender',
-                'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
-    }
-    from(project.sourceSets.main.output)
-    baseName = project.name + '-all'
-    mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
     exclude 'log4j.properties' // from adam jar as it clashes with hellbender's log4j2.xml
 }
 
-configurations {
-    sparkConfiguration {
-        extendsFrom runtime
-        // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
-        // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
-        exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.10'
-        exclude group: 'org.slf4j'
-        exclude module: 'jul-to-slf4j'
-        exclude module: 'javax.servlet'
-        exclude module: 'servlet-api'
-        exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.10'
-        exclude group: 'org.scala-lang'
-        exclude module: 'kryo'
+shadowJar {
+    classifier = 'spark_standalone'
+    doLast {
+        // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
+        //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
+        // Please note that this will cause failures in Windows, which does not support symlinks.
+        createAllSymlinks(destinationDir.toString(), archivePath, "")
     }
 }
 
@@ -345,7 +318,7 @@ task sparkJar(type: ShadowJar) {
         // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
-        createAllSymlinks(destinationDir.toString(), archivePath, "spark")
+        createAllSymlinks(destinationDir.toString(), archivePath, classifier)
     }
 }
 
