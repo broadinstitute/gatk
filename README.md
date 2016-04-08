@@ -170,6 +170,12 @@ If you are looking for the codebase of the current production version of GATK, p
    JAVA_OPTS="-Dsamjdk.compression_level=5" ./gatk-launch <rest of command>
 ```
 
+* By default, GATK (non-spark) uses asynchronous IO for writing BAM files (using 1 compression thread per file), to improve speed. To change the default, run GATK like this:
+
+```
+   JAVA_OPTS="-Dsamjdk.use_async_io_samtools=false" ./gatk-launch <rest of command>
+```
+
 ##Testing GATK4
 
 * To run all tests, run **`gradle test`**.
