@@ -93,7 +93,7 @@ public class FindLinkedRegionsSpark extends GATKSparkTool {
         intervalBinCoverages.saveAsTextFile(out);
     }
 
-    private SimpleInterval getLinkedReadInterval(final String linkedReadString) {
+    private static SimpleInterval getLinkedReadInterval(final String linkedReadString) {
         final String[] fields = linkedReadString.split("\t");
         return new SimpleInterval(fields[0], Integer.valueOf(fields[1]), Integer.valueOf(fields[2]));
     }
