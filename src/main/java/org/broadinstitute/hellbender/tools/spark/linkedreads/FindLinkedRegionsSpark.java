@@ -79,7 +79,7 @@ public class FindLinkedRegionsSpark extends GATKSparkTool {
             final Tuple2<SimpleInterval, String> intervalLinkedReadPair = join._2();
             final List<Tuple2<Tuple2<SimpleInterval, SimpleInterval>, Integer>> results = new ArrayList<>();
             final SimpleInterval linkedReadInterval = getLinkedReadInterval(intervalLinkedReadPair._2());
-            for (int binStart = linkedReadInterval.getStart() - linkedReadInterval.getStart() % COVERAGE_BIN_WIDTH; binStart < linkedReadInterval.getEnd() + COVERAGE_BIN_WIDTH; binStart += COVERAGE_BIN_WIDTH) {
+            for (int binStart = linkedReadInterval.getStart() - linkedReadInterval.getStart() % COVERAGE_BIN_WIDTH + 1; binStart < linkedReadInterval.getEnd() + COVERAGE_BIN_WIDTH; binStart += COVERAGE_BIN_WIDTH) {
                 final SimpleInterval bin = new SimpleInterval(linkedReadInterval.getContig(), binStart, binStart + COVERAGE_BIN_WIDTH - 1);
                 results.add(new Tuple2<>(new Tuple2<>(intervalLinkedReadPair._1(), bin), 1));
             }
