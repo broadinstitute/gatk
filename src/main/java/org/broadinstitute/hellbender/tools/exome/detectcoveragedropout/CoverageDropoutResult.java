@@ -128,13 +128,9 @@ public final class CoverageDropoutResult {
     }
 
     public static List<CoverageDropoutResult> readCoverageDropoutResultsFromTsv(final File inFile) throws IOException {
-        final TableColumnCollection tcc = new TableColumnCollection(outputColumnNames);
         try (final TableReader<CoverageDropoutResult> reader = TableUtils.reader(inFile,
                 (columns, formatExceptionFactory) -> {
-
-                    if (!columns.containsAll(outputColumnNames)) {
-                        throw formatExceptionFactory.apply("Missing headers.");
-                    }
+                    TableUtils.checkMandatoryColumns(columns, outputColumnNames, formatExceptionFactory);
 
                     // return the lambda to translate dataLines into coverage dropout result.
                     return (dataLine) -> new CoverageDropoutResult(dataLine.getBoolean(COVERAGE_DROPOUT_COLUMN),

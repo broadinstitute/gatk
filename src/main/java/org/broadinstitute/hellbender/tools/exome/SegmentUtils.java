@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import com.google.common.collect.Sets;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections4.ListUtils;
@@ -417,16 +416,13 @@ public final class SegmentUtils {
     }
 
     public static <T extends Locatable> List<T> readSegmentFile(final File segmentsFile,
-                                                                final String[] mandatoryColumns,
+                                                                final String[] mandatoryColumnNames,
                                                                 final Function<DataLine, T> dataLineToSegmentFunction) {
         Utils.nonNull(segmentsFile);
         Utils.regularReadableUserFile(segmentsFile);
         try (final TableReader<T> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.containsAll(mandatoryColumns)) {
-                        final Set<String> missingColumns = Sets.difference(new HashSet<>(Arrays.asList(mandatoryColumns)), new HashSet<>(columns.names()));
-                        throw formatExceptionFactory.apply("Bad header in file.  Not all columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
-                    }
+                    TableUtils.checkMandatoryColumns(columns, mandatoryColumnNames, formatExceptionFactory);
                     //return the lambda to translate dataLines into called segments
                     return dataLineToSegmentFunction;
                 })) {

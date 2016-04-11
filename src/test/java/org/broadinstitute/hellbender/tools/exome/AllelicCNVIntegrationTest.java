@@ -17,7 +17,7 @@ import java.util.List;
 public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");
-    private static final File SNP_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-allelic-integration.seg");
     private static final File ALLELIC_PON_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
     private static final String SAMPLE_NAME = "test";
@@ -29,7 +29,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
 
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
                 "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
@@ -49,7 +49,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
 
         final String[] arguments = {
-                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, SNP_COUNTS_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_LONG_NAME, ALLELIC_PON_NORMAL_FILE.getAbsolutePath(),

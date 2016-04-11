@@ -30,16 +30,16 @@ public final class TargetCoverageUtils {
     public static final String START_COLUMN = "start";
     public static final String END_COLUMN = "stop";
 
-    public static final List<String> TARGET_COVERAGE_COLUMN_SET = new ArrayList<>(Arrays.asList(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN));
+    public static final String[] TARGET_COVERAGE_COLUMN_NAME_ARRAY = new String[]{TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN};
 
     /**
      * Function to read target coverage.
      */
     private static final BiFunction<TableColumnCollection, Function<String, RuntimeException>, Function<DataLine, TargetCoverage>> tableColumnCollectionFunctionFunctionBiFunction = (columns, formatExceptionFactory) -> {
-        if (!columns.containsAll(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN) || (columns.columnCount() < 5))
-            throw formatExceptionFactory.apply("Bad header");
-        if (columns.columnCount() > 5)
-            throw formatExceptionFactory.apply("Bad header -- more than one sample included in the input file.");
+        TableUtils.checkMandatoryColumns(columns, TARGET_COVERAGE_COLUMN_NAME_ARRAY, formatExceptionFactory);
+        if (columns.columnCount() != TARGET_COVERAGE_COLUMN_NAME_ARRAY.length + 1) {
+            throw formatExceptionFactory.apply("Bad header -- exactly one sample must be included in the input file.");
+        }
 
         //return the lambda to translate dataLines into targets
         return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
@@ -78,7 +78,7 @@ public final class TargetCoverageUtils {
 
             // Create a copy of the column list that is mutable.
             final List<String> result = new ArrayList<>(reader.columns().names());
-            result.removeAll(TARGET_COVERAGE_COLUMN_SET);
+            result.removeAll(Arrays.asList(TARGET_COVERAGE_COLUMN_NAME_ARRAY));
             return result;
 
         } catch (final IOException e) {

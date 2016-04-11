@@ -19,6 +19,8 @@ public final class SampleCoverageStats {
 
     public static final String VARIANCE_COLUMN_NAME = "VARIANCE";
 
+    public static final String[] COLUMN_NAME_ARRAY = new String[]{SAMPLE_COLUMN_NAME, MEAN_COLUMN_NAME, VARIANCE_COLUMN_NAME};
+
     /**
      * Name of the sample the statistics refer to.
      * <p>This member is never {@code null}</p>

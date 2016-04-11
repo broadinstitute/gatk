@@ -3,11 +3,10 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Tab-separated table reader for {@link SampleCoverageStats} instances.
@@ -36,22 +35,10 @@ public final class SampleCoverageStatsReader extends TableReader<SampleCoverageS
     public SampleCoverageStatsReader(final File file) throws IOException {
         super(file);
         final TableColumnCollection columns = columns();
-        checkColumnsArePresent(columns);
+        TableUtils.checkMandatoryColumns(columns, SampleCoverageStats.COLUMN_NAME_ARRAY, this::formatException);
         sampleColumnIndex = columns.indexOf(SampleCoverageStats.SAMPLE_COLUMN_NAME);
         meanColumnIndex = columns.indexOf(SampleCoverageStats.MEAN_COLUMN_NAME);
         varianceColumnIndex = columns.indexOf(SampleCoverageStats.VARIANCE_COLUMN_NAME);
-    }
-
-    private void checkColumnsArePresent(TableColumnCollection columns) {
-        if (!columns.containsAll(SampleCoverageStats.SAMPLE_COLUMN_NAME, SampleCoverageStats.MEAN_COLUMN_NAME,
-                SampleCoverageStats.VARIANCE_COLUMN_NAME)) {
-            throw formatException(String.format("missing mandatory columns: %s",
-                    Stream.of(SampleCoverageStats.SAMPLE_COLUMN_NAME, SampleCoverageStats.MEAN_COLUMN_NAME,
-                            SampleCoverageStats.VARIANCE_COLUMN_NAME)
-                            .filter(n -> !columns.contains(n))
-                            .collect(Collectors.joining(", "))
-                    ));
-        }
     }
 
     @Override

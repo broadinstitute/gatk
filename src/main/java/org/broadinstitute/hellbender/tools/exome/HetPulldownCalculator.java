@@ -39,7 +39,7 @@ public final class HetPulldownCalculator {
     private final int minBaseQuality;
     private final ValidationStringency validationStringency;
 
-    private static final int NUMBER_OF_LOG_UPDATES = 20;    //sets (approximate) number of status updates printed to log
+    private static final int NUMBER_OF_SITES_PER_LOGGED_STATUS_UPDATE = 10000;
     private static final double HET_ALLELE_FRACTION = 0.5;
 
     //set interval threshold for indexing for SamLocusIterator
@@ -188,13 +188,11 @@ public final class HetPulldownCalculator {
             locusIterator.setMappingQualityScoreCutoff(minMappingQuality);
             locusIterator.setQualityScoreCutoff(minBaseQuality);
 
-            logger.info("Examining " + totalNumberOfSNPs + " sites...");
-            final int iterationsPerStatus =
-                    Math.max((int) Math.floor((float) totalNumberOfSNPs / NUMBER_OF_LOG_UPDATES), 1);
-            int locusCount = 1;
+            logger.info("Examining " + totalNumberOfSNPs + " sites in total...");
+            int locusCount = 0;
             for (final SamLocusIterator.LocusInfo locus : locusIterator) {
-                if (locusCount % iterationsPerStatus == 0) {
-                    logger.info("Examined " + locusCount + " out of " + totalNumberOfSNPs + " sites.");
+                if (locusCount % NUMBER_OF_SITES_PER_LOGGED_STATUS_UPDATE == 0) {
+                    logger.info("Examined " + locusCount + " covered sites.");
                 }
                 locusCount++;
 
@@ -220,7 +218,7 @@ public final class HetPulldownCalculator {
                 hetPulldown.add(new SimpleInterval(locus.getSequenceName(), locus.getPosition(), locus.getPosition()),
                         refReadCount, altReadCount);
             }
-            logger.info("Examined " + totalNumberOfSNPs + " sites.");
+            logger.info(locusCount + " covered sites out of " + totalNumberOfSNPs + " total sites were examined.");
             return hetPulldown;
         } catch (final IOException | SAMFormatException e) {
             throw new UserException(e.getMessage());

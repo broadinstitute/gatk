@@ -70,7 +70,7 @@ import java.util.stream.StreamSupport;
  *             // ...
  *
  *             // If you don't trust the columns that you are given,
- *             // you can check them here:
+ *             // you can check them here (see also {@link TableUtils#checkMandatoryColumns}):
  *             &#64;Override
  *             public void processColumns(final TableColumns columns) {
  *                 if (!columns.containsExactly("name","age","net.worth"))
