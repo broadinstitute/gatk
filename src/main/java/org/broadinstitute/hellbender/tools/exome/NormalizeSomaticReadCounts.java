@@ -141,7 +141,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         }
 
         try {
-            ReadCountCollectionUtils.writeAsTargetCoverage(preTangentNormalizationOutFile, preTangentNormalized, "fileFormat = tsv",
+            ReadCountCollectionUtils.write(preTangentNormalizationOutFile, preTangentNormalized, "fileFormat = tsv",
                     "commandLine = " + getCommandLine(), "title = Pre tangent normalized coverage profile");
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(preTangentNormalizationOutFile, ex.getMessage());
@@ -206,6 +206,9 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * Reads the read-counts from the input file using an exon collection (if provided) to resolve target names if this
      * are missing.
      *
+     * Even though the tangent normalization code works for multiple samples, our workflows are designed for single samples
+     * and so we enforce it here.
+     *
      * @param readCountsFile the read-counts file.
      * @param targetCollection the input exon collection. {@code null} indicates that no collection was provided by the user.
      * @param <E>            the element type of {@code exonCollection}, it must be a {@link BEDFeature}.
@@ -213,12 +216,17 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * @throws UserException.CouldNotReadInputFile if there was some problem
      *                                             trying to read from {@code readCountsFile}.
      * @throws UserException.BadInput              if there is some format issue with the input file {@code readCountsFile},
-     *                                             or it does not contain target names and {@code exonCollection} is {@code null}.
+     *                                             or it does not contain target names and {@code exonCollection} is {@code null}
+     *                                             or the input read counts contain more thanb one sample.
      */
     private <E extends BEDFeature> ReadCountCollection readInputReadCounts(final File readCountsFile,
                                                                            final TargetCollection<E> targetCollection) {
         try {
-            return ReadCountCollectionUtils.parse(readCountsFile, targetCollection, false);
+            final ReadCountCollection result = ReadCountCollectionUtils.parse(readCountsFile, targetCollection, false);
+            if (result.columnNames().size() > 1) {
+                throw new UserException.BadInput("Only single-sample input read counts are allowed");
+            }
+            return result;
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(readCountsFile, ex.getMessage(), ex);
         }
@@ -242,7 +250,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      */
     private void writeTangentNormalizedOutput(final ReadCountCollection tangentNormalized) {
         try {
-            ReadCountCollectionUtils.writeAsTargetCoverage(outFile, tangentNormalized, "fileFormat = tsv",
+            ReadCountCollectionUtils.write(outFile, tangentNormalized, "fileFormat = tsv",
                     "commandLine = " + getCommandLine(),
                     "title = Tangent normalized coverage profile");
         } catch (final IOException ex) {

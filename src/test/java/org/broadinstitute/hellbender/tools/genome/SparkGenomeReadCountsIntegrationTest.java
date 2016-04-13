@@ -18,7 +18,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
     private static final File REFERENCE_FILE = new File("src/test/resources/hg19mini.fasta");
 
     @Test
-    public void testSparkGenomeReadCounts() {
+    public void testSparkGenomeReadCounts() throws IOException {
         final File outputFile = createTempFile(BAM_FILE.getName(),".cov");
         final String[] arguments = {
                 "--disableSequenceDictionaryValidation",
@@ -30,7 +30,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         runCommandLine(arguments);
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(outputFile.length() > 0);
-        List<TargetCoverage> targetCoverages = loadAsTargetCoverages(outputFile);
+        final ReadCountCollection coverage = ReadCountCollectionUtils.parse(outputFile);
         final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
         Assert.assertTrue(bedFile.exists());
         Assert.assertTrue(bedFile.length() > 0);
@@ -39,11 +39,11 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals(bedFeatureCollection.targets().size(), 8);
         Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
         Assert.assertEquals(bedFeatureCollection.target(5).getName(), "target_3_10001_16000");
-        Assert.assertEquals(targetCoverages.size(), bedFeatureCollection.targetCount());
+        Assert.assertEquals(coverage.targets().size(), bedFeatureCollection.targetCount());
     }
 
     @Test
-    public void testSparkGenomeReadCountsBigBins() {
+    public void testSparkGenomeReadCountsBigBins() throws IOException {
         final File outputFile = createTempFile(BAM_FILE.getName(), ".cov");
         final String[] arguments = {
                 "--disableSequenceDictionaryValidation",
@@ -55,7 +55,7 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         runCommandLine(arguments);
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(outputFile.length() > 0);
-        List<TargetCoverage> targetCoverages = loadAsTargetCoverages(outputFile);
+        final ReadCountCollection coverage = ReadCountCollectionUtils.parse(outputFile);
         final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
         Assert.assertTrue(bedFile.exists());
         Assert.assertTrue(bedFile.length() > 0);
@@ -64,12 +64,11 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals(bedFeatureCollection.targets().size(), 4);
         Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
         Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_3_1_16000");
-        Assert.assertEquals(targetCoverages.size(), bedFeatureCollection.targetCount());
-
+        Assert.assertEquals(coverage.targets().size(), bedFeatureCollection.targetCount());
     }
 
     @Test
-    public void testSparkGenomeReadCountsSmallBins() {
+    public void testSparkGenomeReadCountsSmallBins()  throws IOException {
         final File outputFile = createTempFile(BAM_FILE.getName(), ".cov");
         final String[] arguments = {
                 "--disableSequenceDictionaryValidation",
@@ -83,20 +82,19 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(outputFile.length() > 0);
 
         // Proportional Coverage
-        final List<TargetCoverage> targetProportionalCoverages = loadAsTargetCoverages(outputFile);
-        Assert.assertTrue(targetProportionalCoverages.stream().anyMatch(t -> Math.abs(t.getCoverage()) > 1e-10));
+        final ReadCountCollection proportionalCoverage = ReadCountCollectionUtils.parse(outputFile);
+        Assert.assertTrue(proportionalCoverage.records().stream().anyMatch(t -> Math.abs(t.getDouble(0)) > 1e-10));
 
         // The reads are all in three bins of contig 3 with values {.5, .25, .25}
-        Assert.assertTrue(targetProportionalCoverages.stream().filter(t -> t.getContig().equals("3")).anyMatch(t -> Math.abs(t.getCoverage()) > .2));
-        Assert.assertTrue(Math.abs(targetProportionalCoverages.stream().filter(t -> t.getContig().equals("3")).mapToDouble(t -> t.getCoverage()).sum() - 1.0) < 1e-10);
+        Assert.assertTrue(proportionalCoverage.records().stream().filter(t -> t.getContig().equals("3")).anyMatch(t -> Math.abs(t.getDouble(0)) > .2));
+        Assert.assertTrue(Math.abs(proportionalCoverage.records().stream().filter(t -> t.getContig().equals("3")).mapToDouble(t -> t.getDouble(0)).sum() - 1.0) < 1e-10);
 
         // raw coverage
-        final List<TargetCoverage> targetCoverages = loadAsTargetCoverages(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
-
-        Assert.assertTrue(targetCoverages.stream().anyMatch(t -> Math.abs(t.getCoverage()) > 1e-10));
+        final ReadCountCollection coverage = ReadCountCollectionUtils.parse(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
+        Assert.assertTrue(coverage.records().stream().anyMatch(t -> Math.abs(t.getDouble(0)) > 1e-10));
 
         // The reads are all in three bins of contig 3 with values
-        Assert.assertEquals(targetCoverages.stream().filter(t -> t.getContig().equals("3")).filter(t -> Math.abs(t.getCoverage()) >= 1).count(), 3);
+        Assert.assertEquals(coverage.records().stream().filter(t -> t.getContig().equals("3")).filter(t -> Math.abs(t.getDouble(0)) >= 1).count(), 3);
 
         final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
         Assert.assertTrue(bedFile.exists());
@@ -108,19 +106,16 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_1_4001_6000");
         Assert.assertEquals(bedFeatureCollection.target(8).getName(), "target_2_1_2000");
         Assert.assertEquals(bedFeatureCollection.target(17).getName(), "target_3_2001_4000");
-        Assert.assertEquals(targetProportionalCoverages.size(), bedFeatureCollection.targetCount());
+        Assert.assertEquals(proportionalCoverage.targets().size(), bedFeatureCollection.targetCount());
     }
 
-    private List<TargetCoverage> loadAsTargetCoverages(File outputFile) {
-        ReadCountCollection targetProportionalCoveragesAsRCC = null;
+    private ReadCountCollection loadReadCountCollection(File outputFile) {
         try {
-            targetProportionalCoveragesAsRCC = ReadCountCollectionUtils.parse(outputFile);
+            return ReadCountCollectionUtils.parse(outputFile);
         } catch (final IOException ioe) {
             Assert.fail("IO Exception in automated test.  Possible misconfiguration?", ioe);
+            return null;
         }
-
-        // Convert to target coverages for convenience in testing.
-        return ReadCountCollectionUtils.convertToTargetCoverageList(targetProportionalCoveragesAsRCC);
     }
 
     @Test
@@ -136,14 +131,12 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         };
         runCommandLine(arguments);
 
-        final List<TargetCoverage> targetProportionalCoverages = loadAsTargetCoverages(outputFile);
-        Assert.assertTrue(targetProportionalCoverages.stream().noneMatch(t -> t.getContig().equals("2")));
-        Assert.assertTrue(targetProportionalCoverages.stream().noneMatch(t -> t.getContig().equals("3")));
+        final ReadCountCollection proportionalCoverage = loadReadCountCollection(outputFile);
+        Assert.assertTrue(proportionalCoverage.records().stream().noneMatch(t -> t.getContig().equals("2") || t.getContig().equals("3")));
 
         // raw coverage
-        final List<TargetCoverage> targetCoverages = loadAsTargetCoverages(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
-        Assert.assertTrue(targetCoverages.stream().noneMatch(t -> t.getContig().equals("2")));
-        Assert.assertTrue(targetCoverages.stream().noneMatch(t -> t.getContig().equals("3")));
+        final ReadCountCollection rawCoverage = loadReadCountCollection(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
+        Assert.assertTrue(rawCoverage.records().stream().noneMatch(t -> t.getContig().equals("2") || t.getContig().equals("3")));
 
         final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
         final TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
@@ -163,18 +156,16 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         };
         runCommandLine(arguments);
 
-        final List<TargetCoverage> targetProportionalCoverages = loadAsTargetCoverages(outputFile);
-        Assert.assertTrue(targetProportionalCoverages.stream().anyMatch(t -> t.getContig().equals("1")));
-        Assert.assertTrue(targetProportionalCoverages.stream().anyMatch(t -> t.getContig().equals("2")));
-        Assert.assertTrue(targetProportionalCoverages.stream().noneMatch(t -> t.getContig().equals("3")));
-        Assert.assertTrue(targetProportionalCoverages.stream().noneMatch(t -> t.getContig().equals("4")));
+        final ReadCountCollection proportionalCoverage = loadReadCountCollection(outputFile);
+        Assert.assertTrue(proportionalCoverage.records().stream().anyMatch(t -> t.getContig().equals("1")));
+        Assert.assertTrue(proportionalCoverage.records().stream().anyMatch(t -> t.getContig().equals("2")));
+        Assert.assertTrue(proportionalCoverage.records().stream().noneMatch(t -> t.getContig().equals("3") || t.getContig().equals("4")));
 
         // raw coverage
-        final List<TargetCoverage> targetCoverages = loadAsTargetCoverages(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
-        Assert.assertTrue(targetCoverages.stream().anyMatch(t -> t.getContig().equals("1")));
-        Assert.assertTrue(targetCoverages.stream().anyMatch(t -> t.getContig().equals("2")));
-        Assert.assertTrue(targetCoverages.stream().noneMatch(t -> t.getContig().equals("3")));
-        Assert.assertTrue(targetCoverages.stream().noneMatch(t -> t.getContig().equals("4")));
+        final ReadCountCollection rawCoverage = loadReadCountCollection(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
+        Assert.assertTrue(rawCoverage.records().stream().anyMatch(t -> t.getContig().equals("1")));
+        Assert.assertTrue(rawCoverage.records().stream().anyMatch(t -> t.getContig().equals("2")));
+        Assert.assertTrue(rawCoverage.records().stream().noneMatch(t -> t.getContig().equals("3") || t.getContig().equals("4")));
 
         final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
         final TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());

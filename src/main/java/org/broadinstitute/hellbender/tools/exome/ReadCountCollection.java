@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
@@ -17,6 +16,8 @@ import java.util.stream.IntStream;
 
 /**
  * Represents a read-count collections.
+ *
+ * Developer note: any public constructor of this class must verify that targets and column names do not contain duplicates.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -35,26 +36,12 @@ public final class ReadCountCollection implements Serializable {
     private final List<String> columnNames;
 
     /**
-     * Read count per target and column name.
-     *
-     * <p>
-     *     Each row represents the counts for the ith target in {@link #targets}.
-     * </p>
-     *
-     * <p>
-     *     Each column represents the counts for the ith column name in {@link #columnNames}.
-     * </p>
+     * Read counts matrix with one row per target in {@link #targets} and columns corresponding to {@link #columnNames}.
      */
     private final RealMatrix counts;
 
     /**
      * Creates a new read-counts collection.
-     *
-     * <p>
-     *     All values in the input are copied, so these can be changed after invoking the constructor without
-     *     affecting the new instance.
-     * </p>
-     *
      * <p>
      *     The new instance will have its own copy of the target, column-name list and counts. Therefore the input arguments
      *     can be modified after this call safely.
@@ -72,30 +59,18 @@ public final class ReadCountCollection implements Serializable {
      *     <li>{@code targets} contains any {@code null}},</li>
      *     <li>{@code columnNames} contains any {@code null}},</li>
      *     <li>{@code counts} contains any {@code null}},</li>
+     *     <li>{@code targets} contains any duplicates,</li>
+     *     <li>{@code columnNames} contains any duplicates,</li>
      *     <li>{@code targets} length does not match {@code counts} length or</li>
      *     <li>{@code counts} elements length does not match {@code columnNames} length</li>
      * </ul>
      */
-    public ReadCountCollection(final SetUniqueList<Target> targets, final SetUniqueList<String> columnNames, final RealMatrix counts) {
-        Utils.nonNull(targets,"the input targets cannot be null");
-        Utils.nonNull(columnNames,"the column names cannot be null");
-        Utils.nonNull(counts,"the counts cannot be null");
-        if (columnNames.contains(null)) {
-            throw new IllegalArgumentException("column names contain nulls");
-        } else if (targets.contains(null)) {
-            throw new IllegalArgumentException("there are some null targets");
-        } else if (counts.getRowDimension() != targets.size()) {
-            throw new IllegalArgumentException("number of count rows does not match the number of targets");
-        } else if (counts.getColumnDimension() != columnNames.size()) {
-            throw new IllegalArgumentException("number of count columns does not match the number of column names");
-        }
-        this.targets = Collections.unmodifiableList(new ArrayList<>(targets));
-        this.columnNames = Collections.unmodifiableList(new ArrayList<>(columnNames));
-        this.counts = counts.copy();
+    public ReadCountCollection(final List<Target> targets, final List<String> columnNames, final RealMatrix counts) {
+        this(targets, columnNames, counts, true);
     }
 
     /**
-     * Creates a new collection without verifying field values and without copying inputs.
+     * Creates a new collection with or without verifying field values and copying inputs.
      *
      * <p>
      * The field values are supposed to be compatible with a consistent state.
@@ -103,11 +78,34 @@ public final class ReadCountCollection implements Serializable {
      * @param targets target list, not a {@code null}, does not contain any {@code null}, does not contain repeats.
      * @param columnNames column name list, not a {@code null}, does not contain any {@code null}, does not contain repeats.
      * @param counts count matrix, not a {@code null}, has as many rows as {@code targets} elements and as many columns as {@code columnNames} elements.
+     * @param verifyInput whether to check input for nulls and duplicates and make defensive copies
      */
-    private ReadCountCollection(final List<Target> targets, final List<String> columnNames, final RealMatrix counts) {
-        this.targets = targets;
-        this.columnNames = columnNames;
-        this.counts = counts;
+    private ReadCountCollection(final List<Target> targets, final List<String> columnNames, final RealMatrix counts, final boolean verifyInput) {
+        if (verifyInput) {
+            Utils.nonNull(targets,"the input targets cannot be null");
+            Utils.nonNull(columnNames,"the column names cannot be null");
+            Utils.nonNull(counts,"the counts cannot be null");
+            if (columnNames.contains(null)) {
+                throw new IllegalArgumentException("column names contain nulls");
+            } else if (targets.contains(null)) {
+                throw new IllegalArgumentException("there are some null targets");
+            } else if (counts.getRowDimension() != targets.size()) {
+                throw new IllegalArgumentException("number of count rows does not match the number of targets");
+            } else if (counts.getColumnDimension() != columnNames.size()) {
+                throw new IllegalArgumentException("number of count columns does not match the number of column names");
+            } else if (new HashSet<>(targets).size() != targets.size()) {
+                throw new IllegalArgumentException("targets contain duplicates");
+            } else if (new HashSet<>(columnNames).size() != columnNames.size()) {
+                throw new IllegalArgumentException("column names contain duplicates");
+            }
+            this.targets = Collections.unmodifiableList(new ArrayList<>(targets));
+            this.columnNames = Collections.unmodifiableList(new ArrayList<>(columnNames));
+            this.counts = counts.copy();
+        } else {
+            this.targets = targets;
+            this.columnNames = columnNames;
+            this.counts = counts;
+        }
     }
 
     /**
@@ -124,6 +122,16 @@ public final class ReadCountCollection implements Serializable {
      */
     public List<String> columnNames() {
         return columnNames;
+    }
+
+    /**
+     * Convert to a List of ReadCountRecords.  Note that this does not contain the information in the header i.e. column names.
+     * @return never {@code null}
+     */
+    public List<ReadCountRecord> records() {
+        return IntStream.range(0, targets.size())
+                .mapToObj(t -> new ReadCountRecord(targets.get(t), counts.getRow(t)))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -174,7 +182,7 @@ public final class ReadCountCollection implements Serializable {
         }
 
         if (targetsToKeep.size() == targets.size())  {
-            return new ReadCountCollection(targets, columnNames, counts.copy());
+            return new ReadCountCollection(targets, columnNames, counts.copy(), false);
         }
         final int[] targetsToKeepIndices = IntStream.range(0, targets.size())
                 .filter(i -> targetsToKeep.contains(targets.get(i))).toArray();
@@ -185,7 +193,7 @@ public final class ReadCountCollection implements Serializable {
         for (int i = 0; i < resultCounts.length; i++) {
             resultCounts[i] = counts.getRow(targetsToKeepIndices[i]);
         }
-        return new ReadCountCollection(Collections.unmodifiableList(resultTargets), columnNames, new Array2DRowRealMatrix(resultCounts));
+        return new ReadCountCollection(Collections.unmodifiableList(resultTargets), columnNames, new Array2DRowRealMatrix(resultCounts), false);
     }
 
     /**
@@ -207,7 +215,7 @@ public final class ReadCountCollection implements Serializable {
         }
 
         if (columnsToKeep.size() == columnNames.size())  {
-            return new ReadCountCollection(targets, columnNames, counts.copy());
+            return new ReadCountCollection(targets, columnNames, counts.copy(), false);
         }
 
         final int[] columnsToKeepIndices = IntStream.range(0, columnNames.size())
@@ -219,7 +227,7 @@ public final class ReadCountCollection implements Serializable {
             resultCountsM.setColumn(i, counts.getColumn(columnsToKeepIndices[i]));
         }
 
-        return new ReadCountCollection(targets, Collections.unmodifiableList(resultColumnNames), resultCountsM);
+        return new ReadCountCollection(targets, Collections.unmodifiableList(resultColumnNames), resultCountsM, false);
     }
 
     /**
@@ -250,7 +258,7 @@ public final class ReadCountCollection implements Serializable {
             }
             counts.setRow(i, this.counts.getRow(targetToIndex.getInt(target)));
         }
-        return new ReadCountCollection(new ArrayList<>(targetsInOrder), columnNames, counts);
+        return new ReadCountCollection(new ArrayList<>(targetsInOrder), columnNames, counts, false);
     }
 
     /**
@@ -270,7 +278,7 @@ public final class ReadCountCollection implements Serializable {
                 }
         });
 
-        return new ReadCountCollection(targets, columnNames, normalizedCounts);
+        return new ReadCountCollection(targets, columnNames, normalizedCounts, false);
     }
 
     private double[] calculateColumnWeightedMeans(final boolean weightByTargetSize) {
@@ -315,7 +323,7 @@ public final class ReadCountCollection implements Serializable {
             }
         });
 
-        return new ReadCountCollection(targets, columnNames, zScoreCounts);
+        return new ReadCountCollection(targets, columnNames, zScoreCounts, false);
     }
 
     /**

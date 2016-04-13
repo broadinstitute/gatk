@@ -20,12 +20,15 @@ import java.util.stream.Collectors;
  *  results of this code and the python code will not be exactly the same, but will be
  *  very close.  A fix (to make this code match the python) has been deemed unworthy of our time.</p>
  *
+ *  Note: Assumes that the input @{link ReadCountCollection} contains only one sample -- calls will be made for only one
+ *        counts column and other columns ignored.
+ *
  */
 public final class ReCapSegCaller {
     private static final Logger logger = LogManager.getLogger(ReCapSegCaller.class);
-    public static String AMPLIFICATION_CALL = CnvCaller.AMPLIFICATION_CALL;
-    public static String DELETION_CALL = CnvCaller.DELETION_CALL;
-    public static String NEUTRAL_CALL = CnvCaller.NEUTRAL_CALL;
+    public static String AMPLIFICATION_CALL = "+";
+    public static String DELETION_CALL = "-";
+    public static String NEUTRAL_CALL = "0";
 
     //bounds on log_2 coverage for high-confidence neutral segments
     public static final double COPY_NEUTRAL_CUTOFF = 0.1;
@@ -35,7 +38,7 @@ public final class ReCapSegCaller {
 
     private ReCapSegCaller() {} // prevent instantiation
 
-    private static double calculateT(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments) {
+    private static double calculateT(final ReadCountCollection tangentNormalizedCoverage, final List<ModeledSegment> segments) {
 
         //Get the segments that are likely copy neutral.
         // Math.abs removed to mimic python...
@@ -43,10 +46,12 @@ public final class ReCapSegCaller {
 
         // Get the targets that correspond to the copyNeutralSegments... note that individual targets, due to noise,
         //  can be far away from copy neutral
-        final List<TargetCoverage> copyNeutralTargets = copyNeutralSegments.stream()
-                .flatMap(s -> targets.targets(s).stream()).collect(Collectors.toList());
+        final TargetCollection<ReadCountRecord.SingleSampleRecord> targetsWithCoverage =
+                new HashedListTargetCollection<>(tangentNormalizedCoverage.records().stream().map(ReadCountRecord::asSingleSampleRecord).collect(Collectors.toList()));
+        final double[] copyNeutralTargetsCopyRatio = copyNeutralSegments.stream()
+                .flatMap(s -> targetsWithCoverage.targets(s).stream())
+                .mapToDouble(ReadCountRecord.SingleSampleRecord::getCount).toArray();
 
-        final double [] copyNeutralTargetsCopyRatio = copyNeutralTargets.stream().mapToDouble(TargetCoverage::getCoverage).toArray();
         final double meanCopyNeutralTargets = new Mean().evaluate(copyNeutralTargetsCopyRatio);
         final double sigmaCopyNeutralTargets = new StandardDeviation().evaluate(copyNeutralTargetsCopyRatio);
 
@@ -58,16 +63,15 @@ public final class ReCapSegCaller {
     }
 
     /**
-     * Make calls for a list of segments based on the coverage data in a set of targets.
-     *
-     * @param targets the collection representing all targets
-     * @param segments segments, each of which holds a reference to these same targets
+     * Make calls for a list of segments based on the coverage data in a set of tangentNormalizedCoverage.
+     *  @param tangentNormalizedCoverage the collection representing all targets with their tangent-normalized coverage
+     * @param segments segments, each of which holds a reference to these same tangentNormalizedCoverage
      */
-    public static List<ModeledSegment> makeCalls(final TargetCollection<TargetCoverage> targets, final List<ModeledSegment> segments) {
+    public static List<ModeledSegment> makeCalls(final ReadCountCollection tangentNormalizedCoverage, final List<ModeledSegment> segments) {
         Utils.nonNull(segments, "Can't make calls on a null list of segments.");
-        Utils.nonNull(targets, "Can't make calls on a null list of targets.");
+        Utils.nonNull(tangentNormalizedCoverage, "Can't make calls on a null list of tangentNormalizedCoverage.");
 
-        final double t = calculateT(targets, segments);
+        final double t = calculateT(tangentNormalizedCoverage, segments);
 
         logger.info("Running caller that mimics the ReCapSeg 1.4.5.0 (python) caller.");
         logger.info(String.format("T in log2CR: %.4f", t));

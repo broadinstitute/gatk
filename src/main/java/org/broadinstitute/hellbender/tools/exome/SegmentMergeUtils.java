@@ -560,8 +560,8 @@ public final class SegmentMergeUtils {
          * @return          list of the coverages for targets in the segment
          */
         private static List<Double> makeCoverageList(final SimpleInterval segment,
-                                                     final TargetCollection<TargetCoverage> targets) {
-            return targets.targets(segment).stream().map(TargetCoverage::getCoverage).collect(Collectors.toList());
+                                                     final TargetCollection<ReadCountRecord.SingleSampleRecord> targets) {
+            return targets.targets(segment).stream().map(ReadCountRecord.SingleSampleRecord::getCount).collect(Collectors.toList());
         }
 
         /**
@@ -575,7 +575,7 @@ public final class SegmentMergeUtils {
          * @return          scores for adjacent segments based on Hodges-Lehmann estimators
          */
         private static Pair<Double, Double> calculateTargetScores(final List<SimpleInterval> segments,
-                                                                  final TargetCollection<TargetCoverage> targets,
+                                                                  final TargetCollection<ReadCountRecord.SingleSampleRecord> targets,
                                                                   final int index) {
             final SimpleInterval leftSegment = segments.get(index - 1);
             final SimpleInterval centerSegment = segments.get(index);
@@ -625,7 +625,7 @@ public final class SegmentMergeUtils {
 
             //if any of the three segments is missing SNPs or the SNP scores are too similar,
             //try to use target scores based on Hodges-Lehmann estimator
-            final TargetCollection<TargetCoverage> targets = genome.getTargets();
+            final TargetCollection<ReadCountRecord.SingleSampleRecord> targets = genome.getTargets();
             final Pair<Double, Double> targetScores = calculateTargetScores(segments, targets, index);
             if (Math.max(targetScores.getLeft(), targetScores.getRight()) > TARGET_SCORE_THRESHOLD) {
                 return targetScores;

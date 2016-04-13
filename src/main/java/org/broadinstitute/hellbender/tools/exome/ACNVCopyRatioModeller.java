@@ -366,13 +366,13 @@ public final class ACNVCopyRatioModeller {
                 throw new IllegalArgumentException("Cannot construct CopyRatioDataCollection with no target-coverage data.");
             }
             //construct coverages and number of targets per segment from the segments and Genome in SegmentedModel
-            final TargetCollection<TargetCoverage> targetCoverages = segmentedModel.getGenome().getTargets();
+            final TargetCollection<ReadCountRecord.SingleSampleRecord> targetCoverages = segmentedModel.getGenome().getTargets();
             //construct list of coverages (in order corresponding to that of segments in SegmentedModel;
             //this may not be in genomic order, depending on how the segments are sorted in the segment file,
             //so we cannot simply take the list of coverages in the order from TargetCollection.targets()
             final List<Double> coverages = segmentedModel.getSegments().stream()
                     .flatMap(s -> targetCoverages.targets(s).stream())
-                    .map(TargetCoverage::getCoverage)
+                    .map(ReadCountRecord.SingleSampleRecord::getCount)
                     .collect(Collectors.toList());
             numTargetsPerSegment = segmentedModel.getSegments().stream()
                     .map(s -> targetCoverages.targets(s).size())

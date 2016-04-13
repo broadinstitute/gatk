@@ -13,10 +13,10 @@ import java.util.stream.Stream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public enum TargetTableColumns {
-    NAME("NAME", true),
-    CONTIG("CONTIG", true),
-    START("START", true),
-    END("END", true),
+    NAME("name", true),
+    CONTIG("contig", true),
+    START("start", true),
+    END("stop", true),
     GC_CONTENT("GC_CONTENT", false),
     REPEAT_FRACTION("REPEAT_FRACTION", false),
     MEAN_COVERAGE("MEAN_COVERAGE", false),

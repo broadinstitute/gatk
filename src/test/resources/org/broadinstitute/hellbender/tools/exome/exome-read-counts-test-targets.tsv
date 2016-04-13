@@ -1,4 +1,4 @@
-NAME	CONTIG	START	END
+name	contig	start	stop
 target_1	20	68349	68410
 target_2	20	123268	123329
 target_3	20	138184	138236

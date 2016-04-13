@@ -142,12 +142,11 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
         final RealMatrix resultMatrix = subtractComponentProjectionsAndTranspose(projection, transposedCoverage, eigenVectors, numComponents);
 
         // Creates the output read count collection.
-        final ReadCountCollection normalizedCoverage = new ReadCountCollection(
-                SetUniqueList.setUniqueList(composeTargetList(pca, coverage, coverageTargetIndexByName)),
-                SetUniqueList.setUniqueList(new ArrayList<>(coverage.columnNames())), resultMatrix);
+        final ReadCountCollection tangentNormalizedCoverage = new ReadCountCollection(composeTargetList(pca, coverage, coverageTargetIndexByName),
+                coverage.columnNames(), resultMatrix);
 
         // Output the result normalized coverage.
-        writeOutputCoverage(normalizedCoverage);
+        writeOutputCoverage(tangentNormalizedCoverage);
 
         return "SUCCESS";
     }
@@ -170,9 +169,9 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
         return pca;
     }
 
-    private void writeOutputCoverage(final ReadCountCollection normalizedCoverage) {
+    private void writeOutputCoverage(final ReadCountCollection tangentNormalizedCoverage) {
         try {
-            ReadCountCollectionUtils.write(outputFile, normalizedCoverage);
+            ReadCountCollectionUtils.write(outputFile, tangentNormalizedCoverage);
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, ex);
         }

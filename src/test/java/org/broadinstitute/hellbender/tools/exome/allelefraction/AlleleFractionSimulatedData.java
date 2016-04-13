@@ -1,17 +1,18 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
+import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.exome.AllelicCount;
-import org.broadinstitute.hellbender.tools.exome.Genome;
-import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
@@ -22,6 +23,11 @@ import java.util.stream.IntStream;
  * @author David Benjamin
  */
 public final class AlleleFractionSimulatedData {
+    public static final ReadCountCollection TRIVIAL_TARGETS = new ReadCountCollection(
+            Arrays.asList(new Target("target", new SimpleInterval("chr99", 999999999, 999999999))),
+            Arrays.asList("SAMPLE"),
+            new Array2DRowRealMatrix(new double[][] {{1}}));
+
     private static final int MIN_HETS_PER_SEGMENT = 3;
     private static final int RANDOM_SEED = 13;
     private static final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
@@ -76,7 +82,8 @@ public final class AlleleFractionSimulatedData {
             }
         }
 
-        segmentedModel = new SegmentedModel(segments, new Genome(new ArrayList<>(), alleleCounts, "SAMPLE"));
+        final Genome genome = new Genome(TRIVIAL_TARGETS, alleleCounts, "SAMPLE");
+        segmentedModel = new SegmentedModel(segments, genome);
         trueState = new AlleleFractionState(biasMean, biasVariance, outlierProbability, minorFractions);
     };
 

@@ -19,48 +19,13 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_SEGMENTS_LEGACY = new File(TEST_DIR, "segments_legacy.tsv");
 
     @Test
-    public void testCallSegmentsExperimental() {
-        final File outputFile = createTempFile("test",".txt");
-
-        final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD)
-        };
-        runCommandLine(arguments);
-
-        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
-        Assert.assertEquals(calls.stream().map(ModeledSegment::getCall).toArray(), new String[] {"+", "-", "0", "0"});
-    }
-
-    @Test
-    public void testCallSegmentsLegacyExperimental() {
-        final File outputFile = createTempFile("test",".txt");
-
-        final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
-                "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME, "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
-        };
-        runCommandLine(arguments);
-
-        final List<ModeledSegment> calls = SegmentUtils.readModeledSegmentsFromSegmentFile(outputFile);
-        Assert.assertEquals(calls.stream().map(ModeledSegment::getCall).toArray(), new String[] {"+", "-", "0", "0"});
-    }
-
-    @Test
     public void testCallSegments() {
         final File outputFile = createTempFile("test",".txt");
 
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
-                "-" + CallSegments.EXPERIMENTAL_CALLER_SHORT_NAME
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath()
         };
         runCommandLine(arguments);
 
@@ -76,7 +41,6 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
-                "-" + CallSegments.Z_THRESHOLD_SHORT_NAME, Double.toString(CnvCaller.DEFAULT_Z_SCORE_THRESHOLD),
                 "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME
         };
         runCommandLine(arguments);

@@ -10,6 +10,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,7 +45,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
      * remerge segments broken by these breakpoints and reproduce the original list of true segments.
      */
     @Test
-    public void testMergeSimilarSegmentsCopyRatio() {
+    public void testMergeSimilarSegmentsCopyRatio() throws IOException {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
@@ -52,10 +53,10 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages and segments)
-        final List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(COVERAGES_FILE);
+        final ReadCountCollection coverage = ReadCountCollectionUtils.parse(COVERAGES_FILE);
         final List<AllelicCount> snpCountsDummy =
                 Collections.singletonList(new AllelicCount(new SimpleInterval("1", 1, 1), 0, 1));
-        final Genome genome = new Genome(targetCoverages, snpCountsDummy, SAMPLE_NAME);
+        final Genome genome = new Genome(coverage, snpCountsDummy, SAMPLE_NAME);
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor

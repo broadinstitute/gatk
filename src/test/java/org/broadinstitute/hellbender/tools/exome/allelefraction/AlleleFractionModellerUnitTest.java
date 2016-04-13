@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import htsjdk.samtools.util.Log;
+import org.apache.commons.collections4.list.SetUniqueList;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.*;
@@ -190,9 +192,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
 
         final double minorFractionTolerance = 0.025;
 
-        // set up test data
-        final List<TargetCoverage> emptyTargets = new ArrayList<>();    // no targets in test data
-        final Genome genome = new Genome(emptyTargets, sample.getCounts(), "test");
+        final Genome genome = new Genome(AlleleFractionSimulatedData.TRIVIAL_TARGETS, sample.getCounts(), "test");
         final List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_FILE);
         final SegmentedModel segmentedModel = new SegmentedModel(segments, genome);
 

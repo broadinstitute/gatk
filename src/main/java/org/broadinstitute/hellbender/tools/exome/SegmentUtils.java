@@ -34,22 +34,6 @@ public final class SegmentUtils {
     private SegmentUtils() {}
 
     /**
-     * Returns the mean of coverages for targets in a given collection that overlap a given interval.
-     */
-    public static double meanTargetCoverage(final Locatable interval,
-                                            final TargetCollection<TargetCoverage> targets) {
-        Utils.nonNull(interval, "Can't get mean coverage of null interval.");
-        Utils.nonNull(targets, "The collection of target coverages cannot be null.");
-
-        final List<TargetCoverage> myTargets = targets.targets(interval);
-
-        if (myTargets.size() == 0) {
-            throw new IllegalStateException("Empty segment -- no overlapping targets.");
-        }
-        return myTargets.stream().mapToDouble(TargetCoverage::getCoverage).average().getAsDouble();
-    }
-
-    /**
      * Get difference between a segment mean and the overlapping targets.
      * This will select the overlapping targets from the input collection.
      *
@@ -58,13 +42,12 @@ public final class SegmentUtils {
      * @return          never {@code null}.  List of doubles of the difference, possibly empty.  Modifiable.
      */
     public static List<Double> segmentMeanTargetDifference(final ModeledSegment segment,
-                                                           final TargetCollection<TargetCoverage> targets) {
+                                                           final TargetCollection<ReadCountRecord.SingleSampleRecord> targets) {
         Utils.nonNull(segment, "Can't count targets of null segment.");
         Utils.nonNull(targets, "Counting targets requires non-null targets collection.");
 
         final double segMean = segment.getSegmentMeanInCRSpace();
-        final List<TargetCoverage> myTargets = targets.targets(segment);
-        return myTargets.stream().map(t -> (Math.pow(2, t.getCoverage()) - segMean)).collect(Collectors.toList());
+        return targets.targets(segment).stream().map(t -> (Math.pow(2, t.getCount()) - segMean)).collect(Collectors.toList());
     }
 
     /*===============================================================================================================*
@@ -314,7 +297,7 @@ public final class SegmentUtils {
                                                                 final Genome genome) {
         Utils.nonNull(genome, "The genome cannot be null.");
 
-        final TargetCollection<TargetCoverage> targets = genome.getTargets();
+        final TargetCollection<ReadCountRecord.SingleSampleRecord> targets = genome.getTargets();
         final TargetCollection<AllelicCount> snps = genome.getSNPs();
         final String sampleName = genome.getSampleName();
 
@@ -337,7 +320,7 @@ public final class SegmentUtils {
                                                    final Genome genome) {
         Utils.nonNull(genome, "The genome cannot be null.");
 
-        final TargetCollection<TargetCoverage> targets = genome.getTargets();
+        final TargetCollection<ReadCountRecord.SingleSampleRecord> targets = genome.getTargets();
         final TargetCollection<AllelicCount> snps = genome.getSNPs();
         final String sampleName = genome.getSampleName();
 

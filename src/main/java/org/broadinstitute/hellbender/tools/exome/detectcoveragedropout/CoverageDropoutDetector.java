@@ -11,10 +11,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
-import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
-import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.TargetCoverage;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -79,7 +76,8 @@ public final class CoverageDropoutDetector {
      *
      * @return never {@code null}.
      */
-    private MixtureMultivariateNormalFitResult retrieveGaussianMixtureModelForFilteredTargets(final ModeledSegment segment, final TargetCollection<TargetCoverage> targets, final double minProportion, final int numComponents){
+    private MixtureMultivariateNormalFitResult retrieveGaussianMixtureModelForFilteredTargets(final ModeledSegment segment,
+                                                                                              final TargetCollection<ReadCountRecord.SingleSampleRecord> targets, final double minProportion, final int numComponents){
         final List<ModeledSegment> segmentSingleton = Collections.singletonList(segment);
         return retrieveGaussianMixtureModelForFilteredTargets(segmentSingleton, targets, minProportion, numComponents);
     }
@@ -96,7 +94,8 @@ public final class CoverageDropoutDetector {
      * @param numComponents -- number of components to use in the GMM.  Usually, this is 2.
      * @return  never {@code null}.  Fitting result with indications whether it converged or was even attempted.
      */
-    private MixtureMultivariateNormalFitResult retrieveGaussianMixtureModelForFilteredTargets(final List<ModeledSegment> segments, final TargetCollection<TargetCoverage> targets, double minProportion, int numComponents){
+    private MixtureMultivariateNormalFitResult retrieveGaussianMixtureModelForFilteredTargets(final List<ModeledSegment> segments,
+                                                                                              final TargetCollection<ReadCountRecord.SingleSampleRecord> targets, double minProportion, int numComponents){
 
         // For each target in a segment that contains enough targets, normalize the difference against the segment mean
         //  and collapse the filtered targets into the copy ratio estimates.
@@ -141,7 +140,8 @@ public final class CoverageDropoutDetector {
      * @param minProportion -- minimum proportion (0, 1) of targets in the segment in order for the targets to be considered.
      * @return never {@code null}.  If no targets remain after filtering, an empty list will be returned.
      */
-    private List<Double> getNumProbeFilteredTargetList(final List<ModeledSegment> segments, final TargetCollection<TargetCoverage> targets, final double minProportion) {
+    private List<Double> getNumProbeFilteredTargetList(final List<ModeledSegment> segments,
+                                                       final TargetCollection<ReadCountRecord.SingleSampleRecord> targets, final double minProportion) {
         final int allTargetCount = targets.targetCount();
         final double minProportionCount = Math.max(Math.ceil(allTargetCount * minProportion), ABSOLUTE_MIN_NUM_TARGETS);
 
@@ -169,7 +169,8 @@ public final class CoverageDropoutDetector {
      *                             an actual two component GMM.
      * @return never {@code null}.  Whether this sample should be treated as a failure and additional data for analysis.
      */
-    public CoverageDropoutResult determineCoverageDropoutDetected(final List<ModeledSegment> segments, final TargetCollection<TargetCoverage> targets, final double minTargetProportion, final double thresholdDistancePerSegment, final double minProportionGoodSegments, final double minWeightRestriction) {
+    public CoverageDropoutResult determineCoverageDropoutDetected(final List<ModeledSegment> segments, final TargetCollection<ReadCountRecord.SingleSampleRecord> targets,
+        final double minTargetProportion, final double thresholdDistancePerSegment, final double minProportionGoodSegments, final double minWeightRestriction) {
 
         Utils.nonNull(segments, "Segments cannot be null");
         ParamUtils.inRange(minTargetProportion, 0, 1, "minimum target proportion must be in the range (0,1).");

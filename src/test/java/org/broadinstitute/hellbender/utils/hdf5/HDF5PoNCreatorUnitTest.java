@@ -450,9 +450,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                     counts[i][j] = rdn.nextDouble();
                 }
             }
-            final ReadCountCollection readCounts = new ReadCountCollection(
-                    SetUniqueList.setUniqueList(new ArrayList<>(targets)),
-                    SetUniqueList.setUniqueList(new ArrayList<>(columnNames)),
+            final ReadCountCollection readCounts = new ReadCountCollection(targets, columnNames,
                     new Array2DRowRealMatrix(counts, false));
             result.add(new Object[]{readCounts });
         }
@@ -475,9 +473,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                     counts[i][j] = rdn.nextDouble();
                 }
             }
-            final ReadCountCollection readCounts = new ReadCountCollection(
-                    SetUniqueList.setUniqueList(new ArrayList<>(targets)),
-                    SetUniqueList.setUniqueList(new ArrayList<>(columnNames)),
+            final ReadCountCollection readCounts = new ReadCountCollection(targets, columnNames,
                     new Array2DRowRealMatrix(counts, false));
             result.add(new Object[]{readCounts });
         }
@@ -500,9 +496,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                     counts[i][j] = rdn.nextDouble();
                 }
             }
-            final ReadCountCollection readCounts = new ReadCountCollection(
-                    SetUniqueList.setUniqueList(new ArrayList<>(targets)),
-                    SetUniqueList.setUniqueList(new ArrayList<>(columnNames)),
+            final ReadCountCollection readCounts = new ReadCountCollection(targets, columnNames,
                     new Array2DRowRealMatrix(counts, false));
             result.add(new Object[]{readCounts, percentile});
         }
@@ -525,10 +519,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                     counts[i][j] = rdn.nextDouble() <= zeroProbability ? 0.0 : rdn.nextDouble();
                 }
             }
-            final ReadCountCollection readCounts = new ReadCountCollection(
-                    SetUniqueList.setUniqueList(new ArrayList<>(targets)),
-                    SetUniqueList.setUniqueList(new ArrayList<>(columnNames)),
-                    new Array2DRowRealMatrix(counts, false));
+            final ReadCountCollection readCounts = new ReadCountCollection(targets, columnNames, new Array2DRowRealMatrix(counts, false));
             result.add(new Object[] { readCounts });
         }
         return result.toArray(new Object[result.size()][]);
@@ -551,9 +542,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                 add("3");
         }};
         result.add(new Object[] {
-                new ReadCountCollection(
-                   SetUniqueList.setUniqueList(targets),
-                   SetUniqueList.setUniqueList(columnNames),
+                new ReadCountCollection(targets, columnNames,
                    new Array2DRowRealMatrix(new double[][] {
                            new double[] { 1.1, 2.2, 3.3 },
                            new double[] { 0.1, 0.2, 0.3},
@@ -584,15 +573,9 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
             counts.setRow(i, rowData);
         }
 
-        new ReadCountCollection(
-                SetUniqueList.setUniqueList(targets),
-                SetUniqueList.setUniqueList(columnNames),
-                counts);
+        new ReadCountCollection(targets, columnNames, counts);
 
-        result.add(new Object[] {new ReadCountCollection(
-                SetUniqueList.setUniqueList(targets),
-                SetUniqueList.setUniqueList(columnNames),
-                counts)});
+        result.add(new Object[] {new ReadCountCollection(targets, columnNames, counts)});
         return result.toArray(new Object[result.size()][]);
     }
 

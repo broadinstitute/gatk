@@ -1,10 +1,15 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.collections4.list.SetUniqueList;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -44,13 +49,14 @@ public final class SNPSegmenter {
         try {
             final File targetsFromSNPCountsFile = File.createTempFile("targets-from-snps", ".tsv");
 
-            List<TargetCoverage> targetsFromSNPCounts = snps.targets().stream()
-                    .map(count -> count.toMinorAlleleFractionTargetCoverage(
-                            "snp-target" + count.getContig() + ":" + count.getStart() + "-" + count.getEnd(),
-                            allelicBias))
-                    .collect(Collectors.toList());
+            final List<Target> targets = snps.targets().stream()
+                    .map(ac -> new Target(name(ac), ac.getInterval())).collect(Collectors.toList());
 
-            TargetCoverageUtils.writeTargetsWithCoverage(targetsFromSNPCountsFile, sampleName, targetsFromSNPCounts);
+            final RealMatrix minorAlleleFractions = new Array2DRowRealMatrix(snps.targetCount(), 1);
+            minorAlleleFractions.setColumn(0, snps.targets().stream()
+                    .mapToDouble(ac -> ac.estimateMinorAlleleFraction(allelicBias)).toArray());
+
+            ReadCountCollectionUtils.write(targetsFromSNPCountsFile, new ReadCountCollection(targets, Arrays.asList(sampleName), minorAlleleFractions));
 
             //segment SNPs based on observed log_2 minor allele fraction (log_2 is applied in CBS.R)
             RCBSSegmenter.writeSegmentFile(sampleName, targetsFromSNPCountsFile.getAbsolutePath(),
@@ -59,5 +65,9 @@ public final class SNPSegmenter {
             throw new UserException.CouldNotCreateOutputFile("Could not create temporary output file during " +
                     "SNP segmentation.", e);
         }
+    }
+
+    private static String name(final AllelicCount ac) {
+        return "snp-target" + ac.getContig() + ":" + ac.getStart() + "-" + ac.getEnd();
     }
 }

@@ -63,7 +63,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final String sampleName = TargetCoverageUtils.getSampleNameForCLIsFromTargetCoverageFile(new File(tangentFile));
+        final String sampleName = ReadCountCollectionUtils.getSampleNameForCLIsFromReadCountsFile(new File(tangentFile));
         createPlot(sampleName, tangentFile, preTangentFile, segmentFile, plotDir, log, sexChrs);
         return "Success";
     }

@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import org.broadinstitute.hellbender.tools.exome.AllelicCount;
-import org.broadinstitute.hellbender.tools.exome.Genome;
-import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
+import org.apache.commons.collections4.list.SetUniqueList;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -31,7 +32,8 @@ public final class AlleleFractionDataUnitTest {
         ac.add(new AllelicCount(new SimpleInterval("chr", 10, 10), 1, 1));
         ac.add(new AllelicCount(new SimpleInterval("chr", 11, 11), 2, 2));
 
-        final Genome genome = new Genome(new ArrayList<>(), ac, "SAMPLE");
+        final Genome genome = new Genome(AlleleFractionSimulatedData.TRIVIAL_TARGETS, ac, "SAMPLE");
+
         final SegmentedModel segmentedModel = new SegmentedModel(segments, genome);
 
         final AlleleFractionData dc = new AlleleFractionData(segmentedModel);

@@ -2,7 +2,10 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.primitives.Doubles;
 import htsjdk.samtools.util.Log;
+import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -16,6 +19,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
@@ -101,13 +105,13 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
      * </p>
      */
     @Test
-    public void testRunMCMCOnCopyRatioSegmentedModel() {
+    public void testRunMCMCOnCopyRatioSegmentedModel() throws IOException {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
         //load data (coverages and number of targets in each segment)
-        final List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(COVERAGES_FILE);
-        final Genome genome = new Genome(targetCoverages, Collections.emptyList(), SAMPLE_NAME); //Genome with no SNPs
+        final ReadCountCollection coverage = ReadCountCollectionUtils.parse(COVERAGES_FILE);
+        final Genome genome = new Genome(coverage, Collections.emptyList(), SAMPLE_NAME); //Genome with no SNPs
         final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
 
         //run MCMC
@@ -173,7 +177,7 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
         final List<Integer> outlierIndicatorsTruthAsInt = loadList(OUTLIER_INDICATORS_TRUTH_FILE, Integer::parseInt);
         final List<Boolean> outlierIndicatorsTruth =
                 outlierIndicatorsTruthAsInt.stream().map(i -> i == 1).collect(Collectors.toList());
-        for (int target = 0; target < targetCoverages.size(); target++) {
+        for (int target = 0; target < coverage.targets().size(); target++) {
             int numSamplesOutliers = 0;
             for (ACNVCopyRatioModeller.OutlierIndicators sample : outlierIndicatorSamples) {
                 if (sample.getOutlierIndicator(target)) {
@@ -185,14 +189,7 @@ public final class ACNVCopyRatioModellerUnitTest extends BaseTest {
                 numIndicatorsCorrect++;
             }
         }
-        final double fractionOfOutlierIndicatorsCorrect = (double) numIndicatorsCorrect / targetCoverages.size();
+        final double fractionOfOutlierIndicatorsCorrect = (double) numIndicatorsCorrect / coverage.targets().size();
         Assert.assertTrue(fractionOfOutlierIndicatorsCorrect >= 0.95);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testMissingData() {
-        final Genome genome = new Genome(Collections.emptyList(), Collections.emptyList(), SAMPLE_NAME);
-        final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
-        new ACNVCopyRatioModeller(segmentedModel);
     }
 }
