@@ -16,14 +16,13 @@ plugins {
     id 'signing'
     id "jacoco"
     id "cpp"
-    id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib and IntelDeflater
+    id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
     id "com.github.johnrengelman.shadow" version "1.2.3"
     id "com.github.kt3k.coveralls" version "2.6.3"
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
 
 }
 
-project.ext.set("htsjdkVersion", "2.2.1")
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
@@ -47,12 +46,6 @@ task downloadGsaLibFile(type: Download) {
     overwrite false
 }
 
-task downloadIntelDeflater(type: Download) {
-    //IntelDeflater is not packages with the rest of HTSJDK so we download it by hand
-    src 'https://github.com/samtools/htsjdk/raw/' + project.htsjdkVersion + '/lib/jni/libIntelDeflater.so'
-    dest 'build/'
-
-}
 
 repositories {
     mavenCentral()
@@ -110,7 +103,7 @@ task gcovTestReport(type: Exec){
 
 dependencies {
     compile 'com.google.guava:guava:18.0'
-    compile 'com.github.samtools:htsjdk:' + project.htsjdkVersion
+    compile 'com.github.samtools:htsjdk:2.2.1-ca2a042-20160413.025712-1'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
@@ -163,6 +156,17 @@ dependencies {
     testCompile 'junit:junit:4.12'
     testCompile "org.mockito:mockito-core:1.10.19"
 }
+
+def findJarByName(Configuration config, String name) {
+    config.filter { it.name.startsWith(name)}.singleFile
+}
+
+task extractIntelDeflater(type: Copy) {
+    def htsjdkJar = { findJarByName(configurations.compile, 'htsjdk') }
+    from { zipTree( htsjdkJar ).matching { include 'lib/jni/libIntelDeflator.so'} }  //note the spelling mistake, correct this once htsjdk is updated
+    into 'build/libIntelDeflater.so'
+}
+
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -392,7 +396,7 @@ uploadArchives {
 task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
-installDist.dependsOn downloadGsaLibFile, downloadIntelDeflater
+installDist.dependsOn downloadGsaLibFile, extractIntelDeflater
 build.dependsOn installDist
 check.dependsOn installDist
 
