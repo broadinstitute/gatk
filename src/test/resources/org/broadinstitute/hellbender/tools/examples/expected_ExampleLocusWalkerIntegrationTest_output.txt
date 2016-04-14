@@ -1,0 +1,742 @@
+Current locus 1:200 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:199-200, Ref:GG*, Alt(s):[G]
+        1:200-200, Ref:G*, Alt(s):[A]
+
+Current locus 1:201 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:202 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:203 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+       	1:203-206, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:204 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:203-206, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:205 (coverage=2)
+	Reference base(s): N
+	Overlapping variant(s):
+        1:203-206, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:206 (coverage=2)
+	Reference base(s): N
+	Overlapping variant(s):
+        1:203-206, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:207 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:208 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:209 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:210 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:211 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:212 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:213 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:214 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:215 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:216 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:217 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:218 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:219 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:220 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:221 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:222 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:223 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:224 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:225 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:226 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:227 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:228 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:229 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:230 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:231 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:232 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:233 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:234 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:235 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:236 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:237 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:238 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:239 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:240 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:241 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:242 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:243 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:244 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:245 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:246 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:247 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:248 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:249 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:250 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:251 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:252 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:253 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:254 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:255 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:256 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:257 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:258 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:259 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:260 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:261 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:262 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:263 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:264 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:265 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:266 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:267 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:268 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:269 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:270 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:271 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:272 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:273 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:274 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:275 (coverage=3)
+	Reference base(s): N
+
+Current locus 1:276 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:277 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:278 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:279 (coverage=2)
+	Reference base(s): N
+
+Current locus 1:280 (coverage=2)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:280-280, Ref:G*, Alt(s):[A]
+
+Current locus 1:281 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:282 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:283 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:284 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+        1:284-286, Ref:GGG*, Alt(s):[G]
+
+Current locus 1:285 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:284-286, Ref:GGG*, Alt(s):[G]
+    	1:285-285, Ref:G*, Alt(s):[A]
+
+Current locus 1:1000 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:1000-1000, Ref:G*, Alt(s):[A]
+    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:1001 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:1002 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:1003 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:1000-1003, Ref:GGGG*, Alt(s):[G]
+
+Current locus 1:1004 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1005 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1006 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1007 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1008 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1009 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1010 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1011 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1012 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1013 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1014 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1015 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1016 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1017 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1018 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1019 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1020 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1021 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1022 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1023 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1024 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1025 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1026 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1027 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1028 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1029 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1030 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1031 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1032 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1033 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1034 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1035 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1036 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1037 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1038 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1039 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1040 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1041 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1042 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1043 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1044 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1045 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1046 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1047 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1048 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1049 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1050 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1051 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1052 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1053 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1054 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1055 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1056 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1057 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1058 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1059 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1060 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1061 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1062 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1063 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1064 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1065 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1066 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1067 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1068 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1069 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1070 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1071 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1072 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1073 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1074 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1075 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1100 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1101 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1102 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1103 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1104 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1105 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1106 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1107 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1108 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1109 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1110 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1111 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1112 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1113 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1114 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1115 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1116 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1117 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1118 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1119 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1120 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1121 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1122 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1123 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1124 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1125 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1126 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1127 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1128 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1129 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1130 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1131 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1132 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1133 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1134 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1135 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1136 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1137 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1138 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1139 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1140 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1141 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1142 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1143 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1144 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1145 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1146 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1147 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1148 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1149 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1150 (coverage=1)
+	Reference base(s): N
+	Overlapping variant(s):
+    	1:1150-1150, Ref:G*, Alt(s):[A]
+
+Current locus 1:1151 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1152 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1153 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1154 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1155 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1156 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1157 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1158 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1159 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1160 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1161 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1162 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1163 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1164 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1165 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1166 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1167 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1168 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1169 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1170 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1171 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1172 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1173 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1174 (coverage=1)
+	Reference base(s): N
+
+Current locus 1:1175 (coverage=1)
+	Reference base(s): N

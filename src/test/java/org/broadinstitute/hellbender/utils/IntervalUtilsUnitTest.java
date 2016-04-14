@@ -56,6 +56,29 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     @Test
+    public void testCompareLocatables() throws Exception {
+        final SAMSequenceDictionary dict = new SAMSequenceDictionary();
+        dict.addSequence(new SAMSequenceRecord("1", 1000));
+        dict.addSequence(new SAMSequenceRecord("2", 1000));
+        final SimpleInterval chr1_1_100 = new SimpleInterval("1:1-100");
+        final SimpleInterval chr1_5_100 = new SimpleInterval("1:5-100");
+        final SimpleInterval chr2_1_100 = new SimpleInterval("2:1-100");
+
+        // equal intervals comparison return 0
+        Assert.assertEquals(IntervalUtils.compareLocatables(chr1_1_100, chr1_1_100, dict), 0);
+        Assert.assertEquals(IntervalUtils.compareLocatables(chr1_5_100, chr1_5_100, dict), 0);
+        Assert.assertEquals(IntervalUtils.compareLocatables(chr2_1_100, chr2_1_100, dict), 0);
+        // first < second return negative
+        Assert.assertTrue(IntervalUtils.compareLocatables(chr1_1_100, chr1_5_100, dict) < 0);
+        Assert.assertTrue(IntervalUtils.compareLocatables(chr1_1_100, chr2_1_100, dict) < 0);
+        Assert.assertTrue(IntervalUtils.compareLocatables(chr1_5_100, chr2_1_100, dict) < 0);
+        // first > second return positive
+        Assert.assertTrue(IntervalUtils.compareLocatables(chr2_1_100, chr1_1_100, dict) > 0);
+        Assert.assertTrue(IntervalUtils.compareLocatables(chr2_1_100, chr1_5_100, dict) > 0);
+        Assert.assertTrue(IntervalUtils.compareLocatables(chr1_5_100, chr1_1_100, dict) > 0);
+    }
+
+    @Test
     public void testSpanningInterval_nullIfEmptyInput() throws Exception {
         Assert.assertNull(IntervalUtils.getSpanningInterval(Collections.emptyList()));
     }
