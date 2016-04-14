@@ -5,9 +5,14 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 
 /**
@@ -49,6 +54,48 @@ public interface Shard<T> extends Iterable<T>, Locatable {
     @Override
     default String getContig() {
         return getInterval().getContig();
+    }
+
+
+    /**
+     * @return number of bases of padding to the left of our interval
+     */
+    default int numLeftPaddingBases() {
+        return getInterval().getStart() - getPaddedInterval().getStart();
+    }
+
+    /**
+     * @return number of bases of padding to the right of our interval
+     */
+    default int numRightPaddingBases() {
+        return getPaddedInterval().getEnd() - getInterval().getEnd();
+    }
+
+    /**
+     * @param loc Locatable to test
+     * @return true if loc is completely contained within this shard's interval, otherwise false
+     */
+    default boolean contains(final Locatable loc) {
+        Utils.nonNull(loc);
+        return getInterval().contains(loc);
+    }
+
+    /**
+     * @param loc Locatable to test
+     * @return true if loc starts within this shard's interval, otherwise false
+     */
+    default boolean containsStartPosition(final Locatable loc) {
+        Utils.nonNull(loc);
+        return getInterval().contains(new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart()));
+    }
+
+    /**
+     * @return a List containing all records in this shard.
+     *
+     * Default implementation pre-load all records returned by {@link #iterator()}.
+     */
+    default List<T> loadAllRecords() {
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED), false).collect(Collectors.toList());
     }
 
     /**

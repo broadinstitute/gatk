@@ -1,0 +1,20 @@
+Window 1:200-299 contains 7 variants (4/0 transition/transversion). Unknown GC content for reference. Read coverage: 3.
+Window 1:250-349 contains 4 variants (3/0 transition/transversion). Unknown GC content for reference. Read coverage: 3.
+Window 1:300-399 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:350-449 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:400-499 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:450-549 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:500-599 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:550-649 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:600-699 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:650-749 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:700-799 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:750-849 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:800-899 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:850-949 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:900-999 contains 1 variants (1/0 transition/transversion). Unknown GC content for reference. Read coverage: 0.
+Window 1:950-1049 contains 3 variants (2/0 transition/transversion). Unknown GC content for reference. Read coverage: 1.
+Window 1:1000-1099 contains 3 variants (2/0 transition/transversion). Unknown GC content for reference. Read coverage: 1.
+Window 1:1050-1125 contains 1 variants (1/0 transition/transversion). Unknown GC content for reference. Read coverage: 2.
+Window 1:1100-1125 contains 0 variants (0/0 transition/transversion). Unknown GC content for reference. Read coverage: 1.
+Window 4:15951-16000 contains 0 variants (0/0 transition/transversion). Reference GC content: 0.68%. Read coverage: 0.
