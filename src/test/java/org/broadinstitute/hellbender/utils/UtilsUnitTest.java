@@ -532,4 +532,66 @@ public final class UtilsUnitTest extends BaseTest {
         //Note 'from' is inclusive, 'to' is exclusive
         Assert.assertEquals(Utils.equalRange(arr1, from, arr2, 0, to - from), expected);
     }
+
+    @Test
+    public void testLastIndexOfQueryTooLong() {
+        final String reference = "AAAA";
+        final String query     = "AAAAAAA";
+
+        final int result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        final int expected = reference.lastIndexOf(query);
+        Assert.assertEquals(result, expected);
+    }
+
+    @Test
+    public void testLastIndexOfLastBoundaries() {
+        final String reference = "AAAACCCCTTTTGGGG";
+
+        // match right boundary of reference
+        String query = "TGGGG";
+        int result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        int expected = reference.lastIndexOf(query);
+        Assert.assertEquals(result, expected);
+
+        // match left boundary of reference
+        query = "AAAAC";
+        result = Utils.lastIndexOf(reference.getBytes(), query.getBytes());
+        expected = reference.lastIndexOf(query);
+        Assert.assertEquals(result, expected);
+    }
+
+    private void randomByteString(Random rng, byte[] bytes) {
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte)(rng.nextInt(94) + 32);
+        }
+    }
+
+    @Test
+    public void testLastIndexOfRandom() {
+        final int num_tests = 100;
+        final int referenceLength = 1000;
+        final int queryLength = 100;
+        
+        byte [] reference = new byte[referenceLength];
+        byte [] query = new byte[queryLength];
+
+        final Random rng = Utils.getRandomGenerator();
+        
+        for (int i = 0; i < num_tests; i++) {
+            randomByteString(rng, reference);
+            randomByteString(rng, query);
+
+            // add query to reference at a random location for 75% of the tests
+            if (i % 4 > 0) {
+                final int index = rng.nextInt(referenceLength - queryLength);
+                for (int j = 0; j < queryLength; j++) {
+                    reference[index+j] = query[j];
+                }
+            }
+            
+            final int result = Utils.lastIndexOf(reference, query);
+            final int expected = new String(reference).lastIndexOf(new String(query));
+            Assert.assertEquals(result, expected);
+        }
+    }
 }

@@ -117,4 +117,119 @@ public final class SWPairwiseAlignmentUnitTest extends BaseTest {
         }
     }
 
+    @Test(enabled = true)
+    public void testSubstringMatchSoftclip() {
+        final String match     = "CCCCC";
+        final String reference = "AAA" + match;
+        final String read      = match;
+        final int expectedStart = 3;
+        final String expectedCigar = "5M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.SOFTCLIP);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchIndel() {
+        final String match     = "CCCCC";
+        final String reference = "AAA" + match;
+        final String read      = match;
+        final int expectedStart = 0;
+        final String expectedCigar = "3D5M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.INDEL);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchLeadingIndel() {
+        final String match     = "CCCCC";
+        final String reference = "AAA" + match;
+        final String read      = match;
+        final int expectedStart = 0;
+        final String expectedCigar = "3D5M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.LEADING_INDEL);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchIgnore() {
+        final String match     = "CCCCC";
+        final String reference = "AAA" + match;
+        final String read      = match;
+        final int expectedStart = 3;
+        final String expectedCigar = "5M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.IGNORE);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchSoftclipLong() {
+        final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
+        final String read      = "AAAAAAA";
+        final int expectedStart = 359;
+        final String expectedCigar = "7M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.SOFTCLIP);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchIndelLong() {
+        final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
+        final String read      = "AAAAAAA";
+        final int expectedStart = 0;
+        final String expectedCigar = "1M358D6M29D";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.INDEL);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchLeadingIndelLong() {
+        final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
+        final String read      = "AAAAAAA";
+        final int expectedStart = 0;
+        final String expectedCigar = "1M1D6M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.LEADING_INDEL);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
+
+    @Test(enabled = true)
+    public void testSubstringMatchLeadingIgnoreLong() {
+        final String reference = "ATAGAAAATAGTTTTTGGAAATATGGGTGAAGAGACATCTCCTCTTATGGAAAAAGGGATTCTAGAATTTAACAATAAATATTCCCAACTTTCCCCAAGGCTTTAAAATCTACCTTGAAGGAGCAGCTGATGTATTTCTAGAACAGACTTAGGTGTCTTGGTGTGGCCTGTAAAGAGATACTGTCTTTCTCTTTTGAGTGTAAGAGAGAAAGGACAGTCTACTCAATAAAGAGTGCTGGGAAAACTGAATATCCACACACAGAATAATAAAACTAGATCCTATCTCTCACCATATACAAAGATCAACTCAAAACAAATTAAAGACCTAAATGTAAGACAAGAAATTATAAAACTACTAGAAAAAAACACAAGGGAAATGCTTCAGGACATTGGC";
+        final String read      = "AAAAAAA";
+        final int expectedStart = 359;
+        final String expectedCigar = "7M";
+        final SWPairwiseAlignment sw = new SWPairwiseAlignment(reference.getBytes(), read.getBytes(),
+                                                               SWPairwiseAlignment.ORIGINAL_DEFAULT,
+                                                               SWPairwiseAlignment.OverhangStrategy.IGNORE);
+        sw.printAlignment(reference.getBytes(), read.getBytes());
+        Assert.assertEquals(sw.getAlignmentStart2wrt1(), expectedStart);
+        Assert.assertEquals(sw.getCigar().toString(), expectedCigar);
+    }
 }
