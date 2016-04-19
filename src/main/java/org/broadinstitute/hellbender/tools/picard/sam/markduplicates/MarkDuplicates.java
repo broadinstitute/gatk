@@ -2,9 +2,10 @@ package org.broadinstitute.hellbender.tools.picard.sam.markduplicates;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
-import htsjdk.samtools.util.*;
-
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.SortingCollection;
+import htsjdk.samtools.util.SortingLongCollection;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
@@ -91,82 +92,83 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
             logger.info("Found " + (this.libraryIdGenerator.getNumberOfOpticalDuplicateClusters()) + " optical duplicate clusters.");
         }
 
-        final SamHeaderAndIterator headerAndIterator = openInputs();
-        final SAMFileHeader header = headerAndIterator.header;
+        try( final SamHeaderAndIterator headerAndIterator = openInputs()) {
+            final SAMFileHeader header = headerAndIterator.header;
 
-        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(header);
-        outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-        for (final String comment : COMMENT) outputHeader.addComment(comment);
+            final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(header);
+            outputHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+            for (final String comment : COMMENT) outputHeader.addComment(comment);
 
-        // Key: previous PG ID on a SAM Record (or null).  Value: New PG ID to replace it.
-        final Map<String, String> chainedPgIds = getChainedPgIds(outputHeader);
+            // Key: previous PG ID on a SAM Record (or null).  Value: New PG ID to replace it.
+            final Map<String, String> chainedPgIds = getChainedPgIds(outputHeader);
 
-        try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, true)) {
+            try (final SAMFileWriter out = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, true)) {
 
-            // Now copy over the file while marking all the necessary indexes as duplicates
-            long recordInFileIndex = 0;
-            long nextDuplicateIndex = (this.duplicateIndexes.hasNext() ? this.duplicateIndexes.next() : -1);
+                // Now copy over the file while marking all the necessary indexes as duplicates
+                long recordInFileIndex = 0;
+                long nextDuplicateIndex = (this.duplicateIndexes.hasNext() ? this.duplicateIndexes.next() : -1);
 
-            final ProgressLogger progress = new ProgressLogger(logger, (int) 1e7, "Written");
-            try (final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator) {
-                while (iterator.hasNext()) {
-                    final SAMRecord rec = iterator.next();
-                    if (!rec.isSecondaryOrSupplementary()) {
-                        final String library = LibraryIdGenerator.getLibraryName(header, rec);
-                        DuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
-                        if (metrics == null) {
-                            metrics = new DuplicationMetrics();
-                            metrics.LIBRARY = library;
-                            libraryIdGenerator.addMetricsByLibrary(library, metrics);
-                        }
-
-                        // First bring the simple metrics up to date
-                        if (rec.getReadUnmappedFlag()) {
-                            ++metrics.UNMAPPED_READS;
-                        } else if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
-                            ++metrics.UNPAIRED_READS_EXAMINED;
-                        } else {
-                            ++metrics.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
-                        }
-
-
-                        if (recordInFileIndex == nextDuplicateIndex) {
-                            rec.setDuplicateReadFlag(true);
-
-                            // Update the duplication metrics
-                            if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
-                                ++metrics.UNPAIRED_READ_DUPLICATES;
-                            } else {
-                                ++metrics.READ_PAIR_DUPLICATES;// will need to be divided by 2 at the end
+                final ProgressLogger progress = new ProgressLogger(logger, (int) 1e7, "Written");
+                try (final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator) {
+                    while (iterator.hasNext()) {
+                        final SAMRecord rec = iterator.next();
+                        if (!rec.isSecondaryOrSupplementary()) {
+                            final String library = LibraryIdGenerator.getLibraryName(header, rec);
+                            DuplicationMetrics metrics = libraryIdGenerator.getMetricsByLibrary(library);
+                            if (metrics == null) {
+                                metrics = new DuplicationMetrics();
+                                metrics.LIBRARY = library;
+                                libraryIdGenerator.addMetricsByLibrary(library, metrics);
                             }
 
-                            // Now try and figure out the next duplicate index
-                            if (this.duplicateIndexes.hasNext()) {
-                                nextDuplicateIndex = this.duplicateIndexes.next();
+                            // First bring the simple metrics up to date
+                            if (rec.getReadUnmappedFlag()) {
+                                ++metrics.UNMAPPED_READS;
+                            } else if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
+                                ++metrics.UNPAIRED_READS_EXAMINED;
                             } else {
-                                // Only happens once we've marked all the duplicates
-                                nextDuplicateIndex = -1;
+                                ++metrics.READ_PAIRS_EXAMINED; // will need to be divided by 2 at the end
                             }
-                        } else {
-                            rec.setDuplicateReadFlag(false);
-                        }
-                    }
-                    recordInFileIndex++;
 
-                    if (!this.REMOVE_DUPLICATES || !rec.getDuplicateReadFlag()) {
-                        if (PROGRAM_RECORD_ID != null) {
-                            rec.setAttribute(SAMTag.PG.name(), chainedPgIds.get(rec.getStringAttribute(SAMTag.PG.name())));
+
+                            if (recordInFileIndex == nextDuplicateIndex) {
+                                rec.setDuplicateReadFlag(true);
+
+                                // Update the duplication metrics
+                                if (!rec.getReadPairedFlag() || rec.getMateUnmappedFlag()) {
+                                    ++metrics.UNPAIRED_READ_DUPLICATES;
+                                } else {
+                                    ++metrics.READ_PAIR_DUPLICATES;// will need to be divided by 2 at the end
+                                }
+
+                                // Now try and figure out the next duplicate index
+                                if (this.duplicateIndexes.hasNext()) {
+                                    nextDuplicateIndex = this.duplicateIndexes.next();
+                                } else {
+                                    // Only happens once we've marked all the duplicates
+                                    nextDuplicateIndex = -1;
+                                }
+                            } else {
+                                rec.setDuplicateReadFlag(false);
+                            }
                         }
-                        out.addAlignment(rec);
-                        progress.record(rec);
+                        recordInFileIndex++;
+
+                        if (!this.REMOVE_DUPLICATES || !rec.getDuplicateReadFlag()) {
+                            if (PROGRAM_RECORD_ID != null) {
+                                rec.setAttribute(SAMTag.PG.name(), chainedPgIds.get(rec.getStringAttribute(SAMTag.PG.name())));
+                            }
+                            out.addAlignment(rec);
+                            progress.record(rec);
+                        }
                     }
                 }
-            }
-            this.duplicateIndexes.cleanup();
+                this.duplicateIndexes.cleanup();
 
-            reportMemoryStats("Before output close");
+                reportMemoryStats("Before output close");
+            }
+            reportMemoryStats("After output close");
         }
-        reportMemoryStats("After output close");
 
         // Write out the metrics
         finalizeAndWriteMetrics(libraryIdGenerator);
@@ -208,95 +210,96 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
                 maxInMemory,
                 TMP_DIR);
 
-        final SamHeaderAndIterator headerAndIterator = openInputs();
-        final SAMFileHeader header = headerAndIterator.header;
-        final ReadEndsForMarkDuplicatesMap tmp = new DiskBasedReadEndsForMarkDuplicatesMap(MAX_FILE_HANDLES_FOR_READ_ENDS_MAP);
-        long index = 0;
-        final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");
-        final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator;
+        try(final SamHeaderAndIterator headerAndIterator = openInputs()) {
+            final SAMFileHeader header = headerAndIterator.header;
+            final ReadEndsForMarkDuplicatesMap tmp = new DiskBasedReadEndsForMarkDuplicatesMap(MAX_FILE_HANDLES_FOR_READ_ENDS_MAP);
+            long index = 0;
+            final ProgressLogger progress = new ProgressLogger(logger, (int) 1e6, "Read");
+            final CloseableIterator<SAMRecord> iterator = headerAndIterator.iterator;
 
-        if (null == this.libraryIdGenerator) {
-            this.libraryIdGenerator = new LibraryIdGenerator(header);
-        }
-
-        while (iterator.hasNext()) {
-            final SAMRecord rec = iterator.next();
-
-            // This doesn't have anything to do with building sorted ReadEnd lists, but it can be done in the same pass
-            // over the input
-            if (PROGRAM_RECORD_ID != null) {
-                // Gather all PG IDs seen in merged input files in first pass.  These are gathered for two reasons:
-                // - to know how many different PG records to create to represent this program invocation.
-                // - to know what PG IDs are already used to avoid collisions when creating new ones.
-                // Note that if there are one or more records that do not have a PG tag, then a null value
-                // will be stored in this set.
-                pgIdsSeen.add(rec.getStringAttribute(SAMTag.PG.name()));
+            if (null == this.libraryIdGenerator) {
+                this.libraryIdGenerator = new LibraryIdGenerator(header);
             }
 
-            if (rec.getReadUnmappedFlag()) {
-                if (rec.getReferenceIndex() == -1) {
-                    // When we hit the unmapped reads with no coordinate, no reason to continue.
-                    break;
+            while (iterator.hasNext()) {
+                final SAMRecord rec = iterator.next();
+
+                // This doesn't have anything to do with building sorted ReadEnd lists, but it can be done in the same pass
+                // over the input
+                if (PROGRAM_RECORD_ID != null) {
+                    // Gather all PG IDs seen in merged input files in first pass.  These are gathered for two reasons:
+                    // - to know how many different PG records to create to represent this program invocation.
+                    // - to know what PG IDs are already used to avoid collisions when creating new ones.
+                    // Note that if there are one or more records that do not have a PG tag, then a null value
+                    // will be stored in this set.
+                    pgIdsSeen.add(rec.getStringAttribute(SAMTag.PG.name()));
                 }
-                // If this read is unmapped but sorted with the mapped reads, just skip it.
-            } else if (!rec.isSecondaryOrSupplementary()) {
-                final ReadEndsForMarkDuplicates fragmentEnd = buildReadEnds(header, index, rec);
-                this.fragSort.add(fragmentEnd);
 
-                if (rec.getReadPairedFlag() && !rec.getMateUnmappedFlag()) {
-                    final String key = rec.getAttribute(ReservedTagConstants.READ_GROUP_ID) + ":" + rec.getReadName();
-                    ReadEndsForMarkDuplicates pairedEnds = tmp.remove(rec.getReferenceIndex(), key);
+                if (rec.getReadUnmappedFlag()) {
+                    if (rec.getReferenceIndex() == -1) {
+                        // When we hit the unmapped reads with no coordinate, no reason to continue.
+                        break;
+                    }
+                    // If this read is unmapped but sorted with the mapped reads, just skip it.
+                } else if (!rec.isSecondaryOrSupplementary()) {
+                    final ReadEndsForMarkDuplicates fragmentEnd = buildReadEnds(header, index, rec);
+                    this.fragSort.add(fragmentEnd);
 
-                    // See if we've already seen the first end or not
-                    if (pairedEnds == null) {
-                        pairedEnds = buildReadEnds(header, index, rec);
-                        tmp.put(pairedEnds.read2ReferenceIndex, key, pairedEnds);
-                    } else {
-                        final int sequence = fragmentEnd.read1ReferenceIndex;
-                        final int coordinate = fragmentEnd.read1Coordinate;
+                    if (rec.getReadPairedFlag() && !rec.getMateUnmappedFlag()) {
+                        final String key = rec.getAttribute(ReservedTagConstants.READ_GROUP_ID) + ":" + rec.getReadName();
+                        ReadEndsForMarkDuplicates pairedEnds = tmp.remove(rec.getReferenceIndex(), key);
 
-                        // Set orientationForOpticalDuplicates, which always goes by the first then the second end for the strands.  NB: must do this
-                        // before updating the orientation later.
-                        if (rec.getFirstOfPairFlag()) {
-                            pairedEnds.orientationForOpticalDuplicates = ReadEnds.getOrientationByte(rec.getReadNegativeStrandFlag(), pairedEnds.orientation == ReadEnds.R);
+                        // See if we've already seen the first end or not
+                        if (pairedEnds == null) {
+                            pairedEnds = buildReadEnds(header, index, rec);
+                            tmp.put(pairedEnds.read2ReferenceIndex, key, pairedEnds);
                         } else {
-                            pairedEnds.orientationForOpticalDuplicates = ReadEnds.getOrientationByte(pairedEnds.orientation == ReadEnds.R, rec.getReadNegativeStrandFlag());
-                        }
+                            final int sequence = fragmentEnd.read1ReferenceIndex;
+                            final int coordinate = fragmentEnd.read1Coordinate;
 
-                        // If the second read is actually later, just add the second read data, else flip the reads
-                        if (sequence > pairedEnds.read1ReferenceIndex ||
-                                (sequence == pairedEnds.read1ReferenceIndex && coordinate >= pairedEnds.read1Coordinate)) {
-                            pairedEnds.read2ReferenceIndex = sequence;
-                            pairedEnds.read2Coordinate = coordinate;
-                            pairedEnds.read2IndexInFile = index;
-                            pairedEnds.orientation = ReadEnds.getOrientationByte(pairedEnds.orientation == ReadEnds.R,
-                                    rec.getReadNegativeStrandFlag());
-                        } else {
-                            pairedEnds.read2ReferenceIndex = pairedEnds.read1ReferenceIndex;
-                            pairedEnds.read2Coordinate = pairedEnds.read1Coordinate;
-                            pairedEnds.read2IndexInFile = pairedEnds.read1IndexInFile;
-                            pairedEnds.read1ReferenceIndex = sequence;
-                            pairedEnds.read1Coordinate = coordinate;
-                            pairedEnds.read1IndexInFile = index;
-                            pairedEnds.orientation = ReadEnds.getOrientationByte(rec.getReadNegativeStrandFlag(),
-                                    pairedEnds.orientation == ReadEnds.R);
-                        }
+                            // Set orientationForOpticalDuplicates, which always goes by the first then the second end for the strands.  NB: must do this
+                            // before updating the orientation later.
+                            if (rec.getFirstOfPairFlag()) {
+                                pairedEnds.orientationForOpticalDuplicates = ReadEnds.getOrientationByte(rec.getReadNegativeStrandFlag(), pairedEnds.orientation == ReadEnds.R);
+                            } else {
+                                pairedEnds.orientationForOpticalDuplicates = ReadEnds.getOrientationByte(pairedEnds.orientation == ReadEnds.R, rec.getReadNegativeStrandFlag());
+                            }
 
-                        pairedEnds.score += DuplicateScoringStrategy.computeDuplicateScore(rec, this.DUPLICATE_SCORING_STRATEGY);
-                        this.pairSort.add(pairedEnds);
+                            // If the second read is actually later, just add the second read data, else flip the reads
+                            if (sequence > pairedEnds.read1ReferenceIndex ||
+                                    (sequence == pairedEnds.read1ReferenceIndex && coordinate >= pairedEnds.read1Coordinate)) {
+                                pairedEnds.read2ReferenceIndex = sequence;
+                                pairedEnds.read2Coordinate = coordinate;
+                                pairedEnds.read2IndexInFile = index;
+                                pairedEnds.orientation = ReadEnds.getOrientationByte(pairedEnds.orientation == ReadEnds.R,
+                                        rec.getReadNegativeStrandFlag());
+                            } else {
+                                pairedEnds.read2ReferenceIndex = pairedEnds.read1ReferenceIndex;
+                                pairedEnds.read2Coordinate = pairedEnds.read1Coordinate;
+                                pairedEnds.read2IndexInFile = pairedEnds.read1IndexInFile;
+                                pairedEnds.read1ReferenceIndex = sequence;
+                                pairedEnds.read1Coordinate = coordinate;
+                                pairedEnds.read1IndexInFile = index;
+                                pairedEnds.orientation = ReadEnds.getOrientationByte(rec.getReadNegativeStrandFlag(),
+                                        pairedEnds.orientation == ReadEnds.R);
+                            }
+
+                            pairedEnds.score += DuplicateScoringStrategy.computeDuplicateScore(rec, this.DUPLICATE_SCORING_STRATEGY);
+                            this.pairSort.add(pairedEnds);
+                        }
                     }
                 }
+
+                // Print out some stats every 1m reads
+                ++index;
+                if (progress.record(rec)) {
+                    logger.info("Tracking " + tmp.size() + " as yet unmatched pairs. " + tmp.sizeInRam() + " records in RAM.");
+                }
             }
 
-            // Print out some stats every 1m reads
-            ++index;
-            if (progress.record(rec)) {
-                logger.info("Tracking " + tmp.size() + " as yet unmatched pairs. " + tmp.sizeInRam() + " records in RAM.");
-            }
+            logger.info("Read " + index + " records. " + tmp.size() + " pairs never matched.");
+            iterator.close();
         }
-
-        logger.info("Read " + index + " records. " + tmp.size() + " pairs never matched.");
-        iterator.close();
 
         // Tell these collections to free up memory if possible.
         this.pairSort.doneAdding();

@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.DuplicateScoringStrategy.ScoringStrategy;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.CloseableIterator;
+import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -183,13 +184,20 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
     }
 
     /** Little class used to package up a header and an iterable/iterator. */
-    public static final class SamHeaderAndIterator {
+    public static final class SamHeaderAndIterator implements AutoCloseable{
         public final SAMFileHeader header;
         public final CloseableIterator<SAMRecord> iterator;
+        private final List<SamReader> readers;
 
-        public SamHeaderAndIterator(final SAMFileHeader header, final CloseableIterator<SAMRecord> iterator) {
+        public SamHeaderAndIterator(final SAMFileHeader header, final CloseableIterator<SAMRecord> iterator, final List<SamReader> readers) {
             this.header = header;
             this.iterator = iterator;
+            this.readers = readers;
+        }
+
+        @Override
+        public void close(){
+            CloserUtil.close(readers);
         }
     }
 
@@ -217,11 +225,11 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
         }
 
         if (headers.size() == 1) {
-            return new SamHeaderAndIterator(headers.get(0), readers.get(0).iterator());
+            return new SamHeaderAndIterator(headers.get(0), readers.get(0).iterator(), readers);
         } else {
             final SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.coordinate, headers, false);
             final MergingSamRecordIterator iterator = new MergingSamRecordIterator(headerMerger, readers, ASSUME_SORTED);
-            return new SamHeaderAndIterator(headerMerger.getMergedHeader(), iterator);
+            return new SamHeaderAndIterator(headerMerger.getMergedHeader(), iterator, readers);
         }
     }
 
