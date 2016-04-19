@@ -1,7 +1,8 @@
 [![Build Status](https://travis-ci.org/broadinstitute/gatk.svg?branch=master)](https://travis-ci.org/broadinstitute/gatk)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/gatk/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/gatk?branch=master)
 
-**This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**  
+**This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**
+
 
 ###GATK 4 (codename Hellbender)
 
@@ -114,14 +115,15 @@ If you are looking for the codebase of the current production version of GATK, p
     * Running a Spark tool on a cluster requires Spark to have been installed from http://spark.apache.org/, since
       `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
 
-* To run a Spark tool on Google Cloud Dataproc:
+* To run a GATK Spark tool on Google Cloud Dataproc:
     * You must have a [Google cloud services](https://cloud.google.com/) account, and have spun up a Dataproc cluster
-      in the [Google Developer's console](https://console.developers.google.com).
+      in the [Google Developer's console](https://console.developers.google.com). You may need to have the "Allow API access to all Google Cloud services in the same project" option enabled (settable when you create a cluster).
     * You need to have installed the Google Cloud SDK from https://cloud.google.com/sdk/, since
       `gatk-launch` invokes the `gcloud` tool behind-the-scenes. As part of the installation, be sure
       that you follow the `gcloud` setup instructions [here](https://cloud.google.com/sdk/gcloud/).
     * Your inputs to the GATK need to be in Google Cloud Storage buckets, and should be specified on
       your GATK command line using the syntax `gs://my-gcs-bucket/path/to/my-file`
+    * You may need to pass your credentials explicitly, e.g., to pass the API key use the `--apiKey` argument to GATK (you can create an API key on the Credentials tab of the API Manager page)
 
     Once you're set up, you can run a Spark tool on your Dataproc cluster using a command of the form:
 
@@ -146,7 +148,7 @@ If you are looking for the codebase of the current production version of GATK, p
             --num-executors 5 --executor-cores 2 --executor-memory 4g \
             --conf spark.yarn.executor.memoryOverhead=600
         ```
-
+    * When using Dataproc you can access the web interfaces for YARN, Hadoop and HDFS. Follow [these instructions] (https://cloud.google.com/dataproc/cluster-web-interfaces) to create an SSH tunnel and connect with your browser.
     * Note that the spark-specific arguments are separated from the tool-specific arguments by a `--`.
     * If you want to avoid uploading the GATK jar to GCS on every run, set the `GATK_GCS_STAGING`
       environment variable to a bucket you have write access to (eg., `export GATK_GCS_STAGING=gs://<my_bucket>/`)
@@ -154,9 +156,11 @@ If you are looking for the codebase of the current production version of GATK, p
       [Cloud Dataproc wiki page](https://github.com/broadinstitute/gatk/wiki/Running-GATK-on-Cloud-Dataproc)
 
 * If you don't want to run the GATK via the `gatk-launch` script, it's possible to run non-Spark and local Spark
-  tools directly using the `build/install/gatk/bin/gatk` executable after a `gradle installDist`, and to run Spark tools
-  on a cluster or the cloud by building a Spark jar with `gradle installSpark` and passing the resulting jar in `build/libs/`
+  tools directly using the `build/install/gatk/bin/gatk` executable after a `./gradlew installDist`, and to run Spark tools
+  on a cluster or the cloud by building a Spark jar with `./gradlew installSpark` and passing the resulting jar in `build/libs/`
   directly to either `spark-submit` or `gcloud`.
+
+## Passing options to the JVM
 
 * To pass JVM arguments to GATK, use `JAVA_OPTS` like in this example (note that it may not work in Spark):
 
@@ -178,7 +182,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 ##Testing GATK4
 
-* To run all tests, run **`gradle test`**.
+* To run all tests, run **`./gradlew test`**.
     * Test report is in `build/reports/tests/index.html`.
     * What will happen depends on the value of the `CLOUD` environment variable: if it's `false` or
       unset then only local tests are run, if it's `mandatory` then it'll run only the cloud tests,
@@ -189,11 +193,11 @@ If you are looking for the codebase of the current production version of GATK, p
       to the test data.
 
 * To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)), e.g.,
-    * `gradle test --tests *SomeSpecificTestClass`
-    * `gradle test --tests all.in.specific.package*`
-    * `gradle test --tests *SomeTest.someSpecificTestMethod`
+    * `./gradlew test --tests *SomeSpecificTestClass`
+    * `./gradlew test --tests all.in.specific.package*`
+    * `./gradlew test --tests *SomeTest.someSpecificTestMethod`
 
-* To run tests and compute coverage reports, run **`gradle jacocoTestReport`**. The report is then in `build/reports/jacoco/test/html/index.html`.
+* To run tests and compute coverage reports, run **`./gradlew jacocoTestReport`**. The report is then in `build/reports/jacoco/test/html/index.html`.
   (IntelliJ 14 has a good coverage tool that is preferable for development).
 
 * We use [Travis-CI](https://travis-ci.org/broadinstitute/gatk) as our continuous integration provider.
