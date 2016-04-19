@@ -111,6 +111,7 @@ If you are looking for the codebase of the current production version of GATK, p
             --conf spark.yarn.executor.memoryOverhead=600
         ```
 
+    * You can also omit the "--num-executors" to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructins).
     * Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
     * Running a Spark tool on a cluster requires Spark to have been installed from http://spark.apache.org/, since
       `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
@@ -152,8 +153,8 @@ If you are looking for the codebase of the current production version of GATK, p
     * Note that the spark-specific arguments are separated from the tool-specific arguments by a `--`.
     * If you want to avoid uploading the GATK jar to GCS on every run, set the `GATK_GCS_STAGING`
       environment variable to a bucket you have write access to (eg., `export GATK_GCS_STAGING=gs://<my_bucket>/`)
-    * For further instructions on using GATK with Google Cloud Dataproc, see our
-      [Cloud Dataproc wiki page](https://github.com/broadinstitute/gatk/wiki/Running-GATK-on-Cloud-Dataproc)
+    * Dataproc Spark clusters are configured with [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) so you can omit the "--num-executors" argument and let YARN handle it automatically.
+      
 
 * If you don't want to run the GATK via the `gatk-launch` script, it's possible to run non-Spark and local Spark
   tools directly using the `build/install/gatk/bin/gatk` executable after a `./gradlew installDist`, and to run Spark tools
