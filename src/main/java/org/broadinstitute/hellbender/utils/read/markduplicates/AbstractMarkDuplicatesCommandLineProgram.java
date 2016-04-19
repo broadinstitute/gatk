@@ -198,6 +198,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
         @Override
         public void close(){
             CloserUtil.close(readers);
+            CloserUtil.close(iterator);
         }
     }
 
