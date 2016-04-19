@@ -97,7 +97,7 @@ public final class BaseRecalibrationEngine implements Serializable {
         }
         recalTables = new RecalibrationTables(covariates, numReadGroups);
         keyCache = new CovariateKeyCache();
-        cachedEventTypes = EventType.values();
+        cachedEventTypes = recalArgs.skipIndelBQSR ? new EventType[]{EventType.BASE_SUBSTITUTION} : EventType.values();
     }
 
     public void logCovariatesUsed() {

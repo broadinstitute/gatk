@@ -30,6 +30,9 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
     @Argument(doc="throw error on diff", shortName = "cd", fullName = "throwOnDiff", optional = true)
     protected boolean throwOnDiff = false;
 
+    /**
+     * Return value is 0 if the two files have identical base qualities and non-zero otherwise.
+     */
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(samFiles.get(0));
@@ -76,7 +79,7 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
             throw new UserException("Quality scores from the two BAMs do not match");
         }
 
-        return 0;
+        return finalMatrix.hasNonDiagonalElements() ? 1 : 0;
     }
 
 }

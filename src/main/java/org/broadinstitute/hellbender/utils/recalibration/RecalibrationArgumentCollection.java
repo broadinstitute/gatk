@@ -104,6 +104,11 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     @Argument(fullName = "skipBAQ", shortName = "skipBAQ", doc = "don't do BAQ correction")
     public boolean skipBAQ = false;
 
+    @Hidden
+    @Argument(fullName = "skipIndelBQSR", shortName = "skipIndelBQSR", doc = "don't do computations that are only needed for indel BQSR")
+    public boolean skipIndelBQSR = false;
+
+
     // --------------------------------------------------------------------------------------------------------------
     //
     // quality encoding checking arguments

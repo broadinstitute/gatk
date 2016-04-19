@@ -32,9 +32,21 @@ public abstract class CommandLineProgramTest extends BaseTest {
      * @return String[] of command line arguments
      */
     public String[] makeCommandLineArgs(final List<String> args) {
+        return makeCommandLineArgs(args, getTestedClassName());
+    }
+
+    /**
+     * For testing support.  Given a name of a Main CommandLineProgram and it's arguments, builds the arguments appropriate for calling the
+     * program through Main
+     *
+     * @param args List<String> of command line arguments
+     * @param toolname name of the tool to test
+     * @return String[] of command line arguments
+     */
+    public String[] makeCommandLineArgs(final List<String> args, final String toolname) {
         List<String> curatedArgs = injectDefaultVerbosity(args);
         final String[] commandLineArgs = new String[curatedArgs.size() + 1];
-        commandLineArgs[0] = getTestedClassName();
+        commandLineArgs[0] = toolname;
         int i = 1;
         for (final String arg : curatedArgs) {
             commandLineArgs[i++] = arg;
