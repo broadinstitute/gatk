@@ -103,7 +103,7 @@ task gcovTestReport(type: Exec){
 
 dependencies {
     compile 'com.google.guava:guava:18.0'
-    compile 'com.github.samtools:htsjdk:2.2.1-ca2a042-20160413.025712-1'
+    compile 'com.github.samtools:htsjdk:2.2.1-e6b85c7-20160419.182806-1'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
@@ -163,7 +163,9 @@ def findJarByName(Configuration config, String name) {
 
 task extractIntelDeflater(type: Copy) {
     def htsjdkJar = { findJarByName(configurations.compile, 'htsjdk') }
-    from { zipTree( htsjdkJar ).matching { include 'lib/jni/libIntelDeflator.so'} }  //note the spelling mistake, correct this once htsjdk is updated
+    from {
+        zipTree( htsjdkJar ).matching{ include 'lib/jni/libIntelDeflater.so'}.singleFile
+    }
     into 'build/libIntelDeflater.so'
 }
 
