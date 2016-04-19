@@ -147,7 +147,7 @@ dependencies {
         exclude module: 'servlet-api'
     }
 
-    compile('de.javakaffee:kryo-serializers:0.26') {
+    compile('de.javakaffee:kryo-serializers:0.37') {
         exclude module: 'kryo' // use Spark's version
     }
 
