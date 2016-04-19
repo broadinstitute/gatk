@@ -29,6 +29,7 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
 
     /**
      * Returns the descriptions used for the VCF INFO meta field.
+     * Subclasses must ensure that this list is not null and does not contain null.
      */
     public List<VCFInfoHeaderLine> getDescriptions() {
         final List<VCFInfoHeaderLine> lines = new ArrayList<>(getKeyNames().size());

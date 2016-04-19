@@ -31,7 +31,8 @@ public abstract class GenotypeAnnotation extends VariantAnnotation{
                                   final PerReadAlleleLikelihoodMap alleleLikelihoodMap);
 
     /**
-     * Return the descriptions used for the VCF FORMAT meta field
+     * Return the descriptions used for the VCF FORMAT meta field.
+     * Subclasses must ensure that this list is not null and does not contain null.
      */
     public abstract List<VCFFormatHeaderLine> getDescriptions();
 }
