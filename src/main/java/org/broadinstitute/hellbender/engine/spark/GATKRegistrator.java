@@ -25,7 +25,10 @@ public class GATKRegistrator implements KryoRegistrator {
     @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
     public void registerClasses(Kryo kryo) {
-
+	//NOTE: this speeds up serialization because it avoids a hashtable lookup
+	//but it may be dangerous in that it may result in an infinite loop for cyclic object graphs
+	kryo.setReferences(false);
+	
         // JsonSerializer is needed for the Google Genomics classes like Read and Reference.
         kryo.register(Read.class, new JsonSerializer<Read>());
         // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
