@@ -205,6 +205,7 @@ jar {
 
 
 test {
+    outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
     String CI = "$System.env.CI"
     String CLOUD = "$System.env.CLOUD"
     String SPARK = "$System.env.SPARK"
