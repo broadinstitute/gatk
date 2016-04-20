@@ -1,7 +1,9 @@
-package org.broadinstitute.hellbender.tools.picard.analysis;
+package org.broadinstitute.hellbender.metrics;
 
 import htsjdk.samtools.SamPairUtil.PairOrientation;
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
+
+import java.io.Serializable;
 
 /**
  * Metrics about the insert size distribution of a paired-end library, created by the
@@ -11,7 +13,9 @@ import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
  *
  * @author Doug Voet (dvoet at broadinstitute dot org)
  */
-public final class InsertSizeMetrics extends MultiLevelMetrics {
+public final class InsertSizeMetrics extends MultiLevelMetrics implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /** The MEDIAN insert size of all paired end reads where both ends mapped to the same chromosome. */
     public double MEDIAN_INSERT_SIZE;

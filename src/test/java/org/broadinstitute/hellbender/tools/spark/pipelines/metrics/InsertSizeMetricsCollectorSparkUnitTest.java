@@ -1,9 +1,10 @@
-package org.broadinstitute.hellbender.tools.spark.sv;
+package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import htsjdk.samtools.SamPairUtil;
 import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.tools.picard.analysis.InsertSizeMetrics;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.InsertSizeMetricsCollectorSpark;
 import org.testng.Assert;
 import com.google.common.collect.Sets;
 import org.testng.annotations.Test;

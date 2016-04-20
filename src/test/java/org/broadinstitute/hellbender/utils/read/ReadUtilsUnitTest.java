@@ -8,6 +8,7 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -488,4 +489,55 @@ public final class ReadUtilsUnitTest extends BaseTest {
 
         Assert.assertTrue(ReadUtils.getSamplesFromHeader(header).isEmpty(), "Non-empty Set returned from ReadUtils.getSamplesFromHeader() for a header with no samples");
     }
+
+    @DataProvider(name="testValidateSortOrder")
+    public Object[][] createValidateSortOrderData() {
+        return new Object[][] {
+                { SAMFileHeader.SortOrder.coordinate, SAMFileHeader.SortOrder.coordinate, true, true},
+                { SAMFileHeader.SortOrder.coordinate, SAMFileHeader.SortOrder.coordinate, false, true},
+                { SAMFileHeader.SortOrder.queryname, SAMFileHeader.SortOrder.queryname, true, true},
+                { SAMFileHeader.SortOrder.queryname, SAMFileHeader.SortOrder.queryname, false, true},
+                { SAMFileHeader.SortOrder.coordinate, SAMFileHeader.SortOrder.unsorted, true, true},
+                { SAMFileHeader.SortOrder.coordinate, SAMFileHeader.SortOrder.unsorted, false, true},
+                { SAMFileHeader.SortOrder.queryname, SAMFileHeader.SortOrder.coordinate, true, false},
+        };
+    }
+
+    @Test(dataProvider = "testValidateSortOrder")
+    public void testValidateExpectedReadOrder(
+            final SAMFileHeader.SortOrder actualSortOrder,
+            final SAMFileHeader.SortOrder expectedSortOrder,
+            final boolean assumeSorted,
+            final boolean expectedValid) {
+        boolean isValid = ReadUtils.validateExpectedSortOrder(
+                actualSortOrder,
+                expectedSortOrder,
+                assumeSorted,
+                "test"
+        );
+        Assert.assertEquals(isValid, expectedValid);
+    }
+
+    @DataProvider(name="testInvalidSortOrder")
+    public Object[][] createInvalidValidateSortOrderData() {
+        return new Object[][] {
+                { SAMFileHeader.SortOrder.coordinate, SAMFileHeader.SortOrder.queryname, false, false},
+                { SAMFileHeader.SortOrder.queryname, SAMFileHeader.SortOrder.coordinate, false, false},
+        };
+    }
+
+    @Test(dataProvider = "testInvalidSortOrder", expectedExceptions = UserException.class)
+    public void testNotValidExpectedReadOrder(
+        final SAMFileHeader.SortOrder actualSortOrder,
+        final SAMFileHeader.SortOrder expectedSortOrder,
+        final boolean assumeSorted,
+        final boolean expectedValid) {
+            ReadUtils.validateExpectedSortOrder(
+                    actualSortOrder,
+                    expectedSortOrder,
+                    assumeSorted,
+                    "test"
+            );
+    }
+
 }

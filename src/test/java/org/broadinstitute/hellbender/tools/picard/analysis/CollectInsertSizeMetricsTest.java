@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

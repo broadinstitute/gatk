@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -1036,4 +1037,50 @@ public final class ReadUtils {
 
         return samples;
     }
+
+    /**
+     * Validate that the expected input sort order is either "unsorted", or that it
+     * matches the actualSortOrder. If validation fails a UserException is thrown
+     * unless assumeSorted is true.
+     *
+     * @param actualSortOrder the actual sort order of the input
+     * @param expectedSortOrder the sort order expected for this context
+     * @param sourceName the name of the read source for inclusion in error messages
+     * @param assumeSorted if true, no exception is thrown when the actualSortOrder
+     *                     doesn't match the expectedSortOrder. An error messsage is
+     *                     logged instead
+     * @return boolean indicating if the validation passed
+     * @throws UserException if the expectedSortOrder is anything other than "unsorted"
+     * and the actualSortOrder doesn't match expectedSortOrder and assumeSorted is false
+     */
+    public static boolean validateExpectedSortOrder(
+            final SAMFileHeader.SortOrder actualSortOrder,
+            final SAMFileHeader.SortOrder expectedSortOrder,
+            final boolean assumeSorted,
+            final String sourceName)
+    {
+        boolean isValid = true;
+        if (expectedSortOrder != SAMFileHeader.SortOrder.unsorted &&
+                actualSortOrder != expectedSortOrder) {
+            final String message = String.format("Input \"%s\" has sort order \"%s\" but \"%s\" is required.",
+                    sourceName,
+                    actualSortOrder.name(),
+                    expectedSortOrder.name());
+            isValid = false;
+            if (assumeSorted) {
+                logger.warn(message + " Assuming it's properly sorted anyway.");
+            }
+            else {
+                throw new UserException(
+                        message +
+                                "If you believe the file to be sorted correctly, use " +
+                                StandardArgumentDefinitions.ASSUME_SORTED_LONG_NAME +
+                                "=true"
+                );
+            }
+        }
+
+        return isValid;
+    }
+
 }
