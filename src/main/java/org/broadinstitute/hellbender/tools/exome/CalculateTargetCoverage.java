@@ -342,8 +342,23 @@ public final class CalculateTargetCoverage extends ReadWalker {
         logger.log(Level.INFO, "Writing counts done.");
 
         writeColumnSummaryOutput();
-        closeOutputs();
         return "SUCCESS";
+    }
+
+    @Override
+    public void closeTool() {
+        if (columnSummaryOutputWriter != null) {
+            columnSummaryOutputWriter.close();
+        }
+        if (outputWriter != null){
+            outputWriter.close();
+        }
+        if (rowSummaryOutputWriter != null) {
+            rowSummaryOutputWriter.close();
+        }
+        if (columnSummaryOutputWriter != null) {
+            columnSummaryOutputWriter.close();
+        }
     }
 
     /**
@@ -378,20 +393,6 @@ public final class CalculateTargetCoverage extends ReadWalker {
                             columnNames.get(i),
                             String.valueOf(sum),
                             String.format(AVERAGE_DOUBLE_FORMAT, sum / (double) totalSize)));
-        }
-        columnSummaryOutputWriter.close();
-    }
-
-    /**
-     * Close all output writers.
-     */
-    private void closeOutputs() {
-        outputWriter.close();
-        if (rowSummaryOutputWriter != null) {
-            rowSummaryOutputWriter.close();
-        }
-        if (columnSummaryOutputWriter != null) {
-            columnSummaryOutputWriter.close();
         }
     }
 
