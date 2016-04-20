@@ -27,8 +27,10 @@ DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
 "--conf", "spark.driver.maxResultSize=0",
 "--conf", "spark.driver.userClassPathFirst=true",
 "--conf", "spark.io.compression.codec=lzf",
-"--conf", "spark.yarn.executor.memoryOverhead=600"]
-
+"--conf", "spark.yarn.executor.memoryOverhead=600",
+"--conf", "spark.yarn.dist.files=" + script + "/build/libIntelDeflater.so",
+"--conf", "spark.executor.extraJavaOptions=-Dsamjdk.intel_deflater_so_path=libIntelDeflater.so -Dsamjdk.compression_level=1"]
+      
 class GATKLaunchException(Exception):
     pass
 
@@ -191,7 +193,7 @@ def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
             raise GATKLaunchException("Tried to run spark-submit but failed.\nMake sure spark-submit is available in your path")
     elif sparkRunner == "GCS":
         jarPath = cacheJarOnGCS(getSparkJar(), dryrun)
-        dataprocargs = convertSparkSubmitToDataprocArgs(sparkArgs)
+        dataprocargs = convertSparkSubmitToDataprocArgs(DEFAULT_SPARK_ARGS + sparkArgs)
 
         sys.stderr.write("\nReplacing spark-submit style args with dataproc style args\n\n" + " ".join(sparkArgs) +" -> " + " ".join(dataprocargs) +"\n" )
 
