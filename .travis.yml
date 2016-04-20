@@ -65,6 +65,8 @@ script:
     echo "Can't run cloud tests without keys so don't run tests";
   else
     bash scripts/install_git_lfs.sh;
+    ./gradlew installDist;
+   ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O /dev/null ;
     travis_wait 30 ./gradlew jacocoTestReport;
   fi
 after_success:
