@@ -2,11 +2,13 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.google.api.services.genomics.model.Read;
+import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
 
 import java.util.Collections;
 
@@ -41,6 +43,9 @@ public class GATKRegistrator implements KryoRegistrator {
 
         kryo.register(SAMRecord.class, new SAMRecordSerializer());
 
+	//register to avoid writing the full name of this class over and over
+	kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
+	
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord
         //     Genotype
