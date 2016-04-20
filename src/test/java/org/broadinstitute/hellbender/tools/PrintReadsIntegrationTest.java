@@ -156,7 +156,6 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
         //output has both GATK PrintReads and GATK PrintReads.1 in headers
         Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK PrintReads"));
         Assert.assertNotNull(SamReaderFactory.makeDefault().open(outFile).getFileHeader().getProgramRecord("GATK PrintReads.1"));
-
     }
 
     @DataProvider(name = "UnmappedReadInclusionTestData")
