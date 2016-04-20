@@ -7,8 +7,20 @@ import signal
 
 script = os.path.dirname(os.path.realpath(__file__))
 
-BUILD_LOCATION = script +"/build/install/gatk/bin/"
-GATK_RUN_SCRIPT = BUILD_LOCATION + "gatk"
+def readProperties(propertiesFile):
+    properties = {}
+    with open(propertiesFile) as f:
+        lines = f.readlines()
+        for line in lines:
+            (k,v) = [value.strip() for value in line.split("=")]
+            properties[k] = v.replace('"','')
+    return properties
+
+properties = readProperties(script + "/settings.gradle")
+projectName = properties["rootProject.name"]
+
+BUILD_LOCATION = script +"/build/install/" + projectName + "/bin/"
+GATK_RUN_SCRIPT = BUILD_LOCATION + projectName
 BIN_PATH = script + "/build/libs"
 
 DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
