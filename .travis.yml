@@ -29,6 +29,10 @@ env:
   - secure: RA4LKD82cW+0xPayPVAWSpYqJu5uoPcz7oXXYtYNVuilFmS8PGYx0g/BXs4QMvQsGMt6aMLN8m7lMAPN5XTH/8JSeM3VmQ3mdpgNdP+p3CVlwrapZ2lTq27Wb/E8J1CGEHOg76z716t//FUElyC/gdhS+tfBmXk3YanM5fMXEHs=
   #google API key
   - secure: "eHyDxfcfv6pSIkoqQ9PimiYu9I6vmXJOpY/OkXLkc7ZAUfNTfRVytUGG9Xf/bKKF+Wscm5pIfZJ/TMDG6E3Uyngs9nVK/29QWevcEaLDJy8OdI9OgPZb13hlbM2jbVv5AVBGYcbcNBrTvrTs0MOMOFPEJqZ99xWIj5bzZ/AsIfU="
+  #for uploading artifacts
+  - ARTIFACTORY_USERNAME=gatkci
+  #artifactory password
+  secure: "mY6yQ9OKmI06H0uEM+bJhB4ziOJcugRXlm56l8coUHavgCT9JGBSDDZvB1fXXIktin9Gel0Gx96y9kG2Xg1RGGjxMw2bPrBjxYF5w3HDD9Ox+NOOlxdkqPfTY1PQDAZtKwZvzPl1i+5FzPRJN/gNk2ipsmcfOh57vfz6nk3H7e4="
 matrix:
   fast_finish: true
   allow_failures:
@@ -87,6 +91,7 @@ after_success:
   else
    ./gradlew coveralls;
   fi
+- if [ "$TRAVIS_BRANCH" == "master" && $CLOUD == false ]; then ./gradlew uploadArchives; fi
 - python <(curl -s https://raw.githubusercontent.com/TouK/sputnik-ci/master/sputnik-ci.py)
 after_failure:
 - dmesg | tail -100
