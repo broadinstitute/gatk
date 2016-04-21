@@ -59,8 +59,12 @@ install:
     echo "Can't run cloud tests without keys so don't bother building";
   else
     ./gradlew assemble;
+    ./gradlew installDist;
   fi
 script:
+#basic sanity test to check that gatk-launch actually runs something
+- ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam
+#run tests
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   else
