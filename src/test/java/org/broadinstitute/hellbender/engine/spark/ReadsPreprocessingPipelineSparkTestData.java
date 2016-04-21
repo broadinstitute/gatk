@@ -5,18 +5,14 @@ import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
 import org.broadinstitute.hellbender.engine.ReadContextData;
-import org.broadinstitute.hellbender.engine.ReferenceShard;
-import org.broadinstitute.hellbender.engine.VariantShard;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
-import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
-import org.testng.Assert;
-import org.testng.annotations.Test;
+import org.broadinstitute.hellbender.utils.variant.MinimalVariant;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,8 +42,8 @@ public class ReadsPreprocessingPipelineSparkTestData {
      */
     public ReadsPreprocessingPipelineSparkTestData(Class<?> clazz) {
         readStartLength = Arrays.asList(KV.of(100, 50), KV.of(140, 100),
-                KV.of(ReferenceShard.REFERENCE_SHARD_SIZE, 10),
-                KV.of(3*ReferenceShard.REFERENCE_SHARD_SIZE - 1, 10));
+                KV.of(10000, 10),
+                KV.of(3* 10000 - 1, 10));
 
         reads = Lists.newArrayList(
                 makeRead("1", readStartLength.get(0), 1, clazz),
@@ -85,12 +81,12 @@ public class ReadsPreprocessingPipelineSparkTestData {
         variants = Lists.newArrayList(
                 new MinimalVariant(new SimpleInterval("1", 170, 180), true, false),
                 new MinimalVariant(new SimpleInterval("1", 210, 220), false, true),
-                new MinimalVariant(new SimpleInterval("1", ReferenceShard.REFERENCE_SHARD_SIZE,
-                        ReferenceShard.REFERENCE_SHARD_SIZE), true, false),
-                new MinimalVariant(new SimpleInterval("1", 3 * ReferenceShard.REFERENCE_SHARD_SIZE - 2,
-                        3 * ReferenceShard.REFERENCE_SHARD_SIZE + 2), false, true),
-                new MinimalVariant(new SimpleInterval("2", ReferenceShard.REFERENCE_SHARD_SIZE,
-                        ReferenceShard.REFERENCE_SHARD_SIZE), false, true)
+                new MinimalVariant(new SimpleInterval("1", 10000,
+                        10000), true, false),
+                new MinimalVariant(new SimpleInterval("1", 3 * 10000 - 2,
+                        3 * 10000 + 2), false, true),
+                new MinimalVariant(new SimpleInterval("2", 10000,
+                        10000), false, true)
         );
 
         kvReadVariant = Arrays.asList(
@@ -181,12 +177,6 @@ public class ReadsPreprocessingPipelineSparkTestData {
 
     public List<KV<GATKRead, ReadContextData>> getKvReadContextData() {
         return kvReadContextData;
-    }
-
-    @Test
-    public static void verifyDivisibilityWithRefShard() {
-        // We want the ratio between the two shard types to be an int so we can use them more easily for testing.
-        Assert.assertEquals(Math.floorMod(ReferenceShard.REFERENCE_SHARD_SIZE, VariantShard.VARIANT_SHARDSIZE), 0);
     }
 
     public List<KV<GATKRead, Iterable<GATKVariant>>> getKvReadiVariant() {

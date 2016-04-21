@@ -9,8 +9,8 @@ public enum JoinStrategy {
      */
     BROADCAST,
 
-    /**
-     * Use a shuffle join strategy, where both sides of join are shuffled across the workers.
-     */
-    SHUFFLE
+//    /**
+//     * Use a shuffle join strategy, where both sides of join are shuffled across the workers.
+//     */
+//    SHUFFLE
 }

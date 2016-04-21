@@ -41,9 +41,7 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<GATKVariant> rddVariants = ctx.parallelize(variantList);
-        JavaPairRDD<GATKRead, Iterable<GATKVariant>> actual = joinStrategy == JoinStrategy.SHUFFLE ?
-                                                          ShuffleJoinReadsWithVariants.join(rddReads, rddVariants) :
-                                                          BroadcastJoinReadsWithVariants.join(rddReads, rddVariants);
+        JavaPairRDD<GATKRead, Iterable<GATKVariant>> actual = BroadcastJoinReadsWithVariants.join(rddReads, rddVariants);
         Map<GATKRead, Iterable<GATKVariant>> gatkReadIterableMap = actual.collectAsMap();
 
         Assert.assertEquals(gatkReadIterableMap.size(), kvReadiVariant.size());

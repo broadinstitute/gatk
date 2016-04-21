@@ -66,11 +66,10 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 // input local, computation local.
                 //Note: these output files were created by running Picard 1.130 and GATK3.46
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy SHUFFLE", getResourceDir() + expectedSingleKnownSites)},
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, dbSNPb37_20, " --joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
 
                 // Output generated with GATK4
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, " --joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
         };
     }
 
