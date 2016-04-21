@@ -93,7 +93,7 @@ public final class ArgumentsBuilder {
     }
 
     /**
-     * add an argument with a file as its parameter
+     * add an argument with a boolean as its parameter
      */
     public ArgumentsBuilder addBooleanArgument(String argumentName, boolean yes){
         Utils.nonNull(argumentName);

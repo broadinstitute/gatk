@@ -25,7 +25,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         args.add(secondBam.getCanonicalPath());
         args.add("--throwOnDiff true");
         args.add("--VALIDATION_STRINGENCY SILENT");
-        final Object result = this.runCommandLine(args.getArgsArray());
+        final Object result = this.runCommandLine(args);
         Assert.assertEquals(result, 0);
     }
 
@@ -63,7 +63,7 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
             args.add(referenceFile.getAbsolutePath());
         }
 
-        final Object result = this.runCommandLine(args.getArgsArray());
+        final Object result = this.runCommandLine(args);
         if (Objects.equals(firstBam, secondBam)) {
             Assert.assertEquals(result, 0);
         } else {
