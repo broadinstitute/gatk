@@ -22,10 +22,17 @@ extern float (*g_compute_full_prob_float)(testcase *tc, float *before_last_log);
 extern double (*g_compute_full_prob_double)(testcase *tc, double* before_last_log);
 template<class NUMBER>
 NUMBER compute_full_prob(testcase *tc, NUMBER *before_last_log=0);
+#if defined(__x86_64__)
 template<class NUMBER>
 NUMBER compute_full_prob_avxd(testcase *tc, NUMBER *before_last_log=0);
 template<class NUMBER>
 NUMBER compute_full_prob_avxs(testcase *tc, NUMBER *before_last_log=0);
+#elif defined(__POWER8_VECTOR__)
+template<class NUMBER>
+NUMBER compute_full_prob_ssed(testcase *tc, NUMBER *before_last_log=0);
+template<class NUMBER>
+NUMBER compute_full_prob_sses(testcase *tc, NUMBER *before_last_log=0);
+#endif
 
 void initialize_function_pointers();
 

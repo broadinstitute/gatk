@@ -2,6 +2,9 @@
 #define COMMON_DATA_STRUCTURE_H
 
 #include "headers.h"
+#if defined(__POWER8_VECTOR__)
+#include "power8.h"
+#endif
 
 #define CAT(X,Y) X##Y
 #define CONCAT(X,Y) CAT(X,Y)
@@ -29,16 +32,17 @@ template<class NUMBER>
 struct ContextBase
 {
   public:
-    NUMBER ph2pr[128];
-    NUMBER INITIAL_CONSTANT;
-    NUMBER LOG10_INITIAL_CONSTANT;
-    NUMBER RESULT_THRESHOLD; 
+    static NUMBER ph2pr[128];
+    static NUMBER INITIAL_CONSTANT;
+    static NUMBER LOG10_INITIAL_CONSTANT;
+    static NUMBER RESULT_THRESHOLD; 
 
     static bool staticMembersInitializedFlag;
+    static bool staticMembersInitializedFlag1;
     static NUMBER jacobianLogTable[JACOBIAN_LOG_TABLE_SIZE];
     static NUMBER matchToMatchProb[((MAX_QUAL + 1) * (MAX_QUAL + 2)) >> 1];
 
-    static void initializeStaticMembers()
+    static void initializeStaticMembers0()
     {
       if(!staticMembersInitializedFlag)
       {
@@ -116,7 +120,18 @@ struct Context : public ContextBase<NUMBER>
 template<>
 struct Context<double> : public ContextBase<double>
 {
-  Context():ContextBase<double>()
+  Context():ContextBase<double>() {}
+
+  static void initializeStaticMembers()
+  {
+      initializeStaticMembers0();
+      if(!staticMembersInitializedFlag1) {
+	initializePh2pr();
+	staticMembersInitializedFlag1 = true;
+      }
+  }
+
+  static void initializePh2pr()
   {
     for (int x = 0; x < 128; x++)
       ph2pr[x] = pow(10.0, -((double)x) / 10.0);
@@ -136,7 +151,18 @@ struct Context<double> : public ContextBase<double>
 template<>
 struct Context<float> : public ContextBase<float>
 {
-  Context() : ContextBase<float>()
+  Context() : ContextBase<float>() {}
+
+  static void initializeStaticMembers()
+  {
+      initializeStaticMembers0();
+      if(!staticMembersInitializedFlag1) {
+	initializePh2pr();
+	staticMembersInitializedFlag1 = true;
+      }
+  }
+
+  static void initializePh2pr()
   {
     for (int x = 0; x < 128; x++)
     {

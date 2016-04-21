@@ -1,4 +1,6 @@
+#if defined(__x86_64__)
 #define SIMD_ENGINE avx
+#define SIMD_ENGINE_AVX
 
 #include "template.h"
 
@@ -12,3 +14,4 @@
 
 template double compute_full_prob_avxd<double>(testcase* tc, double* nextlog);
 template float compute_full_prob_avxs<float>(testcase* tc, float* nextlog);
+#endif

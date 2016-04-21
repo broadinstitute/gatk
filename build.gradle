@@ -422,8 +422,15 @@ model {
                     println("WARNING: Building the native AVX PairHMM library is not supported on this OS.")
                 } else {
                     cppCompiler.args "-I", "${System.properties['java.home']}/../include"
-                    cppCompiler.args "-mavx"
                     cppCompiler.args "-Wall"
+		    if(System.getProperty("os.arch") == "ppc64le") {
+                      cppCompiler.args "-mcpu=power8"
+                      cppCompiler.args "-mtune=power8"
+                      cppCompiler.args "-fopenmp"
+                      linker.args "-lgomp"
+		    } else {
+                      cppCompiler.args "-mavx"
+		    }
 
                     // build with gcov options on Travis
                     if (System.env.CI.toString().toBoolean()) {
@@ -466,8 +473,15 @@ model {
         if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
             clang(Clang)
         } else {
-            gcc(Gcc)
+            gcc(Gcc) {
+	      target("linux_ppc64le")	// tentative fix until gradle supports linux ppc64le
+	    }
         }
+    }
+    platforms {
+        linux_ppc64le { 		// tentative fix until gradle supports linux ppc64le
+	    architecture "ppc64le"
+	}
     }
 }
 

@@ -1,5 +1,4 @@
-This code implements PairHMM using AVX instructions.
+This code implements PairHMM using vector instructions.
 
 Todo:
- * Consider renaming VectorLoglessPairHMM to AVXLoglessPairHMM
- * Add code to report if PairHMM AVX *can run* (AVX is supported and the native library can be loaded)
+ * Add code to report if vector PairHMM *can run* (the vector instruction set is supported and the native library can be loaded)

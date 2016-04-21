@@ -1,5 +1,7 @@
 #ifdef PRECISION
 
+#ifdef SIMD_ENGINE_AVX
+
 inline void CONCAT(CONCAT(_vector_shift,SIMD_ENGINE), PRECISION) (UNION_TYPE &x, MAIN_TYPE shiftIn, MAIN_TYPE &shiftOut)
 {
     IF_128 xlow , xhigh;
@@ -54,5 +56,33 @@ inline void CONCAT(CONCAT(_vector_shift_last,SIMD_ENGINE), PRECISION) (UNION_TYP
     /* insert xhigh to x,1 */
     x.d = VEC_INSERT_VAL(x.d, xhigh.f, 1);
 }
+
+#endif
+
+#ifdef SIMD_ENGINE_SSE
+
+inline void CONCAT(CONCAT(_vector_shift,SIMD_ENGINE), PRECISION) (UNION_TYPE &x, MAIN_TYPE shiftIn, MAIN_TYPE &shiftOut)
+{
+    IF_MAIN_TYPE tempIn, tempOut;
+    tempIn.f = shiftIn;
+    /* extratc H */
+    tempOut.i = VEC_EXTRACT_UNIT(x.i, SHIFT_CONST1);
+    shiftOut = tempOut.f;
+    /* shift     */
+    x.i = _mm_slli_si128(x.i, SHIFT_CONST2);
+    /* insert  L */
+    x.i = VEC_INSERT_UNIT(x.i , tempIn.i, SHIFT_CONST3);
+}
+
+inline void CONCAT(CONCAT(_vector_shift_last,SIMD_ENGINE), PRECISION) (UNION_TYPE &x, MAIN_TYPE shiftIn)
+{
+    IF_MAIN_TYPE temp; temp.f = shiftIn;
+    /* shift     */
+    x.i = _mm_slli_si128(x.i, SHIFT_CONST2);
+    /* insert  L */
+    x.i = VEC_INSERT_UNIT(x.i , temp.i, SHIFT_CONST3);
+}
+
+#endif
 
 #endif

@@ -20,10 +20,12 @@ LoadTimeInitializer g_load_time_initializer;
 LoadTimeInitializer::LoadTimeInitializer()		//will be called when library is loaded
 {
   ConvertChar::init();
+#if defined(__x86_64__)
   //Very important to get good performance on Intel processors
   //Function: enabling FTZ converts denormals to 0 in hardware
   //Denormals cause microcode to insert uops into the core causing big slowdown
   _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+#endif
 
   //Profiling: times for compute and transfer (either bytes copied or pointers copied)
   m_compute_time = 0;
