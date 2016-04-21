@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.apache.commons.lang3.SystemUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
@@ -9,7 +10,7 @@ import org.testng.annotations.Test;
 /**
  * Test that it's possible to load libIntelDeflater
  */
-public class IntelDeflaterTest {
+public class IntelDeflaterIntegrationTest extends BaseTest {
 
     @Test
     public void testIntelDeflaterIsAvailable(){
