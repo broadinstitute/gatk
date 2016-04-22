@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import org.apache.spark.SparkConf;
@@ -16,8 +18,9 @@ import java.util.Map;
  */
 public final class SparkContextFactory {
 
-    public static final String DEFAULT_SPARK_MASTER = "local[*]";
+    public static final String DEFAULT_SPARK_MASTER = determineDefaultSparkMaster();
     private static final boolean SPARK_DEBUG_ENABLED = Boolean.getBoolean("gatk.spark.debug");
+    private static final String SPARK_CORES_ENV_VARIABLE = "GATK_TEST_SPARK_CORES";
 
     /**
      * GATK will not run without these properties
@@ -152,5 +155,37 @@ public final class SparkContextFactory {
     private static JavaSparkContext createTestSparkContext(Map<String, String> overridingProperties) {
         final SparkConf sparkConf = setupSparkConf("TestContext", DEFAULT_SPARK_MASTER, DEFAULT_TEST_PROPERTIES, overridingProperties);
         return new JavaSparkContext(sparkConf);
+    }
+
+    /**
+     * Create the default Spark master, determines the number of cores it should use. Applicable to Spark test only.
+     *   Read the specification from the environmental variable GATK_TEST_SPARK_CORES
+     *      If the enviromental variable is not set,  use all available cores as in "local[*]"
+     *      If the value is a positive integer, use the value
+     *      If the value is invalid (strings, empty, etc), throw an UserException
+     *      If the value is a negative interger or zero, throw an UserException
+     */
+    private static String determineDefaultSparkMaster() {
+	final String defaultSparkMasterString = "local[*]";
+	String sparkMasterString;
+
+	String sparkSpecFromEnvironment = System.getenv( SPARK_CORES_ENV_VARIABLE );
+	if ( null == sparkSpecFromEnvironment ) {
+	    sparkMasterString = defaultSparkMasterString;
+	} else {
+	    int numSparkCoresFromEnv = 0;
+	    try {
+		numSparkCoresFromEnv = Integer.parseInt( sparkSpecFromEnvironment );
+	    } catch ( NumberFormatException e ) {
+		throw new UserException("Illegal number of cores specified in " + SPARK_CORES_ENV_VARIABLE + ". Positive integers only");
+	    }
+	    
+	    if ( numSparkCoresFromEnv > 0 ) {
+		sparkMasterString = String.format("local[%d]", numSparkCoresFromEnv );
+	    } else {
+		throw new UserException("Illegal number of cores specified in " + SPARK_CORES_ENV_VARIABLE + ". Number of cores must be positive");
+	    }
+	}
+	return sparkMasterString;
     }
 }
