@@ -27,21 +27,21 @@ public final class VectorPairHMMUnitTest extends BaseTest {
 
    @BeforeClass
     public void initialize() {
-        if (!VectorLoglessPairHMM.isAVXSupported()) {
-          throw new SkipException("AVX is not supported on this system.");
+        if (!VectorLoglessPairHMM.isVectorInstructionSetSupported()) {
+          throw new SkipException("Vector instruction set is not supported on this system.");
         } else {
             try {
                new VectorLoglessPairHMM();
             } catch (final Exception e){
-                throw new SkipException("AVX library not available");
+                throw new SkipException("Vector instruction set library not available");
             }
         }
     }
 
     private List<N2MemoryPairHMM> getHMMs() {
-        final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM();
-        avxPairHMM.doNotUseTristateCorrection();
-        return Collections.singletonList(avxPairHMM);
+        final N2MemoryPairHMM vectorPairHMM = new VectorLoglessPairHMM();
+        vectorPairHMM.doNotUseTristateCorrection();
+        return Collections.singletonList(vectorPairHMM);
     }
 
     // --------------------------------------------------------------------------------

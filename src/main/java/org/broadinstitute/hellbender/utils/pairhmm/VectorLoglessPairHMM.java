@@ -16,13 +16,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Class for performing the pair HMM for local alignment using AVX instructions contained in a native shared library.
+ * Class for performing the pair HMM for local alignment using vector instructions contained in a native shared library.
  */
 public final class VectorLoglessPairHMM extends LoglessPairHMM {
 
     final static Logger logger = Logger.getLogger(VectorLoglessPairHMM.class);
     final static Boolean runningOnMac = System.getProperty("os.name", "unknown").toLowerCase().startsWith("mac");
-    private static final String AVX_NATIVE_CODE_PATH_IN_JAR = "/lib/libVectorLoglessPairHMM";
+    final static Boolean runningOnPpc64le = System.getProperty("os.arch", "unknown").toLowerCase().startsWith("ppc64le");
+    private static final String VECTOR_NATIVE_CODE_PATH_IN_JAR = "/lib/libVectorLoglessPairHMM";
     long threadLocalSetupTimeDiff = 0;
     long pairHMMSetupTime = 0;
     static Boolean isVectorLoglessPairHMMLibraryLoaded = false;
@@ -57,10 +58,11 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     native void jniInitializeClassFields(Class<?> readDataHolderClass, Class<?> haplotypeDataHolderClass);
 
     /**
-     * Function to report if AVX is supported on the system.
+     * Function to report if vector instruction set is supported on the system.
      */
-    public static Boolean isAVXSupported() {
-        // use a grep command to check for AVX support
+    public static Boolean isVectorInstructionSetSupported() {
+        if (runningOnPpc64le) return true;
+        // use a grep command to check for vector instruction set support
         // grep exit code = 0 if a match was found
         final String command = runningOnMac ? "sysctl -a | grep machdep.cpu.features | grep -i avx" :
                                               "grep -i avx /proc/cpuinfo";
@@ -87,9 +89,9 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
         super();
 
         synchronized (isVectorLoglessPairHMMLibraryLoaded) {
-            // if AVX is not supported, throw an exception
-            if (!isAVXSupported()) {
-                throw new UserException.HardwareFeatureException("Machine does not support AVX PairHMM.");
+            // if vector instruction set is not supported, throw an exception
+            if (!isVectorInstructionSetSupported()) {
+                throw new UserException.HardwareFeatureException("Machine does not support Vector PairHMM.");
             }
 
             // Load the library and initialize the FieldIDs
@@ -104,13 +106,13 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
                     //Could not load from Java's library path - try unpacking from jar
                     try {
                         logger.debug("libVectorLoglessPairHMM not found in JVM library path - trying to unpack from GATK jar file");
-                        String path = AVX_NATIVE_CODE_PATH_IN_JAR + (runningOnMac ? ".dylib" : ".so");
+                        String path = VECTOR_NATIVE_CODE_PATH_IN_JAR + (runningOnMac ? ".dylib" : ".so");
                         File temp = IOUtils.writeTempResource(new Resource(path, VectorLoglessPairHMM.class));
                         temp.deleteOnExit();
                         System.load(temp.getAbsolutePath());
                         logger.info("libVectorLoglessPairHMM unpacked successfully from GATK jar file");
                     } catch (final Exception furtherException){
-                        throw new UserException.HardwareFeatureException("Machine supports AVX, but failed to load the AVX PairHMM library from the classpath.  " +
+                        throw new UserException.HardwareFeatureException("Machine supports vector instructions, but failed to load the Vector PairHMM library from the classpath.  " +
                                 "Check that your jar contains native code for your platform or choose a java HMM.", furtherException);
                     }
                 }
