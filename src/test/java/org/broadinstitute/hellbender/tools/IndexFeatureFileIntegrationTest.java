@@ -281,7 +281,10 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.CouldNotCreateOutputFile.class)
     public void testVCFIndex_cannotWrite() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
-        final File outName = new File("/etc/fred.txt");  //we can't write to this
+        final File tempDir = BaseTest.createTempDir("fred");
+        final File doesNotExist = new File(tempDir, "bozo/");
+
+        final File outName = new File(doesNotExist, "joe.txt");  //we can't write to this because parent does not exist
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
