@@ -225,6 +225,12 @@ JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_VectorLo
   (JNIEnv* env, jobject thisObject, jint numReads, jint numHaplotypes, 
    jobjectArray readDataArray, jobjectArray haplotypeDataArray, jdoubleArray likelihoodArray, jint maxNumThreadsToUse)
 {
+  //Very important to get good performance on Intel processors
+  //Function: enabling FTZ converts denormals to 0 in hardware
+  //Denormals cause microcode to insert uops into the core causing big slowdown
+  //NOTE: To protect against this flag being reset on us, we're going to set it on every call to jniComputeLikelihoods
+  _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON);
+
 #ifdef DEBUG
   cout << "JNI numReads "<<numReads<<" numHaplotypes "<<numHaplotypes<<"\n";
 #endif
