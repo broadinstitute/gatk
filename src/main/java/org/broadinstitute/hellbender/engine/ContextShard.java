@@ -86,7 +86,7 @@ public class ContextShard implements Serializable {
     /**
      * Returns the variants that overlap the query interval, in start-position order.
      */
-    public ArrayList<GATKVariant> variantsOverlapping(SimpleInterval interval) {
+    public List<GATKVariant> variantsOverlapping(SimpleInterval interval) {
         return variants.getOverlapping(interval);
     }
 
