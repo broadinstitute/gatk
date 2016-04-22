@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/broadinstitute/gatk.svg?branch=master)](https://travis-ci.org/broadinstitute/gatk)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/gatk/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/gatk?branch=master)
+[![Sputnik](https://sputnik.ci/conf/badge)](https://sputnik.ci/app#/builds/broadinstitute/gatk)
 
 **This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**
 

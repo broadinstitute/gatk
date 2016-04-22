@@ -98,7 +98,6 @@ public interface SampleList  {
 
     /**
      * Returns a {@link List} unmodifiable view of a sample-list
-     * @param list the sample-list to wrap.
      *
      * @throws IllegalArgumentException if {@code list} is {@code null}.
      *
@@ -121,7 +120,7 @@ public interface SampleList  {
     /**
      * Returns a {@link Set} unmodifiable view of the sample-list
      *
-     * @throws Unmodifiable view of the sample set. Never null.
+     * @return Unmodifiable view of the sample set. Never null.
      */
     default public Set<String> asSetOfSamples() {
         return new AbstractSet<String>() {

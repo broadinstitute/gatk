@@ -51,7 +51,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public boolean createOutputBamMD5 = false;
 
     @Argument(fullName="addOutputSAMProgramRecord", shortName="addOutputSAMProgramRecord", doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true)
-    public boolean addOutputSAMProgramRecord = false;
+    public boolean addOutputSAMProgramRecord = true;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.

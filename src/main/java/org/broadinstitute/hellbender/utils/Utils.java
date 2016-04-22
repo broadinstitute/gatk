@@ -235,6 +235,24 @@ public final class Utils {
     }
 
     /**
+     * Concatenates byte arrays
+     * @return a concat of all bytes in allBytes in order
+     */
+    public static byte[] concat(final byte[] ... allBytes) {
+        int size = 0;
+        for ( final byte[] bytes : allBytes ) size += bytes.length;
+
+        final byte[] c = new byte[size];
+        int offset = 0;
+        for ( final byte[] bytes : allBytes ) {
+            System.arraycopy(bytes, 0, c, offset, bytes.length);
+            offset += bytes.length;
+        }
+
+        return c;
+    }
+
+    /**
      * Returns a {@link List List&lt;Integer&gt;} representation of an primitive int array.
      * @param values the primitive int array to represent.
      * @return never code {@code null}. The returned list will be unmodifiable yet it will reflect changes in values in the original array yet
@@ -307,6 +325,23 @@ public final class Utils {
         final char[] chars = new char[nCopies];
         Arrays.fill(chars, c);
         return new String(chars);
+    }
+
+    /**
+     * Create a new string thats a n duplicate copies of s
+     * @param s the string to duplicate
+     * @param nCopies how many copies?
+     * @return a string
+     */
+    public static String dupString(final String s, int nCopies) {
+        if ( s == null || s.equals("") ) { throw new IllegalArgumentException("Bad s " + s); }
+        if ( nCopies < 0 ) { throw new IllegalArgumentException("nCopies must be >= 0 but got " + nCopies); }
+
+        final StringBuilder b = new StringBuilder();
+        for ( int i = 0; i < nCopies; i++ ) {
+            b.append(s);
+        }
+        return b.toString();
     }
 
     /**
@@ -844,14 +879,6 @@ public final class Utils {
         return destClazz;
     }
 
-    public static byte [] arrayFromArrayWithLength(final byte[] array, final int length) {
-        final byte [] output = new byte[length];
-        for (int j = 0; j < length; j++) {
-            output[j] = array[(j % array.length)];
-        }
-        return output;
-    }
-
     /**
      * Checks if the read header contains any reads groups from non-Illumina and issue a warning of that's the case.
      */
@@ -861,5 +888,16 @@ public final class Utils {
         if (readsHeader.getReadGroups().stream().anyMatch(rg -> NGSPlatform.fromReadGroupPL(rg.getPlatform()) !=  NGSPlatform.ILLUMINA)){
             logger.warn("This tool has only been well tested on ILLUMINA-based sequencing data. For other data use at your own risk.");
         }
+    }
+
+    /**
+     * Boolean xor operation.  Only true if x != y.
+     *
+     * @param x a boolean
+     * @param y a boolean
+     * @return true if x != y
+     */
+    public static boolean xor(final boolean x, final boolean y) {
+        return x != y;
     }
 }

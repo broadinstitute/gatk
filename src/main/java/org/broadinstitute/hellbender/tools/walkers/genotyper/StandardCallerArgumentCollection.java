@@ -2,21 +2,45 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.map.DefaultedMap;
-import org.broadinstitute.hellbender.cmdline.Advanced;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorImplementation;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * This is pulled out so that every caller isn't exposed to the arguments from every other caller.
  */
-public class StandardCallerArgumentCollection {
+public class StandardCallerArgumentCollection implements ArgumentCollectionDefinition {
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * Copies the values from other into this StandardCallerArgumentCollection
+     *
+     * @param other StandardCallerArgumentCollection from which to copy values
+     */
+    public void copyStandardCallerArgsFrom( final StandardCallerArgumentCollection other ) {
+        Utils.nonNull(other);
+
+        this.genotypeArgs = new GenotypeCalculationArgumentCollection(other.genotypeArgs);
+        this.genotypingOutputMode = other.genotypingOutputMode;
+        this.alleles = other.alleles; // FeatureInputs are immutable outside of the engine, so this shallow copy is safe
+        this.CONTAMINATION_FRACTION = other.CONTAMINATION_FRACTION;
+        this.CONTAMINATION_FRACTION_FILE = other.CONTAMINATION_FRACTION_FILE != null ? new File(other.CONTAMINATION_FRACTION_FILE.getAbsolutePath()) : null;
+        if ( other.sampleContamination != null ) {
+            setSampleContamination(other.sampleContamination);
+        }
+        this.requestedAlleleFrequencyCalculationModel = other.requestedAlleleFrequencyCalculationModel;
+        this.exactCallsLog = other.exactCallsLog != null ? new File(other.exactCallsLog.getAbsolutePath()) : null;
+        this.outputMode = other.outputMode;
+        this.annotateAllSitesWithPLs = other.annotateAllSitesWithPLs;
+    }
 
     @ArgumentCollection
     public GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -47,7 +71,22 @@ public class StandardCallerArgumentCollection {
     @Argument(fullName = "contamination_fraction_per_sample_file", shortName = "contaminationFile", doc = "Tab-separated File containing fraction of contamination in sequencing data (per sample) to aggressively remove. Format should be \"<SampleID><TAB><Contamination>\" (Contamination is double) per line; No header.", optional = true)
     public File CONTAMINATION_FRACTION_FILE = null;
 
+    /**
+     * Returns true if there is some sample contamination present, false otherwise.
+     * @return {@code true} iff there is some sample contamination
+     */
+    public boolean isSampleContaminationPresent() {
+        return (!Double.isNaN(CONTAMINATION_FRACTION) && CONTAMINATION_FRACTION > 0.0) || (sampleContamination != null && !sampleContamination.isEmpty());
+    }
+
     private DefaultedMap<String,Double> sampleContamination;
+
+    /**
+     * Returns an unmodifiable view of the map of SampleId -> contamination.
+     */
+    public Map<String,Double> getSampleContamination() {
+        return Collections.unmodifiableMap(sampleContamination);
+    }
 
     /**
      * Returns the sample contamination or CONTAMINATION_FRACTION if no contamination level was specified for this sample.
@@ -90,15 +129,4 @@ public class StandardCallerArgumentCollection {
     @Advanced
     @Argument(fullName = "allSitePLs", shortName = "allSitePLs", doc = "Annotate all sites with PLs", optional = true)
     public boolean annotateAllSitesWithPLs = false;
-
-    /**
-     * Creates a Standard caller argument collection with default values.
-     */
-    public StandardCallerArgumentCollection() { }
-
-    /**
-     * Holds a modifiers mask that identifies those fields that cannot be copied between
-     * StandardCallerArgumentCollections.
-     */
-    private final int UNCOPYABLE_MODIFIER_MASK = Modifier.PRIVATE | Modifier.STATIC | Modifier.FINAL;
 }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.haplotype;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -9,7 +10,6 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
@@ -29,10 +29,10 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
 
     private final Haplotype haplotype;
     private final byte[] ref;
-    private final GenomeLoc refLoc;
+    private final Locatable refLoc;
     private final String sourceNameToAdd;
 
-    public EventMap(final Haplotype haplotype, final byte[] ref, final GenomeLoc refLoc, final String sourceNameToAdd) {
+    public EventMap(final Haplotype haplotype, final byte[] ref, final Locatable refLoc, final String sourceNameToAdd) {
         super();
         this.haplotype = haplotype;
         this.ref = ref;
@@ -345,7 +345,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      */
     public static TreeSet<Integer> buildEventMapsForHaplotypes( final List<Haplotype> haplotypes,
                                                                 final byte[] ref,
-                                                                final GenomeLoc refLoc,
+                                                                final Locatable refLoc,
                                                                 final boolean debug) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         final TreeSet<Integer> startPosKeySet = new TreeSet<>();
@@ -354,7 +354,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         if( debug ) logger.info("=== Best Haplotypes ===");
         for( final Haplotype h : haplotypes ) {
             // Walk along the alignment and turn any difference from the reference into an event
-            h.setEventMap( new EventMap( h, ref, refLoc, "HC" + hapNumber++ ) );
+            h.setEventMap(new EventMap(h, ref, refLoc, "HC" + hapNumber++));
             startPosKeySet.addAll(h.getEventMap().getStartPositions());
 
             if( debug ) {

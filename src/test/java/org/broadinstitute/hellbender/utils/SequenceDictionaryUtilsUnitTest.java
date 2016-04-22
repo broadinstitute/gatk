@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.DataProvider;
@@ -19,7 +20,7 @@ import java.util.List;
 
 public class SequenceDictionaryUtilsUnitTest extends BaseTest {
 
-    private static Logger logger = Logger.getLogger(SequenceDictionaryUtilsUnitTest.class);
+    private static Logger logger = LogManager.getLogger(SequenceDictionaryUtilsUnitTest.class);
 
 
     @DataProvider( name = "SequenceDictionaryDataProvider" )

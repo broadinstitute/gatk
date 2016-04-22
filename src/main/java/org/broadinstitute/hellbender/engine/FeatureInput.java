@@ -172,7 +172,7 @@ public final class FeatureInput<T extends Feature> {
      * Only meant to be called by the argument parsing system, and therefore marked as package-visible --
      * FeatureInputs constructed some other way will not be recognized by the engine.
      *
-     * Note: cannot delegate to another construtor because Java only allows a call to "this" on the first line of a constructor.
+     * Note: cannot delegate to another constructor because Java only allows a call to "this" on the first line of a constructor.
      *
      * @param rawArgumentValue String of the form "logical_name:feature_file" or "feature_file"
      */
@@ -247,7 +247,7 @@ public final class FeatureInput<T extends Feature> {
      *
      * @param featureType the type of Feature contained in our file
      */
-    public void setFeatureType(final Class<? extends Feature> featureType) {
+    protected void setFeatureType(final Class<? extends Feature> featureType) {
         this.featureType = featureType;
     }
 

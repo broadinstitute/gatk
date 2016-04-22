@@ -90,7 +90,7 @@ public class SamReaderQueryingIterator implements CloseableIterator<SAMRecord>, 
         }
 
         // This might take a while with large interval lists, so log a status message
-        logger.info("Preparing intervals for traversal");
+        logger.debug("Preparing intervals for traversal");
 
         // Convert each SimpleInterval to a QueryInterval
         final QueryInterval[] convertedIntervals =

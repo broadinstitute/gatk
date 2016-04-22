@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -20,7 +21,7 @@ import java.util.Map;
  */
 public final class VectorLoglessPairHMM extends LoglessPairHMM {
 
-    final static Logger logger = Logger.getLogger(VectorLoglessPairHMM.class);
+    private static final Logger logger = LogManager.getLogger(VectorLoglessPairHMM.class);
     final static Boolean runningOnMac = System.getProperty("os.name", "unknown").toLowerCase().startsWith("mac");
     private static final String AVX_NATIVE_CODE_PATH_IN_JAR = "/lib/libVectorLoglessPairHMM";
     long threadLocalSetupTimeDiff = 0;

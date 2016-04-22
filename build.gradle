@@ -5,8 +5,6 @@ buildscript {
         mavenCentral()
         jcenter() // for shadow plugin
      }
-
-
 }
 
 plugins {
@@ -110,7 +108,7 @@ dependencies {
     compile 'org.apache.logging.log4j:log4j-core:2.3'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.apache.commons:commons-collections4:4.0'
+    compile 'org.apache.commons:commons-collections4:4.1'
     compile 'org.apache.commons:commons-vfs2:2.0'
     compile 'commons-io:commons-io:2.4'
     compile 'org.reflections:reflections:0.9.10'
@@ -166,7 +164,8 @@ task extractIntelDeflater(type: Copy) {
     from {
         zipTree( htsjdkJar ).matching{ include 'lib/jni/libIntelDeflater.so'}.singleFile
     }
-    into 'build/libIntelDeflater.so'
+    into 'build'
+    rename "lib/jni/libIntelDeflater.so", "libIntelDeflater.so"
 }
 
 
@@ -243,10 +242,6 @@ test {
     if (CI == "true" && CLOUD == "false" ) {
         int count = 0
         // listen to events in the test execution lifecycle
-        testLogging {
-            events "skipped", "failed"
-            exceptionFormat = "full"
-        }
 
         beforeTest { descriptor ->
             count++
@@ -266,6 +261,19 @@ test {
             logger.lifecycle("Test: " + descriptor + " produced standard out/err: " + event.message )
         }
     }
+
+    testLogging {
+        testLogging {
+            events "skipped", "failed"
+            exceptionFormat = "full"
+        }
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                println "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+            }
+        }
+    }
+
 }
 
 task wrapper(type: Wrapper) {
@@ -400,6 +408,7 @@ uploadArchives {
 task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
+test.dependsOn extractIntelDeflater
 installDist.dependsOn downloadGsaLibFile, extractIntelDeflater
 build.dependsOn installDist
 check.dependsOn installDist
