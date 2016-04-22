@@ -19,7 +19,6 @@ import java.util.Arrays;
 public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgramTest {
 
     private final static String THIS_TEST_FOLDER = "org/broadinstitute/hellbender/tools/BQSR/";
-
     private static final class BQSRTest {
         final String referenceURL;
         final String bam;
@@ -118,7 +117,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     public Object[][] createBQSRCloudTestData() {
         final String localResources =  getResourceDir();
 
-        final String GRCh37RefCloud = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
+        final String GRCh37RefCloud = GCS_b37_REFERENCE_2BIT;
         final String hiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = localResources + "overlappingRead.bam";
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
@@ -176,7 +175,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
-        final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID;
+        final String GRCh37Ref = GCS_b37_REFERENCE_2BIT;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud_chr20 = getCloudInputs() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
@@ -201,7 +200,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-        final String GRCh37Ref = ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
+        final String GRCh37Ref = GCS_b37_REFERENCE_2BIT;
         final String dbSNPb37_chr2021 = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String HiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
 
@@ -233,7 +232,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String GRCh37Ref = ReferenceAPISource.URL_PREFIX + ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
+        final String GRCh37Ref = GCS_b37_REFERENCE_2BIT;
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
