@@ -325,6 +325,20 @@ public final class QualityUtils {
         return Math.abs(-10.0 * Math.max(errorRateLog10, MIN_LOG10_SCALED_QUAL));
     }
 
+    /**
+     * Convert a log10 probability of being right to a phred-scaled quality score of being wrong as a double
+     *
+     * This is a very generic method, that simply computes a phred-scaled double quality
+     * score given an error rate.  It has the same precision as a normal double operation
+     *
+     * @param trueRateLog10 the log10 probability of being right (0.0-1.0).  Can be -Infinity to indicate
+     *                      that the result is impossible in which MIN_PHRED_SCALED_QUAL is returned
+     * @return a phred-scaled version of the error rate implied by trueRate
+     */
+    public static double phredScaleLog10CorrectRate(final double trueRateLog10) {
+        return phredScaleCorrectRate(Math.pow(10.0, trueRateLog10));
+    }
+
     // ----------------------------------------------------------------------
     //
     // Routines to bound a quality score to a reasonable range

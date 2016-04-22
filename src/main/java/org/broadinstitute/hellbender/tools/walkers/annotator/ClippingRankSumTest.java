@@ -23,7 +23,7 @@ import java.util.OptionalDouble;
  * <p>The clipping rank sum test cannot be calculated for sites without a mixture of reads showing both the reference and alternate alleles.</p>
  *
  */
-public final class ClippingRankSumTest extends RankSumTest {
+public final class ClippingRankSumTest extends RankSumTest implements StandardHCAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.CLIPPING_RANK_SUM_KEY); }

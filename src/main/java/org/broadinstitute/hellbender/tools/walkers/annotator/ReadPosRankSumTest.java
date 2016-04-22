@@ -43,7 +43,7 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
         Utils.nonNull(read);
         final int offset = ReadUtils.getReadCoordinateForReferenceCoordinate(ReadUtils.getSoftStart(read), read.getCigar(), refLoc, ReadUtils.ClippingTail.RIGHT_TAIL, true);
         if ( offset == ReadUtils.CLIPPING_GOAL_NOT_REACHED ) {
-            return null;
+            return OptionalDouble.empty();
         }
 
         int readPos = AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);

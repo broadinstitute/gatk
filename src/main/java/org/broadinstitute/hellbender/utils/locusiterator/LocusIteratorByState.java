@@ -4,7 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -48,7 +49,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
     /**
      * our log, which we want to capture anything from this class
      */
-    private static final Logger logger = Logger.getLogger(LocusIteratorByState.class);
+    private static final Logger logger = LogManager.getLogger(LocusIteratorByState.class);
 
     // -----------------------------------------------------------------------------------------------------------------
     //

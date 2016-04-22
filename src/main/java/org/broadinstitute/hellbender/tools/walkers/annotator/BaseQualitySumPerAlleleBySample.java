@@ -33,7 +33,7 @@ import java.util.Map;
  * and INDELs. Qualities are not literal base qualities, but instead are derived from the per-allele likelihoods derived
  * from the assembly engine.
  */
-public final class BaseQualitySumPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation {
+public final class BaseQualitySumPerAlleleBySample extends GenotypeAnnotation implements StandardSomaticAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.QUALITY_SCORE_SUM_KEY); }

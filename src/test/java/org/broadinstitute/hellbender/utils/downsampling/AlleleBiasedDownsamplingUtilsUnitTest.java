@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.utils.downsampling;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -22,6 +23,8 @@ import java.util.*;
  * Basic unit test for AlleleBiasedDownsamplingUtils
  */
 public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
+
+    private static final org.apache.logging.log4j.Logger logger = LogManager.getLogger(AlleleBiasedDownsamplingUtilsUnitTest.class);
 
     /**
      * Directory where the testdata is located.
@@ -139,8 +142,6 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
 
     @Test
     public void testLoadContaminationFileDetails() throws IOException {
-        final Logger logger=org.apache.log4j.Logger.getRootLogger();
-
         final File ContamFile1=new File(TEST_DATA_DIR, "contamination.case.1.txt");
 
         final Map<String,Double> Contam1=new HashMap<>();
@@ -180,7 +181,6 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
     @Test(dataProvider = "goodContaminationFiles")
     public void testLoadContaminationFile(final Integer ArtificalBAMnumber, final Integer numberOfSamples) throws IOException {
         final String ArtificialBAM = String.format("contamination.case.%d.txt", ArtificalBAMnumber);
-        final Logger logger = org.apache.log4j.Logger.getRootLogger();
 
         final File file = new File(TEST_DATA_DIR, ArtificialBAM);
         Assert.assertTrue(AlleleBiasedDownsamplingUtils.loadContaminationFile(file, 0.0, null, logger).size() == numberOfSamples);
@@ -195,8 +195,6 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "badContaminationFiles", expectedExceptions = UserException.MalformedFile.class)
     public void testLoadBrokenContaminationFile(final int i) throws IOException {
-        final Logger logger = org.apache.log4j.Logger.getRootLogger();
-
         final File file = new File(TEST_DATA_DIR, String.format("contamination.case.broken.%d.txt", i));
         AlleleBiasedDownsamplingUtils.loadContaminationFile(file, 0.0, null, logger);
 

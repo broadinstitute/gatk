@@ -1,18 +1,21 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
- * Keep reads with high mapping qualities.
+ * Keep reads with mapping qualities above a specified threshold.
  */
 public final class MappingQualityReadFilter implements ReadFilter {
-    @Argument(fullName = "min_mapping_quality_score", shortName = "mmq", doc = "Minimum read mapping quality required to consider a read for calling", optional = true)
-    public int minMappingQualtyScore = 10;
-
     private static final long serialVersionUID = 1L;
+
+    private int minMappingQualityScore = 10;
+
+    public MappingQualityReadFilter( final int minMappingQualityScore ) {
+        this.minMappingQualityScore = minMappingQualityScore;
+    }
+
     @Override
     public boolean test( final GATKRead read ) {
-        return read.getMappingQuality() >= minMappingQualtyScore;
+        return read.getMappingQuality() >= minMappingQualityScore;
     }
 }

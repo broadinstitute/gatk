@@ -39,13 +39,13 @@ public class ProgressMeterUnitTest extends BaseTest {
     public Object[][] getUpdateIntervalTestData() {
         return new Object[][] {
                 // Seconds between logger updates, time function, total number of records to process, and expected number of progress updates
-                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS, 1 },
-                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l, 3000l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS * 2, 2 },
-                { 1.5, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS, 0 },
-                { 2.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l, 3000l, 4000l, 5000l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS * 4, 2 },
-                { 2.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l, 3000l, 4000l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS * 3, 1 },
-                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 1500l, 2500l, 3500l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS * 3, 2 },
-                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 1500l, 2500l, 3400l)), ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS * 3, 1 },
+                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS, 1 },
+                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l, 3000l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS * 2, 2 },
+                { 1.5, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS, 0 },
+                { 2.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l, 3000l, 4000l, 5000l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS * 4, 2 },
+                { 2.0, new ListBasedTimeFunction(Arrays.asList(1000l, 2000l, 3000l, 4000l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS * 3, 1 },
+                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 1500l, 2500l, 3500l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS * 3, 2 },
+                { 1.0, new ListBasedTimeFunction(Arrays.asList(1000l, 1500l, 2500l, 3400l)), ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS * 3, 1 },
         };
     }
 
@@ -89,7 +89,7 @@ public class ProgressMeterUnitTest extends BaseTest {
         // The start() call consumes one value from the time function, so we need to process
         // (timeFunction.size() - 1) * ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS in order
         // to consume the rest of the values in the time function
-        for ( int i = 1; i <= (timeFunction.size() - 1) * ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS; ++i ) {
+        for ( int i = 1; i <= (timeFunction.size() - 1) * ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS; ++i ) {
             meter.update(new SimpleInterval("1", 1, 1));
         }
 
@@ -100,7 +100,7 @@ public class ProgressMeterUnitTest extends BaseTest {
     public Object[][] getProcessingRateTestData() {
         // We need to base the number of records we process on the time check interval (to ensure that
         // the progress meter pulls all values from the time function and gets updated properly).
-        final long timeCheckRecords = ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS;
+        final long timeCheckRecords = ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS;
         return new Object[][] {
                 // If we process timeCheckRecords records in 1 minute, rate should be timeCheckRecords
                 { new ListBasedTimeFunction(Arrays.asList(1000l, 60000l + 1000l)), timeCheckRecords, timeCheckRecords },
@@ -132,7 +132,7 @@ public class ProgressMeterUnitTest extends BaseTest {
         meter.start();
         // start() consumes one timestamp from our function, so we need to process size() - 1 more timestamps
         for ( int i = 1; i <= timeFunction.size() - 1; ++i ) {
-            for ( int j = 1; j <= ProgressMeter.RECORDS_BETWEEN_TIME_CHECKS; ++j ) {
+            for ( int j = 1; j <= ProgressMeter.DEFAULT_RECORDS_BETWEEN_TIME_CHECKS; ++j ) {
                 meter.update(new SimpleInterval("1", 1, 1));
             }
 

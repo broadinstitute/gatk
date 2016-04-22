@@ -2,10 +2,7 @@ package org.broadinstitute.hellbender.utils.genotyper;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.Allele;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.GenomeLocParser;
-import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -178,7 +175,7 @@ public final class ReadLikelihoodsUnitTest {
     @Test(dataProvider = "dataSets")
     public void testFilterReadsToOverlap(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
-        final GenomeLoc evenReadOverlap = locParser.createGenomeLoc(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(),EVEN_READ_START ,EVEN_READ_START );
+        final SimpleInterval evenReadOverlap = new SimpleInterval(SAM_HEADER.getSequenceDictionary().getSequences().get(0).getSequenceName(), EVEN_READ_START, EVEN_READ_START);
         fillWithRandomLikelihoods(samples,alleles,original);
         final ReadLikelihoods<Allele> result = original.copy();
         result.filterToOnlyOverlappingUnclippedReads(evenReadOverlap);
@@ -581,10 +578,38 @@ public final class ReadLikelihoodsUnitTest {
             Assert.assertEquals(subject.indexOfReference(), -1);
         }
 
-        testLikelihoodMatrixQueries(alleleList, sampleList, sampleToReads, subject);
+        testLikelihoodMatrixQueries(alleleList, sampleList, sampleToReads, subject, 0.0);
         testAlleleQueries(alleleList, subject);
         testSampleQueries(sampleList, sampleToReads, subject);
     }
+
+    @Test(dataProvider="readCountsAndnumberOfAllelesDataSkippingNoAlleleAndWithReference")
+    public void testInstantiationAndBasicQueries1(final int[] readCounts, final int numberOfAlleles, final boolean hasReference) {
+        final SampleList sampleList = sampleList(readCounts);
+
+        final AlleleList<Allele> alleleList = alleleList(numberOfAlleles,hasReference);
+        final ReadLikelihoods<Allele> subject = new ReadLikelihoods<>(sampleList,alleleList,Collections.emptyMap());
+
+        final Map<String,List<GATKRead>> sampleToReads = ReadLikelihoodsUnitTester.sampleToReads(sampleList, readCounts);
+        final double expectedLik = -0.2;
+        subject.addReads(sampleToReads, expectedLik);
+
+        AlleleListUnitTester.assertAlleleList(subject, alleleList.asListOfAlleles());
+        SampleListUnitTester.assertSampleList(subject,sampleList.asListOfSamples());
+
+        if (hasReference) {
+            final int referenceIndex = alleleList.indexOfReference();
+            Assert.assertTrue(referenceIndex >= 0);
+            Assert.assertEquals(alleleList.indexOfReference(), referenceIndex);
+        } else {
+            Assert.assertEquals(subject.indexOfReference(), -1);
+        }
+
+        testLikelihoodMatrixQueries(alleleList, sampleList, sampleToReads, subject, expectedLik);
+        testAlleleQueries(alleleList, subject);
+        testSampleQueries(sampleList, sampleToReads, subject);
+    }
+
 
     @Test(dataProvider="readCountsAndnumberOfAllelesDataSkippingNoLikelihoodsOrNoAlleleAndWithReference")
     public void testLikelihoodWriting(final int[] readCounts, final int numberOfAlleles, final boolean hasReference) {
@@ -679,7 +704,7 @@ public final class ReadLikelihoodsUnitTest {
     private final Random rnd = Utils.getRandomGenerator();
 
     private void testLikelihoodMatrixQueries(final AlleleList<Allele> alleles, final SampleList samples,
-                                             final Map<String,List<GATKRead>> sampleToReads, ReadLikelihoods<Allele> result) {
+                                             final Map<String,List<GATKRead>> sampleToReads, ReadLikelihoods<Allele> result, final double expectedLik) {
         for (final String sample : samples.asListOfSamples()) {
             final int indexOfSample = result.indexOfSample(sample);
             final LikelihoodMatrix<Allele> likelihoodMatrix = result.sampleMatrix(indexOfSample);
@@ -691,7 +716,7 @@ public final class ReadLikelihoodsUnitTest {
                 Assert.assertEquals(likelihoodMatrix.getAllele(a), alleles.getAllele(a));
                 for (int r = 0; r < sampleReadCount; r++) {
                     Assert.assertEquals(likelihoodMatrix.getRead(r), reads.get(r));
-                    Assert.assertEquals(likelihoodMatrix.get(a, r), 0.0);
+                    Assert.assertEquals(likelihoodMatrix.get(a, r), expectedLik);
                 }
             }
         }

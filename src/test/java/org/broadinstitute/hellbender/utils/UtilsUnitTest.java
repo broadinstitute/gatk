@@ -22,6 +22,24 @@ import static java.util.Arrays.asList;
 public final class UtilsUnitTest extends BaseTest {
 
     @Test
+    public void testXor()  {
+        Assert.assertEquals(Utils.xor(false, false), false);
+        Assert.assertEquals(Utils.xor(false, true),  true);
+        Assert.assertEquals(Utils.xor(true, false),  true);
+        Assert.assertEquals(Utils.xor(true, true),   false);
+    }
+
+    @Test
+    public void testRepeatBytes() throws Exception {
+        Assert.assertEquals(Utils.repeatBytes((byte)112, 4), new byte[]{112,112,112,112});
+    }
+
+    @Test
+    public void testRepeatChars() throws Exception {
+        Assert.assertEquals(Utils.repeatChars('a', 4), new byte[]{'a','a','a','a'});
+    }
+
+    @Test
     public void testMakePermutations(){
 //        * if objects = [A, B, C]
 //        * if N = 1 => [[A], [B], [C]]
