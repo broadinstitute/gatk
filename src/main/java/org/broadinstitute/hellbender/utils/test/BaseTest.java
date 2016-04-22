@@ -59,7 +59,7 @@ public abstract class BaseTest {
     public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
     public static final String publicTestDirRoot = publicTestDir.replace(publicTestDirRelative, "");
 
-    public static final String GCS_b37_ REFERENCE_2BIT = "gs://hellbender/test/resources/benchmark/human_g1k_v37.2bit";
+    public static final String GCS_b37_REFERENCE_2BIT = "gs://hellbender/test/resources/benchmark/human_g1k_v37.2bit";
 
     /**
      * LARGE FILES FOR TESTING (MANAGED BY GIT LFS)
