@@ -23,12 +23,16 @@ public final class ActivityProfileState {
     }
 
     /**
-     * Set the probability that this site is active
+     * Set the probability that this site is active.
      *
-     * @param activeProb probability between 0.0 and 1.0 that the site is active
+     * Probabilities should be between 0.0 and 1.0, however this is not currently enforced
+     * because the {@link BandPassActivityProfile} can sometimes generate probabilities that
+     * slightly exceed 1.0 when moving probability mass around. We intend to fix this by
+     * capping at 1.0, but first we must evaluate the effects of capping on the HaplotypeCaller.
+     *
+     * @param activeProb probability (should be between 0.0 and 1.0) that the site is active
      */
     public void setIsActiveProb( final double activeProb ) {
-        Utils.validateArg(MathUtils.doubleWithinRangeWithTolerance(activeProb, 0.0, 1.0, PROBABILITY_TOLERANCE), "activeProb must be >= 0.0 and <= 1.0 (to within a tolerance of " + PROBABILITY_TOLERANCE + ")");
         this.activeProb = activeProb;
     }
 
