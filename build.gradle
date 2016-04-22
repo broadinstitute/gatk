@@ -406,7 +406,8 @@ check.dependsOn installDist
 
 model {
     components {
-        VectorLoglessPairHMM(NativeLibrarySpec) {
+        if (System.properties["os.arch"] != "ppc64le") {
+	VectorLoglessPairHMM(NativeLibrarySpec) {
             // set location of source files
             sources.cpp.source {
                 srcDirs "src/main/cpp/VectorLoglessPairHMM"
@@ -460,6 +461,7 @@ model {
                 buildable = false
             }
         }
+      }
     }
 
     toolChains {
