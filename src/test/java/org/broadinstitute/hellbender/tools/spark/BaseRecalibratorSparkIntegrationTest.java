@@ -117,7 +117,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     public Object[][] createBQSRCloudTestData() {
         final String localResources =  getResourceDir();
 
-        final String GRCh37RefCloud = GCS_b37_REFERENCE_2BIT;
+        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
         final String hiSeqBam_chr20 = localResources + WGS_B37_CH20_1M_1M1K_BAM;
         final String hiSeqBam_1read = localResources + "overlappingRead.bam";
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
@@ -130,12 +130,12 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
                 // See RecalDatum for explanation of why the multiplier is needed.
 
                 // local input/computation, cloud reference, BROADCAST
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_1read, dbSNPb37_chr2021, " --joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --indels_context_size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --low_quality_tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --quantizing_levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
-                {new BQSRTest(GRCh37RefCloud, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --mismatches_context_size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, hiSeqBam_1read, dbSNPb37_chr2021, " --joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --indels_context_size 4",  localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --low_quality_tail 5",     localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --quantizing_levels 6",    localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_QUANTIZING_LEVELS_6_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, hiSeqBam_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST --mismatches_context_size 4", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_MISMATCHES_CONTEXT_SIZE_4_RECAL)},
         };
     }
 
@@ -175,14 +175,14 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 
     @DataProvider(name = "BQSRTestBucket")
     public Object[][] createBQSRTestDataBucket() {
-        final String GRCh37Ref = GCS_b37_REFERENCE_2BIT;
+        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
         final String localResources =  getResourceDir();
         final String HiSeqBamCloud_chr20 = getCloudInputs() + WGS_B37_CH20_1M_1M1K_BAM;
         final String dbSNPb37_chr20 = localResources + DBSNP_138_B37_CH20_1M_1M1K_VCF;
 
         return new Object[][]{
                 // input in cloud, computation local.
-                {new BQSRTest(GRCh37Ref, HiSeqBamCloud_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+                {new BQSRTest(chr2021Reference2bit, HiSeqBamCloud_chr20, dbSNPb37_chr20, " --joinStrategy BROADCAST", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
         };
     }
 
@@ -200,14 +200,14 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
-        final String GRCh37Ref = GCS_b37_REFERENCE_2BIT;
+        final String chr2021Reference2bit = GCS_b37_CHR20_21_REFERENCE_2BIT;
         final String dbSNPb37_chr2021 = resourceDir + DBSNP_138_B37_CH20_1M_1M1K_VCF;
         final String HiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
 
         final File actualHiSeqBam_recalibrated = createTempFile("actual.recalibrated", ".bam");
 
         final String tablePre = createTempFile("gatk4.pre.cols", ".table").getAbsolutePath();
-        final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + " -knownSites " + dbSNPb37_chr2021 + " -I " + HiSeqBam_chr20
+        final String argPre = " -R " + ReferenceAPISource.URL_PREFIX + chr2021Reference2bit + " -knownSites " + dbSNPb37_chr2021 + " -I " + HiSeqBam_chr20
                 + " -O " + tablePre + " " + " --apiKey " + getGCPTestApiKey();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argPre));
 
@@ -215,7 +215,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         new ApplyBQSRSpark().instanceMain(Utils.escapeExpressions(argApply));
 
         final File actualTablePost = createTempFile("gatk4.post.cols", ".table");
-        final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + GRCh37Ref + " -knownSites " + dbSNPb37_chr2021 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
+        final String argsPost = " -R " + ReferenceAPISource.URL_PREFIX + chr2021Reference2bit + " -knownSites " + dbSNPb37_chr2021 + " -I " + actualHiSeqBam_recalibrated.getAbsolutePath()
                 + " -O " + actualTablePost.getAbsolutePath() + " " + " --apiKey " + getGCPTestApiKey();
         new BaseRecalibratorSpark().instanceMain(Utils.escapeExpressions(argsPost));
 
@@ -232,11 +232,11 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
 
-        final String GRCh37Ref = GCS_b37_REFERENCE_2BIT;
+        final String chr17Reference2bit = GCS_b37_CHR17_1M_REFERENCE_2BIT;
         final String HiSeqBam_chr17 = resourceDir + "NA12878.chr17_69k_70k.dictFix.bam";
 
         final String  NO_DBSNP = "";
-        final BQSRTest params = new BQSRTest(GRCh37Ref, HiSeqBam_chr17, NO_DBSNP, "", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
+        final BQSRTest params = new BQSRTest(chr17Reference2bit, HiSeqBam_chr17, NO_DBSNP, "", localResources + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL);
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 params.getCommandLine(),
                 1,
