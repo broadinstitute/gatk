@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.activityprofile;
 
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -14,6 +15,9 @@ public final class ActivityProfileState {
     private final Type resultState;
     private final Number resultValue;
 
+    // When range-checking probabilities, we allow this much tolerance.
+    private static final double PROBABILITY_TOLERANCE = 0.01;
+
     public double isActiveProb() {
         return activeProb;
     }
@@ -24,7 +28,7 @@ public final class ActivityProfileState {
      * @param activeProb probability between 0.0 and 1.0 that the site is active
      */
     public void setIsActiveProb( final double activeProb ) {
-        Utils.validateArg(activeProb >= 0.0 && activeProb <= 1.0, "activeProb must be >= 0.0 and <= 1.0");
+        Utils.validateArg(MathUtils.doubleWithinRangeWithTolerance(activeProb, 0.0, 1.0, PROBABILITY_TOLERANCE), "activeProb must be >= 0.0 and <= 1.0 (to within a tolerance of " + PROBABILITY_TOLERANCE + ")");
         this.activeProb = activeProb;
     }
 

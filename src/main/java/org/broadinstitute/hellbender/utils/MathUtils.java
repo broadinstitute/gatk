@@ -498,6 +498,20 @@ public final class MathUtils {
         return 1;
     }
 
+    /**
+     * Checks that value is between min and max, inclusive, with a specified tolerance.
+     *
+     * Does not check for NaNs or infinities.
+     *
+     * @param value value to check
+     * @param min start of allowable range
+     * @param max end of allowable range
+     * @param tolerance perform double comparisons to within this tolerance
+     * @return true if value is within the specified range (+/- tolerance), otherwise false
+     */
+    public static boolean doubleWithinRangeWithTolerance( final double value, final double min, final double max, final double tolerance ) {
+        return value >= min - tolerance && value <= max + tolerance;
+    }
 
     /**
      */

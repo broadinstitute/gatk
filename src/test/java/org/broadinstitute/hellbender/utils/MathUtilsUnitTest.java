@@ -421,6 +421,19 @@ public final class MathUtilsUnitTest extends BaseTest {
     }
 
     @Test
+    public void testDoubleWithinRangeWithTolerance() {
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(0.01, 0.0, 1.0, 0.0), true);
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(0.01, 0.0, 1.0, 0.1), true);
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(0.01, 0.0, 1.0, 0.001), true);
+
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(-0.01, 0.0, 1.0, 0.1), true);
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(-0.01, 0.0, 1.0, 0.001), false);
+
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(1.01, 0.0, 1.0, 0.1), true);
+        Assert.assertEquals(MathUtils.doubleWithinRangeWithTolerance(1.01, 0.0, 1.0, 0.001), false);
+    }
+
+    @Test
     public void testNormalizeFromReal(){
         final double error = 1e-6;
         final double[] actual = MathUtils.normalizeFromRealSpace(new double[]{1.0, 2.0, 3.0});
