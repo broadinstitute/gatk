@@ -1,20 +1,19 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.Objects;
+import java.io.Serializable;
 import java.util.function.Predicate;
 
 /**
  * Filters which operate on {@link GATKRead} should implement this interface by overriding {@link #test(GATKRead)}
  *
  * ReadFilter extends Predicate and SerializableFunction.  It provides a default implementation of apply based on the
- * implmenting class's implementation of test().
+ * implementing class's implementation of test().
  */
 @FunctionalInterface
-public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GATKRead, Boolean> {
+public interface ReadFilter extends Predicate<GATKRead>, Serializable {
 
     // It turns out, this is necessary. Please don't remove it.
     // Without this line, we see the following error:
@@ -45,11 +44,6 @@ public interface ReadFilter extends Predicate<GATKRead>, SerializableFunction<GA
     @Override
     default ReadFilter negate(){
         return (t) -> !test(t);
-    }
-
-    @Override
-    default Boolean apply( GATKRead read ) {
-        return test(read);
     }
 
     @Override

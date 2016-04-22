@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.transformers;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Objects;
