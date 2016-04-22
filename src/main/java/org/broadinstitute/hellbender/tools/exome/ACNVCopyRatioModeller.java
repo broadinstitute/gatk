@@ -103,7 +103,6 @@ public final class ACNVCopyRatioModeller {
                 ll -= 0.5 * Math.log(newVariance) * numNotOutliers;
                 return ll;
             };
-
             return new SliceSampler(rng, logConditionalPDF, state.variance(),
                     VARIANCE_MIN, VARIANCE_MAX, varianceSliceSamplingWidth).sample();
         };
@@ -126,22 +125,27 @@ public final class ACNVCopyRatioModeller {
         final Sampler<SegmentMeans, CopyRatioState, CopyRatioDataCollection> segmentMeansSampler =
                 (rng, state, dataCollection) -> {
             final List<Double> means = new ArrayList<>(dataCollection.numSegments);
-            for (int i = 0; i < dataCollection.numSegments; i++) {
-                //segment, targetStartInSegment, and numTargetsInSegment need to be effectively final in lambda
-                final int segment = i;
-                final int targetStartInSegment = dataCollection.getStartTargetInSegment(segment);
+            for (int segment = 0; segment < dataCollection.numSegments; segment++) {
                 final int numTargetsInSegment = dataCollection.getNumTargetsInSegment(segment);
                 if (numTargetsInSegment == 0) {
                     means.add(Double.NaN);
                 } else {
-                    final Function<Double, Double> logConditionalPDF = newMean -> IntStream.range(0, numTargetsInSegment)
+                    //get coverages at non-outlier targets in the segment and construct log conditional PDF
+                    final int targetStartInSegment = dataCollection.getStartTargetInSegment(segment);
+                    final List<Double> allCoveragesInSegment = dataCollection.getCoveragesInSegment(segment);
+                    final List<Double> nonOutlierCoveragesInSegment = IntStream.range(0, numTargetsInSegment).boxed()
                             .filter(target -> !state.getOutlierIndicator(targetStartInSegment + target))
-                            .mapToDouble(target -> dataCollection.getCoveragesInSegment(segment).get(target))
-                            .map(coverage -> -normalTerm(coverage, newMean, state.variance()))
+                            .map(allCoveragesInSegment::get)
+                            .collect(Collectors.toList());
+                    final Function<Double, Double> logConditionalPDF = newMean -> nonOutlierCoveragesInSegment.stream()
+                            .mapToDouble(coverage -> -normalTerm(coverage, newMean, state.variance()))
                             .sum();
-
+                    //slice sample within range given by minimum and maximum non-outlier coverages
+                    final double minimumCoverageInSegment = Collections.min(nonOutlierCoveragesInSegment);
+                    final double maximumCoverageInSegment = Collections.max(nonOutlierCoveragesInSegment);
                     final SliceSampler sampler =
-                            new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment), meanSliceSamplingWidth);
+                            new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment),
+                                    minimumCoverageInSegment, maximumCoverageInSegment, meanSliceSamplingWidth);
                     means.add(sampler.sample());
                 }
             }
