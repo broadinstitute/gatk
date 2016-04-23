@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -338,12 +339,6 @@ public final class UtilsUnitTest extends BaseTest {
         Assert.assertSame(actualFile, expectedFile);
     }
 
-    @Test(dataProvider = "unsuccessfulRegularReadableFileCheckData",
-            expectedExceptions = UserException.CouldNotReadInputFile.class)
-    public void testUnsuccessfulRegularReadableFileCheck(final File file) {
-        Utils.regularReadableUserFile(file);
-    }
-
     @Test(dataProvider = "successfulValidIndexData")
     public void testSuccessfulValidIndex(final int index, final int length) {
         final int actualIndex = Utils.validIndex(index, length);
@@ -355,19 +350,32 @@ public final class UtilsUnitTest extends BaseTest {
         Utils.validIndex(index, length);
     }
 
+    @Test(dataProvider = "unsuccessfulRegularReadableFileCheckData",
+            expectedExceptions = UserException.CouldNotReadInputFile.class)
+    public void testUnsuccessfulRegularReadableFileCheck(final File file) {
+        if (file == null){
+            throw new SkipException("cannot make a file unreadable (maybe you're running as root)");
+        }
+        Utils.regularReadableUserFile(file);
+    }
+
     @DataProvider(name = "unsuccessfulRegularReadableFileCheckData")
-    @SuppressWarnings("all")
     public Object[][] unsuccessfulRegularReadableFileCheckData() {
-        final File directory = createTempFile("Utils-RRFCD-Dir", ".dir");
-        directory.delete();
-        directory.mkdir();
+        final File directory = createTempDir("Utils-RRFCD-Dir");
         final File nonExistingFile = createTempFile("Utils-RRFCD-NoFile", ".file");
         nonExistingFile.delete();
         final File nonReadable = createTempFile("Utils-RRFCD-NoReadable", ".file");
-        nonReadable.setReadable(false);
-        return new Object[][]{
-                {directory}, {nonExistingFile}, {nonReadable}
-        };
+
+        //Note: if this test suite is run as root (eg in a Docker image), setting readable to false may fail.
+        // So we check it here and skip this test if we can't make a file non readable.
+        final boolean successSetNotReadable = nonReadable.setReadable(false) && !nonReadable.canRead();
+        if (successSetNotReadable) {
+            return new Object[][]{{directory}, {nonExistingFile}, {nonReadable}};
+        } else {
+            //pass in a special value to be able to throw a SkipException and make the same number of tests
+            logger.debug("cannot make a file unreadable (maybe you're running as root)");
+            return new Object[][]{{directory}, {nonExistingFile}, {null}};
+        }
     }
 
     @DataProvider(name = "successfulValidIndexData")
