@@ -44,28 +44,6 @@ public class JoinReadsWithRefBasesSparkUnitTest extends BaseTest {
         return data;
     }
 
-    @Test(dataProvider = "bases", groups = "spark")
-    public void refBasesShuffleTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
-                                    List<SimpleInterval> intervals) throws IOException {
-        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-
-        JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
-
-        ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
-        for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
-        }
-        when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
-
-        JavaPairRDD<GATKRead, ReferenceBases> rddResult = ShuffleJoinReadsWithRefBases.addBases(mockSource, rddReads);
-        Map<GATKRead, ReferenceBases> result = rddResult.collectAsMap();
-
-        for (KV<GATKRead, ReferenceBases> kv : kvReadRefBases) {
-            ReferenceBases referenceBases = result.get(kv.getKey());
-            Assert.assertNotNull(referenceBases);
-            Assert.assertEquals(kv.getValue(),referenceBases);
-        }
-    }
 
     @Test(dataProvider = "bases", groups = "spark")
     public void refBasesBroadcastTest(List<GATKRead> reads, List<KV<GATKRead, ReferenceBases>> kvReadRefBases,
