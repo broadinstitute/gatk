@@ -4,7 +4,7 @@ import com.google.common.collect.Lists;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function2;
+import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -18,7 +18,10 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
+
+import static org.broadinstitute.hellbender.transformers.BQSRReadTransformer.constructStaticQuantizedMapping;
 
 @CommandLineProgramProperties(summary = "Compares two the quality scores of BAMs", oneLineSummary = "Diff qs of the BAMs",
         programGroup = TestSparkProgramGroup.class)
@@ -38,8 +41,27 @@ final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
     @Argument(doc="throw error on diff", shortName = "cd", fullName = "throwOnDiff", optional = true)
     protected boolean throwOnDiff = false;
 
+    /**
+     * Use static quantized quality scores to a given number of levels.
+     */
+    @Advanced
+    @Argument(fullName="static_quantized_quals", shortName = "SQQ", doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true)
+    public List<Integer> staticQuantizationQuals = new ArrayList<>();
+
+    /**
+     * Round down quantized only works with the static_quantized_quals option.  When roundDown = false, rounding is done in
+     * probability space to the nearest bin.  When roundDown = true, the value is rounded to the nearest bin
+     * that is smaller than the current bin.
+     */
+    @Advanced
+    @Argument(fullName="round_down_quantized", shortName = "RDQ", doc = "Round quals down to nearest quantized qual", optional=true)
+    public boolean roundDown = false;
+
+
     @Override
     protected void runTool(final JavaSparkContext ctx) {
+        final byte[] staticQuantizedMapping = constructStaticQuantizedMapping(staticQuantizationQuals, roundDown);
+
         JavaRDD<GATKRead> firstReads = getReads();
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         JavaRDD<GATKRead> secondReads = readsSource2.getParallelReads(input2, referenceArguments.getReferenceFileName(), getIntervals(), bamPartitionSplitSize);
@@ -65,10 +87,10 @@ final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
         });
 
         JavaPairRDD<String, Tuple2<Iterable<Quals>, Iterable<Quals>>> cogroup = firstQuals.cogroup(secondQuals, getRecommendedNumReducers());
-        CompareMatrix finalMatrix = cogroup.map(v1 -> {
+        final CompareMatrix finalMatrix = cogroup.map(v1 -> {
             List<Quals> lFirstQuals = Lists.newArrayList(v1._2()._1());
             List<Quals> lSecondQuals = Lists.newArrayList(v1._2()._2());
-            CompareMatrix compareMatrix = new CompareMatrix();
+            CompareMatrix compareMatrix = new CompareMatrix(staticQuantizedMapping);
             if (lFirstQuals.size() != 1) {
                 throw new GATKException("expected only one read per key in first bam: " + lFirstQuals.size());
             }
@@ -78,12 +100,12 @@ final public class CompareBaseQualitiesSpark extends GATKSparkTool  {
 
             compareMatrix.add(lFirstQuals.get(0).quals, lSecondQuals.get(0).quals);
             return compareMatrix;
-        }).treeAggregate(new CompareMatrix(),
-                (Function2<CompareMatrix, CompareMatrix, CompareMatrix>) CompareMatrix::add,
-                (Function2<CompareMatrix, CompareMatrix, CompareMatrix>) CompareMatrix::add);
+        }).treeAggregate(new CompareMatrix(staticQuantizedMapping),
+                CompareMatrix::add,
+                CompareMatrix::add);
 
 
-        finalMatrix.printOutput(outputFilename);
+        finalMatrix.printOutResults(outputFilename);
 
         if (throwOnDiff && finalMatrix.hasNonDiagonalElements()) {
             throw new UserException("Quality scores from the two BAMs do not match");

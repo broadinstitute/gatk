@@ -11,8 +11,11 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
-import java.io.File;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
+
+import static org.broadinstitute.hellbender.transformers.BQSRReadTransformer.constructStaticQuantizedMapping;
 
 @CommandLineProgramProperties(
         summary = "USAGE: CompareBaseQualities <SAMFile1> <SAMFile2>\n" +
@@ -33,8 +36,27 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
     /**
      * Return value is 0 if the two files have identical base qualities and non-zero otherwise.
      */
+     * Use static quantized quality scores to a given number of levels.
+     */
+    @Advanced
+    @Argument(fullName="static_quantized_quals", shortName = "SQQ", doc = "Use static quantized quality scores to a given number of levels (with -"+ StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME+ ")", optional=true)
+    public List<Integer> staticQuantizationQuals = new ArrayList<>();
+
+    /**
+     * Round down quantized only works with the static_quantized_quals option.  When roundDown = false, rounding is done in
+     * probability space to the nearest bin.  When roundDown = true, the value is rounded to the nearest bin
+     * that is smaller than the current bin.
+     */
+    @Advanced
+    @Argument(fullName="round_down_quantized", shortName = "RDQ", doc = "Round quals down to nearest quantized qual", optional=true)
+    public boolean roundDown = false;
+
+    private byte[] staticQuantizedMapping;
+
     @Override
     protected Object doWork() {
+        staticQuantizedMapping = constructStaticQuantizedMapping(staticQuantizationQuals, roundDown);
+
         IOUtil.assertFileIsReadable(samFiles.get(0));
         IOUtil.assertFileIsReadable(samFiles.get(1));
 
@@ -45,7 +67,7 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
         final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
         final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
-        final CompareMatrix finalMatrix = new CompareMatrix();
+        final CompareMatrix finalMatrix = new CompareMatrix(staticQuantizedMapping);
 
         final ProgressMeter progressMeter = new ProgressMeter(1.0);
         progressMeter.start();
@@ -61,7 +83,6 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
             }
 
             finalMatrix.add(read1.getBaseQualities(), read2.getBaseQualities());
-
             it1.advance();
             it2.advance();
         }
@@ -73,7 +94,7 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
         CloserUtil.close(reader1);
         CloserUtil.close(reader2);
 
-        finalMatrix.printOutput(outputFilename);
+        finalMatrix.printOutResults(outputFilename);
 
         if (throwOnDiff && finalMatrix.hasNonDiagonalElements()) {
             throw new UserException("Quality scores from the two BAMs do not match");

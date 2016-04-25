@@ -9,6 +9,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
 public final class CompareBaseQualitiesSparkIntegrationTest extends CommandLineProgramTest {
     @Test
@@ -38,18 +40,20 @@ public final class CompareBaseQualitiesSparkIntegrationTest extends CommandLineP
         final File firstCram = new File(resourceDir, "single.read.cram");
         final File secondCram = new File(resourceDir, "another.single.read.cram");
         final File referenceFile = new File(b37_reference_20_21);
+        final List<Integer> sq = Arrays.asList(10, 20, 30, 40);
+
         return new Object[][]{
-                {firstBam, firstBam, null, outFile, "single.read.qual.diff.txt"},
-                {firstBam, secondBam, null, outFile, "two.reads.qual.diff.txt"},
-                {firstCram, secondCram, referenceFile, outFile, "two.reads.qual.diff.txt"},
-                {firstBam, secondCram, referenceFile, outFile, "two.reads.qual.diff.txt"},
-                {firstCram, secondBam, referenceFile, outFile, "two.reads.qual.diff.txt"},
+                {firstBam, firstBam, null, outFile, sq, "single.read.qual.diff.txt"},
+                {firstBam, secondBam, null, outFile, sq, "two.reads.qual.diff.txt"},
+                {firstCram, secondCram, referenceFile, outFile, sq, "two.reads.qual.diff.txt"},
+                {firstBam, secondCram, referenceFile, outFile, sq, "two.reads.qual.diff.txt"},
+                {firstCram, secondBam, referenceFile, outFile, sq, "two.reads.qual.diff.txt"},
         };
 
     }
 
     @Test(dataProvider = "CompareBasesProvider")
-    public void singleReadDiffTest(File firstBam, File secondBam, File referenceFile, File outFile, String diffFile) throws Exception {
+    public void singleReadDiffTest(File firstBam, File secondBam, File referenceFile, File outFile, List<Integer> staticQuantizationQuals, String diffFile) throws Exception {
         final String resourceDir = getTestDataDir() + "/validation/";
 
         ArgumentsBuilder args = new ArgumentsBuilder();
@@ -62,6 +66,12 @@ public final class CompareBaseQualitiesSparkIntegrationTest extends CommandLineP
         if (null != referenceFile) {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
+        }
+        if (staticQuantizationQuals != null && !staticQuantizationQuals.isEmpty()){
+            for (int sq : staticQuantizationQuals){
+                args.add("-SQQ");
+                args.add(sq);
+            }
         }
 
         this.runCommandLine(args.getArgsArray());

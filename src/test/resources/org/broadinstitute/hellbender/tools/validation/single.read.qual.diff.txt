@@ -18,3 +18,11 @@ QRead1	QRead2	diff	count
 31	31	0	10
 32	32	0	20
 33	33	0	28
+-----------CompareMatrix-binned summary------------
+all 101 quality scores are the same
+
+---------CompareMatrix-binned full matrix (non-zero entries) ----------
+QRead1	QRead2	diff	count
+20	20	0	8
+30	30	0	65
+40	40	0	28
