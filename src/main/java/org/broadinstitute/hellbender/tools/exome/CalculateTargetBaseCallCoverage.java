@@ -347,7 +347,7 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         try {
             outputTableWriter.close();
             return null;

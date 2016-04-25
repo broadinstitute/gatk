@@ -48,6 +48,8 @@ before_install:
 - sudo apt-get install -y --force-yes r-base-dev=3.1.3-1trusty
 - sudo apt-get install -y --force-yes r-base-core=3.1.3-1trusty
 - sudo Rscript scripts/install_R_packages.R
+# Install git-lfs, and fetch the large test files
+- sudo bash scripts/install_git_lfs.sh
 
 after_success:
 - ./gradlew jacocoTestReport coveralls
