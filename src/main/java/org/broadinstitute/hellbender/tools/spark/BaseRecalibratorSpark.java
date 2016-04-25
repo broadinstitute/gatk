@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;

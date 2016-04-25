@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.datasources;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 

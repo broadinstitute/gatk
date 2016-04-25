@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;

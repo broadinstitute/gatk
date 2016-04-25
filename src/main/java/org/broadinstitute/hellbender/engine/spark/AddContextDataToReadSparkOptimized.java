@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.google.api.services.storage.Storage;
-import com.google.cloud.dataflow.sdk.transforms.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 
 import htsjdk.samtools.SAMRecord;
