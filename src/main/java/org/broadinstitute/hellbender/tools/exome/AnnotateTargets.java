@@ -120,13 +120,13 @@ public class AnnotateTargets extends TargetWalker {
     }
 
     @Override
-    public Object onTraversalDone() {
+    public Object onTraversalSuccess() {
         try {
             outputWriter.close();
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, "problems closing the output file");
         }
-        return super.onTraversalDone();
+        return super.onTraversalSuccess();
     }
 
     @Override
