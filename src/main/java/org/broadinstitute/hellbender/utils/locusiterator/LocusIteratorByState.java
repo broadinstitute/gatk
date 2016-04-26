@@ -241,13 +241,16 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
             readStates.collectPendingReads();
 
             final Locatable location = getLocation();
-            final Map<String, ReadPileup> fullPileupPerSample = new HashMap<>();
+//            final Map<String, ReadPileup> fullPileupPerSample = new HashMap<>();
+
+            // single list with pileup elements for all the samples
+            final List<PileupElement> pile = new ArrayList<>(readStates.size());
 
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates ) {
                 final String sample = sampleStatePair.getKey();
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();
                 final Iterator<AlignmentStateMachine> iterator = readState.iterator();
-                final List<PileupElement> pile = new ArrayList<>(readState.size());
+//                final List<PileupElement> pile = new ArrayList<>(readState.size());
 
                 while (iterator.hasNext()) {
                     // state object with the read/offset information
@@ -268,17 +271,19 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
                     }
                 }
 
-                if (! pile.isEmpty() ){ // if this pileup added at least one base, add it to the full pileup
-                    fullPileupPerSample.put(sample, new ReadPileup(location, pile));
-                }
+//                if (! pile.isEmpty() ){ // if this pileup added at least one base, add it to the full pileup
+//                    fullPileupPerSample.put(sample, new ReadPileup(location, pile));
+//                }
             }
 
             readStates.updateReadStates(); // critical - must be called after we get the current state offsets and location
-            if (!fullPileupPerSample.isEmpty()){ // if we got reads with non-D/N over the current position, we are done
+            if (! pile.isEmpty()) {
+//            if (!fullPileupPerSample.isEmpty()){ // if we got reads with non-D/N over the current position, we are done
 //                if (fullPileupPerSample.keySet().size() > 1){
 //                    throw new UnsupportedOperationException("Multiple samples are currently not supported in GATK4. Samples here:" + fullPileupPerSample.keySet());
 //                }
-                final ReadPileup singlePileup = fullPileupPerSample.values().iterator().next();
+//                final ReadPileup singlePileup = fullPileupPerSample.values().iterator().next();
+                final ReadPileup singlePileup = new ReadPileup(location, pile);
                 nextAlignmentContext = new AlignmentContext(location, singlePileup);
             }
         }
