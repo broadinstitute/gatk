@@ -164,10 +164,16 @@ task extractIntelDeflater(type: Copy) {
     from {
         zipTree( htsjdkJar ).matching{ include 'lib/jni/libIntelDeflater.so'}.singleFile
     }
-    into 'build'
+    into "$buildDir"
     rename "lib/jni/libIntelDeflater.so", "libIntelDeflater.so"
+    outputs.file "$buildDir/libIntelDeflater.so"
+    description = "extract libIntelDeflater from the htsjdk jar"
 }
 
+//add gatk-launch to the jar as a resource
+processResources {
+    from("gatk-launch")
+}
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -194,11 +200,11 @@ logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
 
-jar {
+tasks.withType(Jar) {
     manifest {
         attributes 'Implementation-Title': 'Hellbender-tools',
                 'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
+                'Main-Class': project.mainClassName
     }
 }
 
@@ -281,11 +287,6 @@ task wrapper(type: Wrapper) {
 }
 
 tasks.withType(ShadowJar) {
-    manifest {
-        attributes 'Implementation-Title': 'Hellbender',
-                'Implementation-Version': version,
-                'Main-Class': 'org.broadinstitute.hellbender.Main'
-    }
     from(project.sourceSets.main.output)
     baseName = project.name + '-all'
     mergeServiceFiles()
@@ -295,7 +296,9 @@ tasks.withType(ShadowJar) {
 }
 
 
+
 configurations {
+
     sparkConfiguration {
         extendsFrom runtime
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
