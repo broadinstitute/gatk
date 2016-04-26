@@ -1,17 +1,16 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.HasGenomeLocation;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Bundles together a pileup and a location.
@@ -97,38 +96,32 @@ public final class AlignmentContext implements Locatable, HasGenomeLocation {
     }
 
     public Map<String, AlignmentContext> splitContextBySampleName(final SAMFileHeader header) {
-        return this.splitContextBySampleName((String)null, header);
+        return this.splitContextBySampleName((String) null, header);
     }
 
     /**
-     * Splits the given AlignmentContext into a StratifiedAlignmentContext per sample, but referencd by sample name instead
+     * Splits the given AlignmentContext into a StratifiedAlignmentContext per sample, but referenced by sample name instead
      * of sample object.
      *
      * @param assumedSingleSample If non-null, assume this is the only sample in our pileup and return immediately.
      *                            If null, get the list of samples from the provided header and do the work of splitting by sample.
-     * @return a Map of sample name to StratifiedAlignmentContext
-     *
+     * @return a Map of sample name to StratifiedAlignmentContext; samples without coverage are not included
      **/
     public Map<String, AlignmentContext> splitContextBySampleName(final String assumedSingleSample, final SAMFileHeader header) {
         if (assumedSingleSample != null){
             return Collections.singletonMap(assumedSingleSample, this);
         }
-
-        final Map<String, AlignmentContext> contexts = new HashMap<>();
-
-        for(final String sample: basePileup.getSamples(header)) {
-            final ReadPileup pileupForSample = basePileup.makeFilteredPileup(pe -> Objects.equals(sample, ReadUtils.getSampleName(pe.getRead(), header)));
-
-            if (sample == null){
-                throw new UserException.ReadMissingReadGroup(pileupForSample.iterator().next().getRead());
-            }
-
+        final Locatable loc = this.getLocation();
+        // this will throw an user error if there are samples without RG/sampleName
+        final Map<String, ReadPileup> pileups = this.getBasePileup().splitBySample(header, assumedSingleSample);
+        final Map<String, AlignmentContext> contexts = new HashMap<>(pileups.size());
+        for (final Map.Entry<String, ReadPileup> entry : pileups.entrySet()) {
             // Don't add empty pileups to the split context.
-            if(! pileupForSample.isEmpty()) {
-                contexts.put(sample, new AlignmentContext(loc, pileupForSample));
+            if (entry.getValue().isEmpty()) {
+                continue;
             }
+            contexts.put(entry.getKey(), new AlignmentContext(loc, entry.getValue()));
         }
-
         return contexts;
     }
 

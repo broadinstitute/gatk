@@ -74,6 +74,11 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
     private final boolean includeReadsWithDeletionAtLoci;
 
     /**
+     * Should we include reads in the pileup which are aligned with a deletion operator to the reference?
+     */
+    private final boolean includeReadsWithNsAtLoci;
+
+    /**
      * The next alignment context.  A non-null value means that a
      * context is waiting from hasNext() for sending off to the next next() call.  A null
      * value means that either hasNext() has not been called at all or that
@@ -120,6 +125,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
      * @param samIterator the iterator of reads to process into pileups.  Reads must be ordered
      *                    according to standard coordinate-sorted BAM conventions
      * @param downsamplingInfo meta-information about how to downsampling the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      * @param samples a complete list of samples present in the read groups for the reads coming from samIterator.
      *                This is generally just the set of read group sample fields in the SAMFileHeader.  This
      *                list of samples may contain a null element, and all reads without read groups will
@@ -133,6 +139,37 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
                                 final Collection<String> samples,
                                 final boolean keepUniqueReadListInLIBS,
                                 final SAMFileHeader header) {
+        this(samIterator,
+                downsamplingInfo,
+                includeReadsWithDeletionAtLoci,
+                false,
+                samples,
+                keepUniqueReadListInLIBS,
+                header);
+    }
+
+    /**
+     * Create a new LocusIteratorByState
+     *
+     * @param samIterator the iterator of reads to process into pileups.  Reads must be ordered
+     *                    according to standard coordinate-sorted BAM conventions
+     * @param downsamplingInfo meta-information about how to downsampling the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
+     * @param includeReadsWithNsAtLoci Include reads with Ns at loci (usually it is not needed)
+     * @param samples a complete list of samples present in the read groups for the reads coming from samIterator.
+     *                This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                list of samples may contain a null element, and all reads without read groups will
+     *                be mapped to this null sample
+     * @param keepUniqueReadListInLIBS if true, we will keep the unique reads from off the samIterator and make them
+     *                                available via the transferReadsFromAllPreviousPileups interface
+     */
+    public LocusIteratorByState(final Iterator<GATKRead> samIterator,
+        final LIBSDownsamplingInfo downsamplingInfo,
+        final boolean includeReadsWithDeletionAtLoci,
+        final boolean includeReadsWithNsAtLoci,
+        final Collection<String> samples,
+        final boolean keepUniqueReadListInLIBS,
+        final SAMFileHeader header) {
         Utils.nonNull(samIterator, "samIterator cannot be null");
         Utils.nonNull(downsamplingInfo, "downsamplingInfo cannot be null");
         Utils.nonNull(samples, "Samples cannot be null");
@@ -145,6 +182,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
         }
 
         this.includeReadsWithDeletionAtLoci = includeReadsWithDeletionAtLoci;
+        this.includeReadsWithNsAtLoci = includeReadsWithNsAtLoci;
         this.samples = new ArrayList<>(samples);
         this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, keepUniqueReadListInLIBS, header);
     }
@@ -242,7 +280,6 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
 
             final Locatable location = getLocation();
             final Map<String, ReadPileup> fullPileupPerSample = new HashMap<>();
-
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates ) {
                 final String sample = sampleStatePair.getKey();
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();
@@ -255,7 +292,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
                     final GATKRead read = state.getRead();
                     final CigarOperator op = state.getCigarOperator();
 
-                    if (op == CigarOperator.N){ // N's are never added to any pileup
+                    if (! includeReadsWithNsAtLoci && op == CigarOperator.N) {
                         continue;
                     }
 
@@ -275,11 +312,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
 
             readStates.updateReadStates(); // critical - must be called after we get the current state offsets and location
             if (!fullPileupPerSample.isEmpty()){ // if we got reads with non-D/N over the current position, we are done
-//                if (fullPileupPerSample.keySet().size() > 1){
-//                    throw new UnsupportedOperationException("Multiple samples are currently not supported in GATK4. Samples here:" + fullPileupPerSample.keySet());
-//                }
-                final ReadPileup singlePileup = fullPileupPerSample.values().iterator().next();
-                nextAlignmentContext = new AlignmentContext(location, singlePileup);
+                nextAlignmentContext = new AlignmentContext(location, new ReadPileup(location, fullPileupPerSample));
             }
         }
     }

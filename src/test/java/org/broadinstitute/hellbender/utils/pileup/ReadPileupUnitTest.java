@@ -4,6 +4,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -73,6 +74,71 @@ public final class ReadPileupUnitTest {
         Assert.assertEquals(rg2Reads.get(0), read2, "Read " + read2.getName() + " should be in rg2 but isn't");
         Assert.assertEquals(rg2Reads.get(1), read4, "Read " + read4.getName() + " should be in rg2 but isn't");
         Assert.assertEquals(rg2Reads.get(2), read5, "Read " + read5.getName() + " should be in rg2 but isn't");
+    }
+
+    @Test
+    public void testGetPileupForSample() {
+        // read groups and header
+        final SAMReadGroupRecord[] readGroups = new SAMReadGroupRecord[5];
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
+        int s = 0;
+        // readGroups[4] is left null intentionally
+        for(final String sample: Arrays.asList("sample1", "sample1", "sample2", null)) {
+            readGroups[s] = new SAMReadGroupRecord("rg"+s);
+            readGroups[s].setSample(sample);
+            header.addReadGroup(readGroups[s++]);
+        }
+
+        // reads
+        final int rgCoverage = 4;
+        final List<GATKRead> reads = new ArrayList<>(rgCoverage*readGroups.length);
+        for(int i = 0; i < rgCoverage; i++) {
+            for(final SAMReadGroupRecord rg: readGroups) {
+                final GATKRead r = ArtificialReadUtils.createArtificialRead(header, (rg == null) ? "null" : rg.getReadGroupId() + "_" + rg.getSample() + "_" + i, 0, 1, 10);
+                if(rg != null) {
+                    r.setReadGroup(rg.getId());
+                }
+                reads.add(r);
+            }
+        }
+
+        // pileup
+        final ReadPileup pileup = new ReadPileup(loc, reads, 1);
+        // sample1
+        final ReadPileup pileupSample1 = pileup.getPileupForSample("sample1", header);
+        Assert.assertEquals(pileupSample1.size(), rgCoverage*2, "Wrong number of elements for sample1");
+        Assert.assertTrue( pileupSample1.getReadGroupIDs().contains("rg0"), "Pileup for sample1 should contain rg0");
+        Assert.assertTrue( pileupSample1.getReadGroupIDs().contains("rg1"), "Pileup for sample1 should contain rg1");
+        Assert.assertFalse(pileupSample1.getReadGroupIDs().contains("rg2"), "Pileup for sample1 shouldn't contain rg2");
+        Assert.assertFalse(pileupSample1.getReadGroupIDs().contains("rg3"), "Pileup for sample1 shouldn't contain rg3");
+        Assert.assertFalse(pileupSample1.getReadGroupIDs().contains(null),  "Pileup for sample1 shouldn't contain null read group");
+
+        // sample2
+        final ReadPileup pileupSample2 = pileup.getPileupForSample("sample2", header);
+        Assert.assertEquals(pileupSample2.size(), rgCoverage, "Wrong number of elements for sample2");
+        Assert.assertFalse(pileupSample2.getReadGroupIDs().contains("rg0"), "Pileup for sample2 shouldn't contain rg0");
+        Assert.assertFalse(pileupSample2.getReadGroupIDs().contains("rg1"), "Pileup for sample2 shouldn't contain rg1");
+        Assert.assertTrue( pileupSample2.getReadGroupIDs().contains("rg2"), "Pileup for sample2 should contain rg2");
+        Assert.assertFalse(pileupSample2.getReadGroupIDs().contains("rg3"), "Pileup for sample2 shouldn't contain rg3");
+        Assert.assertFalse(pileupSample2.getReadGroupIDs().contains(null),  "Pileup for sample2 shouldn't contain null read group");
+
+        // null sample
+        final ReadPileup pileupNull = pileup.getPileupForSample(null, header);
+        Assert.assertEquals(pileupNull.size(), rgCoverage*2, "Wrong number of elements for null sample");
+        Assert.assertFalse(pileupNull.getReadGroupIDs().contains("rg0"), "Pileup for null sample shouldn't contain rg0");
+        Assert.assertFalse(pileupNull.getReadGroupIDs().contains("rg1"), "Pileup for null sample shouldn't contain rg1");
+        Assert.assertFalse(pileupNull.getReadGroupIDs().contains("rg2"), "Pileup for null sample shouldn't contain rg2");
+        Assert.assertTrue( pileupNull.getReadGroupIDs().contains("rg3"), "Pileup for null sample should contain rg3");
+        Assert.assertTrue( pileupNull.getReadGroupIDs().contains(null),  "Pileup for null sample should contain null read group");
+
+    }
+
+    @Test(expectedExceptions = UserException.ReadMissingReadGroup.class)
+    public void testSplitBySampleMissingReadGroupException() throws Exception {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "nullRG", 0, 1, 10);
+        final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read), 1);
+        final Map<String, ReadPileup> error = pileup.splitBySample(header, null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
