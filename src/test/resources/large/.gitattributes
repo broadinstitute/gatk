@@ -4,7 +4,7 @@
 CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam filter=lfs diff=lfs merge=lfs -text
 CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam.bai filter=lfs diff=lfs merge=lfs -text
 CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram filter=lfs diff=lfs merge=lfs -text
-CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram.crai filter=lfs diff=lfs merge=lfs -text
+CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram.bai filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.20.21.vcf filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.20.21.vcf.idx filter=lfs diff=lfs merge=lfs -text
 human_g1k_v37.20.21.dict filter=lfs diff=lfs merge=lfs -text
