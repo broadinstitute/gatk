@@ -141,8 +141,8 @@ public final class ACNVCopyRatioModeller {
                             .mapToDouble(coverage -> -normalTerm(coverage, newMean, state.variance()))
                             .sum();
                     //slice sample within range given by minimum and maximum non-outlier coverages
-                    final double minimumCoverageInSegment = Collections.min(nonOutlierCoveragesInSegment);
-                    final double maximumCoverageInSegment = Collections.max(nonOutlierCoveragesInSegment);
+                    final double minimumCoverageInSegment = Collections.min(allCoveragesInSegment);
+                    final double maximumCoverageInSegment = Collections.max(allCoveragesInSegment);
                     final SliceSampler sampler =
                             new SliceSampler(rng, logConditionalPDF, state.getMeanInSegment(segment),
                                     minimumCoverageInSegment, maximumCoverageInSegment, meanSliceSamplingWidth);
