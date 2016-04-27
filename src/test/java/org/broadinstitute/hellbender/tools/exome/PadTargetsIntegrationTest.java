@@ -4,6 +4,7 @@ import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -101,7 +102,7 @@ public class PadTargetsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(tc.target(93).getName(), "target_179839_AP1B1");
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
+    @Test(expectedExceptions = UserException.BadInput.class)
     public void testInvalidPadding() {
         final File outputFile = createTempFile("test", ".bed");
         final int testPadding = -25000;

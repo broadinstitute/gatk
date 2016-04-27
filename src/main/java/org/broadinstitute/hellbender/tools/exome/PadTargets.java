@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 
@@ -23,7 +24,7 @@ public final class PadTargets extends CommandLineProgram {
             doc = "File containing the targets (BED) for padding.  Should have no existing overlap.",
             shortName = TARGET_FILE_SHORT_NAME,
             fullName = TARGET_FILE_FULL_NAME,
-            optional = true
+            optional = false
     )
     protected File targetFile = null;
 
@@ -45,6 +46,10 @@ public final class PadTargets extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+
+        if (padding < 0) {
+            throw new UserException.BadInput("Padding parameter must be >= 0");
+        }
 
         final TargetCollection<? extends BEDFeature> inputTargetCollection = TargetUtils.readTargetFile(targetFile);
 
