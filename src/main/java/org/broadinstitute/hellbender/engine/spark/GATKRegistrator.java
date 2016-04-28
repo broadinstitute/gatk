@@ -17,54 +17,63 @@ import java.util.Collections;
  * and UnmodifiableCollectionsSerializer from a bug in the version of Kryo we're on.
  */
 public class GATKRegistrator implements KryoRegistrator {
+    private static KryoRegistrator wrappedRegistrator = new DefaultRegistrator();
 
-    private ADAMKryoRegistrator ADAMregistrator;
+    public static KryoRegistrator getCurrentRegistrator() { return wrappedRegistrator; }
 
-    public GATKRegistrator() {
-        this.ADAMregistrator = new ADAMKryoRegistrator();
+    public static KryoRegistrator setCurrentRegistrator( KryoRegistrator newRegistrator ) {
+        final KryoRegistrator oldRegistrator = wrappedRegistrator;
+        wrappedRegistrator = newRegistrator != null ? newRegistrator : new DefaultRegistrator();
+        return oldRegistrator;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    public void registerClasses(Kryo kryo) {
+    public void registerClasses( Kryo kryo ) { wrappedRegistrator.registerClasses(kryo); }
 
-        // JsonSerializer is needed for the Google Genomics classes like Read and Reference.
-        kryo.register(Read.class, new JsonSerializer<Read>());
-        // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
-        // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
-        // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
-        // fix here.
-        // We are tracking this issue with (#874)
-        kryo.register(Collections.unmodifiableMap(Collections.EMPTY_MAP).getClass(), new UnmodifiableCollectionsSerializer());
+    public static final class DefaultRegistrator implements KryoRegistrator {
+        private static final ADAMKryoRegistrator adamRegistrator = new ADAMKryoRegistrator();
 
-        kryo.register(Collections.unmodifiableList(Collections.EMPTY_LIST).getClass(), new UnmodifiableCollectionsSerializer());
+        @Override
+        public void registerClasses(Kryo kryo) {
 
-        kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
+            // JsonSerializer is needed for the Google Genomics classes like Read and Reference.
+            kryo.register(Read.class, new JsonSerializer<Read>());
+            // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
+            // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
+            // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
+            // fix here.
+            // We are tracking this issue with (#874)
+            kryo.register(Collections.unmodifiableMap(Collections.emptyMap()).getClass(), new UnmodifiableCollectionsSerializer());
 
-        kryo.register(SAMRecord.class, new SAMRecordSerializer());
+            kryo.register(Collections.unmodifiableList(Collections.emptyList()).getClass(), new UnmodifiableCollectionsSerializer());
 
-	//register to avoid writing the full name of this class over and over
-	kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
-	
-        // register the ADAM data types using Avro serialization, including:
-        //     AlignmentRecord
-        //     Genotype
-        //     Variant
-        //     DatabaseVariantAnnotation
-        //     NucleotideContigFragment
-        //     Contig
-        //     StructuralVariant
-        //     VariantCallingAnnotations
-        //     VariantEffect
-        //     DatabaseVariantAnnotation
-        //     Dbxref
-        //     Feature
-        //     ReferencePosition
-        //     ReferencePositionPair
-        //     SingleReadBucket
-        //     IndelRealignmentTarget
-        //     TargetSet
-        //     ZippedTargetSet
-        ADAMregistrator.registerClasses(kryo);
+            kryo.register(SAMRecordToGATKReadAdapter.class, new SAMRecordToGATKReadAdapterSerializer());
+
+            kryo.register(SAMRecord.class, new SAMRecordSerializer());
+
+            //register to avoid writing the full name of this class over and over
+            kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
+
+            // register the ADAM data types using Avro serialization, including:
+            //     AlignmentRecord
+            //     Genotype
+            //     Variant
+            //     DatabaseVariantAnnotation
+            //     NucleotideContigFragment
+            //     Contig
+            //     StructuralVariant
+            //     VariantCallingAnnotations
+            //     VariantEffect
+            //     DatabaseVariantAnnotation
+            //     Dbxref
+            //     Feature
+            //     ReferencePosition
+            //     ReferencePositionPair
+            //     SingleReadBucket
+            //     IndelRealignmentTarget
+            //     TargetSet
+            //     ZippedTargetSet
+            adamRegistrator.registerClasses(kryo);
+        }
     }
 }
