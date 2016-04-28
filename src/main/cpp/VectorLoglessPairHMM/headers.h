@@ -11,8 +11,12 @@
 
 #include <sys/time.h>
 
+#if defined(__x86_64__)
 #include <immintrin.h>
 #include <emmintrin.h>
+#elif defined(__POWER8_VECTOR__)
+#include <omp.h>
+#endif
 
 #include <string>
 #include <iostream>
