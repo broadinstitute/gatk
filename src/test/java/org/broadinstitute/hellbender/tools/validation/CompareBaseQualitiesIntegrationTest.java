@@ -4,10 +4,12 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.junit.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Objects;
 
 public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest {
     @Test
@@ -23,7 +25,8 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
         args.add(secondBam.getCanonicalPath());
         args.add("--throwOnDiff true");
         args.add("--VALIDATION_STRINGENCY SILENT");
-        this.runCommandLine(args.getArgsArray());
+        final Object result = this.runCommandLine(args);
+        Assert.assertEquals(result, 0);
     }
 
     @DataProvider(name = "CompareBasesProvider")
@@ -60,7 +63,12 @@ public class CompareBaseQualitiesIntegrationTest extends CommandLineProgramTest 
             args.add(referenceFile.getAbsolutePath());
         }
 
-        this.runCommandLine(args.getArgsArray());
+        final Object result = this.runCommandLine(args);
+        if (Objects.equals(firstBam, secondBam)) {
+            Assert.assertEquals(result, 0);
+        } else {
+            Assert.assertNotEquals(result, 0);
+        }
 
         final File expected = new File(resourceDir, diffFile);
         IntegrationTestSpec.assertEqualTextFiles(outFile, expected);

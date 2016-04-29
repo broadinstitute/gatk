@@ -93,6 +93,36 @@ public final class ArgumentsBuilder {
     }
 
     /**
+     * add an argument with a boolean as its parameter
+     */
+    public ArgumentsBuilder addBooleanArgument(String argumentName, boolean yes){
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        add(yes);
+        return this;
+    }
+
+    /**
+     * add an argument with a given value to this builder
+     */
+    public ArgumentsBuilder addArgument(final String argumentName, final String argumentValue) {
+        Utils.nonNull(argumentValue);
+        Utils.nonNull(argumentName);
+        add("--" + argumentName);
+        add(argumentValue);
+        return this;
+    }
+
+    /**
+     * add a positional argument to this builder
+     */
+    public ArgumentsBuilder addPositionalArgument(final String argumentName) {
+        Utils.nonNull(argumentName);
+        add(argumentName);
+        return this;
+    }
+
+    /**
      * Add any object's string representation to the arguments list
      */
     public ArgumentsBuilder add(Object arg) {
@@ -121,4 +151,5 @@ public final class ArgumentsBuilder {
     public String getString() {
         return String.join(" ", args);
     }
+
 }

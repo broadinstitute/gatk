@@ -56,9 +56,11 @@ public class Main {
      * <p/>
      * Give a list of java packages in which to search for classes that extend CommandLineProgram.  Those will be included
      * on the command line.
-     * *
+     *
+     * This method is not intended to be used outside of the GATK framework and tests.
+     *
      */
-    protected Object instanceMain(final String[] args, final List<String> packageList, final String commandLineName) {
+    public Object instanceMain(final String[] args, final List<String> packageList, final String commandLineName) {
         final CommandLineProgram program = extractCommandLineProgram(args, packageList, commandLineName);
         if (null == program) return null; // no program found!
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
@@ -68,9 +70,9 @@ public class Main {
     }
 
     /**
-     * For testing *
+     * This method is not intended to be used outside of the GATK framework and tests.
      */
-    protected Object instanceMain(final String[] args) {
+    public Object instanceMain(final String[] args) {
         return instanceMain(args, getPackageList(), "");
     }
 
