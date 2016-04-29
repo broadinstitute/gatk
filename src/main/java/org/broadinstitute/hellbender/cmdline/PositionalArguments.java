@@ -26,4 +26,11 @@ public @interface PositionalArguments {
     
     /** The maximum number of arguments allowed. */
     int maxElements() default Integer.MAX_VALUE;
+
+    /**
+     * Documentation for the command-line argument.  Should appear when the
+     * --help argument is specified.
+     * @return Doc string associated with this command-line argument.
+     */
+    String doc() default "Undocumented option";
 }

@@ -141,7 +141,7 @@ public abstract class BaseTest {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
     }
 
-    private static String getNonNullEnvironmentVariable(String envVarName) {
+    protected static String getNonNullEnvironmentVariable(String envVarName) {
         String value = System.getenv(envVarName);
         if (null == value) {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
