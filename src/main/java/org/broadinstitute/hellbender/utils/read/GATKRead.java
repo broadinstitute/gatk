@@ -233,7 +233,7 @@ public interface GATKRead extends Locatable {
      * @throws IllegalArgumentException if i is negative or of i is not smaller than the number
      * of base qualities (as reported by {@link #getBaseQualityCount()}.
      */
-    default int getBaseQuality(final int i){
+    default byte getBaseQuality(final int i){
         return getBaseQualities()[i];
     }
 

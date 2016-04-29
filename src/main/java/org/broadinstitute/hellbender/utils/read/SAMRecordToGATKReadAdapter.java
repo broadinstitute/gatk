@@ -230,7 +230,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     //Overridden default method to avoid a call to getBaseQualities which makes a copy of data
     @Override
-    public int getBaseQuality(final int i){
+    public byte getBaseQuality(final int i){
         final byte[] baseQualities = samRecord.getBaseQualities();
         if (baseQualities == null){
             throw new IllegalArgumentException("Invalid call - there are no baseQualities");
