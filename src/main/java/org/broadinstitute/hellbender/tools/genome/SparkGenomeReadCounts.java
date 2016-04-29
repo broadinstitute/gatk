@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.SampleCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
@@ -39,15 +38,15 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     private static final Set<String> NONAUTOSOMALCONTIGS = new HashSet<>(Arrays.asList("X", "Y", "MT", "M", "x", "y",
             "m", "chrX", "chrY", "chrMT", "chrM", "chrm"));
 
-    protected static final String DROP_NON_AUTOSOMES_SHORT_NAME = "noxy";
-    protected static final String DROP_NON_AUTOSOMES_LONG_NAME = "noXYMT";
+    protected static final String DROP_NON_AUTOSOMES_SHORT_NAME = "keepxy";
+    protected static final String DROP_NON_AUTOSOMES_LONG_NAME = "keepXYMT";
 
-    @Argument(doc = "Remove X, Y and MT regions",
+    @Argument(doc = "Keep X, Y, GL*, NC_*, and MT regions.  If this option is not specified, these regions will be dropped, regardless of intervals specified.  Use -L (or -XL) and enable this option for exact specification of intervals.  This option may be removed in the future.",
             fullName = DROP_NON_AUTOSOMES_LONG_NAME,
             shortName = DROP_NON_AUTOSOMES_SHORT_NAME,
             optional = true
     )
-    protected boolean dropNonAutosomes = true;
+    protected boolean keepNonAutosomes = false;
 
     private static final Logger logger = LogManager.getLogger(SparkGenomeReadCounts.class);
     protected static final String BINSIZE_SHORT_NAME = "bins";
@@ -75,8 +74,6 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         if ( readArguments.getReadFilesNames().size() != 1 ) {
             throw new UserException("This tool only accepts a single bam/sam/cram as input");
         }
-        final String bam = readArguments.getReadFilesNames().get(0);
-        final ReadsSparkSource readSource = new ReadsSparkSource(ctx);
 
         final SampleCollection sampleCollection = new SampleCollection(getHeaderForReads());
         if(sampleCollection.sampleCount()>1){
@@ -90,14 +87,15 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         final ReadFilter filter = makeGenomeReadFilter();
         final SAMSequenceDictionary originalSequenceDictionary = getReferenceSequenceDictionary();
         SAMSequenceDictionary modifiedSequenceDictionary = originalSequenceDictionary;
-        if (dropNonAutosomes){
+        if (!keepNonAutosomes){
+            logger.info("Dropping non-autosomes, as requested...");
             modifiedSequenceDictionary = dropContigsFromSequence(originalSequenceDictionary, NONAUTOSOMALCONTIGS);
         }
         final SAMSequenceDictionary sequenceDictionary = modifiedSequenceDictionary;
 
         logger.info("Starting Spark coverage collection...");
         final long coverageCollectionStartTime = System.currentTimeMillis();
-        final JavaRDD<GATKRead> rawReads = readSource.getParallelReads(bam, referenceArguments.getReferenceFileName(), (int) this.bamPartitionSplitSize);
+        final JavaRDD<GATKRead> rawReads = getReads();
         final JavaRDD<GATKRead> reads = rawReads.filter(read -> filter.test(read));
         final JavaRDD<SimpleInterval> readIntervals = reads
                 .filter(read -> sequenceDictionary.getSequence(read.getContig()) != null)
@@ -172,7 +170,10 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
     protected static SAMSequenceDictionary dropContigsFromSequence(final SAMSequenceDictionary originalSequenceDictionary, final Set<String> nonAutosomalContigs) {
         final List<SAMSequenceRecord> initialSequences = new ArrayList<>(originalSequenceDictionary.getSequences());
-        final List<SAMSequenceRecord> finalSequences = initialSequences.stream().filter(s -> !nonAutosomalContigs.contains(s.getSequenceName())).collect(Collectors.toList());
+        final List<SAMSequenceRecord> finalSequences = initialSequences.stream()
+                .filter(s -> !nonAutosomalContigs.contains(s.getSequenceName()))
+                .filter(s -> !(s.getSequenceName().startsWith("GL")) && !(s.getSequenceName().startsWith("NC_")))
+                .collect(Collectors.toList());
         return new SAMSequenceDictionary(finalSequences);
     }
 

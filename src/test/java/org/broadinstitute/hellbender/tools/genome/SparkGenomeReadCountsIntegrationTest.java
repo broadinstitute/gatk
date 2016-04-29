@@ -137,4 +137,27 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals(finalSequenceDictionary.size(), 3);
 
     }
+
+    @Test
+    public void testSparkGenomeReadCountsInterval() {
+        final File outputFile = createTempFile(BAM_FILE.getName(), ".cov");
+        final String[] arguments = {
+                "--disableSequenceDictionaryValidation",
+                "-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME, REFERENCE_FILE.getAbsolutePath(),
+                "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME, BAM_FILE.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.OUTPUT_FILE_SHORT_NAME, outputFile.getAbsolutePath(),
+                "-" + SparkGenomeReadCounts.BINSIZE_SHORT_NAME, "10000",
+                "-L", "1"
+        };
+        runCommandLine(arguments);
+
+        List<TargetCoverage> targetProportionalCoverages = TargetCoverageUtils.readTargetsWithCoverage(outputFile);
+        Assert.assertTrue(targetProportionalCoverages.stream().noneMatch(t -> t.getContig().equals("2")));
+        Assert.assertTrue(targetProportionalCoverages.stream().noneMatch(t -> t.getContig().equals("3")));
+
+        // raw coverage
+        List<TargetCoverage> targetCoverages = TargetCoverageUtils.readTargetsWithCoverage(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
+        Assert.assertTrue(targetCoverages.stream().noneMatch(t -> t.getContig().equals("2")));
+        Assert.assertTrue(targetCoverages.stream().noneMatch(t -> t.getContig().equals("3")));
+    }
 }
