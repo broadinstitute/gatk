@@ -122,7 +122,7 @@ check.dependsOn installDist
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.apache.commons:commons-math3:3.5'
-    compile 'org.broadinstitute:gatk:broad-production-1-48-g05b31ca-SNAPSHOT'
+    compile 'org.broadinstitute:gatk:4.alpha.1'
     compile 'com.opencsv:opencsv:3.4'
     compile 'org.ojalgo:ojalgo:39.0'
     compile ('org.apache.spark:spark-mllib_2.10:1.5.0') {
