@@ -388,6 +388,14 @@ uploadArchives {
                         developerConnection 'scm:git@github.com:broadinstitute/hellbender.git'
                     }
 
+                    developers {
+                        developer {
+                            id = "gatkdev"
+                            name = "GATK Development Team"
+                            email = "gatk-dev-public@broadinstitute.org"
+                        }
+                    }
+
                     licenses {
                         license {
                             name 'BSD 3-Clause'
