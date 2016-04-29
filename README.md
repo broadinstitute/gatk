@@ -81,86 +81,89 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * To print help for a particular tool, run **`./gatk-launch ToolName --help`**.
 
-* To run a non-Spark tool, or to run a Spark tool locally, the syntax is:
- **`./gatk-launch ToolName toolArguments`**.
-    * Examples:
-
-        ```
-        ./gatk-launch PrintReads -I input.bam -O output.bam
-        ```
-
-        ```
-        ./gatk-launch PrintReadsSpark -I input.bam -O output.bam
-        ```
-
-* To run a Spark tool on a Spark cluster, the syntax is:
-
-  **`./gatk-launch ToolName toolArguments -- --sparkRunner SPARK --sparkMaster <master_url> additionalSparkArguments`**
-    * Examples:
-
-        ```
-        ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
-            -- \
-            --sparkRunner SPARK --sparkMaster <master_url>
-        ```
-
-        ```
-        ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
-            -- \
-            --sparkRunner SPARK --sparkMaster <master_url> \
-            --num-executors 5 --executor-cores 2 --executor-memory 4g \
-            --conf spark.yarn.executor.memoryOverhead=600
-        ```
-
-    * You can also omit the "--num-executors" to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructins).
-    * Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
-    * Running a Spark tool on a cluster requires Spark to have been installed from http://spark.apache.org/, since
-      `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
-
-* To run a GATK Spark tool on Google Cloud Dataproc:
-    * You must have a [Google cloud services](https://cloud.google.com/) account, and have spun up a Dataproc cluster
-      in the [Google Developer's console](https://console.developers.google.com). You may need to have the "Allow API access to all Google Cloud services in the same project" option enabled (settable when you create a cluster).
-    * You need to have installed the Google Cloud SDK from https://cloud.google.com/sdk/, since
-      `gatk-launch` invokes the `gcloud` tool behind-the-scenes. As part of the installation, be sure
-      that you follow the `gcloud` setup instructions [here](https://cloud.google.com/sdk/gcloud/).
-    * Your inputs to the GATK need to be in Google Cloud Storage buckets, and should be specified on
-      your GATK command line using the syntax `gs://my-gcs-bucket/path/to/my-file`
-    * You may need to pass your credentials explicitly, e.g., to pass the API key use the `--apiKey` argument to GATK (you can create an API key on the Credentials tab of the API Manager page)
-
-    Once you're set up, you can run a Spark tool on your Dataproc cluster using a command of the form:
-
-    **`./gatk-launch ToolName toolArguments -- --sparkRunner GCS --cluster myGCSCluster additionalSparkArguments`**
-
-    * Examples:
-
-        ```
-        ./gatk-launch PrintReadsSpark \
-            -I gs://my-gcs-bucket/path/to/input.bam \
-            -O gs://my-gcs-bucket/path/to/output.bam \
-            -- \
-            --sparkRunner GCS --cluster myGCSCluster
-        ```
-
-        ```
-        ./gatk-launch PrintReadsSpark \
-            -I gs://my-gcs-bucket/path/to/input.bam \
-            -O gs://my-gcs-bucket/path/to/output.bam \
-            -- \
-            --sparkRunner GCS --cluster myGCSCluster \
-            --num-executors 5 --executor-cores 2 --executor-memory 4g \
-            --conf spark.yarn.executor.memoryOverhead=600
-        ```
-    * When using Dataproc you can access the web interfaces for YARN, Hadoop and HDFS. Follow [these instructions] (https://cloud.google.com/dataproc/cluster-web-interfaces) to create an SSH tunnel and connect with your browser.
-    * Note that the spark-specific arguments are separated from the tool-specific arguments by a `--`.
-    * If you want to avoid uploading the GATK jar to GCS on every run, set the `GATK_GCS_STAGING`
-      environment variable to a bucket you have write access to (eg., `export GATK_GCS_STAGING=gs://<my_bucket>/`)
-    * Dataproc Spark clusters are configured with [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) so you can omit the "--num-executors" argument and let YARN handle it automatically.
-      
-
 * If you don't want to run the GATK via the `gatk-launch` script, it's possible to run non-Spark and local Spark
   tools directly using the `build/install/gatk/bin/gatk` executable after a `./gradlew installDist`, and to run Spark tools
   on a cluster or the cloud by building a Spark jar with `./gradlew installSpark` and passing the resulting jar in `build/libs/`
   directly to either `spark-submit` or `gcloud`.
+
+* To run a non-Spark tool, or to run a Spark tool locally, the syntax is:
+**`./gatk-launch ToolName toolArguments`**.
+* Examples:
+
+  ```
+  ./gatk-launch PrintReads -I input.bam -O output.bam
+  ```
+
+  ```
+  ./gatk-launch PrintReadsSpark -I input.bam -O output.bam
+  ```
+
+####Running GATK4 Spark tools on a Spark cluster:
+
+**`./gatk-launch ToolName toolArguments -- --sparkRunner SPARK --sparkMaster <master_url> additionalSparkArguments`**
+* Examples:
+
+  ```
+  ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
+      -- \
+      --sparkRunner SPARK --sparkMaster <master_url>
+  ```
+
+    ```
+    ./gatk-launch PrintReadsSpark -I hdfs://path/to/input.bam -O hdfs://path/to/output.bam \
+      -- \
+      --sparkRunner SPARK --sparkMaster <master_url> \
+      --num-executors 5 --executor-cores 2 --executor-memory 4g \
+      --conf spark.yarn.executor.memoryOverhead=600
+    ```
+
+* You can also omit the "--num-executors" to enable [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) if you configure the cluster properly (see the Spark website for instructins).
+* Note that the Spark-specific arguments are separated from the tool-specific arguments by a `--`.
+* Running a Spark tool on a cluster requires Spark to have been installed from http://spark.apache.org/, since
+   `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
+* Note that the examples above use YARN but we have successfully run GATK4 on Mesos as well.
+
+####Running GATK4 Spark tools on Google Cloud Dataproc:
+  * You must have a [Google cloud services](https://cloud.google.com/) account, and have spun up a Dataproc cluster
+    in the [Google Developer's console](https://console.developers.google.com). You may need to have the "Allow API access to all Google Cloud services in the same project" option enabled (settable when you create a cluster).
+  * You need to have installed the Google Cloud SDK from https://cloud.google.com/sdk/, since
+    `gatk-launch` invokes the `gcloud` tool behind-the-scenes. As part of the installation, be sure
+      that you follow the `gcloud` setup instructions [here](https://cloud.google.com/sdk/gcloud/).
+  * Your inputs to the GATK need to be in Google Cloud Storage buckets, and should be specified on
+    your GATK command line using the syntax `gs://my-gcs-bucket/path/to/my-file`
+  * You may need to pass your credentials explicitly, e.g., to pass the API key use the `--apiKey` argument to GATK (you can create an API key on the Credentials tab of the API Manager page)
+  * You can run GATK4 jobs on Dataproc from your local computer or from the VM (master node) on the cloud.
+
+  Once you're set up, you can run a Spark tool on your Dataproc cluster using a command of the form:
+
+  **`./gatk-launch ToolName toolArguments -- --sparkRunner GCS --cluster myGCSCluster additionalSparkArguments`**
+
+  * Examples:
+
+      ```
+      ./gatk-launch PrintReadsSpark \
+          -I gs://my-gcs-bucket/path/to/input.bam \
+          -O gs://my-gcs-bucket/path/to/output.bam \
+          -- \
+          --sparkRunner GCS --cluster myGCSCluster
+      ```
+
+      ```
+      ./gatk-launch PrintReadsSpark \
+          -I gs://my-gcs-bucket/path/to/input.bam \
+          -O gs://my-gcs-bucket/path/to/output.bam \
+          -- \
+          --sparkRunner GCS --cluster myGCSCluster \
+          --num-executors 5 --executor-cores 2 --executor-memory 4g \
+          --conf spark.yarn.executor.memoryOverhead=600
+      ```
+  * When using Dataproc you can access the web interfaces for YARN, Hadoop and HDFS. Follow [these instructions] (https://cloud.google.com/dataproc/cluster-web-interfaces) to create an SSH tunnel and connect with your browser.
+  * Note that the spark-specific arguments are separated from the tool-specific arguments by a `--`.
+  * If you want to avoid uploading the GATK jar to GCS on every run, set the `GATK_GCS_STAGING`
+    environment variable to a bucket you have write access to (eg., `export GATK_GCS_STAGING=gs://<my_bucket>/`)
+  * Dataproc Spark clusters are configured with [dynamic allocation](https://spark.apache.org/docs/latest/job-scheduling.html#dynamic-resource-allocation) so you can omit the "--num-executors" argument and let YARN handle it automatically.
+      
+
 
 ## Passing options to the JVM
 
