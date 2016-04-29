@@ -363,4 +363,8 @@ task sparkJar(type: ShadowJar) {
     }
 }
 
+
+task installSpark{ dependsOn sparkJar }
+task installAll{  dependsOn installSpark, installDist }
+
 tasks.withType(Jar) { dependsOn setupGatkLaunch }
