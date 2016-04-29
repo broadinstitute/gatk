@@ -80,6 +80,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     // fasta reference reader to supplement the edges of the reference sequence
     protected CachingIndexedFastaSequenceFile referenceReader;
 
+    // writes Haplotypes to a bam file when the -bamout option is specified
+    private HaplotypeBAMWriter haplotypeBAMWriter;
+
     private Set<String> sampleSet;
     private SampleList samplesList;
 
@@ -167,6 +170,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel);
 
         initializeReferenceReader();
+
+        initializeHaplotypeBamWriter();
 
         initializeAssemblyEngine();
 
@@ -284,6 +289,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             referenceReader = new CachingIndexedFastaSequenceFile(new File(reference));
         } catch( FileNotFoundException e ) {
             throw new UserException.CouldNotReadInputFile(new File(reference), e);
+        }
+    }
+
+    private void initializeHaplotypeBamWriter() {
+        if ( hcArgs.bamOutputPath != null ) {
+            haplotypeBAMWriter = HaplotypeBAMWriter.create(hcArgs.bamWriterType, new File(hcArgs.bamOutputPath), readsHeader);
         }
     }
 
@@ -578,19 +589,13 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 emitReferenceConfidence(),
                 readsHeader);
 
-        if ( hcArgs.bamWriter != null ) {
+        if ( haplotypeBAMWriter != null ) {
             final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
             if ( hcArgs.disableOptimizations ) {
                 calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
             }
-            try ( final HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(hcArgs.bamWriterType, new File(hcArgs.bamWriter), readsHeader) ) {
-                haplotypeBAMWriter.writeReadsAlignedToHaplotypes(
-                        haplotypes,
-                        assemblyResult.getPaddedReferenceLoc(),
-                        haplotypes,
-                        calledHaplotypeSet,
-                        readLikelihoods);
-            }
+            haplotypeBAMWriter.writeReadsAlignedToHaplotypes(haplotypes, assemblyResult.getPaddedReferenceLoc(), haplotypes,
+                                                             calledHaplotypeSet, readLikelihoods);
         }
 
         if( hcArgs.DEBUG ) {
@@ -756,6 +761,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public void shutdown() {
         likelihoodCalculationEngine.close();
+
+        if ( haplotypeBAMWriter != null ) {
+            haplotypeBAMWriter.close();
+        }
     }
 
     private void finalizeRegion( final AssemblyRegion region ) {

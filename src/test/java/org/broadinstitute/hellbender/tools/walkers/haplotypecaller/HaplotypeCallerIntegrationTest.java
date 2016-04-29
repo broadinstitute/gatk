@@ -4,7 +4,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -113,6 +115,45 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final double concordance = calculateConcordance(output, gatk3Output);
         Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.4 in GVCF mode is < 99%");
+    }
+
+    @Test
+    public void testBamoutProducesReasonablySizedOutput() {
+        Utils.resetRandomGenerator();
+
+        // We will test that when running with -bamout over the testInterval, we produce
+        // a bam with a number of reads that is within 10% of what GATK3.4 produces with
+        // -bamout over the same interval. This is just to test that we produce a reasonably-sized
+        // bam for the region, not to validate the haplotypes, etc. We don't want
+        // this test to fail unless there is a likely problem with -bamout itself (eg., empty
+        // or truncated bam).
+        final String testInterval = "20:10000000-10010000";
+        final int gatk3BamoutNumReads = 5170;
+
+        final File vcfOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".vcf");
+        final File bamOutput = createTempFile("testBamoutProducesReasonablySizedOutput", ".bam");
+
+        final String[] args = new String[] {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", testInterval,
+                "-O", vcfOutput.getAbsolutePath(),
+                "-bamout", bamOutput.getAbsolutePath(),
+                "-pairHMM", "AVX_LOGLESS_CACHING"
+        };
+
+        runCommandLine(args);
+
+        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput) ) {
+            int actualBamoutNumReads = 0;
+            for ( final GATKRead read : bamOutReadsSource ) {
+                ++actualBamoutNumReads;
+            }
+
+            final int readCountDifference = Math.abs(actualBamoutNumReads - gatk3BamoutNumReads);
+            Assert.assertTrue(((double)readCountDifference / gatk3BamoutNumReads) < 0.10,
+                               "-bamout produced a bam with over 10% fewer/more reads than expected");
+        }
     }
 
     /*

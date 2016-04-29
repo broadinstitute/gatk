@@ -63,7 +63,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      */
     @Advanced
     @Argument(fullName="bamOutput", shortName="bamout", doc="File to which assembled haplotypes should be written", optional = true)
-    public String bamWriter = null;
+    public String bamOutputPath = null;
 
     /**
      * The type of BAM output we want to see. This determines whether HC will write out all of the haplotypes it
