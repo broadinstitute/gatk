@@ -1,3 +1,5 @@
+//Note: this section 'buildscript` is only for the dependencies of the buildscript itself.
+// See the second 'repositories' section below for the actual dependencies of GATK itself
 buildscript {
     repositories {
         mavenCentral()
