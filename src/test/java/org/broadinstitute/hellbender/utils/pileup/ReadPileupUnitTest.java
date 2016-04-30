@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.util.Locatable;
@@ -393,6 +394,13 @@ public final class ReadPileupUnitTest {
 
         final int offset = 4;
         final ReadPileup pu = new ReadPileup(loc, reads, offset);
+
+        final PileupElement firstElem = pu.getElementForRead(read1);
+        Assert.assertNull(firstElem.getAdjacentOperator(PileupElement.Direction.NEXT));
+        Assert.assertNull(firstElem.getAdjacentOperator(PileupElement.Direction.PREV));
+        final PileupElement secondElem = pu.getElementForRead(read2);
+        Assert.assertEquals(secondElem.getAdjacentOperator(PileupElement.Direction.NEXT), CigarOperator.I);
+        Assert.assertNull(secondElem.getAdjacentOperator(PileupElement.Direction.PREV));
 
         Assert.assertNotNull(pu.toString()); //checking non-blowup. We're not making any claims about the format of toString
 
