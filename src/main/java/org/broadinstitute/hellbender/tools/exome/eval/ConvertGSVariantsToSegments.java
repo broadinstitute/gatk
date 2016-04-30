@@ -33,8 +33,8 @@ import java.util.stream.Stream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Convert GS VCF file contents into a CopyNumberTriState segment file",
-        oneLineSummary = "Convert GS VCF file into a segment file",
+        summary = "Convert Genome STRiP VCF file contents into a CopyNumberTriState segment file. Genome STRiP can be found at http://www.broadinstitute.org/software/genomestrip",
+        oneLineSummary = "Convert Genome STRiP VCF file into a segment file",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class ConvertGSVariantsToSegments extends VariantWalker {
