@@ -14,7 +14,7 @@ import static org.broadinstitute.hellbender.utils.BaseUtils.Base.D;
 /**
  * Represents an individual base in a reads pileup.
  */
-public class PileupElement {
+public final class PileupElement {
 
     private static final EnumSet<CigarOperator> ON_GENOME_OPERATORS =
             EnumSet.of(CigarOperator.M, CigarOperator.EQ, CigarOperator.X, CigarOperator.D);
@@ -51,7 +51,7 @@ public class PileupElement {
         Utils.nonNull(read, "read is null");
         Utils.nonNull(currentElement, "currentElement is null");
         Utils.validIndex(baseOffset, read.getLength());
-        Utils.validIndex(currentCigarOffset, read.getCigar().numCigarElements());
+        Utils.validIndex(currentCigarOffset, read.getCigarElements().size());
         Utils.validIndex(offsetInCurrentCigar, currentElement.getLength());
         this.read = read;
         this.offset = baseOffset;
@@ -152,7 +152,7 @@ public class PileupElement {
      * @return a base encoded as a byte
      */
     public byte getBase() {
-        return isDeletion() ? DELETION_BASE : read.getBases()[offset];
+        return isDeletion() ? DELETION_BASE : read.getBase(offset);
     }
 
     /**
@@ -160,7 +160,7 @@ public class PileupElement {
      * @return a phred-scaled quality score as a byte
      */
     public byte getQual() {
-        return isDeletion() ? DELETION_QUAL : read.getBaseQualities()[offset];
+        return isDeletion() ? DELETION_QUAL : read.getBaseQuality(offset);
     }
 
     /**
@@ -329,9 +329,10 @@ public class PileupElement {
     private LinkedList<CigarElement> getBetween(final Direction direction) {
         final int increment = direction == Direction.NEXT ? 1 : -1;
         LinkedList<CigarElement> elements = null;
-        final int nCigarElements = read.getCigar().numCigarElements();
+        final List<CigarElement> cigarElements = read.getCigarElements();
+        final int nCigarElements = cigarElements.size();
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
-            final CigarElement elt = read.getCigar().getCigarElement(i);
+            final CigarElement elt = cigarElements.get(i);
             if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) ) {
                 break;
             } else {
