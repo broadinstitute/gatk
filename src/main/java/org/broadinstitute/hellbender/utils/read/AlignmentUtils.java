@@ -1090,8 +1090,8 @@ public final class AlignmentUtils {
         final boolean DEBUG = false;
 
         final List<CigarElement> newElements = new LinkedList<>();
-        final int nElements12 = firstToSecond.getCigarElements().size();
-        final int nElements23 = secondToThird.getCigarElements().size();
+        final int nElements12 = firstToSecond.numCigarElements();
+        final int nElements23 = secondToThird.numCigarElements();
 
         int cigar12I = 0, cigar23I = 0;
         int elt12I = 0, elt23I = 0;
