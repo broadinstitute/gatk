@@ -33,6 +33,31 @@ public final class TargetCoverageUtils {
     public static final String[] TARGET_COVERAGE_COLUMN_NAME_ARRAY = new String[]{TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN};
 
     /**
+     * Create a TableColumnCollection for the raw coverage collection (and proportional coverage) files
+     * These are the columns produced by CalculateTargetCoverage (in GATK public)
+     *
+     * Note this is only useful for a file with a single sample.
+     *
+     * @param sampleName never {@code null} Name of the column in the coverage file corresponding to a single sample.
+     */
+    public static TableColumnCollection determineRawCoverageSingleSampleColumnCollection(final String sampleName) {
+        Utils.nonNull(sampleName, "Sample name cannot be null.");
+        return new TableColumnCollection(CalculateTargetCoverage.TARGET_NAME_COLUMN_NAME,
+                CalculateTargetCoverage.TARGET_CONTIG_COLUMN_NAME,
+                CalculateTargetCoverage.TARGET_START_COLUMN_NAME,
+                CalculateTargetCoverage.TARGET_END_COLUMN_NAME, sampleName);
+    }
+
+    /** TODO: docs!
+     * These are the columns needed by NormalizeSomaticReadCounts and other TargetCoverage files
+     *
+     *  @param sampleName never {@code null} Name of the column in the coverage file corresponding to a single sample.
+     */
+    public static TableColumnCollection determineTargetCoverageColumnCollection(final String sampleName) {
+        Utils.nonNull(sampleName, "Sample name cannot be null.");
+        return new TableColumnCollection(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, sampleName);
+    }
+    /**
      * Function to read target coverage.
      */
     private static final BiFunction<TableColumnCollection, Function<String, RuntimeException>, Function<DataLine, TargetCoverage>> tableColumnCollectionFunctionFunctionBiFunction = (columns, formatExceptionFactory) -> {
@@ -45,6 +70,8 @@ public final class TargetCoverageUtils {
         return (dataLine) -> new TargetCoverage(dataLine.get(TARGET_NAME_COLUMN),
                 new SimpleInterval(dataLine.get(CONTIG_COLUMN), dataLine.getInt(START_COLUMN), dataLine.getInt(END_COLUMN)), dataLine.getDouble(4));
     };
+
+
 
     private TargetCoverageUtils() {}
 
@@ -151,10 +178,12 @@ public final class TargetCoverageUtils {
      * @param sampleName Name of sample being written. Never {@code null}
      * @param byKeySorted Map of simple-intervals to their copy-ratio. Never {@code null}
      * @param comments Comments to add to header of coverage file.
+     * @param tableColumnCollection table column collection to be used.  One of {@link TargetCoverageUtils::determineRawCoverageSingleSampleColumnCollection}
+     *                              or {@link TargetCoverageUtils::determineTargetCoverageColumnCollection}
      */
     public static <N extends Number> void writeTargetsWithCoverageFromSimpleInterval(final File outFile, final String sampleName,
                                                                   final SortedMap<SimpleInterval, N> byKeySorted,
-                                                                  final String[] comments) {
+                                                                  final String[] comments, final TableColumnCollection tableColumnCollection) {
 
         Utils.nonNull(outFile, "Output file cannot be null.");
         Utils.nonNull(sampleName, "Sample name cannot be null.");
@@ -167,7 +196,7 @@ public final class TargetCoverageUtils {
         }
 
         try (final TableWriter<TargetCoverage> writer = TableUtils.writer(outFile,
-                new TableColumnCollection(TARGET_NAME_COLUMN, CONTIG_COLUMN, START_COLUMN, END_COLUMN, sampleName),
+                tableColumnCollection,
                 //lambda for filling an initially empty DataLine
                 (target, dataLine) -> {
                     final SimpleInterval interval = target.getInterval();

@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCoverageUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
@@ -27,8 +28,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
-        summary = "Spark WGS Coverage",
-        oneLineSummary = "Spark WGS Coverage.",
+        summary = "Calculate coverage on a WGS bam file using Spark.  This creates a set of pseudo-targets that span" +
+                "the entire genome.  Use the 'binsize' parameter to specify the size of each interval.  By default, any " +
+                "contigs X, Y, M, and MT are excluded.",
+        oneLineSummary = "Calculate coverage on a WGS bam file using Spark",
         programGroup = CopyNumberProgramGroup.class)
 public class SparkGenomeReadCounts extends GATKSparkTool {
     private static final long serialVersionUID = 1l;
@@ -68,9 +71,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     )
     protected File outputFile;
 
-
-
-    public void collectReads(final JavaSparkContext ctx) {
+    private void collectReads(final JavaSparkContext ctx) {
         if ( readArguments.getReadFilesNames().size() != 1 ) {
             throw new UserException("This tool only accepts a single bam/sam/cram as input");
         }
@@ -86,7 +87,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
                 "##commandLine = " + getCommandLine(),
                 String.format("##title = Coverage counts in %d base bins for WGS", binsize)};
 
-        final ReadFilter filter = makeReadFilter();
+        final ReadFilter filter = makeGenomeReadFilter();
         final SAMSequenceDictionary originalSequenceDictionary = getReferenceSequenceDictionary();
         SAMSequenceDictionary modifiedSequenceDictionary = originalSequenceDictionary;
         if (dropNonAutosomes){
@@ -150,9 +151,12 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         logger.info(String.format("Finished creating proportional coverage map. Elapse of %d seconds",
                 (pCovFileEndTime - pCovFileStartTime) / 1000));
 
-        logger.info("Writing coverage file ...");
+        logger.info("Writing raw coverage file ...");
         final long writingCovFileStartTime = System.currentTimeMillis();
-        TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(new File(outputFile.getAbsolutePath() + RAW_COV_OUTPUT_EXTENSION), sampleName, byKeySorted, commentsForRawCoverage);
+        TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(
+                new File(outputFile.getAbsolutePath() + RAW_COV_OUTPUT_EXTENSION),
+                sampleName, byKeySorted, commentsForRawCoverage,
+                TargetCoverageUtils.determineRawCoverageSingleSampleColumnCollection(sampleName));
         final long writingCovFileEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished writing coverage file. Elapse of %d seconds",
                 (writingCovFileEndTime - writingCovFileStartTime) / 1000));
@@ -160,7 +164,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         logger.info("Writing proportional coverage file ...");
         final long writingPCovFileStartTime = System.currentTimeMillis();
         TargetCoverageUtils.writeTargetsWithCoverageFromSimpleInterval(outputFile, sampleName, byKeyProportionalSorted,
-                commentsForProportionalCoverage);
+                commentsForProportionalCoverage, TargetCoverageUtils.determineRawCoverageSingleSampleColumnCollection(sampleName));
         final long writingPCovFileEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished writing proportional coverage file. Elapse of %d seconds",
                 (writingPCovFileEndTime - writingPCovFileStartTime) / 1000));
@@ -187,6 +191,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
     @Override
     protected void runTool(JavaSparkContext ctx) {
+        Utils.regularReadableUserFile(outputFile);
         collectReads(ctx);
     }
 
@@ -194,7 +199,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
      * Filter reads based on marked parameters
      * @return never {@code null}
      */
-    public ReadFilter makeReadFilter() {
+    private ReadFilter makeGenomeReadFilter() {
         return new WellformedReadFilter(getHeaderForReads())
                 .and(ReadFilterLibrary.MAPPED)
                 .and(ReadFilterLibrary.NOT_DUPLICATE)
