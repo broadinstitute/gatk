@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.utils.Utils;
-
 import java.util.stream.DoubleStream;
 
 /**
@@ -56,12 +54,16 @@ final class RefVsAnyResult {
     }
 
     void incrementRefAD(final int by){
-        Utils.validateArg(by >= 0, "expected a non-negative number but got " + by);
+        if (by < 0){
+            throw new IllegalArgumentException("expected a non-negative number but got " + by);
+        }
         refDepth += by;
     }
 
     void incrementNonRefAD(final int by){
-        Utils.validateArg(by >= 0, "expected a non-negative number but got " + by);
+        if (by < 0){
+            throw new IllegalArgumentException("expected a non-negative number but got " + by);
+        }
         nonRefDepth += by;
     }
 
