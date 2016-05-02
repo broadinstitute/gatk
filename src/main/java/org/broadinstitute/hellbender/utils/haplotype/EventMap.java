@@ -81,7 +81,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
                         if( BaseUtils.isRegularBase(refByte) ) {
                             insertionAlleles.add( Allele.create(refByte, true) );
                         }
-                        if( cigarIndex == 0 || cigarIndex == cigar.getCigarElements().size() - 1 ) {
+                        if( cigarIndex == 0 || cigarIndex == cigar.numCigarElements() - 1 ) {
                             // if the insertion isn't completely resolved in the haplotype, skip it
                             // note this used to emit SYMBOLIC_UNASSEMBLED_EVENT_ALLELE but that seems dangerous
                         } else {

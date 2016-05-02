@@ -530,7 +530,7 @@ public abstract class AbstractAlignmentMerger {
                 // 1-based index of first base in read to clip.
                 int clipFrom = readLength - overhang + 1;
                 // we have to check if the last element is soft-clipping, so we can subtract that from clipFrom
-                final CigarElement cigarElement = oldCigar.getCigarElement(oldCigar.getCigarElements().size()-1);
+                final CigarElement cigarElement = oldCigar.getCigarElement(oldCigar.numCigarElements()-1);
                 if (CigarOperator.SOFT_CLIP == cigarElement.getOperator()) clipFrom -= cigarElement.getLength();
                 final List<CigarElement> newCigarElements = CigarUtil.softClipEndOfRead(clipFrom, oldCigar.getCigarElements());
                 newCigar = new Cigar(newCigarElements);

@@ -51,7 +51,7 @@ public final class PileupElement {
         Utils.nonNull(read, "read is null");
         Utils.nonNull(currentElement, "currentElement is null");
         Utils.validIndex(baseOffset, read.getLength());
-        Utils.validIndex(currentCigarOffset, read.getCigarElements().size());
+        Utils.validIndex(currentCigarOffset, read.numCigarElements());
         Utils.validIndex(offsetInCurrentCigar, currentElement.getLength());
         this.read = read;
         this.offset = baseOffset;

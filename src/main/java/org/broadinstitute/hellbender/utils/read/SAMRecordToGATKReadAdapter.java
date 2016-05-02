@@ -270,6 +270,15 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         return samRecord.getCigar() == null ? Collections.emptyList() : samRecord.getCigar().getCigarElements();
     }
 
+    /**
+     * This implementation saves time by not making an unmodifiable view of the list of
+     * elements but returns the length of the list directly (or 0 if there's no cigar).
+     */
+    @Override
+    public int numCigarElements(){
+        return samRecord.getCigar() == null ? 0 : samRecord.getCigar().numCigarElements();
+    }
+
     @Override
     public void setCigar( final Cigar cigar ) {
         samRecord.setCigar(cigar);
