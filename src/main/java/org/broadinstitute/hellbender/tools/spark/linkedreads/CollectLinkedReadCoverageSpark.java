@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
@@ -50,7 +49,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
 
-        final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeIntervals =
+        final JavaPairRDD<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeIntervals =
                 reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                 .aggregateByKey(
                         new HashMap<>(),
@@ -64,16 +63,16 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         intervalsByBarcode.saveAsTextFile(out);
     }
 
-    static List<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeLocations) {
+    static List<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeLocations) {
         final List<String> outputLines = new ArrayList<>();
         final String barcode = barcodeLocations._1;
-        final Map<String, IntervalTree<List<ReadInfo>>> stringIntervalTreeMap = barcodeLocations._2;
+        final Map<String, IntervalTree<List<GATKRead>>> stringIntervalTreeMap = barcodeLocations._2;
         for (final String contig : stringIntervalTreeMap.keySet()) {
-            final IntervalTree<List<ReadInfo>> contigIntervalTree = stringIntervalTreeMap.get(contig);
-            final Iterator<IntervalTree.Node<List<ReadInfo>>> nodeIterator = contigIntervalTree.iterator();
+            final IntervalTree<List<GATKRead>> contigIntervalTree = stringIntervalTreeMap.get(contig);
+            final Iterator<IntervalTree.Node<List<GATKRead>>> nodeIterator = contigIntervalTree.iterator();
             while (nodeIterator.hasNext()) {
                 final StringBuilder out = new StringBuilder();
-                final IntervalTree.Node<List<ReadInfo>> node = nodeIterator.next();
+                final IntervalTree.Node<List<GATKRead>> node = nodeIterator.next();
                 out.append(contig);
                 out.append("\t");
                 out.append(node.getStart());
@@ -93,12 +92,12 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 out.append("0,0,255");
                 out.append("\t");
                 out.append(node.getValue().size());
-                List<ReadInfo> results = node.getValue();
-                results.sort((o1, o2) -> new Integer(o1.start).compareTo(o2.start));
+                final List<GATKRead> results = node.getValue();
+                results.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
                 out.append("\t");
-                out.append(results.stream().map(r -> String.valueOf(r.end - r.start)).collect(Collectors.joining(",")));
+                out.append(results.stream().map(r -> String.valueOf(r.getEnd() - r.getStart())).collect(Collectors.joining(",")));
                 out.append("\t");
-                out.append(results.stream().map(r -> String.valueOf(r.start - node.getStart())).collect(Collectors.joining(",")));
+                out.append(results.stream().map(r -> String.valueOf(r.getStart() - node.getStart())).collect(Collectors.joining(",")));
                 outputLines.add(out.toString());
             }
         }
@@ -107,33 +106,32 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     @VisibleForTesting
-    static Map<String, IntervalTree<List<ReadInfo>>> addReadToIntervals(final Map<String, IntervalTree<List<ReadInfo>>> intervalList, final GATKRead read, final int clusterSize) {
+    static Map<String, IntervalTree<List<GATKRead>>> addReadToIntervals(final Map<String, IntervalTree<List<GATKRead>>> intervalList, final GATKRead read, final int clusterSize) {
         final Interval sloppedReadInterval = new Interval(read.getContig(), read.getStart() - clusterSize, read.getStart()+clusterSize);
         if (! intervalList.containsKey(read.getContig())) {
             intervalList.put(read.getContig(), new IntervalTree<>());
         }
-        final IntervalTree<List<ReadInfo>> contigIntervals = intervalList.get(sloppedReadInterval.getContig());
+        final IntervalTree<List<GATKRead>> contigIntervals = intervalList.get(sloppedReadInterval.getContig());
 
-        final Iterator<IntervalTree.Node<List<ReadInfo>>> iterator = contigIntervals.overlappers(sloppedReadInterval.getStart(), sloppedReadInterval.getEnd());
+        final Iterator<IntervalTree.Node<List<GATKRead>>> iterator = contigIntervals.overlappers(sloppedReadInterval.getStart(), sloppedReadInterval.getEnd());
         int start = read.getStart();
         int end = read.getEnd();
-        List<ReadInfo> value = new ArrayList<>();
-        final ReadInfo readInfo = new ReadInfo(read.getStart(), read.getEnd());
-        value.add(readInfo);
+        final List<GATKRead> value = new ArrayList<>();
+        value.add(read);
         if (iterator.hasNext()) {
-            final IntervalTree.Node<List<ReadInfo>> next = iterator.next();
+            final IntervalTree.Node<List<GATKRead>> next = iterator.next();
             final int currentStart = next.getStart();
             final int currentEnd = next.getStart();
-            final List<ReadInfo> currentValue = next.getValue();
+            final List<GATKRead> currentValue = next.getValue();
             start = Math.min(currentStart, read.getStart());
             end = Math.max(currentEnd, read.getEnd());
             value.addAll(currentValue);
             iterator.remove();
         }
         while (iterator.hasNext()) {
-            final IntervalTree.Node<List<ReadInfo>> next = iterator.next();
+            final IntervalTree.Node<List<GATKRead>> next = iterator.next();
             final int currentEnd = next.getStart();
-            final List<ReadInfo> currentValue = next.getValue();
+            final List<GATKRead> currentValue = next.getValue();
             end = currentEnd;
             value.addAll(currentValue);
             iterator.remove();
@@ -142,10 +140,10 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         return intervalList;
     }
 
-    static Map<String, IntervalTree<List<ReadInfo>>> combineIntervalLists(final Map<String, IntervalTree<List<ReadInfo>>> intervalList1,
-                                                                   final Map<String, IntervalTree<List<ReadInfo>>> intervalList2,
+    static Map<String, IntervalTree<List<GATKRead>>> combineIntervalLists(final Map<String, IntervalTree<List<GATKRead>>> intervalList1,
+                                                                   final Map<String, IntervalTree<List<GATKRead>>> intervalList2,
                                                                    final int clusterSize) {
-        final Map<String, IntervalTree<List<ReadInfo>>> combinedList = new HashMap<>();
+        final Map<String, IntervalTree<List<GATKRead>>> combinedList = new HashMap<>();
         Stream.concat(intervalList1.keySet().stream(), intervalList2.keySet().stream()).
                 forEach(contigName -> combinedList.put(contigName, mergeIntervalTrees(intervalList1.get(contigName), intervalList2.get(contigName), clusterSize)));
         return combinedList;
@@ -153,24 +151,24 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     }
 
     @VisibleForTesting
-    static IntervalTree<List<ReadInfo>> mergeIntervalTrees(final IntervalTree<List<ReadInfo>> tree1, final IntervalTree<List<ReadInfo>> tree2, final int clusterSize) {
+    static IntervalTree<List<GATKRead>> mergeIntervalTrees(final IntervalTree<List<GATKRead>> tree1, final IntervalTree<List<GATKRead>> tree2, final int clusterSize) {
 
         if (tree1 == null || tree1.size() == 0) return tree2;
         if (tree2 == null || tree2.size() == 0) return tree1;
 
         tree1.iterator().forEachRemaining(node -> tree2.put(node.getStart(), node.getEnd(), node.getValue()));
 
-        final IntervalTree<List<ReadInfo>> mergedTree = new IntervalTree<>();
+        final IntervalTree<List<GATKRead>> mergedTree = new IntervalTree<>();
 
         while (tree2.size() > 0) {
-            final IntervalTree.Node<List<ReadInfo>> current = tree2.min();
+            final IntervalTree.Node<List<GATKRead>> current = tree2.min();
             final int currentStart = current.getStart();
             int currentEnd = current.getEnd();
-            List<ReadInfo> currentValue = current.getValue();
+            final List<GATKRead> currentValue = current.getValue();
 
-            final Iterator<IntervalTree.Node<List<ReadInfo>>> overlappers = tree2.overlappers(current.getStart() - clusterSize, current.getEnd() + clusterSize);
+            final Iterator<IntervalTree.Node<List<GATKRead>>> overlappers = tree2.overlappers(current.getStart() - clusterSize, current.getEnd() + clusterSize);
             while (overlappers.hasNext()) {
-                final IntervalTree.Node<List<ReadInfo>> overlapper = overlappers.next();
+                final IntervalTree.Node<List<GATKRead>> overlapper = overlappers.next();
                 if (overlapper == current) {
                     continue;
                 }
@@ -184,13 +182,4 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         return mergedTree;
     }
 
-    static class ReadInfo {
-        public ReadInfo(final int start, final int end) {
-            this.start = start;
-            this.end = end;
-        }
-
-        int start;
-        int end;
-    }
 }
