@@ -35,7 +35,6 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
 
     /**
      * Return value is 0 if the two files have identical base qualities and non-zero otherwise.
-     */
      * Use static quantized quality scores to a given number of levels.
      */
     @Advanced
@@ -46,6 +45,7 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
      * Round down quantized only works with the static_quantized_quals option.  When roundDown = false, rounding is done in
      * probability space to the nearest bin.  When roundDown = true, the value is rounded to the nearest bin
      * that is smaller than the current bin.
+     * Note: it only works when static_quantized_quals is set.
      */
     @Advanced
     @Argument(fullName="round_down_quantized", shortName = "RDQ", doc = "Round quals down to nearest quantized qual", optional=true)
@@ -55,6 +55,9 @@ public final class CompareBaseQualities extends PicardCommandLineProgram {
 
     @Override
     protected Object doWork() {
+        if (roundDown && (staticQuantizationQuals == null || staticQuantizationQuals.isEmpty())){
+            throw new UserException.BadArgumentValue("round_down_quantized", "true", "This option can only be used if static_quantized_quals is also used");
+        }
         staticQuantizedMapping = constructStaticQuantizedMapping(staticQuantizationQuals, roundDown);
 
         IOUtil.assertFileIsReadable(samFiles.get(0));

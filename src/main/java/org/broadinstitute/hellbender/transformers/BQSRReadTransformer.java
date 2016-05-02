@@ -289,16 +289,4 @@ public final class BQSRReadTransformer implements ReadTransformer {
         }
         return bytes;
     }
-
-
-    /**
-     * Statically bin the quals using the given mapping.
-     */
-    public static byte[] binAllQuals(final byte[] baseQualities, final byte[] binning) {
-        final byte[] result = baseQualities.clone();
-        for (int i = 0, n = result.length; i < n; i++) {
-            result[i] = binning[baseQualities[i]];
-        }
-        return result;
-    }
 }
