@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 
@@ -10,7 +11,10 @@ import java.util.List;
  * Holds a List of intervals (may be empty) and a flag controlling whether unmapped records should be
  * returned.
  */
-public class TraversalParameters {
+public class TraversalParameters implements Serializable{
+
+    private static final long serialVersionUID = 1l;
+
     private final List<SimpleInterval> intervalsForTraversal;
     private final boolean traverseUnmapped;
 

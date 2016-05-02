@@ -368,6 +368,19 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
             intervals = intervalArgumentCollection.getIntervals(intervalDictionary);
         }
+        intervals = editIntervals(intervals);
+    }
+
+    /**
+     * Transform the intervals during loading.
+     *
+     * Developers can override this method to do custom interval handling during initialization of their GATKSparkTool
+     *
+     * @param rawIntervals Intervals specified on command line by user (-L).  Can be {@code null}
+     * @return Transformed set of intervals.  Allowed to return non-null, if null was specified in the input.
+     */
+    protected List<SimpleInterval> editIntervals(final List<SimpleInterval> rawIntervals) {
+        return rawIntervals;
     }
 
     /**
