@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.genome;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -52,7 +51,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     protected static final String BINSIZE_SHORT_NAME = "bins";
     protected static final String BINSIZE_LONG_NAME = "binsize";
 
-    @Argument(doc = "The size of bins in bases to collect coverage into",
+    @Argument(doc = "The size of bins for each interval specified.  E.g. chr2:100-200 --> chr2:100-150, chr2:151-200 if binsize = 50.",
             fullName = BINSIZE_LONG_NAME,
             shortName = BINSIZE_SHORT_NAME,
             optional = true)
@@ -70,7 +69,38 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     )
     protected File outputFile;
 
-    private void collectReads(final JavaSparkContext ctx) {
+    /**
+     * Determine the intervals to consider for coverage collection.  Honors the keepAutosome parameter.
+     *
+     * <p>Developer's note:  This CLI will always set the attribute, intervals, to a non-null value.</p>
+     *
+     * @param rawIntervals Specified by the user.  If null, converts to SimpleIntervals specifying the entire
+     *                     reference genome.  If keepNonAutosomes is NOT specified, it will prune these intervals (or the
+     *                     ones specified by the user), to remove the contigs that are listed in the docs for
+     *                     {@link SparkGenomeReadCounts#keepNonAutosomes}
+     * @return Never {@code null}  Specified list of intervals.  These will be treated as if user had specified on the
+     *  CLI.
+     */
+    @Override
+    protected List<SimpleInterval> editIntervals(final List<SimpleInterval> rawIntervals) {
+        List<SimpleInterval> modifiedIntervals = rawIntervals;
+        if (rawIntervals == null) {
+            modifiedIntervals = IntervalUtils.getAllIntervalsForReference(getReferenceSequenceDictionary());
+        }
+
+        if (keepNonAutosomes) {
+            return modifiedIntervals;
+        }
+
+        // Enforce the elimination of certain contigs when proper option is set.
+        logger.info("Dropping non-autosomes, as requested...");
+        return modifiedIntervals.stream()
+                .filter(s -> !NONAUTOSOMALCONTIGS.contains(s.getContig()))
+                .filter(s -> !(s.getContig().startsWith("GL")) && !(s.getContig().startsWith("NC_")))
+                .collect(Collectors.toList());
+    }
+
+    private void collectReads() {
         if ( readArguments.getReadFilesNames().size() != 1 ) {
             throw new UserException("This tool only accepts a single bam/sam/cram as input");
         }
@@ -85,13 +115,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
                 String.format("##title = Coverage counts in %d base bins for WGS", binsize)};
 
         final ReadFilter filter = makeGenomeReadFilter();
-        final SAMSequenceDictionary originalSequenceDictionary = getReferenceSequenceDictionary();
-        SAMSequenceDictionary modifiedSequenceDictionary = originalSequenceDictionary;
-        if (!keepNonAutosomes){
-            logger.info("Dropping non-autosomes, as requested...");
-            modifiedSequenceDictionary = dropContigsFromSequence(originalSequenceDictionary, NONAUTOSOMALCONTIGS);
-        }
-        final SAMSequenceDictionary sequenceDictionary = modifiedSequenceDictionary;
+        final SAMSequenceDictionary sequenceDictionary = getReferenceSequenceDictionary();
 
         logger.info("Starting Spark coverage collection...");
         final long coverageCollectionStartTime = System.currentTimeMillis();
@@ -113,7 +137,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
         logger.info("Creating full genome bins...");
         final long createGenomeBinsStartTime = System.currentTimeMillis();
-        final List<SimpleInterval> fullGenomeBins = createFullGenomeBins(binsize, sequenceDictionary);
+        final List<SimpleInterval> fullGenomeBins = createFullGenomeBins(binsize);
         List<Target> fullGenomeTargetCollection = createTargetCollectionFromSimpleInterval(fullGenomeBins);
         TargetCoverageUtils.writeTargetsAsBed(new File(outputFile.getAbsolutePath() + ".bed"), fullGenomeTargetCollection);
         final long createGenomeBinsEndTime = System.currentTimeMillis();
@@ -168,18 +192,8 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
                 (writingPCovFileEndTime - writingPCovFileStartTime) / 1000));
     }
 
-    protected static SAMSequenceDictionary dropContigsFromSequence(final SAMSequenceDictionary originalSequenceDictionary, final Set<String> nonAutosomalContigs) {
-        final List<SAMSequenceRecord> initialSequences = new ArrayList<>(originalSequenceDictionary.getSequences());
-        final List<SAMSequenceRecord> finalSequences = initialSequences.stream()
-                .filter(s -> !nonAutosomalContigs.contains(s.getSequenceName()))
-                .filter(s -> !(s.getSequenceName().startsWith("GL")) && !(s.getSequenceName().startsWith("NC_")))
-                .collect(Collectors.toList());
-        return new SAMSequenceDictionary(finalSequences);
-    }
-
-    private static List<SimpleInterval> createFullGenomeBins(final int binsize, final SAMSequenceDictionary sequenceDictionary){
-        final List<SimpleInterval> sequenceIntervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-        return IntervalUtils.cutToShards(sequenceIntervals, binsize);
+    private List<SimpleInterval> createFullGenomeBins(final int binsize){
+        return IntervalUtils.cutToShards(getIntervals(), binsize);
     }
 
     private static SimpleInterval createKey(final GATKRead read, final SAMSequenceDictionary sequenceDictionary, final int binsize){
@@ -193,7 +207,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     @Override
     protected void runTool(JavaSparkContext ctx) {
         Utils.regularReadableUserFile(outputFile);
-        collectReads(ctx);
+        collectReads();
     }
 
     /**
