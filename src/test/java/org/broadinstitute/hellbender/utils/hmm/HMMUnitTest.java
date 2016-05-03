@@ -75,6 +75,11 @@ public final class HMMUnitTest extends BaseTest {
 
     private static List<ExpectedResult> TEST_EXPECTED_RESULTS;
 
+    @Test
+    public void testSetup() throws IOException {
+        setUp();
+    }
+
     /**
      * This method runs the Test models and sequences against R's HMM package to
      * obtain independent estimates for the expected values for the Viterbi and Forward-Backward

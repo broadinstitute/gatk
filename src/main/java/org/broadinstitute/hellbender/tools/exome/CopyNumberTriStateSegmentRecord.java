@@ -25,4 +25,8 @@ public class CopyNumberTriStateSegmentRecord {
     public String getSampleName() {
         return sampleName;
     }
+
+    public String toString() {
+        return String.format("{sample: %s, segment: %s}", sampleName, segment);
+    }
 }

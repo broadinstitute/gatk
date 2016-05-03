@@ -133,10 +133,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
     }
 
     static String toHMMInstallRString() {
-        return "if (!(\"HMM\" %in% rownames(installed.packages))) {\n" +
-               "  install.packages(\"http://cran.r-project.org/src/contrib/HMMCont_1.0.tar.gz\", repos=NULL, type=\"source\")\n" +
-               "}\n" +
-               "library(HMM)\n";
+        return "library(HMM)";
     }
 
     static String toHMMModelDeclarationRString(final List<TestHMModel> models) {

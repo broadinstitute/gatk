@@ -13,4 +13,10 @@ dependencies = c("naturalsort")
 if (!all(dependencies %in% rownames(installed.packages()))) {
   install.packages(setdiff(dependencies, rownames(installed.packages())), repos="http://cran.cnr.Berkeley.edu")
 }
+
+# HMM is only required for testing and not in production:
+hmmUrl = "http://cran.r-project.org/src/contrib/HMM_1.0.tar.gz"
+if (!("HMM" %in% rownames(installed.packages()))) {
+  install.packages(hmmUrl, repos=NULL, type="source")
+}
 q(save="no")
