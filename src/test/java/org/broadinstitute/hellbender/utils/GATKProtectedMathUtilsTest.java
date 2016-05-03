@@ -1,10 +1,17 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by davidben on 1/22/16.
@@ -113,4 +120,28 @@ public class GATKProtectedMathUtilsTest {
         Assert.assertEquals(columnStdDevs[3], 13.65039682, 1e-8);
     }
 
+    @Test
+    public void testRandomSelectFlatProbability() {
+        final RandomGenerator rg = RandomGeneratorFactory.createRandomGenerator(new Random(13));
+        final int NUM_SAMPLES = 1000;
+        final List<Integer> choices = Arrays.asList(0,1,2);
+        final List<Integer> result = IntStream.range(0, NUM_SAMPLES)
+                .map(n -> GATKProtectedMathUtils.randomSelect(choices, j -> 1.0 / choices.size(), rg))
+                .boxed()
+                .collect(Collectors.toList());
+        Assert.assertEquals(result.stream().filter(n -> n==0).count(), NUM_SAMPLES/choices.size(), 50);
+    }
+
+    @Test
+    public void testRandomSelect() {
+        final RandomGenerator rg = RandomGeneratorFactory.createRandomGenerator(new Random(13));
+        final int NUM_SAMPLES = 1000;
+        final List<Integer> choices = Arrays.asList(-1,0,1);
+        final List<Integer> result = IntStream.range(0, NUM_SAMPLES)
+                .map(n -> GATKProtectedMathUtils.randomSelect(choices, j -> j*j/2.0, rg))
+                .boxed()
+                .collect(Collectors.toList());
+        Assert.assertEquals(result.stream().filter(n -> n==0).count(), 0);
+        Assert.assertEquals(result.stream().filter(n -> n==1).count(), NUM_SAMPLES/2, 50);
+    }
 }
