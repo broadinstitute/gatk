@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.SkipException;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.*;
@@ -29,23 +30,20 @@ public final class RunBWAMEMViaCommandLineTest extends CommandLineProgramTest {
     private static Path getBwaPath(){
         String s = System.getProperty("PATHTOBWA");
         if(null==s){
-            s = getNonNullEnvironmentVariable("PATHTOBWA");
-            if(null==s) {
-                return null;
-            }else{
-                return Paths.get(s);
-            }
-        }else{
-            return Paths.get(s);
+            s = System.getenv("PATHTOBWA");
+        }
+        return (null==s) ? null : Paths.get(s);
+    }
+
+    @BeforeMethod
+    public void checkBWAPATHAvailability(){
+        if(null==bwaPath){
+            throw new SkipException("Skipping test because \"PATHTOBWA\" is set neither in system property nor as an environment variable.");
         }
     }
 
     @Test(groups="sv")
     public void testSeparate() throws IOException {
-
-        if(null==bwaPath){
-            throw new SkipException("Skipping test because \"PATHTOBWA\" is set neither in system property nor as an environment variable.");
-        }
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File samOutput = boilerPlate(args);
@@ -63,10 +61,6 @@ public final class RunBWAMEMViaCommandLineTest extends CommandLineProgramTest {
 
     @Test(groups="sv")
     public void testInterLeaved() throws IOException {
-
-        if(null==bwaPath){
-            throw new SkipException("Skipping test because \"PATHTOBWA\" is set neither in system property nor as an environment variable.");
-        }
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
         final File samOutput = boilerPlate(args);
