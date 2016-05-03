@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.*;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -37,6 +39,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public int clusterSize = 5000;
 
+    @Argument(doc = "write SAM",
+            shortName = "writeSAM", fullName = "writeSAM",
+            optional = true)
+    public boolean writeSAM = true;
+
     @Override
     public boolean requiresReads() { return true; }
 
@@ -48,6 +55,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
+        final SAMFileHeader headerForReads = getHeaderForReads();
 
         final JavaPairRDD<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeIntervals =
                 reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
@@ -56,54 +64,39 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (aggregator, read) -> addReadToIntervals(aggregator, read, clusterSize),
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                 );
-        final JavaRDD<String> intervalsByBarcode =
-                barcodeIntervals.flatMap(CollectLinkedReadCoverageSpark::intervalTreeToString);
-
+        final JavaRDD<String> intervalsByBarcode;
+        if (writeSAM) {
+            intervalsByBarcode = barcodeIntervals.flatMap(x -> barcodeLocationsToSam(x, headerForReads));
+        } else {
+            intervalsByBarcode = barcodeIntervals.flatMap(x -> barcodeLocationsToBed(x));
+        }
 
         intervalsByBarcode.saveAsTextFile(out);
     }
 
-    static List<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeLocations) {
+    static List<String> barcodeLocationsToBed(final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeLocations) {
+        return barcodeLocationsToString(barcodeLocations, new BedRecordStringifier());
+    }
+
+    public static List<String> barcodeLocationsToSam(final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeLocations, final SAMFileHeader samHeader) {
+        return barcodeLocationsToString(barcodeLocations, new SamRecordStringifier(samHeader));
+    }
+
+    static List<String> barcodeLocationsToString(final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeLocations, final RecordStringifier intervalTreeStringifier) {
         final List<String> outputLines = new ArrayList<>();
         final String barcode = barcodeLocations._1;
         final Map<String, IntervalTree<List<GATKRead>>> stringIntervalTreeMap = barcodeLocations._2;
         for (final String contig : stringIntervalTreeMap.keySet()) {
             final IntervalTree<List<GATKRead>> contigIntervalTree = stringIntervalTreeMap.get(contig);
-            final Iterator<IntervalTree.Node<List<GATKRead>>> nodeIterator = contigIntervalTree.iterator();
-            while (nodeIterator.hasNext()) {
-                final StringBuilder out = new StringBuilder();
-                final IntervalTree.Node<List<GATKRead>> node = nodeIterator.next();
-                out.append(contig);
-                out.append("\t");
-                out.append(node.getStart());
-                out.append("\t");
-                out.append(node.getEnd());
-                out.append("\t");
-                out.append(barcode);
-                out.append("\t");
-                out.append(node.getValue().size());
-                out.append("\t");
-                out.append("+");
-                out.append("\t");
-                out.append(node.getStart());
-                out.append("\t");
-                out.append(node.getEnd());
-                out.append("\t");
-                out.append("0,0,255");
-                out.append("\t");
-                out.append(node.getValue().size());
-                final List<GATKRead> results = node.getValue();
-                results.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
-                out.append("\t");
-                out.append(results.stream().map(r -> String.valueOf(r.getEnd() - r.getStart())).collect(Collectors.joining(",")));
-                out.append("\t");
-                out.append(results.stream().map(r -> String.valueOf(r.getStart() - node.getStart())).collect(Collectors.joining(",")));
-                outputLines.add(out.toString());
+            for (final IntervalTree.Node<List<GATKRead>> node : contigIntervalTree) {
+                final String bedRecord = intervalTreeStringifier.stringify(barcode, contig, node);
+                outputLines.add(bedRecord);
             }
         }
 
         return outputLines;
     }
+
 
     @VisibleForTesting
     static Map<String, IntervalTree<List<GATKRead>>> addReadToIntervals(final Map<String, IntervalTree<List<GATKRead>>> intervalList, final GATKRead read, final int clusterSize) {
@@ -182,4 +175,143 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         return mergedTree;
     }
 
+    public interface RecordStringifier {
+        String stringify(final String barcode, final String contig, final IntervalTree.Node<List<GATKRead>> node);
+    }
+
+    public static class BedRecordStringifier implements RecordStringifier {
+        @Override
+        public String stringify(final String barcode, final String contig, final IntervalTree.Node<List<GATKRead>> node) {
+            final StringBuilder builder = new StringBuilder();
+            builder.append(contig);
+            builder.append("\t");
+            builder.append(node.getStart());
+            builder.append("\t");
+            builder.append(node.getEnd());
+            builder.append("\t");
+            builder.append(barcode);
+            builder.append("\t");
+            builder.append(node.getValue().size());
+            builder.append("\t");
+            builder.append("+");
+            builder.append("\t");
+            builder.append(node.getStart());
+            builder.append("\t");
+            builder.append(node.getEnd());
+            builder.append("\t");
+            builder.append("0,0,255");
+            builder.append("\t");
+            builder.append(node.getValue().size());
+            final List<GATKRead> reads = node.getValue();
+            reads.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
+            builder.append("\t");
+            builder.append(reads.stream().map(r -> String.valueOf(r.getEnd() - r.getStart() + 1)).collect(Collectors.joining(",")));
+            builder.append("\t");
+            builder.append(reads.stream().map(r -> String.valueOf(r.getStart() - node.getStart())).collect(Collectors.joining(",")));
+            return builder.toString();
+        }
+    }
+
+    public static class SamRecordStringifier implements RecordStringifier {
+        private final SAMFileHeader samHeader;
+
+        public SamRecordStringifier(final SAMFileHeader samHeader) {
+            this.samHeader = samHeader;
+        }
+
+        @Override
+        public String stringify(final String barcode, final String contig, final IntervalTree.Node<List<GATKRead>> node) {
+
+            final List<GATKRead> reads = node.getValue();
+            reads.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
+
+            int currentEnd = 0;
+            final ByteArrayOutputStream seqOutputStream = new ByteArrayOutputStream();
+            final ByteArrayOutputStream qualOutputStream = new ByteArrayOutputStream();
+            final Cigar uberCigar = new Cigar();
+
+            for (GATKRead read : reads) {
+                final int readStart = read.getUnclippedStart();
+                final int readEnd = read.getUnclippedEnd();
+
+                final int chopAmount = Math.max(0, currentEnd - readStart + 1);
+
+                if (chopAmount >= read.getLength()) {
+                    continue;
+                }
+
+                final byte[] bases = getBytes(chopAmount, read.getBases());
+                final byte[] quals = getBytes(chopAmount, read.getBaseQualities());
+
+                seqOutputStream.write(bases, 0, bases.length);
+                qualOutputStream.write(quals, 0, quals.length);
+
+                if (chopAmount == 0) {
+                    if (currentEnd != 0) {
+                        final int gap = readStart - currentEnd - 1;
+                        uberCigar.add(new CigarElement(gap, CigarOperator.N));
+                    }
+
+                    for (CigarElement cigarElement : read.getCigarElements()) {
+                        if (cigarElement.getOperator() == CigarOperator.H) {
+                            continue;
+                        }
+                        uberCigar.add(translateSoftClip(cigarElement));
+                    }
+                } else {
+                    int readBasesConsumed = 0;
+                    for (CigarElement cigarElement : read.getCigarElements()) {
+                        if (cigarElement.getOperator() == CigarOperator.H) {
+                            continue;
+                        }
+                        if (readBasesConsumed >= chopAmount) {
+                            uberCigar.add(translateSoftClip(cigarElement));
+                        } else if (cigarElement.getOperator().consumesReadBases() && readBasesConsumed + cigarElement.getLength() > chopAmount) {
+                            // need to chop cigar element
+                            // todo: there may be a bug here if we decide to chop in middle of a non-read-base consuming operator like 'D'
+                            uberCigar.add(translateSoftClip(new CigarElement(cigarElement.getLength() - (chopAmount - readBasesConsumed), cigarElement.getOperator())));
+                        }
+
+                        if (cigarElement.getOperator().consumesReadBases()) {
+                            readBasesConsumed = readBasesConsumed + cigarElement.getLength();
+                        }
+                    }
+                }
+
+                if (currentEnd < readEnd) {
+                    currentEnd = readEnd;
+                }
+
+            }
+
+            final SAMRecord samRecord = new SAMRecord(samHeader);
+            samRecord.setReadName(barcode);
+            samRecord.setFlags(0x1);
+            samRecord.setReferenceName(contig);
+            samRecord.setAlignmentStart(node.getStart());
+            samRecord.setMappingQuality(60);
+            samRecord.setCigar(uberCigar);
+            samRecord.setReadBases(seqOutputStream.toByteArray());
+            samRecord.setBaseQualities(qualOutputStream.toByteArray());
+
+            return samRecord.getSAMString();
+
+        }
+
+        private CigarElement translateSoftClip(final CigarElement cigarElement) {
+            if (cigarElement.getOperator() == CigarOperator.S) {
+                return new CigarElement(cigarElement.getLength(), CigarOperator.M);
+            } else {
+                return cigarElement;
+            }
+        }
+
+        private byte[] getBytes(final int chopAmount, final byte[] bases) {
+            if (chopAmount > 0) {
+                return Arrays.copyOfRange(bases, chopAmount, bases.length);
+            } else {
+                return bases;
+            }
+        }
+    }
 }

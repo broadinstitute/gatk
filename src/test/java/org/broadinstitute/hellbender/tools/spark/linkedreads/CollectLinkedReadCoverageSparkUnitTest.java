@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,17 +55,10 @@ public class CollectLinkedReadCoverageSparkUnitTest {
 
     @Test
     public void testMergeIntervalTrees() {
-        final IntervalTree<List<GATKRead>> tree1 = new IntervalTree<>();
+        final SAMFileHeader artificialSamHeader = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000);
+        final IntervalTree<List<GATKRead>> tree1 = createTestIntervalTree1(artificialSamHeader);
         final IntervalTree<List<GATKRead>> tree2 = new IntervalTree<>();
 
-        final List<GATKRead> resultList1 = new ArrayList<>();
-        final SAMFileHeader artificialSamHeader = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000);
-        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, 100));
-        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1004, 100));
-        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1010, 100));
-        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1100, 100));
-        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1150, 100));
-        tree1.put(1000, 2000, resultList1);
         final List<GATKRead> resultList2 = new ArrayList<>();
         resultList2.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 3000, 100));
         resultList2.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 3004, 100));
@@ -95,5 +89,47 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertNotNull(mergedNode2);
         Assert.assertEquals(mergedNode2.getValue().size(), 4);
 
+    }
+
+    @Test
+    public void testIntervalTreeToBed() {
+        final IntervalTree<List<GATKRead>> tree = createTestIntervalTree1(ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000));
+
+        final String barcode = "ACTGACTG";
+        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode = new HashMap<>();
+        treeForBarcode.put("1", tree);
+
+        final List<String> bedRecords = CollectLinkedReadCoverageSpark.barcodeLocationsToBed(new Tuple2<>(barcode, treeForBarcode));
+        Assert.assertEquals(bedRecords.size(), 1);
+        Assert.assertEquals(bedRecords.get(0), "1\t1000\t1160\tACTGACTG\t5\t+\t1000\t1160\t0,0,255\t5\t10,11,10,9,10\t0,20,25,45,150");
+
+    }
+
+    @Test
+    public void testIntervalTreeToSAM() {
+        final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000);
+        final IntervalTree<List<GATKRead>> tree = createTestIntervalTree1(samHeader);
+
+        final String barcode = "ACTGACTG";
+        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode = new HashMap<>();
+        treeForBarcode.put("1", tree);
+
+        final List<String> samRecords = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode, treeForBarcode), samHeader);
+        Assert.assertEquals(samRecords.size(), 1);
+        Assert.assertEquals(samRecords.get(0), "ACTGACTG\t1\t1\t1000\t60\t10M10N6M1D4M4M10N5M1I4M96N10M\t*\t0\t0\tACACACACACGTGTGTGTGTAGAGGCGCGCGCGCTTTTTTTTTT\tSSSSSSSSSSTTTTTTTTTTUUUUVVVVVVVVVVWWWWWWWWWW\n");
+
+    }
+
+    private IntervalTree<List<GATKRead>> createTestIntervalTree1(final SAMFileHeader artificialSamHeader) {
+        final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
+
+        final List<GATKRead> resultList1 = new ArrayList<>();
+        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "10M"));
+        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1020, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "6M1D4M"));
+        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1025, "AGAGAGAGAG".getBytes(), "4444444444".getBytes(), "10M"));
+        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1045, "GCGCGCGCGC".getBytes(), "5555555555".getBytes(), "5M1I4M"));
+        resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1150, "TTTTTTTTTT".getBytes(), "6666666666".getBytes(), "10M"));
+        tree.put(1000, 1160, resultList1);
+        return tree;
     }
 }
