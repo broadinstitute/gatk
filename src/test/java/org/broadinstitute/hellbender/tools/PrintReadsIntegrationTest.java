@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools;
 
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SamReader;
 import org.apache.commons.io.FileUtils;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadFilterArgumentCollection;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -17,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
@@ -218,4 +222,103 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
             }
         }
     }
+
+    @DataProvider(name="readFilterTestData")
+    public Object[][] testReadFilterData() {
+        return new Object[][]{
+                {"print_reads.sorted.sam", null, ".sam", Arrays.asList("--disableAllReadFilters"), 8},
+                {"print_reads.sorted.sam", null, ".sam",
+                        Arrays.asList(
+                                "--readFilter", ReadFilterArgumentCollection.CommandLineReadFilter.READ_NAME.name(),
+                                "--readName", "both_reads_align_clip_adapter"),
+                        2},
+                {"print_reads.sorted.sam", null, ".sam",
+                        Arrays.asList(
+                                "--RF", ReadFilterArgumentCollection.CommandLineReadFilter.READ_LENGTH.name(),
+                                "--minReadLength", "100",
+                                "--maxReadLength", "200"),
+                        8},
+                {"print_reads.sorted.sam", null, ".sam",
+                        Arrays.asList(
+                                "--RF", ReadFilterArgumentCollection.CommandLineReadFilter.READ_LENGTH.name(),
+                                "--minReadLength", "1",
+                                "--maxReadLength", "10"),
+                        0},
+                {"print_reads.sorted.sam", null, ".sam",
+                        Arrays.asList(
+                                "--readFilter", ReadFilterArgumentCollection.CommandLineReadFilter.READ_NAME.name(),
+                                "--readName", "both_reads_align_clip_adapter",
+                                "--RF", ReadFilterArgumentCollection.CommandLineReadFilter.READ_LENGTH.name(),
+                                "--minReadLength", "100",
+                                "--maxReadLength", "101"),
+                        2},
+                {"print_reads.sorted.bam", null, ".sam", Arrays.asList("--disableAllReadFilters"), 8},
+                {"print_reads.sorted.bam", null, ".sam",
+                        Arrays.asList(
+                                "--readFilter", ReadFilterArgumentCollection.CommandLineReadFilter.READ_NAME.name(),
+                                "--readName", "both_reads_align_clip_adapter"),
+                        2},
+                {"print_reads.sorted.bam", null, ".sam",
+                        Arrays.asList(
+                                "--RF", ReadFilterArgumentCollection.CommandLineReadFilter.READ_LENGTH.name(),
+                                "--minReadLength", "100",
+                                "--maxReadLength", "101"),
+                        8},
+                {"print_reads.sorted.bam", null, ".sam",
+                        Arrays.asList(
+                                "--readFilter", ReadFilterArgumentCollection.CommandLineReadFilter.READ_NAME.name(),
+                                "--readName", "both_reads_align_clip_adapter",
+                                "--RF", ReadFilterArgumentCollection.CommandLineReadFilter.READ_LENGTH.name(),
+                                "--minReadLength", "100",
+                                "--maxReadLength", "101"),
+                        2},
+                {"print_reads.sorted.cram", "print_reads.fasta", ".sam",
+                        Arrays.asList(
+                                "--readFilter", ReadFilterArgumentCollection.CommandLineReadFilter.READ_NAME.name(),
+                                "--readName", "both_reads_align_clip_adapter",
+                                "--RF", ReadFilterArgumentCollection.CommandLineReadFilter.READ_LENGTH.name(),
+                                "--minReadLength", "100",
+                                "--maxReadLength", "101"),
+                        2},
+        };
+    }
+
+    @Test(dataProvider = "readFilterTestData")
+    public void testReadFilters(
+            final String input,
+            final String reference,
+            final String extOut,
+            final List<String> inputArgs,
+            final int expectedCount) throws IOException
+    {
+        final File outFile = createTempFile("testReadFilter", extOut);
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("-I"); args.add(new File(TEST_DATA_DIR, input).getAbsolutePath());
+        args.add("-O"); args.add(outFile.getAbsolutePath());
+        if ( reference != null ) {
+            args.add("-R"); args.add(new File(TEST_DATA_DIR, reference).getAbsolutePath());
+        }
+        for (final String filter : inputArgs) {
+            args.add(filter);
+        }
+
+        runCommandLine(args);
+
+
+        SamReaderFactory factory = SamReaderFactory.makeDefault();
+        if (reference != null) {
+            factory = factory.referenceSequence(new File(TEST_DATA_DIR, reference));
+        }
+        int count = 0;
+        try (final SamReader reader = factory.open(outFile)) {
+            Iterator<SAMRecord> it = reader.iterator();
+            while (it.hasNext()) {
+                SAMRecord rec = it.next();
+                count++;
+            }
+        }
+        Assert.assertEquals(count, expectedCount);
+    }
+
 }

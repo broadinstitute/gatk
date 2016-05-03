@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadFilterArgumentCollection;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -7,6 +9,10 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
@@ -19,9 +25,6 @@ import java.util.stream.StreamSupport;
  * onTraversalStart() and/or onTraversalSuccess(). See the PrintReadsWithReference walker for an example.
  */
 public abstract class ReadWalker extends GATKTool {
-
-    @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
-    public boolean disable_all_read_filters = false;
 
     @Override
     public boolean requiresReads() {
@@ -69,9 +72,7 @@ public abstract class ReadWalker extends GATKTool {
     public void traverse() {
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        final CountingReadFilter countedFilter = disable_all_read_filters ?
-                                                    new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
-                                                    makeReadFilter();
+        final CountingReadFilter countedFilter = makeReadFilter();
 
         StreamSupport.stream(reads.spliterator(), false)
                 .filter(countedFilter)
@@ -98,15 +99,42 @@ public abstract class ReadWalker extends GATKTool {
 
     /**
      * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link WellformedReadFilter} filter with all default options.
-     * Default implementation of {@link #traverse()} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+     * The default implementation combines the default read filters for this tool (returned by
+     * {@link org.broadinstitute.hellbender.engine.ReadWalker#getDefaultReadFilter} with any read filter command
+     * line arguments specified by the user; wraps each filter in the resulting list with a CountingReadFilter;
+     * and returns a single composite filter resulting from the list by and'ing them together.
      *
-     * Subclasses can extend to provide own filters (ie override and call super).
-     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
+     * Default tool implementation of {@link #traverse()} calls this method once before iterating
+     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter
+     * objects is strongly discouraged.
+     *
+     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
+     * composition methods.
      */
     public CountingReadFilter makeReadFilter(){
-          return new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()));
+        // Merge the default filters with the users's command line read filter requests, then instantiate
+        // and wrap the resulting individual filters with CountingReadFilter.
+        final ReadFilterArgumentCollection rfc = readArguments.getReadFilterArgumentCollection();
+        return rfc.getMergedCommandLineFilters(getDefaultReadFilters())
+                .stream()
+                .map(f -> new CountingReadFilter(
+                        f.name(),
+                        f.getFilterInstance(getHeaderForReads(), rfc)))
+                .reduce(new CountingReadFilter(
+                        "ALLOW_ALL",
+                        ReadFilterArgumentCollection.CommandLineReadFilter.ALLOW_ALL.getFilterInstance(getHeaderForReads(), rfc)),
+                        (f1, f2) -> f1.and(f2));
+    }
+
+    /**
+     * Returns the default list of CommandLineReadFilters that are used for this tool. The filters returned
+     * by this method are subject to selective enabling/disabling by the user via the command line. The
+     * default implementation uses the {@link WellformedReadFilter} filter with all default options. Subclasses
+     * can override to provide alternative filters.
+     * @return List of individual filters to be applied for this tool.
+     */
+    public List<ReadFilterArgumentCollection.CommandLineReadFilter> getDefaultReadFilters() {
+        return Arrays.asList(ReadFilterArgumentCollection.CommandLineReadFilter.WELLFORMED);
     }
 
     /**

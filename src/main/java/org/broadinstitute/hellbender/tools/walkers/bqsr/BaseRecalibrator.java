@@ -8,9 +8,12 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadFilterArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -23,6 +26,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCo
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
@@ -141,23 +145,33 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     @Override
-    public CountingReadFilter makeReadFilter() {
+    public List<ReadFilterArgumentCollection.CommandLineReadFilter> getDefaultReadFilters() {
         //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
-        return makeBQSRSpecificReadFilters().and(super.makeReadFilter());
+        final List<ReadFilterArgumentCollection.CommandLineReadFilter> bqsrFilters = makeBQSRSpecificReadFilters();
+        bqsrFilters.add(ReadFilterArgumentCollection.CommandLineReadFilter.WELLFORMED);
+        bqsrFilters.add(ReadFilterArgumentCollection.CommandLineReadFilter.ALLOW_ALL);
+        return bqsrFilters;
     }
 
-    public static CountingReadFilter getStandardBQSRReadFilter( final SAMFileHeader header ) {
+    // used in BaseRecalibratorSpark and BaseRecalibratorSparkSharded as a ReadFilter
+    public static ReadFilter getStandardBQSRReadFilter(final SAMFileHeader header ) {
         //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
-        return makeBQSRSpecificReadFilters().and(new CountingReadFilter("Wellformed", new WellformedReadFilter(header)));
+        return makeBQSRSpecificReadFilters()
+                .stream()
+                .map(f -> f.getFilterInstance(header, null))
+                .reduce(ReadFilterLibrary.ALLOW_ALL_READS, (f1, f2) -> f1.and(f2))
+                .and(new WellformedReadFilter(header));
     }
 
-    public static CountingReadFilter makeBQSRSpecificReadFilters() {
-        return new CountingReadFilter("Mapping_Quality_Not_Zero", MAPPING_QUALITY_NOT_ZERO)
-                .and(new CountingReadFilter("Mapping_Quality_Available", MAPPING_QUALITY_AVAILABLE))
-                .and(new CountingReadFilter("Mapped", MAPPED))
-                .and(new CountingReadFilter("Primary_Alignment", PRIMARY_ALIGNMENT))
-                .and(new CountingReadFilter("Not_Duplicate", NOT_DUPLICATE))
-                .and(new CountingReadFilter("Passes_Vendor_Quality_Check", PASSES_VENDOR_QUALITY_CHECK));
+    public static List<ReadFilterArgumentCollection.CommandLineReadFilter> makeBQSRSpecificReadFilters() {
+        List<ReadFilterArgumentCollection.CommandLineReadFilter> filters = new ArrayList<>(6);
+        filters.add(ReadFilterArgumentCollection.CommandLineReadFilter.MAPPING_QUALITY_NOT_ZERO);
+        filters.add(ReadFilterArgumentCollection.CommandLineReadFilter.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterArgumentCollection.CommandLineReadFilter.MAPPED);
+        filters.add(ReadFilterArgumentCollection.CommandLineReadFilter.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterArgumentCollection.CommandLineReadFilter.NOT_DUPLICATE);
+        filters.add(ReadFilterArgumentCollection.CommandLineReadFilter.PASSES_VENDOR_QUALITY_CHECK);
+        return filters;
     }
 
     /**

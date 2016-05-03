@@ -13,4 +13,12 @@ import java.lang.annotation.*;
 public @interface ArgumentCollection {
     /** Text that appears for this group of options in text describing usage of the command line program. */
     String doc() default "";
+
+    // The arguments in this collection are dependent on (and only enabled with the presence of)
+    // another argument. This may be used alone or together with dependsOnValue.
+    String dependsOnArgument() default "";
+
+    // The arguments in this collection are dependent on (and only enabled with the presence of)
+    // another argument with this specific value.
+    String dependsOnValue() default "";
 }

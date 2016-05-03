@@ -693,6 +693,71 @@ public final class CommandLineParserTest {
         Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--version", "true"}));
     }
 
+    // test ArgumentCollection depends on
+    class ArgTarget {
+        @Argument(fullName="argTarget", optional = true)
+        String argTarget;
+    }
+    class ArgAndValueTarget {
+        @Argument(fullName="argAndValueTarget", optional = true)
+        String argAndValueTarget;
+    }
+
+    class TestArgs {
+        @Argument(fullName="master", optional = true)
+        int rf;
+
+        @ArgumentCollection(dependsOnArgument = "master")
+        ArgTarget t1 = new ArgTarget();
+
+        @ArgumentCollection(dependsOnArgument = "master", dependsOnValue="27")
+        ArgAndValueTarget t2 = new ArgAndValueTarget();
+    }
+
+    @Test
+    public void testDependsOnArgument() {
+        TestArgs tArgs = new TestArgs();
+        String args[] = {
+                "--master", "35",
+                "-argTarget", "foo"
+        };
+        final CommandLineParser clp = new CommandLineParser(tArgs);
+        clp.parseArguments(System.err, args);
+    }
+
+    @Test(expectedExceptions = UserException.CommandLineException.class)
+    public void testFailsDependsOnArgument() {
+        TestArgs tArgs = new TestArgs();
+        String args[] = {
+                //missing --master
+                "--argTarget", "foo"
+        };
+        final CommandLineParser clp = new CommandLineParser(tArgs);
+        clp.parseArguments(System.err, args);
+    }
+
+    @Test
+    public void testDependsOnArgumentAndValue() {
+        TestArgs tArgs = new TestArgs();
+        String args[] = {
+                "--master", "27",
+                "--argAndValueTarget", "foo"
+        };
+        final CommandLineParser clp = new CommandLineParser(tArgs);
+        clp.parseArguments(System.err, args);
+    }
+
+    @Test(expectedExceptions = UserException.CommandLineException.class)
+    public void testFailsDependsOnArgumentValue() {
+        TestArgs tArgs = new TestArgs();
+        String args[] = {
+                "--master", "0",
+                "--argAndValueTarget", "foo" // depends on --master 27
+        };
+        final CommandLineParser clp = new CommandLineParser(tArgs);
+        clp.parseArguments(System.err, args);
+    }
+
     /***************************************************************************************
      * Start of tests and helper classes for CommandLineParser.gatherArgumentValuesOfType()
      ***************************************************************************************/

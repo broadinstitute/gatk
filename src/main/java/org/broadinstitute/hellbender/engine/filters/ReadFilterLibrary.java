@@ -6,14 +6,14 @@ import org.broadinstitute.hellbender.utils.read.CigarUtils;
 
 /**
  * Standard ReadFilters
+ *
+ * TODO: add a note here about how to make these accessible to the command line
  */
 public final class ReadFilterLibrary {
 
-    private ReadFilterLibrary(){ /*no instance*/ }
-
     public static final ReadFilter ALLOW_ALL_READS = read -> true;
 
-    public static final ReadFilter MAPPED =  read -> ! read.isUnmapped();
+    public static final ReadFilter MAPPED = read -> ! read.isUnmapped();
     public static final ReadFilter PRIMARY_ALIGNMENT = read -> ! read.isSecondaryAlignment();
     public static final ReadFilter NOT_DUPLICATE = read -> ! read.isDuplicate();
     public static final ReadFilter PASSES_VENDOR_QUALITY_CHECK = read -> ! read.failsVendorQualityCheck();
