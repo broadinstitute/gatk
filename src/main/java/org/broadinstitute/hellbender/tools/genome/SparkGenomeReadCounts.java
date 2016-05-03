@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCoverageUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
@@ -207,7 +206,6 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
 
     @Override
     protected void runTool(JavaSparkContext ctx) {
-        Utils.regularReadableUserFile(outputFile);
         collectReads();
     }
 
