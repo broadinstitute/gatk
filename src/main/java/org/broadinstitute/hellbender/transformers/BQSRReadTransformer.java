@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.transformers;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SAMUtils;
 import org.broadinstitute.hellbender.exceptions.UserException.MalformedRead;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -229,8 +229,11 @@ public final class BQSRReadTransformer implements ReadTransformer {
      * @param roundDown round down if true, round to nearest (in probability space) otherwise
      * @return  Array where index representing the quality score to be mapped and the value is the rounded quality score
      */
-    @VisibleForTesting
-    static byte[] constructStaticQuantizedMapping(final List<Integer> staticQuantizedQuals, final boolean roundDown) {
+    public static byte[] constructStaticQuantizedMapping(final List<Integer> staticQuantizedQuals, final boolean roundDown) {
+        if (staticQuantizedQuals == null || staticQuantizedQuals.isEmpty()){
+            return createIdentityMatrix(QualityUtils.MAX_QUAL);
+        }
+        Utils.nonNull(staticQuantizedQuals);
         // Create array mapping that maps quals to their rounded value.
         final byte[] mapping = new byte[QualityUtils.MAX_QUAL];
 
@@ -277,5 +280,13 @@ public final class BQSRReadTransformer implements ReadTransformer {
             mapping[i] = (byte) previousQual;
         }
         return mapping;
+    }
+
+    private static byte[] createIdentityMatrix(int maxQual) {
+        final byte[] bytes = new byte[maxQual];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) i;
+        }
+        return bytes;
     }
 }

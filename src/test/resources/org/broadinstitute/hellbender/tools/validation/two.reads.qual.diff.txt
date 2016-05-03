@@ -1,10 +1,10 @@
 -----------CompareMatrix summary------------
-diff	count
--4	1
--2	2
--1	11
-0	78
-1	9
+diff	count	%total
+-4	1	0.9901
+-2	2	1.9802
+-1	11	10.8911
+0	78	77.2277
+1	9	8.9109
 
 ---------CompareMatrix full matrix (non-zero entries) ----------
 QRead1	QRead2	diff	count
@@ -30,3 +30,16 @@ QRead1	QRead2	diff	count
 32	33	-1	7
 33	32	1	5
 33	33	0	23
+-----------CompareMatrix-binned summary------------
+diff	count	%total
+-10	7	6.9307
+0	89	88.1188
+10	5	4.9505
+
+---------CompareMatrix-binned full matrix (non-zero entries) ----------
+QRead1	QRead2	diff	count
+20	20	0	8
+30	30	0	58
+30	40	-10	7
+40	30	10	5
+40	40	0	23
