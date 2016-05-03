@@ -28,7 +28,8 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(
         summary = "Calculate coverage on a WGS bam file using Spark.  This creates a set of pseudo-targets that span" +
                 "the entire genome.  Use the 'binsize' parameter to specify the size of each interval.  By default, any " +
-                "contigs X, Y, M, and MT are excluded.",
+                "contigs X, Y, M, and MT are excluded.\n" +
+        "Please see the " + SparkGenomeReadCounts.DROP_NON_AUTOSOMES_LONG_NAME + " option if using this tool on a non-human genome.",
         oneLineSummary = "Calculate coverage on a WGS bam file using Spark",
         programGroup = CopyNumberProgramGroup.class)
 public class SparkGenomeReadCounts extends GATKSparkTool {
