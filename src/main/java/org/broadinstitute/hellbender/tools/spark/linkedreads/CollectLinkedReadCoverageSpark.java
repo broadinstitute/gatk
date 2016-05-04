@@ -225,6 +225,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             final List<GATKRead> reads = node.getValue();
             reads.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
 
+            int minUnclippedStart = node.getStart();
             int currentEnd = 0;
             final ByteArrayOutputStream seqOutputStream = new ByteArrayOutputStream();
             final ByteArrayOutputStream qualOutputStream = new ByteArrayOutputStream();
@@ -232,6 +233,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
             for (GATKRead read : reads) {
                 final int readStart = read.getUnclippedStart();
+                if (readStart < minUnclippedStart) {
+                    minUnclippedStart = readStart;
+                }
                 final int readEnd = read.getUnclippedEnd();
 
                 final int chopAmount = Math.max(0, currentEnd - readStart + 1);
@@ -259,21 +263,21 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         uberCigar.add(translateSoftClip(cigarElement));
                     }
                 } else {
-                    int readBasesConsumed = 0;
+                    int refBasesConsumed = 0;
                     for (CigarElement cigarElement : read.getCigarElements()) {
                         if (cigarElement.getOperator() == CigarOperator.H) {
                             continue;
                         }
-                        if (readBasesConsumed >= chopAmount) {
+                        if (refBasesConsumed >= chopAmount) {
                             uberCigar.add(translateSoftClip(cigarElement));
-                        } else if (cigarElement.getOperator().consumesReadBases() && readBasesConsumed + cigarElement.getLength() > chopAmount) {
+                        } else if (cigarElement.getOperator().consumesReferenceBases() && refBasesConsumed + cigarElement.getLength() > chopAmount) {
                             // need to chop cigar element
                             // todo: there may be a bug here if we decide to chop in middle of a non-read-base consuming operator like 'D'
-                            uberCigar.add(translateSoftClip(new CigarElement(cigarElement.getLength() - (chopAmount - readBasesConsumed), cigarElement.getOperator())));
+                            uberCigar.add(translateSoftClip(new CigarElement(cigarElement.getLength() - (chopAmount - refBasesConsumed), cigarElement.getOperator())));
                         }
 
-                        if (cigarElement.getOperator().consumesReadBases()) {
-                            readBasesConsumed = readBasesConsumed + cigarElement.getLength();
+                        if (cigarElement.getOperator().consumesReferenceBases()) {
+                            refBasesConsumed = refBasesConsumed + cigarElement.getLength();
                         }
                     }
                 }
@@ -288,7 +292,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             samRecord.setReadName(barcode);
             samRecord.setFlags(0x1);
             samRecord.setReferenceName(contig);
-            samRecord.setAlignmentStart(node.getStart());
+            samRecord.setAlignmentStart(minUnclippedStart);
             samRecord.setMappingQuality(60);
             samRecord.setCigar(uberCigar);
             samRecord.setReadBases(seqOutputStream.toByteArray());

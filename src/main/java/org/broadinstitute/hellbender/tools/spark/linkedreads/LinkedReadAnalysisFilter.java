@@ -13,7 +13,6 @@ public class LinkedReadAnalysisFilter implements ReadFilter {
         this.filter = ReadFilterLibrary.MAPPED
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
-                .and(GATKRead::isFirstOfPair)
                 .and(ReadFilterLibrary.NOT_DUPLICATE)
                 .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
                 .and(read -> !read.isSupplementaryAlignment())
