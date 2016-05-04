@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -923,5 +924,15 @@ public final class Utils {
             }
         }
         return -1;
+    }
+
+    /**
+     * Simple wrapper for sticking elements of a int[] array into a List<Integer>
+     * @param ar - the array whose elements should be listified
+     * @return - a List<Integer> where each element has the same value as the corresponding index in @ar
+     */
+    public static List<Integer> listFromPrimitives(final int[] ar) {
+        Utils.nonNull(ar);
+        return Ints.asList(ar);
     }
 }

@@ -263,6 +263,42 @@ public final class MathUtils {
         return log10Cache.get(i);
     }
 
+    public static double log10sumLog10(final double[] log10values) {
+        return log10sumLog10(log10values, 0);
+    }
+
+    public static double log10sumLog10(final double[] log10p, final int start) {
+        return log10sumLog10(log10p, start, log10p.length);
+    }
+
+    public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
+
+        if (start >= finish) {
+            return Double.NEGATIVE_INFINITY;
+        }
+        final int maxElementIndex = MathUtils.maxElementIndex(log10p, start, finish);
+        final double maxValue = log10p[maxElementIndex];
+        if(maxValue == Double.NEGATIVE_INFINITY) {
+            return maxValue;
+        }
+        double sum = 1.0;
+        for (int i = start; i < finish; i++) {
+            double curVal = log10p[i];
+            double scaled_val = curVal - maxValue;
+            if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
+                continue;
+            }
+            else {
+                sum += Math.pow(10.0, scaled_val);
+            }
+        }
+        if ( Double.isNaN(sum) || sum == Double.POSITIVE_INFINITY ) {
+            throw new IllegalArgumentException("log10p: Values must be non-infinite and non-NAN");
+        }
+        return maxValue + (sum != 1.0 ? Math.log10(sum) : 0.0);
+    }
+
+
     /**
      * A helper class to maintain a cache of log values.
      * The cache is immutable after creation.
@@ -1067,5 +1103,36 @@ public final class MathUtils {
         double a = 1.0 / (sd * Math.sqrt(2.0 * Math.PI));
         double b = Math.exp(-1.0 * (Math.pow(x - mean, 2.0) / (2.0 * sd * sd)));
         return a * b;
+    }
+
+    public static double dirichletMultinomial(double[] params, int[] counts) {
+        return dirichletMultinomial(params,sum(params),counts,(int) sum(counts));
+    }
+
+    /**
+     * Return the likelihood of observing the counts of categories having sampled a population
+     * whose categorial frequencies are distributed according to a Dirichlet distribution
+     * @param dirichletParams - params of the prior dirichlet distribution
+     * @param dirichletSum - the sum of those parameters
+     * @param counts - the counts of observation in each category
+     * @param countSum - the sum of counts (number of trials)
+     * @return - associated likelihood
+     */
+    public static double dirichletMultinomial(final double[] dirichletParams,
+                                              final double dirichletSum,
+                                              final int[] counts,
+                                              final int countSum) {
+        if ( dirichletParams.length != counts.length ) {
+            throw new IllegalArgumentException("The number of dirichlet parameters must match the number of categories");
+        }
+        double likelihood = log10MultinomialCoefficient(countSum,counts);
+        likelihood += log10Gamma(dirichletSum);
+        likelihood -= log10Gamma(dirichletSum+countSum);
+        for ( int idx = 0; idx < counts.length; idx++ ) {
+            likelihood += log10Gamma(counts[idx] + dirichletParams[idx]);
+            likelihood -= log10Gamma(dirichletParams[idx]);
+        }
+
+        return likelihood;
     }
 }
