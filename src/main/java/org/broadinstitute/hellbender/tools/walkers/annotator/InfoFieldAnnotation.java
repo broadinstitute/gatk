@@ -17,7 +17,7 @@ public abstract class InfoFieldAnnotation extends VariantAnnotation{
 
     /**
      * Computes the annotation for the given variant and the likelihoods per read.
-     * Returns a map from annotation keys to values.
+     * Returns a map from annotation keys to values or null if no annotation is to be added.
      *
      * @param ref Reference context, may be null
      * @param vc Variant to be annotated. Not null.

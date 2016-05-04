@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
@@ -46,8 +47,17 @@ public final class BaseQualityRankSumTestUnitTest {
         return read;
     }
 
-    @Test
+    @DataProvider(name = "data")
+    private Object[][] data(){
+        return new Object[][]{
+                {},
+        };
+    }
+
+    @Test(dataProvider = "data")
     public void testBaseQual() {
+        final InfoFieldAnnotation ann = new BaseQualityRankSumTest();
+        String key = GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY;
         final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
 
         final Allele alleleRef = Allele.create("T", true);
@@ -76,19 +86,66 @@ public final class BaseQualityRankSumTestUnitTest {
 
         final ReferenceContext ref = null;
         final VariantContext vc = makeVC(alleleRef, alleleAlt);
-        final InfoFieldAnnotation ann = new BaseQualityRankSumTest();
 
         final Map<String, Object> annotate = ann.annotate(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
 
-        final double val = MannWhitneyU.runOneSidedTest(false, Arrays.asList(hardAlts[0], hardAlts[1]),
+        final double val = MannWhitneyU.runOneSidedTest(false,
+                Arrays.asList(hardAlts[0], hardAlts[1]),
                 Arrays.asList(hardRefs[0], hardRefs[1])).getLeft();
         final String valStr = String.format("%.3f", val);
-        Assert.assertEquals(annotate.get(GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY), valStr);
+        Assert.assertEquals(annotate.get(key), valStr);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);
-        Assert.assertEquals(ann.getDescriptions().get(0).getID(), GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY);
+        Assert.assertEquals(ann.getDescriptions().get(0).getID(), key);
         Assert.assertEquals(ann.getKeyNames().size(), 1);
-        Assert.assertEquals(ann.getKeyNames().get(0), GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY);
+        Assert.assertEquals(ann.getKeyNames().get(0), key);
+    }
+
+    @Test
+    public void testBaseQualRawAnnotate() {
+        final AS_RankSumTest ann =  new AS_BaseQualityRankSumTest();
+        final String key1 = GATKVCFConstants.AS_RAW_BASE_QUAL_RANK_SUM_KEY;
+        final String key2 = GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY;
+        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
+
+        final Allele alleleRef = Allele.create("T", true);
+        final Allele alleleAlt = Allele.create("A", false);
+
+        final byte[] hardAlts = {10, 20};
+        final byte[] hardRefs = {50, 60};
+        final GATKRead read1 = makeRead(hardAlts[0]);
+        final GATKRead read2 = makeRead(hardAlts[1]);
+        final GATKRead read3 = makeRead(hardRefs[0]);
+        final GATKRead read4 = makeRead(hardRefs[1]);
+        map.add(read1, alleleAlt, -1.0);
+        map.add(read1, alleleRef, -100.0);
+
+        map.add(read2, alleleAlt, -1.0);
+        map.add(read2, alleleRef, -100.0);
+
+        map.add(read3, alleleAlt, -100.0);
+        map.add(read3, alleleRef, -1.0);
+
+        map.add(read4, alleleAlt, -100.0);
+        map.add(read4, alleleRef, -1.0);
+
+        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
+
+
+        final ReferenceContext ref = null;
+        final VariantContext vc = makeVC(alleleRef, alleleAlt);
+
+        final Map<String, Object> annotateRaw = ann.annotateRawData(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotateNonRaw = ann.annotate(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
+
+        final String expectedAnnotation = hardRefs[0] + ",1," + hardRefs[1] + ",1" + AS_RankSumTest.printDelim + hardAlts[0] + ",1," + hardAlts[1] + ",1";
+        Assert.assertEquals(annotateRaw.get(key1),    expectedAnnotation);
+        Assert.assertEquals(annotateNonRaw.get(key1), expectedAnnotation);
+
+        Assert.assertEquals(ann.getDescriptions().size(), 1);
+        Assert.assertEquals(ann.getDescriptions().get(0).getID(), key1);
+        Assert.assertEquals(ann.getKeyNames().size(), 1);
+        Assert.assertEquals(ann.getKeyNames().get(0), key2);
     }
 
     @Test

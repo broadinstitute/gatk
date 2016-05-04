@@ -113,12 +113,10 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
      * and VQSR will filter these out.  This code looks at the QD value, and if it is above
      * threshold we map it down to the mean high QD value, with some jittering
      *
-     * // TODO -- remove me when HaplotypeCaller bubble caller is live
-     *
      * @param QD the raw QD score
      * @return a QD value
      */
-    private static double fixTooHighQD(final double QD) {
+    public static double fixTooHighQD(final double QD) {
         if ( QD < MAX_QD_BEFORE_FIXING ) {
             return QD;
         } else {

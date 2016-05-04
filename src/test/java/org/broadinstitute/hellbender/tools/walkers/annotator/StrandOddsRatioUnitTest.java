@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -56,7 +55,10 @@ public final class StrandOddsRatioUnitTest {
         final double ratio = StrandOddsRatio.calculateSOR(contingencyTable);
         Assert.assertEquals(ratio, expectedOddsRatio, DELTA_PRECISION, "Pass");
         Assert.assertEquals(Double.parseDouble((String) new StrandOddsRatio().annotationForOneTable(ratio).get(GATKVCFConstants.STRAND_ODDS_RATIO_KEY)), expectedOddsRatio, DELTA_PRECISION, "Pass");
+    }
 
+    @Test
+    public void testLabels() {
         Assert.assertEquals(new StrandOddsRatio().getKeyNames(), Collections.singletonList(GATKVCFConstants.STRAND_ODDS_RATIO_KEY));
         Assert.assertEquals(new StrandOddsRatio().getDescriptions(), Collections.singletonList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.STRAND_ODDS_RATIO_KEY)));
     }
@@ -103,8 +105,9 @@ public final class StrandOddsRatioUnitTest {
                 .alleles(Arrays.asList(refAllele, altAllele)).chr("1").start(15L).stop(15L).genotypes(testGC).make();
     }
 
-    @Test
     public void testUsingMap(){
+        final InfoFieldAnnotation ann = new StrandOddsRatio();
+        final String key = GATKVCFConstants.STRAND_ODDS_RATIO_KEY;
 
         final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
@@ -132,15 +135,55 @@ public final class StrandOddsRatioUnitTest {
 
         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
 
-
-        final ReferenceContext ref= null;
         final VariantContext vc= makeVC(alleleRef, alleleAlt);
-        final InfoFieldAnnotation ann = new StrandOddsRatio();
 
-        final Map<String, Object> annotatedMap = new StrandOddsRatio().annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
-        final String sor = (String)annotatedMap.get(GATKVCFConstants.STRAND_ODDS_RATIO_KEY);
+        final Map<String, Object> annotatedMap = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final String sor = (String)annotatedMap.get(key);
         final double expectedSOR = StrandOddsRatio.calculateSOR(table);
 
         Assert.assertEquals(Double.valueOf(sor), expectedSOR, 0.001);
+    }
+
+    @Test
+    public void testUsingMap_Raw(){
+        final AS_StrandBiasTest ann= new AS_StrandOddsRatio();
+        final String key = GATKVCFConstants.AS_SB_TABLE_KEY;
+        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
+
+        final Allele alleleRef = Allele.create("T", true);
+        final Allele alleleAlt = Allele.create("A", false);
+
+        final int[][] table= {{1, 1},  // alt: one read in each direction,
+                {2, 0}}; //ref: 2 reads fwd, 0 reads back
+
+        final GATKRead read1 = makeRead(true, "read1");
+        final GATKRead read2 = makeRead(true, "read2");
+        final GATKRead read3 = makeRead(false, "read3");
+        final GATKRead read4 = makeRead(true, "read4");
+        map.add(read1, alleleAlt, -1.0);
+        map.add(read1, alleleRef, -100.0);
+
+        map.add(read2, alleleAlt, -1.0);
+        map.add(read2, alleleRef, -100.0);
+
+        map.add(read3, alleleAlt, -100.0);
+        map.add(read3, alleleRef, -1.0);
+
+        map.add(read4, alleleAlt, -100.0);
+        map.add(read4, alleleRef, -1.0);
+
+        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
+
+        final VariantContext vc= makeVC(alleleRef, alleleAlt);
+
+        final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMapNonRaw = ann.annotateRawData(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final String sorStringRaw = (String)annotatedMapRaw.get(key);
+        final String sorStringNonRaw = (String)annotatedMapNonRaw.get(key);
+
+        final String expectedString = AS_StrandBiasTest.rawValueAsString(table);
+
+        Assert.assertEquals(sorStringRaw, expectedString);
+        Assert.assertEquals(sorStringNonRaw, expectedString);
     }
 }

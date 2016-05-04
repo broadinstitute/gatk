@@ -112,8 +112,9 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
         final String dad = trio.getPaternalID();
         final String kid = trio.getChildID();
 
-      return  !mom.isEmpty()  && vc.hasGenotype(mom) && vc.getGenotype(mom).hasLikelihoods()
-           && !dad.isEmpty()  && vc.hasGenotype(dad) && vc.getGenotype(dad).hasLikelihoods()
-           && !kid.isEmpty()  && vc.hasGenotype(kid) && vc.getGenotype(kid).hasLikelihoods();
+        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasLikelihoods())
+              && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasLikelihoods())
+              && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasLikelihoods());
     }
+
 }

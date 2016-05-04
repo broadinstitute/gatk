@@ -5,7 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -19,22 +18,22 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public final class RMSMappingQualityUnitTest {
+public final class AS_RMSMappingQualityUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testAllNull() throws Exception {
         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = null;
         final VariantContext vc= null;
         final ReferenceContext referenceContext= null;
-        final InfoFieldAnnotation cov = new RMSMappingQuality();
-        final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap); //vc can't be null
+        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
+        cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap); //vc can't be null
     }
 
     @Test
     public void testDescriptions() throws Exception {
-        final InfoFieldAnnotation cov = new RMSMappingQuality();
+        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
         Assert.assertEquals(cov.getDescriptions().size(), 1);
-        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
     }
 
     @Test
@@ -42,12 +41,12 @@ public final class RMSMappingQualityUnitTest {
         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = null;
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final InfoFieldAnnotation cov = new RMSMappingQuality();
+        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
         final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
         Assert.assertNull(annotate);
 
         Assert.assertEquals(cov.getDescriptions().size(), 1);
-        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
     }
 
     private VariantContext makeVC() {
@@ -63,7 +62,7 @@ public final class RMSMappingQualityUnitTest {
     public void testPerReadAlleleLikelihoodMap(){
         final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
-        final Allele alleleA = Allele.create("A");
+        final Allele alleleA = Allele.create("A", true);
         final double lik= -1.0;  //ignored
 
         final int[] MQs = {1,2,3,4,5,6,7,8,9,10, QualityUtils.MAPPING_QUALITY_UNAVAILABLE};
@@ -86,12 +85,14 @@ public final class RMSMappingQualityUnitTest {
         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.singletonMap("sample1", map);
         final VariantContext vc = makeVC();
         final ReferenceContext referenceContext= null;
-        final Map<String, Object> annotate = new RMSMappingQuality().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
+        final Map<String, Object> annotate = new AS_RMSMappingQuality().annotateRawData(referenceContext, vc, perReadAlleleLikelihoodMap);
         Assert.assertEquals(annotate.size(), 1, "size");
-        Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY), "annots");
+        Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), "annots");
         final double rms= MathUtils.sumOfSquares(MQsListOK); //only those are MQ0
-        Assert.assertNull(annotate.get(VCFConstants.RMS_MAPPING_QUALITY_KEY));
-        Assert.assertEquals(annotate.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY), String.format("%.2f", rms));
+        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
+        Assert.assertEquals(split.length, 2);
+        Assert.assertEquals(split[0], String.format("%.2f", rms));
+        Assert.assertEquals(split[1], String.format("%.2f", 0.0));
     }
 
     @Test
@@ -99,7 +100,10 @@ public final class RMSMappingQualityUnitTest {
         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.emptyMap();
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final Map<String, Object> annotate = new RMSMappingQuality().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
-        Assert.assertNull(annotate);
+        final Map<String, Object> annotate = new AS_RMSMappingQuality().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
+        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
+        Assert.assertEquals(split.length, 2);
+        Assert.assertEquals(split[0], String.format("%.2f", 0.0));
+        Assert.assertEquals(split[1], String.format("%.2f", 0.0));
     }
 }
