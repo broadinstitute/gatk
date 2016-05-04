@@ -16,7 +16,7 @@ public class GATKProtectedMathUtilsTest {
         final double[] logSpaceValues= Arrays.stream(realSpaceValues).map(Math::log).toArray();
 
         final double expected = Math.log(Arrays.stream(realSpaceValues).sum());
-        final double actual = GATKProtectedMathUtils.naturalLogSumExp(logSpaceValues);
+        final double actual = GATKProtectedMathUtils.logSumExp(logSpaceValues);
         Assert.assertEquals(actual, expected, 1e-10);
     }
 

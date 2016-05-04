@@ -290,7 +290,7 @@ test {
 
     // set heap size for the test JVM(s)
     jvmArgs = ['-Xmx6G']
-  
+
     String CI = "$System.env.CI"
 
     maxParallelForks = CI == "true" ? 1 : 2

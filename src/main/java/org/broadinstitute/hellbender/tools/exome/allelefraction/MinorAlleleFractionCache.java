@@ -59,7 +59,7 @@ public final class MinorAlleleFractionCache {
                     a * logf + r * (logOneMinusf + logBias) - (a + r) * logAltMinorDenominatorTerm;
             final double refMinorLogLikelihood =
                     r * (logf + logBias) + a * logOneMinusf - (a + r) * logRefMinorDenominatorTerm;
-            return GATKProtectedMathUtils.naturalLogSumExp(altMinorLogLikelihood, refMinorLogLikelihood);
+            return GATKProtectedMathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood);
         });
 
         return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();

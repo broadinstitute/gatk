@@ -1,25 +1,29 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableReader;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.tsv.*;
+import org.fusesource.leveldbjni.All;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Simple data structure to pass and read/write a List of {@link AllelicCount} objects.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class AllelicCountCollection {
     private final List<AllelicCount> counts;
@@ -29,25 +33,14 @@ public class AllelicCountCollection {
     }
 
     /**
-     * Constructor that reads (sequence, position, reference count, alternate count) from the specified file.
-     * @param inputFile     file to read from
+     * Constructor from from file. Checks whether the input file has just the basic columns, or full columns.
+     * @param inputFile file to read from
      */
     public AllelicCountCollection(final File inputFile) {
         Utils.nonNull(inputFile);
         Utils.regularReadableUserFile(inputFile);
-        try (final TableReader<AllelicCount> reader = TableUtils.reader(inputFile,
-                (columns, formatExceptionFactory) -> {
-                    TableUtils.checkMandatoryColumns(columns, AllelicCountTableColumns.COLUMN_NAME_ARRAY, formatExceptionFactory);
 
-                    // return the lambda to translate dataLines into AllelicCounts.
-                    return (dataLine) -> {
-                        final int position = dataLine.getInt(AllelicCountTableColumns.POSITION.toString());
-                        final SimpleInterval interval = new SimpleInterval(dataLine.get(AllelicCountTableColumns.CONTIG.toString()), position, position);
-                        final int refReadCount = dataLine.getInt(AllelicCountTableColumns.REF_COUNT.toString());
-                        final int altReadCount = dataLine.getInt(AllelicCountTableColumns.ALT_COUNT.toString());
-                        return new AllelicCount(interval, refReadCount, altReadCount);
-                    };
-                })) {
+        try (final AllelicCountReader reader = new AllelicCountReader(inputFile)) {
             counts = reader.stream().collect(Collectors.toList());
         } catch (final IOException | UncheckedIOException e) {
             throw new UserException.CouldNotReadInputFile(inputFile, e);
@@ -55,13 +48,10 @@ public class AllelicCountCollection {
     }
 
     /**
-     * Adds (interval, reference count, alternate count) to respective lists.
-     * @param interval      site in 1-based format
-     * @param refReadCount  number of reads at site matching the reference
-     * @param altReadCount  number of reads at site different from the reference
+     * Adds a new {@link AllelicCount} to counts.
      */
-    public void add(final SimpleInterval interval, final int refReadCount, final int altReadCount) {
-        counts.add(new AllelicCount(interval, refReadCount, altReadCount));
+    public void add(final AllelicCount allelicCount) {
+        counts.add(Utils.nonNull(allelicCount));
     }
 
     /** Returns an unmodifiable view of the list of AllelicCounts.   */
@@ -70,19 +60,20 @@ public class AllelicCountCollection {
     }
 
     /**
-     * Writes out (sequence, position, reference count, alternate count) to specified file.
-     * @param outputFile    file to write to (if it exists, it will be overwritten)
+     * @return a map from SimpleIntervals in counts to their integer index
      */
-    public void write(final File outputFile) {
-        try (final TableWriter<AllelicCount> writer = TableUtils.writer(outputFile,
-                new TableColumnCollection(AllelicCountTableColumns.COLUMN_NAME_ARRAY),
-                //lambda for filling an initially empty DataLine
-                (count, dataLine) -> {
-                    final SimpleInterval interval = count.getInterval();
-                    final int refReadCount = count.getRefReadCount();
-                    final int altReadCount = count.getAltReadCount();
-                    dataLine.append(interval.getContig()).append(interval.getEnd(), refReadCount, altReadCount);
-                })) {
+    public Map<SimpleInterval, Integer> getSimpleIntervalToIndexMap() {
+        return IntStream.range(0, counts.size()).boxed()
+                .collect(Collectors.toMap(i -> counts.get(i).getInterval(), i -> i));
+    }
+
+    /**
+     * Writes out pulldown data to specified file at different verbosity levels.
+     * @param verbosity  verbosity level
+     * @param outputFile  file to write to (if it exists, it will be overwritten)
+     */
+    public void write(final File outputFile, final AllelicCountTableColumns.AllelicCountTableVerbosity verbosity) {
+        try (final AllelicCountWriter writer = new AllelicCountWriter(outputFile, verbosity)) {
             writer.writeAllRecords(counts);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);

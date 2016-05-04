@@ -16,6 +16,11 @@
 \def\SL#1{{\color [rgb]{0,0,0.8} [SL: #1]}}
 \def\DB#1{{\color [rgb]{0,0.8,0} [DB: #1]}}
 
+\newcommand{\HOM}{$\mathsf{Hom}$}
+\newcommand{\HET}{$\mathsf{Het}$}
+\newcommand{\REF}{$\mathsf{Ref}$}
+\newcommand{\epss}{\varepsilon}
+
 \begin{document}
 
 \title{Notes on CNV Methods}
@@ -107,6 +112,99 @@ Ref and alt counts are then obtained at these sites in the tumor case sample.  T
 \SL{SL to update this to the new method.}
 
 Using CBS to segment the targets in GATK CNV results in segments that are larger than a specified minimum number of targets $n_t$ (by default, $n_t = 2$).  However, after taking the union of target and SNP segments, small segments with less than $n_t$ targets may be introduced.  To be consistent with CBS and CNV, ACNV treats these small segments as spurious, and removes them by merging them with adjacent segments.
+
+\subsection{A Bayesian model for detecting Heterozygous sites}
+Here, we would like to propose a slightly different scheme for calling Heterozygous (\HET) sites that (1) takes into account the base read alignment and sequencing qualities, and (2) works for both normal and tumor data. Provisioning situations that only the tumor data is available to us (``tumor-only''), in addition to the presently cosindered situation of paired normal-tumor data (``paired normal-tumor''), we need to modify our criterion for calling a \HET~site. Conceptually, since reads from tumor samples are not pure (contaminated with subclones, normals, etc), a statistical test that rejects the \HET~hypothesis based on the premise of having equal probability of $\mathsf{Ref}$ and $\mathsf{Alt}$ reads is bound to reject \HET~cases when applied to tumor reads. Here, we propose a more sensible Bayesian model.\\
+
+\noindent {\bf Notation:} Let us first focus on a single site $j$, with $R_{kj} \in \{A, C, T, G\}$ denoting the mapped base at site $j$ from read $k$, and $\varepsilon^B_{kj}$ and $\varepsilon^M_k$ denoting the err probability of base calling and mapping. Also, let $\mathsf{Ref}_j$ and $\mathsf{Alt}_j$ denote the Ref and Alt alleles at this site.\\
+
+\noindent{\bf Definition of error:} In case of a base error event, the base could be read as any other three bases with equal probability. In case of a mapping error event, we assume equal probability for all four bases.\\
+
+\noindent{\bf Rareness of somatic SNP events:} In order to proceed with the model, we assume that somatic SNPs are rare events such that Hom/Het sites retain their germline identity.\\
+
+\noindent{\bf Likelihood of \HOM$_j$:} Assuming that site $j$ is \HOM, we find the likelihood of the reads by conditioning over the allele and error events. We easily find:
+\begin{multline}
+P(R_{kj}|\mathsf{Hom}_j) = P(\mathsf{Ref}_j|\mathsf{Hom}_j)\prod_{k=1}^{N_j}\left[\frac{\epss^B_{kj}}{3} + \frac{\epss^M_{k}}{4} + \left(1 - \frac{4}{3}\,\epss^B_{kj} - \epss^M_k\right)\delta_{R_{kj}, \mathsf{Ref}_j}\right] +\\
+P(\mathsf{Alt}_j|\mathsf{Hom}_j)\prod_{k=1}^{N_j}\left[\frac{\epss^B_{kj}}{3} + \frac{\epss^M_{k}}{4} + \left(1 - \frac{4}{3}\,\epss^B_{kj} - \epss^M_k\right)\delta_{R_{kj}, \mathsf{Alt}_j}\right].
+\end{multline}
+We need to know the two priors $P(\mathsf{Ref}_j|\mathsf{Hom}_j)$ and $P(\mathsf{Alt}_j|\mathsf{Hom}_j)$, both of which can be estimation from the statistics of the population to which the sample belongs. If this data is not available, we may use the flat prior $P(\mathsf{Ref}_j|\mathsf{Hom}_j) = P(\mathsf{Alt}_j|\mathsf{Hom}_j) = 1/2$ with little harm. \\
+
+\noindent{\bf Likelihood of \HET$_j$:} Assuming that site $j$ is \HET, and that the the probability of the Ref allele in the sample is $f_{j,R}$, we have:
+\begin{align}
+p_{kj,R} &\equiv P(R_{kj} = \mathsf{Ref}_j| \mathsf{Het}_j, f_{j,R}) = (1-\epss^B_{kj} - \epss^M_k)\,f_{j,R} + \frac{\epss^B_{kj}}{3}\,(1-f_{j,R}) + \epss^M_k/4,\nonumber\\
+p_{kj,A} &\equiv P(R_{kj} = \mathsf{Alt}_j| \mathsf{Het}_j, f_{j,R}) = (1-\epss^B_{kj} - \epss^M_k)\,(1-f_{j,R}) + \frac{\epss^B_{kj}}{3}\,f_{j,R} + \epss^M_k/4,\nonumber\\
+p_{kj,\circ} &\equiv P(R_{kj} \neq \mathsf{Ref}_j, \mathsf{Alt}_j| \mathsf{Het}_j, f_{j,R}) = \frac{\epss^B_{kj}}{3} + \frac{\epss^M_{k}}{4}.
+\end{align}
+Therefore, the likelihood reads:
+\begin{equation}
+P(\{R_{kj}\}|\mathsf{Het}_j) = \int_0^1 \mathrm{d} f_{j,R}\,P(f_{j,R}|\mathsf{Het}_j) \, \prod_{k=1}^{N_j} p_{kj,R}^{I(R_{kj}=\mathsf{Ref}_j)} \, p_{kj,A}^{I(R_{kj}=\mathsf{Alt}_j)}\,p_{kj,\circ}^{I(R_{kj} \neq \mathsf{Ref}_j, \mathsf{Alt}_j)}.
+\end{equation}
+
+The integration over $f_{R,j}$ is not as trivial as before since (1) the error probabilities differs from site to site, and (2) the prior is not necessary conjugate to \HET~likelihood. For the uniformity of notation, we define:
+\begin{align}
+R_{kj} = \mathsf{Ref}_j \quad &\Rightarrow \quad \alpha_{kj} \equiv \frac{\epss^B_{kj}}{3} + \frac{\epss^M_{k}}{4}, \quad \beta_{kj} = 1 - \frac{4\,\epss^B_{kj}}{3} - \frac{\epss^M_k}{4},\nonumber\\
+R_{kj} = \mathsf{Alt}_j \quad &\Rightarrow \quad \alpha_{kj} \equiv 1 - \varepsilon^B_{kj} - \frac{3\,\epss^M_k}{4}, \quad \beta_{kj} = -1 + \frac{4 \, \epss^B_{kj}}{3} + \epss^M_k.
+\end{align}
+such that:
+\begin{equation}\label{eq:Phet}
+P(\{R_{kj}\}|\mathsf{Het}_j) = \left[\prod_{k \in \mathcal{I}_\circ} \frac{\varepsilon_{kj}}{3}\right]\left[\int_0^1 \mathrm{d} f \, P(f|\mathsf{Het})\, \prod_{k \in \mathcal{I}_{RA}}(\alpha_{kj} + \beta_{kj} f)\right],
+\end{equation}
+where $\mathcal{I}_\circ$ are the indices of reads that are neither Ref or Alt at site $j$, and $\mathcal{I}_{RA}$ are indices of reads that either Ref or Alt. Furthermore, $P(f|\mathsf{Het})$ is the common prior for Ref allele fraction. For a given prior, we calculate the $f$-integral numerically with a fixed-order quadrature. Since the integrand is polynomial of $f$, a Gaussian quadrature is well-suited to approximate the integral provided that the prior is also smooth.\\
+
+\noindent {\bf Caveats:} (1) sensitivity to error underestimation: if the read/alignment qualities are overestimated, even a single deviation from the $\mathsf{Hom}_j$ hypothesis can dramatically reduce the likelihood. (2) Loss of heterozygosity can manifest itself has homozoygosity; in practice, it should not be an issue since the samples are not pure and germline heterozygosity should yield sufficient evidence to reject the Hom hypothesis. (3) Heterozygosity in a sizable subclone resulting from a somatic SNP may manifest itself as germline heterozygosity. This is also expected not to be a major issue since somatic SNPs are rare.\\
+
+
+\noindent {\bf A model prior for allele fraction at Het sites:} In this section, we construct a simple prior for the Ref allele fraction at Het sites. To this end, we assume (1) a minimum (maximum) fraction $\rho_\mathrm{min}$ ($\rho_\mathrm{max}$) of the cells in the sample may have events that change the allele fraction with respect to germline (large copy number events, CNLOH, etc). Furthermore, we assume that the maximum copy number is bounded from above by $N_c$. Otherwise, we assume flat priors over both the copy number and non-germline fraction. Under these assumptions, the distribution of the Ref allele fraction is given by:
+\begin{equation}
+P(f|\mathsf{Het}) = \frac{1}{(N_c + 1)^2}\sum_{n,m=0}^{N_c}\int_{\rho_\mathrm{min}}^{\rho_\mathrm{max}}\frac{\mathrm{d}\rho}{\rho_\mathrm{max} - \rho_\mathrm{min}}\,\delta\left(f - \frac{(1-\rho) + \rho m}{2(1-\rho) + \rho(m+n)}\right).
+\end{equation}
+Since the prior will be symmetric under the transformation $f \rightarrow 1 - f$, we will assume $f<1/2$ hereafter. The $\rho$ integration is trivially performed and we find:
+\begin{multline}\label{eq:AFdisc}
+P(f|\mathsf{Het}) = \frac{1}{(N_c + 1)^2}\sum_{n,m=0}^{N_c}\frac{1}{\rho_\mathrm{max} - \rho_\mathrm{min}}\,\frac{|n-m|}{[1 - m + f(n+m-2)]^2} \, \theta\left(f - \frac{(1-\rho_\mathrm{max}) + \rho_\mathrm{max} m}{2(1-\rho_\mathrm{max}) + \rho_\mathrm{max}(m+n)}\right) \\
+\times \theta\left(\frac{(1-\rho_\mathrm{min}) + \rho_\mathrm{min} m}{2(1-\rho_\mathrm{min}) + \rho_\mathrm{min}(m+n)} - f\right).
+\end{multline}
+The summand is ambiguous for $n=m=1$ since $f$ evalues to $1/2$ independent of $\rho$. The correct prescription is to replace it with $\delta(f-1/2)/(\rho_\mathrm{max} - \rho_\mathrm{min})$.
+
+The discrete summation over the copy numbers $(n,m)$ result in a discontinuous prior. It is conveninent to approximate the discrete summations with integrals over $n$ and $m$. This approximation preserves the main features of the prior while converges to the discrete result for large $N_c$. The double integral over $(n,m)$ must be performed with diligence since the Heaviside functions restrict the integration region depending on the value of $f$. We leave out the details and just quote the final result:
+\begin{equation}\label{eq:AFpriorcont}
+P(f|\mathsf{Het}) = \left\{\begin{array}{ll}
+	P_<(f) & \qquad f_\mathrm{th} \leq f \leq f^*,\\
+	P_>(f) & \qquad f^* < f \leq \frac{1}{2},
+\end{array}
+\right.
+\end{equation}
+where:
+\begin{align}
+f_\mathrm{th} &= \frac{1 - \rho_\mathrm{max}}{N_c \, \rho_\mathrm{max} + 2(1-\rho_\mathrm{max})},\nonumber\\
+f^* &= \frac{1 - \rho_\mathrm{min}}{N_c \, \rho_\mathrm{min} + 2(1-\rho_\mathrm{min})},\nonumber\\
+P_<(f) &= \frac{(\rho_\mathrm{max} (f N_c-1)-1) (f ((N_c-2) \rho_\mathrm{max}+2)+\rho_\mathrm{max}-1)+2 \rho_\mathrm{max} (f (f N_c-2)+1) \log \left(\frac{\rho_\mathrm{max} (f (N_c-2)+1)}{1-2 f}\right)}{2 \, (f-1)^2 \, f^2 \, N_c^2 \, \rho_\mathrm{max} \, (\rho_\mathrm{max}-\rho_\mathrm{min})},\nonumber\\
+P_>(f) &= \frac{(\rho_\mathrm{max}-\rho_\mathrm{min}) (\rho_\mathrm{max} \rho_\mathrm{min} (f (N_c-2)+1) (f N_c-1)+2 f-1)+2 \rho_\mathrm{max} \rho_\mathrm{min} (f (f N_c-2)+1) \log \left(\frac{\rho_\mathrm{max}}{\rho_\mathrm{min}}\right)}{2 \, (f-1)^2 \, f^2 \, N_c^2 \, \rho_\mathrm{max} \, \rho_\mathrm{min} \, (\rho_\mathrm{max}-\rho_\mathrm{min})}.
+\end{align}
+Fig.~\ref{fig:AFprior} shows two examples of this prior along with the version with discrete copy number summations.\\
+
+\begin{figure}
+\center
+\includegraphics[scale=0.7]{figs/AlleleFractionPrior1.pdf}
+\includegraphics[scale=0.7]{figs/AlleleFractionPrior2.pdf}
+\caption{Two examples of the \REF~allele fraction prior $P(f|\mathsf{Het})$ at Het sites based on minimum/maximum non-germline cells and maximum copy number. The blue lines denote the continuous approximation given in Eq.~\eqref{eq:AFpriorcont}, The discontinuous organge lines denote the result with discrete copy number summation given in Eq.~ (the delta function peak at $f=1/2$ is not shown).}
+\label{fig:AFprior}
+\end{figure}
+
+\noindent {\bf The Bayesian decision rule:} Using the Bayes' theorem, the log odds of heterozygosity is found as:
+\begin{equation}
+\log \mathrm{odds}(\mathsf{Het}_j) = \log\,P(\{R_{kj}\}|\mathsf{Het}_j) + \log\,P(\mathsf{Het}_j) - \log\,P(\{R_{kj}\}|\mathsf{Hom}_j) - \log\,P(\mathsf{Hom}_j).
+\end{equation}
+In order to evaluate the right hand side, we need to have knowledge of the prior $P(\mathsf{Het}_j)$. This can be worked out from population statistics. Otherwise, we may use the flat prior $P(\mathsf{Het}_j) = 1/2$.\\
+
+
+Having the log odds, the decision rule is simple: we call a \HET~site if its odds exceeds a given threshold:
+\begin{equation}
+\mathrm{Call}~\mathsf{Het}_j \quad \Leftrightarrow \quad \log \mathrm{odds}(\mathsf{Het}_j) > \log\frac{1 - 10^{-s_\mathsf{Het}}}{10^{-s_\mathsf{Het}}} = \log(10^{s_\mathsf{Het}}-1),
+\end{equation}
+where we have defined the {\em \HET~calling stringency parameter $s_\mathsf{Het}$} as a convenient parametrization of the decision boundary. Finally, we note that the log likelihoods scale linearly with the read depth $N_j$ (each read results in an additional multiplicative term). Therefore, the statistic $\log \mathrm{odds}(\mathsf{Het}_j)$ linearly deviates from the decision threshold $\log(10^{s_\mathsf{Het}}-1) \propto s_\mathsf{Het}$ as the read depth increases.\\
+
+\noindent {\bf Increasing power using haplotype information:}
+Todo. The basic idea is to utilize SNP correlations to test multiple correlated sites simultaneously for heterozygosity (1) to increase power, and (2) to improve the prior on $\mathsf{Ref}_j/\mathsf{Alt}_j$. A good starting point to run $\mathsf{HaplotypeCaller}$ on a few normal/tumor reads and check the strength/range/size of correlations between SNP constellations.
 
 \section{GATK CNV/ACNV Models} \label{models}
 
@@ -384,7 +482,6 @@ We therefore have a self-contained iteration scheme in terms of expectations onl
 
   Once this converges, the main objects of interest are the posterior probabilities of different allele counts, $P(v_{sm} = 1, w_{sn} = 1) = \sum_k E \left[ z_{sk} v_{sm} w_{sp} \right]$.  For the purposes of guessing phylogeny the fractions $\rho_k$ are also interesting.
 
-
 \section{Germline Exome CNVs} \label{germline}
 The GATK treats germline CNVs differently from somatic CNVs.  This is partly due to fundamental differences, such as the absence of subclones in the germline setting.  However, many arbitrary inconsistencies are historic in nature, arising from the germline algorithm's origins in the XHMM method.  It is important to keep this in mind when reading these notes.  The two most significant differences between the GATK's germline and somatic workflows is are the neglect of allelic information (i.e. alt and ref read counts at het sites) in the germline workflow and the use of an HMM for simultaneous segmentation and calling in the germline workflow.  
 
@@ -447,8 +544,7 @@ In this form we can work entirely in log space and exploit the log-sum-exp trick
 
 The emission model is as follows.  Each hidden state emits a normally-distributed Z-score.  The means are $-M$, 0, and $+M$ for deletion, neutral, and duplication states, respectively, where $M$ is s user-specified parameter whose default is 3.  Each emission distribution is given unit variance.  This model is quite wrong.  Consider a duplication.  The tangent-normalized coverage ought be be roughly 0.5 times the proportional coverage -- the raw coverage is $3/2$ that of a diploid target, leaving $1/2$ remaining after (ideal) tangent-normalization.  Then division by the target standard deviation to get a Z-score yields who-knows-what.  Since different targets have different average proportional coverage, the global parameter $M$ is misguided.  Basically, the current model is not a model at all, but a heuristic.
 
-
-\section{Proposed Methods} \label{proposed-methods} 
+\section{Proposed Methods} \label{proposed-methods}
 
 \subsection{Using Panel of Normals for Allelic Fraction Model} \label{allelic-PoN}
 

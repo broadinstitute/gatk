@@ -37,17 +37,17 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
 
         final DoubleUnaryOperator phredToLog = d -> d * -.1 * LN_OF_10;
         final double[] logPriorsRaw = DoubleStream.of(priors).map(phredToLog).toArray();
-        final double logPriorsSum = GATKProtectedMathUtils.naturalLogSumExp(logPriorsRaw);
+        final double logPriorsSum = GATKProtectedMathUtils.logSumExp(logPriorsRaw);
         final double[] logPriors = DoubleStream.of(logPriorsRaw).map(d -> d - logPriorsSum).toArray();
 
         final double[][] logEmissionProbs = Stream.of(emission)
                 .map(x -> { final double[] result = DoubleStream.of(x).map(phredToLog).toArray();
-                            final double sum = GATKProtectedMathUtils.naturalLogSumExp(result);
+                            final double sum = GATKProtectedMathUtils.logSumExp(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
         final double[][] logTransitionProbs = Stream.of(transition)
                 .map(x -> { final double[] result = DoubleStream.of(x).map(phredToLog).toArray();
-                            final double sum = GATKProtectedMathUtils.naturalLogSumExp(result);
+                            final double sum = GATKProtectedMathUtils.logSumExp(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
         return new TestHMModel(logPriors, logEmissionProbs, logTransitionProbs);
@@ -185,7 +185,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
         for (int i = 0; i < logTransitionProbs.length; i++) {
             logTransitionProbs[i] = logTransitionProbability(previousState, previousPosition, State.values()[i], nextPosition);
         }
-        final double total = Math.exp(GATKProtectedMathUtils.naturalLogSumExp(logTransitionProbs));
+        final double total = Math.exp(GATKProtectedMathUtils.logSumExp(logTransitionProbs));
         final double uniform = rdn.nextDouble() * total;
         double accumulative = 0;
         for (int i = 0; i < logTransitionProbs.length; i++) {
@@ -202,7 +202,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
         for (int i = 0; i < logEmissionProbs.length; i++) {
             logEmissionProbs[i] = logEmissionProbability(Datum.values()[i], state, position);
         }
-        final double total = Math.exp(GATKProtectedMathUtils.naturalLogSumExp(logEmissionProbs));
+        final double total = Math.exp(GATKProtectedMathUtils.logSumExp(logEmissionProbs));
 
         final double uniform = rdn.nextDouble() * total;
         double accumulate = 0;
@@ -216,7 +216,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
     }
 
     private State generateFirstState(final Integer firstPosition, final Random rdn) {
-        final double uniform = rdn.nextDouble() * Math.exp(GATKProtectedMathUtils.naturalLogSumExp(priors));
+        final double uniform = rdn.nextDouble() * Math.exp(GATKProtectedMathUtils.logSumExp(priors));
         double accumulative = 0;
         for (int i = 0; i < priors.length; i++) {
             accumulative += Math.exp(logPriorProbability(State.values()[i], firstPosition));

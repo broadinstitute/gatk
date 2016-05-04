@@ -179,7 +179,7 @@ public final class AlleleFractionLikelihoods {
      * @return the log of the likelihood at this het site, marginalized over indicator states.
      */
     public static double collapsedHetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count, final AllelicPanelOfNormals allelicPON) {
-        return GATKProtectedMathUtils.naturalLogSumExp(
+        return GATKProtectedMathUtils.logSumExp(
                 hetLogLikelihood(state, segment, count, AlleleFractionIndicator.ALT_MINOR, allelicPON),
                 hetLogLikelihood(state, segment, count, AlleleFractionIndicator.REF_MINOR, allelicPON),
                 hetLogLikelihood(state, segment, count, AlleleFractionIndicator.OUTLIER, allelicPON));

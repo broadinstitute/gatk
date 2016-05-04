@@ -47,18 +47,18 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
             tumorHeader = tumorBamReader.getFileHeader();
 
             normalHetPulldownExpected = new Pulldown(normalHeader);
-            normalHetPulldownExpected.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-            normalHetPulldownExpected.add(new SimpleInterval("1", 12098, 12098), 8, 6);
-            normalHetPulldownExpected.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-            normalHetPulldownExpected.add(new SimpleInterval("2", 14689, 14689), 6, 9);
-            normalHetPulldownExpected.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+            normalHetPulldownExpected.add(new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4));
+            normalHetPulldownExpected.add(new AllelicCount(new SimpleInterval("1", 12098, 12098), 8, 6));
+            normalHetPulldownExpected.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8));
+            normalHetPulldownExpected.add(new AllelicCount(new SimpleInterval("2", 14689, 14689), 6, 9));
+            normalHetPulldownExpected.add(new AllelicCount(new SimpleInterval("2", 14982, 14982), 6, 5));
 
             tumorHetPulldownExpected = new Pulldown(tumorHeader);
-            tumorHetPulldownExpected.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-            tumorHetPulldownExpected.add(new SimpleInterval("1", 12098, 12098), 8, 6);
-            tumorHetPulldownExpected.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-            tumorHetPulldownExpected.add(new SimpleInterval("2", 14689, 14689), 6, 9);
-            tumorHetPulldownExpected.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+            tumorHetPulldownExpected.add(new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4));
+            tumorHetPulldownExpected.add(new AllelicCount(new SimpleInterval("1", 12098, 12098), 8, 6));
+            tumorHetPulldownExpected.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8));
+            tumorHetPulldownExpected.add(new AllelicCount(new SimpleInterval("2", 14689, 14689), 6, 9));
+            tumorHetPulldownExpected.add(new AllelicCount(new SimpleInterval("2", 14982, 14982), 6, 5));
         }
     }
 

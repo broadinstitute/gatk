@@ -3,8 +3,11 @@ package org.broadinstitute.hellbender.utils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.commons.math3.util.FastMath;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.stream.IntStream;
 
 /**
@@ -14,7 +17,7 @@ import java.util.stream.IntStream;
 public class GATKProtectedMathUtils {
 
     /**
-     * Computes ln(Sum_i(e^a_i)) trying to avoid underflow issues by using the log-sum-exp trick.
+     * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
      *
      * <p>
      * This trick consists on shift all the log values by the maximum so that exponent values are
@@ -23,12 +26,23 @@ public class GATKProtectedMathUtils {
      * </p>
      * @return any double value.
      */
-    public static double naturalLogSumExp(final double ... values) {
+    public static double logSumExp(final double ... values) {
         double max = MathUtils.arrayMax(Utils.nonNull(values));
         double sum = 0.0;
         for (int i = 0; i < values.length; ++i) {
             if (values[i] != Double.NEGATIVE_INFINITY) {
                 sum += java.lang.Math.exp(values[i] - max);
+            }
+        }
+        return max + Math.log(sum);
+    }
+
+    public static double logSumExp(final Collection<Double> values) {
+        double max = Collections.max(values);
+        double sum = 0.0;
+        for (final double val : values) {
+            if (val != Double.NEGATIVE_INFINITY) {
+                sum += java.lang.Math.exp(val - max);
             }
         }
         return max + Math.log(sum);

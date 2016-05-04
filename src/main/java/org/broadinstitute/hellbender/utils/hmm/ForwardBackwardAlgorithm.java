@@ -336,7 +336,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logTransitionProbability(states.get(previousStateIndex),
                                         previousPosition, thisState, thisPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumExp(logSumBuffer)
+                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.logSumExp(logSumBuffer)
                         + model.logEmissionProbability(data.get(thisPositionIndex), thisState, thisPosition);
             }
         }
@@ -397,7 +397,7 @@ public final class ForwardBackwardAlgorithm {
                                     + model.logEmissionProbability(dataList.get(nextPositionIndex),
                                                 states.get(nextStateIndex), nextPosition);
                 }
-                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.naturalLogSumExp(logSumBuffer);
+                result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.logSumExp(logSumBuffer);
             }
         }
         return result;
@@ -464,7 +464,7 @@ public final class ForwardBackwardAlgorithm {
                                     .mapToDouble(j -> logBackwardProbabilities[i][j]
                                                     + logForwardProbabilities[i][j])
                                     .toArray())
-                    .mapToDouble(GATKProtectedMathUtils::naturalLogSumExp)
+                    .mapToDouble(GATKProtectedMathUtils::logSumExp)
                     .toArray();
         }
 
@@ -624,7 +624,7 @@ public final class ForwardBackwardAlgorithm {
                     // by the emission probability of the current datum.
                     currentLikelihoods = currentStates.stream()
                             .mapToDouble(thisState ->
-                                    GATKProtectedMathUtils.naturalLogSumExp(IntStream.range(0, previousStates.size())
+                                    GATKProtectedMathUtils.logSumExp(IntStream.range(0, previousStates.size())
                                             .mapToDouble(previousStateIndex -> {
                                                 final S previousState = previousStates.get(previousStateIndex);
                                                 return previousLikelihoods[previousStateIndex]
@@ -640,7 +640,7 @@ public final class ForwardBackwardAlgorithm {
                 for (int i = 0; i < currentLikelihoods.length; i++) {
                     currentLikelihoods[i] += logBackwardProbabilities[lastIndex][stateIndex.getInt(lastStates.get(i))];
                 }
-                return GATKProtectedMathUtils.naturalLogSumExp(currentLikelihoods) - logDataLikelihood[lastIndex];
+                return GATKProtectedMathUtils.logSumExp(currentLikelihoods) - logDataLikelihood[lastIndex];
             }
         }
 

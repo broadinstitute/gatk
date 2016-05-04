@@ -137,16 +137,16 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     @DataProvider(name = "inputGetNormalHetPulldown")
     public Object[][] inputGetNormalHetPulldown() {
         final Pulldown normalHetPulldown1 = new Pulldown(normalHeader);
-        normalHetPulldown1.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-        normalHetPulldown1.add(new SimpleInterval("1", 12098, 12098), 8, 6);
-        normalHetPulldown1.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        normalHetPulldown1.add(new SimpleInterval("2", 14689, 14689), 6, 9);
-        normalHetPulldown1.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+        normalHetPulldown1.add(new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4));
+        normalHetPulldown1.add(new AllelicCount(new SimpleInterval("1", 12098, 12098), 8, 6));
+        normalHetPulldown1.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8));
+        normalHetPulldown1.add(new AllelicCount(new SimpleInterval("2", 14689, 14689), 6, 9));
+        normalHetPulldown1.add(new AllelicCount(new SimpleInterval("2", 14982, 14982), 6, 5));
 
         //changing pValThreshold from 0.05 -> 0.95 only keeps hets close to balanced
         final Pulldown normalHetPulldown2 = new Pulldown(normalHeader);
-        normalHetPulldown2.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        normalHetPulldown2.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+        normalHetPulldown2.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8));
+        normalHetPulldown2.add(new AllelicCount(new SimpleInterval("2", 14982, 14982), 6, 5));
 
         return new Object[][]{
                 {0.05, normalHetPulldown1},
@@ -173,11 +173,11 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     @DataProvider(name = "inputGetTumorHetPulldown")
     public Object[][] inputGetTumorHetPulldown() {
         final Pulldown tumorHetPulldown = new Pulldown(normalHeader);
-        tumorHetPulldown.add(new SimpleInterval("1", 11522, 11522), 7, 4);
-        tumorHetPulldown.add(new SimpleInterval("1", 12098, 12098), 8, 6);
-        tumorHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        tumorHetPulldown.add(new SimpleInterval("2", 14689, 14689), 6, 9);
-        tumorHetPulldown.add(new SimpleInterval("2", 14982, 14982), 6, 5);
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4));
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("1", 12098, 12098), 8, 6));
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8));
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("2", 14689, 14689), 6, 9));
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("2", 14982, 14982), 6, 5));
 
         final IntervalList normalHetIntervals = new IntervalList(tumorHeader);
         normalHetIntervals.add(new Interval("1", 11522, 11522));
@@ -194,8 +194,8 @@ public final class HetPulldownCalculatorUnitTest extends BaseTest {
     @DataProvider(name = "inputGetTumorHetPulldownMin15")
     public Object[][] inputGetTumorHetPulldown15() {
         final Pulldown tumorHetPulldown = new Pulldown(normalHeader);
-        tumorHetPulldown.add(new SimpleInterval("1", 14630, 14630), 9, 8);
-        tumorHetPulldown.add(new SimpleInterval("2", 14689, 14689), 6, 9);
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8));
+        tumorHetPulldown.add(new AllelicCount(new SimpleInterval("2", 14689, 14689), 6, 9));
 
         final IntervalList normalHetIntervals = new IntervalList(tumorHeader);
         normalHetIntervals.add(new Interval("1", 14630, 14630));

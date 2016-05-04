@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferen
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumns.AllelicCountTableVerbosity;
 
 import java.io.File;
 
@@ -136,7 +137,7 @@ public final class GetHetCoverage extends CommandLineProgram {
 
         logger.info("Getting normal het pulldown...");
         final Pulldown normalHetPulldown = hetPulldown.getNormal(normalBAMFile, pvalThreshold, minimumRawReads);
-        normalHetPulldown.write(normalHetOutputFile);
+        normalHetPulldown.write(normalHetOutputFile, AllelicCountTableVerbosity.BASIC);
         logger.info("Normal het pulldown written to " + normalHetOutputFile.toString());
 
         if (doTumorPulldown) {
@@ -144,7 +145,7 @@ public final class GetHetCoverage extends CommandLineProgram {
 
             logger.info("Getting tumor het pulldown...");
             final Pulldown tumorHetPulldown = hetPulldown.getTumor(tumorBAMFile, normalHetIntervals, minimumRawReads);
-            tumorHetPulldown.write(tumorHetOutputFile);
+            tumorHetPulldown.write(tumorHetOutputFile, AllelicCountTableVerbosity.BASIC);
             logger.info("Tumor het pulldown written to " + tumorHetOutputFile.toString());
         }
 
