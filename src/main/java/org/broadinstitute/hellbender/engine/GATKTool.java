@@ -512,10 +512,29 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Override
     protected final Object doWork() {
-        onTraversalStart();
-        progressMeter.start();
-        traverse();
-        progressMeter.stop();
-        return onTraversalSuccess();
+        try {
+            onTraversalStart();
+            progressMeter.start();
+            traverse();
+            progressMeter.stop();
+            return onTraversalSuccess();
+        } finally {
+            closeTool();
+        }
+    }
+
+    /**
+     * This method is called by the GATK framework at the end of the {@link #doWork} template method.
+     * It is called regardless of whether the {@link #traverse} has succeeded or not.
+     * It is called <em>after</em> the {@link #onTraversalSuccess} has completed (successfully or not)
+     * but before the {@link #doWork} method returns.
+     *
+     * In other words, on successful runs both {@link #onTraversalSuccess} and {@link #closeTool} will be called (in this order) while
+     * on failed runs (when {@link #traverse} causes an exception), only {@link #closeTool} will be called.
+     *
+     * The default implementation does nothing.
+     * Subclasses should override this method to close any resources that must be closed regardless of the success of traversal.
+     */
+    public void closeTool(){
     }
 }

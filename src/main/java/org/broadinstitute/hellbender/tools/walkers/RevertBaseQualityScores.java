@@ -53,10 +53,9 @@ public class RevertBaseQualityScores extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalSuccess() {
+    public void closeTool() {
         if ( outputWriter != null ) {
             outputWriter.close();
         }
-        return null;
     }
 }

@@ -82,12 +82,10 @@ public final class ExampleIntervalWalker extends IntervalWalker {
     }
 
     @Override
-    public Object onTraversalSuccess() {
+    public void closeTool() {
         if ( outputStream != null ) {
             outputStream.close();
         }
-
-        return null;
     }
 
 }

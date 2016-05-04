@@ -87,11 +87,10 @@ public final class SplitReads extends ReadWalker {
     }
 
     @Override
-    public Object onTraversalSuccess() {
+    public void closeTool() {
         if ( outs != null ) {
             outs.values().forEach(writer -> writer.close());
         }
-        return null;
     }
 
     // Create an output stream on demand for holding any reads that do not have a value for one or more of the
