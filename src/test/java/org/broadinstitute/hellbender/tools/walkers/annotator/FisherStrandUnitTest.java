@@ -2,7 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -15,7 +20,11 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -42,21 +51,30 @@ public final class FisherStrandUnitTest {
         //[1] 5.919091e-13
 
         final List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[]{0, 0, 0, 0,                     1.0});
-        tests.add(new Object[]{100000, 100000, 100000, 100000, 1.0}  );
-        tests.add(new Object[]{0, 0, 100000, 100000,           1.0});
-        tests.add(new Object[]{100000,100000,100000,0,         1.312515e-15});
+        tests.add(new Object[]{9, 11, 12, 10, 0.7578618});
+        tests.add(new Object[]{12, 10, 9, 11, 0.7578618});
+        tests.add(new Object[]{9, 10, 12, 10, 0.7578618});
+        tests.add(new Object[]{9, 10, 12, 10, 0.7578618});
+        tests.add(new Object[]{9, 9, 12, 10, 1.0});
+        tests.add(new Object[]{9, 13, 12, 10, 0.5466948});
+        tests.add(new Object[]{12, 10, 9, 13, 0.5466948});
+        tests.add(new Object[]{9, 12, 11, 9, 0.5377362});
 
-        tests.add(new Object[]{100,100,100,0,                  3.730187e-23});
-        tests.add(new Object[]{13736,9047,41,1433,             6.162592e-05});
-        tests.add(new Object[]{66, 14, 64, 4,                  4.243330e-02});
-        tests.add(new Object[]{351169, 306836, 153739, 2379,   2.193607e-09});
-        tests.add(new Object[]{116449, 131216, 289, 16957,     1.340052e-03});
-        tests.add(new Object[]{137, 159, 9, 23,                6.088506e-02});
-        tests.add(new Object[]{129, 90, 21, 20,                3.919603e-01});
-        tests.add(new Object[]{14054, 9160, 16, 7827,          7.466277e-17});
-        tests.add(new Object[]{32803, 9184, 32117, 3283,       1.795855e-02});
-        tests.add(new Object[]{2068, 6796, 1133, 0,            5.919091e-13});
+        tests.add(new Object[]{0, 0, 0, 0, 1.0});
+        tests.add(new Object[]{100000, 100000, 100000, 100000, 1.0});
+        tests.add(new Object[]{0, 0, 100000, 100000, 1.0});
+        tests.add(new Object[]{100000, 100000, 100000, 0, 1.312515e-15});
+
+        tests.add(new Object[]{100, 100, 100, 0, 3.730187e-23});
+        tests.add(new Object[]{13736, 9047, 41, 1433, 6.162592e-05});
+        tests.add(new Object[]{66, 14, 64, 4, 4.243330e-02});
+        tests.add(new Object[]{351169, 306836, 153739, 2379, 2.193607e-09});
+        tests.add(new Object[]{116449, 131216, 289, 16957, 1.340052e-03});
+        tests.add(new Object[]{137, 159, 9, 23, 6.088506e-02});
+        tests.add(new Object[]{129, 90, 21, 20, 3.919603e-01});
+        tests.add(new Object[]{14054, 9160, 16, 7827, 7.466277e-17});
+        tests.add(new Object[]{32803, 9184, 32117, 3283, 1.795855e-02});
+        tests.add(new Object[]{2068, 6796, 1133, 0, 5.919091e-13});
 
         return tests.toArray(new Object[][]{});
     }
@@ -72,7 +90,7 @@ public final class FisherStrandUnitTest {
         Assert.assertEquals(pvalue, expectedPvalue, DELTA_PRECISION, "Pvalues");
 
         final double actualPhredPval = Double.parseDouble((String) new FisherStrand().annotationForOneTable(pvalue).get(GATKVCFConstants.FISHER_STRAND_KEY));
-        final double expectedPhredPvalue =  QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
+        final double expectedPhredPvalue = QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
         Assert.assertEquals(actualPhredPval, expectedPhredPvalue, DELTA_PRECISION_FOR_PHRED, "phred pvalues");
     }
 
@@ -107,7 +125,7 @@ public final class FisherStrandUnitTest {
         final Allele C = Allele.create("C");
 
         final List<Allele> AC = Arrays.asList(A, C);
-        final int depth = 1+2+3+4;
+        final int depth = 1 + 2 + 3 + 4;
 
         final String sbbs = "1,2,3,4";
         final int[][] table = {{1, 2}, {3, 4}};
@@ -122,15 +140,15 @@ public final class FisherStrandUnitTest {
 
         final Map<String, Object> annotatedMap = new FisherStrand().annotate(null, vc, null);
         Assert.assertNotNull(annotatedMap, vc.toString());
-        final String pPhredStr = (String)annotatedMap.get(GATKVCFConstants.FISHER_STRAND_KEY);
+        final String pPhredStr = (String) annotatedMap.get(GATKVCFConstants.FISHER_STRAND_KEY);
 
         final double actualPhredPval = Double.parseDouble(pPhredStr);
 
         final double expectedPvalue = FisherStrand.pValueForContingencyTable(table);
-        final double expectedPhredPvalue =  QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
+        final double expectedPhredPvalue = QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
         Assert.assertEquals(actualPhredPval, expectedPhredPvalue, DELTA_PRECISION_FOR_PHRED, "phred pvalues");
 
-        Assert.assertEquals(Math.pow(10, actualPhredPval/-10.0), expectedPvalue, DELTA_PRECISION);
+        Assert.assertEquals(Math.pow(10, actualPhredPval / -10.0), expectedPvalue, DELTA_PRECISION);
     }
 
     private GATKRead makeRead(final boolean forward) {
@@ -141,8 +159,9 @@ public final class FisherStrandUnitTest {
     }
 
     private final String sample1 = "NA1";
-    private VariantContext makeVC( final Allele refAllele, final Allele altAllele) {
-        final double[] genotypeLikelihoods1 = {30,0,190};
+
+    private VariantContext makeVC(final Allele refAllele, final Allele altAllele) {
+        final double[] genotypeLikelihoods1 = {30, 0, 190};
         final GenotypesContext testGC = GenotypesContext.create(2);
         // sample1 -> A/T with GQ 30
         testGC.add(new GenotypeBuilder(sample1).alleles(Arrays.asList(refAllele, altAllele)).PL(genotypeLikelihoods1).GQ(30).make());
@@ -152,16 +171,16 @@ public final class FisherStrandUnitTest {
     }
 
     @Test
-    public void testUsingMap(){
+    public void testUsingMap() {
         final InfoFieldAnnotation ann = new FisherStrand();
-        final String key= GATKVCFConstants.FISHER_STRAND_KEY;
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
+        final String key = GATKVCFConstants.FISHER_STRAND_KEY;
+        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
 
         final Allele alleleRef = Allele.create("T", true);
         final Allele alleleAlt = Allele.create("A", false);
 
-        final int[][] table= {{1, 1},  // alt: one read in each direction,
-                              {2, 0}}; //ref: 2 reads fwd, 0 reads back
+        final int[][] table = {{1, 1},  // alt: one read in each direction,
+                {2, 0}}; //ref: 2 reads fwd, 0 reads back
 
         final GATKRead read1 = makeRead(true);
         final GATKRead read2 = makeRead(true);
@@ -182,32 +201,32 @@ public final class FisherStrandUnitTest {
         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
 
 
-        final VariantContext vc= makeVC(alleleRef, alleleAlt);
+        final VariantContext vc = makeVC(alleleRef, alleleAlt);
 
         final Map<String, Object> annotatedMap = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
         Assert.assertNotNull(annotatedMap, vc.toString());
-        final String pPhredStr = (String)annotatedMap.get(key);
+        final String pPhredStr = (String) annotatedMap.get(key);
 
         final double actualPhredPval = Double.parseDouble(pPhredStr);
 
         final double expectedPvalue = FisherStrand.pValueForContingencyTable(table);
-        final double expectedPhredPvalue =  QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
+        final double expectedPhredPvalue = QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
         Assert.assertEquals(actualPhredPval, expectedPhredPvalue, DELTA_PRECISION_FOR_PHRED, "phred pvalues");
 
         Assert.assertEquals(Math.pow(10, actualPhredPval / -10.0), expectedPvalue, DELTA_PRECISION);
     }
 
     @Test
-    public void testUsingMap_Raw(){
-        final AS_StrandBiasTest ann= new AS_FisherStrand();
+    public void testUsingMap_Raw() {
+        final AS_StrandBiasTest ann = new AS_FisherStrand();
         final String key = GATKVCFConstants.AS_SB_TABLE_KEY;
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
+        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
 
         final Allele alleleRef = Allele.create("T", true);
         final Allele alleleAlt = Allele.create("A", false);
 
-        final int[][] table= {{2, 2},  // alt: two reads in each direction,
-                              {4, 0}}; // ref: 4 reads fwd, 0 reads back
+        final int[][] table = {{2, 2},  // alt: two reads in each direction,
+                {4, 0}}; // ref: 4 reads fwd, 0 reads back
 
         final GATKRead read1 = makeRead(true);
         final GATKRead read2 = makeRead(true);
@@ -241,14 +260,14 @@ public final class FisherStrandUnitTest {
         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
 
 
-        final VariantContext vc= makeVC(alleleRef, alleleAlt);
+        final VariantContext vc = makeVC(alleleRef, alleleAlt);
 
         final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, stratifiedPerReadAlleleLikelihoodMap);
         final Map<String, Object> annotatedMapNonRaw = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
         Assert.assertNotNull(annotatedMapRaw, vc.toString());
-        final String actualStringRaw = (String)annotatedMapRaw.get(key);
+        final String actualStringRaw = (String) annotatedMapRaw.get(key);
         Assert.assertNotNull(annotatedMapNonRaw, vc.toString());
-        final String actualStringNonRaw = (String)annotatedMapNonRaw.get(key);
+        final String actualStringNonRaw = (String) annotatedMapNonRaw.get(key);
 
         final String expectedString = AS_StrandBiasTest.rawValueAsString(table);
         Assert.assertEquals(actualStringRaw, expectedString);
@@ -257,7 +276,7 @@ public final class FisherStrandUnitTest {
 
     @Test
     public void testEmptyIfNonVariant() {
-        FisherStrand fs= new FisherStrand();
+        FisherStrand fs = new FisherStrand();
         Map<String, Object> ann = fs.annotate(null, when(mock(VariantContext.class).isVariant()).thenReturn(false).getMock(), null);
         Assert.assertTrue(ann.isEmpty());
     }
