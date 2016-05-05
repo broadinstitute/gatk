@@ -224,7 +224,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         public String stringify(final String barcode, final String contig, final IntervalTree.Node<List<GATKRead>> node) {
 
             final List<GATKRead> reads = node.getValue();
-            reads.sort((o1, o2) -> new Integer(o1.getStart()).compareTo(o2.getStart()));
+            reads.sort((o1, o2) -> new Integer(o1.getUnclippedStart()).compareTo(o2.getUnclippedStart()));
 
             int minUnclippedStart = node.getStart();
             int currentEnd = 0;
