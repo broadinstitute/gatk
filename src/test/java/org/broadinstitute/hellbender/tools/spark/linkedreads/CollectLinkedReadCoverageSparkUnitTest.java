@@ -148,6 +148,14 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(samRecords.size(), 1);
         Assert.assertEquals(samRecords.get(0), "ACTGACTG\t1\t1\t1000\t60\t10M10N6M1D4M4M10N5M1I4M96N10M\t*\t0\t0\tACACACACACGTGTGTGTGTAGAGGCGCGCGCGCTTTTTTTTTT\tSSSSSSSSSSTTTTTTTTTTUUUUVVVVVVVVVVWWWWWWWWWW\n");
 
+        final IntervalTree<List<GATKRead>> tree5 = createTestIntervalTree5(samHeader);
+        final String barcode5 = "TTTTTTTT";
+        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode5 = new HashMap<>();
+        treeForBarcode5.put("1", tree5);
+
+        final List<String> samRecords5 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode5, treeForBarcode5), samHeader);
+        Assert.assertEquals(samRecords5.size(), 1);
+        Assert.assertEquals(samRecords5.get(0), "TTTTTTTT\t1\t1\t997\t60\t3M7M2M20D2M2M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
 
     }
 
@@ -201,6 +209,19 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "3S7M"));
         resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1025, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "10M"));
         tree.put(1000, 1035, resultList);
+        return tree;
+    }
+
+    private IntervalTree<List<GATKRead>> createTestIntervalTree5(final SAMFileHeader artificialSamHeader) {
+        final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
+
+        final List<GATKRead> resultList = new ArrayList<>();
+        // reads are like:
+        //     acaCACACAC
+        //           GTGTGT--------------------GTgt
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "3S7M"));
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1003, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "6M20D2M2S"));
+        tree.put(1000, 1033, resultList);
         return tree;
     }
 

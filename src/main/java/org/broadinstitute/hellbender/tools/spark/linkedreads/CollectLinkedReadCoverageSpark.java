@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -273,8 +274,19 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                             // no need to chop further, just add cigar operators and bases
                             uberCigar.add(translatedCigarElement);
                             if (translatedCigarElement.getOperator().consumesReadBases()) {
-                                seqOutputStream.write(read.getBases(), readBasesConsumed, translatedCigarElement.getLength());
-                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed, translatedCigarElement.getLength());
+                                try {
+                                    seqOutputStream.write(read.getBases(), readBasesConsumed, translatedCigarElement.getLength());
+                                    qualOutputStream.write(read.getBaseQualities(), readBasesConsumed, translatedCigarElement.getLength());
+                                } catch (IndexOutOfBoundsException e) {
+                                    throw new GATKException("read = " + read + "\n" +
+                                            "cigar = " + read.getCigar() + "\n" +
+                                            "cigarElement  = " + cigarElement + "\n" +
+                                            "translatedCigarElement = " + translatedCigarElement + "\n" +
+                                            "uberCigar = " + uberCigar + "\n" +
+                                            "readBasesConsumed = " + readBasesConsumed + "\n" +
+                                            "refBasesConsumed = " + refBasesConsumed + "\n" +
+                                            "chopAmount = " + chopAmount + "\n", e);
+                                }
                                 readBasesConsumed = readBasesConsumed + translatedCigarElement.getLength();
                             }
                         } else if (translatedCigarElement.getOperator().consumesReferenceBases() && refBasesConsumed + translatedCigarElement.getLength() > chopAmount) {
