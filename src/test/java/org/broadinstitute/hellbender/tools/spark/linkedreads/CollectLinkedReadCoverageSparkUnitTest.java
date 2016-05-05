@@ -157,6 +157,16 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(samRecords5.size(), 1);
         Assert.assertEquals(samRecords5.get(0), "TTTTTTTT\t1\t1\t997\t60\t3M7M2M20D2M2M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
 
+        final IntervalTree<List<GATKRead>> tree6 = createTestIntervalTree6(samHeader);
+        final String barcode6 = "GGGGGGG";
+        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode6 = new HashMap<>();
+        treeForBarcode6.put("1", tree6);
+
+        final List<String> samRecords6 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode6, treeForBarcode6), samHeader);
+        Assert.assertEquals(samRecords6.size(), 1);
+        Assert.assertEquals(samRecords6.get(0),
+                "GGGGGGG\t1\t1\t1000\t60\t150M1M6M\t*\t0\t0\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTGTGTG\tSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSTTTTTTT\n");
+
     }
 
     private IntervalTree<List<GATKRead>> createTestIntervalTree1(final SAMFileHeader artificialSamHeader) {
@@ -222,6 +232,22 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "3S7M"));
         resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1003, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "6M20D2M2S"));
         tree.put(1000, 1033, resultList);
+        return tree;
+    }
+
+    private IntervalTree<List<GATKRead>> createTestIntervalTree6(final SAMFileHeader artificialSamHeader) {
+        final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
+
+        final List<GATKRead> resultList = new ArrayList<>();
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000,
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".getBytes(),
+                "222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222".getBytes(),
+                "150M"));
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1002,
+                "GTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTGTG".getBytes(),
+                "3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333".getBytes(),
+                "75M4D70M6S"));
+        tree.put(1000, 1151, resultList);
         return tree;
     }
 

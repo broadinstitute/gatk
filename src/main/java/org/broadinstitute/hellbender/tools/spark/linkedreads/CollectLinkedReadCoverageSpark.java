@@ -296,7 +296,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                             if (translatedCigarElement.getOperator().consumesReadBases()) {
                                 seqOutputStream.write(read.getBases(), readBasesConsumed + translatedCigarElement.getLength() - newCigarLength, newCigarLength);
                                 qualOutputStream.write(read.getBaseQualities(), readBasesConsumed + translatedCigarElement.getLength() - newCigarLength, newCigarLength);
-                                readBasesConsumed = readBasesConsumed + translatedCigarElement.getLength() - chopAmount;
+                                readBasesConsumed = readBasesConsumed + translatedCigarElement.getLength();
                             }
                         } else {
                             // skipping cigar element, just add to read bases consumed total
