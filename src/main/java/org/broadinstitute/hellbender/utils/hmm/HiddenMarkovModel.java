@@ -1,6 +1,14 @@
 package org.broadinstitute.hellbender.utils.hmm;
 
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.IntStream;
 
 /**
  * Hidden Markov Model interface with hidden-state transition probabilities and data
@@ -31,6 +39,8 @@ import java.util.List;
  * @param <T> represent the observation position type.
  */
 public interface HiddenMarkovModel<D, T, S> {
+
+    int RANDOM_SEED_FOR_CHAIN_GENERATION = 13;
 
     /**
      * Returns all hidden states.
@@ -106,4 +116,18 @@ public interface HiddenMarkovModel<D, T, S> {
      * @throws IllegalArgumentException if either {@code state} or {@code position} is not recognized by the model.
      */
     double logEmissionProbability(final D data, final S state, final T position);
+
+    default List<S> generateHiddenStateChain(final List<T> positions) {
+        final RandomGenerator rg = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED_FOR_CHAIN_GENERATION));
+        final List<S> hiddenStates = hiddenStates();
+        final List<S> result = new ArrayList<>(positions.size());
+
+        final S initialState = GATKProtectedMathUtils.randomSelect(hiddenStates, s -> Math.exp(logPriorProbability(s, positions.get(0))), rg);
+        result.add(initialState);
+
+        IntStream.range(1, positions.size()).forEach(n ->
+            result.add(GATKProtectedMathUtils.randomSelect(hiddenStates,
+                    s -> Math.exp(logTransitionProbability(result.get(n-1), positions.get(n - 1), s, positions.get(n))), rg)));
+        return result;
+    }
 }

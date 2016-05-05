@@ -1,13 +1,17 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
-import org.apache.commons.math3.util.FastMath;
+import org.apache.commons.math3.util.Pair;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -15,7 +19,6 @@ import java.util.stream.IntStream;
  * Created by davidben on 1/22/16.
  */
 public class GATKProtectedMathUtils {
-
     /**
      * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
      *
@@ -149,5 +152,13 @@ public class GATKProtectedMathUtils {
     public static double stdDev(final double ... values) {
         Utils.nonNull(values);
         return Math.sqrt(new Variance().evaluate(values));
+    }
+
+    // given a list of options and a function for calculating their probabilities (these must sum to 1 over the whole list)
+    // randomly choose one option from the implied categorical distribution
+    public static <E> E randomSelect(final List<E> choices, final Function<E, Double> probabilityFunction, final RandomGenerator rng) {
+        final List<Pair<E, Double>> pmf = choices.stream()
+                .map(e -> new Pair<>(e, probabilityFunction.apply(e))).collect(Collectors.toList());
+        return new EnumeratedDistribution<>(rng, pmf).sample();
     }
 }

@@ -807,6 +807,48 @@ public final class HMMUnitTest extends BaseTest {
                 new ArrayList<>(Arrays.asList(1, 2, 3)), model);
     }
 
+    @Test
+    public void testGenerateHiddenStateChainOnUninformativeHMM() {
+        final int numStates = 3;
+        final UninformativeTestHMModel model = new UninformativeTestHMModel(numStates);
+        final int chainLength = 100000;
+
+        final List<Integer> positions = IntStream.range(0, chainLength).boxed().collect(Collectors.toList());
+        final List<Integer> chain = model.generateHiddenStateChain(positions);
+        Assert.assertEquals(chain.size(), positions.size());
+
+        final int[] counts = new int[numStates];
+        chain.stream().forEach(n -> counts[n]++);
+
+        final int expectedCountsPerState = chainLength / numStates;
+        final double averageCountDeviation = Arrays.stream(counts)
+                .map(c -> Math.abs(c - expectedCountsPerState)).average().getAsDouble();
+        Assert.assertEquals(averageCountDeviation, 0, 200);
+    }
+
+    @Test
+    public void testGenerateHiddenStateChainOnHeavyStateHMM() {
+        final int numStates = 3;
+        final int heavyState = 1;
+        final double heavyStateWeight = 0.9;
+        final HeavyStateTestHMModel model = new HeavyStateTestHMModel(numStates, heavyState, heavyStateWeight);
+        final int chainLength = 100000;
+
+        final List<Integer> positions = IntStream.range(0, chainLength).boxed().collect(Collectors.toList());
+        final List<Integer> chain = model.generateHiddenStateChain(positions);
+        Assert.assertEquals(chain.size(), positions.size());
+
+        final int[] counts = new int[numStates];
+        chain.stream().forEach(n -> counts[n]++);
+
+        final long heavyToHeavyTransitionCount = IntStream.range(0, chainLength - 1)
+                .filter(n -> chain.get(n) == heavyState && chain.get(n+1) == heavyState)
+                .count();
+        final double expectedHeavyStateCounts = chainLength * heavyStateWeight;
+        Assert.assertEquals(counts[heavyState], expectedHeavyStateCounts, 200);
+        Assert.assertEquals((double) heavyToHeavyTransitionCount / counts[heavyState], heavyStateWeight, 0.005);
+    }
+
     @DataProvider(name = "testViterbiData")
     public Object[][] testViterbiData() throws IOException {
         if (TEST_EXPECTED_RESULTS == null) {

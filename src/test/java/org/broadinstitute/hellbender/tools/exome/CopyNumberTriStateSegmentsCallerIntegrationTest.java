@@ -96,57 +96,10 @@ public abstract class CopyNumberTriStateSegmentsCallerIntegrationTest extends Co
     }
 
     private static List<Double> randomSampleData(CopyNumberTriStateHiddenMarkovModel model, Random rdn, List<Target> targets, List<CopyNumberTriState> truth) {
-        final List<Double> sampleData = new ArrayList<>(targets.size());
-        final Target firstPosition = targets.get(0);
-        final CopyNumberTriState firstState = generateFirstState(model, firstPosition, rdn);
-        truth.add(firstState);
-        sampleData.add(model.randomDatum(firstState, rdn));
-        CopyNumberTriState previousState = firstState;
-        Target previousPosition = firstPosition;
-        for (int i = 1; i < targets.size(); i++) {
-            final Target position = targets.get(i);
-            final CopyNumberTriState nextState = generateNextState(model, previousState, previousPosition, position, rdn);
-            sampleData.add(model.randomDatum(nextState, rdn));
-            truth.add(previousState = nextState);
-            previousPosition = position;
-        }
-        return sampleData;
+        truth.addAll(model.generateHiddenStateChain(targets));
+        return truth.stream().map(state -> model.randomDatum(state, rdn)).collect(Collectors.toList());
     }
 
-    private static CopyNumberTriState generateNextState(final CopyNumberTriStateHiddenMarkovModel model, final CopyNumberTriState previousState, final Target previousPosition, final Target nextPosition, final Random rdn) {
-        final double[] logTransitionProbs = new double[CopyNumberTriState.values().length];
-        for (int i = 0; i < logTransitionProbs.length; i++) {
-            logTransitionProbs[i] = model.logTransitionProbability(previousState, previousPosition, CopyNumberTriState.values()[i], nextPosition);
-        }
-        final double total = DoubleStream.of(logTransitionProbs).map(Math::exp).sum();
-        final double uniform = rdn.nextDouble() * total;
-        double accumulative = 0;
-        for (int i = 0; i < logTransitionProbs.length; i++) {
-            accumulative += Math.exp(logTransitionProbs[i]);
-            if (uniform < accumulative) {
-                return CopyNumberTriState.values()[i];
-            }
-        }
-        throw new IllegalStateException("may be some of the trans probs are negative");
-    }
-
-    private static CopyNumberTriState generateFirstState(final CopyNumberTriStateHiddenMarkovModel model, final Target firstPosition, final Random rdn) {
-
-        final double[] priors = new double[CopyNumberTriState.values().length];
-        for (int i = 0; i < priors.length; i++) {
-            priors[i] = model.logPriorProbability(CopyNumberTriState.values()[i], firstPosition);
-        }
-        final double uniform = rdn.nextDouble() * DoubleStream.of(priors).map(Math::exp).sum();
-
-        double accumulative = 0;
-        for (int i = 0; i < priors.length; i++) {
-            accumulative += Math.exp(model.logPriorProbability(CopyNumberTriState.values()[i], firstPosition));
-            if (uniform < accumulative) {
-                return CopyNumberTriState.values()[i];
-            }
-        }
-        throw new IllegalStateException("bug in testing code: seems that the test model priors sum to more than 1: " + Arrays.toString(priors));
-    }
 
     // This is a meta-test just to double check that simulateChain does provide a result.
     // Otherwise this would result in a silent skip of the main test of this class.
