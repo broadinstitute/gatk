@@ -22,12 +22,6 @@ import java.util.List;
 )
 public final class CallSegments extends CommandLineProgram{
 
-    protected static final String Z_THRESHOLD_SHORT_NAME = "Z";
-    protected static final String Z_THRESHOLD_LONG_NAME = "threshold";
-
-    protected static final String EXPERIMENTAL_CALLER_SHORT_NAME = "e";
-    protected static final String EXPERIMENTAL_CALLER_LONG_NAME = "experimental";
-
     @Argument(
             doc = "Tangent-normalized read counts input file.",
             shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,

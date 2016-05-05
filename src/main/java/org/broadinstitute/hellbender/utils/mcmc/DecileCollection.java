@@ -4,9 +4,11 @@ import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.Serializable;
 import java.util.Collections;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -15,8 +17,10 @@ import java.util.stream.Stream;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class DecileCollection {
-    private final EnumMap<Decile, Double> deciles = new EnumMap<>(Decile.class);
+public final class DecileCollection implements Serializable {
+    static final long serialVersionUID = 145L;
+
+    private final Map<Decile, Double> deciles = new HashMap<>();
 
     /**
      * Constructs a DecileCollection from a list of samples using Apache Commons {@link Percentile}.

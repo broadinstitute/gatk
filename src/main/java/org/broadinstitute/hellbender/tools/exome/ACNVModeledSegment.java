@@ -4,12 +4,16 @@ import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 
+import java.io.Serializable;
+
 /**
  * Represents a segment with copy-ratio--segment-mean and minor-allele-fraction posterior summaries.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public class ACNVModeledSegment implements Locatable {
+public class ACNVModeledSegment implements Locatable, Serializable {
+
+    static final long serialVersionUID = 3373373371L;
 
     private final SimpleInterval interval;
     private final PosteriorSummary segmentMeanPosteriorSummary;
@@ -34,6 +38,10 @@ public class ACNVModeledSegment implements Locatable {
 
     public PosteriorSummary getMinorAlleleFractionPosteriorSummary() {
         return minorAlleleFractionPosteriorSummary;
+    }
+
+    public double getSegmentMeanInCRSpace() {
+        return Math.pow(2, segmentMeanPosteriorSummary.getCenter());
     }
 
     @Override

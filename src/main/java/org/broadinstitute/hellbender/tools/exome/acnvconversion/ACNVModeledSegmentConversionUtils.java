@@ -39,7 +39,7 @@ public final class ACNVModeledSegmentConversionUtils {
     }
 
     @VisibleForTesting
-    static ModeledSegment convertACNVModeledSegmentToModeledSegment(ACNVModeledSegment acnvModeledSegment, TargetCollection<ReadCountRecord.SingleSampleRecord> targets) {
+    static ModeledSegment convertACNVModeledSegmentToModeledSegment(final ACNVModeledSegment acnvModeledSegment, final TargetCollection<ReadCountRecord.SingleSampleRecord> targets) {
 
         // Make sure that we do not let segment mean become zero
         final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().getCenter(), ParamUtils.log2(TangentNormalizer.EPSILON));

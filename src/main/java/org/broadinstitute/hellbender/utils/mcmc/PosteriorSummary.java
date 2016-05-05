@@ -1,12 +1,17 @@
 package org.broadinstitute.hellbender.utils.mcmc;
 
+import java.io.Serializable;
+
 /**
  * Represents central tendency and upper/lower credible-interval bounds of the posterior of a univariate model parameter,
  * along with optional deciles.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class PosteriorSummary {
+public final class PosteriorSummary implements Serializable {
+
+    static final long serialVersionUID = 144L;
+
     private final double center;
     private final double lower;
     private final double upper;

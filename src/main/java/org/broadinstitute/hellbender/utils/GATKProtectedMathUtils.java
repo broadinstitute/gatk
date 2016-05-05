@@ -5,7 +5,9 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.commons.math3.stat.descriptive.summary.Sum;
 import org.apache.commons.math3.util.Pair;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -157,12 +159,100 @@ public class GATKProtectedMathUtils {
         return Math.sqrt(new Variance().evaluate(values));
     }
 
+    /**
+     * Create a set number of points, linearly spaced, between a minimum and maximum.
+     *
+     * http://stackoverflow.com/questions/6208878/java-version-of-matlabs-linspace
+     *
+     * NaN are allowed, but will likely give useless results.
+     *
+     * @param min starting value
+     * @param max ending value
+     * @param points number of points, must be greater than -1
+     * @return Never {@code null}
+     */
+    public static double[] linspace(final double min, final double max, int points) {
+        ParamUtils.isPositiveOrZero(points, "Number of points must be >= 0");
+        if (points == 1) {
+            return new double[] {max};
+        }
+        double[] d = new double[points];
+        for (int i = 0; i < points; i++){
+            d[i] = min + i * (max - min) / (points - 1);
+        }
+        return d;
+    }
+
     // given a list of options and a function for calculating their probabilities (these must sum to 1 over the whole list)
     // randomly choose one option from the implied categorical distribution
     public static <E> E randomSelect(final List<E> choices, final Function<E, Double> probabilityFunction, final RandomGenerator rng) {
         final List<Pair<E, Double>> pmf = choices.stream()
                 .map(e -> new Pair<>(e, probabilityFunction.apply(e))).collect(Collectors.toList());
         return new EnumeratedDistribution<>(rng, pmf).sample();
+    }
+
+    /**
+     *  Return an array with column sums in each entry
+     *
+     * @param matrix Never {@code null}
+     * @return Never {@code null}
+     */
+    public static double[] columnSum(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+
+        final Sum sumEvaluator = new Sum();
+        return IntStream.range(0, matrix.getColumnDimension())
+                .mapToDouble(c -> sumEvaluator.evaluate(matrix.getColumn(c))).toArray();
+    }
+
+    /**
+     *  Return an array with column sums in each entry
+     *
+     * @param matrix Never {@code null}
+     * @return Never {@code null}
+     */
+    public static double[] rowSum(final RealMatrix matrix) {
+        Utils.nonNull(matrix);
+
+        final Sum sumEvaluator = new Sum();
+        return IntStream.range(0, matrix.getRowDimension())
+                .mapToDouble(c -> sumEvaluator.evaluate(matrix.getRow(c))).toArray();
+    }
+
+
+    /**
+     *  Return sum of array
+     *
+     * @param array Never {@code null}
+     * @return sum of array
+     */
+    public static double sum(final double[] array) {
+        Utils.nonNull(array);
+        double result = 0;
+        for (double d: array) {
+            result += d;
+        }
+        return result;
+    }
+
+    /**
+     *  Return sum of 3d array
+     *
+     * @param array Never {@code null}
+     * @return sum of array
+     */
+    public static double sum(final double[][][] array) {
+        Utils.nonNull(array);
+        double result = 0;
+        for (double[][] d: array) {
+            for (double[] da: d){
+                for (double daa: da) {
+                    result += daa;
+                }
+            }
+
+        }
+        return result;
     }
     
     public static int minIndex(final int ... values) {
