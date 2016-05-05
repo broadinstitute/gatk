@@ -3,8 +3,12 @@ package org.broadinstitute.hellbender.utils.hdf5;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -361,6 +365,40 @@ public final class HDF5LibraryUnitTest {
         file.close();
     }
 
+    @Test
+    public void testCreateLargeMatrix(){
+        // Creates a large PoN of junk values and simply tests that these can be written and read.
+
+        // Make a big, fake set of read counts.
+        final int numRows = 2500000;
+        final int numCols = 10;
+        final double mean = 3e-7;
+
+        final RealMatrix bigCounts = new Array2DRowRealMatrix(numRows, numCols);
+        final RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
+        randomDataGenerator.reSeed(337337337);
+        bigCounts.walkInColumnOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(int row, int column, double value) {
+                return randomDataGenerator.nextGaussian(mean, 1e-9);
+            }
+        });
+        final File tempOutputHD5 = IOUtils.createTempFile("big-ol-", ".hd5");
+        final HDF5File hdf5File = new HDF5File(tempOutputHD5, HDF5File.OpenMode.CREATE);
+        final String hdf5Path = "/test/m";
+        hdf5File.makeDoubleMatrix(hdf5Path, bigCounts.getData());
+        hdf5File.close();
+
+        final HDF5File hdf5FileForReading = new HDF5File(tempOutputHD5, HDF5File.OpenMode.READ_ONLY);
+        final double[][] result = hdf5FileForReading.readDoubleMatrix(hdf5Path);
+        Assert.assertTrue(result.length == numRows);
+        Assert.assertTrue(result[0].length == numCols);
+        final RealMatrix readMatrix = new Array2DRowRealMatrix(result);
+        final double[] colMeans = GATKProtectedMathUtils.columnMeans(readMatrix);
+        for (double m: colMeans) {
+            Assert.assertEquals(m, mean, 1e-4);
+        }
+    }
 
     private void assertEqualMatrix(RealMatrix actual, RealMatrix expected) {
         Assert.assertEquals(actual.getRowDimension(), expected.getRowDimension());

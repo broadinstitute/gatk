@@ -16,6 +16,10 @@ import java.util.function.IntPredicate;
 /**
  * HDF5 File backed Panel of Normals data structure.
  *
+ * Several attributes are stored transposed, in order to dodge a very slow write time in HDF5.
+ *  Normalized Counts
+ *  Log-Normalized Counts
+ *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class HDF5PoN implements PoN {
@@ -274,14 +278,16 @@ public final class HDF5PoN implements PoN {
 
     @Override
     public RealMatrix getNormalizedCounts() {
-        return readMatrixAndCheckDimensions(NORMALIZED_PCOV_PATH, targetNames.get().size(),
-                sampleNames.get().size());
+        // Note the check is using sample names as number of rows and targets as number of columns....
+        return readMatrixAndCheckDimensions(NORMALIZED_PCOV_PATH, sampleNames.get().size(), targetNames.get().size())
+                .transpose();
     }
 
     @Override
     public RealMatrix getLogNormalizedCounts() {
-        return readMatrixAndCheckDimensions(LOG_NORMALS_PATH, getPanelTargetNames().size(),
-                getPanelSampleNames().size());
+        // Note the check is using sample names as number of rows and targets as number of columns....
+        return readMatrixAndCheckDimensions(LOG_NORMALS_PATH, getPanelSampleNames().size(), getPanelTargetNames().size())
+                .transpose();
     }
 
     @Override
@@ -292,9 +298,10 @@ public final class HDF5PoN implements PoN {
 
     @Override
     public RealMatrix getReducedPanelCounts() {
+        // Note the check is using sample names as number of rows and targets as number of columns....
         return readMatrixAndCheckDimensions(REDUCED_PON_PATH,
-                r -> r == reducedTargetNames.get().size(),
-                c -> c <= getPanelSampleNames().size());
+                c -> c <= getPanelSampleNames().size(),
+                r -> r == reducedTargetNames.get().size()).transpose();
     }
 
     @Override
@@ -409,12 +416,12 @@ public final class HDF5PoN implements PoN {
      * @param normalizedCounts the normalized read counts.
      */
     public void setNormalCounts(final RealMatrix normalizedCounts) {
-        file.makeDoubleMatrix(NORMALIZED_PCOV_PATH, normalizedCounts.getData());
+        file.makeDoubleMatrix(NORMALIZED_PCOV_PATH, normalizedCounts.transpose().getData());
     }
 
     public void setReducedPanelCounts(final RealMatrix counts) {
         Utils.nonNull(counts);
-        file.makeDoubleMatrix(REDUCED_PON_PATH, counts.getData());
+        file.makeDoubleMatrix(REDUCED_PON_PATH, counts.transpose().getData());
     }
 
     public void setLogNormalPInverseCounts(final RealMatrix counts) {
@@ -424,7 +431,7 @@ public final class HDF5PoN implements PoN {
 
     public void setLogNormalCounts(final RealMatrix counts) {
         Utils.nonNull(counts);
-        file.makeDoubleMatrix(LOG_NORMALS_PATH, counts.getData());
+        file.makeDoubleMatrix(LOG_NORMALS_PATH, counts.transpose().getData());
     }
 
     public void setReducedPanelPInverseCounts(final RealMatrix counts) {

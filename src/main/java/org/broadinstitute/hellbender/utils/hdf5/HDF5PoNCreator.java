@@ -36,7 +36,7 @@ import java.util.stream.IntStream;
  */
 final public class HDF5PoNCreator {
 
-    public static final double CURRENT_PON_VERSION = 5.0;
+    public static final double CURRENT_PON_VERSION = 6.0;
 
     public static final double JOLLIFES_RULE_MEAN_FACTOR = 0.7;
 
@@ -84,7 +84,24 @@ final public class HDF5PoNCreator {
         Utils.nonNull(initialTargets, "Target collection is null, which is invalid.");
 
         // Remove low coverage targets:
-        final Pair<ReadCountCollection, double[]> inputSubsetByUsableTargets = subsetReadCountsToUsableTargets(readReadCountsFromFile(inputPCovFile, initialTargets), targetFactorPercentileThreshold, logger);
+        final ReadCountCollection inputPCov = readReadCountsFromFile(inputPCovFile, initialTargets);
+        createPoNGivenReadCountCollection(ctx, inputPCov, numberOfEigenSamples, sampleNameBlacklist, outputHDF5Filename, isDryRun, initialTargets, targetFactorPercentileThreshold, extremeColumnMedianCountPercentileThreshold, countTruncatePercentile, maximumPercentageZeroTargets, maximumPercentageZeroColumns);
+    }
+
+    /**
+     * See {@link HDF5PoNCreator#createPoN(JavaSparkContext, File, OptionalInt, List, File, boolean, TargetCollection, double, double, double, double, double)}
+     *  This method simply takes in a ReadCountCollection instead of a file.
+     */
+    @VisibleForTesting
+    static void createPoNGivenReadCountCollection(final JavaSparkContext ctx, final ReadCountCollection inputPCov,
+                                                  final OptionalInt numberOfEigenSamples,
+                                                  final List<String> sampleNameBlacklist, final File outputHDF5Filename,
+                                                  final boolean isDryRun, final TargetCollection<Target> initialTargets,
+                                                  final double targetFactorPercentileThreshold,
+                                                  final double extremeColumnMedianCountPercentileThreshold,
+                                                  final double countTruncatePercentile, final double maximumPercentageZeroTargets,
+                                                  final double maximumPercentageZeroColumns) {
+        final Pair<ReadCountCollection, double[]> inputSubsetByUsableTargets = subsetReadCountsToUsableTargets(inputPCov, targetFactorPercentileThreshold, logger);
 
         // Remove samples listed on the blacklist
         ReadCountCollection readCounts = inputSubsetByUsableTargets.getLeft();
@@ -130,15 +147,27 @@ final public class HDF5PoNCreator {
     private static void writeLogNormalsReducedPanel(final File outFile, final ReadCountCollection readCounts, final ReductionResult reduction, final JavaSparkContext ctx) {
         try (final HDF5File file = new HDF5File(outFile, HDF5File.OpenMode.READ_WRITE)) {
             final HDF5PoN pon = new HDF5PoN(file);
+            logger.info("Setting reduced sample names ...");
             pon.setPanelSampleNames(readCounts.columnNames());
+            logger.info("Setting reduced target names ...");
             pon.setPanelTargetNames(readCounts.targets().stream()
                     .map(Target::getName)
                     .collect(Collectors.toList()));
+            logger.info("Setting log-normal counts (" + readCounts.counts().getRowDimension() +
+                    " x " + readCounts.counts().getColumnDimension() + ") (T) ...");
             pon.setLogNormalCounts(readCounts.counts());
+            logger.info("Setting log-normal pinv (" + reduction.getPseudoInverse().getRowDimension() +
+                    " x " + reduction.getPseudoInverse().getColumnDimension() + ") ...");
             pon.setLogNormalPInverseCounts(reduction.getPseudoInverse());
+            logger.info("Setting reduced panel (" + reduction.getReducedCounts().getRowDimension() +
+                    " x " + reduction.getReducedCounts().getColumnDimension() + ") (T) ...");
             pon.setReducedPanelCounts(reduction.getReducedCounts());
+            logger.info("Setting reduced panel pinv (" + reduction.getReducedInverse().getRowDimension() +
+                    " x " + reduction.getReducedInverse().getColumnDimension() + ") ...");
             pon.setReducedPanelPInverseCounts(reduction.getReducedInverse());
+            logger.info("Setting reduced targets ...");
             pon.setPanelTargets(readCounts.targets());
+            logger.info("Setting version number (" + CURRENT_PON_VERSION + ")...");
             pon.setVersion(CURRENT_PON_VERSION);
             logger.info("Calculating and writing the target variances...");
             final double[] targetVariances = createTargetVariance(pon, ctx);
@@ -153,12 +182,21 @@ final public class HDF5PoNCreator {
                 .collect(Collectors.toList());
         try (final HDF5File file = new HDF5File(outFile, HDF5File.OpenMode.CREATE)) {
             final HDF5PoN pon = new HDF5PoN(file);
+            logger.info("Creating " + outFile.getAbsolutePath() + "...");
+            logger.info("Setting sample names ...");
             pon.setSampleNames(sampleNames);
+            logger.info("Setting target names ...");
             pon.setTargetNames(targetNames);
+            logger.info("Setting target factors (" + targetFactors.length + ") ...");
             pon.setTargetFactors(new Array2DRowRealMatrix(targetFactors));
+            logger.info("Setting normal counts (" + readCounts.counts().getRowDimension() +
+                    " x " + readCounts.counts().getColumnDimension() + ") (T)...");
             pon.setNormalCounts(readCounts.counts());
+            logger.info("Setting targets ...");
             pon.setTargets(readCounts.targets());
+            logger.info("Setting raw targets ...");
             pon.setRawTargets(rawTargets);
+            logger.info("Setting raw target names ...");
             pon.setRawTargetNames(rawTargets.stream().map(Target::getName).collect(Collectors.toList()));
         }
     }
@@ -188,8 +226,7 @@ final public class HDF5PoNCreator {
 
             final ReductionResult newReduction = calculateReducedPanelAndPInverses(logNormalizedCounts, newNumberOfEigenSamples, logger, ctx);
 
-            final PoN newPoN = new RamPoN(inputPoN, newReduction);
-            writeTargetFactorNormalizeReadCountsAndTargetFactors(outputHDF5Filename, coverageProfile, newPoN.getTargetFactors().getColumn(0), inputPoN.getRawTargets());
+            writeTargetFactorNormalizeReadCountsAndTargetFactors(outputHDF5Filename, coverageProfile, inputPoN.getTargetFactors().getColumn(0), inputPoN.getRawTargets());
             writeLogNormalsReducedPanel(outputHDF5Filename, logNormalizedCounts, newReduction, ctx);
         }
     }

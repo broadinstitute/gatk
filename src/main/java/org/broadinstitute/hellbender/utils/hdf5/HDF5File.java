@@ -95,7 +95,7 @@ public final class HDF5File implements AutoCloseable {
     }
 
     /**
-     * Close this file reader.
+     * Flush and close this file reader.
      *
      * <p>
      *     Further file read operations will result in a {@link IllegalStateException}.
@@ -105,12 +105,28 @@ public final class HDF5File implements AutoCloseable {
         if (isClosed()) {
             return;
         }
+        flush();
         try {
             H5.H5Fclose(fileId);
             fileId = FILE_ID_WHEN_CLOSED;
         } catch (final HDF5LibraryException e) {
             throw new GATKException(
                     String.format("failure when closing '%s' from read-only access: %s",file.getAbsolutePath(),e.getMessage()),e);
+        }
+    }
+
+    /**
+     * Flush this file.
+     */
+    public void flush() {
+        if (isClosed()) {
+            return;
+        }
+        try {
+            H5.H5Fflush(fileId, HDF5Constants.H5F_SCOPE_GLOBAL);
+        } catch (final HDF5LibraryException e) {
+            throw new GATKException(
+                    String.format("failure when flushing '%s': %s",file.getAbsolutePath(),e.getMessage()),e);
         }
     }
 
