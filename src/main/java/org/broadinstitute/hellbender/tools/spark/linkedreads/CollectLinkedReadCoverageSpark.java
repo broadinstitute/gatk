@@ -244,17 +244,16 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                     continue;
                 }
 
-                final byte[] bases = getBytes(chopAmount, read.getBases());
-                final byte[] quals = getBytes(chopAmount, read.getBaseQualities());
-
-                seqOutputStream.write(bases, 0, bases.length);
-                qualOutputStream.write(quals, 0, quals.length);
-
                 if (chopAmount == 0) {
                     if (currentEnd != 0) {
                         final int gap = readStart - currentEnd - 1;
-                        uberCigar.add(new CigarElement(gap, CigarOperator.N));
+                        if (gap > 0) {
+                            uberCigar.add(new CigarElement(gap, CigarOperator.N));
+                        }
                     }
+
+                    seqOutputStream.write(read.getBases(), 0, read.getBases().length);
+                    qualOutputStream.write(read.getBaseQualities(), 0, read.getBaseQualities().length);
 
                     for (CigarElement cigarElement : read.getCigarElements()) {
                         if (cigarElement.getOperator() == CigarOperator.H) {
@@ -264,16 +263,34 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                     }
                 } else {
                     int refBasesConsumed = 0;
+                    int readBasesConsumed = 0;
                     for (CigarElement cigarElement : read.getCigarElements()) {
                         if (cigarElement.getOperator() == CigarOperator.H) {
                             continue;
                         }
                         if (refBasesConsumed >= chopAmount) {
+                            // no need to chop further, just add cigar operators and bases
                             uberCigar.add(translateSoftClip(cigarElement));
+                            if (cigarElement.getOperator().consumesReadBases()) {
+                                seqOutputStream.write(read.getBases(), readBasesConsumed, cigarElement.getLength());
+                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed, cigarElement.getLength());
+                            }
+                            readBasesConsumed = readBasesConsumed + cigarElement.getLength();
                         } else if (cigarElement.getOperator().consumesReferenceBases() && refBasesConsumed + cigarElement.getLength() > chopAmount) {
                             // need to chop cigar element
                             // todo: there may be a bug here if we decide to chop in middle of a non-read-base consuming operator like 'D'
-                            uberCigar.add(translateSoftClip(new CigarElement(cigarElement.getLength() - (chopAmount - refBasesConsumed), cigarElement.getOperator())));
+                            final int newCigarLength = cigarElement.getLength() - (chopAmount - refBasesConsumed);
+                            uberCigar.add(translateSoftClip(new CigarElement(newCigarLength, cigarElement.getOperator())));
+                            if (cigarElement.getOperator().consumesReadBases()) {
+                                seqOutputStream.write(read.getBases(), readBasesConsumed + cigarElement.getLength() - newCigarLength, newCigarLength);
+                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed + cigarElement.getLength() - newCigarLength, newCigarLength);
+                                readBasesConsumed = readBasesConsumed + cigarElement.getLength() - chopAmount;
+                            }
+                        } else {
+                            // skipping cigar element, just add to read bases consumed total
+                            if (cigarElement.getOperator().consumesReadBases()) {
+                                readBasesConsumed = readBasesConsumed + cigarElement.getLength();
+                            }
                         }
 
                         if (cigarElement.getOperator().consumesReferenceBases()) {
@@ -310,12 +327,5 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             }
         }
 
-        private byte[] getBytes(final int chopAmount, final byte[] bases) {
-            if (chopAmount > 0) {
-                return Arrays.copyOfRange(bases, chopAmount, bases.length);
-            } else {
-                return bases;
-            }
-        }
     }
 }
