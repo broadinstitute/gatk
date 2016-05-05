@@ -265,36 +265,36 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                     int refBasesConsumed = 0;
                     int readBasesConsumed = 0;
                     for (CigarElement cigarElement : read.getCigarElements()) {
-                        if (cigarElement.getOperator() == CigarOperator.H) {
+                        final CigarElement translatedCigarElement = translateSoftClip(cigarElement);
+                        if (translatedCigarElement.getOperator() == CigarOperator.H) {
                             continue;
                         }
                         if (refBasesConsumed >= chopAmount) {
                             // no need to chop further, just add cigar operators and bases
-                            uberCigar.add(translateSoftClip(cigarElement));
-                            if (cigarElement.getOperator().consumesReadBases()) {
-                                seqOutputStream.write(read.getBases(), readBasesConsumed, cigarElement.getLength());
-                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed, cigarElement.getLength());
+                            uberCigar.add(translatedCigarElement);
+                            if (translatedCigarElement.getOperator().consumesReadBases()) {
+                                seqOutputStream.write(read.getBases(), readBasesConsumed, translatedCigarElement.getLength());
+                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed, translatedCigarElement.getLength());
+                                readBasesConsumed = readBasesConsumed + translatedCigarElement.getLength();
                             }
-                            readBasesConsumed = readBasesConsumed + cigarElement.getLength();
-                        } else if (cigarElement.getOperator().consumesReferenceBases() && refBasesConsumed + cigarElement.getLength() > chopAmount) {
+                        } else if (translatedCigarElement.getOperator().consumesReferenceBases() && refBasesConsumed + translatedCigarElement.getLength() > chopAmount) {
                             // need to chop cigar element
-                            // todo: there may be a bug here if we decide to chop in middle of a non-read-base consuming operator like 'D'
-                            final int newCigarLength = cigarElement.getLength() - (chopAmount - refBasesConsumed);
-                            uberCigar.add(translateSoftClip(new CigarElement(newCigarLength, cigarElement.getOperator())));
-                            if (cigarElement.getOperator().consumesReadBases()) {
-                                seqOutputStream.write(read.getBases(), readBasesConsumed + cigarElement.getLength() - newCigarLength, newCigarLength);
-                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed + cigarElement.getLength() - newCigarLength, newCigarLength);
-                                readBasesConsumed = readBasesConsumed + cigarElement.getLength() - chopAmount;
+                            final int newCigarLength = translatedCigarElement.getLength() - (chopAmount - refBasesConsumed);
+                            uberCigar.add(new CigarElement(newCigarLength, translatedCigarElement.getOperator()));
+                            if (translatedCigarElement.getOperator().consumesReadBases()) {
+                                seqOutputStream.write(read.getBases(), readBasesConsumed + translatedCigarElement.getLength() - newCigarLength, newCigarLength);
+                                qualOutputStream.write(read.getBaseQualities(), readBasesConsumed + translatedCigarElement.getLength() - newCigarLength, newCigarLength);
+                                readBasesConsumed = readBasesConsumed + translatedCigarElement.getLength() - chopAmount;
                             }
                         } else {
                             // skipping cigar element, just add to read bases consumed total
                             if (cigarElement.getOperator().consumesReadBases()) {
-                                readBasesConsumed = readBasesConsumed + cigarElement.getLength();
+                                readBasesConsumed = readBasesConsumed + translatedCigarElement.getLength();
                             }
                         }
 
-                        if (cigarElement.getOperator().consumesReferenceBases()) {
-                            refBasesConsumed = refBasesConsumed + cigarElement.getLength();
+                        if (translatedCigarElement.getOperator().consumesReferenceBases()) {
+                            refBasesConsumed = refBasesConsumed + translatedCigarElement.getLength();
                         }
                     }
                 }

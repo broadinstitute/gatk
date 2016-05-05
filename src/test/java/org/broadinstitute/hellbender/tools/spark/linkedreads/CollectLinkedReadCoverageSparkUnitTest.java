@@ -5,6 +5,7 @@ import htsjdk.samtools.util.IntervalTree;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
@@ -105,11 +106,29 @@ public class CollectLinkedReadCoverageSparkUnitTest {
 
     }
 
+
     @Test
     public void testIntervalTreeToSAM() {
 
         final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000);
 
+        final IntervalTree<List<GATKRead>> tree3 = createTestIntervalTree3(samHeader);
+        final String barcode3 = "AAAAAAA";
+        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode3 = new HashMap<>();
+        treeForBarcode3.put("1", tree3);
+
+        final List<String> samRecords3 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode3, treeForBarcode3), samHeader);
+        Assert.assertEquals(samRecords3.size(), 1);
+        Assert.assertEquals(samRecords3.get(0), "AAAAAAA\t1\t1\t997\t60\t3M7M18N10M\t*\t0\t0\tACACACACACGTGTGTGTGT\tSSSSSSSSSSTTTTTTTTTT\n");
+
+        final IntervalTree<List<GATKRead>> tree4 = createTestIntervalTree4(samHeader);
+        final String barcode4 = "CCCCCCC";
+        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode4 = new HashMap<>();
+        treeForBarcode4.put("1", tree4);
+
+        final List<String> samRecords4 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode4, treeForBarcode4), samHeader);
+        Assert.assertEquals(samRecords4.size(), 1);
+        Assert.assertEquals(samRecords4.get(0), "CCCCCCC\t1\t1\t997\t60\t3M7M2M4M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
 
         final IntervalTree<List<GATKRead>> tree2 = createTestIntervalTree2(samHeader);
         final String barcode2 = "GGGGGGG";
@@ -134,7 +153,6 @@ public class CollectLinkedReadCoverageSparkUnitTest {
 
     private IntervalTree<List<GATKRead>> createTestIntervalTree1(final SAMFileHeader artificialSamHeader) {
         final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
-
         final List<GATKRead> resultList1 = new ArrayList<>();
         resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "10M"));
         resultList1.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1020, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "6M1D4M"));
@@ -144,6 +162,20 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         tree.put(1000, 1160, resultList1);
         return tree;
     }
+
+    private IntervalTree<List<GATKRead>> createTestIntervalTree4(final SAMFileHeader artificialSamHeader) {
+        final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
+
+        final List<GATKRead> resultList = new ArrayList<>();
+        // reads are like:
+        //     acaCACACAC
+        //           gtgtgtGTGT
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "3S7M"));
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1009, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "6S4M"));
+        tree.put(1000, 1013, resultList);
+        return tree;
+    }
+
 
     private IntervalTree<List<GATKRead>> createTestIntervalTree2(final SAMFileHeader artificialSamHeader) {
         final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
@@ -155,6 +187,20 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "3S7M"));
         resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1003, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "2M20D8M"));
         tree.put(1000, 1033, resultList);
+        return tree;
+    }
+
+
+    private IntervalTree<List<GATKRead>> createTestIntervalTree3(final SAMFileHeader artificialSamHeader) {
+        final IntervalTree<List<GATKRead>> tree = new IntervalTree<>();
+
+        final List<GATKRead> resultList = new ArrayList<>();
+        // Simple non overlapping reads:
+        //     acaCACACAC
+        //                        GTGTGTGTGT
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1000, "ACACACACAC".getBytes(), "2222222222".getBytes(), "3S7M"));
+        resultList.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1025, "GTGTGTGTGT".getBytes(), "3333333333".getBytes(), "10M"));
+        tree.put(1000, 1035, resultList);
         return tree;
     }
 
