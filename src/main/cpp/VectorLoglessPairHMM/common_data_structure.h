@@ -29,10 +29,10 @@ template<class NUMBER>
 struct ContextBase
 {
   public:
-    NUMBER ph2pr[128];
-    NUMBER INITIAL_CONSTANT;
-    NUMBER LOG10_INITIAL_CONSTANT;
-    NUMBER RESULT_THRESHOLD; 
+    static NUMBER ph2pr[128];
+    static NUMBER INITIAL_CONSTANT;
+    static NUMBER LOG10_INITIAL_CONSTANT;
+    static NUMBER RESULT_THRESHOLD; 
 
     static bool staticMembersInitializedFlag;
     static NUMBER jacobianLogTable[JACOBIAN_LOG_TABLE_SIZE];
@@ -116,10 +116,14 @@ struct Context : public ContextBase<NUMBER>
 template<>
 struct Context<double> : public ContextBase<double>
 {
-  Context():ContextBase<double>()
-  {
-    for (int x = 0; x < 128; x++)
+  Context():ContextBase<double>() {}
+
+  static void initializeStaticMembers() {
+    ContextBase<double>::initializeStaticMembers();
+
+    for (int x = 0; x < 128; x++) {
       ph2pr[x] = pow(10.0, -((double)x) / 10.0);
+    }
 
     INITIAL_CONSTANT = ldexp(1.0, 1020.0);
     LOG10_INITIAL_CONSTANT = log10(INITIAL_CONSTANT);
@@ -136,10 +140,12 @@ struct Context<double> : public ContextBase<double>
 template<>
 struct Context<float> : public ContextBase<float>
 {
-  Context() : ContextBase<float>()
-  {
-    for (int x = 0; x < 128; x++)
-    {
+  Context() : ContextBase<float>() {}
+
+  static void initializeStaticMembers() {
+    ContextBase<float>::initializeStaticMembers();
+
+    for (int x = 0; x < 128; x++) {
       ph2pr[x] = powf(10.f, -((float)x) / 10.f);
     }
 
@@ -169,6 +175,20 @@ struct Context<float> : public ContextBase<float>
   : ctx.matchToMatchProb[((maxQual * (maxQual + 1)) >> 1) + minQual];           \
 }
 
+template<typename NUMBER>
+NUMBER ContextBase<NUMBER>::ph2pr[128];
+template<typename NUMBER>
+NUMBER ContextBase<NUMBER>::INITIAL_CONSTANT;
+template<typename NUMBER>
+NUMBER ContextBase<NUMBER>::LOG10_INITIAL_CONSTANT;
+template<typename NUMBER>
+NUMBER ContextBase<NUMBER>::RESULT_THRESHOLD;
+template<typename NUMBER>
+bool ContextBase<NUMBER>::staticMembersInitializedFlag;
+template<typename NUMBER>
+NUMBER ContextBase<NUMBER>::jacobianLogTable[JACOBIAN_LOG_TABLE_SIZE];
+template<typename NUMBER>
+NUMBER ContextBase<NUMBER>::matchToMatchProb[((MAX_QUAL + 1) * (MAX_QUAL + 2)) >> 1];
 
 
 typedef struct
