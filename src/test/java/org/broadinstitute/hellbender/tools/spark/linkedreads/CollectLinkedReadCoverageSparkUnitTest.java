@@ -5,9 +5,7 @@ import htsjdk.samtools.util.IntervalTree;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,12 +95,9 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         final IntervalTree<List<GATKRead>> tree = createTestIntervalTree1(ArtificialReadUtils.createArtificialSamHeader(1, 1, 10000));
 
         final String barcode = "ACTGACTG";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode = new HashMap<>();
-        treeForBarcode.put("1", tree);
 
-        final List<String> bedRecords = CollectLinkedReadCoverageSpark.barcodeLocationsToBed(new Tuple2<>(barcode, treeForBarcode));
-        Assert.assertEquals(bedRecords.size(), 1);
-        Assert.assertEquals(bedRecords.get(0), "1\t1000\t1160\tACTGACTG\t5\t+\t1000\t1160\t0,0,255\t5\t10,11,10,9,10\t0,20,25,45,150");
+        final String bedRecord = CollectLinkedReadCoverageSpark.intervalTreeToBedRecord(barcode, "1", tree.iterator().next());
+        Assert.assertEquals(bedRecord, "1\t1000\t1160\tACTGACTG\t5\t+\t1000\t1160\t0,0,255\t5\t10,11,10,9,10\t0,20,25,45,150");
 
     }
 
@@ -114,57 +109,39 @@ public class CollectLinkedReadCoverageSparkUnitTest {
 
         final IntervalTree<List<GATKRead>> tree3 = createTestIntervalTree3(samHeader);
         final String barcode3 = "AAAAAAA";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode3 = new HashMap<>();
-        treeForBarcode3.put("1", tree3);
 
-        final List<String> samRecords3 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode3, treeForBarcode3), samHeader);
-        Assert.assertEquals(samRecords3.size(), 1);
-        Assert.assertEquals(samRecords3.get(0), "AAAAAAA\t1\t1\t997\t60\t3M7M18N10M\t*\t0\t0\tACACACACACGTGTGTGTGT\tSSSSSSSSSSTTTTTTTTTT\n");
+        final GATKRead samRecord3 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode3, "1", samHeader, tree3.iterator().next());
+        Assert.assertEquals(samRecord3.convertToSAMRecord(samHeader).getSAMString(), "AAAAAAA\t1\t1\t997\t60\t3M7M18N10M\t*\t0\t0\tACACACACACGTGTGTGTGT\tSSSSSSSSSSTTTTTTTTTT\n");
 
         final IntervalTree<List<GATKRead>> tree4 = createTestIntervalTree4(samHeader);
         final String barcode4 = "CCCCCCC";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode4 = new HashMap<>();
-        treeForBarcode4.put("1", tree4);
 
-        final List<String> samRecords4 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode4, treeForBarcode4), samHeader);
-        Assert.assertEquals(samRecords4.size(), 1);
-        Assert.assertEquals(samRecords4.get(0), "CCCCCCC\t1\t1\t997\t60\t3M7M2M4M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
+        final GATKRead samRecord4 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode4, "1", samHeader, tree4.iterator().next());
+        Assert.assertEquals(samRecord4.convertToSAMRecord(samHeader).getSAMString(), "CCCCCCC\t1\t1\t997\t60\t3M7M2M4M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
 
         final IntervalTree<List<GATKRead>> tree2 = createTestIntervalTree2(samHeader);
         final String barcode2 = "GGGGGGG";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode2 = new HashMap<>();
-        treeForBarcode2.put("1", tree2);
 
-        final List<String> samRecords2 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode2, treeForBarcode2), samHeader);
-        Assert.assertEquals(samRecords2.size(), 1);
-        Assert.assertEquals(samRecords2.get(0), "GGGGGGG\t1\t1\t997\t60\t3M7M18D8M\t*\t0\t0\tACACACACACGTGTGTGT\tSSSSSSSSSSTTTTTTTT\n");
+        final GATKRead samRecord2 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode2, "1", samHeader, tree2.iterator().next());
+        Assert.assertEquals(samRecord2.convertToSAMRecord(samHeader).getSAMString(), "GGGGGGG\t1\t1\t997\t60\t3M7M18D8M\t*\t0\t0\tACACACACACGTGTGTGT\tSSSSSSSSSSTTTTTTTT\n");
 
         final IntervalTree<List<GATKRead>> tree = createTestIntervalTree1(samHeader);
         final String barcode = "ACTGACTG";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode = new HashMap<>();
-        treeForBarcode.put("1", tree);
 
-        final List<String> samRecords = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode, treeForBarcode), samHeader);
-        Assert.assertEquals(samRecords.size(), 1);
-        Assert.assertEquals(samRecords.get(0), "ACTGACTG\t1\t1\t1000\t60\t10M10N6M1D4M4M10N5M1I4M96N10M\t*\t0\t0\tACACACACACGTGTGTGTGTAGAGGCGCGCGCGCTTTTTTTTTT\tSSSSSSSSSSTTTTTTTTTTUUUUVVVVVVVVVVWWWWWWWWWW\n");
+        final GATKRead samRecord = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode, "1", samHeader, tree.iterator().next());
+        Assert.assertEquals(samRecord.convertToSAMRecord(samHeader).getSAMString(), "ACTGACTG\t1\t1\t1000\t60\t10M10N6M1D4M4M10N5M1I4M96N10M\t*\t0\t0\tACACACACACGTGTGTGTGTAGAGGCGCGCGCGCTTTTTTTTTT\tSSSSSSSSSSTTTTTTTTTTUUUUVVVVVVVVVVWWWWWWWWWW\n");
 
         final IntervalTree<List<GATKRead>> tree5 = createTestIntervalTree5(samHeader);
         final String barcode5 = "TTTTTTTT";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode5 = new HashMap<>();
-        treeForBarcode5.put("1", tree5);
 
-        final List<String> samRecords5 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode5, treeForBarcode5), samHeader);
-        Assert.assertEquals(samRecords5.size(), 1);
-        Assert.assertEquals(samRecords5.get(0), "TTTTTTTT\t1\t1\t997\t60\t3M7M2M20D2M2M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
+        final GATKRead samRecord5 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode5, "1", samHeader, tree5.iterator().next());
+        Assert.assertEquals(samRecord5.convertToSAMRecord(samHeader).getSAMString(), "TTTTTTTT\t1\t1\t997\t60\t3M7M2M20D2M2M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
 
         final IntervalTree<List<GATKRead>> tree6 = createTestIntervalTree6(samHeader);
         final String barcode6 = "GGGGGGG";
-        final Map<String, IntervalTree<List<GATKRead>>> treeForBarcode6 = new HashMap<>();
-        treeForBarcode6.put("1", tree6);
 
-        final List<String> samRecords6 = CollectLinkedReadCoverageSpark.barcodeLocationsToSam(new Tuple2<>(barcode6, treeForBarcode6), samHeader);
-        Assert.assertEquals(samRecords6.size(), 1);
-        Assert.assertEquals(samRecords6.get(0),
+        final GATKRead samRecord6 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode6, "1", samHeader, tree6.iterator().next());
+        Assert.assertEquals(samRecord6.convertToSAMRecord(samHeader).getSAMString(),
                 "GGGGGGG\t1\t1\t1000\t60\t150M1M6M\t*\t0\t0\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTGTGTG\tSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSTTTTTTT\n");
 
     }

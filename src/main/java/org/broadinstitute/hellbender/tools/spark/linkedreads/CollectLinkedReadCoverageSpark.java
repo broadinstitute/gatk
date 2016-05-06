@@ -73,7 +73,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 final List<GATKRead> results = new ArrayList<>();
                 for (final String contig : contigIntervalTreeMap.keySet()) {
                     for (final IntervalTree.Node<List<GATKRead>> next : contigIntervalTreeMap.get(contig)) {
-                        results.add(intervalTreeToSamRecord(barcode, contig, headerForReads, next));
+                        results.add(intervalTreeToGATKRead(barcode, contig, headerForReads, next));
                     }
                 }
                 return results;
@@ -206,7 +206,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         return builder.toString();
     }
 
-    public GATKRead intervalTreeToSamRecord(final String barcode, final String contig, final SAMFileHeader samHeader, final IntervalTree.Node<List<GATKRead>> node) {
+    public static GATKRead intervalTreeToGATKRead(final String barcode, final String contig, final SAMFileHeader samHeader, final IntervalTree.Node<List<GATKRead>> node) {
 
         final List<GATKRead> reads = node.getValue();
         reads.sort((o1, o2) -> new Integer(o1.getUnclippedStart()).compareTo(o2.getUnclippedStart()));
@@ -218,7 +218,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Cigar uberCigar = new Cigar();
 
         int haplotype = -1;
-        int molecularID = -1;
+        final Set<String> tenxMolecularIDs = new HashSet<>();
+        final Set<String> tenxPhaseSets = new HashSet<>();
 
         for (final GATKRead read : reads) {
             if (read.hasAttribute("HP")) {
@@ -233,8 +234,13 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             }
 
             if (read.hasAttribute("MI")) {
-                molecularID = read.getAttributeAsInteger("MI");
+                tenxMolecularIDs.add(read.getAttributeAsString("MI"));
             }
+
+            if (read.hasAttribute("PS")) {
+                tenxPhaseSets.add(read.getAttributeAsString("PS"));
+            }
+
             final int readStart = read.getUnclippedStart();
             if (readStart < minUnclippedStart) {
                 minUnclippedStart = readStart;
@@ -317,18 +323,24 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         samRecord.setCigar(uberCigar);
         samRecord.setReadBases(seqOutputStream.toByteArray());
         samRecord.setBaseQualities(qualOutputStream.toByteArray());
+
         if (haplotype >= 0) {
             samRecord.setAttribute("HP", haplotype);
         }
-        if (molecularID != -1) {
-            samRecord.setAttribute("MI", molecularID);
+
+        if (! tenxMolecularIDs.isEmpty()) {
+            samRecord.setAttribute("MI",  tenxMolecularIDs.stream().collect(Collectors.joining(",")));
+        }
+
+        if (! tenxPhaseSets.isEmpty()) {
+            samRecord.setAttribute("PS",  tenxPhaseSets.stream().collect(Collectors.joining(",")));
         }
 
         return new SAMRecordToGATKReadAdapter(samRecord);
 
     }
 
-    private CigarElement translateSoftClip(final CigarElement cigarElement) {
+    private static CigarElement translateSoftClip(final CigarElement cigarElement) {
         if (cigarElement.getOperator() == CigarOperator.S) {
             return new CigarElement(cigarElement.getLength(), CigarOperator.M);
         } else {
