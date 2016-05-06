@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import scala.Tuple2;
@@ -219,6 +218,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Cigar uberCigar = new Cigar();
 
         int haplotype = -1;
+        int molecularID = -1;
+
         for (final GATKRead read : reads) {
             if (read.hasAttribute("HP")) {
                 final Integer readHP = read.getAttributeAsInteger("HP");
@@ -229,7 +230,10 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                        haplotype = 0;
                    }
                 }
+            }
 
+            if (read.hasAttribute("MI")) {
+                molecularID = read.getAttributeAsInteger("MI");
             }
             final int readStart = read.getUnclippedStart();
             if (readStart < minUnclippedStart) {
@@ -315,6 +319,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         samRecord.setBaseQualities(qualOutputStream.toByteArray());
         if (haplotype >= 0) {
             samRecord.setAttribute("HP", haplotype);
+        }
+        if (molecularID != -1) {
+            samRecord.setAttribute("MI", molecularID);
         }
 
         return new SAMRecordToGATKReadAdapter(samRecord);
