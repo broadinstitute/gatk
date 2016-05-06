@@ -79,6 +79,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 // Output generated with GATK4
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
                 {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
         };
     }
 
@@ -101,7 +102,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         args.add("--knownSites");
         args.add(params.knownSites);
         if (params.args != null) {
-            Stream.of(params.args.split(" ")).forEach(arg -> args.add(arg));
+            Stream.of(params.args.trim().split(" ")).forEach(args::add);
         }
 
         runCommandLine(args);
