@@ -218,7 +218,19 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final ByteArrayOutputStream qualOutputStream = new ByteArrayOutputStream();
         final Cigar uberCigar = new Cigar();
 
+        int haplotype = -1;
         for (final GATKRead read : reads) {
+            if (read.hasAttribute("HP")) {
+                final Integer readHP = read.getAttributeAsInteger("HP");
+                if (haplotype == -1) {
+                    haplotype = readHP;
+                } else {
+                   if (readHP != haplotype) {
+                       haplotype = 0;
+                   }
+                }
+
+            }
             final int readStart = read.getUnclippedStart();
             if (readStart < minUnclippedStart) {
                 minUnclippedStart = readStart;
@@ -301,7 +313,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         samRecord.setCigar(uberCigar);
         samRecord.setReadBases(seqOutputStream.toByteArray());
         samRecord.setBaseQualities(qualOutputStream.toByteArray());
-
+        if (haplotype >= 0) {
+            samRecord.setAttribute("HP", haplotype);
+        }
 
         return new SAMRecordToGATKReadAdapter(samRecord);
 
