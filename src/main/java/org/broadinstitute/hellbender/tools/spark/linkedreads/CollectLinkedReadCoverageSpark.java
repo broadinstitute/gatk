@@ -5,6 +5,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -323,6 +324,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         samRecord.setCigar(uberCigar);
         samRecord.setReadBases(seqOutputStream.toByteArray());
         samRecord.setBaseQualities(qualOutputStream.toByteArray());
+
+        samRecord.setAttribute("BX", barcode);
 
         if (haplotype >= 0) {
             samRecord.setAttribute("HP", haplotype);
