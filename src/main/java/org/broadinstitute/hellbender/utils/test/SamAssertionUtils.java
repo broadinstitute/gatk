@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.tools.picard.sam.SortSam;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -229,7 +230,7 @@ public final class SamAssertionUtils {
 
     /**
      * Compares the reads but ignores order of attributes.
-     * Also allows expectedRead to have a superset of attributes of actualRead.
+     * Also allows actualRead to have a superset of attributes of expectedRead.
      */
     private static String readsEqualAllowAddingAttributes(final SAMRecord actualRead, final SAMRecord expectedRead) {
         final String actualName = actualRead.getReadName();
@@ -322,23 +323,39 @@ public final class SamAssertionUtils {
         return null;
     }
 
+    /**
+     * Compares the two given bam files, optionally sorting them before comparison.
+     * The sorting is helpful to compare files that are different but equivalent (eg read pairs with same coordinates get reordered).
+     */
+    public static void assertEqualBamFiles(
+            final File resultFile,
+            final File expectedFile,
+            final boolean compareBamFilesSorted,
+            final ValidationStringency stringency) throws IOException {
+        assertEqualBamFiles(resultFile, expectedFile, null, compareBamFilesSorted, stringency);
+    }
 
     /**
      * Compares the two given bam files, optionally sorting them before comparison.
      * The sorting is helpful to compare files that are different but equivalent (eg read pairs with same coordinates get reordered).
      */
-    public static void assertEqualBamFiles(final File resultFile, final File expectedFile, final boolean compareBamFilesSorted, final ValidationStringency stringency) throws IOException {
+    public static void assertEqualBamFiles(
+            final File resultFile,
+            final File expectedFile,
+            final File reference,
+            final boolean compareBamFilesSorted,
+            final ValidationStringency stringency) throws IOException {
 
         if (compareBamFilesSorted) {
-            final File resultFileSorted= BaseTest.createTempFile("resultsFileSorted", ".bam");
-            final File expectedFileSorted = BaseTest.createTempFile("expectedFileSorted", ".bam");
+            final File resultFileSorted= BaseTest.createTempFile("resultsFileSorted", "." + FilenameUtils.getExtension(resultFile.getName()));
+            final File expectedFileSorted = BaseTest.createTempFile("expectedFileSorted", "." + FilenameUtils.getExtension(expectedFile.getName()));
 
-            sortSam(resultFile, resultFileSorted, stringency);
-            sortSam(expectedFile, expectedFileSorted, stringency);
+            sortSam(resultFile, resultFileSorted, reference, stringency);
+            sortSam(expectedFile, expectedFileSorted, reference, stringency);
 
-            assertSamsEqual(resultFileSorted, expectedFileSorted, stringency);
+            assertSamsEqual(resultFileSorted, expectedFileSorted, stringency, reference);
         } else {
-            assertSamsEqual(resultFile, expectedFile, stringency);
+            assertSamsEqual(resultFile, expectedFile, stringency, reference);
         }
     }
 
@@ -358,10 +375,11 @@ public final class SamAssertionUtils {
         Assert.assertTrue(ReadUtils.hasCRAMFileContents(putativeCRAMFile));
     }
 
-    private static void sortSam(final File input, final File output, final ValidationStringency stringency) {
+    private static void sortSam(final File input, final File output, final File reference, final ValidationStringency stringency) {
         final SortSam sort = new SortSam();
         sort.INPUT = input;
         sort.OUTPUT = output;
+        sort.REFERENCE_SEQUENCE = reference;
         sort.SORT_ORDER = SAMFileHeader.SortOrder.coordinate;
         sort.VALIDATION_STRINGENCY = stringency;
         sort.runTool();
