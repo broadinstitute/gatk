@@ -53,7 +53,7 @@ public final class BaseRecalibrationEngine implements Serializable {
 
         @Override
         public SimpleInterval apply( GATKRead read ) {
-            return BAQ.getReferenceWindowForRead(read, BAQ.DEFAULT_BANDWIDTH, BAQ.DEFAULT_INCLUDE_CLIPPED_BASES);
+            return BAQ.getReferenceWindowForRead(read, BAQ.DEFAULT_BANDWIDTH);
         }
     }
     public static final SerializableFunction<GATKRead, SimpleInterval> BQSR_REFERENCE_WINDOW_FUNCTION = new BQSRReferenceWindowFunction();
