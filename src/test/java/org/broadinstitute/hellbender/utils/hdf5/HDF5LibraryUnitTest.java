@@ -7,7 +7,6 @@ import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -373,16 +372,9 @@ public final class HDF5LibraryUnitTest {
         final int numRows = 2500000;
         final int numCols = 10;
         final double mean = 3e-7;
+        final double sigma = 1e-9;
 
-        final RealMatrix bigCounts = new Array2DRowRealMatrix(numRows, numCols);
-        final RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
-        randomDataGenerator.reSeed(337337337);
-        bigCounts.walkInColumnOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(int row, int column, double value) {
-                return randomDataGenerator.nextGaussian(mean, 1e-9);
-            }
-        });
+        final RealMatrix bigCounts = createMatrixOfGaussianValues(numRows, numCols, mean, sigma);
         final File tempOutputHD5 = IOUtils.createTempFile("big-ol-", ".hd5");
         final HDF5File hdf5File = new HDF5File(tempOutputHD5, HDF5File.OpenMode.CREATE);
         final String hdf5Path = "/test/m";
@@ -391,13 +383,24 @@ public final class HDF5LibraryUnitTest {
 
         final HDF5File hdf5FileForReading = new HDF5File(tempOutputHD5, HDF5File.OpenMode.READ_ONLY);
         final double[][] result = hdf5FileForReading.readDoubleMatrix(hdf5Path);
-        Assert.assertTrue(result.length == numRows);
-        Assert.assertTrue(result[0].length == numCols);
+        final RealMatrix resultAsRealMatrix = new Array2DRowRealMatrix(result);
+        Assert.assertTrue(resultAsRealMatrix.getRowDimension() == numRows);
+        Assert.assertTrue(resultAsRealMatrix.getColumnDimension() == numCols);
         final RealMatrix readMatrix = new Array2DRowRealMatrix(result);
-        final double[] colMeans = GATKProtectedMathUtils.columnMeans(readMatrix);
-        for (double m: colMeans) {
-            Assert.assertEquals(m, mean, 1e-4);
-        }
+        PoNTestUtils.assertEqualsMatrix(readMatrix, bigCounts, false);
+    }
+
+    private RealMatrix createMatrixOfGaussianValues(int numRows, int numCols, final double mean, final double sigma) {
+        final RealMatrix bigCounts = new Array2DRowRealMatrix(numRows, numCols);
+        final RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
+        randomDataGenerator.reSeed(337337337);
+        bigCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(int row, int column, double value) {
+                return randomDataGenerator.nextGaussian(mean, sigma);
+            }
+        });
+        return bigCounts;
     }
 
     private void assertEqualMatrix(RealMatrix actual, RealMatrix expected) {

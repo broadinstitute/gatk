@@ -19,9 +19,9 @@ Requirements
 * HDF5-Java JNI Libraries Release 2.9 (2.11 for Macs)
 
 * (Developers) Gradle 2.12 is needed for building the GATK. We recommend using the `./gradlew` script which will
-download and use an appropriate gradle version automatically
+download and use an appropriate gradle version automatically.
 
-* (Developers) git lfs 1.1.0 (or greater) is needed for testing GATK-Protected builds.  It is needed to download large files for the complete test suite. Run git lfs install after downloading, followed by git lfs pull to download the large files. The download is ~500 MB.
+* (Developers) git lfs 1.1.0 (or greater) is needed for testing GATK-Protected builds.  It is needed to download large files for the complete test suite. Run ``git lfs install`` after downloading, followed by ``git lfs pull`` to download the large files. The download is ~500 MB.
 
 
 Read GATK 4 README

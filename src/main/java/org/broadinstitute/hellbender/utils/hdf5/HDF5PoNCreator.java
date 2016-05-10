@@ -85,7 +85,9 @@ final public class HDF5PoNCreator {
 
         // Remove low coverage targets:
         final ReadCountCollection inputPCov = readReadCountsFromFile(inputPCovFile, initialTargets);
-        createPoNGivenReadCountCollection(ctx, inputPCov, numberOfEigenSamples, sampleNameBlacklist, outputHDF5Filename, isDryRun, initialTargets, targetFactorPercentileThreshold, extremeColumnMedianCountPercentileThreshold, countTruncatePercentile, maximumPercentageZeroTargets, maximumPercentageZeroColumns);
+        createPoNGivenReadCountCollection(ctx, inputPCov, numberOfEigenSamples, sampleNameBlacklist, outputHDF5Filename,
+                isDryRun, initialTargets, targetFactorPercentileThreshold, extremeColumnMedianCountPercentileThreshold,
+                countTruncatePercentile, maximumPercentageZeroTargets, maximumPercentageZeroColumns);
     }
 
     /**
@@ -159,13 +161,13 @@ final public class HDF5PoNCreator {
             logger.info("Setting log-normal pinv (" + reduction.getPseudoInverse().getRowDimension() +
                     " x " + reduction.getPseudoInverse().getColumnDimension() + ") ...");
             pon.setLogNormalPInverseCounts(reduction.getPseudoInverse());
-            logger.info("Setting reduced panel (" + reduction.getReducedCounts().getRowDimension() +
+            logger.info("Setting reduced panel counts (" + reduction.getReducedCounts().getRowDimension() +
                     " x " + reduction.getReducedCounts().getColumnDimension() + ") (T) ...");
             pon.setReducedPanelCounts(reduction.getReducedCounts());
             logger.info("Setting reduced panel pinv (" + reduction.getReducedInverse().getRowDimension() +
                     " x " + reduction.getReducedInverse().getColumnDimension() + ") ...");
             pon.setReducedPanelPInverseCounts(reduction.getReducedInverse());
-            logger.info("Setting reduced targets ...");
+            logger.info("Setting reduced panel targets ...");
             pon.setPanelTargets(readCounts.targets());
             logger.info("Setting version number (" + CURRENT_PON_VERSION + ")...");
             pon.setVersion(CURRENT_PON_VERSION);
@@ -189,7 +191,7 @@ final public class HDF5PoNCreator {
             pon.setTargetNames(targetNames);
             logger.info("Setting target factors (" + targetFactors.length + ") ...");
             pon.setTargetFactors(new Array2DRowRealMatrix(targetFactors));
-            logger.info("Setting normal counts (" + readCounts.counts().getRowDimension() +
+            logger.info("Setting coverage profile (" + readCounts.counts().getRowDimension() +
                     " x " + readCounts.counts().getColumnDimension() + ") (T)...");
             pon.setNormalCounts(readCounts.counts());
             logger.info("Setting targets ...");

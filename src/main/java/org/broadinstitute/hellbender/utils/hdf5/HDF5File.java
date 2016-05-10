@@ -116,7 +116,7 @@ public final class HDF5File implements AutoCloseable {
     }
 
     /**
-     * Flush this file.
+     * Flush this file reader (through the HDF5 API) to disk rather than waiting for the OS to handle it.
      */
     public void flush() {
         if (isClosed()) {

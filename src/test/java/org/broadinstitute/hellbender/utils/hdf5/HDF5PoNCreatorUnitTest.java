@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.utils.hdf5;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
@@ -66,36 +64,6 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
             final double[] targetVariances = pon.getTargetVariances();
             PoNTestUtils.assertEqualsDoubleArrays(targetVariances, gtTargetVariances);
         }
-    }
-
-    @Test
-    public void testCreateLargePoN(){
-        // final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        // Creates a large PoN of junk values.
-        final int numEigenSamples = 20;
-
-//        // Load a lot of targets from a bed file
-//        final TargetCollection<? extends BEDFeature> inputTargetCollection = TargetUtils.readTargetFile(new File(BIG_TARGET_LIST));
-//        final List<Target> targetList = inputTargetCollection.targets().stream().map(TargetPadder::createTargetFromBEDFeature).collect(Collectors.toList());
-
-
-        // Make a big, fake set of read counts.
-        final RealMatrix bigCounts = new Array2DRowRealMatrix(3000000, 10);
-        final RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
-        bigCounts.walkInColumnOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(int row, int column, double value) {
-                return randomDataGenerator.nextGaussian(3e-7, 1e-9);
-            }
-        });
-        final File tempOutputPoN = IOUtils.createTempFile("big-ol-", ".pon");
-        final HDF5File hdf5File = new HDF5File(tempOutputPoN, HDF5File.OpenMode.CREATE);
-        hdf5File.makeDoubleMatrix("/test/m", bigCounts.getData());
-        hdf5File.close();
-        final int nxumEigenSamples = 40;
-//        final ReadCountCollection bigDummyRCC = new ReadCountCollection(final SetUniqueList<Target> targets, final SetUniqueList<String> columnNames, final RealMatrix counts)
-
-//        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(, numEigenSamples);
     }
 
     @Test

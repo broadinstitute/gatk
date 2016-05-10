@@ -16,9 +16,20 @@ import java.util.function.IntPredicate;
 /**
  * HDF5 File backed Panel of Normals data structure.
  *
- * Several attributes are stored transposed, in order to dodge a very slow write time in HDF5.
- *  Normalized Counts
- *  Log-Normalized Counts
+ * Several attributes are stored transposed (in other words, the rows are columns and vice versa).
+ * This dodges a very slow write time in HDF5, since we usually have many more rows (targets) than columns (samples).
+ *
+ * HDF5 can write matrices with few rows and many columns much faster than matrices with many rows and few columns.
+ *
+ * <ul>
+ *  <li>Normalized Counts</li>
+ *  <li>Log-Normalized Counts</li>
+ *  <li>Reduced Panel counts</li>
+ *</ul>
+ *
+ * In these cases, the samples are the rows and the targets are the columns.
+ *
+ * This is only for storage.  When saving/loading the above attributes, the transposing is handled transparently.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -278,14 +289,16 @@ public final class HDF5PoN implements PoN {
 
     @Override
     public RealMatrix getNormalizedCounts() {
-        // Note the check is using sample names as number of rows and targets as number of columns....
+        // Note the check uses sample names as number of rows and targets as number of columns.  This is due to the
+        //  transposed storage.  The returned matrix is still targets (rows) x samples (columns).
         return readMatrixAndCheckDimensions(NORMALIZED_PCOV_PATH, sampleNames.get().size(), targetNames.get().size())
                 .transpose();
     }
 
     @Override
     public RealMatrix getLogNormalizedCounts() {
-        // Note the check is using sample names as number of rows and targets as number of columns....
+        // Note the check uses sample names as number of rows and targets as number of columns.  This is due to the
+        //  transposed storage.  The returned matrix is still targets (rows) x samples (columns).
         return readMatrixAndCheckDimensions(LOG_NORMALS_PATH, getPanelSampleNames().size(), getPanelTargetNames().size())
                 .transpose();
     }
@@ -298,7 +311,8 @@ public final class HDF5PoN implements PoN {
 
     @Override
     public RealMatrix getReducedPanelCounts() {
-        // Note the check is using sample names as number of rows and targets as number of columns....
+        // Note the check is using sample names as number of rows and targets as number of columns.  This is due to the
+        //  transposed storage.  The returned matrix is still targets (rows) x pseudo-samples (columns).
         return readMatrixAndCheckDimensions(REDUCED_PON_PATH,
                 c -> c <= getPanelSampleNames().size(),
                 r -> r == reducedTargetNames.get().size()).transpose();
