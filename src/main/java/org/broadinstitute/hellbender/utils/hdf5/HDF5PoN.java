@@ -16,7 +16,7 @@ import java.util.function.IntPredicate;
 /**
  * HDF5 File backed Panel of Normals data structure.
  *
- * Several attributes are stored transposed (in other words, the rows are columns and vice versa).
+ * Several attributes are stored transposed (in other words, the rows and columns are interchanged).
  * This dodges a very slow write time in HDF5, since we usually have many more rows (targets) than columns (samples).
  *
  * HDF5 can write matrices with few rows and many columns much faster than matrices with many rows and few columns.
