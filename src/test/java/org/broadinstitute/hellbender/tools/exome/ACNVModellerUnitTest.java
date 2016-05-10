@@ -15,7 +15,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Unit tests for {@link ACNVModeller}.
+ * Unit tests for {@link ACNVModeller}.  Note that behavior of the tests depends on the content of the input files
+ * and that changing them may break the tests.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -29,15 +30,20 @@ public final class ACNVModellerUnitTest extends BaseTest {
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR
             + "snps-for-acnv-modeller.tsv");
     private static final File SEGMENT_FILE =
-            new File(TEST_SUB_DIR + "segments-for-acnv-modeller.seg");
+            new File(TEST_SUB_DIR + "segments-for-acnv-modeller.seg");  //44 segments (some spurious)
     private static final File SEGMENTS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "segments-truth-for-acnv-modeller.seg");
+            + "segments-truth-for-acnv-modeller.seg");  //30 true segments
 
     private static final int NUM_SAMPLES = 100;
     private static final int NUM_BURN_IN = 50;
 
     private static final double INTERVAL_THRESHOLD = 1.; //merge when parameter modes are within 95% HPD interval
     private static final int MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS = 25;
+
+    private static final List<SimpleInterval> SEGMENTS_TRUTH = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
+
+    //similar-segment merging without refitting may miss some merges, depending on the input test data; we allow up to 2 misses
+    private static final int DELTA_NUM_SEGMENTS_WITHOUT_REFITTING = 2;
 
     /**
      * Test of similar-segment merging using only copy-ratio data (simulated coverages and segments).
@@ -46,6 +52,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
      */
     @Test
     public void testMergeSimilarSegmentsCopyRatio() throws IOException {
+        final boolean doRefit = true;
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
@@ -61,11 +68,55 @@ public final class ACNVModellerUnitTest extends BaseTest {
 
         //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller = new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, 10, 0, ctx);
+        //check that model is completely fit at construction
+        Assert.assertTrue(modeller.isModelFit());
         //perform iterations of similar-segment merging until all similar segments are merged
         int prevNumSegments;
         for (int numIterations = 1; numIterations <= MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS; numIterations++) {
             prevNumSegments = modeller.getACNVModeledSegments().size();
-            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, Double.POSITIVE_INFINITY);
+            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, Double.POSITIVE_INFINITY, doRefit);
+            if (modeller.getACNVModeledSegments().size() == prevNumSegments) {
+                break;
+            }
+        }
+        //write final model fit to file
+        final File finalModeledSegmentsFile =
+                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
+        modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
+
+        //check equality of segments
+        final List<SimpleInterval> segmentsResult = SegmentUtils.readIntervalsFromSegmentFile(finalModeledSegmentsFile);
+        Assert.assertEquals(segmentsResult, SEGMENTS_TRUTH);
+    }
+
+    /**
+     * Test of similar-segment merging using simulated data (coverages, SNP counts, and segments).
+     * Spurious breakpoints have been introduced into the list of true segments; similar-segment merging should
+     * remerge segments broken by these breakpoints and reproduce the original list of true segments.
+     */
+    @Test
+    public void testMergeSimilarSegmentsWithRefitting() {
+        final boolean doRefit = true;
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+
+        final String tempDir = publicTestDir + "similar-segment-test";
+        final File tempDirFile = createTempDir(tempDir);
+
+        //load data (coverages, SNP counts, and segments)
+        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
+        final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
+
+        //initial MCMC model fitting performed by ACNVModeller constructor
+        final ACNVModeller modeller =
+                new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
+        //check that model is completely fit at construction
+        Assert.assertTrue(modeller.isModelFit());
+        //perform iterations of similar-segment merging until all similar segments are merged
+        int prevNumSegments;
+        for (int numIterations = 1; numIterations <= MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS; numIterations++) {
+            prevNumSegments = modeller.getACNVModeledSegments().size();
+            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, INTERVAL_THRESHOLD, doRefit);
             if (modeller.getACNVModeledSegments().size() == prevNumSegments) {
                 break;
             }
@@ -82,16 +133,15 @@ public final class ACNVModellerUnitTest extends BaseTest {
     }
 
     /**
-     * Test of similar-segment merging using simulated data (coverages, SNP counts, and segments).
-     * Spurious breakpoints have been introduced into the list of true segments; similar-segment merging should
-     * remerge segments broken by these breakpoints and reproduce the original list of true segments.
+     * Same as {@link ACNVModellerUnitTest#testMergeSimilarSegmentsWithRefitting()}, but without intermediate model refitting.
      */
     @Test
-    public void testMergeSimilarSegments() {
+    public void testMergeSimilarSegmentsWithoutRefitting() {
+        final boolean doRefit = false;
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
-        final String tempDir = publicTestDir + "similar-segment-test";
+        final String tempDir = publicTestDir + "similar-segment-test-without-refitting";
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
@@ -101,23 +151,28 @@ public final class ACNVModellerUnitTest extends BaseTest {
         //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller =
                 new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
+        //check that model is completely fit at construction
+        Assert.assertTrue(modeller.isModelFit());
         //perform iterations of similar-segment merging until all similar segments are merged
         int prevNumSegments;
         for (int numIterations = 1; numIterations <= MAX_SIMILAR_SEGMENT_MERGE_ITERATIONS; numIterations++) {
             prevNumSegments = modeller.getACNVModeledSegments().size();
-            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, INTERVAL_THRESHOLD);
+            modeller.performSimilarSegmentMergingIteration(INTERVAL_THRESHOLD, INTERVAL_THRESHOLD, doRefit);
             if (modeller.getACNVModeledSegments().size() == prevNumSegments) {
                 break;
             }
         }
-        //write final model fit to file
+        //check that model is not completely fit at this point
+        Assert.assertTrue(!modeller.isModelFit());
+
+        //write final model fit to file; this should force model refit
         final File finalModeledSegmentsFile =
                 new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
+        Assert.assertTrue(modeller.isModelFit());
 
-        //check equality of segments
+        //check final number of segments (we may miss some merges by not performing intermediate refits)
         final List<SimpleInterval> segmentsResult = SegmentUtils.readIntervalsFromSegmentFile(finalModeledSegmentsFile);
-        final List<SimpleInterval> segmentsTruth = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_TRUTH_FILE);
-        Assert.assertEquals(segmentsResult, segmentsTruth);
+        Assert.assertEquals(segmentsResult.size(), SEGMENTS_TRUTH.size(), DELTA_NUM_SEGMENTS_WITHOUT_REFITTING);
     }
 }
