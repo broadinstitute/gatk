@@ -5,12 +5,10 @@ import com.opencsv.CSVReader;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.broadinstitute.hellbender.tools.exome.CreatePanelOfNormals;
-import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
-import org.broadinstitute.hellbender.tools.exome.TargetCollection;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.testng.Assert;
 
 import java.io.File;
@@ -28,14 +26,39 @@ public class PoNTestUtils {
      * current {@link CreatePanelOfNormals} defaults.
      * @param inputPCovFile regular readable file that could be used to create a PoN.  Must be same format as output of
      *  {@link org.broadinstitute.hellbender.tools.exome.CombineReadCounts}
-     * @param numEigenSamples number of desired eigen samples in the PoN reduction
+     * @param numEigensamples number of desired eigen samples in the PoN reduction
      * @return HDF5 File.  Never {@code null}
      */
-    public static File createDummyHDF5FilePoN(final File inputPCovFile, final int numEigenSamples) {
+    public static File createDummyHDF5FilePoN(final File inputPCovFile, final int numEigensamples) {
         Utils.regularReadableUserFile(inputPCovFile);
+        ParamUtils.isPositive(numEigensamples, "Num Eigensamples must be greater than zero.");
         final File outputFile = IOUtils.createTempFile("dummy-pon-", ".pon");
         final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(inputPCovFile);
-        HDF5PoNCreator.createPoN(null, inputPCovFile, OptionalInt.of(numEigenSamples), new ArrayList<>(), outputFile, false, targets,
+        HDF5PoNCreator.createPoN(null, inputPCovFile, OptionalInt.of(numEigensamples), new ArrayList<>(), outputFile, false, targets,
+                CreatePanelOfNormals.DEFAULT_TARGET_FACTOR_THRESHOLD_PERCENTILE,
+                CreatePanelOfNormals.DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE,
+                CreatePanelOfNormals.DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD,
+                CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET,
+                CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_COLUMN);
+        return outputFile;
+    }
+
+    /** Creates a HDF5 PoN (using {@link org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator} ).  Parameters use the
+     * current {@link CreatePanelOfNormals} defaults.
+     *
+     * This is the same as {@link PoNTestUtils#createDummyHDF5FilePoN}, except that you can use a ReadCountCollection.
+     *
+     * @param inputPCov ReadCountCollection with the proportional coverages.
+     * @param numEigensamples number of desired eigensamples in the PoN reduction
+     * @return HDF5 File.  Never {@code null}
+     */
+    public static File createDummyHDF5FilePoN(final ReadCountCollection inputPCov, final int numEigensamples) {
+        Utils.nonNull(inputPCov);
+        ParamUtils.isPositive(numEigensamples, "Num Eigensamples must be greater than zero.");
+        final File outputFile = IOUtils.createTempFile("dummy-pon-", ".pon");
+        final TargetCollection<Target> targets = new HashedListTargetCollection<>(inputPCov.targets());
+        HDF5PoNCreator.createPoNGivenReadCountCollection(null, inputPCov, OptionalInt.of(numEigensamples),
+                new ArrayList<>(), outputFile, false, targets,
                 CreatePanelOfNormals.DEFAULT_TARGET_FACTOR_THRESHOLD_PERCENTILE,
                 CreatePanelOfNormals.DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE,
                 CreatePanelOfNormals.DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD,

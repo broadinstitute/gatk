@@ -69,7 +69,7 @@ public final class TargetPadder {
         return new Target(t.getName(), new SimpleInterval(t.getContig(), Math.max(1, t.getStart() - paddingInBases), t.getEnd() + paddingInBases));
     }
 
-    protected static Target createTargetFromBEDFeature(final BEDFeature bedFeature) {
+    public static Target createTargetFromBEDFeature(final BEDFeature bedFeature) {
         return new Target(bedFeature.getName(), new SimpleInterval(bedFeature.getContig(), bedFeature.getStart(), bedFeature.getEnd()));
     }
 }

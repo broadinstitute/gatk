@@ -43,9 +43,11 @@ import java.util.stream.Stream;
  */
 public class HDF5PoNCreatorUnitTest extends BaseTest {
     private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
+    private final static String LARGE_TEST_DIR = "src/test/resources/large/";
     private final static String TEST_PCOV_FILE = "create-pon-control-full.pcov";
     private final static String GT_TARGET_VAR_FILE = TEST_DIR + "dummy_pon_target_variances_matlab.txt";
     private final static String TEST_FULL_PON = TEST_DIR + "create-pon-all-targets.pon";
+    private final static String BIG_TARGET_LIST = LARGE_TEST_DIR + "test_wgs_1k_bins.bed";
 
     @Test
     public void testCreateVariance() {
