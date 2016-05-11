@@ -30,7 +30,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         };
     }
 
-    @Test(dataProvider = "filenames")
+    @Test(dataProvider = "filenames", groups = "spark")
     public void testCountReads(final String fileIn, final String referenceName, final long expectedCount) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final File outputTxt = createTempFile("count_reads", ".txt");
@@ -47,7 +47,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals((long)Long.valueOf(readIn), expectedCount);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void test() throws Exception {
         final File unsortedBam = new File(getTestDataDir(), "count_reads.bam");
         final File outputTxt = createTempFile("count_reads", ".txt");
@@ -79,7 +79,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
     }
 
 
-    @Test(dataProvider = "intervals")
+    @Test(dataProvider = "intervals", groups = "spark")
     public void testCountReadsWithIntervals(final String interval_args, final long expectedCount) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), "count_reads_sorted.bam");
         final File outputFile = createTempFile("count_reads_spark","count");
@@ -95,7 +95,7 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         }
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testNoNPRWhenOutputIsUnspecified(){
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(new File(getTestDataDir(), "count_reads.bam"));

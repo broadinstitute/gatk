@@ -76,7 +76,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "ApplyBQSRTest")
+    @Test(dataProvider = "ApplyBQSRTest", groups = "spark")
     public void testApplyBQSR(ABQSRTest params) throws IOException {
         File outFile = BaseTest.createTempFile("applyBQSRTest", params.outputExtension);
         final ArrayList<String> args = new ArrayList<>();
@@ -102,7 +102,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
 
     //TODO: This is disabled because we can't read a google bucket as a hadoop file system outside of the dataproc environment yet
     //Renable when we've figured out how to setup the google hadoop fs connector
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"bucket"}, enabled = false)
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"spark", "bucket"}, enabled = false)
     public void testPR_GCS(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
@@ -117,7 +117,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"cloud"}, enabled = false)
+    @Test(dataProvider = "ApplyBQSRTestGCS", groups = {"spark", "cloud"}, enabled = false)
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
@@ -131,7 +131,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         spec.executeTest("testPrintReads-" + params.args, this);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testPRNoFailWithHighMaxCycle() throws IOException {
         String args = " -I " + hiSeqBam +
                 " --bqsr_recal_file " + resourceDir + "HiSeq.1mb.1RG.highMaxCycle.table.gz" +
@@ -144,7 +144,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
         spec.executeTest("testPRNoFailWithHighMaxCycle", this);      //this just checks that the tool does not blow up
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testPRFailWithLowMaxCycle() throws IOException {
         String args =  " -I " + hiSeqBam +
                 " --bqsr_recal_file " + resourceDir + "HiSeq.1mb.1RG.lowMaxCycle.table.gz" +

@@ -4,7 +4,6 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordCoordinateComparator;
-import htsjdk.samtools.ValidationStringency;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -106,7 +105,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         assertSingleShardedWritingWorks(inputBam, referenceFileName, outputPath.toString());
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testWritingToFileURL() throws IOException {
         String inputBam = testDataDir + "tools/BQSR/HiSeq.1mb.1RG.2k_lines.bam";
         String outputUrl = "file:///" + createTempFile("ReadsSparkSinkUnitTest1", ".bam").getAbsolutePath();
@@ -204,7 +203,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         }
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testGetBamFragments() throws IOException {
         final Path fragmentDir = new Path(getToolTestDataDir(), "fragments_test");
         final FileSystem fs = fragmentDir.getFileSystem(new Configuration());
@@ -218,7 +217,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         }
     }
 
-    @Test( expectedExceptions = GATKException.class )
+    @Test( expectedExceptions = GATKException.class, groups = "spark" )
     public void testMergeIntoThrowsIfNoPartFiles() throws IOException {
         ReadsSparkSink.mergeInto(null, new Path(getToolTestDataDir() + "directoryWithNoPartFiles"), new Configuration());
     }

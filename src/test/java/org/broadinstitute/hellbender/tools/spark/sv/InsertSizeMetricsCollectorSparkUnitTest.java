@@ -21,7 +21,7 @@ public final class InsertSizeMetricsCollectorSparkUnitTest {
      *     using actual valid reads (13 of them) information from "insert_size_metrics_test.bam", where inferred length are
      *     {36 36 36 38 38 40 41 41 41 41 44 44 45} with median == 40.
      */
-    @Test(groups = "sv")
+    @Test(groups = {"sv", "spark"})
     public void testRanges() throws Exception {
 
         final Map<Integer, Long> map = new TreeMap<>();
@@ -50,7 +50,7 @@ public final class InsertSizeMetricsCollectorSparkUnitTest {
      *            3 read groups, 2 belonging to 1 library, 1 belonging to the other
      * @throws Exception
      */
-    @Test(groups = "sv")
+    @Test(groups = {"sv", "spark"})
     public void testAggregator() throws Exception{
 
 
@@ -151,7 +151,7 @@ public final class InsertSizeMetricsCollectorSparkUnitTest {
                                                  final double)
      * @throws Exception
      */
-    @Test(groups = "sv")
+    @Test(groups = {"sv", "spark"})
     public void testSortedMapToHTSJDKHistogramConverter() throws Exception{
 
         final InsertSizeMetricsCollectorSpark.GroupMetaInfo testGroup = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("sample", "library", "readGroup", MetricAccumulationLevel.READ_GROUP);

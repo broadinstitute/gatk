@@ -145,7 +145,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         };
     }
 
-    @Test(dataProvider = "BQSRTest")
+    @Test(dataProvider = "BQSRTest", groups = "spark")
     public void testBQSRSpark(BQSRTest params) throws IOException {
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLineNoApiKey());
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -154,7 +154,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         spec.executeTest("testBQSRSpark-" + params.args, this);
     }
 
-    @Test(dataProvider = "BQSRCloudTest", groups = {"cloud"})
+    @Test(dataProvider = "BQSRCloudTest", groups = {"spark", "cloud"})
     public void testBQSRSparkCloud(BQSRTest params) throws IOException {
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -163,7 +163,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         spec.executeTest("testBQSRSparkCloud-" + params.args, this);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
         //this should blow up because broadcast requires a 2bit reference
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
@@ -193,7 +193,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     }
 
     // TODO: re-enable once ReadsSparkSource natively supports files in GCS buckets
-    @Test(dataProvider = "BQSRTestBucket", groups = {"bucket"}, enabled = false)
+    @Test(dataProvider = "BQSRTestBucket", groups = {"spark", "bucket"}, enabled = false)
     public void testBQSRBucket(BQSRTest params) throws IOException {
         ArgumentsBuilder ab = new ArgumentsBuilder().add(params.getCommandLine());
         IntegrationTestSpec spec = new IntegrationTestSpec(
@@ -203,7 +203,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     }
 
     // TODO: This test is disabled because a new expected result needs to be created.
-    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"cloud"}, enabled = false)
+    @Test(description = "This is to test https://github.com/broadinstitute/hellbender/issues/322", groups = {"spark", "cloud"}, enabled = false)
     public void testPlottingWorkflow() throws IOException {
         final String resourceDir = getTestDataDir() + "/" + "BQSR" + "/";
         final String GRCh37Ref = ReferenceAPISource.GRCH37_REF_ID; // that's the "full" version
@@ -233,7 +233,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         IntegrationTestSpec.assertEqualTextFiles(actualTablePost, expectedTablePost);
     }
 
-    @Test(groups = {"cloud"})
+    @Test(groups = {"spark", "cloud"})
     public void testBQSRFailWithoutDBSNP() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();
@@ -250,7 +250,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         spec.executeTest("testBQSRFailWithoutDBSNP", this);
     }
 
-    @Test(groups = {"cloud"})
+    @Test(groups = {"spark", "cloud"})
     public void testBQSRFailWithIncompatibleReference() throws IOException {
         final String resourceDir =  getTestDataDir() + "/" + "BQSR" + "/";
         final String localResources =  getResourceDir();

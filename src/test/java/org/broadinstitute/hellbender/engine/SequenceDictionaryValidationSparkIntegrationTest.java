@@ -19,7 +19,7 @@ public class SequenceDictionaryValidationSparkIntegrationTest extends CommandLin
         return PrintReadsSpark.class.getSimpleName();
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testSeqDictValCompatible() throws IOException {
         final File outFile = BaseTest.createTempFile("testSeqDictValCompatible", ".bam");
         final String[] args = new String[]{
@@ -31,7 +31,7 @@ public class SequenceDictionaryValidationSparkIntegrationTest extends CommandLin
         runCommandLine(args);
     }
 
-    @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
+    @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class, groups = "spark")
     public void testSeqDictValIncompatible() throws IOException {
         final File outFile = BaseTest.createTempFile("testSeqDictValIncompatible", ".bam");
         final String[] args = new String[]{
@@ -43,7 +43,7 @@ public class SequenceDictionaryValidationSparkIntegrationTest extends CommandLin
         runCommandLine(args);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testSeqDictValIncompatibleDisableValidation() throws IOException {
         final File outFile = BaseTest.createTempFile("testSeqDictValIncompatibleDisableValidation", ".bam");
         final String[] args = new String[]{

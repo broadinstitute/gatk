@@ -15,7 +15,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
@@ -83,7 +82,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
        };
     }
 
-    @Test(dataProvider = "BQSRLocalRefTest")
+    @Test(dataProvider = "BQSRLocalRefTest", groups = "spark")
     public void testBQSRLocalRef(BQSRTest params) throws IOException {
         File outFile = BaseTest.createTempFile("bqsrSparkPipelineTest", params.outputExtension);
         final ArrayList<String> args = new ArrayList<>();
@@ -115,7 +114,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
         //this should blow up because broadcast requires a 2bit reference
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;

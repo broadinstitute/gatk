@@ -16,7 +16,7 @@ public class SparkCommandLineArgumentCollectionTest {
     private static final String value2 = "somethingelse";
 
 
-    @Test
+    @Test(groups = "spark")
     public void testGetSparkProperties(){
         final SparkCommandLineArgumentCollection sparkArgumentCollection = new SparkCommandLineArgumentCollection();
 

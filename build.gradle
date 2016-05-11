@@ -231,6 +231,9 @@ test {
         }
         if (SPARK == "false") {
             // exclude Spark tests
+            doFirst {
+                println( "Skipping Spark Tests")
+            }
             excludeGroups 'spark'
         }
     }

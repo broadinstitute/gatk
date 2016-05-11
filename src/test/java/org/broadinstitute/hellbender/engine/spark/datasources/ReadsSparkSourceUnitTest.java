@@ -128,7 +128,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         doLoadReadsTest(NA12878_chr17_1k_CRAM, null);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testPartitionSizing(){
 
         String bam = dirBQSR + "HiSeq.1mb.1RG.2k_lines.alternate.bam"; //file is ~220 kB
@@ -141,7 +141,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         Assert.assertEquals(smallPartitions.partitions().size(), 2);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testReadFromFileAndHDFS() throws Exception {
         final File bam = getTestFile("hdfs_file_test.bam");
         final File bai = getTestFile("hdfs_file_test.bai");
@@ -162,7 +162,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         });
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testCRAMReferenceFromHDFS() throws Exception {
         final File cram = new File(NA12878_chr17_1k_CRAM);
         final File reference = new File(v37_chr17_1Mb_Reference);
@@ -187,7 +187,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         });
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testIntervals() throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);

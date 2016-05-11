@@ -17,7 +17,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         return FlagStatSpark.class.getSimpleName();
     }
 
-    @Test
+    @Test(groups = "spark")
     public void flagStatSparkLocalNoInterval() throws IOException {
         File outputFile = createTempFile("flagStatTest", ".txt");
 
@@ -31,7 +31,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         //the expected output was created using stand-alone hellbender
         IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.txt"), false, null);
     }
-    @Test
+    @Test(groups = "spark")
     public void flagStatSparkLocalWithBigInterval() throws IOException {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
@@ -54,7 +54,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1-chr8.txt"), false, null);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void flagStatSparkLocalWithSmallInterval() throws IOException {
         ArgumentsBuilder args = new ArgumentsBuilder();
 
@@ -70,7 +70,7 @@ public final class FlagStatSparkIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertMatchingFiles(Lists.newArrayList(outputFile), Lists.newArrayList(getToolTestDataDir() +"/"+ "expectedStats.chr1_1.txt"), false, null);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testNoNPRWhenOutputIsUnspecified(){
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(getTestFile("flag_stat.bam"));

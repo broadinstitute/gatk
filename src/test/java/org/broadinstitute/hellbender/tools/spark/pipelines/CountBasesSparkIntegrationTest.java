@@ -26,7 +26,7 @@ public final class CountBasesSparkIntegrationTest extends CommandLineProgramTest
         };
     }
 
-    @Test(dataProvider = "countBases")
+    @Test(dataProvider = "countBases", groups = "spark")
     public void countBases(final String fileName, final String referenceFileName, final long expectedCount) throws Exception {
         final File unsortedBam = new File(getTestDataDir(), fileName);
         final File outputTxt = createTempFile("count_bases", ".txt");
@@ -43,7 +43,7 @@ public final class CountBasesSparkIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals((int) Integer.valueOf(readIn), expectedCount);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testNoNPRWhenOutputIsUnspecified(){
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addInput(new File(getTestDataDir(), "count_bases.bam"));

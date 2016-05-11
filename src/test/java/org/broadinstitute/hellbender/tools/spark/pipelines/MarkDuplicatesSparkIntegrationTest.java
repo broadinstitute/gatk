@@ -22,8 +22,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,7 +39,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         return new MarkDuplicatesSpark();
     }
 
-    @Test(dataProvider = "testMDdata")
+    @Test(dataProvider = "testMDdata", groups = "spark")
     @Override
     public void testMDOrder(final File input, final File expectedOutput) throws Exception {
         // Override this test case to provide a --shardedOutput false argument, so that we write a single, sorted
