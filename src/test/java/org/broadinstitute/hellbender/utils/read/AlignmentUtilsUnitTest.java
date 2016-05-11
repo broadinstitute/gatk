@@ -5,7 +5,9 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.smithwaterman.OverhangStrategy;
 import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanParameters;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -241,10 +243,12 @@ public final class AlignmentUtilsUnitTest {
         int i = 0;
         final String referenceBases  = "ACTGACTGACTG";
         final String paddedReference = "NNNN" + referenceBases + "NNNN";
+        final SmithWatermanParameters ORIGINAL_DEFAULT_SOFTCLIP = new SmithWatermanParameters(3,-1,-4,-3, OverhangStrategy.SOFTCLIP);
+
         for ( final List<Mutation> mutations : Utils.makePermutations(allMutations, 3, false) ) {
             final MutatedSequence hap = mutateSequence(referenceBases, mutations);
             final Haplotype haplotype = new Haplotype(hap.seq.getBytes());
-            final SWPairwiseAlignment align = new SWPairwiseAlignment(paddedReference.getBytes(), hap.seq.getBytes());
+            final SWPairwiseAlignment align = new SWPairwiseAlignment(paddedReference.getBytes(), hap.seq.getBytes(), ORIGINAL_DEFAULT_SOFTCLIP);
             haplotype.setAlignmentStartHapwrtRef(align.getAlignmentStart2wrt1());
             haplotype.setCigar(align.getCigar());
 

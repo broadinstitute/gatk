@@ -5,8 +5,9 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment.Parameters;
+import org.broadinstitute.hellbender.utils.smithwaterman.OverhangStrategy;
 import org.broadinstitute.hellbender.utils.smithwaterman.SWPairwiseAlignment;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanParameters;
 
 import java.util.*;
 
@@ -14,7 +15,8 @@ public final class CigarUtils {
 
     // used in the bubble state machine to apply Smith-Waterman to the bubble sequence
     // these values were chosen via optimization against the NA12878 knowledge base
-    public static final Parameters NEW_SW_PARAMETERS = new Parameters(200, -150, -260, -11);
+//    public static final SmithWatermanParameters NEW_SW_PARAMETERS = new SmithWatermanParameters(200, -150, -260, -11, OverhangStrategy.SOFTCLIP);
+    public static final SmithWatermanParameters NEW_SW_PARAMETERS = new SmithWatermanParameters(127, -127, -255, -11, OverhangStrategy.SOFTCLIP);
 
     private static final String SW_PAD = "NNNNNNNNNN";
 
