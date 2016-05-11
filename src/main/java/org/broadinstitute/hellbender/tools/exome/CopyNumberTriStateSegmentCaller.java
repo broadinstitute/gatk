@@ -90,23 +90,21 @@ public abstract class CopyNumberTriStateSegmentCaller extends CommandLineProgram
             doc = "In what dimension apply the zscore transformation",
             fullName = ZSCORE_DIMENSION_FULL_NAME,
             shortName = ZSCORE_DIMENSION_SHORT_NAME,
-            optional = false
+            optional = true
     )
-    protected ZScoreDimension zscoreDimension = ZScoreDimension.SAMPLE;
+    protected ZScoreDimension zscoreDimension = ZScoreDimension.NONE;
 
     @Argument(
             doc = "Input counts",
             fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-            optional = false
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME
     )
     protected File inputFile;
 
     @Argument(
             doc = "Output file",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            optional = false
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME
     )
     protected File outputFile;
 

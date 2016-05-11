@@ -164,4 +164,49 @@ public class GATKProtectedMathUtils {
                 .map(e -> new Pair<>(e, probabilityFunction.apply(e))).collect(Collectors.toList());
         return new EnumeratedDistribution<>(rng, pmf).sample();
     }
+    
+    public static int minIndex(final int ... values) {
+        Utils.nonNull(values);
+        if (values.length == 0) {
+            return -1;
+        }
+        int minValue = values[0];
+        int minIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            final int nextValue = values[i];
+            if (nextValue < minValue) {
+                minValue = nextValue;
+                minIndex = i;
+            }
+        }
+        return minIndex;
+    }
+
+    /**
+     * Given an int array returns the difference between the second smallest element
+     * and the smallest element.
+     * @param values the input values.
+     * @param defaultValue value to return in case the input array has zero or only one element.
+     * @return 0 if the input array has less than 2 elements, otherwise the second smallest
+     * - the smallest.
+     * @throws IllegalArgumentException if {@code values} is {@code null}.
+     */
+    public static int secondSmallestMinusSmallest(final int[] values, final int defaultValue) {
+        Utils.nonNull(values);
+        if (values.length <= 1) {
+            return defaultValue;
+        } else {
+            int smallest = values[0];
+            int secondSmallest = Integer.MAX_VALUE;
+            for (int i = 1; i < values.length; i++) {
+                if (values[i] < smallest) {
+                    secondSmallest = smallest;
+                    smallest = values[i];
+                } else if (values[i] < secondSmallest) {
+                    secondSmallest = values[i];
+                }
+            }
+            return secondSmallest - smallest;
+        }
+    }
 }

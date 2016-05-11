@@ -176,7 +176,7 @@ public final class ConvertGSVariantsToSegments extends VariantWalker {
                 throw new GATKException("unexpected call");
         }
 
-        // We add the probs of any copy number that that does not correspond
+        // We aggregate the probs of any copy number that that does not correspond
         final double log10OneMinusProbCall = MathUtils.approximateLog10SumLog10(
                 MathUtils.log10SumLog10(log10Probs, 0, Math.min(callCopyNumberRange.getMinimumInteger(), log10Probs.length)),
                 MathUtils.log10SumLog10(log10Probs, callCopyNumberRange.getMaximumInteger() + 1, log10Probs.length)

@@ -101,7 +101,7 @@ public class GenotypeCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
                 Assert.assertTrue(alleleIndex >= 0);
                 expectedAC[alleleIndex]++;
             }
-            Assert.assertEquals(variant.getAlleles(), GenotypeCopyNumberTriStateSegments.CNVAllele.ALL_ALLELES);
+            Assert.assertEquals(variant.getAlleles(), CopyNumberTriStateAllele.ALL_ALLELES);
             Assert.assertTrue(variant.hasAttribute(GenotypeCopyNumberTriStateSegments.NUMBER_OF_TARGETS_KEY));
             Assert.assertTrue(variant.hasAttribute(VCFConstants.ALLELE_COUNT_KEY));
             Assert.assertTrue(variant.hasAttribute(VCFConstants.END_KEY));
@@ -161,7 +161,7 @@ public class GenotypeCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
             Assert.assertEquals(gt.size(), 1);
             // The call may not be the same for case where the event-quality is relatively low.
             if (variantSegment.getSegment().getEventQuality() > 10) {
-                Assert.assertEquals(GenotypeCopyNumberTriStateSegments.CNVAllele.valueOf(gt.get(0)).state, call, genotype.toString());
+                Assert.assertEquals(CopyNumberTriStateAllele.valueOf(gt.get(0)).state, call, genotype.toString());
             }
             final String[] SQ = genotype.getAnyAttribute(GenotypeCopyNumberTriStateSegments.SOME_QUALITY_KEY).toString().split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
             final double someQual = variantSegment.getSegment().getSomeQuality();
@@ -177,7 +177,7 @@ public class GenotypeCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
 
             // Check the PL.
             final int[] PL = genotype.getPL();
-            final int observedGQFromPL = Math.min(GenotypeCopyNumberTriStateSegments.MAX_GQ, PL[GenotypeCopyNumberTriStateSegments.CNVAllele.REF.ordinal()] - PL[GenotypeCopyNumberTriStateSegments.CNVAllele.valueOf(call).ordinal()]);
+            final int observedGQFromPL = Math.min(GenotypeCopyNumberTriStateSegments.MAX_GQ, PL[CopyNumberTriStateAllele.REF.index()] - PL[CopyNumberTriStateAllele.valueOf(call).index()]);
             final double expectedCallPL = CopyNumberTriStateSegmentCaller.roundPhred(QualityUtils.phredScaleErrorRate(QualityUtils.qualToProb(variantSegment.getSegment().getExactQuality())));
             final double expectedRefPL = CopyNumberTriStateSegmentCaller.roundPhred(QualityUtils.phredScaleCorrectRate(QualityUtils.qualToProb(variantSegment.getSegment().getEventQuality())));
             final int expectedGQFromPL = Math.min(GenotypeCopyNumberTriStateSegments.MAX_GQ, (int) Math.round(expectedRefPL - expectedCallPL));

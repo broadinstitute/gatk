@@ -20,7 +20,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 /**
  * Genotype predetermined segments passed in the inputs together with the targets and their coverage per sample.
@@ -42,7 +41,6 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
 
     public static final String DISCOVERY_FILE_SHORT_NAME = "segments";
     public static final String DISCOVERY_FILE_FULL_NAME = "segmentsFile";
-    public static final String ALT_KEY = "ALT";
 
     public static final String DISCOVERY_TRUE = "Y";
     public static final String DISCOVERY_FALSE = "N";
@@ -69,8 +67,7 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
         final VCFHeader result = new VCFHeader(Collections.emptySet(), sampleNames);
 
         result.addMetaDataLine(new VCFHeaderLine(VCFHeaderVersion.VCF4_2.getFormatString(), VCFHeaderVersion.VCF4_2.getVersionString()));
-        result.addMetaDataLine(CNVAllele.DEL.altHeaderLine("Represents a deletion with respect to reference copy number"));
-        result.addMetaDataLine(CNVAllele.DUP.altHeaderLine("Represents a duplication with respect to reference copy number"));
+        CopyNumberTriStateAllele.addHeaderLinesTo(result);
         result.addMetaDataLine(new VCFHeaderLine("command",this.getCommandLine()));
 
         // FORMAT.
@@ -107,65 +104,12 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
         }
     }
 
-    /**
-     * Enum of possible CNV alleles.
-     */
-    public enum CNVAllele {
-        REF(CopyNumberTriState.NEUTRAL, true), DEL(CopyNumberTriState.DELETION, false), DUP(CopyNumberTriState.DUPLICATION, false);
-
-        public final Allele allele;
-        public final CopyNumberTriState state;
-
-        public static final List<CNVAllele> ALL_CNV_ALLELES = Collections.unmodifiableList(Arrays.asList(values()));
-        public static final List<CNVAllele> ALTERNATIVE_CNV_ALLELES = ALL_CNV_ALLELES.subList(1, 3);
-        public static final List<Allele> ALL_ALLELES = Collections.unmodifiableList(ALL_CNV_ALLELES.stream()
-                        .map(a -> a.allele).collect(Collectors.toList()));
-
-        CNVAllele(final CopyNumberTriState state, final boolean isRef) {
-            this.state = state;
-            allele = isRef ? Allele.create("N", true) : Allele.create("<" + name() + ">");
-        }
-
-        public VCFSimpleHeaderLine altHeaderLine(final String description) {
-            if (allele.isReference()) {
-                throw new UnsupportedOperationException("you cannot ask for an ALT header line on a reference allele");
-            }
-            return new VCFSimpleHeaderLine(ALT_KEY, name(), Utils.nonNull(description));
-        }
-
-        /**
-         * Returns the value whose allele is the same as the one provided.
-         * @param allele the query allele.
-         * @return never {@code null}.
-         * @throws IllegalArgumentException if the input allele is {@code null} or there is no
-         * value with such an allele.
-         */
-        public static CNVAllele valueOf(final Allele allele) {
-            Utils.nonNull(allele, "the input allele cannot be null");
-            return Stream.of(values()).filter(v -> v.allele.equals(allele)).findFirst().orElseThrow(IllegalArgumentException::new);
-        }
-
-        /**
-         * Returns the value whose state is the same as the one provided.
-         * @param state the query state.
-         * @return never {@code null}.
-         * @throws IllegalArgumentException if the input state is {@code null} or there is no
-         * value with such a state.
-         */
-        public static CNVAllele valueOf(final CopyNumberTriState state) {
-            Utils.nonNull(state, "the input state cannot be null");
-            return Stream.of(values()).filter(v -> v.state.equals(state)).findFirst().orElseThrow(IllegalArgumentException::new);
-        }
-    }
-
-
-
 
     private VariantContext composeVariantContext(final GenotypingSegment segment,
                                                  final List<String> sampleNames,
                                                  final List<ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState>> fbResults) {
         final VariantContextBuilder builder = new VariantContextBuilder();
-        builder.alleles(CNVAllele.ALL_ALLELES);
+        builder.alleles(CopyNumberTriStateAllele.PLAIN_ALL_ALLELES);
         builder.chr(segment.getContig());
         builder.start(segment.getStart());
         builder.stop(segment.getEnd());
@@ -185,7 +129,7 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
                     final int GQ = calculateGQ(PL);
                     final int genotypeCall = MathUtils.maxElementIndex(log10GP);
                     genotypeBuilder.PL(PL);
-                    genotypeBuilder.alleles(Collections.singletonList(CNVAllele.ALL_ALLELES.get(genotypeCall)));
+                    genotypeBuilder.alleles(Collections.singletonList(CopyNumberTriStateAllele.ALL_ALLELES.get(genotypeCall)));
                     genotypeBuilder.attribute(DISCOVERY_KEY, segment.containingSamples.contains(sample) ? DISCOVERY_TRUE : DISCOVERY_FALSE);
                     genotypeBuilder.attribute(SOME_QUALITY_KEY, SQ);
                     genotypeBuilder.attribute(START_QUALITY_KEY, LQ);
@@ -195,9 +139,9 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
                 }).collect(Collectors.toList());
         final int alleleNumber = genotypes.size();
         final int deletionCount = (int) genotypes.stream()
-                .filter(g -> g.getAllele(0) == CNVAllele.DEL.allele).count();
+                .filter(g -> g.getAllele(0) == CopyNumberTriStateAllele.DEL).count();
         final int duplicationCount = (int) genotypes.stream()
-                .filter(g -> g.getAllele(0) == CNVAllele.DUP.allele).count();
+                .filter(g -> g.getAllele(0) == CopyNumberTriStateAllele.DUP).count();
         final double deletionFrequency = deletionCount / (double) alleleNumber;
         final double duplicationFrequency = duplicationCount / (double) alleleNumber;
 
@@ -226,28 +170,28 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
     }
 
     private double[] calculateRQ(final IndexRange targetIndexes, final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        return CNVAllele.ALTERNATIVE_CNV_ALLELES.stream()
+        return CopyNumberTriStateAllele.ALTERNATIVE_ALLELES.stream()
                 .mapToDouble(allele ->
                         logProbToPhredScore(logEndProbability(targetIndexes.to - 1,
                                 allele.state, fbResult), true)).toArray();
     }
 
     private double[] calculateLQ(final IndexRange targetIndexes, final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        return CNVAllele.ALTERNATIVE_CNV_ALLELES.stream()
+        return CopyNumberTriStateAllele.ALTERNATIVE_ALLELES.stream()
                 .mapToDouble(allele ->
                     logProbToPhredScore(logStartProbability(targetIndexes.from,
                             allele.state, fbResult), true)).toArray();
     }
 
     private double[] calculateSQ(final IndexRange targetIndexes, final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        return CNVAllele.ALTERNATIVE_CNV_ALLELES.stream()
+        return CopyNumberTriStateAllele.ALTERNATIVE_ALLELES.stream()
             .mapToDouble(allele ->
                     logProbToPhredScore(logSomeProbability(targetIndexes.from, targetIndexes.size(),
                             allele.state, fbResult), true)).toArray();
     }
 
     private double[] calculateLog10GP(final IndexRange targetIndexes, final ForwardBackwardAlgorithm.Result<Double, Target, CopyNumberTriState> fbResult) {
-        return CNVAllele.ALL_CNV_ALLELES.stream()
+        return CopyNumberTriStateAllele.ALL_ALLELES.stream()
             .mapToDouble(allele -> fbResult.logProbability(targetIndexes.from, targetIndexes.to, allele.state) * INV_LN_10)
             .map(CopyNumberTriStateSegmentCaller::roundPhred).toArray();
     }

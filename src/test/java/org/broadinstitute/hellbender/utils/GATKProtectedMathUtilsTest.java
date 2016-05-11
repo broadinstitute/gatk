@@ -144,4 +144,12 @@ public class GATKProtectedMathUtilsTest {
         Assert.assertEquals(result.stream().filter(n -> n==0).count(), 0);
         Assert.assertEquals(result.stream().filter(n -> n==1).count(), NUM_SAMPLES/2, 50);
     }
+
+    @Test
+    public void testSecondSmallestMinusSmallest() {
+        Assert.assertEquals(GATKProtectedMathUtils.secondSmallestMinusSmallest(new int[0], -1), -1);
+        Assert.assertEquals(GATKProtectedMathUtils.secondSmallestMinusSmallest(new int[] { 10 }, 3), 3);
+        Assert.assertEquals(GATKProtectedMathUtils.secondSmallestMinusSmallest(new int[] { -10, -23, 3}, -1), 13);
+        Assert.assertEquals(GATKProtectedMathUtils.secondSmallestMinusSmallest(new int[] { -10, -23, 3}, -1), 13);
+    }
 }

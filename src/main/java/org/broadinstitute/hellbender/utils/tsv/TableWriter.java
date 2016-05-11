@@ -180,7 +180,7 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws IllegalArgumentException if {@code record} is {@code null} or it is not a valid record
      *                                  as per the implementation of this writer (see {@link #composeLine}).
      */
-    public final void writeRecord(final R record) throws IOException {
+    public void writeRecord(final R record) throws IOException {
         Utils.nonNull(record, "the record cannot be null");
         writeHeaderIfApplies();
         final DataLine dataLine = new DataLine(lineNumber + 1, columns,IllegalArgumentException::new);
