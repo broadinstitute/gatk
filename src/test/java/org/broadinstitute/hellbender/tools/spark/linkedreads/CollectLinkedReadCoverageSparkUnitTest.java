@@ -111,38 +111,38 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         final String barcode3 = "AAAAAAA";
 
         final GATKRead samRecord3 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode3, "1", samHeader, tree3.iterator().next());
-        Assert.assertEquals(samRecord3.convertToSAMRecord(samHeader).getSAMString(), "AAAAAAA\t1\t1\t997\t60\t3M7M18N10M\t*\t0\t0\tACACACACACGTGTGTGTGT\tSSSSSSSSSSTTTTTTTTTT\n");
+        Assert.assertEquals(samRecord3.convertToSAMRecord(samHeader).getSAMString(), "AAAAAAA\t1\t1\t997\t60\t3M7M18N10M\t*\t0\t0\tACACACACACGTGTGTGTGT\tSSSSSSSSSSTTTTTTTTTT\tBX:Z:AAAAAAA\n");
 
         final IntervalTree<List<GATKRead>> tree4 = createTestIntervalTree4(samHeader);
         final String barcode4 = "CCCCCCC";
 
         final GATKRead samRecord4 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode4, "1", samHeader, tree4.iterator().next());
-        Assert.assertEquals(samRecord4.convertToSAMRecord(samHeader).getSAMString(), "CCCCCCC\t1\t1\t997\t60\t3M7M2M4M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
+        Assert.assertEquals(samRecord4.convertToSAMRecord(samHeader).getSAMString(), "CCCCCCC\t1\t1\t997\t60\t3M7M2M4M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\tBX:Z:CCCCCCC\n");
 
         final IntervalTree<List<GATKRead>> tree2 = createTestIntervalTree2(samHeader);
         final String barcode2 = "GGGGGGG";
 
         final GATKRead samRecord2 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode2, "1", samHeader, tree2.iterator().next());
-        Assert.assertEquals(samRecord2.convertToSAMRecord(samHeader).getSAMString(), "GGGGGGG\t1\t1\t997\t60\t3M7M18D8M\t*\t0\t0\tACACACACACGTGTGTGT\tSSSSSSSSSSTTTTTTTT\n");
+        Assert.assertEquals(samRecord2.convertToSAMRecord(samHeader).getSAMString(), "GGGGGGG\t1\t1\t997\t60\t3M7M18D8M\t*\t0\t0\tACACACACACGTGTGTGT\tSSSSSSSSSSTTTTTTTT\tBX:Z:GGGGGGG\n");
 
         final IntervalTree<List<GATKRead>> tree = createTestIntervalTree1(samHeader);
         final String barcode = "ACTGACTG";
 
         final GATKRead samRecord = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode, "1", samHeader, tree.iterator().next());
-        Assert.assertEquals(samRecord.convertToSAMRecord(samHeader).getSAMString(), "ACTGACTG\t1\t1\t1000\t60\t10M10N6M1D4M4M10N5M1I4M96N10M\t*\t0\t0\tACACACACACGTGTGTGTGTAGAGGCGCGCGCGCTTTTTTTTTT\tSSSSSSSSSSTTTTTTTTTTUUUUVVVVVVVVVVWWWWWWWWWW\n");
+        Assert.assertEquals(samRecord.convertToSAMRecord(samHeader).getSAMString(), "ACTGACTG\t1\t1\t1000\t60\t10M10N6M1D4M4M10N5M1I4M96N10M\t*\t0\t0\tACACACACACGTGTGTGTGTAGAGGCGCGCGCGCTTTTTTTTTT\tSSSSSSSSSSTTTTTTTTTTUUUUVVVVVVVVVVWWWWWWWWWW\tBX:Z:ACTGACTG\n");
 
         final IntervalTree<List<GATKRead>> tree5 = createTestIntervalTree5(samHeader);
         final String barcode5 = "TTTTTTTT";
 
         final GATKRead samRecord5 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode5, "1", samHeader, tree5.iterator().next());
-        Assert.assertEquals(samRecord5.convertToSAMRecord(samHeader).getSAMString(), "TTTTTTTT\t1\t1\t997\t60\t3M7M2M20D2M2M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\n");
+        Assert.assertEquals(samRecord5.convertToSAMRecord(samHeader).getSAMString(), "TTTTTTTT\t1\t1\t997\t60\t3M7M2M20D2M2M\t*\t0\t0\tACACACACACGTGTGT\tSSSSSSSSSSTTTTTT\tBX:Z:TTTTTTTT\n");
 
         final IntervalTree<List<GATKRead>> tree6 = createTestIntervalTree6(samHeader);
         final String barcode6 = "GGGGGGG";
 
         final GATKRead samRecord6 = CollectLinkedReadCoverageSpark.intervalTreeToGATKRead(barcode6, "1", samHeader, tree6.iterator().next());
         Assert.assertEquals(samRecord6.convertToSAMRecord(samHeader).getSAMString(),
-                "GGGGGGG\t1\t1\t1000\t60\t150M1M6M\t*\t0\t0\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTGTGTG\tSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSTTTTTTT\n");
+                "GGGGGGG\t1\t1\t1000\t60\t150M1M6M\t*\t0\t0\tAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGTGTGTG\tSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSTTTTTTT\tBX:Z:GGGGGGG\n");
 
     }
 

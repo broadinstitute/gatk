@@ -9,15 +9,18 @@ public class LinkedReadAnalysisFilter implements ReadFilter {
 
     ReadFilter filter;
 
-    public LinkedReadAnalysisFilter() {
+    public LinkedReadAnalysisFilter(final double minEntropy) {
         this.filter = ReadFilterLibrary.MAPPED
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
                 .and(ReadFilterLibrary.NOT_DUPLICATE)
                 .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
                 .and(read -> !read.isSupplementaryAlignment())
-                .and(read -> read.hasAttribute("BX"));
+                .and(read -> read.hasAttribute("BX"))
+                .and(minEntropy > 0 ? new ReadEntropyFilter(minEntropy) : ReadFilterLibrary.ALLOW_ALL_READS);
     }
+
+
 
     @Override
     public boolean test(final GATKRead read) {

@@ -5,7 +5,6 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
 import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -46,12 +45,17 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public boolean writeSAM = true;
 
+    @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
+    public double minEntropy = 4.5;
+
     @Override
     public boolean requiresReads() { return true; }
 
     @Override
     public ReadFilter makeReadFilter() {
-        return super.makeReadFilter().and(new LinkedReadAnalysisFilter());
+
+        return super.makeReadFilter().
+                and(new LinkedReadAnalysisFilter(minEntropy));
     }
 
     @Override
