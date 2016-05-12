@@ -28,7 +28,7 @@ public class SparkContextFactoryUnitTest extends BaseTest {
             .put(prop3, value3)
             .build();
 
-    @Test
+    @Test(groups = "spark")
     public void testSetupSparkConf(){
         final String appName = "appName";
         final String master = "master";

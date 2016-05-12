@@ -21,7 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class MarkDuplicatesSparkUtilsUnitTest extends BaseTest {
-    @Test
+    @Test(groups = "spark")
     public void testSpanningIterator() {
         check(Collections.emptyIterator(), Collections.emptyList());
         check(ImmutableList.of(pair(1, "a")).iterator(),
@@ -38,7 +38,7 @@ public class MarkDuplicatesSparkUtilsUnitTest extends BaseTest {
                 ImmutableList.of(pairIterable(1, "a"), pairIterable(2, "b"), pairIterable(1, "c")));
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testSpanReadsByKeyWithAlternatingGroups() {
         SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(1, 1, 1000, 2);
         GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "N", 0, 1, 20);

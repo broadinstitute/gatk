@@ -26,7 +26,7 @@ public final class SortReadFileSparkIntegrationTest extends CommandLineProgramTe
         };
     }
 
-    @Test(dataProvider="sortbams")
+    @Test(dataProvider="sortbams", groups="spark")
     public void testSortBAMs(
             final String inputFileName,
             final String expectedOutputFileName,
@@ -55,7 +55,7 @@ public final class SortReadFileSparkIntegrationTest extends CommandLineProgramTe
         SamAssertionUtils.samsEqualStringent(actualOutputFile, expectedOutputFile, ValidationStringency.DEFAULT_STRINGENCY, referenceFile);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void test() throws Exception {
         final File unsortedBam = new File(getTestDataDir(), "count_reads.bam");
         final File sortedBam = new File(getTestDataDir(), "count_reads_sorted.bam");

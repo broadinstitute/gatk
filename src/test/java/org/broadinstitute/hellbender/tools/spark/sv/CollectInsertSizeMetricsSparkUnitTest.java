@@ -37,7 +37,7 @@ public final class CollectInsertSizeMetricsSparkUnitTest extends CommandLineProg
         };
     }
 
-    @Test(dataProvider="metricsfiles")
+    @Test(dataProvider="metricsfiles", groups = "spark")
     public void test(final String fileName, final String referenceName) throws IOException {
 
         // set up test data input and result outputs (two: one text one histogram plot in pdf)

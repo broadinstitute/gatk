@@ -3,9 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,7 +11,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.stream.Stream;
 
 public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
@@ -85,7 +82,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-    @Test(dataProvider = "ReadsPipeline")
+    @Test(dataProvider = "ReadsPipeline", groups = "spark")
     public void testReadsPipelineSpark(PipelineTest params) throws IOException {
         File outFile = BaseTest.createTempFile("readSparkPipelineTest", params.outputExtension);
         final ArrayList<String> args = new ArrayList<>();

@@ -28,7 +28,7 @@ public class MarkDuplicatesSparkUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "md")
+    @Test(dataProvider = "md", groups = "spark")
     public void markDupesTest(final String input, final long totalExpected, final long dupsExpected) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 

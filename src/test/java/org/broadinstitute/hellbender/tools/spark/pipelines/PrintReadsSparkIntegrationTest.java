@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import htsjdk.samtools.cram.build.CramIO;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -39,7 +38,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         };
     }
 
-    @Test(dataProvider="testingData")
+    @Test(dataProvider="testingData", groups="spark")
     public void testFileToFile(String fileIn, String extOut, String reference) throws Exception {
         final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
@@ -65,7 +64,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testCoordinateSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.sorted.bam");
         final File outBam = BaseTest.createTempFile("print_reads_spark", ".bam");
@@ -80,7 +79,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outBam, inBam);
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testCoordinateSortedInRegion() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.sorted.bam");
         final File expectedBam = new File(getTestDataDir(), "print_reads.sorted.chr1_1.bam");
@@ -97,7 +96,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outBam, expectedBam);
     }
 
-    @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
+    @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class, groups="spark")
     public void testSequenceDictionaryValidation() throws Exception {
         final File inCram = new File(getTestDataDir(), "print_reads.sorted.cram");
         final File inRef = new File(getTestDataDir(), "print_reads.chr1only.fasta");
@@ -128,7 +127,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         };
     }
 
-    @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class)
+    @Test(dataProvider="testFileToFile_queryNameSorted", expectedExceptions = UserException.class, groups="spark")
     public void testFileToFile_queryNameSorted(String fileIn, String extOut, String reference) throws Exception {
         final File outFile = BaseTest.createTempFile(fileIn + ".", extOut);
         outFile.deleteOnExit();
@@ -153,7 +152,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outFile, originalFile, refFile);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = UserException.class, groups = "spark")
     public void testNameSorted() throws Exception {
         final File inBam = new File(getTestDataDir(), "print_reads.bam");
         final File outBam = BaseTest.createTempFile("print_reads", ".bam");
@@ -171,7 +170,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     /**
      * Test that PrintReadsSpark is correctly applying the WellformedReadFilter
      */
-    @Test
+    @Test(groups = "spark")
     public void testReadFiltering() throws IOException {
         final File samWithOneMalformedRead = new File(getTestDataDir(), "print_reads_one_malformed_read.sam");
         final File outBam = BaseTest.createTempFile("print_reads_testReadFiltering", ".bam");
@@ -186,7 +185,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
         SamAssertionUtils.assertSamsEqual(outBam, new File(getTestDataDir(), "expected.print_reads_one_malformed_read.bam"));
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testReadFiltering_asIntegrationTestSpec() throws IOException {
         final File samWithOneMalformedRead = new File(getTestDataDir(), "print_reads_one_malformed_read.sam");
 

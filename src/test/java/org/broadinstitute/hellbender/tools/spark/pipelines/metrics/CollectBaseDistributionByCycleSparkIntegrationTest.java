@@ -41,7 +41,7 @@ public final class CollectBaseDistributionByCycleSparkIntegrationTest extends Co
         return list.iterator();
     }
 
-    @Test(dataProvider = "CollectBaseDistributionByCycle", groups = {"R"})
+    @Test(dataProvider = "CollectBaseDistributionByCycle", groups = {"R", "spark"})
     public void test(final String unsortedBamName, final String referenceName, final String expectedFileName, final boolean makePdf, final boolean pfReadsOnly, final boolean alignedReadsOnly) throws IOException {
         final File unsortedBam = new File(TEST_DATA_DIR, unsortedBamName);
         final File reference = referenceName == null ? null : new File(referenceName);

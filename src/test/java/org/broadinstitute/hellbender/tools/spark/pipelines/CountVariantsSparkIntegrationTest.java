@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -19,7 +18,7 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
         return CountVariantsSpark.class.getSimpleName();
     }
 
-    @Test(dataProvider = "filenames")
+    @Test(dataProvider = "filenames", groups = "spark")
     public void test(final File fileIn, final long expected) throws Exception {
         final File outputTxt = createTempFile("count_variants", ".txt");
         ArgumentsBuilder args = new ArgumentsBuilder();
@@ -40,7 +39,7 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
         };
     }
 
-    @Test
+    @Test(groups = "spark")
     public void testNoNPRWhenOutputIsUnspecified(){
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addVCF(COUNT_VARIANTS_VCF);

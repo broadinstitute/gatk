@@ -37,7 +37,7 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
         };
     }
 
-    @Test(dataProvider = "CompareIdenticalDuplicatesProvider")
+    @Test(dataProvider = "CompareIdenticalDuplicatesProvider", groups = "spark")
     public void identicalBamTest(File firstBam, File secondBam) throws Exception {
         // These files are the same and should produce no diffs.
 
@@ -52,7 +52,7 @@ public class CompareDuplicatesSparkIntegrationTest extends CommandLineProgramTes
         this.runCommandLine(args.getArgsArray());
     }
 
-    @Test(dataProvider = "CompareDifferentDuplicatesProvider", expectedExceptions = UserException.class)
+    @Test(dataProvider = "CompareDifferentDuplicatesProvider", expectedExceptions = UserException.class, groups = "spark")
     public void differentBamTest(File firstBam, File secondBam) throws Exception {
         // These files are the same and should produce no diffs.
         ArgumentsBuilder args = new ArgumentsBuilder();

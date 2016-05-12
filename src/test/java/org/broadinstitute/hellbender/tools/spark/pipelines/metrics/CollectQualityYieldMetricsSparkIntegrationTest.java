@@ -38,7 +38,7 @@ public final class CollectQualityYieldMetricsSparkIntegrationTest extends Comman
 
         return list.iterator();
     }
-    @Test(dataProvider = "CollectQualityYieldMetrics")
+    @Test(dataProvider = "CollectQualityYieldMetrics", groups= "spark")
     public void test(final String inName, final String outName, final String referenceName, final boolean useOQ) throws IOException {
         final File input = new File(TEST_DATA_DIR, inName);
         final File expectedFile = new File(TEST_DATA_DIR, outName);   //file created using picard 1.130

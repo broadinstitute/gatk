@@ -32,7 +32,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
                 {"first5000a.cram", b37_reference_20_21}
         };
     }
-    @Test(dataProvider="filenames", groups = {"R"})
+    @Test(dataProvider="filenames", groups = {"R", "spark"})
     public void test(final String inputFile, final String referenceName) throws IOException {
         final File input = new File(TEST_DATA_DIR, inputFile);
         final File expectedFile = new File(TEST_DATA_DIR, "meanqualbycycle.txt");
@@ -66,7 +66,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
-    @Test
+    @Test( groups = "spark")
     public void test1() throws IOException {
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "first5000a.bam");
@@ -83,7 +83,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
     }
 
     //Disabled due to https://github.com/broadinstitute/gatk/issues/1540
-    @Test(enabled=false)
+    @Test(enabled=false, groups="spark")
     public void test_ADAM() throws IOException {
         //Note we compare to non-spark outputs
         final File adamFile = new File(TEST_DATA_DIR, "first5000a.adam");
@@ -99,7 +99,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
-    @Test
+    @Test(groups = "spark")
     public void test_PF_READS_ONLY_false() throws IOException {
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
@@ -117,7 +117,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
-    @Test
+    @Test(groups = "spark")
     public void test_PF_READS_ONLY_true() throws IOException {
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "example_pfFail_reads.bam");
@@ -135,7 +135,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
-    @Test
+    @Test(groups = "spark")
     public void test_ALIGNED_READS_ONLY_false() throws IOException {
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "unmapped.bam");
@@ -153,7 +153,7 @@ public final class MeanQualityByCycleSparkIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outfile, expectedFile, "#");
     }
 
-    @Test
+    @Test(groups = "spark")
     public void test_ALIGNED_READS_ONLY_true() throws IOException {
         //Note we compare to non-spark outputs
         final File unsortedBam = new File(TEST_DATA_DIR, "unmapped.bam");
