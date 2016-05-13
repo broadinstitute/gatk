@@ -1,7 +1,12 @@
-sudo: required
-dist: trusty
+os:
+  - osx
+  - linux:
+    dist: trusty
+    sudo: required
+
 jdk:
 - oraclejdk8
+
 env:
   matrix:
   - CLOUD=mandatory
@@ -17,7 +22,6 @@ env:
   - CLOUDSDK_PYTHON_SITEPACKAGES=1 
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
   #directories for building Apache2-BWA
-  - OLD_DIR=$(pwd)
   - BWA_DIR=$HOME/bwaApache2
   - BWA_REPO=https://github.com/lh3/bwa.git
   - PATHTOBWA=$BWA_DIR/bwa
@@ -33,6 +37,7 @@ matrix:
   fast_finish: true
   allow_failures:
     - env: CLOUD=todo
+
 before_cache:
   - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
 cache:
@@ -40,6 +45,7 @@ cache:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
     - $HOME/gcloud/
+
 before_install:
 #setup google stuff
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
@@ -50,19 +56,29 @@ before_install:
     $GCLOUD/gcloud auth activate-service-account --key servicekey.json;
   fi
 #install R
-- sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
-- sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/"
-- sudo apt-get update
-- sudo apt-get install -y --force-yes r-base
+ - echo "Building on $TRAVIS_OS_NAME"
+- if [[ $TRAVIS_OS_NAME == linux ]]; then
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9;
+    sudo add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/";
+    sudo apt-get update;
+    sudo apt-get install -y --force-yes r-base;
+  else
+    brew update;
+    brew install R;
+  fi
 - R --version
 #install gcc
-- sudo apt-get install -y --force-yes  gcc
+- if [[ $TRAVIS_OS_NAME == linux ]]; then
+    sudo apt-get install -y --force-yes  gcc;
+  fi
+  #osx should have clang available already
 - gcc --version
 #install Apache-2 BWA
 - sudo mkdir $BWA_DIR
 - sudo git clone $BWA_REPO -b Apache2 --single-branch $BWA_DIR
 - cd $BWA_DIR && sudo make
-- cd $OLD_DIR
+- cd $TRAVIS_BUILD_DIR
+
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
@@ -70,17 +86,18 @@ install:
     ./gradlew assemble;
     ./gradlew installDist;
   fi
+
 script:
-#basic sanity test to check that gatk-launch actually runs something
-- ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam
 #run tests
 #install git-lfs
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   else
+    ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     bash scripts/install_git_lfs.sh;
     travis_wait 30 ./gradlew jacocoTestReport;
   fi
+
 after_success:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't try to record coverage tests";
@@ -88,8 +105,10 @@ after_success:
    ./gradlew coveralls;
   fi
 - python <(curl -s https://raw.githubusercontent.com/TouK/sputnik-ci/master/sputnik-ci.py)
+
 after_failure:
 - dmesg | tail -100
+
 after_script:
 - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
     $GCLOUD/gcloud components -q update gsutil;
