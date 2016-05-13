@@ -6,7 +6,7 @@ os:
   - osx
   - linux:
     jdk:
-    - oraclejdk8
+      - oraclejdk8
 
 env:
   matrix:
@@ -46,6 +46,13 @@ cache:
     - $HOME/.gradle/wrapper/
     - $HOME/gcloud/
 before_install:
+  #install java on mac
+  - if [[ $TRAVIS_OS_NAME == osx ]]; then
+      brew update;
+      brew tap caskroom/cask;
+      brew install Caskroom/cask/java;
+    fi
+
   #setup google stuff
   - if [ $TRAVIS_SECURE_ENV_VARS == true ]; then
       openssl aes-256-cbc -K $encrypted_29f3b7c4d8c3_key -iv $encrypted_29f3b7c4d8c3_iv  -in resources_for_CI/servicekey.json.enc -out servicekey.json -d;
@@ -62,7 +69,7 @@ before_install:
       sudo apt-get update;
       sudo apt-get install -y --force-yes r-base;
     else
-      brew update;
+      brew tap homebrew/science;
       brew install R;
     fi
   - R --version
