@@ -463,6 +463,8 @@ model {
                         cppCompiler.args "-I", "${System.properties['java.home']}/../include/Darwin"
                     } else {
                         cppCompiler.args "-I", "${System.properties['java.home']}/../include/linux"
+                        cppCompiler.args "-fopenmp"
+                        linker.args "-fopenmp"
                         linker.args "-static-libgcc"
                     }
 

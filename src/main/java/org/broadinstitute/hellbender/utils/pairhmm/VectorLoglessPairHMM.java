@@ -28,6 +28,12 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     long pairHMMSetupTime = 0;
     static Boolean isVectorLoglessPairHMMLibraryLoaded = false;
 
+    // maxNumberOfThreads used by native pairHMM
+    // native pairHMM may use less than maxNumberOfThreads, depending on the number of threads are available in hardware
+    // TODO: pass maxNumberOfThreads in to VectorLoglessPairHMM
+    // TODO: set maxNumberOfThreads in the native library "initialize" function after moving to the native library
+    private int maxNumberOfThreads = 100;
+
     //Hold the mapping between haplotype and index in the list of Haplotypes passed to initialize
     //Use this mapping in computeLikelihoods to find the likelihood value corresponding to a given Haplotype
     HashMap<Haplotype, Integer> haplotypeToHaplotypeListIdxMap = new HashMap<>();
@@ -190,7 +196,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
         //for(reads)
         //   for(haplotypes)
         //       compute_full_prob()
-        jniComputeLikelihoods(readListSize, numHaplotypes, readDataArray, mHaplotypeDataArray, mLogLikelihoodArray, 12);
+        jniComputeLikelihoods(readListSize, numHaplotypes, readDataArray, mHaplotypeDataArray, mLogLikelihoodArray, maxNumberOfThreads);
 
         int readIdx = 0;
         for (int r = 0; r < readListSize; r++) {

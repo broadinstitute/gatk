@@ -1,3 +1,6 @@
+#ifdef linux
+#include <omp.h>
+#endif
 #include "headers.h"
 #include "jni_common.h"
 #include "org_broadinstitute_hellbender_utils_pairhmm_VectorLoglessPairHMM.h"
@@ -183,7 +186,11 @@ inline JNIEXPORT void JNICALL Java_org_broadinstitute_hellbender_utils_pairhmm_V
 inline void compute_testcases(vector<testcase>& tc_array, unsigned numTestCases, double* likelihoodDoubleArray,
     unsigned maxNumThreadsToUse)
 {
-  #pragma omp parallel for schedule (dynamic,10000) num_threads(maxNumThreadsToUse)
+  // TODO: move number of thread calculation to "initialize" after moving to native library interface
+#ifdef linux
+  int threads = min((int)maxNumThreadsToUse, omp_get_max_threads());
+#endif
+  #pragma omp parallel for schedule(dynamic, 1) num_threads(threads)
   for(unsigned tc_idx=0;tc_idx<numTestCases;++tc_idx)
   {
     float result_avxf = use_double ? 0 : g_compute_full_prob_float(&(tc_array[tc_idx]), 0);
