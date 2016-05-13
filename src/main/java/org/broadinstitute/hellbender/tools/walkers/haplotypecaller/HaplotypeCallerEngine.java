@@ -451,10 +451,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final int ploidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
         final List<Allele> noCall = GATKVariantContextUtils.noCallAlleles(ploidy); // used to noCall all genotypes until the exact model is applied
-        final Map<String, AlignmentContext> splitContexts = context.splitContextBySampleName(readsHeader);
+
+        final Map<String, AlignmentContext> splitContexts;
+        if (samplesList.numberOfSamples() == 1) {
+            //If we know a priori that there's just one sample, take a shortcut and dont examine each read in the pileup
+            splitContexts = context.splitContextBySampleName(samplesList.getSample(0), readsHeader);
+        } else {
+            splitContexts = context.splitContextBySampleName(readsHeader);
+        }
+
         final GenotypesContext genotypes = GenotypesContext.create(splitContexts.keySet().size());
         final MathUtils.RunningAverage averageHQSoftClips = new MathUtils.RunningAverage();
-        final InfiniteRandomMatingPopulationModel genotypingModel = genotypingEngine.getGenotypingModel();
         for( final Map.Entry<String, AlignmentContext> sample : splitContexts.entrySet() ) {
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
             final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
