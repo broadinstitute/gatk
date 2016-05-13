@@ -51,6 +51,7 @@ before_install:
       brew update;
       brew tap caskroom/cask;
       brew install Caskroom/cask/java;
+      brew install git;
     fi
 
   #setup google stuff

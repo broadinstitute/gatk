@@ -1,6 +1,6 @@
 #!/bin/bash
 
-GIT_LFS_VERSION="1.1.2"
+GIT_LFS_VERSION="1.2.0"
 
 if [[ $TRAVIS_OS_NAME = "linux" ]]; then
 	GIT_LFS_LINK=https://github.com/github/git-lfs/releases/download/v${GIT_LFS_VERSION}/git-lfs-linux-amd64-${GIT_LFS_VERSION}.tar.gz
