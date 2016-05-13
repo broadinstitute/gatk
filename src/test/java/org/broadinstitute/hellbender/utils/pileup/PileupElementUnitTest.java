@@ -73,7 +73,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
             Assert.assertTrue(basesOfImmediatelyFollowingInsertion == null || basesOfImmediatelyFollowingInsertion.length() == lengthOfImmediatelyFollowingIndel);
 
             // Don't test -- pe.getBaseIndex();
-            if ( pe.atEndOfCurrentCigar() && state.getCurrentCigarElementOffset() < read.getCigar().numCigarElements() - 1 ) {
+            if ( pe.atEndOfCurrentCigar() && state.getCurrentCigarElementOffset() < read.numCigarElements() - 1 ) {
                 final CigarElement nextElement = read.getCigar().getCigarElement(state.getCurrentCigarElementOffset() + 1);
                 if ( nextElement.getOperator() == CigarOperator.I ) {
                     Assert.assertTrue(pe.getBetweenNextPosition().size() >= 1);

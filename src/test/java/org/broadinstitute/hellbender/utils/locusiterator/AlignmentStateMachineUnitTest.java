@@ -70,7 +70,7 @@ public final class AlignmentStateMachineUnitTest extends LocusIteratorByStateBas
 
         Assert.assertEquals(bpVisited, expectedBpToVisit, "Didn't visit the expected number of bp");
         Assert.assertEquals(state.getReadOffset(), read.getLength());
-        Assert.assertEquals(state.getCurrentCigarElementOffset(), read.getCigar().numCigarElements());
+        Assert.assertEquals(state.getCurrentCigarElementOffset(), read.numCigarElements());
         Assert.assertEquals(state.getCurrentCigarElement(), null);
         Assert.assertNotNull(state.toString());
     }

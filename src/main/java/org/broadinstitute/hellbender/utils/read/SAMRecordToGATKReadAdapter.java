@@ -276,7 +276,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
      */
     @Override
     public int numCigarElements(){
-        return samRecord.getCigar() == null ? 0 : samRecord.getCigar().numCigarElements();
+        return samRecord.getCigar() == null ? 0 : samRecord.getCigarLength();
     }
 
     @Override

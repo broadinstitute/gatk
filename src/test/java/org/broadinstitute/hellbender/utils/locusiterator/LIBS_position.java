@@ -27,7 +27,7 @@ public final class LIBS_position {
 
     public LIBS_position(final GATKRead read) {
         this.read = read;
-        numOperators = read.getCigar().numCigarElements();
+        numOperators = read.numCigarElements();
     }
 
     public int getCurrentReadOffset() {

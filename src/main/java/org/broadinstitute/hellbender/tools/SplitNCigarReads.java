@@ -136,7 +136,7 @@ public final class SplitNCigarReads extends CommandLineProgram {
      * @param read     the read to split
      */
     public static GATKRead splitNCigarRead(final GATKRead read, OverhangFixingManager manager) {
-        final int numCigarElements = read.getCigar().numCigarElements();
+        final int numCigarElements = read.numCigarElements();
 
         int firstCigarIndex = 0;
         for ( int i = 0; i < numCigarElements; i++ ) {

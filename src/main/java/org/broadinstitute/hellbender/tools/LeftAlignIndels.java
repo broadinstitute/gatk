@@ -66,7 +66,7 @@ public final class LeftAlignIndels extends ReadWalker {
     @Override
     public void apply( GATKRead read, ReferenceContext ref, FeatureContext featureContext ) {
         // we can not deal with screwy records
-        if ( read.isUnmapped() || read.getCigar().numCigarElements() == 0 ) {
+        if ( read.isUnmapped() || read.numCigarElements() == 0 ) {
             outputWriter.addRead(read);
             return;
         }

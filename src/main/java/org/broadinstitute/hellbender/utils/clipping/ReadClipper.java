@@ -352,7 +352,7 @@ public class ReadClipper {
      */
     public static GATKRead hardClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
         final int start = read.getUnclippedStart();
-        final int stop = start + CigarUtils.countRefBasesBasedOnCigar(read, 0, read.getCigar().numCigarElements()) - 1;
+        final int stop = start + CigarUtils.countRefBasesBasedOnCigar(read, 0, read.numCigarElements()) - 1;
         return hardClipToRegion(read, refStart, refStop, start, stop);
     }
 

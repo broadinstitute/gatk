@@ -340,9 +340,9 @@ public final class MergeBamAlignmentIntegrationTest extends CommandLineProgramTe
 
             if (!sam.getReadUnmappedFlag()) {
                 final CigarElement firstMergedCigarElement = sam.getCigar().getCigarElement(0);
-                final CigarElement lastMergedCigarElement = sam.getCigar().getCigarElement(sam.getCigar().numCigarElements() - 1);
+                final CigarElement lastMergedCigarElement = sam.getCigar().getCigarElement(sam.getCigarLength() - 1);
                 final CigarElement firstAlignedCigarElement = alignment.getCigar().getCigarElement(0);
-                final CigarElement lastAlignedCigarElement = alignment.getCigar().getCigarElement(alignment.getCigar().numCigarElements() - 1);
+                final CigarElement lastAlignedCigarElement = alignment.getCigar().getCigarElement(alignment.getCigarLength() - 1);
 
                 if (beginning > 0) {
                     Assert.assertEquals(firstMergedCigarElement.getOperator(), CigarOperator.S, "First element is not a soft clip");
