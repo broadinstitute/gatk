@@ -269,11 +269,11 @@ public interface GATKRead extends Locatable {
     }
 
     /**
-     * The number of cigar elements in this read. The default implementation returns <code>getCigarElements().size()</code>.
+     * The number of cigar elements in this read. The default implementation returns <code>getCigar().numCigarElements()</code>.
      * Subclasses may override to provide more efficient implementations.
      */
     default int numCigarElements(){
-        return getCigarElements().size();
+        return getCigar().numCigarElements();
     }
 
     /**

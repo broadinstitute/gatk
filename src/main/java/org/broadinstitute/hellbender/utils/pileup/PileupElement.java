@@ -388,7 +388,7 @@ public final class PileupElement {
      */
     private CigarElement getNeighboringOnGenomeCigarElement(final Direction direction) {
         final int increment = direction == Direction.NEXT ? 1 : -1;
-        final int nCigarElements = read.getCigar().numCigarElements();
+        final int nCigarElements = read.numCigarElements();
 
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
             final CigarElement elt = read.getCigar().getCigarElement(i);
