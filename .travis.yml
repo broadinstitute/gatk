@@ -100,7 +100,7 @@ script:
       echo "Can't run cloud tests without keys so don't run tests";
     else
       ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
-      bash scripts/install_git_lfs.sh;
+      bash scripts/install_git_lfs_on_travis.sh;
       travis_wait 30 ./gradlew jacocoTestReport;
     fi
 
