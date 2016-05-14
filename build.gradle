@@ -78,7 +78,7 @@ repositories {
             dirs customJarPath
         }
     }
-
+    mavenLocal()
 }
 
 jacocoTestReport {
