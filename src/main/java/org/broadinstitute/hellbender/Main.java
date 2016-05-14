@@ -113,7 +113,7 @@ public class Main {
         }
         String missingAnnotationClasses = "";
 
-        final Map<String, Class<?>> simpleNameToClass = new HashMap<>();
+        final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
         for (final Class<?> clazz : classFinder.getClasses()) {
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (ClassUtils.canMakeInstances(clazz)) {
@@ -134,7 +134,7 @@ public class Main {
             throw new RuntimeException("The following classes are missing the required CommandLineProgramProperties annotation: " + missingAnnotationClasses);
         }
 
-        final Set<Class<?>> classes = new HashSet<>();
+        final Set<Class<?>> classes = new LinkedHashSet<>();
         classes.addAll(simpleNameToClass.values());
 
         if (args.length < 1) {
@@ -175,9 +175,9 @@ public class Main {
                 .append(BOLDRED + "Available Programs:\n" + KNRM);
 
         /** Group CommandLinePrograms by CommandLineProgramGroup **/
-        final Map<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup> programGroupClassToProgramGroupInstance = new HashMap<>();
+        final Map<Class<? extends CommandLineProgramGroup>, CommandLineProgramGroup> programGroupClassToProgramGroupInstance = new LinkedHashMap<>();
         final Map<CommandLineProgramGroup, List<Class<?>>> programsByGroup = new TreeMap<>(CommandLineProgramGroup.comparator);
-        final Map<Class<?>, CommandLineProgramProperties> programsToProperty = new HashMap<>();
+        final Map<Class<?>, CommandLineProgramProperties> programsToProperty = new LinkedHashMap<>();
         for (final Class<?> clazz : classes) {
             // Get the command line property for this command line program
             final CommandLineProgramProperties property = getProgramProperty(clazz);
@@ -242,7 +242,7 @@ public class Main {
      * @return returns an error message including the closes match if relevant.
      */
     public static String getUnknownCommandMessage(final Set<Class<?>> classes, final String command) {
-        final Map<Class<?>, Integer> distances = new HashMap<>();
+        final Map<Class<?>, Integer> distances = new LinkedHashMap<>();
 
         int bestDistance = Integer.MAX_VALUE;
         int bestN = 0;

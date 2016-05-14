@@ -2,15 +2,7 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.TribbleException;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.CommonInfo;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.VariantContextUtils;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
@@ -24,22 +16,7 @@ import org.broadinstitute.hellbender.utils.*;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class GATKVariantContextUtils {
@@ -785,10 +762,10 @@ public final class GATKVariantContextUtils {
         final Allele refAllele = determineReferenceAllele(VCs);
 
         final LinkedHashSet<Allele> alleles = new LinkedHashSet<>();
-        final Set<String> filters = new HashSet<>();
+        final Set<String> filters = new LinkedHashSet<>();
         final Map<String, Object> attributes = new LinkedHashMap<>();
-        final Set<String> inconsistentAttributes = new HashSet<>();
-        final Set<String> variantSources = new HashSet<>(); // contains the set of sources we found in our set of VCs that are variant
+        final Set<String> inconsistentAttributes = new LinkedHashSet<>();
+        final Set<String> variantSources = new LinkedHashSet<>(); // contains the set of sources we found in our set of VCs that are variant
         final Set<String> rsIDs = new LinkedHashSet<>(1); // most of the time there's one id
 
         VariantContext longestVC = first;
@@ -1230,7 +1207,7 @@ public final class GATKVariantContextUtils {
 
         final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), myRef.length(), refAllele.length());
 
-        final Map<Allele, Allele> map = new HashMap<>();
+        final Map<Allele, Allele> map = new LinkedHashMap<>();
         for ( final Allele a : oneVC.getAlternateAlleles() ) {
             if ( isUsableAlternateAllele(a) ) {
                 Allele extended = Allele.extend(a, extraBases);
@@ -1368,7 +1345,7 @@ public final class GATKVariantContextUtils {
             return inputVC;
 
         final List<Allele> alleles = new LinkedList<>();
-        final Map<Allele, Allele> originalToTrimmedAlleleMap = new HashMap<>();
+        final Map<Allele, Allele> originalToTrimmedAlleleMap = new LinkedHashMap<>();
 
         for (final Allele a : inputVC.getAlleles()) {
             if (a.isSymbolic()) {
@@ -1593,7 +1570,7 @@ public final class GATKVariantContextUtils {
                 final VariantContextBuilder newVC = new VariantContextBuilder(vc).start(vc.getStart() + i).stop(vc.getStart() + i).alleles(Arrays.asList(newRefAllele, newAltAllele));
 
                 // create new genotypes with updated alleles
-                final Map<Allele, Allele> alleleMap = new HashMap<>();
+                final Map<Allele, Allele> alleleMap = new LinkedHashMap<>();
                 alleleMap.put(vc.getReference(), newRefAllele);
                 alleleMap.put(vc.getAlternateAllele(0), newAltAllele);
                 final GenotypesContext newGenotypes = updateGenotypesWithMappedAlleles(vc.getGenotypes(), new AlleleMapper(alleleMap));

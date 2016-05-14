@@ -32,7 +32,7 @@ public final class SampleListUnitTester {
     public static void assertSampleList(final SampleList actual, final List<String> expected) {
         if (expected == null)
             throw new IllegalArgumentException("the expected list cannot be null");
-        final Set<String> expectedNames = new HashSet<>(expected.size());
+        final Set<String> expectedNames = new LinkedHashSet<>(expected.size());
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.numberOfSamples(), expected.size());
         for (int i = 0; i < expected.size(); i++) {

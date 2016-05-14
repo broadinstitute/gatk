@@ -141,7 +141,7 @@ public class PedReaderUnitTest extends BaseTest {
         PedReader reader = new PedReader();
         SampleDB sampleDB = new SampleDB();
         List<Sample> readSamples = reader.parse(myFileContents, missing, sampleDB);
-        Assert.assertEquals(new HashSet<Sample>(test.expectedSamples), new HashSet<Sample>(readSamples));
+        Assert.assertEquals(new LinkedHashSet<Sample>(test.expectedSamples), new LinkedHashSet<Sample>(readSamples));
     }
 
     @Test(enabled = true, dataProvider = "readerTest")

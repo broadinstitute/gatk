@@ -203,7 +203,7 @@ public final class VariantFiltration extends VariantWalker {
         writer = new VariantContextWriterBuilder().setOutputFile(out).setOutputFileType(VariantContextWriterBuilder.OutputType.VCF).unsetOption(Options.INDEX_ON_THE_FLY).build();
 
         // setup the header fields
-        final Set<VCFHeaderLine> hInfo = new HashSet<>();
+        final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
 
         if ( clusterWindow > 0 ) {

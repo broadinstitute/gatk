@@ -22,7 +22,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -125,7 +125,7 @@ public final class SplitReads extends ReadWalker {
      * @return A map of file name keys to SAMFileWriter.
      */
     private Map<String, SAMFileGATKReadWriter> createWriters(final List<ReaderSplitter<?>> splitters) {
-        final Map<String, SAMFileGATKReadWriter> outs = new HashMap<>();
+        final Map<String, SAMFileGATKReadWriter> outs = new LinkedHashMap<>();
 
         final SAMFileWriterFactory samFileWriterFactory = new SAMFileWriterFactory();
         final SAMFileHeader samFileHeaderIn = getHeaderForReads();

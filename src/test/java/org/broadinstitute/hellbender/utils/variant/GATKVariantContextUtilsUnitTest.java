@@ -63,7 +63,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
     }
 
     private VariantContext makeVC(String source, List<Allele> alleles, String filter) {
-        return makeVC(source, alleles, filter.equals(".") ? null : new HashSet<>(Arrays.asList(filter)));
+        return makeVC(source, alleles, filter.equals(".") ? null : new LinkedHashSet<>(Arrays.asList(filter)));
     }
 
     private VariantContext makeVC(String source, List<Allele> alleles, Set<String> filters) {
@@ -186,7 +186,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
                 GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, "set", false, false);
 
         Assert.assertEquals(merged.getAlleles().size(),cfg.expected.size());
-        Assert.assertEquals(new HashSet<>(merged.getAlleles()), new HashSet<>(cfg.expected));   //HACK this is a hack to get around a bug in the htsjdk.  The method returns a list with an unspecified order.
+        Assert.assertEquals(new LinkedHashSet<>(merged.getAlleles()), new LinkedHashSet<>(cfg.expected));   //HACK this is a hack to get around a bug in the htsjdk.  The method returns a list with an unspecified order.
     }
 
     // --------------------------------------------------------------------------------
@@ -540,7 +540,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
                 GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY, false, false, "set", false, false);
 
         // test genotypes
-        Assert.assertEquals(merged.getSampleNames(), new HashSet<>(Arrays.asList("s1.1", "s1.2")));
+        Assert.assertEquals(merged.getSampleNames(), new LinkedHashSet<>(Arrays.asList("s1.1", "s1.2")));
     }
 
 // TODO: remove after testing
@@ -1079,7 +1079,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         for ( final byte base1 : BaseUtils.BASES ) {
             for ( final byte base2 : BaseUtils.BASES ) {
                 for ( final int numGenotypes : Arrays.asList(0, 1, 2, 5) ) {
-                    Map<Allele, Allele> map = new HashMap<>(2);
+                    Map<Allele, Allele> map = new LinkedHashMap<>(2);
                     map.put(originalBase1, Allele.create(base1));
                     map.put(originalBase2, Allele.create(base2));
 
@@ -1279,7 +1279,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         final double[] logLikelhoods = MathUtils.normalizeFromLog10(likelihoods, true, false);
         GATKVariantContextUtils.updateGenotypeAfterSubsetting(originalGT, gb, mode, logLikelhoods, allelesToUse);
         final Genotype g = gb.make();
-        Assert.assertEquals(new HashSet<>(g.getAlleles()), new HashSet<>(expectedAlleles));
+        Assert.assertEquals(new LinkedHashSet<>(g.getAlleles()), new LinkedHashSet<>(expectedAlleles));
     }
 
     @Test()

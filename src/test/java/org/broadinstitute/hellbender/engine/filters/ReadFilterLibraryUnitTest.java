@@ -453,7 +453,7 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(header);
         PlatformReadFilter f = new PlatformReadFilter(header);
 
-        f.PLFilterNames = new HashSet<>(Arrays.asList("PL1", "PL2"));
+        f.PLFilterNames = new LinkedHashSet<>(Arrays.asList("PL1", "PL2"));
         header.getReadGroup(read.getReadGroup()).setPlatform("PL1");
         Assert.assertTrue(f.test(read), read.toString());//pass
 
@@ -463,7 +463,7 @@ public final class ReadFilterLibraryUnitTest {
         header.getReadGroup(read.getReadGroup()).setPlatform("prefix pl1 suffix");  //not exact matching
         Assert.assertTrue(f.test(read), read.toString());//pass
 
-        f.PLFilterNames = new HashSet<>(Arrays.asList("Fred"));
+        f.PLFilterNames = new LinkedHashSet<>(Arrays.asList("Fred"));
         header.getReadGroup(read.getReadGroup()).setPlatform("PL1");
         Assert.assertFalse(f.test(read), read.toString());//fail
     }
@@ -551,7 +551,7 @@ public final class ReadFilterLibraryUnitTest {
         header.getReadGroup(read.getReadGroup()).setSample(fred.toUpperCase());
         Assert.assertFalse(f.test(read), read.toString());//fail - case sensitive matching
 
-        f.samplesToKeep = new HashSet<>(Arrays.asList(fred, "bozo"));
+        f.samplesToKeep = new LinkedHashSet<>(Arrays.asList(fred, "bozo"));
         header.getReadGroup(read.getReadGroup()).setSample(fred);
         Assert.assertTrue(f.test(read), read.toString());//pass
     }
@@ -604,7 +604,7 @@ public final class ReadFilterLibraryUnitTest {
         header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred.toUpperCase());
         Assert.assertTrue(f.test(read), read.toString());//pass - case sensitive matching
 
-        f.blackListedLanes = new HashSet<>(Arrays.asList(fred, "bozo"));
+        f.blackListedLanes = new LinkedHashSet<>(Arrays.asList(fred, "bozo"));
         header.getReadGroup(read.getReadGroup()).setPlatformUnit(fred);
         Assert.assertFalse(f.test(read), read.toString());//fail
 

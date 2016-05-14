@@ -84,29 +84,29 @@ public final class InsertSizeMetricsCollectorSparkUnitTest {
                                                                                                                          null,
                                                                                                                          MetricAccumulationLevel.ALL_READS);
 
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup1A = new HashMap<>();
+        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup1A = new LinkedHashMap<>();
         final SortedMap<Integer, Long> testHist1A = new TreeMap<>();
         testHist1A.put(1,2L);
         testHist1A.put(3,4L);
         histogramsOfReadGroup1A.put(SamPairUtil.PairOrientation.FR, testHist1A);
 
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup1B = new HashMap<>();
+        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup1B = new LinkedHashMap<>();
         final SortedMap<Integer, Long> testHist1B = new TreeMap<>();
         testHist1B.put(50,60L);
         histogramsOfReadGroup1B.put(SamPairUtil.PairOrientation.FR, testHist1B);
 
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup2 = new HashMap<>();
+        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup2 = new LinkedHashMap<>();
         final SortedMap<Integer, Long> testHist2 = new TreeMap<>();
         testHist2.put(100,200L);
         testHist2.put(1,  500L);
         histogramsOfReadGroup2.put(SamPairUtil.PairOrientation.FR, testHist2);
 
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> histogramsOfAllTestReadGroups = new HashMap<>();
+        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> histogramsOfAllTestReadGroups = new LinkedHashMap<>();
         histogramsOfAllTestReadGroups.put(readGroup1A, histogramsOfReadGroup1A);
         histogramsOfAllTestReadGroups.put(readGroup1B, histogramsOfReadGroup1B);
         histogramsOfAllTestReadGroups.put(readGroup2 , histogramsOfReadGroup2 );
 
-        final Set<MetricAccumulationLevel> accumLevels = Sets.newHashSet(MetricAccumulationLevel.READ_GROUP, MetricAccumulationLevel.LIBRARY, MetricAccumulationLevel.SAMPLE, MetricAccumulationLevel.ALL_READS);
+        final Set<MetricAccumulationLevel> accumLevels = Sets.newLinkedHashSet(Sets.newHashSet(MetricAccumulationLevel.READ_GROUP, MetricAccumulationLevel.LIBRARY, MetricAccumulationLevel.SAMPLE, MetricAccumulationLevel.ALL_READS));
         final ArrayList<Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>> listOfResults = InsertSizeMetricsCollectorSpark.aggregateHistograms(histogramsOfAllTestReadGroups, accumLevels);
 
         int sz = 0;
@@ -162,15 +162,15 @@ public final class InsertSizeMetricsCollectorSparkUnitTest {
         hist.put(41, 4L);
         hist.put(44, 2L);
         hist.put(45, 1L);
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> testHist = new HashMap<>();
-        Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> FRMap = new HashMap<>();
+        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> testHist = new LinkedHashMap<>();
+        Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> FRMap = new LinkedHashMap<>();
         FRMap.put(SamPairUtil.PairOrientation.FR, hist);
         testHist.put(testGroup, FRMap);
 
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>> testHTSJDKHistogram = new HashMap<>();
+        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>> testHTSJDKHistogram = new LinkedHashMap<>();
         Histogram<Integer> htsjdkHistogram = new Histogram<>("dummy", "test");
         InsertSizeMetrics metrics = new InsertSizeMetrics();
-        Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>> FRHist = new HashMap<>();
+        Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>> FRHist = new LinkedHashMap<>();
         FRHist.put(SamPairUtil.PairOrientation.FR, new Tuple2<>(htsjdkHistogram, metrics));
 
         testHTSJDKHistogram.put(testGroup, FRHist);

@@ -64,8 +64,8 @@ public final class CigarConversionUtils {
     static {
         // Populate cigar operator lookup tables
 
-        Map<String, CigarOperator> ga4ghToSAMOperatorTableLocal = new HashMap<>(CIGAR_UNIT_OPERATORS.size() * 2);
-        Map<CigarOperator, String> samToGA4GHOperatorTableLocal = new HashMap<>(CIGAR_UNIT_OPERATORS.size() * 2);
+        Map<String, CigarOperator> ga4ghToSAMOperatorTableLocal = new LinkedHashMap<>(CIGAR_UNIT_OPERATORS.size() * 2);
+        Map<CigarOperator, String> samToGA4GHOperatorTableLocal = new LinkedHashMap<>(CIGAR_UNIT_OPERATORS.size() * 2);
 
         for ( int i = 0; i < CIGAR_UNIT_OPERATORS.size(); ++i ) {
             ga4ghToSAMOperatorTableLocal.put(CIGAR_UNIT_OPERATORS.get(i), SAM_CIGAR_ELEMENT_OPERATORS.get(i));

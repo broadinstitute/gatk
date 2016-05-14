@@ -26,6 +26,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Computes a number of metrics that are useful for evaluating coverage and performance of whole genome sequencing experiments.
@@ -171,7 +172,7 @@ public final class CollectWgsMetrics extends PicardCommandLineProgram {
             if (base == 'N') continue;
 
             // Figure out the coverage while not counting overlapping reads twice, and excluding various things
-            final HashSet<String> readNames = new HashSet<>(info.getRecordAndPositions().size());
+            final Set<String> readNames = new HashSet<>(info.getRecordAndPositions().size());
             int pileupSize = 0;
             for (final SamLocusIterator.RecordAndOffset recs : info.getRecordAndPositions()) {
 

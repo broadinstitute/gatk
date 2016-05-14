@@ -50,9 +50,9 @@ public class JoinReadsWithVariantsSparkUnitTest extends BaseTest {
         for (KV<GATKRead, Iterable<GATKVariant>> kv : kvReadiVariant) {
             List<GATKVariant> variants = Lists.newArrayList(gatkReadIterableMap.get(kv.getKey()));
             Assert.assertTrue(variants.stream().noneMatch( v -> v == null));
-            HashSet<GATKVariant> hashVariants = new HashSet<>(variants);
+            HashSet<GATKVariant> hashVariants = new LinkedHashSet<>(variants);
             final Iterable<GATKVariant> iVariants = kv.getValue();
-            HashSet<GATKVariant> expectedHashVariants = Sets.newHashSet(iVariants);
+            HashSet<GATKVariant> expectedHashVariants = Sets.newLinkedHashSet(iVariants);
             Assert.assertEquals(hashVariants, expectedHashVariants);
         }
     }

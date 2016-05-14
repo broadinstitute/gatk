@@ -61,7 +61,7 @@ public final class GATKReportTable {
     private final List<Object[]> underlyingData;
     private final List<GATKReportColumn> columnInfo;
     private final Map<Object, Integer> columnNameToIndex;
-    private final HashMap<Object, Integer> rowIdToIndex;
+    private final Map<Object, Integer> rowIdToIndex;
 
     private static final String COULD_NOT_READ_HEADER = "Could not read the header of this file -- ";
     private static final String COULD_NOT_READ_COLUMN_NAMES = "Could not read the column names of this file -- ";
@@ -128,10 +128,10 @@ public final class GATKReportTable {
                 final int nRows = Integer.parseInt(tableData[TableDataHeaderFields.ROWS.index()]);
                 underlyingData = new ArrayList<>(nRows);
                 columnInfo = new ArrayList<>(nColumns);
-                columnNameToIndex = new HashMap<>(nColumns);
+                columnNameToIndex = new LinkedHashMap<>(nColumns);
 
                 // when reading from a file, the row ID mapping is just the index
-                rowIdToIndex = new HashMap<>();
+                rowIdToIndex = new LinkedHashMap<>();
                 for ( int i = 0; i < nRows; i++ )
                     rowIdToIndex.put(i, i);
 
@@ -221,8 +221,8 @@ public final class GATKReportTable {
 
         underlyingData = new ArrayList<>(INITITAL_ARRAY_SIZE);
         columnInfo = new ArrayList<>(numColumns);
-        columnNameToIndex = new HashMap<>(numColumns);
-        rowIdToIndex = new HashMap<>();
+        columnNameToIndex = new LinkedHashMap<>(numColumns);
+        rowIdToIndex = new LinkedHashMap<>();
     }
 
     /**

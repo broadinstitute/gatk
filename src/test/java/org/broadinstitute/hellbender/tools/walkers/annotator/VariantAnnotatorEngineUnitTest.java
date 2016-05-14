@@ -413,7 +413,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
     public void testAnnotationsHaveDescriptions() throws Exception {
 
         Set<String> sampleSet = Collections.singleton("FRED");
-        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+        final Set<VCFHeaderLine> headerInfo = new LinkedHashSet<>();
         final List<String> annotationsToExclude= Collections.emptyList();
         final FeatureInput<VariantContext> dbSNPBinding = null;
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();

@@ -46,14 +46,14 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         if ( g == null || !g.isCalled() || alleleLikelihoodMap == null || alleleLikelihoodMap.isEmpty()) {
             return;
         }
-        final Set<Allele> alleles = new HashSet<>(vc.getAlleles());
+        final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
 
         // make sure that there's a meaningful relationship between the alleles in the perReadAlleleLikelihoodMap and our VariantContext
         if ( ! alleleLikelihoodMap.getAllelesSet().containsAll(alleles) ) {
             throw new IllegalStateException("VC alleles " + alleles + " not a strict subset of per read allele map alleles " + alleleLikelihoodMap.getAllelesSet());
         }
 
-        final Map<Allele, Integer> alleleCounts = new HashMap<>();
+        final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
             alleleCounts.put(allele, 0);
         }

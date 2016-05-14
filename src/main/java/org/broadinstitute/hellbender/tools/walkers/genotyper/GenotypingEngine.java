@@ -168,7 +168,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     }
 
     public Set<VCFInfoHeaderLine> getAppropriateVCFInfoHeaders() {
-        final Set<VCFInfoHeaderLine> headerInfo = new HashSet<>();
+        final Set<VCFInfoHeaderLine> headerInfo = new LinkedHashSet<>();
         if ( configuration.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED ) {
             headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY));
         }
@@ -471,7 +471,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             if ( !Allele.acceptableAlleleBases(new byte[]{ref.getBase()}) ) {
                 return null;
             }
-            final Set<Allele> alleles = new HashSet<>(Collections.singleton(Allele.create(ref.getBase(),true)));
+            final Set<Allele> alleles = new LinkedHashSet<>(Collections.singleton(Allele.create(ref.getBase(),true)));
             vc = new VariantContextBuilder(callSourceString(), ref.getInterval().getContig(),
                     ref.getInterval().getStart(), ref.getInterval().getStart(), alleles).make();
         }
@@ -587,7 +587,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                                                        final AlignmentContext rawContext, final Map<String, AlignmentContext> stratifiedContexts, final FeatureContext tracker, final ReferenceContext refContext, final List<Integer> alleleCountsofMLE, final boolean bestGuessIsRef,
                                                        final AFCalculationResult AFresult, final List<Allele> allAllelesToUse, final GenotypesContext genotypes,
                                                        final GenotypeLikelihoodsCalculationModel model, final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
-        final HashMap<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> attributes = new LinkedHashMap<>();
 
         final boolean limitedContext = tracker == null || refContext == null || rawContext == null || stratifiedContexts == null;
 

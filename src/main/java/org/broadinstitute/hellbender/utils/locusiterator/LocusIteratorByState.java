@@ -279,7 +279,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
             readStates.collectPendingReads();
 
             final Locatable location = getLocation();
-            final Map<String, ReadPileup> fullPileupPerSample = new HashMap<>();
+            final Map<String, ReadPileup> fullPileupPerSample = new LinkedHashMap<>();
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates ) {
                 final String sample = sampleStatePair.getKey();
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();

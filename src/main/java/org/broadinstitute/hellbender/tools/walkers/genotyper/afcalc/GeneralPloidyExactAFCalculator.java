@@ -47,7 +47,7 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
         CombinedPoolLikelihoods() {
             // final int numElements = GenotypeLikelihoods.numLikelihoods();
             alleleCountSetList = new LinkedList<>();
-            conformationMap = new HashMap<>();
+            conformationMap = new LinkedHashMap<>();
             maxLikelihood = Double.NEGATIVE_INFINITY;
         }
 
@@ -165,7 +165,7 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
                                                                final StateTracker stateTracker) {
         final Deque<ExactACset> ACqueue = new LinkedList<>();
         // mapping of ExactACset indexes to the objects
-        final Map<ExactACcounts, ExactACset> indexesToACset = new HashMap<>();
+        final Map<ExactACcounts, ExactACset> indexesToACset = new LinkedHashMap<>();
         final CombinedPoolLikelihoods newPool = new CombinedPoolLikelihoods();
 
         // add AC=0 to the queue

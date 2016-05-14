@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -17,7 +17,7 @@ public final class PlatformUnitReadFilter implements ReadFilter {
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = "blackListedLanes", shortName = "blackListedLanes", doc="Keep reads with platform units not on the list", optional=true)
-    public Set<String> blackListedLanes = new HashSet<>();
+    public Set<String> blackListedLanes = new LinkedHashSet<>();
 
     private final SAMFileHeader header;
 

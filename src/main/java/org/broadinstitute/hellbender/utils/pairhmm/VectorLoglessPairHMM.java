@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +31,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
 
     //Hold the mapping between haplotype and index in the list of Haplotypes passed to initialize
     //Use this mapping in computeLikelihoods to find the likelihood value corresponding to a given Haplotype
-    HashMap<Haplotype, Integer> haplotypeToHaplotypeListIdxMap = new HashMap<>();
+    Map<Haplotype, Integer> haplotypeToHaplotypeListIdxMap = new LinkedHashMap<>();
     JNIHaplotypeDataHolderClass[] mHaplotypeDataArray;
 
     //Used to copy references to byteArrays to JNI from reads
@@ -125,7 +125,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
         }
     }
 
-    public HashMap<Haplotype, Integer> getHaplotypeToHaplotypeListIdxMap() {
+    public Map<Haplotype, Integer> getHaplotypeToHaplotypeListIdxMap() {
         return haplotypeToHaplotypeListIdxMap;
     }
 

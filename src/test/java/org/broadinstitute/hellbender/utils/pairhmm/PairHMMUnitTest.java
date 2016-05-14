@@ -592,7 +592,7 @@ public final class PairHMMUnitTest extends BaseTest {
     }
 
     private static Map<GATKRead, byte[]> buildGapContinuationPenalties(final List<GATKRead> processedReads, final byte gcp) {
-        final Map<GATKRead,byte[]> result = new HashMap<>(processedReads.size());
+        final Map<GATKRead,byte[]> result = new LinkedHashMap<>(processedReads.size());
         for (final GATKRead read : processedReads) {
             final byte[] readGcpArray = new byte[read.getLength()];
             Arrays.fill(readGcpArray,gcp);

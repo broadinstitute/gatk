@@ -24,13 +24,13 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
      * @param loc Locatables, not necessarily sorted. Will be iterated over exactly once.
      */
     public IntervalsSkipList(final Iterable<T> loc) {
-        final Map<String, List<T>> variantsPerContig = new HashMap<>();
+        final Map<String, List<T>> variantsPerContig = new LinkedHashMap<>();
         for (final T v : loc) {
             final String k = v.getContig();
             variantsPerContig.putIfAbsent(k, new ArrayList<>());
             variantsPerContig.get(k).add(v);
         }
-        intervals = new HashMap<>();
+        intervals = new LinkedHashMap<>();
         for (String k : variantsPerContig.keySet()) {
             intervals.put(k, new IntervalsSkipListOneContig<>(variantsPerContig.get(k)));
         }

@@ -292,8 +292,8 @@ public final class SamAssertionUtils {
         final List<SAMRecord.SAMTagAndValue> expectedAttributes = expectedRead.getAttributes();
 
         //We want to compare attributes regardless of order, so we put them in a map
-        final Map<String, Object> actualAttributesByName = new HashMap<>();
-        final Map<String, Object> expectedAttributesByName = new HashMap<>();
+        final Map<String, Object> actualAttributesByName = new LinkedHashMap<>();
+        final Map<String, Object> expectedAttributesByName = new LinkedHashMap<>();
 
         for (final SAMRecord.SAMTagAndValue samTagAndValue : actualAttributes) {
             actualAttributesByName.put(samTagAndValue.tag, samTagAndValue.value);

@@ -97,7 +97,7 @@ public final class FragmentCollection<T> {
                     nameMap.remove(readName);
                 } else {
                     if ( nameMap == null ) {
-                        nameMap = new HashMap<>(nElements); // lazy init
+                        nameMap = new LinkedHashMap<>(nElements); // lazy init
                     }
                     nameMap.put(readName, p);
                 }

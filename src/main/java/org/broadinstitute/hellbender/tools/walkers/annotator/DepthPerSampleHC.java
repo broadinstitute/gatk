@@ -64,7 +64,7 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
 
         // there are reads
         if ( !alleleLikelihoodMap.isEmpty() ) {
-            final Set<Allele> alleles = new HashSet<>(vc.getAlleles());
+            final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
 
             // make sure that there's a meaningful relationship between the alleles in the perReadAlleleLikelihoodMap and our VariantContext
             if ( !alleleLikelihoodMap.getAllelesSet().containsAll(alleles) ) {

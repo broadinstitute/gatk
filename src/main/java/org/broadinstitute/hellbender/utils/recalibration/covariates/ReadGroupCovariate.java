@@ -28,8 +28,8 @@ public final class ReadGroupCovariate implements Covariate {
     private final Map<Integer, String> readGroupReverseLookupTable;
 
     public ReadGroupCovariate(final RecalibrationArgumentCollection RAC, final List<String> readGroups){
-        final Map<String, Integer> rgLookupTable = new HashMap<>();
-        final Map<Integer, String> rgReverseLookupTable = new HashMap<>();
+        final Map<String, Integer> rgLookupTable = new LinkedHashMap<>();
+        final Map<Integer, String> rgReverseLookupTable = new LinkedHashMap<>();
 
         readGroups.forEach(
                 readGroupId -> {

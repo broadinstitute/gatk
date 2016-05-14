@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
 import scala.Tuple2;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -106,7 +105,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         }
         if (printSummary) {
             MatchType[] values = MatchType.values();
-            HashSet<MatchType> matchTypes = Sets.newHashSet(values);
+            Set<MatchType> matchTypes = Sets.newLinkedHashSet(Sets.newHashSet(values));
             System.out.println("##############################");
             matchTypes.forEach(s -> System.out.println(s + ": " + tagCountMap.getOrDefault(s, 0)));
         }
@@ -138,8 +137,8 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
         first.sort(new ReadCoordinateComparator(header));
         second.sort(new ReadCoordinateComparator(header));
 
-        Set<GATKRead> firstDupes = Sets.newHashSet();
-        Set<GATKRead> secondDupes = Sets.newHashSet();
+        Set<GATKRead> firstDupes = Sets.newLinkedHashSet();
+        Set<GATKRead> secondDupes = Sets.newLinkedHashSet();
         for (int i = 0; i < size; ++i) {
             GATKRead firstRead = first.get(i);
             GATKRead secondRead = second.get(i);

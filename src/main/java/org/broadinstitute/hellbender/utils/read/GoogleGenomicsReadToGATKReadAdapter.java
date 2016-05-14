@@ -723,7 +723,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             genomicsRead.setAlignedQuality(new ArrayList<>(alignedQuality));
         }
         if (null!=genomicsRead.getInfo()) {
-            Map<String, List<String>> infoCopy = new HashMap<>();
+            Map<String, List<String>> infoCopy = new LinkedHashMap<>();
             for (Map.Entry<String, List<String>> entry : genomicsRead.getInfo().entrySet()) {
                 infoCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
             }

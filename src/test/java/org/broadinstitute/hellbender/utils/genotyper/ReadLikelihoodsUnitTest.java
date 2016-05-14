@@ -102,7 +102,7 @@ public final class ReadLikelihoodsUnitTest {
     public void testBestAlleleMap(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
         final ReadLikelihoods<Allele> original = new ReadLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
         fillWithRandomLikelihoods(samples,alleles,original);
-        final Map<Allele,List<GATKRead>> expected = new HashMap<>(alleles.length);
+        final Map<Allele,List<GATKRead>> expected = new LinkedHashMap<>(alleles.length);
         for (final Allele allele : alleles)
             expected.put(allele,new ArrayList<>());
 
@@ -135,8 +135,8 @@ public final class ReadLikelihoodsUnitTest {
         for (final Allele allele : alleles) {
             final List<GATKRead> expectedList = expected.get(allele);
             final List<GATKRead> actualList = actual.get(allele);
-            final Set<GATKRead> expectedSet = new HashSet<>(expectedList);
-            final Set<GATKRead> actualSet = new HashSet<>(actualList);
+            final Set<GATKRead> expectedSet = new LinkedHashSet<>(expectedList);
+            final Set<GATKRead> actualSet = new LinkedHashSet<>(actualList);
             Assert.assertEquals(actualSet, expectedSet);
         }
     }
@@ -440,7 +440,7 @@ public final class ReadLikelihoodsUnitTest {
     }
 
     private void testAlleleQueries(Allele[] alleles, ReadLikelihoods<Allele> result) {
-        final Set<Integer> alleleIndices = new HashSet<>();
+        final Set<Integer> alleleIndices = new LinkedHashSet<>();
         for (final Allele allele : alleles) {
             final int indexOfAllele = result.indexOfAllele(allele);
             Assert.assertTrue(indexOfAllele >= 0);
@@ -451,7 +451,7 @@ public final class ReadLikelihoodsUnitTest {
     }
 
     private void testSampleQueries(String[] samples, Map<String, List<GATKRead>> reads, ReadLikelihoods<Allele> result) {
-        final Set<Integer> sampleIds = new HashSet<>(samples.length);
+        final Set<Integer> sampleIds = new LinkedHashSet<>(samples.length);
         for (final String sample : samples) {
             final int indexOfSample = result.indexOfSample(sample);
             Assert.assertTrue(indexOfSample >= 0);
@@ -459,9 +459,9 @@ public final class ReadLikelihoodsUnitTest {
             sampleIds.add(indexOfSample);
 
             final List<GATKRead> sampleReads = result.sampleReads(indexOfSample);
-            final Set<GATKRead> sampleReadsSet = new HashSet<>(sampleReads);
+            final Set<GATKRead> sampleReadsSet = new LinkedHashSet<>(sampleReads);
             final List<GATKRead> expectedSampleReadArray = reads.get(sample);
-            final Set<GATKRead> expectedSampleReadsSet = new HashSet<>(expectedSampleReadArray);
+            final Set<GATKRead> expectedSampleReadsSet = new LinkedHashSet<>(expectedSampleReadArray);
             Assert.assertEquals(sampleReadsSet, expectedSampleReadsSet);
 
             final int sampleReadCount = sampleReads.size();
@@ -510,7 +510,7 @@ public final class ReadLikelihoodsUnitTest {
     }
 
     private Map<Allele,List<Allele>> randomAlleleMap(final Allele[] fromAlleles, final Allele[] toAlleles) {
-        final Map<Allele,List<Allele>> result = new HashMap<>(toAlleles.length);
+        final Map<Allele,List<Allele>> result = new LinkedHashMap<>(toAlleles.length);
         for (final Allele toAllele : toAlleles )
             result.put(toAllele, new ArrayList<>(fromAlleles.length));
         final ArrayList<Allele> remaining = new ArrayList<>(Arrays.asList(fromAlleles));
@@ -545,7 +545,7 @@ public final class ReadLikelihoodsUnitTest {
 
     private Map<String,List<GATKRead>> dataSetReads(final String[] samples,
                                                          final Random rnd) {
-        final Map<String,List<GATKRead>> result = new HashMap<>(samples.length);
+        final Map<String,List<GATKRead>> result = new LinkedHashMap<>(samples.length);
         for (final String sample : samples) {
             final int readCount = rnd.nextInt(100);
             final List<GATKRead> reads = new ArrayList<>(readCount);
@@ -647,9 +647,9 @@ public final class ReadLikelihoodsUnitTest {
         final AlleleList<Allele> alleleList = alleleList(numberOfAlleles,hasReference);
         final Map<String,List<GATKRead>> sampleToReads = ReadLikelihoodsUnitTester.sampleToReads(sampleList, readCounts);
 
-        final Set<Allele> alleleWithLikelihoodsSet = new HashSet<>();
-        final Set<GATKRead> readsWithLikelihoodsSet = new HashSet<>();
-        final Map<String,PerReadAlleleLikelihoodMap> map = new HashMap<>(sampleList.numberOfSamples());
+        final Set<Allele> alleleWithLikelihoodsSet = new LinkedHashSet<>();
+        final Set<GATKRead> readsWithLikelihoodsSet = new LinkedHashSet<>();
+        final Map<String,PerReadAlleleLikelihoodMap> map = new LinkedHashMap<>(sampleList.numberOfSamples());
         final int numberOfSamples = sampleList.numberOfSamples();
         for (int s = 0; s < numberOfSamples; s++) {
             final String sample = sampleList.getSample(s);
@@ -723,7 +723,7 @@ public final class ReadLikelihoodsUnitTest {
     }
 
     private void testAlleleQueries(final AlleleList<Allele> alleles, ReadLikelihoods<Allele> result) {
-        final Set<Integer> alleleIndices = new HashSet<>();
+        final Set<Integer> alleleIndices = new LinkedHashSet<>();
         for (final Allele allele : alleles.asListOfAlleles()) {
             final int indexOfAllele = result.indexOfAllele(allele);
             Assert.assertTrue(indexOfAllele >= 0);
@@ -735,7 +735,7 @@ public final class ReadLikelihoodsUnitTest {
 
     private void testSampleQueries(final SampleList samples, Map<String, List<GATKRead>> reads,
                                    final ReadLikelihoods<Allele> result) {
-        final Set<Integer> sampleIds = new HashSet<>(samples.numberOfSamples());
+        final Set<Integer> sampleIds = new LinkedHashSet<>(samples.numberOfSamples());
         for (final String sample : samples.asListOfSamples()) {
             final int indexOfSample = result.indexOfSample(sample);
             Assert.assertTrue(indexOfSample >= 0);
@@ -743,9 +743,9 @@ public final class ReadLikelihoodsUnitTest {
             sampleIds.add(indexOfSample);
 
             final List<GATKRead> sampleReads = result.sampleReads(indexOfSample);
-            final Set<GATKRead> sampleReadsSet = new HashSet<>(sampleReads);
+            final Set<GATKRead> sampleReadsSet = new LinkedHashSet<>(sampleReads);
             final List<GATKRead> expectedSampleReadArray = reads.get(sample);
-            final Set<GATKRead> expectedSampleReadsSet = new HashSet<>(expectedSampleReadArray);
+            final Set<GATKRead> expectedSampleReadsSet = new LinkedHashSet<>(expectedSampleReadArray);
             Assert.assertEquals(sampleReadsSet, expectedSampleReadsSet);
 
             final int sampleReadCount = sampleReads.size();

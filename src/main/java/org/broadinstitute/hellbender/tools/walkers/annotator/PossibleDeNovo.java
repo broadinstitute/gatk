@@ -36,7 +36,7 @@ import java.util.*;
 public final class PossibleDeNovo extends InfoFieldAnnotation {
 
     public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
-        this.trios = Collections.unmodifiableSet(new HashSet<>(trios));
+        this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
         if ( trios.isEmpty() ) {
             PossibleDeNovo.logger.warn("Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
         }
@@ -97,7 +97,7 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
         final double AFcutoff = Math.max(flatNumberOfSamplesCutoff, percentNumberOfSamplesCutoff);
         final int deNovoAlleleCount = vc.getCalledChrCount(vc.getAlternateAllele(0)); //we assume we're biallelic above so use the first alt
 
-        final Map<String,Object> attributeMap = new HashMap<>(2);
+        final Map<String,Object> attributeMap = new LinkedHashMap<>(2);
         if ( !highConfDeNovoChildren.isEmpty()  && deNovoAlleleCount < AFcutoff ) {
             attributeMap.put(GATKVCFConstants.HI_CONF_DENOVO_KEY, highConfDeNovoChildren);
         }

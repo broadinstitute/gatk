@@ -55,7 +55,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
             }
         }
 
-        Assert.assertEquals(perReadAlleleLikelihoodMap.getAllelesSet(), new HashSet<>(allAlleles));
+        Assert.assertEquals(perReadAlleleLikelihoodMap.getAllelesSet(), new LinkedHashSet<>(allAlleles));
         Assert.assertEquals(perReadAlleleLikelihoodMap.size(), pileup.size());
         Assert.assertEquals(perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap().keySet().size(), 3);
         Map<Allele,List<GATKRead>> shouldBeAllA = perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap();
@@ -118,7 +118,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
             }
         }
 
-        Assert.assertEquals(perReadAlleleLikelihoodMap.getAllelesSet(), new HashSet<>(allAlleles));
+        Assert.assertEquals(perReadAlleleLikelihoodMap.getAllelesSet(), new LinkedHashSet<>(allAlleles));
         Assert.assertEquals(perReadAlleleLikelihoodMap.size(), pileup.size());
         Assert.assertEquals(perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap().keySet().size(), 3);
         Map<Allele,List<GATKRead>> shouldBeAllA = perReadAlleleLikelihoodMap.getAlleleStratifiedReadMap();
@@ -133,7 +133,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
         Assert.assertNotNull(perReadAlleleLikelihoodMap.toString());//just checking non-null results. The contents are only human readible.
 
         final Set<Allele> allelesSet = perReadAlleleLikelihoodMap.getAllelesSet();
-        Assert.assertEquals(allelesSet, new HashSet<>(Arrays.asList(base_A, base_C, base_T)));
+        Assert.assertEquals(allelesSet, new LinkedHashSet<>(Arrays.asList(base_A, base_C, base_T)));
 
         final int oldSize = perReadAlleleLikelihoodMap.size();
         perReadAlleleLikelihoodMap.performPerAlleleDownsampling(-0.5); //no-op
@@ -383,8 +383,8 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
     @Test(dataProvider = "RemovingPoorlyModelledReadData")
     public void testRemovingPoorlyModelledReads(final int readLen, final int nReads, final int nBad, final int nGood) {
         final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
-        final Set<GATKRead> goodReads = new HashSet<>();
-        final Set<GATKRead> badReads = new HashSet<>();
+        final Set<GATKRead> goodReads = new LinkedHashSet<>();
+        final Set<GATKRead> badReads = new LinkedHashSet<>();
         for ( int readI = 0; readI < nReads; readI++ ) {
             final boolean bad = readI < nBad;
             final double likelihood = bad ? -100.0 : 0.0;
@@ -402,7 +402,7 @@ public final class PerReadAlleleLikelihoodMapUnitTest extends BaseTest {
 
         final List<GATKRead> removedReads = map.filterPoorlyModelledReads(0.01);
         Assert.assertEquals(removedReads.size(), nBad, "nBad " + nBad + " nGood " + nGood);
-        Assert.assertEquals(new HashSet<>(removedReads), badReads, "nBad " + nBad + " nGood " + nGood);
+        Assert.assertEquals(new LinkedHashSet<>(removedReads), badReads, "nBad " + nBad + " nGood " + nGood);
         Assert.assertEquals(map.size(), nGood, "nBad " + nBad + " nGood " + nGood);
         Assert.assertTrue(map.getReads().containsAll(goodReads), "nBad " + nBad + " nGood " + nGood);
         Assert.assertEquals(map.getReads().size(), nGood, "nBad " + nBad + " nGood " + nGood);

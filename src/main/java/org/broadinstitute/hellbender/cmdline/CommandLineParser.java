@@ -23,8 +23,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,7 +72,7 @@ public final class CommandLineParser {
     public static final String POSITIONAL_ARGUMENTS_NAME = "Positional Argument";
 
 
-    private final Set<String> argumentsFilesLoadedAlready = new HashSet<>();
+    private final Set<String> argumentsFilesLoadedAlready = new LinkedHashSet<>();
 
     /**
      * A typical command line program will call this to get the beginning of the usage message,
@@ -117,7 +117,7 @@ public final class CommandLineParser {
 
     // Maps long name, and short name, if present, to an argument definition that is
     // also in the argumentDefinitions list.
-    private final Map<String, ArgumentDefinition> argumentMap = new HashMap<>();
+    private final Map<String, ArgumentDefinition> argumentMap = new LinkedHashMap<>();
 
     // In case implementation wants to get at arg for some reason.
     private String[] argv;
@@ -823,7 +823,7 @@ public final class CommandLineParser {
             this.isSpecial = annotation.special();
             this.isSensitive = annotation.sensitive();
 
-            this.mutuallyExclusive = new HashSet<>(Arrays.asList(annotation.mutex()));
+            this.mutuallyExclusive = new LinkedHashSet<>(Arrays.asList(annotation.mutex()));
 
             Object tmpDefault = getFieldValue();
             if (tmpDefault != null) {

@@ -89,7 +89,7 @@ public final class InbreedingCoeffUnitTest {
         final Map<String, Object> annots3 = new InbreedingCoeff(Collections.singleton("s1")).annotate(null, test2, null);
         Assert.assertNull(annots3);//not enough samples
 
-        final Map<String, Object> annots4 = new InbreedingCoeff(new HashSet<>(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"))).annotate(null, test2, null);
+        final Map<String, Object> annots4 = new InbreedingCoeff(new LinkedHashSet<>(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"))).annotate(null, test2, null);
         Assert.assertNull(annots4);//not enough samples
     }
 
@@ -119,7 +119,7 @@ public final class InbreedingCoeffUnitTest {
         );
 
 
-        final Map<String, Object> foundersOnly = new InbreedingCoeff(new HashSet<>(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"))).annotate(null, vc, null);
+        final Map<String, Object> foundersOnly = new InbreedingCoeff(new LinkedHashSet<>(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"))).annotate(null, vc, null);
         final double ICresultFoundersOnly = Double.valueOf((String) foundersOnly.get(GATKVCFConstants.INBREEDING_COEFFICIENT_KEY));
         Assert.assertEquals(ICresultFoundersOnly, -0.3333333, DELTA_PRECISION, "ICresultFoundersOnly");
 

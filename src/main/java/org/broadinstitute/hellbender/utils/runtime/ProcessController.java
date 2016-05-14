@@ -32,7 +32,7 @@ public final class ProcessController {
     private static enum ProcessStream {Stdout, Stderr}
 
     // Tracks running processes.
-    private static final Set<ProcessController> running = Collections.synchronizedSet(new HashSet<>());
+    private static final Set<ProcessController> running = Collections.synchronizedSet(new LinkedHashSet<>());
 
     // Tracks this running process.
     private Process process;
@@ -245,7 +245,7 @@ public final class ProcessController {
      */
     public static Set<ProcessController> getRunning() {
         synchronized (running) {
-            return new HashSet<>(running);
+            return new LinkedHashSet<>(running);
         }
     }
 

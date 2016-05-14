@@ -12,12 +12,10 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
-import static org.broadinstitute.hellbender.utils.read.ReadUtils.*;
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftEnd;
+import static org.broadinstitute.hellbender.utils.read.ReadUtils.getSoftStart;
 
 public final class ReadClipperUnitTest extends BaseTest {
     List<Cigar> cigarList;
@@ -348,7 +346,7 @@ public final class ReadClipperUnitTest extends BaseTest {
     }
 
     private class CigarCounter {
-        private HashMap<CigarOperator, Integer> counter;
+        private Map<CigarOperator, Integer> counter;
 
         public Integer getCounterForOp(CigarOperator operator) {
             return counter.get(operator);
@@ -356,7 +354,7 @@ public final class ReadClipperUnitTest extends BaseTest {
 
         public CigarCounter(GATKRead read) {
             CigarOperator[] operators = CigarOperator.values();
-            counter = new HashMap<>(operators.length);
+            counter = new LinkedHashMap<>(operators.length);
 
             for (CigarOperator op : operators)
                 counter.put(op, 0);

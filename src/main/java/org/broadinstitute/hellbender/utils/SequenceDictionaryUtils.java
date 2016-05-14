@@ -513,7 +513,7 @@ public class SequenceDictionaryUtils {
     }
 
     public static Set<String> getContigNames(SAMSequenceDictionary dict) {
-        Set<String> contigNames = new HashSet<String>(Utils.optimumHashSize(dict.size()));
+        Set<String> contigNames = new LinkedHashSet<String>(Utils.optimumHashSize(dict.size()));
         for (SAMSequenceRecord dictionaryEntry : dict.getSequences())
             contigNames.add(dictionaryEntry.getSequenceName());
         return contigNames;

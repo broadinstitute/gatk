@@ -110,7 +110,7 @@ public final class FeatureManager implements AutoCloseable {
      */
     public FeatureManager( final CommandLineProgram toolInstance, final int featureQueryLookahead ) {
         this.toolInstance = toolInstance;
-        featureSources = new HashMap<>();
+        featureSources = new LinkedHashMap<>();
 
         initializeFeatureSources(featureQueryLookahead);
     }

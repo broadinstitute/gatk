@@ -6,7 +6,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 public class NestedIntegerArrayUnitTest extends BaseTest{
 
@@ -57,7 +57,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         arr.put("bozo", 1);
 
         Assert.assertEquals(2, arr.getAllLeaves().size());
-        Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new HashSet<>(arr.getAllValues()));
+        Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new LinkedHashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0));
         Assert.assertEquals("fred", arr.get1Key(0));
@@ -74,7 +74,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         arr.put("bozo", 1, 0);
 
         Assert.assertEquals(2, arr.getAllLeaves().size());
-        Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new HashSet<>(arr.getAllValues()));
+        Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new LinkedHashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1));
         Assert.assertEquals("fred", arr.get2Keys(0, 1));
@@ -95,7 +95,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         arr.put(null, 1, 1);
 
         Assert.assertEquals(2, arr.getAllLeaves().size());
-        Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new HashSet<>(arr.getAllValues()));
+        Assert.assertEquals(Sets.newHashSet("fred", "bozo"), new LinkedHashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1));
         Assert.assertEquals("fred", arr.get2Keys(0, 1));
@@ -112,7 +112,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         arr.put("mike", 1, 0, 17);
 
         Assert.assertEquals(3, arr.getAllLeaves().size());
-        Assert.assertEquals(Sets.newHashSet("fred", "bozo", "mike"), new HashSet<>(arr.getAllValues()));
+        Assert.assertEquals(Sets.newHashSet("fred", "bozo", "mike"), new LinkedHashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1, 13));
         Assert.assertEquals("fred", arr.get3Keys(0, 1, 13));
@@ -138,7 +138,7 @@ public class NestedIntegerArrayUnitTest extends BaseTest{
         arr.put("mike", 1, 0, 17, 0);
 
         Assert.assertEquals(3, arr.getAllLeaves().size());
-        Assert.assertEquals(Sets.newHashSet("fred", "bozo", "mike"), new HashSet<>(arr.getAllValues()));
+        Assert.assertEquals(Sets.newHashSet("fred", "bozo", "mike"), new LinkedHashSet<>(arr.getAllValues()));
 
         Assert.assertEquals("fred", arr.get(0, 1, 13, 41));
         Assert.assertEquals("fred", arr.get4Keys(0, 1, 13, 41));

@@ -10,7 +10,7 @@ public final class SampleDB {
      * This is where Sample objects are stored. Samples are usually accessed by their ID, which is unique, so
      * this is stored as a HashMap.
      */
-    private final HashMap<String, Sample> samples = new HashMap<>();
+    private final Map<String, Sample> samples = new LinkedHashMap<>();
 
     /**
      * Package private for use by SampleDBBuilder .
@@ -64,7 +64,7 @@ public final class SampleDB {
     }
 
     public Set<Sample> getSamples() {
-        return new HashSet<>(samples.values());
+        return new LinkedHashSet<>(samples.values());
     }
 
 
@@ -128,7 +128,7 @@ public final class SampleDB {
      * @return - all of the mother+father=child triplets, subject to strictOneChild
      */
     public Set<Trio> getTrios(final boolean strictOneChild) {
-        Set<Trio> trioSet = new HashSet<>();
+        Set<Trio> trioSet = new LinkedHashSet<>();
         for ( final String familyString : getFamilyIDs() ) {
             final Set<Sample> family = getFamily(familyString);
             for ( final Sample sample : family) {
@@ -161,9 +161,9 @@ public final class SampleDB {
      * @return those subset of Trio objects in the input set with nonmatching founders
      */
     private Set<Trio> removeTriosWithSameParents(final Set<Trio> trios) {
-        final Set<Trio> filteredTrios = new HashSet<>();
+        final Set<Trio> filteredTrios = new LinkedHashSet<>();
         filteredTrios.addAll(trios);
-        final Set<Trio> triosWithSameParents = new HashSet<>();
+        final Set<Trio> triosWithSameParents = new LinkedHashSet<>();
         for ( final Trio referenceTrio : filteredTrios ) {
             for ( final Trio compareTrio : filteredTrios ) {
                 if ( referenceTrio != compareTrio &&
@@ -179,7 +179,7 @@ public final class SampleDB {
     }
 
     public Set<String> getFounderIds(){
-        Set<String> founders = new HashSet<>();
+        Set<String> founders = new LinkedHashSet<>();
         for (Sample sample : getSamples()) {
             if (getParents(sample).size() < 1) {
                 founders.add(sample.getID());

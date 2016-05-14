@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.report;
 
 import java.util.EnumSet;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -49,7 +49,7 @@ public enum GATKReportDataType {
         this.dataTypeString = dataTypeString;
     }
 
-    private static final Map<java.lang.String, GATKReportDataType> lookup = new HashMap<>();
+    private static final Map<java.lang.String, GATKReportDataType> lookup = new LinkedHashMap<>();
 
     static {
         for (GATKReportDataType s : EnumSet.allOf(GATKReportDataType.class))

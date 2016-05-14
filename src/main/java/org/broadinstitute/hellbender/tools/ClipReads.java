@@ -505,7 +505,7 @@ public final class ClipReads extends ReadWalker {
         public long nRangeClippedBases = 0;
         public long nSeqClippedBases = 0;
 
-        HashMap<String, Long> seqClipCounts = new HashMap<>();
+        SortedMap<String, Long> seqClipCounts = new TreeMap<>();
 
         public ClippingData(List<SeqToClip> clipSeqs) {
             for (SeqToClip clipSeq : clipSeqs) {

@@ -113,7 +113,7 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
 
         final char[] bases= {'A', 'C', 'G', 'T'};   //note: hardwired to use same order as actualCounts
         final byte[] quals = {30};
-        final Map<Allele, List<GATKRead>> readMap= new HashMap<>(bases.length);
+        final Map<Allele, List<GATKRead>> readMap= new LinkedHashMap<>(bases.length);
         for (int idx = 0; idx < bases.length; idx++) {
             final Allele nonRefAllele = Allele.create(String.valueOf(bases[idx]));
             readMap.put(nonRefAllele, new ArrayList<>());
@@ -144,8 +144,8 @@ public class AlleleBiasedDownsamplingUtilsUnitTest extends BaseTest {
     public void testLoadContaminationFileDetails() throws IOException {
         final File ContamFile1=new File(TEST_DATA_DIR, "contamination.case.1.txt");
 
-        final Map<String,Double> Contam1=new HashMap<>();
-        final Set<String> Samples1= new HashSet<>();
+        final Map<String,Double> Contam1=new LinkedHashMap<>();
+        final Set<String> Samples1= new LinkedHashSet<>();
 
         Contam1.put("NA11918",0.15);
         Samples1.addAll(Contam1.keySet());

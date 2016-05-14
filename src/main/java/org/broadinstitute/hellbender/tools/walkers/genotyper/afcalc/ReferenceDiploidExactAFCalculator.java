@@ -33,7 +33,7 @@ public final class ReferenceDiploidExactAFCalculator extends DiploidExactAFCalcu
         final Deque<ExactACset> ACqueue = new LinkedList<>();
 
         // mapping of ExactACset indexes to the objects
-        final Map<ExactACcounts, ExactACset> indexesToACset = new HashMap<>(numChr+1);
+        final Map<ExactACcounts, ExactACset> indexesToACset = new LinkedHashMap<>(numChr+1);
 
         // add AC=0 to the queue
         final int[] zeroCounts = new int[numAlternateAlleles];

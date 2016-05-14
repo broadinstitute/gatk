@@ -9,7 +9,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.*;
@@ -24,9 +24,9 @@ public class GATKVCFHeaderLines {
     public static VCFFormatHeaderLine getFormatLine(final String id) { return formatLines.get(id); }
     public static VCFFilterHeaderLine getFilterLine(final String id) { return filterLines.get(id); }
 
-    private static final Map<String, VCFInfoHeaderLine> infoLines = new HashMap<>(60);
-    private static final Map<String, VCFFormatHeaderLine> formatLines = new HashMap<>(25);
-    private static final Map<String, VCFFilterHeaderLine> filterLines = new HashMap<>(2);
+    private static final Map<String, VCFInfoHeaderLine> infoLines = new LinkedHashMap<>(60);
+    private static final Map<String, VCFFormatHeaderLine> formatLines = new LinkedHashMap<>(25);
+    private static final Map<String, VCFFilterHeaderLine> filterLines = new LinkedHashMap<>(2);
 
     private static void addFormatLine(final VCFFormatHeaderLine line) {
         Utils.nonNull(line);

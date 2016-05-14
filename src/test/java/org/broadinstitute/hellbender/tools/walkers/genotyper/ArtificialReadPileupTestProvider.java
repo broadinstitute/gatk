@@ -24,7 +24,7 @@ public final class ArtificialReadPileupTestProvider {
     final String artificialReadName = "synth";
     final int artificialRefStart = 1;
     final int artificialMappingQuality = 60;
-    Map<String, SAMReadGroupRecord> sample2RG = new HashMap<>();
+    Map<String, SAMReadGroupRecord> sample2RG = new LinkedHashMap<>();
     List<SAMReadGroupRecord> sampleRGs;
     List<String> sampleNames = new ArrayList<>();
     private String sampleName(int i) { return sampleNames.get(i); }
@@ -102,7 +102,7 @@ public final class ArtificialReadPileupTestProvider {
             altAllele = refChar;
         }
 
-        Map<String,AlignmentContext> contexts = new HashMap<>();
+        Map<String,AlignmentContext> contexts = new LinkedHashMap<>();
 
         for (String sample: sampleNames) {
             AlignmentContext context = new AlignmentContext(loc, generateRBPForVariant(loc, refAllele, altAllele, altBases, numReadsPerAllele, sample, addBaseErrors, phredScaledBaseErrorRate));

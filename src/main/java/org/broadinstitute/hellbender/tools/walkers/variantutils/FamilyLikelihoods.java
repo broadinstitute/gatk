@@ -113,7 +113,7 @@ public final class FamilyLikelihoods {
         }
 
         //Add the joint trio calculations
-        final Map<String, Object> genotypeAttributes = new HashMap<>();
+        final Map<String, Object> genotypeAttributes = new LinkedHashMap<>();
         genotypeAttributes.putAll(genotype.getExtendedAttributes());
         genotypeAttributes.put(GATKVCFConstants.JOINT_LIKELIHOOD_TAG_NAME, phredScaledJL);
         genotypeAttributes.put(GATKVCFConstants.JOINT_POSTERIOR_TAG_NAME, phredScaledJP);

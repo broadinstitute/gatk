@@ -248,7 +248,7 @@ public abstract class BaseTest {
      * This class magically tracks created objects of this
      */
     public static class TestDataProvider {
-        private static final Map<Class<?>, List<Object>> tests = new HashMap<>();
+        private static final Map<Class<?>, List<Object>> tests = new LinkedHashMap<>();
         protected String name;
 
         /**
@@ -361,8 +361,8 @@ public abstract class BaseTest {
     }
 
     public static <T> void assertEqualsSet(final Set<T> actual, final Set<T> expected, final String info) {
-        final Set<T> actualSet = new HashSet<>(actual);
-        final Set<T> expectedSet = new HashSet<>(expected);
+        final Set<T> actualSet = new LinkedHashSet<>(actual);
+        final Set<T> expectedSet = new LinkedHashSet<>(expected);
         Assert.assertTrue(actualSet.equals(expectedSet), info); // note this is necessary due to testng bug for set comps
     }
 
@@ -423,7 +423,7 @@ public abstract class BaseTest {
     }
 
     private static void assertAttributesEquals(final Map<String, Object> actual, Map<String, Object> expected) {
-        final Set<String> expectedKeys = new HashSet<>(expected.keySet());
+        final Set<String> expectedKeys = new LinkedHashSet<>(expected.keySet());
 
         for ( final Map.Entry<String, Object> act : actual.entrySet() ) {
             final Object actualValue = act.getValue();

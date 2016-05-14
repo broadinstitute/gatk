@@ -39,7 +39,7 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
     
     public RnaSeqMetricsCollector(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords,
                                   final Long ribosomalBasesInitialValue, OverlapDetector<Gene> geneOverlapDetector, OverlapDetector<Interval> ribosomalSequenceOverlapDetector,
-                                  final HashSet<Integer> ignoredSequenceIndices, final int minimumLength, final StrandSpecificity strandSpecificity,
+                                  final Set<Integer> ignoredSequenceIndices, final int minimumLength, final StrandSpecificity strandSpecificity,
                                   final double rrnaFragmentPercentage, boolean collectCoverageStatistics) {
         this.ribosomalInitialValue  = ribosomalBasesInitialValue;
         this.ignoredSequenceIndices = ignoredSequenceIndices;
@@ -75,8 +75,8 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
         return ribosomalSequenceOverlapDetector;
     }
 
-    public static HashSet<Integer> makeIgnoredSequenceIndicesSet(final SAMFileHeader header, final Set<String> ignoredSequence) {
-        final HashSet<Integer> ignoredSequenceIndices = new HashSet<>();
+    public static Set<Integer> makeIgnoredSequenceIndicesSet(final SAMFileHeader header, final Set<String> ignoredSequence) {
+        final Set<Integer> ignoredSequenceIndices = new HashSet<>();
         for (final String sequenceName: ignoredSequence) {
             final SAMSequenceRecord sequenceRecord = header.getSequence(sequenceName);
             if (sequenceRecord == null) {
