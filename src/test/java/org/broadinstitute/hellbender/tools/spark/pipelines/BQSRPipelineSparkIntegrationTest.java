@@ -15,6 +15,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
 public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
@@ -75,17 +76,19 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 //Note: these output files were created by running GATK3
                 {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
                 {new BQSRTest(GRCh37Ref_2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "--joinStrategy SHUFFLE", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
+                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_20, ".bam", "--joinStrategy BROADCAST", getResourceDir() + "expected.CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.recalibrated.DIQ.bam")},
 
                 //Output generated with GATK4 (resulting BAM has 4 differences with GATK3)
                 {new BQSRTest(b37_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
                 {new BQSRTest(b37_reference_20_21 , hiSeqCram_20_21_100000, more20Sites, ".cram", "--joinStrategy SHUFFLE -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.cram")},
+                {new BQSRTest(b37_2bit_reference_20_21 , hiSeqBam_20_21_100000, more20Sites, ".bam", "--joinStrategy BROADCAST -knownSites " + more21Sites, getResourceDir() + "expected.MultiSite.bqsr.pipeline.bam")},
        };
     }
 
     @Test(dataProvider = "BQSRLocalRefTest", groups = "spark")
     public void testBQSRLocalRef(BQSRTest params) throws IOException {
         File outFile = BaseTest.createTempFile("bqsrSparkPipelineTest", params.outputExtension);
-        final ArrayList<String> args = new ArrayList<>();
+        final List<String> args = new ArrayList<>();
 
         args.add("-I");
         args.add(new File(params.bam).getAbsolutePath());
@@ -101,7 +104,7 @@ public class BQSRPipelineSparkIntegrationTest extends CommandLineProgramTest {
         args.add("--knownSites");
         args.add(params.knownSites);
         if (params.args != null) {
-            Stream.of(params.args.split(" ")).forEach(arg -> args.add(arg));
+            Stream.of(params.args.trim().split(" ")).forEach(args::add);
         }
 
         runCommandLine(args);
