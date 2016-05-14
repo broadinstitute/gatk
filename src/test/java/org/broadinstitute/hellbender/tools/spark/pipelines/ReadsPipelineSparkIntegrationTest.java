@@ -72,14 +72,14 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
                 // input local, computation local.
                 //Note: these output files were created by running Picard 1.130 and GATK3.46
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy SHUFFLE", getResourceDir() + expectedSingleKnownSites)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST", getResourceDir() + expectedMultipleKnownSites)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR " +"--joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR " +"--joinStrategy SHUFFLE", getResourceDir() + expectedSingleKnownSites)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "-indelBQSR " +"--joinStrategy BROADCAST", getResourceDir() + expectedMultipleKnownSites)},
 
                 // Output generated with GATK4
-                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
-                {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram)},
-                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR " +"--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "-indelBQSR " +"--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram)},
+                {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR " +"--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
         };
     }
 
@@ -99,6 +99,7 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
             args.add("-R");
             args.add(referenceFile.getAbsolutePath());
         }
+        args.add("-indelBQSR");
         args.add("--knownSites");
         args.add(params.knownSites);
         if (params.args != null) {

@@ -105,8 +105,8 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public boolean skipBAQ = false;
 
     @Hidden
-    @Argument(fullName = "skipIndelBQSR", shortName = "skipIndelBQSR", doc = "don't do computations that are only needed for indel BQSR")
-    public boolean skipIndelBQSR = false;
+    @Argument(fullName = "computeIndelBQSRTables", shortName = "indelBQSR", doc = "compute indel BQSR tables")
+    public boolean computeIndelBQSRTables = false;
 
 
     // --------------------------------------------------------------------------------------------------------------
