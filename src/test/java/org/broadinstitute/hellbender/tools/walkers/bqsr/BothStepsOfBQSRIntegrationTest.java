@@ -54,7 +54,7 @@ public final class BothStepsOfBQSRIntegrationTest extends CommandLineProgramTest
         args1.addArgument("L", interval);
         args1.addFileArgument("knownSites", new File(dbsnp_138_b37_20_21_vcf));
         args1.addReference(new File(b37_reference_20_21));
-        args1.addBooleanArgument("skipIndelBQSR", skipIndels);
+        args1.addBooleanArgument("indelBQSR", !skipIndels);
         new Main().instanceMain(makeCommandLineArgs(args1.getArgsList(), BaseRecalibrator.class.getSimpleName()));
         return recalOut;
     }
