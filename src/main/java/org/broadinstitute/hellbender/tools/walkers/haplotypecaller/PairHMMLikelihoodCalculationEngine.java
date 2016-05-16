@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -28,6 +30,8 @@ import java.util.stream.Collectors;
  * Classic likelihood computation: full pair-hmm all haplotypes vs all reads.
  */
 public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodCalculationEngine {
+
+    private static final Logger logger = LogManager.getLogger(PairHMMLikelihoodCalculationEngine.class);
 
     private static final int MAX_STR_UNIT_LENGTH = 8;
     private static final int MAX_REPEAT_LENGTH   = 20;
@@ -338,7 +342,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     @VisibleForTesting
     static Pair<byte[], Integer> findTandemRepeatUnits(final byte[] readBases, final int offset) {
         int maxBW = 0;
-        byte[] bestBWRepeatUnit = new byte[]{readBases[offset]};
+        byte[] bestBWRepeatUnit = {readBases[offset]};
         for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
             // fix repeat unit length
             //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
@@ -347,10 +351,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             }
 
             // get backward repeat unit and # repeats
-            final byte[] backwardRepeatUnit = Arrays.copyOfRange(readBases, offset - str + 1, offset + 1);
-            maxBW = GATKVariantContextUtils.findNumberOfRepetitions(backwardRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
+            maxBW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, offset - str + 1,  str , readBases, 0, offset + 1, false);
             if (maxBW > 1) {
-                bestBWRepeatUnit = backwardRepeatUnit.clone();
+                bestBWRepeatUnit = Arrays.copyOfRange(readBases, offset - str + 1, offset + 1);
                 break;
             }
         }
@@ -358,8 +361,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         int maxRL = maxBW;
 
         if (offset < readBases.length-1) {
-            byte[] bestFWRepeatUnit = new byte[]{readBases[offset+1]};
+            byte[] bestFWRepeatUnit = {readBases[offset+1]};
             int maxFW = 0;
+
             for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
                 // fix repeat unit length
                 //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
@@ -368,10 +372,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                 }
 
                 // get forward repeat unit and # repeats
-                final byte[] forwardRepeatUnit = Arrays.copyOfRange(readBases, offset +1, offset+str+1);
-                maxFW = GATKVariantContextUtils.findNumberOfRepetitions(forwardRepeatUnit, Arrays.copyOfRange(readBases, offset + 1, readBases.length), true);
+                maxFW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, offset + 1, str, readBases, offset + 1, readBases.length-offset -1, true);
                 if (maxFW > 1) {
-                    bestFWRepeatUnit = forwardRepeatUnit.clone();
+                    bestFWRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset+str+1);
                     break;
                 }
             }
@@ -381,12 +384,13 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                 bestRepeatUnit = bestFWRepeatUnit; // arbitrary
             } else {
                 // tandem repeat starting forward from current offset.
-                // It could be the case that best BW unit was differnet from FW unit, but that BW still contains FW unit.
+                // It could be the case that best BW unit was different from FW unit, but that BW still contains FW unit.
                 // For example, TTCTT(C) CCC - at (C) place, best BW unit is (TTC)2, best FW unit is (C)3.
                 // but correct representation at that place might be (C)4.
                 // Hence, if the FW and BW units don't match, check if BW unit can still be a part of FW unit and add
                 // representations to total
-                maxBW = GATKVariantContextUtils.findNumberOfRepetitions(bestFWRepeatUnit, Arrays.copyOfRange(readBases, 0, offset + 1), false);
+                final byte[] testString = Arrays.copyOfRange(readBases, 0, offset + 1);
+                maxBW = GATKVariantContextUtils.findNumberOfRepetitions(bestFWRepeatUnit, testString, false);
                 maxRL = maxFW + maxBW;
                 bestRepeatUnit = bestFWRepeatUnit;
             }
