@@ -514,15 +514,15 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Helper routine that finds number of repetitions a string consists of.
+     * Finds number of repetitions a string consists of.
      * For example, for string ATAT and repeat unit AT, number of repetitions = 2
      * @param repeatUnit             Non-empty substring represented by byte array
      * @param testString             String to test (represented by byte array), may be empty
      * @param leadingRepeats         Look for leading (at the beginning of string) or trailing (at end of string) repetitions
      * For example:
-     *    GATAT has 2 trailing repeats of A but 0 leading repeats of AT
-     *    ATATG has 0 leading repeats of A but 2 forward repeats of AT
-     *    CCCCCCCC has to forward and 2 trailing repeats of CCC
+     *    GATAT has 0 leading repeats of AT but 2 trailing repeats of AT
+     *    ATATG has 1 leading repeat of A but 2 leading repeats of AT
+     *    CCCCCCCC has 2 leading and 2 trailing repeats of CCC
      *
      * @return  Number of repetitions (0 if testString is not a concatenation of n repeatUnit's, including the case of empty testString)
      */
@@ -533,18 +533,46 @@ public final class GATKVariantContextUtils {
         if (testString.length == 0){
             return 0;
         }
-        final int repeatLength = repeatUnit.length;
-        final int testLength = testString.length;
-        final int lengthDifference = testLength - repeatLength;
+        return findNumberOfRepetitions(repeatUnit, 0, repeatUnit.length, testString, 0, testString.length, leadingRepeats);
+    }
+
+    /**
+     * Finds number of repetitions a string consists of.
+     * Same as {@link #findNumberOfRepetitions} but operates on subarrays of a bigger array to save on copying.
+     * For example, for string ATAT and repeat unit AT, number of repetitions = 2
+     * @param repeatUnitFull             Non-empty substring represented by byte array
+     * @param offsetInRepeatUnitFull     the offset in repeatUnitFull from which to read the repeat unit
+     * @param repeatUnitLength           length of the repeat unit
+     * @param testStringFull             string to test (represented by byte array), may be empty
+     * @param offsetInTestStringFull     the offset in offsetInRepeatUnitFull from which to read the test string
+     * @param testStringLength           length of the test string
+     * @param leadingRepeats         Look for leading (at the beginning of string) or trailing (at end of string) repetitions
+     * For example:
+     *    GATAT has 0 leading repeats of AT but 2 trailing repeats of AT
+     *    ATATG has 1 leading repeat of A but 2 leading repeats of AT
+     *    CCCCCCCC has 2 leading and 2 trailing repeats of CCC
+     * @return  Number of repetitions (0 if testString is not a concatenation of n repeatUnit's, including the case of empty testString)
+     */
+    public static int findNumberOfRepetitions(final byte[] repeatUnitFull, final int offsetInRepeatUnitFull, final int repeatUnitLength, final byte[] testStringFull, final int offsetInTestStringFull, final int testStringLength, final boolean leadingRepeats) {
+        Utils.nonNull(repeatUnitFull, "repeatUnit");
+        Utils.nonNull(testStringFull, "testString");
+        Utils.validIndex(offsetInRepeatUnitFull, repeatUnitFull.length);
+        Utils.validateArg(repeatUnitLength >= 0 && repeatUnitLength <= repeatUnitFull.length, "repeatUnitLength");
+        if (testStringLength == 0){
+            return 0;
+        }
+        Utils.validIndex(offsetInTestStringFull, testStringFull.length);
+        Utils.validateArg(testStringLength >= 0 && testStringLength <= testStringFull.length, "testStringLength");
+        final int lengthDifference = testStringLength - repeatUnitLength;
 
         if (leadingRepeats) {
             int numRepeats = 0;
             // look forward on the test string
-            for (int start = 0; start <= lengthDifference; start += repeatLength) {
-                if(Utils.equalRange(testString, start, repeatUnit, 0, repeatLength)) {
+            for (int start = 0; start <= lengthDifference; start += repeatUnitLength) {
+                if(Utils.equalRange(testStringFull, start + offsetInTestStringFull, repeatUnitFull, offsetInRepeatUnitFull, repeatUnitLength)) {
                     numRepeats++;
                 } else {
-                    break;
+                    return numRepeats;
                 }
             }
             return numRepeats;
@@ -552,24 +580,19 @@ public final class GATKVariantContextUtils {
             // look backward. For example, if repeatUnit = AT and testString = GATAT, number of repeat units is still 2
             int numRepeats = 0;
             // look backward on the test string
-            for (int start = lengthDifference; start >= 0; start -= repeatLength) {
-                if (Utils.equalRange(testString, start, repeatUnit, 0, repeatLength)) {
+            for (int start = lengthDifference; start >= 0; start -= repeatUnitLength) {
+                if (Utils.equalRange(testStringFull, start + offsetInTestStringFull, repeatUnitFull, offsetInRepeatUnitFull, repeatUnitLength)) {
                     numRepeats++;
                 } else {
-                    break;
+                    return numRepeats;
                 }
             }
             return numRepeats;
         }
     }
 
-
     /**
      * Helper function for isTandemRepeat that checks that allele matches somewhere on the reference
-     * @param ref
-     * @param alt
-     * @param refBasesStartingAtVCWithoutPad
-     * @return
      */
     protected static boolean isRepeatAllele(final Allele ref, final Allele alt, final String refBasesStartingAtVCWithoutPad) {
         if ( ! Allele.oneIsPrefixOfOther(ref, alt) )
