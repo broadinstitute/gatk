@@ -5,7 +5,7 @@
 ##    groupBy     = cohort,
 ##    columnCount = 1
 ##}
-NAME	SUM	AVG.COL.BP
+name	SUM	AVG.COL.BP
 target_0	47	0.7581
 target_1	39	0.6290
 target_2	38	0.7170
