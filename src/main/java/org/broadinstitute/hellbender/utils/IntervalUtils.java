@@ -59,6 +59,38 @@ public final class IntervalUtils {
 
     private static final Logger logger = LogManager.getLogger(IntervalUtils.class);
 
+    /**
+     * Compare two locations using a {@link htsjdk.samtools.SAMSequenceDictionary} sequence ordering
+     *
+     * @return 0 if first and second are equal, a negative value if first < second or a positive value if first > second,
+     * using the ordering in the provided dictionary
+     * @throws IllegalArgumentException if either first or second contigs could not be found in the dictionary
+     */
+    public static final int compareLocatables(Locatable first, Locatable second, SAMSequenceDictionary dictionary) {
+        Utils.nonNull(first);
+        Utils.nonNull(second);
+        Utils.nonNull(dictionary);
+        int result = 0;
+        if(first != second) {
+            // get the contigs
+            final int firstRefIndex = dictionary.getSequenceIndex(first.getContig());
+            final int secondRefIndex = dictionary.getSequenceIndex(second.getContig());
+            if(firstRefIndex == -1 || secondRefIndex == -1) {
+                throw new IllegalArgumentException("Can't do comparison because locatables are not found in dictionary");
+            }
+            // compare the contigs
+            result = Integer.compare(firstRefIndex, secondRefIndex);
+            if (result == 0) {
+                // compare start position
+                result = Integer.compare(first.getStart(), second.getStart());
+                if (result == 0) {
+                    // compare end position
+                    result = Integer.compare(first.getEnd(), second.getEnd());
+                }
+            }
+        }
+        return result;
+    }
 
     /**
      * getSpanningInterval returns interval that covers all of the locations passed in.
