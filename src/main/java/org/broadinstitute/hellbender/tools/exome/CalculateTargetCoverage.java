@@ -44,10 +44,10 @@ import java.util.stream.IntStream;
 public final class CalculateTargetCoverage extends ReadWalker {
 
     public static final String DEFAULT_COHORT_NAME = "<ALL>";
-    public static final String TARGET_CONTIG_COLUMN_NAME = "CONTIG";
-    public static final String TARGET_START_COLUMN_NAME = "START";
-    public static final String TARGET_END_COLUMN_NAME = "END";
-    public static final String TARGET_NAME_COLUMN_NAME = "NAME";
+    public static final String TARGET_CONTIG_COLUMN_NAME = "contig";
+    public static final String TARGET_START_COLUMN_NAME = "start";
+    public static final String TARGET_END_COLUMN_NAME = "stop";
+    public static final String TARGET_NAME_COLUMN_NAME = "name";
 
     /**
      * Header name for the column that contains a count sum (across columns or rows).

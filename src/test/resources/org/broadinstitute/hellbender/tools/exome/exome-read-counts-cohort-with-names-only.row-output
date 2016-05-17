@@ -5,7 +5,7 @@
 ##    groupBy     = cohort,
 ##    columnCount = 1
 ##}
-NAME	SUM	AVG.COL.BP
+name	SUM	AVG.COL.BP
 20:68349-68410	47	0.7581
 20:123268-123329	39	0.6290
 20:138184-138236	38	0.7170

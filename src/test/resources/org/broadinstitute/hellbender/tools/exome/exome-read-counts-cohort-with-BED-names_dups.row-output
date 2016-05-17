@@ -5,5 +5,5 @@
 ##    groupBy     = cohort,
 ##    columnCount = 1
 ##}
-CONTIG	START	END	NAME	SUM	AVG.COL.BP
+contig	start	stop	name	SUM	AVG.COL.BP
 1	1200163	1200210	target_0	7	0.1458
