@@ -368,13 +368,13 @@ uploadArchives {
             pom.project {
                 name 'GATK4'
                 packaging 'jar'
-                description 'Development on GATK4'
-                url 'http://github.com/broadinstitute/hellbender'
+                description 'Development on GATK 4'
+                url 'http://github.com/broadinstitute/gatk'
 
                 scm {
-                    url 'scm:git@github.com:broadinstitute/hellbender.git'
-                    connection 'scm:git@github.com:broadinstitute/hellbender.git'
-                    developerConnection 'scm:git@github.com:broadinstitute/hellbender.git'
+                    url 'scm:git@github.com:broadinstitute/gatk.git'
+                    connection 'scm:git@github.com:broadinstitute/gatk.git'
+                    developerConnection 'scm:git@github.com:broadinstitute/gatk.git'
                 }
 
                 developers {
@@ -388,7 +388,7 @@ uploadArchives {
                 licenses {
                     license {
                         name 'BSD 3-Clause'
-                        url 'https://github.com/broadinstitute/hellbender/blob/master/LICENSE.TXT'
+                        url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
                         distribution 'repo'
                     }
                 }
