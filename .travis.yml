@@ -91,7 +91,7 @@ after_success:
   else
    ./gradlew coveralls;
   fi
-- if [ "$TRAVIS_BRANCH" == "master" && $CLOUD == false ]; then ./gradlew uploadArchives; fi
+- if [[ $TRAVIS_BRANCH == master && $CLOUD == false ]]; then ./gradlew uploadArchives; fi
 - python <(curl -s https://raw.githubusercontent.com/TouK/sputnik-ci/master/sputnik-ci.py)
 after_failure:
 - dmesg | tail -100
