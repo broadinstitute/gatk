@@ -19,6 +19,9 @@ class SparkSingularValueDecomposer {
 
     private final static int NUM_SLICES = 60;
 
+    private SparkSingularValueDecomposer() {
+    }
+
     /**
      *  Create a SVD of the given matrix using the given Java Spark Context.
      *

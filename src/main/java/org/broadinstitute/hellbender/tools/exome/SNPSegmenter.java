@@ -14,6 +14,9 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class SNPSegmenter {
+    private SNPSegmenter() {
+    }
+
     /**
      * Write segment file based on maximum-likelihood estimates of the minor allele fraction at SNP sites,
      * assuming no allelic bias.  These estimates are converted to target coverages,

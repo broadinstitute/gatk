@@ -20,6 +20,10 @@ import java.util.LinkedList;
  */
 public class SparkConverter {
     private static final Logger logger = LogManager.getLogger(SparkConverter.class);
+
+    private SparkConverter() {
+    }
+
     /**
      * Create a distributed matrix given an Apache Commons RealMatrix.
      *

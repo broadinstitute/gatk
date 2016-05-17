@@ -15,6 +15,9 @@ import java.util.List;
  */
 final public class SVDTestUtils {
 
+    private SVDTestUtils() {
+    }
+
     /**
      * Assrt that the given matrix is unitary.
      * @param m

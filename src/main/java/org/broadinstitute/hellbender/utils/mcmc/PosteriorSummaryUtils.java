@@ -28,6 +28,9 @@ public class PosteriorSummaryUtils {
     private static final MaxEval BRENT_MAX_EVAL = new MaxEval(100);
     private static final double RELATIVE_TOLERANCE = 0.01;
 
+    private PosteriorSummaryUtils() {
+    }
+
     /**
      * Given a list of posterior samples, returns a PosteriorSummary with central tendency given by the posterior mode
      * (which is estimated using mllib kernel density estimation in {@link KernelDensity},

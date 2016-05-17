@@ -9,6 +9,9 @@ import org.broadinstitute.hellbender.utils.Utils;
  */
 class ApacheSingularValueDecomposer {
 
+    private ApacheSingularValueDecomposer() {
+    }
+
     /** Create a SVD instance using Apache Commons Math.
      *
      * @param m matrix that is not {@code null}

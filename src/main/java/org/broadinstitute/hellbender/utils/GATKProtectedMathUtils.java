@@ -19,6 +19,9 @@ import java.util.stream.IntStream;
  * Created by davidben on 1/22/16.
  */
 public class GATKProtectedMathUtils {
+    private GATKProtectedMathUtils() {
+    }
+
     /**
      * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
      *

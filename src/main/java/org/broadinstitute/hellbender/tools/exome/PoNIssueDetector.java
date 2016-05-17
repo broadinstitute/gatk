@@ -31,6 +31,9 @@ public final class PoNIssueDetector {
     final static double AMP_THRESHOLD = 1.12;
     final static double DEL_THRESHOLD = 0.88;
 
+    private PoNIssueDetector() {
+    }
+
     /**
      * Return list of samples in the given PoN that likely contain arm level events.  Samples detected will have to be
      *  removed.
