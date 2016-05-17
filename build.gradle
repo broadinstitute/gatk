@@ -18,13 +18,12 @@ plugins {
     id "com.github.johnrengelman.shadow" version "1.2.3"
     id "com.github.kt3k.coveralls" version "2.6.3"
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
-
+    id 'com.palantir.git-version' version '0.5.1' //version helper
 }
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 import org.gradle.internal.os.OperatingSystem
-
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -178,24 +177,9 @@ processResources {
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-def String deriveVersion(){
-    def stdout = new ByteArrayOutputStream()
-    try {
-        logger.info("path is $System.env.PATH")
-        exec {
-            commandLine "git", "describe", "--always"
-            standardOutput = stdout;
+final isRelease = Boolean.getBoolean("release")
+version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
 
-            ignoreExitValue = true
-        }
-    } catch (GradleException e) {
-        logger.error("Couldn't determine version.  " + e.getMessage())
-    }
-    return stdout.size() > 0 ? stdout.toString().trim() : "version-unknown"
-}
-final SNAPSHOT = "-SNAPSHOT"
-version = deriveVersion() + SNAPSHOT  //all builds are snapshot builds until we decide that there is something we want to keep
-boolean isRelease = ! version.endsWith(SNAPSHOT)
 logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
@@ -286,7 +270,7 @@ test {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.12'
+    gradleVersion = '2.13'
 }
 
 tasks.withType(ShadowJar) {
@@ -366,57 +350,53 @@ signing {
  * For releasing to your local maven repo, use gradle install
  */
 uploadArchives {
-    if(project.hasProperty('sonatypeUsername') && project.hasProperty('sonatypePassword')){
-        repositories {
-            mavenDeployer {
-                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+    doFirst {
+        println "Attempting to upload version:$version"
+    }
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: project.findProperty("sonatypeUsername"), password: project.findProperty("sonatypePassword"))
+            }
+
+            snapshotRepository(url: "https://artifactory.broadinstitute.org/artifactory/libs-snapshot-local/") {
+                authentication(userName: System.env.ARTIFACTORY_USERNAME, password: System.env.ARTIFACTORY_PASSWORD)
+            }
+
+            pom.project {
+                name 'GATK4'
+                packaging 'jar'
+                description 'Development on GATK 4'
+                url 'http://github.com/broadinstitute/gatk'
+
+                scm {
+                    url 'scm:git@github.com:broadinstitute/gatk.git'
+                    connection 'scm:git@github.com:broadinstitute/gatk.git'
+                    developerConnection 'scm:git@github.com:broadinstitute/gatk.git'
                 }
 
-                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
-                    authentication(userName: sonatypeUsername, password: sonatypePassword)
+                developers {
+                    developer {
+                        id = "gatkdev"
+                        name = "GATK Development Team"
+                        email = "gatk-dev-public@broadinstitute.org"
+                    }
                 }
 
-                pom.project {
-                    name 'Hellbender'
-                    packaging 'jar'
-                    description 'Development on GATK4'
-                    url 'http://github.com/broadinstitute/hellbender'
-
-                    scm {
-                        url 'scm:git@github.com:broadinstitute/hellbender.git'
-                        connection 'scm:git@github.com:broadinstitute/hellbender.git'
-                        developerConnection 'scm:git@github.com:broadinstitute/hellbender.git'
-                    }
-
-                    developers {
-                        developer {
-                            id = "gatkdev"
-                            name = "GATK Development Team"
-                            email = "gatk-dev-public@broadinstitute.org"
-                        }
-                    }
-
-                    licenses {
-                        license {
-                            name 'BSD 3-Clause'
-                            url 'https://github.com/broadinstitute/hellbender/blob/master/LICENSE.TXT'
-                            distribution 'repo'
-                        }
+                licenses {
+                    license {
+                        name 'BSD 3-Clause'
+                        url 'https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT'
+                        distribution 'repo'
                     }
                 }
             }
         }
-    } else {
-        doFirst({
-            logger.error( 'Users are not generally supposed to upload archives.  ' +
-                'To upload archives you must specify certain information in your gradle.properties. See the README' +
-                ' for more information.' )
-            throw new Exception("Missing sonatype username or password, please see the README for properties that must be specified for uploading an archive.")}
-        )
     }
+}
+
 
 
 task installSpark{ dependsOn sparkJar }
@@ -424,8 +404,6 @@ task installAll{  dependsOn installSpark, installDist }
 
 test.dependsOn extractIntelDeflater
 installDist.dependsOn downloadGsaLibFile, extractIntelDeflater
-build.dependsOn installDist
-check.dependsOn installDist
 
 model {
     components {
@@ -494,6 +472,4 @@ model {
             gcc(Gcc)
         }
     }
-}
-
 }
