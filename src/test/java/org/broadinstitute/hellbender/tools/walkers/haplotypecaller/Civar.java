@@ -241,7 +241,7 @@ public final class Civar {
         int nextInSeq = 0;
         int nextElement = 0;
 
-        final StringBuffer sb = new StringBuffer(sequence.length() * 2);
+        final StringBuilder sb = new StringBuilder(sequence.length() * 2);
         while (nextInSeq < to && nextElement < elements.size()) {
             final Element e = elements.get(nextElement++);
             int size = e.expands() ? starPadding * e.size() : e.size();
@@ -334,19 +334,19 @@ public final class Civar {
 
     }
 
-    private void transition(final CharSequence charSequence, final int from, final StringBuffer dest, final int length) {
+    private void transition(final CharSequence charSequence, final int from, final StringBuilder dest, final int length) {
         for (int i = from; i < length + from; i++) {
             dest.append(transition(charSequence.charAt(i)));
         }
     }
 
-    private void transversion(final CharSequence cs, final int from, final StringBuffer dest, final int length) {
+    private void transversion(final CharSequence cs, final int from, final StringBuilder dest, final int length) {
         for (int i = from; i < length + from; i++) {
             dest.append(transversion(cs.charAt(i)));
         }
     }
 
-    private void complement(final CharSequence cs, final int from, final StringBuffer dest, final int length) {
+    private void complement(final CharSequence cs, final int from, final StringBuilder dest, final int length) {
         for (int i = from; i < length + from; i++) {
             dest.append(complement(cs.charAt(i)));
         }
@@ -413,9 +413,9 @@ public final class Civar {
         boolean hasOptionalElements = false;
         boolean allElementsAreOptional = true;
         boolean hasVariation = false;
-        StringBuffer strBuffer = new StringBuffer(100);
+        StringBuilder strBuilder = new StringBuilder(100);
         for (final Element e : elements) {
-            strBuffer.append(e.toString());
+            strBuilder.append(e.toString());
             if (e.operator() == Operator.EMBEDDED) {
                 hasEmbeddedCivars = true;
                 if (e.embedded.hasVariation()) {
@@ -444,7 +444,7 @@ public final class Civar {
                 minimumTemplateSize += e.size();
             }
         }
-        this.string = strBuffer.toString();
+        this.string = strBuilder.toString();
         this.hasVariation = hasVariation;
         this.allVariationIsOptional = allElementsAreOptional;
         this.hasOptionalVariation = hasOptionalElements;

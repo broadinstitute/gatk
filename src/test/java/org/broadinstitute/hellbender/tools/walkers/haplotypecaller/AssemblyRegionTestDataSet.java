@@ -301,7 +301,7 @@ public final class AssemblyRegionTestDataSet {
 
     private String applyCigar(final String reference, final String cigar, final int offset, final boolean global) {
         final Matcher pm = cigarPattern.matcher(cigar);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         int index = offset;
         while (pm.find()) {
             int length = Integer.valueOf(pm.group(1));
