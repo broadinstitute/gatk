@@ -600,7 +600,7 @@ public final class Civar {
             if (!expands)
                 return size;
             else
-                return size * (starPadding) + Math.min(excessPaddingRemaining, size);
+                return size * starPadding + Math.min(excessPaddingRemaining, size);
         }
 
         /**
@@ -672,7 +672,7 @@ public final class Civar {
             this(o,size,expands,optional);
             if ((xmer == null || xmer.length() == 0) && o.requiresXmer())
                 throw new IllegalArgumentException("operator  " + o + " requires a x-mer");
-            if ((xmer != null && !o.acceptsXmer()))
+            if (xmer != null && !o.acceptsXmer())
                 throw new IllegalArgumentException("operator  " + o + " does not accept a x-mer");
             this.xmer = xmer;
         }
@@ -1025,7 +1025,7 @@ public final class Civar {
         }
 
         public Element asElement() {
-            return ((Element) content);
+            return (Element) content;
         }
 
         protected static Token xmer(final CharSequence cs) {
