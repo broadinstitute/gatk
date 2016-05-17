@@ -32,7 +32,7 @@ env:
   #for uploading artifacts
   - ARTIFACTORY_USERNAME=gatkci
   #artifactory password
-  secure: "mY6yQ9OKmI06H0uEM+bJhB4ziOJcugRXlm56l8coUHavgCT9JGBSDDZvB1fXXIktin9Gel0Gx96y9kG2Xg1RGGjxMw2bPrBjxYF5w3HDD9Ox+NOOlxdkqPfTY1PQDAZtKwZvzPl1i+5FzPRJN/gNk2ipsmcfOh57vfz6nk3H7e4="
+  - secure: "E0LWXgX3aWSE/DWHXXDx4vrAq4uX6vKg402wToaZ5otbHQ/UP0H7/FA5jomavAXoC46oMVHZcEltZ5OVhuJ0NW8yYxUCecJ1D/YvVQmnfFABcV/qLM+k4e2rYQOKVw/pejB2gG8XdTA+XE2WyTeENbmIkputS8f1ndKWCmZxuuk="
 matrix:
   fast_finish: true
   allow_failures:
