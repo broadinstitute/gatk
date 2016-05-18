@@ -681,7 +681,7 @@ public final class Civar {
             if (operator() == Operator.EMBEDDED) {
                 return "(" + embedded.toString() + ")";
             }
-            final String sizeString = expands ? (size == 1 ? "*":"" + size) : ("" + size);
+            final String sizeString = expands ? (size == 1 ? "*":String.valueOf(size)) : (String.valueOf(size));
             final String sizeAndOperator = sizeString + operator().charValue;
             final String sizeAndOperatorAndXmer = o == Operator.INSERTION ? sizeAndOperator + xmer : sizeAndOperator;
             return optional ? sizeAndOperatorAndXmer + "?" : sizeAndOperatorAndXmer;

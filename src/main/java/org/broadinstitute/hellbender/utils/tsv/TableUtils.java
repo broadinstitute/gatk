@@ -32,7 +32,7 @@ public final class TableUtils {
     /**
      * Column separator as an string.
      */
-    public static final String COLUMN_SEPARATOR_STRING = "" + COLUMN_SEPARATOR;
+    public static final String COLUMN_SEPARATOR_STRING = String.valueOf(COLUMN_SEPARATOR);
 
     /**
      * Comment line prefix string {@value}.
@@ -54,7 +54,7 @@ public final class TableUtils {
     /**
      * Quote character as a string.
      */
-    public static final String QUOTE_STRING = "" + QUOTE_CHARACTER;
+    public static final String QUOTE_STRING = String.valueOf(QUOTE_CHARACTER);
 
     /**
      * Escape character {@value #ESCAPE_STRING}.
@@ -70,7 +70,7 @@ public final class TableUtils {
     /**
      * Escape character as a string.
      */
-    public static final String ESCAPE_STRING = "" + ESCAPE_CHARACTER;
+    public static final String ESCAPE_STRING = String.valueOf(ESCAPE_CHARACTER);
 
     /**
      * Creates a new table reader given an record extractor factory based from the columns found in the input.
