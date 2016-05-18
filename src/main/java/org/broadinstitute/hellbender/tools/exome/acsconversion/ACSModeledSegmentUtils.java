@@ -29,6 +29,10 @@ public class ACSModeledSegmentUtils {
      * Made larger at user request.
      */
     public static final double DIVISOR = 2.0;
+
+    private ACSModeledSegmentUtils() {
+    }
+
     /**
      * Writes a list of segments represented by {@link ACNVModeledSegment} to a file with header:
      * <p>

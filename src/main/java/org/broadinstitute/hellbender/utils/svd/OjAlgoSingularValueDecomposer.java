@@ -11,6 +11,9 @@ class OjAlgoSingularValueDecomposer {
 
     private static final Logger logger = LogManager.getLogger(OjAlgoSingularValueDecomposer.class);
 
+    private OjAlgoSingularValueDecomposer() {
+    }
+
     /**
      * Create a SVD instance using ojAlgo.
      *
