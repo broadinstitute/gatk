@@ -56,6 +56,15 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
+     * Does this tool require Ns in the AlignmentContext? Tools that do should override to return {@code true}.
+     *
+     * @return {@code true} if this tool requires Ns, {@code false} otherwise
+     */
+    public boolean includeNs() {
+        return false;
+    }
+
+    /**
      * Returns the read filter (simple or composite) that will be applied to the reads in each window.
      *
      * The default implementation uses the {@link WellformedReadFilter} filter with all default options,
@@ -113,7 +122,7 @@ public abstract class LocusWalker extends GATKTool {
                 new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
                 makeReadFilter();
         // get the LIBS
-        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), keepUniqueReadListInLibs(), samples, header);
+        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header);
         // prepare the iterator
         Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function

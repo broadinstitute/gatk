@@ -308,6 +308,30 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         }
     }
 
+    /**
+     * Test to make sure that if there are reads with Ns are keeped
+     */
+    @Test
+    public void testKeepingNs() {
+        final int firstLocus = 44367788, secondLocus = firstLocus + 1;
+
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header,"read1",0,secondLocus,1);
+        read.setBases(Utils.dupBytes((byte) 'N', 1));
+        read.setBaseQualities(Utils.dupBytes((byte) '@', 1));
+        read.setCigar("1I");
+
+        // create the iterator by state with the fake reads and fake records
+        LocusIteratorByState libs = makeLIBSwithNs(Collections.singletonList(read), header);
+
+        while(libs.hasNext()) {
+            final AlignmentContext alignmentContext = libs.next();
+            final ReadPileup rp = alignmentContext.getBasePileup();
+            Assert.assertEquals(rp.size(), 1);
+            final PileupElement pe = rp.iterator().next();
+            Assert.assertEquals(pe.getBase(), (byte) 'N');
+        }
+
+    }
 
     /////////////////////////////////////////////
     // get event length and bases calculations //
