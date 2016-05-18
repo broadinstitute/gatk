@@ -173,16 +173,16 @@ public final class AssemblyRegionTestDataSet {
                 String sequence;
                 if (descr.matches("^\\d+:\\d+:.+$")) {
                     final String[] parts = descr.split(":");
-                    int allele = Integer.valueOf(parts[0]);
-                    int offset = Integer.valueOf(parts[1]);
+                    int allele = Integer.parseInt(parts[0]);
+                    int offset = Integer.parseInt(parts[1]);
                     final String cigar = parts[2];
                     final String base = allele == 0 ? reference : haplotypes.get(allele - 1);
                     sequence = applyCigar(base, cigar, offset, false);
                     final GATKRead samRecord = ArtificialReadUtils.createArtificialRead(header, "read_" + count, 0, 1, sequence.getBytes(), Arrays.copyOf(bq, sequence.length()));
                     readList.add(samRecord);
                 } else if (descr.matches("^\\*:\\d+:\\d+$")) {
-                    int readCount = Integer.valueOf(descr.split(":")[1]);
-                    int readLength = Integer.valueOf(descr.split(":")[2]);
+                    int readCount = Integer.parseInt(descr.split(":")[1]);
+                    int readLength = Integer.parseInt(descr.split(":")[2]);
                     readList.addAll(generateSamRecords(haplotypes, readCount, readLength, header, count));
                 } else {
                     sequence = descr;
@@ -208,8 +208,8 @@ public final class AssemblyRegionTestDataSet {
                 if (descr.matches("^\\d+:\\d+:.+$")) {
                     throw new UnsupportedOperationException();
                 } else if (descr.matches("^\\*:\\d+:\\d+$")) {
-                    int readCount = Integer.valueOf(descr.split(":")[1]);
-                    int readLength = Integer.valueOf(descr.split(":")[2]);
+                    int readCount = Integer.parseInt(descr.split(":")[1]);
+                    int readLength = Integer.parseInt(descr.split(":")[2]);
                     readEventOffsetList.addAll(generateElementOffsetRecords(haplotypesStrings(), unrolledCivars, readCount, readLength, count));
                 } else {
                     throw new UnsupportedOperationException();
@@ -228,15 +228,15 @@ public final class AssemblyRegionTestDataSet {
             String sequence;
             if (descr.matches("^\\d+:\\d+:.+$")) {
                 final String[] parts = descr.split(":");
-                int allele = Integer.valueOf(parts[0]);
-                int offset = Integer.valueOf(parts[1]);
+                int allele = Integer.parseInt(parts[0]);
+                int offset = Integer.parseInt(parts[1]);
                 final String cigar = parts[2];
                 final String base = allele == 0 ? reference : haplotypes.get(allele - 1);
                 sequence = applyCigar(base, cigar, offset, false);
                 result.add(sequence);
             } else if (descr.matches("\\*:^\\d+:\\d+")) {
-                int readCount = Integer.valueOf(descr.split(":")[1]);
-                int readLength = Integer.valueOf(descr.split(":")[2]);
+                int readCount = Integer.parseInt(descr.split(":")[1]);
+                int readLength = Integer.parseInt(descr.split(":")[2]);
                 result.addAll(generateReads(haplotypes, readCount, readLength));
             } else {
                 sequence = descr;
@@ -304,7 +304,7 @@ public final class AssemblyRegionTestDataSet {
         StringBuffer sb = new StringBuffer();
         int index = offset;
         while (pm.find()) {
-            int length = Integer.valueOf(pm.group(1));
+            int length = Integer.parseInt(pm.group(1));
             char operator = pm.group(2).charAt(0);
             switch (operator) {
                 case '=' :
