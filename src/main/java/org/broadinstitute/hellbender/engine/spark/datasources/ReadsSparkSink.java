@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.cram.build.CramIO;
@@ -67,7 +68,8 @@ public final class ReadsSparkSink {
         @Override
         public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
             setSAMHeader(bamHeader);
-            return super.getRecordWriter(ctx);
+            // use BAM extension for part files since they are valid BAM files
+            return getRecordWriter(ctx, getDefaultWorkFile(ctx, BamFileIoUtils.BAM_FILE_EXTENSION));
         }
 
         @Override
@@ -99,7 +101,8 @@ public final class ReadsSparkSink {
         @Override
         public RecordWriter<NullWritable, SAMRecordWritable> getRecordWriter(TaskAttemptContext ctx) throws IOException {
             setSAMHeader(bamHeader);
-            return super.getRecordWriter(ctx);
+            // use CRAM extension for part files since they are valid CRAM files
+            return getRecordWriter(ctx, getDefaultWorkFile(ctx, CramIO.CRAM_FILE_EXTENSION));
         }
 
         @Override
