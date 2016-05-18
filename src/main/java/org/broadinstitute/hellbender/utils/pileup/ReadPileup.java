@@ -236,6 +236,22 @@ public final class ReadPileup implements Iterable<PileupElement>{
     }
 
     /**
+     * Format, assuming a single-sample, in a samtools-like string.
+     * Each line represents a genomic position, consisting of chromosome name, coordinate,
+     * reference base, read bases and read qualities
+     * @param ref the reference base
+     * @return pileup line
+     */
+    public String getPileupString(final char ref) {
+        // In the pileup format,
+        return String.format("%s %s %c %s %s",
+            getLocation().getContig(), getLocation().getStart(),    // chromosome name and coordinate
+            ref,                                                     // reference base
+            new String(getBases()),
+            getQualsString());
+    }
+
+    /**
      * Returns a list of the reads in this pileup. Note this call costs O(n) and allocates fresh lists each time
      */
     public List<GATKRead> getReads() {

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.pileup;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -349,6 +350,11 @@ public final class ReadPileupUnitTest {
         final ReadPileup pu = new ReadPileup(loc, reads, 1);
 
         Assert.assertNotNull(pu.toString()); //checking non-blowup. We're not making any claims about the format of toString
+        Assert.assertEquals(pu.getPileupString('N'), String.format("%s %s N %s%s %s%s",
+                loc.getContig(), loc.getStart(), // the position
+                (char) read1.getBase(0), (char) read2.getBase(0),  // the bases
+                SAMUtils.phredToFastq(read1.getBaseQuality(0)), // base quality in FASTQ format
+                SAMUtils.phredToFastq(read2.getBaseQuality(0)))); // base quality in FASTQ format
 
         Assert.assertEquals(pu.getBases(), new byte[]{(byte) 'A', (byte) 'C'});
         Assert.assertFalse(pu.isEmpty());
@@ -395,6 +401,11 @@ public final class ReadPileupUnitTest {
         final ReadPileup pu = new ReadPileup(loc, reads, offset);
 
         Assert.assertNotNull(pu.toString()); //checking non-blowup. We're not making any claims about the format of toString
+        Assert.assertEquals(pu.getPileupString('N'), String.format("%s %s N %s%s %s%s",
+                loc.getContig(), loc.getStart(), // the position
+                (char) read1.getBase(0), (char) read2.getBase(0),  // the bases
+                SAMUtils.phredToFastq(read1.getBaseQuality(0)), // base quality in FASTQ format
+                SAMUtils.phredToFastq(read2.getBaseQuality(0)))); // base quality in FASTQ format
 
         Assert.assertEquals(pu.getBases(), new byte[]{(byte) 'A', (byte) 'C'});
         Assert.assertFalse(pu.isEmpty());
@@ -441,6 +452,11 @@ public final class ReadPileupUnitTest {
         Assert.assertEquals(pu.getBases(), new byte[]{(byte) 'A', (byte) 'C'});
 
         Assert.assertNotNull(pu.toString()); //checking non-blowup. We're not making any claims about the format of toString
+        Assert.assertEquals(pu.getPileupString('N'), String.format("%s %s N %s%s %s%s",
+                loc.getContig(), loc.getStart(), // the position
+                (char) read1.getBase(off), (char) read2.getBase(off),  // the bases
+                SAMUtils.phredToFastq(read1.getBaseQuality(off)), // base quality in FASTQ format
+                SAMUtils.phredToFastq(read2.getBaseQuality(off)))); // base quality in FASTQ format
 
         Assert.assertFalse(pu.isEmpty());
         Assert.assertEquals(pu.size(), 2, "size");
