@@ -34,7 +34,7 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
     public Object[][] filenames() {
         return new Object[][]{
                 {COUNT_VARIANTS_VCF, 26L},
-//                {new File(getTestDataDir(), "count_variants.blockgz.gz"), 26L}, //disabled because of https://github.com/HadoopGenomics/Hadoop-BAM/issues/68
+                {new File(getTestDataDir(), "count_variants.blockgz.gz"), 26L},
                 {new File(dbsnp_138_b37_1_65M_vcf), 1375319L},
         };
     }
