@@ -70,7 +70,7 @@ public class LineIteratorReaderUnitTest {
     private static char[] createRandomLine(final int lineSize) {
         final char[] result = new char[lineSize];
         for (int i = 0; i < result.length; i++) {
-            result[i] = (char) ((RANDOM.nextInt(127 - 32)) + 32);
+            result[i] = (char) (RANDOM.nextInt(127 - 32) + 32);
         }
         return result;
     }

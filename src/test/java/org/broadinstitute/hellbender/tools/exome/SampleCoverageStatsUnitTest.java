@@ -54,7 +54,7 @@ public final class SampleCoverageStatsUnitTest extends BaseTest {
         } else {
             final double mean = sum / size;
             Assert.assertEquals(subject.mean, mean, 0.000001);
-            final double variance = Math.abs((((squaresSum / size) - Math.pow(mean, 2)) * size)) / ((double) size - 1);
+            final double variance = Math.abs((squaresSum / size - Math.pow(mean, 2)) * size) / ((double) size - 1);
             Assert.assertEquals(subject.variance, variance, 0.000001);
         }
     }

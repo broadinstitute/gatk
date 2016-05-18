@@ -55,7 +55,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         // edge case: if the graph only has one node then it's a ref node, otherwise it's not
-        return (vertexSet().size() == 1);
+        return vertexSet().size() == 1;
     }
 
     /**
@@ -150,7 +150,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         // edge case: if the graph only has one node then it's a ref source, otherwise it's not
-        return (vertexSet().size() == 1);
+        return vertexSet().size() == 1;
     }
 
     /**

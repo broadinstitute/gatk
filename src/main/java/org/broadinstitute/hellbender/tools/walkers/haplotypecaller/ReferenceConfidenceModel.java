@@ -77,7 +77,7 @@ public final class ReferenceConfidenceModel {
     /**
      * Phred scaled qual value that corresponds to the {@link #INDEL_ERROR_RATE indel error rate}.
      */
-    private static final byte INDEL_QUAL = (byte) Math.round((INDEL_ERROR_RATE * -10.0));
+    private static final byte INDEL_QUAL = (byte) Math.round(INDEL_ERROR_RATE * -10.0);
 
     /**
      * No indel likelihood (ref allele) used in the indel model to assess the confidence on the hom-ref call.

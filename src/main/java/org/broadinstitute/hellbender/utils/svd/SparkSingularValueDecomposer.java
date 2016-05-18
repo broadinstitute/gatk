@@ -60,7 +60,7 @@ class SparkSingularValueDecomposer {
 
         final Matrix invSMat = Matrices.diag(Vectors.dense(invS));
         logger.info("Pinv: Multiplying V * invS * U' to get the pinv (using pinv transpose = U * invS' * V') ...");
-        final RowMatrix pinvT = (u.multiply(invSMat)).multiply(v);
+        final RowMatrix pinvT = u.multiply(invSMat).multiply(v);
         logger.info("Pinv: Converting back to local matrix ...");
         final RealMatrix pinv = SparkConverter.convertSparkRowMatrixToRealMatrix(pinvT, realMat.getRowDimension()).transpose();
         logger.info("Done calculating the pseudoinverse and converting it...");
