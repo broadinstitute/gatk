@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.pileup;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -31,6 +32,14 @@ public final class ReadPileup implements Iterable<PileupElement>{
         Utils.nonNull(pileup, "element list is null");
         this.loc = loc;
         this.pileupElements = pileup;
+    }
+
+    /**
+     * Create a new pileup at loc, using an stratified pileup
+     * Note: the current implementation of ReadPileup does not efficiently retrieve the stratified pileup
+     */
+    public ReadPileup(final Locatable loc, final Map<String, ReadPileup> stratifiedPileup) {
+        this(loc, stratifiedPileup.values().stream().flatMap(ReadPileup::getElementStream).collect(Collectors.toList()));
     }
 
     /**
@@ -115,8 +124,17 @@ public final class ReadPileup implements Iterable<PileupElement>{
     }
 
     /**
+     * Make a new pileup from elements whose reads belong to the given sample.
+     * Passing null sample as an argument retrieves reads whose read group or sample name is {@code null}
+     * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
+     */
+    public ReadPileup getPileupForSample(final String sample, final SAMFileHeader header) {
+        return makeFilteredPileup(pe -> Objects.equals(ReadUtils.getSampleName(pe.getRead(), header), sample));
+    }
+
+    /**
      * Gets a set of the read groups represented in this pileup.
-     * Note: contains null if a read has a null read group.
+     * Note: contains null if a read has a null read group
      */
     public Set<String> getReadGroupIDs() {
         return getElementStream().map(pe -> pe.getRead().getReadGroup()).collect(Collectors.toSet());
@@ -128,6 +146,30 @@ public final class ReadPileup implements Iterable<PileupElement>{
      */
     public Set<String> getSamples(final SAMFileHeader header) {
         return getElementStream().map(pe -> pe.getRead()).map(r -> ReadUtils.getSampleName(r, header)).collect(Collectors.toSet());
+    }
+
+    /**
+     * Splits the ReadPileup by sample
+     *
+     * @param header              the header to retrieve the samples from
+     * @param unknownSampleName the sample name if there is no read group/sample name; {@code null} if lack of RG is not expected
+     * @return a Map of sample name to ReadPileup (including empty pileups for a sample)
+     * @throws org.broadinstitute.hellbender.exceptions.UserException.ReadMissingReadGroup if unknownSampleName is {@code null} and there are reads without RG/sample name
+     */
+    public Map<String, ReadPileup> splitBySample(final SAMFileHeader header, final String unknownSampleName) {
+        final Map<String, ReadPileup> toReturn = new HashMap<>();
+        for (final String sample : getSamples(header)) {
+            final ReadPileup pileupBySample = getPileupForSample(sample, header);
+            if (sample != null) {
+                toReturn.put(sample, pileupBySample);
+            } else {
+                if (unknownSampleName == null) {
+                    throw new UserException.ReadMissingReadGroup(pileupBySample.iterator().next().getRead());
+                }
+                toReturn.put(unknownSampleName, pileupBySample);
+            }
+        }
+        return toReturn;
     }
 
     /**
