@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.plotter.ACNVPlotter;
 
 import java.io.File;
@@ -56,7 +57,12 @@ public final class PlotACNVResults extends CommandLineProgram {
     @Override
     protected Object doWork() {
         final String sampleName = SegmentUtils.getSampleNameForCLIsFromSegmentFile(new File(segmentsFile));
+        Utils.regularReadableUserFile(new File(snpCountsFile));
+        Utils.regularReadableUserFile(new File(coverageFile));
+        Utils.regularReadableUserFile(new File(segmentsFile));
         ACNVPlotter.writeSegmentedAlleleFractionPlot(sampleName, snpCountsFile, coverageFile,
+                segmentsFile, outputDir, useSexChromosomes);
+        ACNVPlotter.writeSegmentedAlleleFractionPlotPerSeg(sampleName, snpCountsFile, coverageFile,
                 segmentsFile, outputDir, useSexChromosomes);
         return "Success";
     }
