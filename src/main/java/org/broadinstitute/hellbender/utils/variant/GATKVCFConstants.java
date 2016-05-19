@@ -10,6 +10,9 @@ import htsjdk.variant.variantcontext.Allele;
 public final class GATKVCFConstants {
 
     //INFO keys
+    public static final String RAW_RMS_MAPPING_QUALITY_KEY =        "RAW_MQ";
+    public static final String AS_RMS_MAPPING_QUALITY_KEY =         "AS_MQ";
+    public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String ALLELE_BALANCE_HET_KEY =             "ABHet";
     public static final String ALLELE_BALANCE_HOM_KEY =             "ABHom";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
@@ -17,6 +20,8 @@ public final class GATKVCFConstants {
     public static final String ORIGINAL_AN_KEY =                    "AN_Orig"; //SelectVariants
     public static final String BASE_COUNTS_KEY =                    "BaseCounts";
     public static final String BASE_QUAL_RANK_SUM_KEY =             "BaseQRankSum";
+    public static final String AS_BASE_QUAL_RANK_SUM_KEY =          "AS_BaseQRankSum";
+    public static final String AS_RAW_BASE_QUAL_RANK_SUM_KEY =      "AS_RAW_BaseQRankSum";
     public static final String GENOTYPE_AND_VALIDATE_STATUS_KEY =   "callStatus";
     public static final String CLIPPING_RANK_SUM_KEY =              "ClippingRankSum";
     public static final String CULPRIT_KEY =                        "culprit";
@@ -27,6 +32,8 @@ public final class GATKVCFConstants {
     public static final String EVENT_DISTANCE_MAX_KEY =             "MAX_ED"; //M2
     public static final String EVENT_DISTANCE_MIN_KEY =             "MIN_ED"; //M2
     public static final String FISHER_STRAND_KEY =                  "FS";
+    public static final String AS_FISHER_STRAND_KEY =               "AS_FS";
+    public static final String AS_SB_TABLE_KEY =                    "AS_SB_TABLE";
     public static final String GC_CONTENT_KEY =                     "GC";
     public static final String GQ_MEAN_KEY =                        "GQ_MEAN";
     public static final String GQ_STDEV_KEY =                       "GQ_STDDEV";
@@ -38,7 +45,9 @@ public final class GATKVCFConstants {
     public static final String AVG_INTERVAL_DP_KEY =                "IDP"; //DiagnoseTargets
     public static final String INTERVAL_GC_CONTENT_KEY =            "IGC";
     public static final String INBREEDING_COEFFICIENT_KEY =         "InbreedingCoeff";
+    public static final String AS_INBREEDING_COEFFICIENT_KEY =      "AS_InbreedingCoeff";
     public static final String EXCESS_HET_KEY =                     "ExcessHet";
+    public static final String AS_HETEROZYGOSITY_KEY =              "AS_InbreedingCoeff";
     public static final String LIKELIHOOD_RANK_SUM_KEY =            "LikelihoodRankSum";
     public static final String LO_CONF_DENOVO_KEY =                 "loConfDeNovo";
     public static final String LOW_MQ_KEY =                         "LowMQ";
@@ -47,6 +56,9 @@ public final class GATKVCFConstants {
     public static final String MLE_PER_SAMPLE_ALLELE_COUNT_KEY =    "MLPSAC";
     public static final String MLE_PER_SAMPLE_ALLELE_FRACTION_KEY = "MLPSAF";
     public static final String MAP_QUAL_RANK_SUM_KEY =              "MQRankSum";
+    public static final String RAW_MAP_QUAL_RANK_SUM_KEY =          "RAW_MQRankSum";
+    public static final String AS_MAP_QUAL_RANK_SUM_KEY =           "AS_MQRankSum";
+    public static final String AS_RAW_MAP_QUAL_RANK_SUM_KEY =       "AS_RAW_MQRankSum";
     public static final String MENDEL_VIOLATION_LR_KEY =            "MVLR";
     public static final String NOCALL_CHROM_KEY =                   "NCC";
     public static final String NUMBER_OF_DISCOVERED_ALLELES_KEY =   "NDA";
@@ -61,12 +73,17 @@ public final class GATKVCFConstants {
     public static final String PANEL_OF_NORMALS_COUNT_KEY =         "PON"; //M2
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
     public static final String QUAL_BY_DEPTH_KEY =                  "QD";
+    public static final String AS_QUAL_BY_DEPTH_KEY =               "AS_QD";
+    public static final String AS_QUAL_KEY =                        "AS_QUAL";
     public static final String READ_POS_RANK_SUM_KEY =              "ReadPosRankSum";
+    public static final String AS_READ_POS_RANK_SUM_KEY =           "AS_ReadPosRankSum";
+    public static final String AS_RAW_READ_POS_RANK_SUM_KEY =       "AS_RAW_ReadPosRankSum";
     public static final String REFSAMPLE_DEPTH_KEY =                "REFDEPTH";
     public static final String REPEATS_PER_ALLELE_KEY =             "RPA";
     public static final String REPEAT_UNIT_KEY =                    "RU";
     public static final String SAMPLE_LIST_KEY =                    "Samples";
     public static final String STRAND_ODDS_RATIO_KEY =              "SOR";
+    public static final String AS_STRAND_ODDS_RATIO_KEY =           "AS_SOR";
     public static final String STR_PRESENT_KEY =                    "STR";
     public static final String TRANSMISSION_DISEQUILIBRIUM_KEY =    "TDT";
     public static final String TUMOR_LOD_KEY =                      "TLOD"; //M2

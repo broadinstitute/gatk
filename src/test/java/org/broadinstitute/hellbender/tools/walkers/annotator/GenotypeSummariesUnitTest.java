@@ -78,7 +78,7 @@ public final class GenotypeSummariesUnitTest {
 
         final GenotypeSummaries GS = new GenotypeSummaries();
         final Map<String,Object> resultMap = GS.annotate(null, testVC, null);
-        Assert.assertNull(resultMap);
+        Assert.assertTrue(resultMap.isEmpty());
     }
 
 }

@@ -71,7 +71,7 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if (trios.isEmpty()){
-            return null;
+            return Collections.emptyMap();
         }
         final List<String> highConfDeNovoChildren = new ArrayList<>();
         final List<String> lowConfDeNovoChildren = new ArrayList<>();
@@ -112,8 +112,9 @@ public final class PossibleDeNovo extends InfoFieldAnnotation {
         final String dad = trio.getPaternalID();
         final String kid = trio.getChildID();
 
-      return  !mom.isEmpty()  && vc.hasGenotype(mom) && vc.getGenotype(mom).hasLikelihoods()
-           && !dad.isEmpty()  && vc.hasGenotype(dad) && vc.getGenotype(dad).hasLikelihoods()
-           && !kid.isEmpty()  && vc.hasGenotype(kid) && vc.getGenotype(kid).hasLikelihoods();
+        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasLikelihoods())
+              && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasLikelihoods())
+              && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasLikelihoods());
     }
+
 }

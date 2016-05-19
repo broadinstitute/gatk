@@ -163,6 +163,6 @@ public final class PossibleDeNovoUnitTest extends BaseTest {
         Assert.assertEquals(ann.getKeyNames(), Arrays.asList(GATKVCFConstants.HI_CONF_DENOVO_KEY, GATKVCFConstants.LO_CONF_DENOVO_KEY));
 
         final Map<String, Object> resultNoTrio = new PossibleDeNovo(Collections.emptySet(), 0).annotate(null, vc, null);
-        Assert.assertNull(resultNoTrio);
+        Assert.assertTrue(resultNoTrio.isEmpty());
     }
 }

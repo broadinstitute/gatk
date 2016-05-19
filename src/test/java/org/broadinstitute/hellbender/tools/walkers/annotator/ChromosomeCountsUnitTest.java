@@ -64,6 +64,6 @@ public final class ChromosomeCountsUnitTest {
         final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
 
         //no genotypes
-        Assert.assertNull(annotate);
+        Assert.assertTrue(annotate.isEmpty());
     }
 }

@@ -31,12 +31,12 @@ public final class TandemRepeat extends InfoFieldAnnotation {
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if ( !vc.isIndel()) {
-            return null;
+            return Collections.emptyMap();
         }
 
         final Pair<List<Integer>,byte[]> result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, ref.getForwardBases());
         if (result == null) {
-            return null;
+            return Collections.emptyMap();
         }
 
         final byte[] repeatUnit = result.getRight();

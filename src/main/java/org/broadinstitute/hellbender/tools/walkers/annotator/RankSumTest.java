@@ -26,7 +26,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
     }
 
     public RankSumTest(){
-        this(true);
+        this(false);
     }
 
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -36,7 +36,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
         Utils.nonNull(stratifiedPerReadAlleleLikelihoodMap, "stratifiedPerReadAlleleLikelihoodMap has to be non-null");
         final GenotypesContext genotypes = vc.getGenotypes();
         if (genotypes == null || genotypes.isEmpty()) {
-            return null;
+            return Collections.emptyMap();
         }
 
         final List<Double> refQuals = new ArrayList<>();
@@ -50,7 +50,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
         }
 
         if ( refQuals.isEmpty() && altQuals.isEmpty() ) {
-            return null;
+            return Collections.emptyMap();
         }
 
         // we are testing that set1 (the alt bases) have lower quality scores than set2 (the ref bases)

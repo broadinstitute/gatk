@@ -226,10 +226,10 @@ public final class ExcessHetUnitTest extends BaseTest {
     }
 
     @Test
-    public void testNullIfNoGenotypes() throws Exception {
+    public void testEmptyIfNoGenotypes() throws Exception {
         final ExcessHet ann = new ExcessHet();
         final Map<String, Object> annotate = ann.annotate(null, when(mock(VariantContext.class).getGenotypesOrderedByName()).thenReturn(Collections.<Genotype>emptyList()).getMock(), null);
-        Assert.assertNull(annotate);
+        Assert.assertTrue(annotate.isEmpty());
     }
 
 }

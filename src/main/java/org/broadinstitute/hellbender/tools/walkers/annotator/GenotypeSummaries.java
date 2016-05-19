@@ -8,10 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Summarize genotype statistics from all samples at the site level
@@ -36,7 +33,7 @@ public final class GenotypeSummaries extends InfoFieldAnnotation {
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if ( ! vc.hasGenotypes() ) {
-            return null;
+            return Collections.emptyMap();
         }
 
         final Map<String,Object> returnMap = new LinkedHashMap<>();

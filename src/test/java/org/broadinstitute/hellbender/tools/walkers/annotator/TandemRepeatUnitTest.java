@@ -79,7 +79,7 @@ public final class TandemRepeatUnitTest extends BaseTest {
         final InfoFieldAnnotation ann = new TandemRepeat();
         final Map<String, Object> a = ann.annotate(ref, vc, null);
 
-        Assert.assertNull(a);
+        Assert.assertTrue(a.isEmpty());
     }
 
     @Test
@@ -108,7 +108,7 @@ public final class TandemRepeatUnitTest extends BaseTest {
         final InfoFieldAnnotation ann = new TandemRepeat();
         final Map<String, Object> a = ann.annotate(ref, vc, null);
 
-        Assert.assertNull(a);
+        Assert.assertTrue(a.isEmpty());
     }
 
     @Test

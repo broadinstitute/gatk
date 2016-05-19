@@ -36,7 +36,7 @@ public final class MappingQualityZero extends InfoFieldAnnotation {
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if (!vc.isVariant() || stratifiedPerReadAlleleLikelihoodMap == null){
-            return null;
+            return Collections.emptyMap();
         }
         //NOTE: unlike other annotations, this one returns 0 if stratifiedPerReadAlleleLikelihoodMap is empty
         final long mq0 = stratifiedPerReadAlleleLikelihoodMap.values().stream().flatMap(llm -> llm.getLikelihoodReadMap().keySet().stream()).filter(r -> r.getMappingQuality() == 0).count();
