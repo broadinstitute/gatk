@@ -14,7 +14,7 @@ import java.util.NoSuchElementException;
  * Wraps an iterator of {@link htsjdk.samtools.util.Locatable} with a list of sorted intervals
  * to return only the objects which overlaps with them
  *
- * @author Daniel Gómez-Sánchez (magicDGS)
+ * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public class IntervalOverlappingIterator<T extends Locatable> implements Iterable<T>, Iterator<T> {
 
