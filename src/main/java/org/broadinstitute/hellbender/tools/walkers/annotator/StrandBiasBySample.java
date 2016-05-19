@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -64,7 +65,29 @@ public final class StrandBiasBySample extends GenotypeAnnotation {
 
         final int[][] table = FisherStrand.getContingencyTable(Collections.singletonMap(g.getSampleName(), alleleLikelihoodMap), vc, 0);
 
-        gb.attribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, StrandBiasTableUtils.getContingencyArray(table));
+        gb.attribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, getContingencyArray(table));
+    }
+
+    //For now this is only for 2x2 contingency tables
+    private static final int ARRAY_DIM = 2;
+
+    /**
+     * Helper function to turn the FisherStrand 2x2 table into the SB annotation array
+     * @param table the 2x2 table used by the FisherStrand annotation
+     * @return the array used by the per-sample Strand Bias annotation
+     */
+    @VisibleForTesting
+    static List<Integer> getContingencyArray(final int[][] table) {
+        if(table.length != ARRAY_DIM || table[0].length != ARRAY_DIM) {
+            throw new IllegalArgumentException("Expecting a " + ARRAY_DIM + "x" + ARRAY_DIM + " strand bias table.");
+        }
+
+        final List<Integer> list = new ArrayList<>(ARRAY_DIM * ARRAY_DIM);
+        list.add(table[0][0]);
+        list.add(table[0][1]);
+        list.add(table[1][0]);
+        list.add(table[1][1]);
+        return list;
     }
 
     @Override

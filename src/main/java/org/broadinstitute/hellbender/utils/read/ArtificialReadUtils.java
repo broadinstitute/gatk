@@ -198,6 +198,13 @@ public final class ArtificialReadUtils {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(cigar));
     }
 
+    /**
+     * Makes a new read with a name that is unique (so that it will return false to equals(otherRead)
+     */
+    public static GATKRead createUniqueArtificialRead(final Cigar cigar) {
+        return new SAMRecordToGATKReadAdapter(createUniqueArtificialSAMRecord(cigar));
+    }
+
     public static GATKRead createArtificialRead(final Cigar cigar, final String name) {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(createArtificialSamHeader(), cigar, name));
     }

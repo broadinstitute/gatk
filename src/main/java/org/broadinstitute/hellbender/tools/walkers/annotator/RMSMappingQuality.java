@@ -1,20 +1,21 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 
 /**
@@ -31,22 +32,52 @@ import java.util.stream.Collectors;
  * </ul>
  *
  */
-public final class RMSMappingQuality extends InfoFieldAnnotation implements StandardAnnotation {
+public final class RMSMappingQuality extends InfoFieldAnnotation implements StandardAnnotation, ReducibleAnnotation {
 
-    public Map<String, Object> annotate(final ReferenceContext ref,
-                                        final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
+    @Override
+    public String getRawKeyName() { return GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY;}
+
+    /**
+     * Generate the raw data necessary to calculate the annotation. Raw data is the final endpoint for gVCFs.
+     */
+    @Override
+    public Map<String, Object> annotateRawData(final ReferenceContext ref,
+                                               final VariantContext vc,
+                                               final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap){
         Utils.nonNull(vc);
         if (perReadAlleleLikelihoodMap == null || perReadAlleleLikelihoodMap.isEmpty() ) {
             return null;
         }
 
-        //get all available mapping qualities
-        final List<Integer> qualities = perReadAlleleLikelihoodMap.values().stream().
-                flatMap(pprl -> pprl.getReads().stream().map(read -> read.getMappingQuality()).filter(mq -> mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE))
-                .collect(Collectors.toList());
-        final double rms = MathUtils.rms(qualities);
-        return Collections.singletonMap(getKeyNames().get(0), formatedValue(rms));
+        final Map<String, Object> annotations = new HashMap<>();
+        final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
+        calculateRawData(vc, perReadAlleleLikelihoodMap, myData);
+        final String annotationString = formatedValue((double) myData.getAttributeMap().get(Allele.NO_CALL));
+        annotations.put(getRawKeyName(), annotationString);
+        return annotations;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
+    public void calculateRawData(final VariantContext vc,
+                                 final Map<String, PerReadAlleleLikelihoodMap> pralm,
+                                 final ReducibleAnnotationData rawAnnotations){
+        if (pralm.isEmpty()) {
+            return;
+        }
+
+        //put this as a double, like GATK3.5
+        final double squareSum = pralm.values().stream()
+                .flatMap(likelihoodMap -> likelihoodMap.getReads().stream())
+                .map(GATKRead::getMappingQuality)
+                .filter(mq -> mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE).mapToDouble(mq -> mq * mq).sum();
+        rawAnnotations.putAttribute(Allele.NO_CALL, squareSum);
+    }
+
+    @Override
+    public Map<String, Object> annotate(final ReferenceContext ref,
+                                        final VariantContext vc,
+                                        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
+        return annotateRawData(ref, vc, perReadAlleleLikelihoodMap);
     }
 
     @VisibleForTesting
@@ -54,9 +85,11 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         return String.format("%.2f", rms);
     }
 
-    public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.RMS_MAPPING_QUALITY_KEY); }
+    @Override
+    public List<String> getKeyNames() { return Collections.singletonList(getRawKeyName()); }
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
+        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
     }
 }

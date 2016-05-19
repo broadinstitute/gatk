@@ -128,6 +128,14 @@ public final class MathUtils {
     }
 
     /**
+     * Computes the sume of squares of the given array or 0.0 if the array is empty.
+     */
+    public static double sumOfSquares(final Collection<Integer> list) {
+        Utils.nonNull(list);
+        return list.stream().mapToInt(i -> i * i).sum();
+    }
+
+    /**
      * Creates a new sample of k ints from [0..n-1], without duplicates.
      * @throws NumberIsTooLargeException if {@code k > n}.
      * @throws NotStrictlyPositiveException if {@code k <= 0}.

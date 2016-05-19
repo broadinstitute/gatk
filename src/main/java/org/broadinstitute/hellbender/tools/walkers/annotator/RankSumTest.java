@@ -26,7 +26,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
     }
 
     public RankSumTest(){
-        this(true);
+        this(false);
     }
 
     public Map<String, Object> annotate(final ReferenceContext ref,
