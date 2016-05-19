@@ -27,6 +27,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
@@ -183,8 +184,8 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
 
         // Test the round trip
-        List<GATKRead> samList = rddParallelReads.collect();
-        List<GATKRead> adamList = rddParallelReads2.collect();
+        List<GATKRead> samList = new ArrayList<>(rddParallelReads.collect());//make a mutable copy for sort
+        List<GATKRead> adamList = new ArrayList<>(rddParallelReads2.collect());//make a mutable copy for sort
         Comparator<GATKRead> comparator = new ReadCoordinateComparator(header);
         samList.sort(comparator);
         adamList.sort(comparator);
