@@ -1,30 +1,6 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
-package org.broadinstitute.gatk.utils.codecs.sampileup;
-
+import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.tribble.Feature;
 
@@ -34,14 +10,14 @@ import java.util.List;
  * A tribble feature representing a SAM pileup.
  *
  * Allows intake of both simple (6-column) or extended/consensus (10/13-column) pileups. Simple pileup features will
- * contain only basic information, no observed alleles or variant/genotype inferences, and so shouldn't be used as
- * input for analysis that requires that information.
+ * contain only basic information, no observed alleles or variant/genotype inferences, and so shouldn't be used as input
+ * for analysis that requires that information.
  *
  * @author mhanna
  * @version 0.1
  */
 public class SAMPileupFeature implements Feature {
-    public enum VariantType { NONE, SNP, INSERTION, DELETION, INDEL }; 
+    public enum VariantType { NONE, SNP, INSERTION, DELETION, INDEL };
 
     private String contig;            // genomic location of this genotyped site
     private int start;
@@ -67,6 +43,7 @@ public class SAMPileupFeature implements Feature {
     SAMPileupFeature() {}
 
     @Override
+    @Deprecated
     public String getChr() {
         return getContig();
     }
@@ -98,45 +75,57 @@ public class SAMPileupFeature implements Feature {
         this.stop = end;
     }
 
-    public String getQualsAsString()        { return pileupQuals; }
+    public String getQualsAsString() {
+        return pileupQuals;
+    }
 
     protected void setPileupQuals(String pileupQuals) {
         this.pileupQuals = pileupQuals;
     }
 
-    /** Returns reference base for point genotypes or '*' for indel genotypes, as a char.
-     *
+    /**
+     * Returns reference base for point genotypes or '*' for indel genotypes, as a char.
      */
-    public char getRef()            { return refBaseChar; }
+    public char getRef() {
+        return refBaseChar;
+    }
 
     protected void setRef(char ref) {
         this.refBaseChar = ref;
     }
 
-    public int size()               { return pileupQuals.length(); }
+    public int size() {
+        return pileupQuals.length();
+    }
 
-    /** Returns pile of observed bases over the current genomic location.
-     *
+    /**
+     * Returns pile of observed bases over the current genomic location.
      */
-    public String getBasesAsString()        { return pileupBases; }
+    public String getBasesAsString() {
+        return pileupBases;
+    }
 
     protected void setPileupBases(String pileupBases) {
         this.pileupBases = pileupBases;
     }
 
-    /** Returns formatted pileup string for the current genomic location as
-     * "location: reference_base observed_base_pile observed_qual_pile"
+    /**
+     * Returns formatted pileup string for the current genomic location as "location: reference_base observed_base_pile
+     * observed_qual_pile"
      */
-    public String getPileupString()
-    {
-        if(start == stop)
-            return String.format("%s:%d: %s %s %s", getChr(), getStart(), getRef(), getBasesAsString(), getQualsAsString());
-        else
-            return String.format("%s:%d-%d: %s %s %s", getChr(), getStart(), getEnd(), getRef(), getBasesAsString(), getQualsAsString());
+    public String getPileupString() {
+        if (start == stop) {
+			return String.format("%s:%d: %s %s %s",
+				getContig(), getStart(), getRef(), getBasesAsString(), getQualsAsString());
+		} else {
+			return String.format("%s:%d-%d: %s %s %s",
+                getContig(), getStart(), getEnd(), getRef(), getBasesAsString(), getQualsAsString());
+		}
     }
 
     /**
      * Gets the bases in byte array form.
+     *
      * @return byte array of the available bases.
      */
     public byte[] getBases() {
@@ -145,17 +134,17 @@ public class SAMPileupFeature implements Feature {
 
     /**
      * Gets the Phred base qualities without ASCII offset.
+     *
      * @return Phred base qualities.
      */
     public byte[] getQuals() {
-        byte[] quals = StringUtil.stringToBytes(getQualsAsString());
-        for(int i = 0; i < quals.length; i++) quals[i] -= 33;
-        return quals;
+        return SAMUtils.fastqToPhred(getQualsAsString());
     }
 
-    /** Returns bases in the reference allele as a String. For point genotypes, the string consists of a single
-     * character (reference base). For indel genotypes, the string is empty for insertions into
-     * the reference, or consists of deleted bases for deletions.
+    /**
+     * Returns bases in the reference allele as a String. For point genotypes, the string consists of a single character
+     * (reference base). For indel genotypes, the string is empty for insertions into the reference, or consists of
+     * deleted bases for deletions.
      *
      * @return reference allele, forward strand
      */
@@ -167,7 +156,7 @@ public class SAMPileupFeature implements Feature {
         this.refBases = refBases;
     }
 
-    public List<String> getFWDAlleles()  {
+    public List<String> getFWDAlleles() {
         return observedAlleles;
     }
 
@@ -180,11 +169,25 @@ public class SAMPileupFeature implements Feature {
     // What kind of variant are we?
     //
     // ----------------------------------------------------------------------
-    public boolean isSNP() { return varType == VariantType.SNP; }
-    public boolean isInsertion() { return varType == VariantType.INSERTION; }
-    public boolean isDeletion() { return varType == VariantType.DELETION ; }
-    public boolean isIndel() { return isInsertion() || isDeletion() || varType == VariantType.INDEL; }
-    public boolean isReference()  { return varType == VariantType.NONE; }
+    public boolean isSNP() {
+        return varType == VariantType.SNP;
+    }
+
+    public boolean isInsertion() {
+        return varType == VariantType.INSERTION;
+    }
+
+    public boolean isDeletion() {
+        return varType == VariantType.DELETION;
+    }
+
+    public boolean isIndel() {
+        return isInsertion() || isDeletion() || varType == VariantType.INDEL;
+    }
+
+    public boolean isReference() {
+        return varType == VariantType.NONE;
+    }
 
     protected void setVariantType(VariantType variantType) {
         this.varType = variantType;
@@ -192,14 +195,18 @@ public class SAMPileupFeature implements Feature {
 
     public boolean isHom() {
         // implementation-dependent: here we use the fact that for ref and snps we actually use fixed static strings to remember the genotype
-        if ( ! isIndel() ) return ( observedAlleles.get(0).equals(observedAlleles.get(1)) );
-        return ( isInsertion() || isDeletion() ) && observedAlleles.get(0).equals(observedAlleles.get(1) );
+        if (!isIndel()) {
+			return (observedAlleles.get(0).equals(observedAlleles.get(1)));
+		}
+        return (isInsertion() || isDeletion()) && observedAlleles.get(0).equals(observedAlleles.get(1));
     }
 
     public boolean isHet() {
         // implementation-dependent: here we use the fact that for ref and snps we actually use fixed static strings to remember the genotype
-        if ( ! isIndel() ) return ( !(observedAlleles.get(0).equals(observedAlleles.get(1))) );
-        return isIndel() || ( ! observedAlleles.get(0).equals(observedAlleles.get(1) ) );
+        if (!isIndel()) {
+			return (!(observedAlleles.get(0).equals(observedAlleles.get(1))));
+		}
+        return isIndel() || (!observedAlleles.get(0).equals(observedAlleles.get(1)));
     }
 
     public double getVariantConfidence() {
@@ -211,7 +218,7 @@ public class SAMPileupFeature implements Feature {
     }
 
     public boolean isBiallelic() {
-        return nNonref  < 2;
+        return nNonref < 2;
     }
 
     protected void setNumNonRef(int nNonref) {
@@ -238,47 +245,45 @@ public class SAMPileupFeature implements Feature {
         return refBaseChar == '*';
     }
 
-
     public boolean isPointGenotype() {
-        return ! isIndelGenotype();
+        return !isIndelGenotype();
     }
 
-    /** Implements method required by GenotypeList interface. If this object represents
-     * an indel genotype, then it returns itself through this method. If this object is a
-     * point genotype, this method returns null.
+    /**
+     * Implements method required by GenotypeList interface. If this object represents an indel genotype, then it
+     * returns itself through this method. If this object is a point genotype, this method returns null.
+     *
      * @return
      */
     public SAMPileupFeature getIndelGenotype() {
-        if ( isIndelGenotype() ) return this;
-        else return null;
+        return (isIndelGenotype()) ? this : null;
     }
 
-    /** Implements method required by GenotypeList interface. If this object represents
-     * a point genotype, then it returns itself through this method. If this object is an
-     * indel genotype, this method returns null.
+    /**
+     * Implements method required by GenotypeList interface. If this object represents a point genotype, then it returns
+     * itself through this method. If this object is an indel genotype, this method returns null.
+     *
      * @return
      */
     public SAMPileupFeature getPointGenotype() {
-        if ( isPointGenotype() ) return this;
-        else return null;
+        return (isPointGenotype()) ? this : null;
     }
 
-    /** Returns true if this object \em is an indel genotype (and thus
-     * indel genotype is what it only has).
+    /**
+     * Returns true if this object \em is an indel genotype (and thus indel genotype is what it only has).
+     *
      * @return
      */
     public boolean hasIndelGenotype() {
         return isIndelGenotype();
     }
 
-    /** Returns true if this object \em is a point genotype (and thus
-     * point genotype is what it only has.
+    /**
+     * Returns true if this object \em is a point genotype (and thus point genotype is what it only has.
+     *
      * @return
      */
     public boolean hasPointGenotype() {
         return isPointGenotype();
     }
-
-
-
 }

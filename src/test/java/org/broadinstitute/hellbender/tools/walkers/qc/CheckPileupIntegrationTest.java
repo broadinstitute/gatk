@@ -1,70 +1,46 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
+package org.broadinstitute.hellbender.tools.walkers.qc;
 
-package org.broadinstitute.gatk.tools.walkers.qc;
-
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
-import org.broadinstitute.gatk.engine.walkers.WalkerTest;
 
-import java.util.Collections;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Run validating pileup across a set of core data as proof of the integrity of the GATK core.
  *
  * Tests both types of old-school pileup formats (basic and consensus).
  *
- * @author mhanna, vdauwera
- * @version 0.2
+ * @author Daniel Gómez-Sánchez (magicDGS)
  */
-public class CheckPileupIntegrationTest extends WalkerTest {
+public class CheckPileupIntegrationTest extends CommandLineProgramTest {
+    private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
+    private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
+
     /**
      * This test runs on a consensus pileup containing 10-column lines for SNPs and 13-column lines for indels
      */
-    @Test(enabled = true)
-    public void testEcoliConsensusPileup() {
-        WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(
-                "-T CheckPileup" +
-                " -I " + validationDataLocation + "MV1994.selected.bam" +
-                " -R " + validationDataLocation + "Escherichia_coli_K12_MG1655.fasta" +
-                " --pileup:SAMPileup "+ validationDataLocation + "MV1994.selected.pileup" +
-                " -S SILENT -nt 8",0, Collections.<String>emptyList());
-        executeTest("testEcoliConsensusPileup",spec);
+    @Test(enabled = false)
+    public void testConsensusPileup() throws IOException {
+        // TODO
     }
 
     /**
-     * This test runs on a basic pileup containing 6-column lines for all variants  TODO
+     * This test runs on a basic pileup obtained with samtools (version 1.1) and options -B --min-BQ 0
      */
     @Test
-    public void testEcoliBasicPileup() {
-        WalkerTest.WalkerTestSpec spec = new WalkerTest.WalkerTestSpec(
-                "-T CheckPileup" +
-                        " -I " + validationDataLocation + "MV1994.selected.bam" +
-                        " -R " + validationDataLocation + "Escherichia_coli_K12_MG1655.fasta" +
-                        " --pileup:SAMPileup "+ validationDataLocation + "MV1994.basic.pileup" +
-                        " -L Escherichia_coli_K12:1-49" +
-                        " -S SILENT -nt 8",0, Collections.<String>emptyList());
-        executeTest("testEcoliBasicPileup",spec);
+    public void testBasicPileup() throws IOException {
+        final File emptyTemp = createTempFile("empty", "txt");
+        emptyTemp.createNewFile();
+        // pileup was generated with "samtools -f hg19MiniReference -B --min-BQ 0 reads_data_source_test1.bam"
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+            " -R " + hg19MiniReference +
+            " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
+            " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.samp" +
+            " -O %s", Arrays.asList(emptyTemp.toString()));
+
+        testSpec.executeTest("testBasicPileup", this);
     }
 }

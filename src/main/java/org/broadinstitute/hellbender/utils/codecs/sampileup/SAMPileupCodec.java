@@ -1,29 +1,4 @@
-/*
-* Copyright 2012-2015 Broad Institute, Inc.
-* 
-* Permission is hereby granted, free of charge, to any person
-* obtaining a copy of this software and associated documentation
-* files (the "Software"), to deal in the Software without
-* restriction, including without limitation the rights to use,
-* copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the
-* Software is furnished to do so, subject to the following
-* conditions:
-* 
-* The above copyright notice and this permission notice shall be
-* included in all copies or substantial portions of the Software.
-* 
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
-* OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-* NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-* HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-* WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
-* THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-package org.broadinstitute.gatk.utils.codecs.sampileup;
+package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.exception.CodecLineParsingException;
@@ -34,7 +9,7 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.broadinstitute.gatk.utils.codecs.sampileup.SAMPileupFeature.VariantType;
+import static org.broadinstitute.hellbender.utils.codecs.sampileup.SAMPileupFeature.VariantType;
 
 /**
  * Decoder for SAM pileup data.
@@ -207,8 +182,9 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
                     case 'Y': feature.getFWDAlleles().add(baseC); feature.getFWDAlleles().add(baseT); break;
                     case 'K': feature.getFWDAlleles().add(baseG); feature.getFWDAlleles().add(baseT); break;
                 }
-                if ( feature.getFWDAlleles().get(0).charAt(0) == feature.getRef() && feature.getFWDAlleles().get(1).charAt(0) == feature.getRef() ) feature.setVariantType(VariantType.NONE);
-                else {
+                if ( feature.getFWDAlleles().get(0).charAt(0) == feature.getRef() && feature.getFWDAlleles().get(1).charAt(0) == feature.getRef() ) {
+                    feature.setVariantType(VariantType.NONE);
+                } else {
                     // 	we know that at least one allele is non-ref;
                     // if one is ref and the other is non-ref, or if both are non ref but they are the same (i.e.
                     // homozygous non-ref), we still have 2 allelic variants at the site (e.g. one ref and one nonref)
@@ -231,8 +207,11 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
                 }
                 // Parse the indel
                 parseIndels(observedString,feature) ;
-                if ( feature.isDeletion() ) feature.setEnd(feature.getStart()+feature.length()-1);
-                else feature.setEnd(feature.getStart()); // if it's not a deletion and we are biallelic, this has got to be an insertion; otherwise the state is inconsistent!!!!
+                if ( feature.isDeletion() ) {
+                    feature.setEnd(feature.getStart()+feature.length()-1);
+                } else {
+                    feature.setEnd(feature.getStart()); // if it's not a deletion and we are biallelic, this has got to be an insertion; otherwise the state is inconsistent!!!!
+                }
                 break;
             default:
                 throw new CodecLineParsingException("The SAM pileup line didn't have the expected number of tokens " +
@@ -308,8 +287,7 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
 
     }
 
-    private void parseBasesAndQuals(SAMPileupFeature feature, final String bases, final String quals)
-    {
+    private void parseBasesAndQuals(SAMPileupFeature feature, final String bases, final String quals) {
         //System.out.printf("%s%n%s%n", bases, quals);
 
         // needs to convert the base string with its . and , to the ref base
@@ -318,7 +296,7 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
         boolean done = false;
         for ( int i = 0, j = 0; i < bases.length() && ! done; i++ ) {
             //System.out.printf("%d %d%n", i, j);
-            char c = (char)bases.charAt(i);
+            char c = bases.charAt(i);
 
             switch ( c ) {
                 case '.':   // matches reference
