@@ -19,7 +19,7 @@ import java.util.List;
  * Example/toy program that shows how to implement the LocusWalker interface. Prints locus-based coverage from supplied
  * reads, and reference bases/overlapping variants if provided
  *
- * @author Daniel Gómez-Sánchez (magicDGS)
+ * @author Daniel Gomez-Sanchez (magicDGS)
  */
 @CommandLineProgramProperties(
     summary = "Example tool that prints locus-based coverage from supplied read to the specified output file (stdout if none provided), along with overlapping reference bases/features (if provided)",

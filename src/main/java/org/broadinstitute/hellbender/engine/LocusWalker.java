@@ -24,7 +24,7 @@ import java.util.stream.StreamSupport;
  * LocusWalker authors must implement the apply() method to process each position, and may optionally implement
  * onTraversalStart(), onTraversalSuccess() and/or closeTool().
  *
- * @author Daniel Gómez-Sánchez (magicDGS)
+ * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public abstract class LocusWalker extends GATKTool {
 
