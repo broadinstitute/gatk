@@ -57,8 +57,8 @@ PlotAlleleFraction = function(snp_df, segments_df){
      contig = segments_df[s,"Chromosome"]
      segment_start = segments_df[s, "Start"]
      segment_end = segments_df[s, "End"]
-     snp_indices=which(snp_df[,"CONTIG"] == contig & snp_df[,"POS"] > segment_start & snp_df[,"POS"] < segment_end)
-     genomic_coordinates = chromosome_starts[contig] + snp_df[ snp_indices,"POS"]
+     snp_indices=which(snp_df[,"CONTIG"] == contig & snp_df[,"POSITION"] > segment_start & snp_df[,"POSITION"] < segment_end)
+     genomic_coordinates = chromosome_starts[contig] + snp_df[ snp_indices,"POSITION"]
      ref_counts = snp_df[snp_indices, "REF_COUNT"]
      alt_counts = snp_df[snp_indices, "ALT_COUNT"]
      MAF = ifelse(alt_counts < ref_counts, alt_counts/(alt_counts + ref_counts), ref_counts/(alt_counts + ref_counts))
