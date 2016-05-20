@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.engine.spark;
+package org.broadinstitute.hellbender.utils.test;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.serializer.KryoSerializer;
