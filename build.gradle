@@ -117,6 +117,14 @@ dependencies {
     compile 'com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
 
+   compile 'org.ojalgo:ojalgo:39.0'
+    compile ('org.apache.spark:spark-mllib_2.10:1.6.1') {
+        // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
+        exclude module: 'jul-to-slf4j'
+        exclude module: 'javax.servlet'
+        exclude module: 'servlet-api'
+    }
+
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
     compile('org.bdgenomics.adam:adam-core_2.10:0.18.0') {
         exclude group: 'org.slf4j'
