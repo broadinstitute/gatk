@@ -55,7 +55,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     public ReadFilter makeReadFilter() {
 
         return super.makeReadFilter().
-                and(new LinkedReadAnalysisFilter(minEntropy));
+                and(new LinkedReadAnalysisFilter(minEntropy, getHeaderForReads()));
     }
 
     @Override
