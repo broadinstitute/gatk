@@ -1,0 +1,76 @@
+// Gradle script to upload a custom jbwa jar to the Broad artifactory
+// (a temporary expedient until jbwa is available on maven central)
+// 
+// Usage:
+// gradle -b publish_jbwa.gradle uploadArchives -Dversion=version -DartifactoryUser=user -DartifactoryPassword=password
+// 
+// Your jbwa jar must be in the working directory, and be named "jbwa-version-SNAPSHOT.jar"
+// 
+// Non-snapshot releases are not allowed (script forcibly appends "-SNAPSHOT" to the version you give it)
+//
+// The jbwa jar should contain builds of the native libraries for Mac (in lib/libbwajni_mac.jnilib) and
+// Linux (in lib/libbwajni.so). For now, you'll have to add these to the jbwa jar manually after building
+// via a command like "jar uf jbwa-version-SNAPSHOT.jar lib/libbwajni_mac.jnilib lib/libbwajni.so", and
+// then confirm that they're in the lib directory inside the jar via "jar tvf jbwa-version-SNAPSHOT.jar".
+// You should build the Mac version of the library on a Mac, and the Linux version on a Linux machine like gsa6.
+
+plugins {
+    id 'maven'
+}
+
+version = System.getProperty("version") + "-SNAPSHOT"
+group = "com.github.lindenb"
+final artifactoryUser = System.getProperty("artifactoryUser")
+final artifactoryPassword = System.getProperty("artifactoryPassword")
+final jbwaJar = file("jbwa-${version}.jar")
+
+artifacts {
+    archives jbwaJar
+}
+
+uploadArchives {
+    doFirst {
+        println "Attempting to upload $jbwaJar"
+    }
+    repositories {
+        mavenDeployer {
+            repository(url: "https://artifactory.broadinstitute.org/artifactory/libs-release-local/") {
+                authentication(userName: artifactoryUser, password: artifactoryPassword)
+            }
+
+            snapshotRepository(url: "https://artifactory.broadinstitute.org/artifactory/libs-snapshot-local/") {
+                authentication(userName: artifactoryUser, password: artifactoryPassword)
+            }
+
+            pom.project {
+                name 'jbwa'
+                packaging 'jar'
+                description 'Java Bindings (JNI) for bwa'
+                url 'https://github.com/lindenb/jbwa'
+
+                scm {
+                    url 'scm:git@github.com:lindenb/jbwa.git'
+                    connection 'scm:git@github.com:lindenb/jbwa.git'
+                    developerConnection 'scm:git@github.com:lindenb/jbwa.git'
+                }
+
+                developers {
+                    developer {
+                        id = "jbwadev"
+                        name = "Pierre Lindenbaum"
+                        email = "plindenbaum@yahoo.fr"
+                    }
+                }
+
+                licenses {
+                    license {
+                        name 'Apache License Version 2.0'
+                        url 'https://github.com/lindenb/jbwa/blob/master/LICENSE.txt'
+                        distribution 'repo'
+                    }
+                }
+            }
+        }
+    }
+}
+
