@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.util.zip.DeflaterFactory;
-import org.apache.commons.lang3.SystemUtils;
 import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -15,11 +14,11 @@ public class IntelDeflaterIntegrationTest extends BaseTest {
 
     @Test
     public void testIntelDeflaterIsAvailable(){
-        if ( !SystemUtils.IS_OS_LINUX ) {
+        if ( ! NativeUtils.runningOnLinux() ) {
             throw new SkipException("IntelDeflater not available on this platform");
         }
 
-        if ( NativeUtils.isPPCArchitecture() ) {
+        if ( NativeUtils.runningOnPPCArchitecture() ) {
             throw new SkipException("IntelDeflater not available for this architecture");
         }
 
