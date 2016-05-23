@@ -15,7 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * @author Daniel Gómez-Sánchez (magicDGS)
+ * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public class IntervalOverlappingIteratorUnitTest extends BaseTest {
 
