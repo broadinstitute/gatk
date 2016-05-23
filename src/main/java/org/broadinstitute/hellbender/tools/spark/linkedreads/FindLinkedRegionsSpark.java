@@ -50,7 +50,7 @@ public class FindLinkedRegionsSpark extends GATKSparkTool {
 
     @Override
     public ReadFilter makeReadFilter() {
-        return super.makeReadFilter().and(new LinkedReadAnalysisFilter(0, getHeaderForReads()));
+        return super.makeReadFilter().and(new LinkedReadAnalysisFilter(0));
     }
 
     @Override
