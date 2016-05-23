@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
@@ -22,7 +23,7 @@ import java.util.stream.IntStream;
 public final class AlleleSubsettingUtils {
     private AlleleSubsettingUtils() {}  // prevent instantiation
     private static final int PL_INDEX_OF_HOM_REF = 0;
-    private static final int MAX_LENGTH_FOR_PL_LOGGING = 100; // if PL vectors longer than this # of elements, don't log them
+    public static final int NUM_OF_STRANDS = 2; // forward and reverse strands
 
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
@@ -32,8 +33,8 @@ public final class AlleleSubsettingUtils {
      *
      * @param originalGs               the original GenotypesContext
      * @param originalAlleles          the original alleles
-     * @param allelesToKeep             the subset of alleles to use with the new Genotypes
-     * @param assignmentMethod          assignment strategy for the (subsetted) PLs
+     * @param allelesToKeep            the subset of alleles to use with the new Genotypes
+     * @param assignmentMethod         assignment strategy for the (subsetted) PLs
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
@@ -71,6 +72,12 @@ public final class AlleleSubsettingUtils {
 
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep);
 
+            // restrict SAC to the new allele subset
+            if (g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY)) {
+                final int[] newSACs = subsetSACAlleles(g,  originalAlleles, allelesToKeep);
+                gb.attribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY, newSACs);
+            }
+
             // restrict AD to the new allele subset
             if(g.hasAD()) {
                 final int[] oldAD = g.getAD();
@@ -80,6 +87,84 @@ public final class AlleleSubsettingUtils {
             newGTs.add(gb.make());
         }
         return newGTs;
+    }
+
+    /**
+     * From a given genotype, extract a given subset of alleles and return the new SACs
+     *
+     * @param g                             genotype to subset
+     * @param originalAlleles               the original alleles before subsetting
+     * @param allelesToUse                  alleles to use in subset
+     * @return                              the subsetted SACs
+     */
+    private static int[] subsetSACAlleles(final Genotype g, final List<Allele> originalAlleles, final List<Allele> allelesToUse) {
+
+        // Keep original SACs if using all of the alleles
+        if ( originalAlleles.size() == allelesToUse.size() ) {
+            return getSACs(g);
+        } else {
+            return makeNewSACs(g, originalAlleles, allelesToUse);
+        }
+    }
+
+    /**
+     * Make a new SAC array from the a subset of the genotype's original SAC
+     *
+     * @param g               the genotype
+     * @param originalAlleles the original alleles before subsetting
+     * @param allelesToUse    alleles to use in subset
+     * @return subset of SACs from the original genotype, the original SACs if sacIndicesToUse is null
+     */
+    private static int[] makeNewSACs(final Genotype g, final List<Allele> originalAlleles, final List<Allele> allelesToUse) {
+
+        final int[] oldSACs = getSACs(g);
+        final int[] newSACs = new int[NUM_OF_STRANDS * allelesToUse.size()];
+
+        int newIndex = 0;
+        for (int alleleIndex = 0; alleleIndex < originalAlleles.size(); alleleIndex++) {
+            if (allelesToUse.contains(originalAlleles.get(alleleIndex))) {
+                newSACs[NUM_OF_STRANDS * newIndex] = oldSACs[NUM_OF_STRANDS * alleleIndex];
+                newSACs[NUM_OF_STRANDS * newIndex + 1] = oldSACs[NUM_OF_STRANDS * alleleIndex + 1];
+                newIndex++;
+            }
+        }
+
+        return newSACs;
+    }
+
+    /**
+     * Get the genotype SACs
+     *
+     * @param g the genotype
+     * @return an arrays of SACs
+     * @throws IllegalArgumentException if the genotype does not have an SAC attribute
+     * @throws GATKException if the type of the SACs is unexpected
+     */
+    private static int[] getSACs(final Genotype g) {
+
+        if ( !g.hasExtendedAttribute(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY) ) {
+            throw new IllegalArgumentException("Genotype must have SAC");
+        }
+
+        Class<?> clazz = g.getExtendedAttributes().get(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY).getClass();
+
+        if ( clazz.equals(String.class) ) {
+            final String SACsString = (String) g.getExtendedAttributes().get(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY);
+            String[] stringSACs = SACsString.split(",");
+            final int[] intSACs = new int[stringSACs.length];
+            int i = 0;
+            for (String sac : stringSACs) {
+                intSACs[i++] = Integer.parseInt(sac);
+            }
+
+            return intSACs;
+        }
+        else if ( clazz.equals(int[].class) ) {
+            return (int[]) g.getExtendedAttributes().get(GATKVCFConstants.STRAND_COUNT_BY_SAMPLE_KEY);
+        }
+        else {
+            throw new GATKException("Unexpected SAC type");
+        }
     }
 
     /**
