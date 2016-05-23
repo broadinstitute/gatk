@@ -50,12 +50,12 @@ public final class PerformSegmentation extends CommandLineProgram {
     public final static String UNDOSD_SHORT_NAME="undoSD";
 
     @Argument(
-            doc = "Genomic targets file",
+            doc = "Tangent normalized read counts file",
             shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
             fullName =  ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
             optional = false
     )
-    protected String tangentFile;
+    protected String tangentNormalizedCoverageFile;
 
     @Argument(
             doc = "Full path to the outputted segment file",
@@ -76,7 +76,7 @@ public final class PerformSegmentation extends CommandLineProgram {
     @Argument(
             doc = "File with target weights.  This is the 1/var(post-projected targets for each normal).  " +
                     "Listed one value per line in plain text.  Values of zero or less, Nan, Inf, and -Inf are not " +
-                    "acceptable.  Must have the same number of values as there are in the tangentFile.",
+                    "acceptable.  Must have the same number of values as there are in the tangentNormalizedCoverageFile.",
             shortName = TARGET_WEIGHT_FILE_SHORT_NAME,
             fullName = TARGET_WEIGHT_FILE_LONG_NAME,
             optional = true
@@ -173,10 +173,8 @@ public final class PerformSegmentation extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-
-        final String sampleName = TargetCoverageUtils.getSampleNameForCLIsFromTargetCoverageFile(new File(tangentFile));
-
-        applySegmentation(sampleName, tangentFile, outFile);
+        final String sampleName = ReadCountCollectionUtils.getSampleNameForCLIsFromReadCountsFile(new File(tangentNormalizedCoverageFile));
+        applySegmentation(sampleName, tangentNormalizedCoverageFile, outFile);
         return "Success";
     }
 

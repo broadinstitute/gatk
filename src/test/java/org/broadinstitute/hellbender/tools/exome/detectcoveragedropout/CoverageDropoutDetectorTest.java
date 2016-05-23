@@ -4,10 +4,7 @@ import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
-import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
-import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.TargetCoverage;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -41,15 +38,15 @@ final public class CoverageDropoutDetectorTest extends BaseTest {
         final int numDataPoints = 10000;
         final int numEventPoints = 2000;
 
-        List<TargetCoverage> targetList = new ArrayList<>();
+        final List<ReadCountRecord.SingleSampleRecord> targetList = new ArrayList<>();
         for (int i = 0; i < (numDataPoints - numEventPoints); i++){
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr1", 100 + 2*i, 101 + 2 * i), n.sample()));
+            targetList.add(new ReadCountRecord.SingleSampleRecord(new Target("arbitrary_name", new SimpleInterval("chr1", 100 + 2*i, 101 + 2 * i)), n.sample()));
         }
         for (int i = (numDataPoints - numEventPoints); i < numDataPoints; i++){
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr1", 100 + 2 * i, 101 + 2 * i), 0.5 + n.sample()));
+            targetList.add(new ReadCountRecord.SingleSampleRecord(new Target("arbitrary_name", new SimpleInterval("chr1", 100 + 2 * i, 101 + 2 * i)), 0.5 + n.sample()));
         }
 
-        HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);
+        HashedListTargetCollection<ReadCountRecord.SingleSampleRecord> targets = new HashedListTargetCollection<>(targetList);
 
         List<ModeledSegment> segments = new ArrayList<>();
         segments.add(new ModeledSegment(new SimpleInterval("chr1", 100, 16050), 8000, 1));
@@ -65,26 +62,19 @@ final public class CoverageDropoutDetectorTest extends BaseTest {
         final int numDataPoints = 10000;
         final int numEventPoints = 2000;
 
-        List<TargetCoverage> targetList = new ArrayList<>();
-        for (int i = 0; i < (numDataPoints - numEventPoints); i++){
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr1", 100 + 2*i, 101 + 2 * i), n.sample()));
-        }
-        for (int i = (numDataPoints - numEventPoints); i < numDataPoints; i++){
-            targetList.add(new TargetCoverage("arbitrary_name", new SimpleInterval("chr1", 100 + 2 * i, 101 + 2 * i), 0.5 + n.sample()));
-        }
-
         // Randomly select dropoutRate of targets and reduce by 25%-75% (uniformly distributed)
         UniformRealDistribution uniformRealDistribution = new UniformRealDistribution(randomGenerator, 0, 1.0);
-        for (TargetCoverage tc: targetList){
-            boolean isSampleDropout = uniformRealDistribution.sample() < dropoutRate;
-            if (isSampleDropout) {
+        final List<ReadCountRecord.SingleSampleRecord> targetList = new ArrayList<>();
+        for (int i = 0; i < numDataPoints; i++){
+            double coverage = n.sample() + (i < (numDataPoints - numEventPoints) ? 0.0 : 0.5);
+            if (uniformRealDistribution.sample() < dropoutRate) {
                 double multiplier = .25 + uniformRealDistribution.sample()/2;
-                tc.setCoverage(tc.getCoverage() * multiplier);
+                coverage = coverage * multiplier;
             }
+            targetList.add(new ReadCountRecord.SingleSampleRecord(new Target("arbitrary_name", new SimpleInterval("chr1", 100 + 2*i, 101 + 2 * i)), coverage));
         }
 
-
-        HashedListTargetCollection<TargetCoverage> targets = new HashedListTargetCollection<>(targetList);
+        HashedListTargetCollection<ReadCountRecord.SingleSampleRecord> targets = new HashedListTargetCollection<>(targetList);
 
         List<ModeledSegment> segments = new ArrayList<>();
         segments.add(new ModeledSegment(new SimpleInterval("chr1", 100, 16050), 8000, 1));
@@ -94,13 +84,13 @@ final public class CoverageDropoutDetectorTest extends BaseTest {
     }
 
     @Test(dataProvider = "randomUnivariateGaussianTargetsLowVariance")
-    public void testNoError(final TargetCollection<TargetCoverage> tc, final List<ModeledSegment> segments){
+    public void testNoError(final TargetCollection<ReadCountRecord.SingleSampleRecord> tc, final List<ModeledSegment> segments){
         CoverageDropoutDetector c = new CoverageDropoutDetector();
         Assert.assertFalse(c.determineCoverageDropoutDetected(segments, tc, 0.003, .1, 0.75, .02).isCoverageDropout());
     }
 
     @Test(dataProvider = "randomUnivariateGaussianTargetsDropoutLowVariance")
-    public void testSmallLowVarianceDropout(final TargetCollection<TargetCoverage> tc, final List<ModeledSegment> segments){
+    public void testSmallLowVarianceDropout(final TargetCollection<ReadCountRecord.SingleSampleRecord> tc, final List<ModeledSegment> segments){
         CoverageDropoutDetector c = new CoverageDropoutDetector();
         Assert.assertTrue(c.determineCoverageDropoutDetected(segments, tc, .003, .1, 0.75, .02).isCoverageDropout(), "Coverage dropout was detected, when it should not have been (with low variance)");
     }

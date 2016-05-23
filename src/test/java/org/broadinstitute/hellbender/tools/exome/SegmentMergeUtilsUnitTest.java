@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -9,7 +11,9 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Unit tests for {@link SegmentMergeUtils}.
@@ -121,13 +125,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
             return Arrays.asList(leftSegment, centerSegment, rightSegment);
         }
 
-        private static Genome makeGenome(final List<List<TargetCoverage>> targetCoverages,
+        private static Genome makeGenome(final List<List<ReadCountRecord.SingleSampleRecord>> targetCoverages,
                                          final List<List<AllelicCount>> snpCounts) {
-            final List<TargetCoverage> targets = new ArrayList<>();
+            final List<ReadCountRecord.SingleSampleRecord> records = new ArrayList<>();
             final List<AllelicCount> snps = new ArrayList<>();
-            targetCoverages.stream().forEach(targets::addAll);
+            targetCoverages.stream().forEach(records::addAll);
             snpCounts.stream().forEach(snps::addAll);
-            return new Genome(targets, snps, "sample");
+
+            final List<Target> targets = records.stream().map(ReadCountRecord::getTarget).collect(Collectors.toList());
+            final RealMatrix counts = new Array2DRowRealMatrix(targets.size(), 1);
+            counts.setColumn(0, records.stream().mapToDouble(r -> r.getCount()).toArray());
+            return new Genome(new ReadCountCollection(targets, Arrays.asList("sample"), counts), snps, "sample");
         }
 
         private static final List<SimpleInterval> mergedSegmentsLeft =
@@ -149,12 +157,12 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
                                             //no targets
@@ -191,12 +199,12 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                                             //no targets
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 450, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 450, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -227,17 +235,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -268,17 +276,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 450, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 450, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -297,17 +305,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr1", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr1", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr1", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr1", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr1", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr1", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -326,17 +334,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr3", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr3", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr3", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr3", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr3", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr3", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -355,17 +363,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr1", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr1", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr1", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr1", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr1", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr1", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr3", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr3", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr3", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr3", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr3", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr3", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -384,23 +392,21 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 2.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 2.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 2.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 2.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 2.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 2.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 3.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 3.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 3.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 3.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 3.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 3.0)
                                     )
                             ),
                             //SNP counts
-                            Arrays.asList(
-                                    //no SNPs
-                            ),
+                            Collections.emptyList(), //no SNPS
                             //expected merged segments
                             mergedSegmentsLeft
                     },
@@ -413,17 +419,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 3.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 3.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 2.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 2.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 2.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 2.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 2.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 2.0)
                                     )
                             ),
                             //SNP counts
@@ -442,17 +448,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 3.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 3.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 2.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 2.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 2.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 2.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 2.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 2.0)
                                     )
                             ),
                             //SNP counts
@@ -482,22 +488,22 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 0.7),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 0.8),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 129), 0.9),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 130, 139), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 140, 200), 1.1)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 0.7),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 0.8),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 129)), 0.9),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 130, 139)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 140, 200)), 1.1)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 310, 319), 0.95),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 320, 329), 1.05)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 310, 319)), 0.95),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 320, 329)), 1.05)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 0.85),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 0.95),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 529), 1.05),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 530, 539), 1.15),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 540, 600), 1.25)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target8", new SimpleInterval("chr2", 500, 509)), 0.85),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target9", new SimpleInterval("chr2", 510, 519)), 0.95),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target10", new SimpleInterval("chr2", 520, 529)), 1.05),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target11", new SimpleInterval("chr2", 530, 539)), 1.15),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target12", new SimpleInterval("chr2", 540, 600)), 1.25)
                                     )
                             ),
                             //SNP counts
@@ -516,17 +522,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -560,17 +566,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -614,17 +620,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -664,17 +670,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -718,17 +724,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -829,17 +835,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 250), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 250)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -943,17 +949,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 200), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 200)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 500, 509), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 510, 519), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 520, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 500, 509)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 510, 519)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 520, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -984,17 +990,17 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             //target coverages
                             Arrays.asList(
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 100, 109), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 110, 119), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 120, 299), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target1", new SimpleInterval("chr2", 100, 109)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target2", new SimpleInterval("chr2", 110, 119)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target3", new SimpleInterval("chr2", 120, 299)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 300, 400), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target4", new SimpleInterval("chr2", 300, 400)), 1.0)
                                     ),
                                     Arrays.asList(
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 401, 409), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 410, 419), 1.0),
-                                            new TargetCoverage("target", new SimpleInterval("chr2", 420, 600), 1.0)
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target5", new SimpleInterval("chr2", 401, 409)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target6", new SimpleInterval("chr2", 410, 419)), 1.0),
+                                            new ReadCountRecord.SingleSampleRecord(new Target("target7", new SimpleInterval("chr2", 420, 600)), 1.0)
                                     )
                             ),
                             //SNP counts
@@ -1024,7 +1030,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         @Test(dataProvider = "dataSmallSegmentMerging")
         public void testSmallSegmentMerging(final String caseDescription,
                                             final List<SimpleInterval> segments,
-                                            final List<List<TargetCoverage>> targetCoverages,
+                                            final List<List<ReadCountRecord.SingleSampleRecord>> targetCoverages,
                                             final List<List<AllelicCount>> snpCounts,
                                             final List<SimpleInterval> expectedMergedSegments) {
             logger.info("Testing case: " + caseDescription);

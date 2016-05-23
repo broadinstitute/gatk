@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections4.list.SetUniqueList;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -16,9 +19,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.SortedMap;
 
 /**
  * Reads {@link ReadCountCollection} instances from a tab-separated text file.
@@ -93,31 +96,6 @@ public final class ReadCountCollectionUtils {
         }
     }
 
-    /**
-     * Writes the content of a collection into a file as if it was target coverage.  Intervals will always be included,
-     *  even if non-existent
-     *
-     * @param outFile           the output file.
-     * @param collection     the output collection.  MUST only contain one sample.
-     * @param headerComments header comments.
-     * @throws IllegalArgumentException if any of the input parameters is {@code null}
-     *                                  or {@code collection} has no intervals
-     *                                  defined or {@code collection} has more than one sample.
-     * @throws IOException              if there is some IO issue when writing into the output file.
-     *
-     */
-    public static void writeAsTargetCoverage(final File outFile, final ReadCountCollection collection, final String... headerComments) throws IOException {
-        Utils.nonNull(outFile, "output file cannot be null");
-        Utils.nonNull(collection, "input collection cannot be null");
-        Utils.nonNull(headerComments, "header comments cannot be null.  Use 'new String [0]', if you would like no comments.");
-        if (collection.columnNames().size() != 1) {
-            throw new UserException.BadInput("Attempting to write a read count collection with more than one sample as a target coverage.  This is currently not supported.  Please use an input with one sample.");
-        }
-
-        final List<TargetCoverage> targetCollection = convertToTargetCoverageList(collection);
-        TargetCoverageUtils.writeTargetsWithCoverage(outFile, collection.columnNames().get(0), targetCollection, headerComments);
-    }
-
     private static void performWriting(ReadCountCollection collection, TableWriter<ReadCountRecord> tableWriter, String[] headerComments) throws IOException {
         // print the header comments
         for (final String comment : headerComments) {
@@ -173,33 +151,6 @@ public final class ReadCountCollectionUtils {
         columnNames.add(TargetTableColumns.NAME.toString());
         columnNames.addAll(collection.columnNames());
         return createReadCountRecordTableWriterWithoutIntervals(writer, columnNames);
-    }
-
-    /**
-     *  Convert a ReadCountCollection into a List of TargetCoverage.
-     *
-     *  <p>Caveats, please read: </p>
-     *  <ul>
-     *      <li>A list of TargetCoverage implies that only one sample is supported.  An exception will be thrown if this method
-     *      receives more than one sample in the ReadCountCollection</li>
-     *      <li>TargetCoverage does not currently support sample name.  Therefore, this information will be lost upon conversion.</li>
-     *  </ul>
-     *
-     * @param collection -- ReadCountCollection that contains one sample only
-     * @return never {@code null}.
-     */
-    public static List<TargetCoverage> convertToTargetCoverageList(final ReadCountCollection collection) {
-
-        Utils.nonNull(collection, "Cannot convert a null ReadCountCollection to TargetCoverage.");
-
-        if (collection.counts().getColumnDimension() != 1) {
-            throw new UserException("Cannot convert ReadCountCollection with multiple samples to TargetCoverageCollection.  Please use input containing one sample.");
-        }
-
-        // Please note that the "0" in getEntry(i,0) is the assumption of one sample only
-        return IntStream.range(0, collection.targets().size())
-                .mapToObj(i -> new TargetCoverage(collection.targets().get(i).getName(), collection.targets().get(i).getInterval(), collection.counts().getEntry(i,0)))
-                .collect(Collectors.toList());
     }
 
     private static TableWriter<ReadCountRecord> createReadCountRecordTableWriterWithoutIntervals(final Writer writer, List<String> columnNames) throws IOException {
@@ -278,8 +229,83 @@ public final class ReadCountCollectionUtils {
         if (buffer.getTargets().size() == 0) {
             throw new UserException.BadInput("there is no counts (zero targets) in the input file " + file);
         }
-        return new ReadCountCollection(buffer.getTargets(), SetUniqueList.setUniqueList(new ArrayList<>(columnNames)),
-                new Array2DRowRealMatrix(buffer.getCounts(),false));
+        return new ReadCountCollection(buffer.getTargets(), columnNames, new Array2DRowRealMatrix(buffer.getCounts(),false));
+    }
+
+    /**
+     * Retrieve the sample names from a ReadCountCollection file (e.g. TangentNormalization file)
+     * @param readCountsFile targets and coverage
+     * @return list of strings that contain the sample names.  I.e. returns list of all columns that do not describe the
+     * targets themselves.
+     */
+    public static List<String> retrieveSampleNamesFromReadCountsFile(final File readCountsFile) {
+        try  {
+            return new ReadCountsReader(readCountsFile).getCountColumnNames();
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile(readCountsFile, e);
+        }
+    }
+
+    /** Extract the sample name from a read counts file.
+     *
+     * Throws an exception if there is not exactly one sample in the file.
+     *
+     * @param readCountsFile Never {@code null}
+     * @return a single sample name.
+     */
+    public static String getSampleNameForCLIsFromReadCountsFile(final File readCountsFile) {
+        String sampleName;
+        final List<String> sampleNames = SampleNameFinder.determineSampleNamesFromReadCountsFile(readCountsFile);
+        if (sampleNames.size() == 1) {
+            sampleName = sampleNames.get(0);
+        } else if (sampleNames.size() > 1) {
+            throw new UserException.BadInput("Input file must contain data for only one sample.  Found samples: " + StringUtils.join(sampleNames, ", "));
+        } else {
+            throw new UserException.BadInput("Input file must contain data for only one sample.  Could not find any sample information.");
+        }
+        return sampleName;
+    }
+
+    /**
+     * Write a read counts file of targets with coverage to file with dummy names
+     * @param outFile File to write targets with coverage. Never {@code null}
+     * @param sampleName Name of sample being written. Never {@code null}
+     * @param byKeySorted Map of simple-intervals to their copy-ratio. Never {@code null}
+     * @param comments Comments to add to header of coverage file.
+     */
+    public static <N extends Number> void writeReadCountsFromSimpleInterval(final File outFile, final String sampleName,
+                                                                            final SortedMap<SimpleInterval, N> byKeySorted,
+                                                                            final String[] comments) {
+
+        Utils.nonNull(outFile, "Output file cannot be null.");
+        Utils.nonNull(sampleName, "Sample name cannot be null.");
+        Utils.nonNull(byKeySorted, "Targets cannot be null.");
+        Utils.nonNull(comments, "Comments cannot be null.");
+
+        final boolean areTargetIntervalsAllPopulated = byKeySorted.keySet().stream().allMatch(t -> t != null);
+        if (!areTargetIntervalsAllPopulated) {
+            throw new UserException("Cannot write target coverage file with any null intervals.");
+        }
+
+        try (final TableWriter<ReadCountRecord> writer =
+                     writerWithIntervals(new FileWriter(outFile), Arrays.asList(sampleName))) {
+            for (String comment : comments) {
+                writer.writeComment(comment);
+            }
+
+            for (final Locatable locatable : byKeySorted.keySet()) {
+                final String name = TargetUtils.createDummyTargetName(locatable);
+                final SimpleInterval interval = new SimpleInterval(locatable);
+                final double coverage = byKeySorted.get(locatable).doubleValue();
+                writer.writeRecord(new ReadCountRecord.SingleSampleRecord(new Target(name, interval), coverage));
+            }
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
+
+
+
+
     }
 
     /**

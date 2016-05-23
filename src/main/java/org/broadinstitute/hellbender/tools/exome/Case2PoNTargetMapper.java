@@ -96,7 +96,6 @@ public final class Case2PoNTargetMapper {
      * @return never {@code null} a read-count collection with the row order according to the case read count target order.
      */
     public ReadCountCollection fromPoNtoCaseCountCollection(final RealMatrix counts, final List<String> countColumnNames) {
-        return new ReadCountCollection(SetUniqueList.setUniqueList(new ArrayList<>(outputTargets)),SetUniqueList.setUniqueList(new ArrayList<>(countColumnNames)),
-                fromPoNToCaseCounts(counts));
+        return new ReadCountCollection(outputTargets, countColumnNames, fromPoNToCaseCounts(counts));
     }
 }

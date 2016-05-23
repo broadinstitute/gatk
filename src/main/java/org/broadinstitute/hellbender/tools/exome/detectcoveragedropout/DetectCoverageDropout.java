@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.exome.*;
 import java.io.*;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Command line tool to detect whether a sample has the "rainfall" problem.
@@ -101,8 +102,16 @@ public final class DetectCoverageDropout extends CommandLineProgram {
     @Override
     protected Object doWork(){
 
-        final TargetCollection<TargetCoverage>targetList = TargetCoverageUtils.readModeledTargetFileIntoTargetCollection(targetsFile);
 
+        final ReadCountCollection counts;
+        try {
+           counts = ReadCountCollectionUtils.parse(targetsFile);
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile(targetsFile.getPath(), e);
+        }
+
+        final TargetCollection<ReadCountRecord.SingleSampleRecord> targetList = new HashedListTargetCollection<>(
+                counts.records().stream().map(ReadCountRecord::asSingleSampleRecord).collect(Collectors.toList()));
         final List<ModeledSegment> segments = SegmentUtils.readModeledSegmentsFromSegmentFile(segmentsFile);
 
         logger.info("Input files loaded.  Targets: " + targetsFile + " and segments: " + segmentsFile);

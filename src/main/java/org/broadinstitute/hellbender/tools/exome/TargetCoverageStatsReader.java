@@ -61,7 +61,7 @@ public final class TargetCoverageStatsReader extends TableReader<TargetCoverageS
                             dataLine.getInt(endColumnIndex)));
 
         } else {
-            final int nameColumnIndex = columns.indexOf(TargetTableColumns.NAME.name());
+            final int nameColumnIndex = columns.indexOf(TargetTableColumns.NAME.toString());
             if (nameColumnIndex == -1) {
                 throw formatException(String.format("compulsory column name '%s' is missing",
                         TargetTableColumns.NAME.toString()));

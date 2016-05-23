@@ -97,7 +97,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
             optional = false
     )
-    protected File targetCoveragesFile;
+    protected File tangentNormalizedCoverageFile;
 
     @Argument(
             doc = "Input file for tumor-sample target-coverage segments with calls (output of GATK CNV tool).",
@@ -221,7 +221,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
 
         //make Genome from input target coverages and SNP counts
         logger.info("Loading input files...");
-        final Genome genome = new Genome(targetCoveragesFile, snpCountsFile, sampleName);
+        final Genome genome = new Genome(tangentNormalizedCoverageFile, snpCountsFile, sampleName);
 
         //load allelic-bias panel of normals if provided
         final AllelicPanelOfNormals allelicPON =

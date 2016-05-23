@@ -44,7 +44,7 @@ import java.util.stream.*;
  * </h4>
  * <h4>Input and Output</h4>
  * <p>
- * The user must indicate the target table file using the argument {@link TargetArgumentCollection#targetsFile targetsFile}.
+ * The user must indicate the target table file using the argument {@link TargetArgumentCollection#targetsFile normalizedCoveragedFile}.
  * That file must follow the format described in {@link TargetTableReader}.
  * </p>
  * <p>

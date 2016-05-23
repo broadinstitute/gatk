@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
  */
 public final class ReadCountCollectionUnitTest extends BaseTest {
 
-    private static final int[] CORRECT_COLUMN_COUNTS = {1, 2, 3, 6, 12};
+    private static final int[] CORRECT_COLUMN_COUNTS = {1, 10};
 
-    private static final int[] CORRECT_TARGET_COUNTS = {1, 2, 3, 6, 12, 101, 1001, 10001};
+    private static final int[] CORRECT_TARGET_COUNTS = {1, 10, 100};
 
     @Test(dataProvider="correctInstantiationData")
     public void testCorrectInstantiation(final ReadCountCollectionInfo info) {
@@ -277,10 +277,7 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
                 targets.add(targetName == null ? null : new Target(targetName,intervals == null ? null : intervals.get(i)));
             }
 
-            return new ReadCountCollection(
-                    SetUniqueList.setUniqueList(targets),
-                    SetUniqueList.setUniqueList(columnNames),
-                    new Array2DRowRealMatrix(counts));
+            return new ReadCountCollection(targets, columnNames, new Array2DRowRealMatrix(counts));
         }
 
         public ReadCountCollectionInfo makeATargetNameNull(final int index) {

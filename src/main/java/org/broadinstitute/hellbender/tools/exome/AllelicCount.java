@@ -129,32 +129,6 @@ public final class AllelicCount implements Locatable {
         return MinorAlleleFractionCache.get(altReadCount, refReadCount, 1.);
     }
 
-    /**
-     * Returns a TargetCoverage with coverage given by the maximum-likelihood estimate of the minor-allele fraction at
-     * a specified allelic bias.
-     * @param name          target name
-     * @param allelicBias   allelic bias to use in estimate of minor allele fraction
-     * @return      TargetCoverage with coverage given by minor allele fraction
-     */
-    public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name, final double allelicBias) {
-        ParamUtils.isPositiveOrZero(allelicBias, "Allelic bias must be non-negative.");
-        return new TargetCoverage(Utils.nonNull(name), new SimpleInterval(interval), estimateMinorAlleleFraction(allelicBias));
-    }
-
-    /**
-     * Returns a TargetCoverage with coverage given by the maximum-likelihood estimate of the minor-allele fraction,
-     * assuming no allelic bias.
-     * @param name          target name
-     * @return      TargetCoverage with coverage given by minor allele fraction
-     */
-    public TargetCoverage toMinorAlleleFractionTargetCoverage(final String name) {
-        return toMinorAlleleFractionTargetCoverage(name, 1.);
-    }
-
-    /**
-     * We do not check (1) read depth and (2) het log odds for equality. We check refNucleotide and altNucleotide
-     * for equality only if both pileups have the information.
-     */
     @Override
     public boolean equals(Object o) {
         if (this == o) {

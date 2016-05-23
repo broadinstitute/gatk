@@ -223,8 +223,8 @@ final public class HDF5PoNCreator {
 
         try (final HDF5File ponReader = new HDF5File(inputHDF5Filename, HDF5File.OpenMode.READ_ONLY)) {
             final PoN inputPoN = new HDF5PoN(ponReader);
-            final ReadCountCollection logNormalizedCounts = new ReadCountCollection(SetUniqueList.setUniqueList(inputPoN.getPanelTargets()), SetUniqueList.setUniqueList(new ArrayList<>(inputPoN.getPanelSampleNames())), inputPoN.getLogNormalizedCounts());
-            final ReadCountCollection coverageProfile = new ReadCountCollection(SetUniqueList.setUniqueList(inputPoN.getTargets()), SetUniqueList.setUniqueList(new ArrayList<>(inputPoN.getSampleNames())), inputPoN.getNormalizedCounts());
+            final ReadCountCollection logNormalizedCounts = new ReadCountCollection(inputPoN.getPanelTargets(), inputPoN.getPanelSampleNames(), inputPoN.getLogNormalizedCounts());
+            final ReadCountCollection coverageProfile = new ReadCountCollection(inputPoN.getTargets(), inputPoN.getSampleNames(), inputPoN.getNormalizedCounts());
 
             final ReductionResult newReduction = calculateReducedPanelAndPInverses(logNormalizedCounts, newNumberOfEigenSamples, logger, ctx);
 

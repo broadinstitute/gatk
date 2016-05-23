@@ -18,10 +18,10 @@ public class ACNVModeledSegmentConversionUtilsUnitTest extends BaseTest {
         final ACNVModeledSegment acnvModeledSegment = new ACNVModeledSegment(new SimpleInterval("1", 1000, 1500),
                 new PosteriorSummary(-4000, -4001, -4002),
                 new PosteriorSummary(-4000, -4001, -4002));
-        final List<TargetCoverage> targets = new ArrayList<>();
-        targets.add(new TargetCoverage("test", new SimpleInterval("1", 1300, 1302), 40));
+        final List<ReadCountRecord.SingleSampleRecord> targets = new ArrayList<>();
+        targets.add(new ReadCountRecord.SingleSampleRecord(new Target("test", new SimpleInterval("1", 1300, 1302)), 40));
 
-        final TargetCollection<TargetCoverage> targetCollection = new HashedListTargetCollection<>(targets);
+        final TargetCollection<ReadCountRecord.SingleSampleRecord> targetCollection = new HashedListTargetCollection<>(targets);
         final ModeledSegment guess = ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentToModeledSegment(acnvModeledSegment, targetCollection);
         Assert.assertTrue(guess.getSegmentMeanInCRSpace() > 0);
         Assert.assertEquals(guess.getSegmentMean(), ParamUtils.log2(TangentNormalizer.EPSILON), 1e-10);

@@ -43,8 +43,8 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
     private static final File INEXISTENT_TARGETS_FILE = new File(TEST_DATA_DIR, "fantasy-exome-read-counts-test-targets.tsv");
 
     // Meta-parameters
-    private static final List<Integer> TEST_MIN_MQ = Collections.unmodifiableList(Arrays.asList(0, 2, 10, 20, 30, 40, 60, 99, 255, 1000));
-    private static final List<Integer> TEST_MIN_BQ = Collections.unmodifiableList(Arrays.asList(0, 2, 10, 20, 40, 60, 99));
+    private static final List<Integer> TEST_MIN_MQ = Collections.unmodifiableList(Arrays.asList(0, 2, 20, 99, 1000));
+    private static final List<Integer> TEST_MIN_BQ = Collections.unmodifiableList(Arrays.asList(0, 2, 20, 99));
 
     @Override
     public String getTestedClassName() {

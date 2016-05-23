@@ -108,7 +108,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         arguments.add("INFO");
 
         runCommandLine(arguments);
-        // Need to support targetsFile == null
+        // Need to support normalizedCoveragedFile == null
         assertBasicPoNAssumptions(outputFile, targetsFile);
         PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
         assertRamPoNDuplicate(outputFile);
@@ -134,7 +134,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         arguments.add("-" + CreatePanelOfNormals.NO_QC_SHORT_NAME);
 
         runCommandLine(arguments);
-        // Need to support targetsFile == null
+        // Need to support normalizedCoveragedFile == null
         assertBasicPoNAssumptions(outputFile, targetsFile);
         PoNTestUtils.assertEquivalentPoN(outputFile, EXPECTED_ALL_TARGETS_PON);
         assertRamPoNDuplicate(outputFile);

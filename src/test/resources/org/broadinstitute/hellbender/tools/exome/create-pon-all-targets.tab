@@ -1,4 +1,4 @@
-CONTIG	START	END	NAME
+contig	start	stop	name
 1	1000	1200	target_1
 1	2000	2200	target_2
 1	3000	3200	target_3

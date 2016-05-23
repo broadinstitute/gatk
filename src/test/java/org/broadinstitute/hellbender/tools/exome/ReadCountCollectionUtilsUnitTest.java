@@ -193,7 +193,7 @@ public class ReadCountCollectionUtilsUnitTest {
         targetWriter.close();
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
-        writer.println("CONTIG\tSAMPLE3\tEND\tSAMPLE2\tSTART");
+        writer.println("contig\tSAMPLE3\tstop\tSAMPLE2\tstart");
         writer.println("1\t1.1\t200\t2.2\t100");
         writer.println("2\t-1.1E-7\t300\t-2.2E-8\t200");
         writer.close();

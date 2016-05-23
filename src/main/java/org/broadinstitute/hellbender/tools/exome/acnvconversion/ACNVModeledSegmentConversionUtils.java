@@ -34,12 +34,12 @@ public final class ACNVModeledSegmentConversionUtils {
 
     private static ModeledSegment convertACNVModeledSegmentToModeledSegment(final ACNVModeledSegment acnvModeledSegment, final Genome genome) {
 
-        final TargetCollection<TargetCoverage> targets = genome.getTargets();
+        final TargetCollection<ReadCountRecord.SingleSampleRecord> targets = genome.getTargets();
         return convertACNVModeledSegmentToModeledSegment(acnvModeledSegment, targets);
     }
 
     @VisibleForTesting
-    static ModeledSegment convertACNVModeledSegmentToModeledSegment(ACNVModeledSegment acnvModeledSegment, TargetCollection<TargetCoverage> targets) {
+    static ModeledSegment convertACNVModeledSegmentToModeledSegment(ACNVModeledSegment acnvModeledSegment, TargetCollection<ReadCountRecord.SingleSampleRecord> targets) {
 
         // Make sure that we do not let segment mean become zero
         final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().getCenter(), ParamUtils.log2(TangentNormalizer.EPSILON));

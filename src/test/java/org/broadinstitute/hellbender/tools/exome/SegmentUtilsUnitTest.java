@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,28 +42,16 @@ public class SegmentUtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testMeanTargetCoverage() {
-        final TargetCoverage target1 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 1, 2), 1.0);
-        final TargetCoverage target2 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 3, 4), 2.0);
-        final TargetCoverage target3 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 5, 6), 3.0);
-        final TargetCoverage target4 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 1, 2), 4.0);
-        final TargetCoverage target5 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 3, 4), 5.0);
-        final TargetCoverage target6 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 5, 6), 6.0);
-        final HashedListTargetCollection<TargetCoverage> targets =
-                new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4, target5, target6));
-
-        Assert.assertEquals(SegmentUtils.meanTargetCoverage(ci1, targets), (1.0 + 2.0) / 2, 0.00001);
-        Assert.assertEquals(SegmentUtils.meanTargetCoverage(ci2, targets), (3.0) / 1, 0.00001);
-        Assert.assertEquals(SegmentUtils.meanTargetCoverage(ci3, targets), (4.0 + 5.0 + 6.0) / 3, 0.00001);
-    }
-
-    @Test
     public void testSegmentDifference() {
-        final TargetCoverage target1 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 1, 2), 1.0);
-        final TargetCoverage target2 = new TargetCoverage("myTarget", new SimpleInterval("chr1", 3, 4), 2.0);
-        final TargetCoverage target3 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 3, 4), 5.0);
-        final TargetCoverage target4 = new TargetCoverage("myTarget", new SimpleInterval("chr2", 5, 6), 6.0);
-        final HashedListTargetCollection<TargetCoverage> targets =
+        final ReadCountRecord.SingleSampleRecord target1 =
+                new ReadCountRecord.SingleSampleRecord(new Target("myTarget", new SimpleInterval("chr1", 1, 2)), 1.0);
+        final ReadCountRecord.SingleSampleRecord target2 =
+                new ReadCountRecord.SingleSampleRecord(new Target("myTarget", new SimpleInterval("chr1", 3, 4)), 2.0);
+        final ReadCountRecord.SingleSampleRecord target3 =
+                new ReadCountRecord.SingleSampleRecord(new Target("myTarget", new SimpleInterval("chr2", 3, 4)), 5.0);
+        final ReadCountRecord.SingleSampleRecord target4 =
+                new ReadCountRecord.SingleSampleRecord(new Target("myTarget", new SimpleInterval("chr2", 5, 6)), 6.0);
+        final HashedListTargetCollection<ReadCountRecord.SingleSampleRecord> targets =
                 new HashedListTargetCollection<>(Arrays.asList(target1, target2, target3, target4));
 
         final ModeledSegment seg = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "", 200, 1.1);
@@ -154,14 +145,17 @@ public class SegmentUtilsUnitTest extends BaseTest {
      */
     @Test
     public void testUnionSegments() {
-        final TargetCoverage target1 = new TargetCoverage("t1", new SimpleInterval("chr1", 1, 10), 0);
-        final TargetCoverage target2 = new TargetCoverage("t2", new SimpleInterval("chr1", 20, 30), 0);
-        final TargetCoverage target3 = new TargetCoverage("t3", new SimpleInterval("chr1", 31, 40), 0);
-        final TargetCoverage target4 = new TargetCoverage("t4", new SimpleInterval("chr1", 90, 100), 0);
-        final TargetCoverage target5 = new TargetCoverage("t5", new SimpleInterval("chr1", 110, 120), 0);
-        final TargetCoverage target6 = new TargetCoverage("t6", new SimpleInterval("chr1", 130, 140), 0);
-        final List<TargetCoverage> targets =
-                Arrays.asList(target1, target2, target3, target4, target5, target6);
+        final String sampleName = "placeholder_sample_name";
+        final List<Target> targets = new ArrayList<Target>();
+        targets.add(new Target("t1", new SimpleInterval("chr1", 1, 10)));
+        targets.add(new Target("t2", new SimpleInterval("chr1", 20, 30)));
+        targets.add(new Target("t3", new SimpleInterval("chr1", 31, 40)));
+        targets.add(new Target("t4", new SimpleInterval("chr1", 90, 100)));
+        targets.add(new Target("t5", new SimpleInterval("chr1", 110, 120)));
+        targets.add(new Target("t6", new SimpleInterval("chr1", 130, 140)));
+
+        final RealMatrix zeroCoverageMatrix = new Array2DRowRealMatrix(targets.size(), 1);
+        final ReadCountCollection counts = new ReadCountCollection(targets, Arrays.asList(sampleName), zeroCoverageMatrix);
 
         final AllelicCount snp1 = new AllelicCount(new SimpleInterval("chr1", 5, 5), 0, 1);
         final AllelicCount snp2 = new AllelicCount(new SimpleInterval("chr1", 40, 40), 0, 1);
@@ -185,7 +179,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
                 new SimpleInterval("chr2", 10, 10));
 
         final List<SimpleInterval> unionedSegments =
-                SegmentUtils.unionSegments(targetSegments, snpSegments, new Genome(targets, snps, "test"));
+                SegmentUtils.unionSegments(targetSegments, snpSegments, new Genome(counts, snps, "test"));
         final List<SimpleInterval> expectedLeft = Arrays.asList(
                 new SimpleInterval("chr1", 1, 10),
                 new SimpleInterval("chr1", 20, 40),

@@ -200,7 +200,7 @@ public final class TangentNormalizer {
         final List<String> sampleNamesCopy = new ArrayList<>(pon.getSampleNames());
 
         logger.info("Loading normalized counts...");
-        final ReadCountCollection coverageProfile = new ReadCountCollection(SetUniqueList.setUniqueList(pon.getTargets()), SetUniqueList.setUniqueList(sampleNamesCopy), pon.getNormalizedCounts());
+        final ReadCountCollection coverageProfile = new ReadCountCollection(pon.getTargets(), sampleNamesCopy, pon.getNormalizedCounts());
 
         logger.info("Tangent normalizing the normals (normalized by target factors) ...");
 
