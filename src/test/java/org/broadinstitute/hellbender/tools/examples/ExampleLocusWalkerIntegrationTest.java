@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * @author Daniel Gómez-Sánchez (magicDGS)
+ * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public class ExampleLocusWalkerIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
