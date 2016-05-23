@@ -44,6 +44,10 @@ public final class ReadUtils {
 
     public static final String ORIGINAL_BASE_QUALITIES_TAG = SAMTag.OQ.name();
 
+    /**
+     * BAM file magic value that starts every bam file
+     */
+    public static final byte[] BAM_MAGIC = "BAM\1".getBytes();
 
     /**
      * HACK: This is used to make a copy of a read.
