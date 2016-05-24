@@ -158,7 +158,7 @@ public class OverhangFixingManager {
 
         // if the new read is on a different contig or we have too many reads, then we need to flush the queue and clear the map
         final boolean tooManyReads = getNReadsInQueue() >= MAX_RECORDS_IN_MEMORY;
-        final boolean encounteredNewContig = getNReadsInQueue() > 0 && !waitingReads.peek().read.getContig().equals(read.getContig());
+        final boolean encounteredNewContig = getNReadsInQueue() > 0 && !waitingReads.peek().read.isUnmapped() && !waitingReads.peek().read.getContig().equals(read.getContig());
 
         if ( tooManyReads || encounteredNewContig ) {
             if ( DEBUG ) {

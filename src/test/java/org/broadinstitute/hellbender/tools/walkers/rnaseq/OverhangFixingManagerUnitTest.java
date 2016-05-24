@@ -119,17 +119,34 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
         Assert.assertEquals(manager.overhangingBasesMismatch(read, readStart, ref, refStart, overhang), expected, new String(read) + " vs. " + new String(ref) + " @" + overhang);
     }
 
-    @Test
-    public void testUnmappedReadsDoNotFail() {
-        // create an unmapped read
+    @DataProvider(name = "unmappedRead")
+    public Object[][] makeUnmappedRead() {
+        final List<Object[]> tests = new ArrayList<>();
         final GATKRead read = ArtificialReadUtils.createRandomRead(100);
         read.setName("foo");
         read.setCigar("*");
         read.setIsUnmapped();
 
-        // try to add it to the manager
+        tests.add(new Object[]{read});
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "unmappedRead")
+     public void testUnmappedReadsDoNotFail(final GATKRead read) {
+        // try to add unmapped read to the manager
         final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, null, null, 100, 1, 30, false);
         manager.addRead(read); // we just want to make sure that the following call does not fail
-        Assert.assertTrue(true);
+    }
+
+
+   /* This tests that if we peek in the waiting reads (which occurs if there are more than one read added) we don't get
+    an NPE from getContig() of an unmapped read.*/
+    @Test(dataProvider = "unmappedRead")
+    public void testTwoUnmappedReadsDoNotFail(final GATKRead read) {
+        // try to add unmapped read to the manager twice
+        final OverhangFixingManager manager = new OverhangFixingManager(getHG19Header(), null, null, null, 100, 1, 30, false);
+        manager.addRead(read); // we need to check when there is an unmapped read waiting to be added (so we need to add two)
+        manager.addRead(read); // we just want to make sure that the following call does not fail
     }
 }
