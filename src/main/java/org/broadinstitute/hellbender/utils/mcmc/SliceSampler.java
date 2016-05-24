@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.utils.mcmc;
 
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +23,6 @@ public final class SliceSampler {
 
     private final RandomGenerator rng;
     private final Function<Double, Double> logPDF;
-    private double xSample;
     private final double xMin;
     private final double xMax;
     private final double width;
@@ -29,20 +30,21 @@ public final class SliceSampler {
 
     /**
      * Creates a new sampler, given a random number generator, a continuous, univariate, unimodal, unnormalized
-     * log probability density function, an initial value of the random variable to use in slice construction,
-     * hard limits on the random variable, and a step width.
+     * log probability density function, hard limits on the random variable, and a step width.
      * @param rng      random number generator
      * @param logPDF   continuous, univariate, unimodal log probability density function (up to additive constant)
-     * @param xInitial initial value to use in slice construction; if outside [xMin, xMax], forced to be within
      * @param xMin     minimum allowed value of the random variable
      * @param xMax     maximum allowed value of the random variable
      * @param width    step width for slice expansion
      */
     public SliceSampler(final RandomGenerator rng, final Function<Double, Double> logPDF,
-                        final double xInitial, final double xMin, final double xMax, final double width) {
+                        final double xMin, final double xMax, final double width) {
+        Utils.nonNull(rng);
+        Utils.nonNull(logPDF);
+        Utils.validateArg(xMin <= xMax, "Maximum bound must be greater than or equal to minimum bound.");
+        ParamUtils.isPositive(width, "Slice-sampling width must be positive.");
         this.rng = rng;
         this.logPDF = logPDF;
-        this.xSample = Math.min(Math.max(xInitial, xMin + EPSILON), xMax - EPSILON);
         this.xMin = xMin;
         this.xMax = xMax;
         this.width = width;
@@ -51,23 +53,22 @@ public final class SliceSampler {
 
     /**
      * Creates a new sampler, given a random number generator, a continuous, univariate, unimodal, unnormalized
-     * log probability density function, an initial value of the random variable to use in slice construction,
-     * and a step width.
+     * log probability density function, and a step width.
      * @param rng      random number generator
      * @param logPDF   continuous, univariate, unimodal log probability density function (up to additive constant)
-     * @param xInitial initial value to use in slice construction
      * @param width    step width for slice expansion
      */
-    public SliceSampler(final RandomGenerator rng, final Function<Double, Double> logPDF,
-                        final double xInitial, final double width) {
-        this(rng, logPDF, xInitial, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, width);
+    public SliceSampler(final RandomGenerator rng, final Function<Double, Double> logPDF, final double width) {
+        this(rng, logPDF, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, width);
     }
 
     /**
-     * Generate a single sample from the probability density function.
+     * Generate a single sample from the probability density function, given an initial value to use in slice construction.
+     * @param xInitial      initial value to use in slice construction; if outside [xMin, xMax], forced to be within
      * @return              sample drawn from the probability density function
      */
-    public double sample() {
+    public double sample(final double xInitial) {
+        final double xSample = Math.min(Math.max(xInitial, xMin + EPSILON), xMax - EPSILON);
         //randomly pick height of slice from uniform distribution under PDF
         //(equivalently, from exponential distribution under logPDF)
         final double logSliceHeight = logPDF.apply(xSample) - exponentialDistribution.sample();
@@ -107,14 +108,17 @@ public final class SliceSampler {
     }
 
     /**
-     * Generate multiple samples from the probability density function.
+     * Generate multiple samples from the probability density function, given an initial value to use in slice construction.
+     * @param xInitial      initial value to use in slice construction; if outside [xMin, xMax], forced to be within
      * @param numSamples    number of samples to generate
      * @return              samples drawn from the probability density function
      */
-    public List<Double> sample(final int numSamples) {
+    public List<Double> sample(final double xInitial, final int numSamples) {
+        ParamUtils.isPositive(numSamples, "Number of samples must be positive.");
         final List<Double> samples = new ArrayList<>(numSamples);
+        double xSample = Math.min(Math.max(xInitial, xMin + EPSILON), xMax - EPSILON);
         for (int i = 0; i < numSamples; i++) {
-            xSample = sample();
+            xSample = sample(xSample);
             samples.add(xSample);
         }
         return samples;

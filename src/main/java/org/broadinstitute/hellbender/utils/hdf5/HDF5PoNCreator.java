@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.hdf5;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Doubles;
-import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;

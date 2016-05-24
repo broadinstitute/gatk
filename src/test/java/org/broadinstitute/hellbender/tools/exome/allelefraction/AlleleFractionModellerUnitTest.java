@@ -1,11 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import htsjdk.samtools.util.Log;
-import org.apache.commons.collections4.list.SetUniqueList;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.exome.Genome;
+import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
+import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -15,7 +16,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -93,7 +93,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments,
                 averageDepth, meanBiasSimulated, biasVarianceSimulated, outlierProbability);
 
-        final AlleleFractionModeller model = new AlleleFractionModeller(simulatedData.getSegmentedModel(), allelicPON);
+        final AlleleFractionModeller model = new AlleleFractionModeller(simulatedData.getSegmentedGenome(), allelicPON);
         model.fitMCMC(numSamples, numBurnIn);
 
         final List<Double> meanBiasSamples = model.getmeanBiasSamples();
@@ -122,7 +122,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
 
         double totalSegmentError = 0.0;
         for (int segment = 0; segment < numSegments; segment++) {
-            totalSegmentError += Math.abs(mcmcMinorFractions.get(segment) - simulatedData.getTrueState().minorFractionInSegment(segment));
+            totalSegmentError += Math.abs(mcmcMinorFractions.get(segment) - simulatedData.getTrueState().segmentMinorFraction(segment));
         }
 
         Assert.assertEquals(mcmcMeanBias, meanBiasExpected, meanBiasTolerance);
@@ -194,11 +194,11 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
 
         final Genome genome = new Genome(AlleleFractionSimulatedData.TRIVIAL_TARGETS, sample.getCounts(), "test");
         final List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_FILE);
-        final SegmentedModel segmentedModel = new SegmentedModel(segments, genome);
+        final SegmentedGenome segmentedGenome = new SegmentedGenome(segments, genome);
 
         final int numSamples = 100;
         final int numBurnIn = 25;
-        final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedModel, allelicPON);
+        final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedGenome, allelicPON);
         modeller.fitMCMC(numSamples, numBurnIn);
 
         final double credibleAlpha = 0.05;

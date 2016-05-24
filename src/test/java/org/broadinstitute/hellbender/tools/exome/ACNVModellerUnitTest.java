@@ -64,10 +64,10 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final List<AllelicCount> snpCountsDummy =
                 Collections.singletonList(new AllelicCount(new SimpleInterval("1", 1, 1), 0, 1));
         final Genome genome = new Genome(coverage, snpCountsDummy, SAMPLE_NAME);
-        final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
+        final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
-        final ACNVModeller modeller = new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, 10, 0, ctx);
+        final ACNVModeller modeller = new ACNVModeller(segmentedGenome, NUM_SAMPLES, NUM_BURN_IN, 10, 0, ctx);
         //check that model is completely fit at construction
         Assert.assertTrue(modeller.isModelFit());
         //perform iterations of similar-segment merging until all similar segments are merged
@@ -105,11 +105,11 @@ public final class ACNVModellerUnitTest extends BaseTest {
 
         //load data (coverages, SNP counts, and segments)
         final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
-        final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
+        final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller =
-                new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
+                new ACNVModeller(segmentedGenome, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
         //check that model is completely fit at construction
         Assert.assertTrue(modeller.isModelFit());
         //perform iterations of similar-segment merging until all similar segments are merged
@@ -146,11 +146,11 @@ public final class ACNVModellerUnitTest extends BaseTest {
 
         //load data (coverages, SNP counts, and segments)
         final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
-        final SegmentedModel segmentedModel = new SegmentedModel(SEGMENT_FILE, genome);
+        final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller =
-                new ACNVModeller(segmentedModel, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
+                new ACNVModeller(segmentedGenome, NUM_SAMPLES, NUM_BURN_IN, NUM_SAMPLES, NUM_BURN_IN, ctx);
         //check that model is completely fit at construction
         Assert.assertTrue(modeller.isModelFit());
         //perform iterations of similar-segment merging until all similar segments are merged

@@ -5,8 +5,6 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 
-import java.nio.file.Path;
-
 /**
  * Set of arguments for Assembly Based Callers
  */

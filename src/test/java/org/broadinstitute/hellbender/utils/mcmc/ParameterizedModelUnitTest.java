@@ -12,15 +12,21 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ParameterizedModelUnitTest {
-    private static final ParameterizedState SIMPLE_STATE =
-            new ParameterizedState(Collections.singletonList(new Parameter<>("parameter", 1.)));
-    private static final TestDataCollection EMPTY_DATA =
-            new TestDataCollection(Collections.emptyList());
+    private enum TestParameter implements ParameterEnum {
+        PARAMETER_1
+    }
+
+    private enum TestParameterBad implements ParameterEnum {
+        PARAMETER_A
+    }
+
+    private static final ParameterizedState<TestParameter> SIMPLE_STATE =
+            new ParameterizedState<>(Collections.singletonList(new Parameter<>(TestParameter.PARAMETER_1, 1.)));
     private static final TestDataCollection SIMPLE_DATA =
             new TestDataCollection(Collections.singletonList(Collections.singletonList(1.)));
-    private static final Sampler<Double, ParameterizedState, DataCollection> SIMPLE_SAMPLER =
+    private static final ParameterSampler<Double, TestParameter, ParameterizedState<TestParameter>, TestDataCollection> SIMPLE_SAMPLER =
             (rng, state, dataCollection) -> 1.;
-    private static final Sampler<Integer, ParameterizedState, DataCollection> BAD_SAMPLER =
+    private static final ParameterSampler<Integer, TestParameter, ParameterizedState<TestParameter>, TestDataCollection> BAD_SAMPLER =
             (rng, state, dataCollection) -> 1;
 
     private static final class TestDataCollection implements DataCollection {
@@ -33,31 +39,24 @@ public final class ParameterizedModelUnitTest {
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testMissingSamplersException() {
-        final ParameterizedModel.GibbsBuilder<ParameterizedState, DataCollection> builder =
-                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA, ParameterizedState.class);
+        final ParameterizedModel.GibbsBuilder<TestParameter, ParameterizedState<TestParameter>, TestDataCollection> builder =
+                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA);
         builder.build();
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testDuplicateSamplersException() {
-        final ParameterizedModel.GibbsBuilder<ParameterizedState, DataCollection> builder =
-                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA, ParameterizedState.class);
-        builder.addParameterSampler("parameter", SIMPLE_SAMPLER, Double.class)
-                .addParameterSampler("parameter", SIMPLE_SAMPLER, Double.class)
+        final ParameterizedModel.GibbsBuilder<TestParameter, ParameterizedState<TestParameter>, TestDataCollection> builder =
+                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA);
+        builder.addParameterSampler(TestParameter.PARAMETER_1, SIMPLE_SAMPLER, Double.class)
+                .addParameterSampler(TestParameter.PARAMETER_1, SIMPLE_SAMPLER, Double.class)
                 .build();
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testBadSamplerNameException() {
-        final ParameterizedModel.GibbsBuilder<ParameterizedState, DataCollection> builder =
-                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA, ParameterizedState.class);
-        builder.addParameterSampler("notParameter", SIMPLE_SAMPLER, Double.class).build();
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadSamplerTypeException() {
-        final ParameterizedModel.GibbsBuilder<ParameterizedState, DataCollection> builder =
-                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA, ParameterizedState.class);
-        builder.addParameterSampler("parameter", BAD_SAMPLER, Integer.class).build();
+        final ParameterizedModel.GibbsBuilder<TestParameter, ParameterizedState<TestParameter>, TestDataCollection> builder =
+                new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA);
+        builder.addParameterSampler(TestParameter.PARAMETER_1, BAD_SAMPLER, Integer.class).build();
     }
 }

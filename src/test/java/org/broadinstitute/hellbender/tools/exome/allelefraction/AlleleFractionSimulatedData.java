@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
@@ -37,14 +36,14 @@ public final class AlleleFractionSimulatedData {
     }
 
     private final AlleleFractionState trueState;
-    private final SegmentedModel segmentedModel;
+    private final SegmentedGenome segmentedGenome;
     private final int numSegments;
 
     public AlleleFractionSimulatedData(final double averageHetsPerSegment, final int numSegments,
             final double averageDepth, final double biasMean, final double biasVariance, final double outlierProbability) {
         rng.setSeed(RANDOM_SEED);
         this.numSegments = numSegments;
-        final AlleleFractionState.MinorFractions minorFractions = new AlleleFractionState.MinorFractions();
+        final AlleleFractionState.MinorFractions minorFractions = new AlleleFractionState.MinorFractions(numSegments);
         final List<AllelicCount> alleleCounts = new ArrayList<>();
         final List<SimpleInterval> segments = new ArrayList<>();
 
@@ -83,16 +82,16 @@ public final class AlleleFractionSimulatedData {
         }
 
         final Genome genome = new Genome(TRIVIAL_TARGETS, alleleCounts, "SAMPLE");
-        segmentedModel = new SegmentedModel(segments, genome);
+        segmentedGenome = new SegmentedGenome(segments, genome);
         trueState = new AlleleFractionState(biasMean, biasVariance, outlierProbability, minorFractions);
     };
 
     public AlleleFractionState getTrueState() { return trueState; }
-    public SegmentedModel getSegmentedModel() { return segmentedModel; }
+    public SegmentedGenome getSegmentedGenome() { return segmentedGenome; }
 
     public AlleleFractionStateError error(final AlleleFractionState state) {
         final double averageMinorFractionError = IntStream.range(0, numSegments)
-                .mapToDouble(s -> Math.abs(trueState.minorFractionInSegment(s) - state.minorFractionInSegment(s)))
+                .mapToDouble(s -> Math.abs(trueState.segmentMinorFraction(s) - state.segmentMinorFraction(s)))
                 .average().getAsDouble();
         return new AlleleFractionStateError(averageMinorFractionError, trueState.meanBias() - state.meanBias(),
                 trueState.biasVariance() - state.biasVariance(), trueState.outlierProbability() - state.outlierProbability());

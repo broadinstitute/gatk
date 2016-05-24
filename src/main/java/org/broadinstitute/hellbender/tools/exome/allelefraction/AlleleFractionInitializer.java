@@ -105,11 +105,12 @@ public final class AlleleFractionInitializer {
      * reads in minor allele divided by total reads, ignoring outliers.
      */
     private AlleleFractionState.MinorFractions initialMinorFractions(final AlleleFractionData data) {
-        AlleleFractionState.MinorFractions result = new AlleleFractionState.MinorFractions();
-        for (int segment = 0; segment < data.numSegments(); segment++) {
+        final int numSegments = data.getNumSegments();
+        final AlleleFractionState.MinorFractions result = new AlleleFractionState.MinorFractions(numSegments);
+        for (int segment = 0; segment < numSegments; segment++) {
             double responsibilityWeightedMinorAlleleReadCount = 0.0;
             double responsibilityWeightedTotalReadCount = 0.0;
-            for (final AllelicCount count : data.countsInSegment(segment)) {
+            for (final AllelicCount count : data.getCountsInSegment(segment)) {
                 final int a = count.getAltReadCount();
                 final int r = count.getRefReadCount();
                 double altMinorResponsibility;
@@ -153,15 +154,15 @@ public final class AlleleFractionInitializer {
         final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(minorFraction -> {
             final AlleleFractionState proposal =
                     new AlleleFractionState(state.meanBias(), state.biasVariance(), state.outlierProbability(), minorFraction); //single-segment state
-            return AlleleFractionLikelihoods.segmentLogLikelihood(proposal, 0, data.countsInSegment(segment), data.getPON());
+            return AlleleFractionLikelihoods.segmentLogLikelihood(proposal, 0, data.getCountsInSegment(segment), data.getPON());
         });
-        final SearchInterval searchInterval = new SearchInterval(0.0, MAX_MINOR_ALLELE_FRACTION, state.minorFractionInSegment(segment));
+        final SearchInterval searchInterval = new SearchInterval(0.0, MAX_MINOR_ALLELE_FRACTION, state.segmentMinorFraction(segment));
         return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
     }
 
     private AlleleFractionState.MinorFractions estimateMinorFractions(final AlleleFractionData data) {
         return new AlleleFractionState.MinorFractions(
-                IntStream.range(0, data.numSegments())
+                IntStream.range(0, data.getNumSegments())
                 .mapToDouble(segment -> estimateMinorFraction(segment, data))
                 .boxed().collect(Collectors.toList()));
     }

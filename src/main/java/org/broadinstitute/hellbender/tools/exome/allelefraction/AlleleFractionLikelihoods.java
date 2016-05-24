@@ -75,7 +75,7 @@ public final class AlleleFractionLikelihoods {
             beta = allelicPON.getBeta(site);
         }
         final double pi = state.outlierProbability();
-        final double minorFraction = state.minorFractionInSegment(segment);
+        final double minorFraction = state.segmentMinorFraction(segment);
         final int a = count.getAltReadCount();
         final int r = count.getRefReadCount();
 
@@ -205,14 +205,14 @@ public final class AlleleFractionLikelihoods {
      * @return sum of log likelihoods of all segments
      */
     public static double logLikelihood(final AlleleFractionState state, final AlleleFractionData data) {
-        return IntStream.range(0, data.numSegments()).mapToDouble(s -> segmentLogLikelihood(state, s, data.countsInSegment(s), data.getPON())).sum();
+        return IntStream.range(0, data.getNumSegments()).mapToDouble(s -> segmentLogLikelihood(state, s, data.getCountsInSegment(s), data.getPON())).sum();
     }
 
     protected static Function<Double, Double> segmentLogLikelihoodConditionalOnMinorFraction(final AlleleFractionState state,
                                                                                              final AlleleFractionData data, final int segment) {
         return minorFraction -> {
             final AlleleFractionState proposal = new AlleleFractionState(state.meanBias(), state.biasVariance(), state.outlierProbability(), minorFraction);
-            return AlleleFractionLikelihoods.segmentLogLikelihood(proposal, 0, data.countsInSegment(segment), data.getPON());
+            return AlleleFractionLikelihoods.segmentLogLikelihood(proposal, 0, data.getCountsInSegment(segment), data.getPON());
         };
     }
 

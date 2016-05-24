@@ -44,8 +44,8 @@ public final class SliceSamplerUnitTest {
         final double xMax = Double.POSITIVE_INFINITY;
         final double width = 0.5;
         final int numSamples = 20000;
-        final SliceSampler normalSampler = new SliceSampler(rng, normalLogPDF, xInitial, xMin, xMax, width);
-        final List<Double> samples = normalSampler.sample(numSamples);
+        final SliceSampler normalSampler = new SliceSampler(rng, normalLogPDF, xMin, xMax, width);
+        final List<Double> samples = normalSampler.sample(xInitial, numSamples);
 
         final double sampleMean = new Mean().evaluate(Doubles.toArray(samples));
         final double sampleStandardDeviation = new StandardDeviation().evaluate(Doubles.toArray(samples));

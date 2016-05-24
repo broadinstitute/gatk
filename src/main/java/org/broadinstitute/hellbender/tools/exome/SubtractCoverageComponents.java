@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
@@ -16,7 +15,6 @@ import org.broadinstitute.hellbender.utils.pca.PCA;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;

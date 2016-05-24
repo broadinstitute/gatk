@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.utils.mcmc;
 
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 
 /**
@@ -17,8 +20,11 @@ public final class AdaptiveMetropolisSamplerUnitTest {
     private static final int NUM_BURN_IN_STEPS = 1000;
     private static final int NUM_SAMPLES = 5000;
 
+    private static final int RANDOM_SEED = 13;
+
     @Test
     public void testBeta() {
+        final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
         for (final double a : Arrays.asList(10, 20, 30)) {
             for (final double b : Arrays.asList(10, 20, 30)) {
 
@@ -31,7 +37,7 @@ public final class AdaptiveMetropolisSamplerUnitTest {
 
                 final Function<Double, Double> logPDF = x -> (a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x);
                 final AdaptiveMetropolisSampler sampler = new AdaptiveMetropolisSampler(INITIAL_BETA_GUESS, INITIAL_STEP_SIZE, 0, 1);
-                final List<Double> samples = sampler.sample(logPDF, NUM_SAMPLES, NUM_BURN_IN_STEPS);
+                final List<Double> samples = sampler.sample(rng, logPDF, NUM_SAMPLES, NUM_BURN_IN_STEPS);
 
                 final double sampleMean = samples.stream().mapToDouble(x -> x).average().getAsDouble();
                 final double sampleMeanSquare = samples.stream().mapToDouble(x -> x*x).average().getAsDouble();
@@ -45,6 +51,7 @@ public final class AdaptiveMetropolisSamplerUnitTest {
 
     @Test
     public void testGaussian() {
+        final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
         for (final double theoreticalMean : Arrays.asList(0)) {
             for (final double precision : Arrays.asList(1.0)) {
                 final double variance = 1/precision;
@@ -56,7 +63,7 @@ public final class AdaptiveMetropolisSamplerUnitTest {
                 final Function<Double, Double> logPDF = x -> -(precision/2)*(x-theoreticalMean)*(x-theoreticalMean);
                 final AdaptiveMetropolisSampler sampler = new AdaptiveMetropolisSampler(INITIAL_GAUSSIAN_GUESS, INITIAL_STEP_SIZE,
                         Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
-                final List<Double> samples = sampler.sample(logPDF, NUM_SAMPLES, NUM_BURN_IN_STEPS);
+                final List<Double> samples = sampler.sample(rng, logPDF, NUM_SAMPLES, NUM_BURN_IN_STEPS);
 
                 final double sampleMean = samples.stream().mapToDouble(x -> x).average().getAsDouble();
                 final double sampleMeanSquare = samples.stream().mapToDouble(x -> x*x).average().getAsDouble();

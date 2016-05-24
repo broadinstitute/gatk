@@ -6,10 +6,6 @@ import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import scala.Int;
-
-import java.util.function.Function;
 
 /**
  * Reference and alternate allele counts at a SNP site specified by an interval.

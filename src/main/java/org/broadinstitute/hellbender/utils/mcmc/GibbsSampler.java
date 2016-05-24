@@ -5,6 +5,8 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class GibbsSampler<S extends AbstractParameterizedState, T extends DataCollection> {
+public final class GibbsSampler<V extends Enum<V> & ParameterEnum, S extends ParameterizedState<V>, T extends DataCollection> {
     private static final int RANDOM_SEED = 42;
     private static final RandomGenerator rng =
             RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
@@ -28,7 +30,7 @@ public final class GibbsSampler<S extends AbstractParameterizedState, T extends 
     private final int numSamples;
     private int numSamplesPerLogEntry;
 
-    private final ParameterizedModel<S, T> model;
+    private final ParameterizedModel<V, S, T> model;
 
     private final List<S> samples;
 
@@ -41,13 +43,12 @@ public final class GibbsSampler<S extends AbstractParameterizedState, T extends 
      * @param numSamples    total number of samples; must be positive
      * @param model         {@link ParameterizedModel} to be sampled
      */
-    public GibbsSampler(final int numSamples, final ParameterizedModel<S, T> model) {
-        if (numSamples <= 0) {
-            throw new IllegalArgumentException("Number of samples must be positive.");
-        }
+    public GibbsSampler(final int numSamples, final ParameterizedModel<V, S, T> model) {
+        ParamUtils.isPositive(numSamples, "Number of samples must be positive.");
+        Utils.validateArg(model.getUpdateMethod() == ParameterizedModel.UpdateMethod.GIBBS, "ParameterizedModel must be constructed to update using Gibbs sampling.");
         this.numSamples = numSamples;
-        this.numSamplesPerLogEntry = NUMBER_OF_SAMPLES_PER_LOG_ENTRY;
         this.model = model;
+        numSamplesPerLogEntry = NUMBER_OF_SAMPLES_PER_LOG_ENTRY;
         samples = new ArrayList<>(numSamples);
         samples.add(model.state());
     }
@@ -57,9 +58,7 @@ public final class GibbsSampler<S extends AbstractParameterizedState, T extends 
      * @param numSamplesPerLogEntry number of samples per log entry; must be positive
      */
     public void setNumSamplesPerLogEntry(final int numSamplesPerLogEntry) {
-        if (numSamplesPerLogEntry <= 0) {
-            throw new IllegalArgumentException("Number of samples per log entry must be positive.");
-        }
+        ParamUtils.isPositive(numSamplesPerLogEntry, "Number of samples per log entry must be positive.");
         this.numSamplesPerLogEntry = numSamplesPerLogEntry;
     }
 
@@ -90,10 +89,9 @@ public final class GibbsSampler<S extends AbstractParameterizedState, T extends 
      * @param <U>                   type of parameter value
      * @return                      List of parameter samples
      */
-    public <U> List<U> getSamples(final String parameterName, final Class<U> parameterValueClass, final int numBurnIn) {
-        if (numBurnIn < 0 || numBurnIn >= numSamples) {
-            throw new IllegalArgumentException("Invalid number of burn-in samples.");
-        }
+    public <U> List<U> getSamples(final V parameterName, final Class<U> parameterValueClass, final int numBurnIn) {
+        ParamUtils.isPositiveOrZero(numBurnIn, "Number of burn-in samples must be non-negative.");
+        Utils.validateArg(numBurnIn < numSamples, "Number of samples must be greater than number of burn-in samples.");
         if (!isMCMCRunComplete) {
             runMCMC();
         }

@@ -3,49 +3,32 @@ package org.broadinstitute.hellbender.utils.mcmc;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**
- * Represents a named parameter.
- * @param <T>   type of the parameter
+ * Represents a parameter value with a named {@link ParameterEnum} key.
+ * @param <T>   type of the {@link ParameterEnum} key name
+ * @param <U>   type of the value
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class Parameter<T> {
-    private final String name;
-    private final T value;
-    private final Class<?> cls;
+public final class Parameter<T extends Enum<T> & ParameterEnum, U> {
+    private final T name;
+    private final U value;
 
     /**
-     * Constructs a Parameter given a name and value.
-     * @param name  parameter name
+     * Constructs a {@link Parameter} given a {@link ParameterEnum} key name and value.
+     * @param name  parameter key name
      * @param value parameter value
      * @throws IllegalArgumentException if {@code name} or {@code value} is null
      */
-    public Parameter(final String name, final T value) {
-        Utils.nonNull(name, "The parameter name cannot be null.");
-        Utils.nonNull(value, "The parameter value cannot be null.");
-        this.name = name;
-        this.value = value;
-        this.cls = value.getClass();
+    public Parameter(final T name, final U value) {
+        this.name = Utils.nonNull(name, "The parameter name cannot be null.");
+        this.value = Utils.nonNull(value, "The parameter value cannot be null.");
     }
 
-    /**
-     * Returns the parameter name.
-     * @return  parameter name
-     */
-    public String name() {
+    public T getName() {
         return name;
     }
 
-    /**
-     * Returns the parameter value.
-     * @return  parameter value
-     */
-    public T value() {
+    public U getValue() {
         return value;
     }
-
-    /**
-     * Returns the parameter class.
-     * @return  parameter class
-     */
-    public Class<?> cls() {return cls;}
 }
