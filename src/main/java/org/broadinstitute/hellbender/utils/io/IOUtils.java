@@ -26,6 +26,12 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Reader;
+import java.net.URI;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -499,5 +505,27 @@ public final class IOUtils {
                 FileUtils.deleteQuietly(dir);
             }
         });
+    }
+
+    /**
+     * Converts the given URI to a {@link Path} object. If the filesystem cannot be found in the usual way, then attempt
+     * to load the filesystem provider using the thread context classloader. This is needed when the filesystem
+     * provider is loaded using a URL classloader (e.g. in spark-submit).
+     *
+     * @param uriString the URI to convert
+     * @return the resulting {@code Path}
+     * @throws IOException an I/O error occurs creating the file system
+     */
+    public static Path getPath(String uriString) throws IOException {
+        URI uri = URI.create(uriString);
+        try {
+            return Paths.get(uri);
+        } catch (FileSystemNotFoundException e) {
+            ClassLoader cl = Thread.currentThread().getContextClassLoader();
+            if (cl == null) {
+                throw e;
+            }
+            return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+        }
     }
 }

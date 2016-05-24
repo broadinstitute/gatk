@@ -6,11 +6,11 @@ import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Paths;
 
 /**
  * Class to load a reference sequence from a fasta file on HDFS.
@@ -29,14 +29,14 @@ public class ReferenceHadoopSource implements ReferenceSource, Serializable {
 
     @Override
     public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) throws IOException {
-        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(Paths.get(referencePath));
+        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(IOUtils.getPath(referencePath));
         ReferenceSequence sequence = referenceSequenceFile.getSubsequenceAt(interval.getContig(), interval.getStart(), interval.getEnd());
         return new ReferenceBases(sequence.getBases(), interval);
     }
 
     @Override
     public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(Paths.get(referencePath));
+        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(IOUtils.getPath(referencePath));
         return referenceSequenceFile.getSequenceDictionary();
     }
 

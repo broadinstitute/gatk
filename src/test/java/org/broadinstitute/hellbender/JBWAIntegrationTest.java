@@ -5,6 +5,7 @@ import com.github.lindenb.jbwa.jni.BwaIndex;
 import com.github.lindenb.jbwa.jni.BwaMem;
 import com.github.lindenb.jbwa.jni.ShortRead;
 import org.broadinstitute.hellbender.utils.NativeUtils;
+import org.broadinstitute.hellbender.utils.bwa.BWANativeLibrary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.SkipException;
@@ -27,9 +28,7 @@ public class JBWAIntegrationTest extends BaseTest {
     public void testJBWAIsLoadable(){
         skipJBWATestOnUnsupportedPlatforms();
 
-        final String libraryPath = NativeUtils.runningOnLinux() ? "/lib/libbwajni.so" : "/lib/libbwajni_mac.jnilib";
-        Assert.assertTrue(NativeUtils.loadLibraryFromClasspath(libraryPath), "jbwa library was not loaded. " +
-                "This could be due to a configuration error, or your system might not support it.");
+        BWANativeLibrary.load();
     }
 
 
@@ -37,9 +36,7 @@ public class JBWAIntegrationTest extends BaseTest {
     public void testJBWAAlignSingleRead() throws Exception {
         skipJBWATestOnUnsupportedPlatforms();
 
-        final String libraryPath = NativeUtils.runningOnLinux() ? "/lib/libbwajni.so" : "/lib/libbwajni_mac.jnilib";
-        Assert.assertTrue(NativeUtils.loadLibraryFromClasspath(libraryPath), "jbwa library was not loaded. " +
-                "This could be due to a configuration error, or your system might not support it.");
+        BWANativeLibrary.load();
 
         BwaIndex index= new BwaIndex(new File(b37_reference_20_21));
         final BwaMem bwaMem = new BwaMem(index);
