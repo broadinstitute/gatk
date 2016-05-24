@@ -4,6 +4,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.fakedata.SimulatedTargets;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -45,12 +46,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
     @Test(expectedExceptions = UserException.class)
     public void testEmptyInputFileListProvided() throws Exception {
         @SuppressWarnings("serial")
-        final List<Target> phonyTargets = new ArrayList<Target>() {{
-            add(new Target("target_0",new SimpleInterval("1", 100, 200)));
-            add(new Target("target_1",new SimpleInterval("2", 100, 200)));
-            add(new Target("target_2",new SimpleInterval("3", 100, 200)));
-
-        }};
+        final List<Target> phonyTargets = SimulatedTargets.phonyTargets(3);
         final List<File> inputFiles = Collections.emptyList();
         final File targetFile = createTargetFile(phonyTargets);
         final File inputListFile = createInputListFile(inputFiles);
@@ -67,12 +63,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
     @Test(expectedExceptions = UserException.class)
     public void testNoInputFileProvided() throws Exception {
         @SuppressWarnings("serial")
-        final List<Target> phonyTargets = new ArrayList<Target>() {{
-            add(new Target("target_0",new SimpleInterval("1", 100, 200)));
-            add(new Target("target_1",new SimpleInterval("2", 100, 200)));
-            add(new Target("target_2",new SimpleInterval("3", 100, 200)));
-
-        }};
+        final List<Target> phonyTargets = SimulatedTargets.phonyTargets(3);
         final List<File> inputFiles = Collections.emptyList();
         final File targetFile = createTargetFile(phonyTargets);
         try {
