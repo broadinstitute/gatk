@@ -486,8 +486,8 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
                 downsampler, true, keepReads,
                 bamBuilder.getSamples(), bamBuilder.getHeader());
 
-        final Set<GATKRead> seenSoFar = new HashSet<>();
-        final Set<GATKRead> keptReads = new HashSet<>();
+        final Set<GATKRead> seenSoFar = new LinkedHashSet<>();
+        final Set<GATKRead> keptReads = new LinkedHashSet<>();
         int bpVisited = 0;
         while ( li.hasNext() ) {
             bpVisited++;
@@ -564,7 +564,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
             }
 
             // check uniqueness
-            final Set<String> readNames = new HashSet<>();
+            final Set<String> readNames = new LinkedHashSet<>();
             for ( final GATKRead read : keptReads ) {
                 Assert.assertFalse(readNames.contains(read.getName()), "Found duplicate reads in the kept reads");
                 readNames.add(read.getName());

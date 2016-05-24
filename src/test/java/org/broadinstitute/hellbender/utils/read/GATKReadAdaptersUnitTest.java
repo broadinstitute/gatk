@@ -145,7 +145,7 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         read.setNumberReads(2);
         read.setReadNumber(0);
         read.setProperPlacement(false);
-        Map<String, List<String>> infoMap = new HashMap<String, List<String>>();
+        Map<String, List<String>> infoMap = new LinkedHashMap<String, List<String>>();
         infoMap.put(SAMTag.PG.name(), Collections.singletonList(BASIC_PROGRAM));
         read.setInfo(infoMap);
 

@@ -20,7 +20,7 @@ import java.util.zip.ZipFile;
  * @author Tim Fennell
  */
 public final class ClassFinder {
-    private final Set<Class<?>> classes = new HashSet<>();
+    private final Set<Class<?>> classes = new LinkedHashSet<>();
     private final ClassLoader loader;
     private Class<?> parentType;
     // If not null, only look for classes in this jar
@@ -165,7 +165,7 @@ public final class ClassFinder {
      * @return subset of classes discovered so far including only concrete (non-abstract/interface) classes
      */
     public Set<Class<?>> getConcreteClasses() {
-        Set<Class<?>> concreteClassSet = new HashSet<>();
+        Set<Class<?>> concreteClassSet = new LinkedHashSet<>();
 
         for ( Class<?> clazz : classes ) {
             if ( isConcrete(clazz) ) {

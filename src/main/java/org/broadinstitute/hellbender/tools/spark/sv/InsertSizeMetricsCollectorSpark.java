@@ -59,7 +59,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
         // each entry in the list represents a level, and the entry is a map from the group's meta info to its metrics info
         final ArrayList<Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>> listOfHistograms = aggregateHistograms(histogramsOfReadGroups, accumLevels);
         final ArrayList<Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>>> listOfStats = new ArrayList<>();
-        for(int i=0; i<accumLevels.size(); ++i){ listOfStats.add(new HashMap<>()); }
+        for(int i=0; i<accumLevels.size(); ++i){ listOfStats.add(new LinkedHashMap<>()); }
 
         // convert to htsjdk Histogram and compute metrics
         for(int i=0; i<accumLevels.size(); ++i){ convertSortedMapToHTSHistogram(listOfStats.get(i), listOfHistograms.get(i), histogramMADTolerance); }
@@ -80,9 +80,9 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
         final List<Tuple2<ReadGroupParentExtractor,
                           Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>>> extractors = new ArrayList<>();
 
-        if(accumLevels.contains(MetricAccumulationLevel.LIBRARY))   { extractors.add( new Tuple2<>(new ReadGroupLibraryExtractor(),  new HashMap<>())); }
-        if(accumLevels.contains(MetricAccumulationLevel.SAMPLE))    { extractors.add( new Tuple2<>(new ReadGroupSampleExtractor(),   new HashMap<>())); }
-        if(accumLevels.contains(MetricAccumulationLevel.ALL_READS)) { extractors.add( new Tuple2<>(new ReadGroupAllReadsExtractor(), new HashMap<>())); }
+        if(accumLevels.contains(MetricAccumulationLevel.LIBRARY))   { extractors.add( new Tuple2<>(new ReadGroupLibraryExtractor(),  new LinkedHashMap<>())); }
+        if(accumLevels.contains(MetricAccumulationLevel.SAMPLE))    { extractors.add( new Tuple2<>(new ReadGroupSampleExtractor(),   new LinkedHashMap<>())); }
+        if(accumLevels.contains(MetricAccumulationLevel.ALL_READS)) { extractors.add( new Tuple2<>(new ReadGroupAllReadsExtractor(), new LinkedHashMap<>())); }
 
         for(final GroupMetaInfo groupMetaInfo : histogramsAtRGLevel.keySet()){
             final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> readGroupHistograms = histogramsAtRGLevel.get(groupMetaInfo);
@@ -118,7 +118,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
         final Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> destination = extractor._2();
 
         // three checks: first check if this higher level group has been seen yet.
-        destination.putIfAbsent(correspondingHigherLevelGroup, new HashMap<>());
+        destination.putIfAbsent(correspondingHigherLevelGroup, new LinkedHashMap<>());
         final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> higherLevelHistograms = destination.get(correspondingHigherLevelGroup);
 
         for(final SamPairUtil.PairOrientation orientation : readGroupHistograms.keySet()){
@@ -191,7 +191,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
                 trimHTSHistogramAndSetMean(metrics, htsHist, histogramMADTolerance);
 
                 // save result
-                final Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>> mapToStats = new HashMap<>();
+                final Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>> mapToStats = new LinkedHashMap<>();
                 mapToStats.put(orientation, new Tuple2<>(htsHist, metrics));
                 htsjdkHistogramsAndMetrics.put(groupMetaInfo, mapToStats);
             }
@@ -300,7 +300,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
     // Maps a list of fragment size length values to a histogram, implemented as SortedMap
     private static Tuple2<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> constructHistogramFromList(final Tuple2<GroupMetaInfo, Map<SamPairUtil.PairOrientation, List<Integer>>> entry){
 
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> orientationToSortedMap = new HashMap<>();
+        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> orientationToSortedMap = new LinkedHashMap<>();
 
         for(final Map.Entry<SamPairUtil.PairOrientation, List<Integer>> e : entry._2().entrySet()){
             orientationToSortedMap.put(e.getKey(),

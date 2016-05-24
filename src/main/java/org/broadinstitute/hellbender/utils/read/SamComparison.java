@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,8 +83,8 @@ public final class SamComparison {
                 new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
         // Save any reads which haven't been matched during in-order scan.
-        final Map<PrimaryAlignmentKey, SAMRecord> leftUnmatched = new HashMap<>();
-        final Map<PrimaryAlignmentKey, SAMRecord> rightUnmatched = new HashMap<>();
+        final Map<PrimaryAlignmentKey, SAMRecord> leftUnmatched = new LinkedHashMap<>();
+        final Map<PrimaryAlignmentKey, SAMRecord> rightUnmatched = new LinkedHashMap<>();
 
         while (itLeft.hasCurrent()) {
             if (!itRight.hasCurrent()) {
@@ -105,7 +105,7 @@ public final class SamComparison {
             // Don't assume stability of order beyond the coordinate.  Therefore grab all the
             // reads from the left that has the same coordinate.
             final SAMRecord left = itLeft.getCurrent();
-            final Map<PrimaryAlignmentKey, SAMRecord> leftCurrentCoordinate = new HashMap<>();
+            final Map<PrimaryAlignmentKey, SAMRecord> leftCurrentCoordinate = new LinkedHashMap<>();
             final PrimaryAlignmentKey leftKey = new PrimaryAlignmentKey(left);
             leftCurrentCoordinate.put(leftKey, left);
             while (itLeft.advance()) {
@@ -232,7 +232,7 @@ public final class SamComparison {
         final SecondaryOrSupplementarySkippingIterator it1 = new SecondaryOrSupplementarySkippingIterator(reader1.iterator());
         final SecondaryOrSupplementarySkippingIterator it2 = new SecondaryOrSupplementarySkippingIterator(reader2.iterator());
 
-        final HashMap<PrimaryAlignmentKey, SAMRecord> leftUnmatched = new HashMap<>();
+        final Map<PrimaryAlignmentKey, SAMRecord> leftUnmatched = new LinkedHashMap<>();
         for (; it1.hasCurrent(); it1.advance()) {
             final SAMRecord left = it1.getCurrent();
             final PrimaryAlignmentKey leftKey = new PrimaryAlignmentKey(left);

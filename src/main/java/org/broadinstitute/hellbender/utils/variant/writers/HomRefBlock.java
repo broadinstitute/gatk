@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -96,7 +96,7 @@ final class HomRefBlock implements Locatable {
      */
     public VariantContext toVariantContext(String sampleName) {
         final VariantContextBuilder vcb = new VariantContextBuilder(getStartingVC());
-        vcb.attributes(new HashMap<>(2)); // clear the attributes
+        vcb.attributes(new LinkedHashMap<>(2)); // clear the attributes
         vcb.stop(getEnd());
         vcb.attribute(VCFConstants.END_KEY, getEnd());
         final Genotype genotype = createHomRefGenotype(sampleName);

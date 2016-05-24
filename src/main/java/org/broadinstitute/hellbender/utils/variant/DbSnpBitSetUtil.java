@@ -15,7 +15,7 @@ import java.util.*;
  */
 public final class DbSnpBitSetUtil {
 
-    private final Map<String, BitSet> sequenceToBitSet = new HashMap<>();
+    private final Map<String, BitSet> sequenceToBitSet = new LinkedHashMap<>();
 
     /** Little tuple class to contain one bitset for SNPs and another for Indels. */
     public static class DbSnpBitSets {
@@ -49,7 +49,7 @@ public final class DbSnpBitSetUtil {
                            final Collection<DbSnpVariantType> variantsToMatch) {
 
         if (dbSnpFile == null) throw new IllegalArgumentException("null dbSnpFile");
-        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> tmp = new HashMap<>();
+        final Map<DbSnpBitSetUtil, Set<DbSnpVariantType>> tmp = new LinkedHashMap<>();
         tmp.put(this, EnumSet.copyOf(variantsToMatch));
         loadVcf(dbSnpFile, sequenceDictionary, tmp);
     }

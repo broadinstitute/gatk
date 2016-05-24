@@ -60,7 +60,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(null);
         if ( dict == null ) throw new GATKException("No reference dictionary available.");
 
-        final HashMap<SVKmer,Long> kmerMap = new HashMap<>();
+        final Map<SVKmer,Long> kmerMap = new LinkedHashMap<>();
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final SimpleInterval interval = new SimpleInterval(rec.getSequenceName(), 1, rec.getSequenceLength());
             final byte[] bases = ref.getReferenceBases(null, interval).getBases();
@@ -78,7 +78,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         }
 
         final List<SVKmer> badKmers = FindBadGenomicKmersSpark.findBadGenomicKmers(ctx,ref,null,null);
-        final HashSet<SVKmer> badKmerSet = new HashSet<>(badKmers.size());
+        final Set<SVKmer> badKmerSet = new LinkedHashSet<>(badKmers.size());
         for ( final SVKmer kmer : badKmers ) {
             badKmerSet.add(kmer);
         }

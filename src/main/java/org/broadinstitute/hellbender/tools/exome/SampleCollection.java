@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -129,7 +129,7 @@ public final class SampleCollection {
                 .collect(Collectors.toMap(readGroupIds::get,i -> i));
 
         // Read-group id -> sample-index.
-        final Map<String,Integer> sampleIndexByGroupId = new HashMap<>(readGroupIds.size());
+        final Map<String,Integer> sampleIndexByGroupId = new LinkedHashMap<>(readGroupIds.size());
         readGroupIds.forEach(id -> {
             final String sampleId = header.getReadGroup(id).getSample();
             sampleIndexByGroupId.put(id, sampleId == null ? -1 : sampleIndexById.get(sampleId));

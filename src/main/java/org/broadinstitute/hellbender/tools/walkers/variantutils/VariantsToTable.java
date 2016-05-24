@@ -364,7 +364,7 @@ public final class VariantsToTable extends VariantWalker {
     //
     // ----------------------------------------------------------------------------------------------------
 
-    private final Map<String, Function<VariantContext, String>> getters = new HashMap<>();
+    private final Map<String, Function<VariantContext, String>> getters = new LinkedHashMap<>();
     {
         // #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT
         getters.put("CHROM", vc -> vc.getContig());

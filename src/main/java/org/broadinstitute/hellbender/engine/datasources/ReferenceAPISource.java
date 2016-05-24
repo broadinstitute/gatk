@@ -114,7 +114,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
             if (referenceSetIds.size() > 1){
                 throw new UserException.MultipleReferenceSets(referenceSetAssemblyID, referenceSetIds);
             }
-            final Map<String, Reference> ret = new HashMap<>();
+            final Map<String, Reference> ret = new LinkedHashMap<>();
             for (final String rId : referenceSetIds) {
                 final SearchReferencesRequest query = new SearchReferencesRequest().setReferenceSetId(rId);
                 ret.putAll(genomicsService.references().search(query).execute().getReferences().stream().collect(Collectors.toMap(r -> r.getName(), r -> r)));
@@ -232,7 +232,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
      * @return returns a mapping from reference name to String ID.
      */
     public Map<String, String> getReferenceNameToIdTableFromMap(final Map<String, Reference> referenceMap) {
-        Map<String, String> ret = new HashMap<>();
+        Map<String, String> ret = new LinkedHashMap<>();
         for (Map.Entry<String,Reference> e : referenceMap.entrySet()) {
             ret.put(e.getKey(), e.getValue().getId());
         }
@@ -260,13 +260,13 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
 
         HashMap<String,Integer> indexBuilder = null;
         if (null!=optReadSequenceDictionaryToMatch) {
-            indexBuilder = new HashMap<>();
+            indexBuilder = new LinkedHashMap<>();
             for (int i=0; i<optReadSequenceDictionaryToMatch.size(); i++) {
                 final SAMSequenceRecord sequence = optReadSequenceDictionaryToMatch.getSequence(i);
                 indexBuilder.put(sequence.getSequenceName(), i);
             }
         }
-        final HashMap<String,Integer> optReadSequenceDictionaryToMatchIndex = indexBuilder;
+        final Map<String,Integer> optReadSequenceDictionaryToMatchIndex = indexBuilder;
 
         // GATK requires human contigs in karyotypic order: 1, 2, ..., 10, 11, ..., 20, 21, 22, X, Y with M either leading or trailing these contigs.
         // So we sort them.
@@ -326,7 +326,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
         Utils.nonNull(referenceSetID);
         fillGenomicsService(pipelineOptions);
 
-        final Map<String, Reference> ret = new HashMap<>();
+        final Map<String, Reference> ret = new LinkedHashMap<>();
         try {
             final SearchReferencesRequest content = new SearchReferencesRequest();
             content.setReferenceSetId(referenceSetID);
@@ -376,7 +376,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
     
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         JsonFactory jsonFactory = com.google.api.client.googleapis.util.Utils.getDefaultJsonFactory();
-        final Map<String, Reference> refs = new HashMap<>();
+        final Map<String, Reference> refs = new LinkedHashMap<>();
         int size = stream.readInt();
         for (int i = 0; i < size; i++) {
             refs.put(stream.readUTF(), jsonFactory.fromString(stream.readUTF(), Reference.class));

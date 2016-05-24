@@ -85,7 +85,7 @@ public class FindSVBreakpointsSpark extends GATKSparkTool {
     @VisibleForTesting static Set<SVKmer> readKmersToIgnore( final File kmersToIgnoreFile ) {
         // compute size of HashMap to provide a final load factor of 7/10 (a bit lower than default max which is 3/4)
         final int nKmers = 10*(int)(kmersToIgnoreFile.length()/(SVConstants.KMER_SIZE+1))/7+1;
-        final Set<SVKmer> kmersToIgnore = new HashSet<>(nKmers);
+        final Set<SVKmer> kmersToIgnore = new LinkedHashSet<>(nKmers);
 
         try ( final BufferedReader rdr = new BufferedReader(new FileReader(kmersToIgnoreFile)) ) {
             String line;
@@ -145,7 +145,7 @@ public class FindSVBreakpointsSpark extends GATKSparkTool {
 
         // compute size of HashMap to provide a final load factor of 7/10 (a bit lower than default max which is 3/4)
         final int hashMapSize = 10*readPullingKmers.size()/7 + 1;
-        final Map<SVKmer, List<Long>> readPullingMap = new HashMap<>(hashMapSize);
+        final Map<SVKmer, List<Long>> readPullingMap = new LinkedHashMap<>(hashMapSize);
         for ( final Tuple2<SVKmer, List<Long>> tupl : readPullingKmers ) {
             readPullingMap.put(tupl._1, tupl._2);
         }
@@ -433,7 +433,7 @@ public class FindSVBreakpointsSpark extends GATKSparkTool {
         }
 
         public Iterator<Tuple2<Long, GATKRead>> apply( final GATKRead read ) {
-            final HashSet<Long> breakpoints = SVKmerizer.stream(read.getBases(), SVConstants.KMER_SIZE)
+            final Set<Long> breakpoints = SVKmerizer.stream(read.getBases(), SVConstants.KMER_SIZE)
                 .map(kmer -> kmer.canonical(SVConstants.KMER_SIZE))
                 .flatMap(kmer -> readPullingMap.getOrDefault(kmer, Collections.emptyList()).stream())
                 .collect(Collectors.toCollection(HashSet::new));

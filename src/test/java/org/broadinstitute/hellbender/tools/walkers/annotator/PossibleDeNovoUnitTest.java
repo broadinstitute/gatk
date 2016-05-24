@@ -139,7 +139,7 @@ public final class PossibleDeNovoUnitTest extends BaseTest {
         final List<String> sampleNamesInOrder=Arrays.asList("mom", "dad", "child");
         final GenotypesContext context = GenotypesContext.create(genotypes, sampleNameToOffset, sampleNamesInOrder);
 
-        final Collection<Allele> alleles= new HashSet<>(2);
+        final Collection<Allele> alleles= new LinkedHashSet<>(2);
         alleles.addAll(gMom.getAlleles());
         alleles.addAll(gDad.getAlleles());
         alleles.addAll(gChild.getAlleles());

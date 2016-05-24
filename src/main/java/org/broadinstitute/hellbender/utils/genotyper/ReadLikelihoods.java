@@ -742,7 +742,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
         // First we need to create the read-likelihood collection with all required alleles, samples and reads.
         final SampleList sampleList = new IndexedSampleList(map.keySet());
         final Set<Allele> alleles = new LinkedHashSet<>(10);
-        final Map<String,List<GATKRead>> sampleToReads = new HashMap<>(sampleList.numberOfSamples());
+        final Map<String,List<GATKRead>> sampleToReads = new LinkedHashMap<>(sampleList.numberOfSamples());
         for (final Map.Entry<String,PerReadAlleleLikelihoodMap> entry : map.entrySet()) {
             final String sample = entry.getKey();
             final PerReadAlleleLikelihoodMap sampleLikelihoods = entry.getValue();
@@ -1042,7 +1042,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
         Utils.validIndex(sampleIndex, numberOfSamples());
         final int alleleCount = alleles.numberOfAlleles();
         final int sampleReadCount = readsBySampleIndex[sampleIndex].length;
-        final Map<A,List<GATKRead>> result = new HashMap<>(alleleCount);
+        final Map<A,List<GATKRead>> result = new LinkedHashMap<>(alleleCount);
         for (int a = 0; a < alleleCount; a++) {
             result.put(alleles.getAllele(a), new ArrayList<>(sampleReadCount));
         }
@@ -1057,7 +1057,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
     @VisibleForTesting
     Map<A,List<GATKRead>> readsByBestAlleleMap() {
         final int alleleCount = alleles.numberOfAlleles();
-        final Map<A,List<GATKRead>> result = new HashMap<>(alleleCount);
+        final Map<A,List<GATKRead>> result = new LinkedHashMap<>(alleleCount);
         final int totalReadCount = readCount();
         for (int a = 0; a < alleleCount; a++) {
             result.put(alleles.getAllele(a), new ArrayList<>(totalReadCount));
@@ -1325,7 +1325,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      */
     public Map<String, PerReadAlleleLikelihoodMap> toPerReadAlleleLikelihoodMap() {
         final int sampleCount = samples.numberOfSamples();
-        final Map<String, PerReadAlleleLikelihoodMap> result = new HashMap<>(sampleCount);
+        final Map<String, PerReadAlleleLikelihoodMap> result = new LinkedHashMap<>(sampleCount);
         for (int s = 0; s < sampleCount; s++)
             result.put(samples.getSample(s),toPerReadAlleleLikelihoodMap(s));
         return result;

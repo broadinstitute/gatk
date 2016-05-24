@@ -4,18 +4,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
-import com.google.common.collect.Sets;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFCodec;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -31,13 +22,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiPredicate;
 
 public class GVCFWriterUnitTest extends BaseTest {
@@ -448,7 +433,7 @@ public class GVCFWriterUnitTest extends BaseTest {
     }
 
     private static VCFHeader getMinimalVCFHeader() {
-        final Set<VCFHeaderLine> headerlines = new HashSet<>();
+        final Set<VCFHeaderLine> headerlines = new LinkedHashSet<>();
         VCFStandardHeaderLines.addStandardFormatLines(headerlines, true,
                 VCFConstants.GENOTYPE_KEY, VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_QUALITY_KEY, VCFConstants.GENOTYPE_PL_KEY,
@@ -468,7 +453,7 @@ public class GVCFWriterUnitTest extends BaseTest {
                .forEach( c -> headerlines.add(GATKVCFHeaderLines.getInfoLine(c)));
 
         headerlines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
-        return new VCFHeader(headerlines, Sets.newHashSet(SAMPLE_NAME));
+        return new VCFHeader(headerlines, Collections.singleton(SAMPLE_NAME));
     }
 
     private static void assertGVCFIsParseableAndVariantsMatch(File variantFile, List<MinimalData> expected) {

@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -138,7 +138,7 @@ public final class FeatureInput<T extends Feature> {
         private ParsedArgument(final String name, final File file) {
             this.name=name;
             this.file=file;
-            this.keyValueMap = new HashMap<>(2);
+            this.keyValueMap = new LinkedHashMap<>(2);
         }
 
         public File getFile(){
@@ -198,7 +198,7 @@ public final class FeatureInput<T extends Feature> {
         Utils.nonNull(kevValueMap, "kevValueMap");
         Utils.nonNull(featureFile, "featureFile");
         this.name = name;
-        this.kevValueMap = Collections.unmodifiableMap(new HashMap<>(kevValueMap));   //make a unmodifiable copy
+        this.kevValueMap = Collections.unmodifiableMap(new LinkedHashMap<>(kevValueMap));   //make a unmodifiable copy
         this.featureFile = featureFile;
         this.featureType = null;  // Must be set after construction
     }

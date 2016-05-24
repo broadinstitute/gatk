@@ -88,7 +88,7 @@ public final class VectorPairHMMUnitTest extends BaseTest {
             ReadUtils.setInsertionBaseQualities(read, insertionQuals);
             ReadUtils.setDeletionBaseQualities(read, deletionQuals);
 
-            final Map<GATKRead,byte[]> gpcs = new HashMap<>(readLength);
+            final Map<GATKRead,byte[]> gpcs = new LinkedHashMap<>(readLength);
             gpcs.put(read, gcp);
 
             hmm.initialize(Arrays.asList(hap), null, 0, 0);

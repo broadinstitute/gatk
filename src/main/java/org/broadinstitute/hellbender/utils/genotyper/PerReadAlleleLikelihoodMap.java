@@ -38,7 +38,7 @@ public final class PerReadAlleleLikelihoodMap {
     private final Map<GATKRead, Map<Allele, Double>> likelihoodReadMap;
 
     public PerReadAlleleLikelihoodMap() {
-        allelesSet = new HashSet<>();
+        allelesSet = new LinkedHashSet<>();
         alleles = new ArrayList<>();
         likelihoodReadMap = new LinkedHashMap<>();
     }

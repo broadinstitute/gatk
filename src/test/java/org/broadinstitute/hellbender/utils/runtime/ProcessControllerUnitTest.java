@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class ProcessControllerUnitTest extends BaseTest {
@@ -55,7 +55,7 @@ public final class ProcessControllerUnitTest extends BaseTest {
         job.getStdoutSettings().setBufferSize(-1);
         job.setRedirectErrorStream(true);
 
-        Map<String, String> env = new HashMap<>(System.getenv());
+        Map<String, String> env = new LinkedHashMap<>(System.getenv());
         env.put(key, value);
         job.setEnvironment(env);
 

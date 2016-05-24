@@ -42,7 +42,7 @@ public final class TandemRepeat extends InfoFieldAnnotation {
         final byte[] repeatUnit = result.getRight();
         final List<Integer> numUnits = result.getLeft();
 
-        final Map<String, Object> map = new HashMap<>();
+        final Map<String, Object> map = new LinkedHashMap<>();
         map.put(GATKVCFConstants.STR_PRESENT_KEY, true);
         map.put(GATKVCFConstants.REPEAT_UNIT_KEY, new String(repeatUnit));
         map.put(GATKVCFConstants.REPEATS_PER_ALLELE_KEY, numUnits);

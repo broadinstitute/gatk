@@ -72,8 +72,9 @@ public final class ClassUtilsUnitTest extends BaseTest{
     @Test
     public void testMakeInstances() throws Exception {
         final List<? extends C> cs = ClassUtils.makeInstancesOfSubclasses(C.class, C.class.getPackage());
-        Assert.assertEquals(cs.stream().map(o -> o.getClass().getSimpleName()).collect(Collectors.toSet()),
-                Sets.newHashSet(C1.class.getSimpleName(), C11.class.getSimpleName(), C2.class.getSimpleName()));
+        final Set<String> actualSet = cs.stream().map(o -> o.getClass().getSimpleName()).collect(Collectors.toSet());
+        final Set<String> expectedSet = Sets.newHashSet(C1.class.getSimpleName(), C11.class.getSimpleName(), C2.class.getSimpleName());
+        Assert.assertEquals(actualSet, expectedSet);
     }
 
     @Test
@@ -89,6 +90,6 @@ public final class ClassUtilsUnitTest extends BaseTest{
 
     @Test
     public void testKnownSubinterfaces() throws Exception {
-        Assert.assertEquals(new HashSet<>(ClassUtils.knownSubInterfaceSimpleNames(A.class)), new HashSet<>(Arrays.asList("A1", "B1")));
+        Assert.assertEquals(new LinkedHashSet<>(ClassUtils.knownSubInterfaceSimpleNames(A.class)), new LinkedHashSet<>(Arrays.asList("A1", "B1")));
     }
 }

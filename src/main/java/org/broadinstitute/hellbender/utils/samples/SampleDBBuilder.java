@@ -14,8 +14,8 @@ public class SampleDBBuilder {
     private final PedigreeValidationType validationStrictness;
     private final SampleDB sampleDB = new SampleDB();
 
-    private final Set<Sample> samplesFromDataSources = new HashSet<>();
-    private final Set<Sample> samplesFromPedigrees = new HashSet<>();
+    private final Set<Sample> samplesFromDataSources = new LinkedHashSet<>();
+    private final Set<Sample> samplesFromPedigrees = new LinkedHashSet<>();
 
     public SampleDBBuilder(PedigreeValidationType validationStrictness) {
         this.validationStrictness = validationStrictness;

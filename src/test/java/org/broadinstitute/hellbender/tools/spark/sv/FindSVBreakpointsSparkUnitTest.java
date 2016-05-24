@@ -141,7 +141,7 @@ public class FindSVBreakpointsSparkUnitTest extends BaseTest {
         final FindSVBreakpointsSpark.ClusterKmerizer clusterKmerizer =
                 new FindSVBreakpointsSpark.ClusterKmerizer(0, Collections.emptySet());
         final Iterator<Tuple2<SVKmer, Long>> iterator = clusterKmerizer.apply(TEST_READS.get(0));
-        final HashSet<Tuple2<SVKmer, Long>> tupleSet = new HashSet<>();
+        final Set<Tuple2<SVKmer, Long>> tupleSet = new LinkedHashSet<>();
         while ( iterator.hasNext() ) {
             tupleSet.add(iterator.next());
         }
@@ -153,7 +153,7 @@ public class FindSVBreakpointsSparkUnitTest extends BaseTest {
     @Test(groups = "spark")
     void testReadsForBreakpointFinder() {
         final Long breakpointId = 1L;
-        final Map<SVKmer, List<Long>> kmerBreakpointMap = new HashMap<>();
+        final Map<SVKmer, List<Long>> kmerBreakpointMap = new LinkedHashMap<>();
         kmerBreakpointMap.put(new SVKmer(SVConstants.KMER_SIZE), Collections.singletonList(breakpointId));
         final FindSVBreakpointsSpark.ReadsForBreakpointFinder finder =
                 new FindSVBreakpointsSpark.ReadsForBreakpointFinder(kmerBreakpointMap);

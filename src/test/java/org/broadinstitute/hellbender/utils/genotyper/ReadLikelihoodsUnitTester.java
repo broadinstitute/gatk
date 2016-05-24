@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +19,7 @@ public final class ReadLikelihoodsUnitTester {
         final int sampleCount = readCount.length;
         final AlleleList<Allele> alleleList = AlleleListUnitTester.alleleList(alleleCount, 100, true);
         final SampleList sampleList = SampleListUnitTester.sampleList(sampleCount);
-        final Map<String,List<GATKRead>> sampleToReads = new HashMap<>(sampleCount);
+        final Map<String,List<GATKRead>> sampleToReads = new LinkedHashMap<>(sampleCount);
         for (int i = 0; i < sampleCount; i++) {
             sampleToReads.put(sampleList.getSample(i),readList(i,readCount[i]));
         }
@@ -59,7 +59,7 @@ public final class ReadLikelihoodsUnitTester {
      * @return never {@code null}.
      */
     public static Map<String,List<GATKRead>> sampleToReads(final SampleList sampleList, final int[] readCounts) {
-        final Map<String,List<GATKRead>> result = new HashMap<>(sampleList.numberOfSamples());
+        final Map<String,List<GATKRead>> result = new LinkedHashMap<>(sampleList.numberOfSamples());
         int readIndex = 0;
         for (int i = 0; i < sampleList.numberOfSamples(); i++) {
             final int readCount = readCounts[i];

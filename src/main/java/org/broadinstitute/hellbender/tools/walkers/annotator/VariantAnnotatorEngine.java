@@ -114,7 +114,7 @@ public final class VariantAnnotatorEngine {
      * Returns the set of descriptions to be added to the VCFHeader line (for all annotations in this engine).
      */
     public Set<VCFHeaderLine> getVCFAnnotationDescriptions() {
-        final Set<VCFHeaderLine> descriptions = new HashSet<>();
+        final Set<VCFHeaderLine> descriptions = new LinkedHashSet<>();
 
         for ( final InfoFieldAnnotation annotation : infoAnnotations) {
             descriptions.addAll(annotation.getDescriptions());
@@ -212,14 +212,14 @@ public final class VariantAnnotatorEngine {
             this.annotationsToUse = annotationsToUse;
             this.annotationsToExclude = annotationsToExclude;
 
-            final Set<String> allAnnotationNames = new HashSet<>(AnnotationManager.getAllAnnotationNames());
-            final Set<String> unknownAnnots = Sets.difference(new HashSet<>(annotationsToUse), allAnnotationNames);
+            final Set<String> allAnnotationNames = new LinkedHashSet<>(AnnotationManager.getAllAnnotationNames());
+            final Set<String> unknownAnnots = Sets.difference(new LinkedHashSet<>(annotationsToUse), allAnnotationNames);
             assertAnnotationExists(unknownAnnots);
 
-            final Set<String> unknownAnnotsExclude = Sets.difference(new HashSet<>(annotationsToExclude), allAnnotationNames);
+            final Set<String> unknownAnnotsExclude = Sets.difference(new LinkedHashSet<>(annotationsToExclude), allAnnotationNames);
             assertAnnotationExists(unknownAnnotsExclude);
 
-            final Set<String> unknownGroups =  Sets.difference(new HashSet<>(annotationGroupsToUse), new HashSet<>(AnnotationManager.getAllAnnotationGroupNames()));
+            final Set<String> unknownGroups =  Sets.difference(new LinkedHashSet<>(annotationGroupsToUse), new LinkedHashSet<>(AnnotationManager.getAllAnnotationGroupNames()));
             if (!unknownGroups.isEmpty()){
                 throw new BadArgumentValue("group", "Unknown annotation group in " + unknownGroups + ". Known groups are " + AnnotationManager.getAllAnnotationGroupNames());
             }
@@ -254,7 +254,7 @@ public final class VariantAnnotatorEngine {
         }
 
         private static List<String> getAllAnnotationNames() {
-            final Set<VariantAnnotation> union = Sets.union(new HashSet<>(makeAllGenotypeAnnotations()), new HashSet<>(AnnotationManager.makeAllInfoFieldAnnotations()));
+            final Set<VariantAnnotation> union = Sets.union(new LinkedHashSet<>(makeAllGenotypeAnnotations()), new LinkedHashSet<>(AnnotationManager.makeAllInfoFieldAnnotations()));
             return union.stream().map(a -> a.getClass().getSimpleName()).collect(Collectors.toList());
         }
 

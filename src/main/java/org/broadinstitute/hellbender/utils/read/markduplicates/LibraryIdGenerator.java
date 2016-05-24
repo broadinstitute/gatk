@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.util.Histogram;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -16,9 +16,9 @@ import java.util.Map;
 public final class LibraryIdGenerator {
 
     private final SAMFileHeader header;
-    private final Map<String, Short> libraryIds = new HashMap<>(); // from library string to library id
+    private final Map<String, Short> libraryIds = new LinkedHashMap<>(); // from library string to library id
     private short nextLibraryId = 1;
-    private final Map<String, DuplicationMetrics> metricsByLibrary = new HashMap<>();
+    private final Map<String, DuplicationMetrics> metricsByLibrary = new LinkedHashMap<>();
     private final Histogram<Short> opticalDuplicatesByLibraryId = new Histogram<>();
 
 

@@ -20,7 +20,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.broadinstitute.hellbender.engine.datasources.ReferenceAPISource.*;
@@ -246,7 +246,7 @@ public class ReferenceAPISourceUnitTest extends BaseTest {
     }
 
     private Map<String, Reference> createDummyReferenceMap(String[] contig) {
-        HashMap<String,Reference> fake = new HashMap<>();
+        Map<String,Reference> fake = new LinkedHashMap<>();
         for (String s : contig) {
             Reference r = new Reference();
             String id = "id-"+s;

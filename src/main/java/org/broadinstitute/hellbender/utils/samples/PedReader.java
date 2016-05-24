@@ -146,7 +146,7 @@ public final class PedReader {
     private final static String SEX_FEMALE = "2";
     // other=unknown
 
-    final static private Set<String> CATAGORICAL_TRAIT_VALUES = new HashSet<>(Arrays.asList(
+    final static private Set<String> CATAGORICAL_TRAIT_VALUES = new LinkedHashSet<>(Arrays.asList(
                                         MISSING_VALUE1, MISSING_VALUE2, PHENOTYPE_UNAFFECTED, PHENOTYPE_AFFECTED));
 
     public PedReader() { }

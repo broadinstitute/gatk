@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +39,7 @@ public final class GenotypeSummaries extends InfoFieldAnnotation {
             return null;
         }
 
-        final Map<String,Object> returnMap = new HashMap<>();
+        final Map<String,Object> returnMap = new LinkedHashMap<>();
         returnMap.put(GATKVCFConstants.NOCALL_CHROM_KEY, vc.getNoCallCount());
 
         final DescriptiveStatistics stats = new DescriptiveStatistics();

@@ -21,7 +21,7 @@ public class ListFileUtilsUnitTest extends BaseTest {
 
     @Test
     public void testUnpackSet() throws Exception {
-        Set<String> expected = new HashSet<>(Arrays.asList(publicTestDir + "exampleBAM.bam"));
+        Set<String> expected = new LinkedHashSet<>(Arrays.asList(publicTestDir + "exampleBAM.bam"));
         Set<String> actual = ListFileUtils.unpackSet(Arrays.asList(publicTestDir + "exampleBAM.bam"));
         Assert.assertEquals(actual, expected);
 
@@ -38,18 +38,18 @@ public class ListFileUtilsUnitTest extends BaseTest {
     @DataProvider(name="includeMatchingTests")
     public Object[][] getIncludeMatchingTests() {
         return new Object[][] {
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new HashSet<>(Arrays.asList("a")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, new HashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, Collections.EMPTY_SET },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new HashSet<>(Arrays.asList("ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new HashSet<>(Arrays.asList("a")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, new HashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new HashSet<>(Arrays.asList("a", "ab")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, new HashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, Collections.EMPTY_SET },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new HashSet<>(Arrays.asList("ab", "abc") )},
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, Collections.EMPTY_SET },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, new HashSet<>(Arrays.asList("a", "ab", "abc") )}
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new LinkedHashSet<>(Arrays.asList("a", "ab")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new LinkedHashSet<>(Arrays.asList("ab", "abc") )},
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc") )}
         };
     }
 
@@ -62,18 +62,18 @@ public class ListFileUtilsUnitTest extends BaseTest {
     @DataProvider(name="excludeMatchingTests")
     public Object[][] getExcludeMatchingTests() {
         return new Object[][] {
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new HashSet<>(Arrays.asList("ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, Collections.EMPTY_SET },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, new HashSet<>(Arrays.asList("a", "ab", "abc") )},
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new HashSet<>(Arrays.asList("a")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new HashSet<>(Arrays.asList("ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, Collections.EMPTY_SET },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new HashSet<>(Arrays.asList("abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, Collections.EMPTY_SET },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, new HashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new HashSet<>(Arrays.asList("a")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, new HashSet<>(Arrays.asList("a", "ab", "abc")) },
-                new Object[] { new HashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, Collections.EMPTY_SET }
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), true, new LinkedHashSet<>(Arrays.asList("ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a"), false, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), true, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc") )},
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("b"), false, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), true, new LinkedHashSet<>(Arrays.asList("ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "b"), false, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), true, new LinkedHashSet<>(Arrays.asList("abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList("a", "ab"), false, Collections.EMPTY_SET },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), true, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*b.*"), false, new LinkedHashSet<>(Arrays.asList("a")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), true, new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")) },
+                new Object[] { new LinkedHashSet<>(Arrays.asList("a", "ab", "abc")), Arrays.asList(".*"), false, Collections.EMPTY_SET }
         };
     }
 

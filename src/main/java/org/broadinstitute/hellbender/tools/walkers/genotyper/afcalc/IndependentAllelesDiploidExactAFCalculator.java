@@ -340,7 +340,7 @@ import java.util.*;
 
         final int nAltAlleles = sortedResultsWithThetaNPriors.size();
         final int[] alleleCountsOfMLE = new int[nAltAlleles];
-        final Map<Allele, Double> log10pRefByAllele = new HashMap<>(nAltAlleles);
+        final Map<Allele, Double> log10pRefByAllele = new LinkedHashMap<>(nAltAlleles);
 
         // the sum of the log10 posteriors for AF == 0 and AF > 0 to determine joint probs
 

@@ -71,7 +71,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
     public DuplicateScoringStrategy.ScoringStrategy DUPLICATE_SCORING_STRATEGY = ScoringStrategy.TOTAL_MAPPED_REFERENCE_LENGTH;
 
     /** The program groups that have been seen during the course of examining the input records. */
-    protected final Set<String> pgIdsSeen = new HashSet<>();
+    protected final Set<String> pgIdsSeen = new LinkedHashSet<>();
 
     /**
      * We have to re-chain the program groups based on this algorithm.  This returns the map from existing program group ID
@@ -88,7 +88,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
             if (PROGRAM_GROUP_COMMAND_LINE == null) {
                 PROGRAM_GROUP_COMMAND_LINE = this.getCommandLine();
             }
-            chainedPgIds = new HashMap<>();
+            chainedPgIds = new LinkedHashMap<>();
             for (final String existingId : this.pgIdsSeen) {
                 final String newPgId = pgIdGenerator.getNonCollidingId(PROGRAM_RECORD_ID);
                 chainedPgIds.put(existingId, newPgId);
@@ -151,7 +151,7 @@ public abstract class AbstractMarkDuplicatesCommandLineProgram extends AbstractO
     static class PgIdGenerator {
         private int recordCounter;
 
-        private final Set<String> idsThatAreAlreadyTaken = new HashSet<>();
+        private final Set<String> idsThatAreAlreadyTaken = new LinkedHashSet<>();
 
         PgIdGenerator(final SAMFileHeader header) {
             for (final SAMProgramRecord pgRecord : header.getProgramRecords()) {

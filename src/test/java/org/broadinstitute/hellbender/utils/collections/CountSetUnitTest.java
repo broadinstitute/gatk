@@ -5,10 +5,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Random;
+import java.util.*;
 
 /**
  * Unit tests for {@link CountSet}
@@ -30,7 +27,7 @@ public final class CountSetUnitTest extends BaseTest {
     public void testSingleValueAdd() {
         final int CAPACITY = 10;
         final CountSet subject = new CountSet(CAPACITY);
-        final HashSet<Integer> reasuranceSet = new HashSet<>(CAPACITY);
+        final Set<Integer> reasuranceSet = new LinkedHashSet<>(CAPACITY);
         final int REPEATS = 1000;
         final Random rnd = new Random(13);
         for (int i = 0; i < REPEATS; i++) {
@@ -118,7 +115,7 @@ public final class CountSetUnitTest extends BaseTest {
     public void testIncrease() {
         final int CAPACITY = 10;
         final CountSet subject = new CountSet(CAPACITY);
-        final HashSet<Integer> reasuranceSet = new HashSet<>(CAPACITY);
+        final Set<Integer> reasuranceSet = new LinkedHashSet<>(CAPACITY);
         final int REPEATS = 1000;
         final Random rnd = new Random(13);
         final int[] values = new int[REPEATS];
@@ -142,7 +139,7 @@ public final class CountSetUnitTest extends BaseTest {
     public void testArrayValueAdd() {
         final int CAPACITY = 10;
         final CountSet subject = new CountSet(CAPACITY);
-        final HashSet<Integer> reasuranceSet = new HashSet<>(CAPACITY);
+        final Set<Integer> reasuranceSet = new LinkedHashSet<>(CAPACITY);
         final int REPEATS = 1000;
         final Random rnd = new Random(13);
         final int[] values = new int[REPEATS];

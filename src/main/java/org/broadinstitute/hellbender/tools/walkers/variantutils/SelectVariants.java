@@ -127,7 +127,7 @@ public final class SelectVariants extends VariantWalker {
      * This argument can be specified multiple times in order to provide multiple sample names.
      */
     @Argument(fullName="sample_name", shortName="sn", doc="Include genotypes from this sample", optional=true)
-    private Set<String> sampleNames = new HashSet<>(0);
+    private Set<String> sampleNames = new LinkedHashSet<>(0);
 
     /**
      * Using a regular expression allows you to match multiple sample names that have that pattern in common. This
@@ -135,21 +135,21 @@ public final class SelectVariants extends VariantWalker {
      */
     @Argument(fullName="sample_expressions", shortName="se",
                     doc="Regular expression to select multiple samples", optional=true)
-    private Set<String> sampleExpressions = new HashSet<>(0);
+    private Set<String> sampleExpressions = new LinkedHashSet<>(0);
 
     /**
      * Sample names should be in a plain text file listing one sample name per line. This argument can be specified
      * multiple times in order to provide multiple sample list files.
      */
     @Argument(fullName="sample_file", shortName="sf", doc="File containing a list of samples to include", optional=true)
-    private Set<File> sampleFiles = new HashSet<>(0);
+    private Set<File> sampleFiles = new LinkedHashSet<>(0);
 
     /**
      * Note that sample exclusion takes precedence over inclusion, so that if a sample is in both lists it will be
      * excluded. This argument can be specified multiple times in order to provide multiple sample names.
      */
     @Argument(fullName="exclude_sample_name", shortName="xl_sn", doc="Exclude genotypes from this sample", optional=true)
-    private Set<String> XLsampleNames = new HashSet<>(0);
+    private Set<String> XLsampleNames = new LinkedHashSet<>(0);
 
     /**
      * Sample names should be in a plain text file listing one sample name per line. Note that sample exclusion takes
@@ -157,7 +157,7 @@ public final class SelectVariants extends VariantWalker {
      * specified multiple times in order to provide multiple sample list files.
      */
     @Argument(fullName="exclude_sample_file", shortName="xl_sf", doc="List of samples to exclude", optional=true)
-    private Set<File> XLsampleFiles = new HashSet<>(0);
+    private Set<File> XLsampleFiles = new LinkedHashSet<>(0);
 
     /**
      * Using a regular expression allows you to match multiple sample names that have that pattern in common. Note that
@@ -166,7 +166,7 @@ public final class SelectVariants extends VariantWalker {
      */
     @Argument(fullName="exclude_sample_expressions", shortName="xl_se",
                     doc="List of sample expressions to exclude", optional=true)
-    private Set<String> XLsampleExpressions = new HashSet<>(0);
+    private Set<String> XLsampleExpressions = new LinkedHashSet<>(0);
 
     /**
      * See example commands above for detailed usage examples. Note that these expressions are evaluated *after* the
@@ -418,7 +418,7 @@ public final class SelectVariants extends VariantWalker {
     private SortedSet<String> samples = new TreeSet<>();
     private boolean noSamplesSpecified = false;
 
-    private Set<VariantContext.Type> selectedTypes = new HashSet<>();
+    private Set<VariantContext.Type> selectedTypes = new LinkedHashSet<>();
     private final ArrayList<String> selectNames = new ArrayList<>();
     private List<VariantContextUtils.JexlVCMatchExp> jexls = null;
 
@@ -624,7 +624,7 @@ public final class SelectVariants extends VariantWalker {
         final Collection<String> samplesFromExpressions = matchSamplesExpressions(vcfSamples, sampleExpressions);
 
         // first, check overlap between requested and present samples
-        final Set<String> commandLineUniqueSamples = new HashSet<>(samplesFromFile.size()+samplesFromExpressions.size()+sampleNames.size());
+        final Set<String> commandLineUniqueSamples = new LinkedHashSet<>(samplesFromFile.size()+samplesFromExpressions.size()+sampleNames.size());
         commandLineUniqueSamples.addAll(samplesFromFile);
         commandLineUniqueSamples.addAll(samplesFromExpressions);
         commandLineUniqueSamples.addAll(sampleNames);
@@ -798,7 +798,7 @@ public final class SelectVariants extends VariantWalker {
      */
     private static Collection<String> matchSamplesExpressions (Collection<String> originalSamples, Collection<String> sampleExpressions) {
         // Now, check the expressions that weren't used in the previous step, and use them as if they're regular expressions
-        final Set<String> samples = new HashSet<>();
+        final Set<String> samples = new LinkedHashSet<>();
         if (sampleExpressions != null) {
             samples.addAll(ListFileUtils.includeMatching(originalSamples, sampleExpressions, false));
         }
@@ -811,7 +811,7 @@ public final class SelectVariants extends VariantWalker {
      * @return a collection of unique samples from all files
      */
     private static Collection<String> getSamplesFromFiles (Collection<File> files) {
-        final Set<String> samplesFromFiles = new HashSet<>();
+        final Set<String> samplesFromFiles = new LinkedHashSet<>();
         if (files != null) {
             for (final File file : files) {
                 try (XReadLines reader = new XReadLines(file)) {
@@ -835,7 +835,7 @@ public final class SelectVariants extends VariantWalker {
     private Set<String> getIDsFromFile(final File file){
         /** load in the IDs file to a hashset for matching */
         if (file != null) {
-            Set<String> ids = new HashSet<>();
+            Set<String> ids = new LinkedHashSet<>();
             try (final XReadLines xrl = new XReadLines(file)) {
                 ids.addAll(xrl.readLines().stream().map(String::trim).collect(Collectors.toList()));
                 logger.info("Selecting only variants with one of " + ids.size() + " IDs from " + file);

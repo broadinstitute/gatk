@@ -310,7 +310,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
             }
 
             final AssemblyRegion region = new AssemblyRegion(regionLoc, states, true, 0, header);
-            final List<AssemblyRegion> regions = region.splitAndTrimToIntervals(new HashSet<>(intervalLocs));
+            final List<AssemblyRegion> regions = region.splitAndTrimToIntervals(new LinkedHashSet<>(intervalLocs));
 
             Assert.assertEquals(regions.size(), expectedRegionLocs.size(), "Wrong number of split locations");
             for ( int i = 0; i < expectedRegionLocs.size(); i++ ) {

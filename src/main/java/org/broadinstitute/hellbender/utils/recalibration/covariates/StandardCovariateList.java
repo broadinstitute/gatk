@@ -38,7 +38,7 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
         allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate));
 
         //precompute for faster lookup (shows up on profile)
-        indexByClass = new HashMap<>();
+        indexByClass = new LinkedHashMap<>();
         for(int i = 0; i < allCovariates.size(); i++){
             indexByClass.put(allCovariates.get(i).getClass(), i);
         }

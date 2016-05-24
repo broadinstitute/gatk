@@ -82,7 +82,7 @@ public final class AFCalculationResult {
         this.log10LikelihoodsOfAC = Arrays.copyOf(log10LikelihoodsOfAC, LOG_10_ARRAY_SIZES);
         this.log10PriorsOfAC = Arrays.copyOf(log10PriorsOfAC, LOG_10_ARRAY_SIZES);
         this.log10PosteriorsOfAC = computePosteriors(log10LikelihoodsOfAC, log10PriorsOfAC);
-        this.log10pRefByAllele = Collections.unmodifiableMap(new HashMap<>(log10pRefByAllele));
+        this.log10pRefByAllele = Collections.unmodifiableMap(new LinkedHashMap<>(log10pRefByAllele));
     }
 
     /**

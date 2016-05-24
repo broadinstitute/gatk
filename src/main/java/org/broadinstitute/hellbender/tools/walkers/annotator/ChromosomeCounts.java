@@ -49,7 +49,7 @@ public final class ChromosomeCounts extends InfoFieldAnnotation implements Stand
             return null;
         }
 
-        return VariantContextUtils.calculateChromosomeCounts(vc, new HashMap<>(), true, Collections.emptySet());
+        return VariantContextUtils.calculateChromosomeCounts(vc, new LinkedHashMap<>(), true, Collections.emptySet());
     }
 
     public List<String> getKeyNames() {

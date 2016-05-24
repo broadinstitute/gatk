@@ -39,7 +39,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      */
     public IndexedSet(final int initialCapacity) {
         elements = new ArrayList<>(initialCapacity);
-        indexByElement = new HashMap<>(initialCapacity);
+        indexByElement = new LinkedHashMap<>(initialCapacity);
     }
 
     /**
@@ -59,7 +59,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
 
         final int initialCapacity = values.size();
         elements = new ArrayList<>(initialCapacity);
-        indexByElement = new HashMap<>(initialCapacity);
+        indexByElement = new LinkedHashMap<>(initialCapacity);
         int nextIndex = 0;
         for (final E value : values) {
             if (value == null) {
@@ -92,7 +92,7 @@ public final class IndexedSet<E> extends AbstractSet<E> {
 
         final int initialCapacity = values.length;
         elements = new ArrayList<>(initialCapacity);
-        indexByElement = new HashMap<>(initialCapacity);
+        indexByElement = new LinkedHashMap<>(initialCapacity);
         int nextIndex = 0;
         for (final E value : values) {
             Utils.nonNull(value, "null element not allowed: index == " + nextIndex);

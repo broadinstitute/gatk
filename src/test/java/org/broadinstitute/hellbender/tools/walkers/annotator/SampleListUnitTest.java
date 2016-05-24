@@ -45,7 +45,7 @@ public final class SampleListUnitTest extends BaseTest {
         final List<String> sampleNamesInOrder=Arrays.asList("child", "dad", "mom");
         final GenotypesContext contextHomHetHet = GenotypesContext.create(genotypesHomHetHet, sampleNameToOffset, sampleNamesInOrder);
 
-        final Collection<Allele> alleles= new HashSet<>(2);
+        final Collection<Allele> alleles= new LinkedHashSet<>(2);
         alleles.addAll(g00Mom.getAlleles());
         alleles.addAll(g01Dad.getAlleles());
         alleles.addAll(g01Child.getAlleles());

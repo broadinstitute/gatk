@@ -94,7 +94,7 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
      *                  or is not a coherent interval list as per the criteria above.
      */
     private Map<String,T> composeIntervalsByName(final List<T> intervals) {
-        final Map<String,T> result = new HashMap<>(intervals.size());
+        final Map<String,T> result = new LinkedHashMap<>(intervals.size());
         for (final T location : intervals) {
             final String name = name(location);
             if (name != null) {

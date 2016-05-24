@@ -25,7 +25,7 @@ public final class SampleListUnitTest {
     public void testAsSet(final List<String> samples) {
         final SampleList sampleList = new IndexedSampleList(samples);
         final Set<String> asSet = sampleList.asSetOfSamples();
-        Assert.assertEquals(new HashSet<>(samples), asSet);
+        Assert.assertEquals(new LinkedHashSet<>(samples), asSet);
     }
 
     @Test
@@ -55,7 +55,7 @@ public final class SampleListUnitTest {
         Assert.assertTrue(!asList.contains("bozo"));
 
         final Set<String> asSet = sampleList.asSetOfSamples();
-        Assert.assertEquals(asSet, new HashSet<>(Arrays.asList(s)));
+        Assert.assertEquals(asSet, new LinkedHashSet<>(Arrays.asList(s)));
         Assert.assertTrue(asSet.contains(s));
         Assert.assertTrue(! asSet.contains("bozo"));
     }

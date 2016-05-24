@@ -29,8 +29,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -174,7 +174,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
     {
         final MockValidatingDestination mockDest = new MockValidatingDestination(haplotypeBaseSignature);
 
-        Set<Haplotype> calledHaplotypes = new HashSet<>(1);
+        Set<Haplotype> calledHaplotypes = new LinkedHashSet<>(1);
         calledHaplotypes.addAll(haplotypes);
 
         try (final HaplotypeBAMWriter haplotypeBAMWriter = HaplotypeBAMWriter.create(HaplotypeBAMWriter.WriterType.CALLED_HAPLOTYPES, mockDest)) {
@@ -206,7 +206,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
                     haplotypes,
                     genomeLoc,
                     haplotypes,
-                    new HashSet<>(),
+                    new LinkedHashSet<>(),
                     readLikelihoods);
         }
 
@@ -273,7 +273,7 @@ public class HaplotypeBAMWriterUnitTest extends BaseTest {
     private ReadLikelihoods<Haplotype> generateReadLikelihoods(final int[] readCount) {
         final AlleleList<Haplotype> haplotypeList = generateHaplotypeList();
         final SampleList sampleList = generateSampleList(readCount.length);
-        final Map<String,List<GATKRead>> readSamples = new HashMap<>(readCount.length);
+        final Map<String,List<GATKRead>> readSamples = new LinkedHashMap<>(readCount.length);
 
         for (int i = 0; i < readCount.length; i++) {
             readSamples.put(sampleList.getSample(i), generateReadsList(i, readCount[i]));

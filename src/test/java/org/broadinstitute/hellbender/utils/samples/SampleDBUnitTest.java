@@ -15,45 +15,45 @@ public class SampleDBUnitTest extends BaseTest {
     // all the test sample files are located here
     private File testPED = new File(getToolTestDataDir() +  "testtrio.ped");
 
-    private static final Set<Sample> testPEDSamples = new HashSet<>(Arrays.asList(
+    private static final Set<Sample> testPEDSamples = new LinkedHashSet<>(Arrays.asList(
             new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED),
             new Sample("dad", "fam1", null, null, Sex.MALE, Affection.UNAFFECTED),
             new Sample("mom", "fam1", null, null, Sex.FEMALE, Affection.AFFECTED)));
 
-    private static final Set<Sample> testPEDFamilyF2 = new HashSet<>(Arrays.asList(
+    private static final Set<Sample> testPEDFamilyF2 = new LinkedHashSet<>(Arrays.asList(
             new Sample("s2", "fam2", "d2", "m2", Sex.FEMALE, Affection.AFFECTED),
             new Sample("d2", "fam2", null, null, Sex.MALE, Affection.UNKNOWN),
             new Sample("m2", "fam2", null, null, Sex.FEMALE, Affection.UNKNOWN)
     ));
 
-    private static final Set<Sample> testPEDFamilyF3 = new HashSet<>(Arrays.asList(
+    private static final Set<Sample> testPEDFamilyF3 = new LinkedHashSet<>(Arrays.asList(
             new Sample("s1", "fam3", "d1", "m1", Sex.FEMALE, Affection.AFFECTED),
             new Sample("d1", "fam3", null, null, Sex.MALE, Affection.UNKNOWN),
             new Sample("m1", "fam3", null, null, Sex.FEMALE, Affection.UNKNOWN)
     ));
 
-    private static final Set<Sample> testSAMSamples = new HashSet<>(Arrays.asList(
+    private static final Set<Sample> testSAMSamples = new LinkedHashSet<>(Arrays.asList(
             new Sample("kid", null, null, null, Sex.UNKNOWN,   Affection.UNKNOWN),
             new Sample("mom", null, null, null, Sex.UNKNOWN,   Affection.UNKNOWN),
             new Sample("dad", null, null, null, Sex.UNKNOWN,   Affection.UNKNOWN)));
 
-    private static final Map<String, Set<Sample>> testGetFamilies = new HashMap<>();
+    private static final Map<String, Set<Sample>> testGetFamilies = new LinkedHashMap<>();
     static {
         testGetFamilies.put("fam1", testPEDSamples);
         testGetFamilies.put("fam2", testPEDFamilyF2);
         testGetFamilies.put("fam3", testPEDFamilyF3);
     }
 
-    private static final Set<Sample> testKidsWithParentsFamilies2 = new HashSet<>(Arrays.asList(
+    private static final Set<Sample> testKidsWithParentsFamilies2 = new LinkedHashSet<>(Arrays.asList(
             new Sample("kid", "fam1", "dad", "mom", Sex.MALE,   Affection.AFFECTED),
             new Sample("kid3", "fam5", "dad2", "mom2", Sex.MALE,   Affection.AFFECTED),
             new Sample("kid2", "fam5", "dad2", "mom2", Sex.MALE,   Affection.AFFECTED)));
 
-    private static final HashSet<String> testGetPartialFamiliesIds = new HashSet<>(Arrays.asList("kid", "s1"));
-    private static final HashMap<String, Set<Sample>> testGetPartialFamilies = new HashMap<>();
+    private static final Set<String> testGetPartialFamiliesIds = new LinkedHashSet<>(Arrays.asList("kid", "s1"));
+    private static final Map<String, Set<Sample>> testGetPartialFamilies = new LinkedHashMap<>();
     static {
-        testGetPartialFamilies.put("fam1", new HashSet<>(Arrays.asList(new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED))));
-        testGetPartialFamilies.put("fam3", new HashSet<>(Arrays.asList(new Sample("s1", "fam3", "d1", "m1", Sex.FEMALE, Affection.AFFECTED))));
+        testGetPartialFamilies.put("fam1", new LinkedHashSet<>(Arrays.asList(new Sample("kid", "fam1", "dad", "mom", Sex.MALE, Affection.AFFECTED))));
+        testGetPartialFamilies.put("fam3", new LinkedHashSet<>(Arrays.asList(new Sample("s1", "fam3", "d1", "m1", Sex.FEMALE, Affection.AFFECTED))));
     }
 
     private static final String testPEDString =
@@ -89,7 +89,7 @@ public class SampleDBUnitTest extends BaseTest {
             "fam1 kid dad   mom   1 2";
 
     private static final Set<Sample> testPEDSamplesAsSet =
-            new HashSet<>(testPEDSamples);
+            new LinkedHashSet<>(testPEDSamples);
 
 
     @BeforeMethod
@@ -179,7 +179,7 @@ public class SampleDBUnitTest extends BaseTest {
     public void testGetFounderIds(){
         builder.addSamplesFromPedigreeStrings(Arrays.asList(testPEDMultipleFamilies2));
         SampleDB db = builder.getFinalSampleDB();
-        Assert.assertEquals(db.getFounderIds(), new HashSet<String>(Arrays.asList("dad","mom","dad2","mom2","dad4")));
+        Assert.assertEquals(db.getFounderIds(), new LinkedHashSet<String>(Arrays.asList("dad","mom","dad2","mom2","dad4")));
     }
 
     @Test()

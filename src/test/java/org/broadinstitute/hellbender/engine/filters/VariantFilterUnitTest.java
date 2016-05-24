@@ -74,7 +74,7 @@ public class VariantFilterUnitTest extends BaseTest {
 
     @Test(dataProvider="includeIDsVCs")
     public void testIncludeIDsVariantFilter(VariantContext vc, String[] incIDs, boolean expected) {
-        Set<String> idSet = new HashSet<>();
+        Set<String> idSet = new LinkedHashSet<>();
         idSet.addAll(Arrays.asList(incIDs));
         VariantIDsVariantFilter iivf = new VariantIDsVariantFilter(idSet);
         Assert.assertTrue(iivf.test(vc) == expected);
@@ -97,7 +97,7 @@ public class VariantFilterUnitTest extends BaseTest {
 
     @Test(dataProvider="typeVCs")
     public void testVariantTypeVariantFilter(VariantContext vc, Type[] types, boolean expected) {
-        Set<Type> typesSet = new HashSet<>();
+        Set<Type> typesSet = new LinkedHashSet<>();
         typesSet.addAll(Arrays.asList(types));
         VariantTypesVariantFilter vtvf = new VariantTypesVariantFilter(typesSet);
         Assert.assertTrue(vtvf.test(vc) == expected);

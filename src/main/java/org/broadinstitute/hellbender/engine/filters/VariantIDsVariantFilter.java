@@ -4,7 +4,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Set;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 /**
  * Keep only variants with any of these IDs.
@@ -13,7 +13,7 @@ import java.util.HashSet;
 public final class VariantIDsVariantFilter implements VariantFilter {
     private final static long serialVersionUID = 1L;
 
-    private final HashSet<String> includeIDs = new HashSet<>();
+    private final Set<String> includeIDs = new LinkedHashSet<>();
 
     public VariantIDsVariantFilter(Set<String> keepIDs) {
         Utils.nonNull(keepIDs);

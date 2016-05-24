@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -35,7 +35,7 @@ final class AllHaplotypeBAMWriter extends HaplotypeBAMWriter {
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
         Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
 
-        writeHaplotypesAsReads(haplotypes, new HashSet<>(bestHaplotypes), paddedReferenceLoc);
+        writeHaplotypesAsReads(haplotypes, new LinkedHashSet<>(bestHaplotypes), paddedReferenceLoc);
 
         final int sampleCount = readLikelihoods.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {

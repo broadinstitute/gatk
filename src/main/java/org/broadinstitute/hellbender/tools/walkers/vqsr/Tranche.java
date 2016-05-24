@@ -134,7 +134,7 @@ final class Tranche {
                         throw new UserException.MalformedFile(f, "Line had too few/many fields.  Header = " + header.length + " vals " + vals.length + ". The line was: " + line);
                     }
 
-                    Map<String, String> bindings = new HashMap<>();
+                    Map<String, String> bindings = new LinkedHashMap<>();
                     for (int i = 0; i < vals.length; i++) {
                         bindings.put(header[i], vals[i]);
                     }

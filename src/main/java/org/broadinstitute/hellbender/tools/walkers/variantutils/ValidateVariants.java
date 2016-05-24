@@ -198,7 +198,7 @@ public final class ValidateVariants extends VariantWalker {
      *  an empty set is returned (and then no validation is performed, see applyValidationType.
      */
     private Set<String> getRSIDs(FeatureContext featureContext) {
-        Set<String> rsIDs = new HashSet<>();
+        Set<String> rsIDs = new LinkedHashSet<>();
         for (VariantContext rsID : featureContext.getValues(dbsnp.dbsnp)) {
             rsIDs.addAll(Arrays.asList(rsID.getID().split(VCFConstants.ID_FIELD_SEPARATOR)));
         }

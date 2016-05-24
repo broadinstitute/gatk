@@ -45,7 +45,7 @@ public final class RefFlatReader {
         final int expectedColumns = RefFlatColumns.values().length;
         final TabbedTextFileWithHeaderParser parser = new TabbedTextFileWithHeaderParser(refFlatFile, RefFlatColumnLabels);
         final Map<String, List<TabbedTextFileWithHeaderParser.Row>> refFlatLinesByGene =
-                new HashMap<>();
+                new LinkedHashMap<>();
 
         for (final TabbedTextFileWithHeaderParser.Row row : parser) {
             final int lineNumber = parser.getCurrentLineNumber(); // getCurrentLineNumber returns the number of the next line

@@ -200,7 +200,7 @@ public final class QualQuantizer {
             final long nCombinedErr = left.nErrors + right.nErrors;
 
             final int level = Math.max(left.level, right.level) + 1;
-            final Set<QualInterval> subIntervals = new HashSet<>(Arrays.asList(left, right));
+            final Set<QualInterval> subIntervals = new LinkedHashSet<>(Arrays.asList(left, right));
             QualInterval merged = new QualInterval(left.qStart, right.qEnd, nCombinedObs, nCombinedErr, level, subIntervals);
 
             return merged;

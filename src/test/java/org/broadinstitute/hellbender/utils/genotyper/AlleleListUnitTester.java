@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 import org.testng.SkipException;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -41,7 +41,7 @@ public final class AlleleListUnitTester {
     public static <A extends Allele> void assertAlleleList(final AlleleList<A> actual, final List<A> expected) {
         if (expected == null)
             throw new IllegalArgumentException("the expected list cannot be null");
-        final Set<A> expectedAlleleSet = new HashSet<>(expected.size());
+        final Set<A> expectedAlleleSet = new LinkedHashSet<>(expected.size());
         Assert.assertNotNull(actual);
         Assert.assertEquals(actual.numberOfAlleles(), expected.size());
         for (int i = 0; i < expected.size(); i++) {
@@ -88,7 +88,7 @@ public final class AlleleListUnitTester {
     public static Allele[] generateRandomUniqueAlleles(final int alleleCount, final int maxAlleleLength) {
         if (maxAlleleLength < 1)
             throw new IllegalArgumentException("the max allele length cannot be less than 1");
-        final Set<Allele> set = new HashSet<>(alleleCount);
+        final Set<Allele> set = new LinkedHashSet<>(alleleCount);
         while(set.size() < alleleCount){
             final int alleleLength = rnd.nextInt(maxAlleleLength) + 1;
             final Allele result = Allele.create(rndDNA.nextBases(alleleLength));

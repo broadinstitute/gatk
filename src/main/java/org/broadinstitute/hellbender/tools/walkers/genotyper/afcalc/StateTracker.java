@@ -5,7 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -167,7 +167,7 @@ final class StateTracker {
         final double[] log10Likelihoods = MathUtils.normalizeFromLog10(new double[]{getLog10LikelihoodOfAFzero(), getLog10LikelihoodOfAFNotZero()}, true);
         final double[] log10Priors = MathUtils.normalizeFromLog10(new double[]{log10PriorsByAC[0], MathUtils.log10SumLog10(log10PriorsByAC, 1)}, true);
 
-        final Map<Allele, Double> log10pRefByAllele = new HashMap<>(allelesUsedInGenotyping.size());
+        final Map<Allele, Double> log10pRefByAllele = new LinkedHashMap<>(allelesUsedInGenotyping.size());
         for ( int i = 0; i < subACOfMLE.length; i++ ) {
             final Allele allele = allelesUsedInGenotyping.get(i+1);
             final double log10PRef = alleleCountsOfMAP[i] > 0 ? -10000 : 0; // TODO -- a total hack but in effect what the old behavior was
