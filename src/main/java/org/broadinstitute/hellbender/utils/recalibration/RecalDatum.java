@@ -94,6 +94,10 @@ public final class RecalDatum implements Serializable {
         final double sumErrors = this.calcExpectedErrors() + other.calcExpectedErrors();
         increment(other.getNumObservations(), other.getNumMismatches());
         estimatedQReported = -10 * Math.log10(sumErrors / getNumObservations());
+        double delta = Math.abs (estimatedQReported - Math.round (estimatedQReported));
+        if (delta > 0. && delta < 1.e-12) {
+            estimatedQReported = Math.round (estimatedQReported);
+        }
         empiricalQuality = UNINITIALIZED;
     }
 
