@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.util.*;
@@ -204,6 +205,13 @@ public final class VariantFiltration extends VariantWalker {
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
         hInfo.addAll(getHeaderForVariants().getMetaDataInInputOrder());
 
+        // need AC, AN and AF since output if set filtered genotypes to no-call
+        // If setting filtered genotypes to no-call, then allele counts (AC, AN and AF ) will be recomputed and these annotations
+        // need to be included in the header
+        if ( setFilteredGenotypesToNocall ) {
+            GATKVariantContextUtils.addChromosomeCountsToHeader(hInfo);
+        }
+
         if ( clusterWindow > 0 ) {
             hInfo.add(new VCFFilterHeaderLine(CLUSTERED_SNP_FILTER_NAME, "SNPs found in clusters"));
         }
@@ -288,7 +296,7 @@ public final class VariantFiltration extends VariantWalker {
 
         // make new Genotypes based on filters
         if ( !genotypeFilterExps.isEmpty() || setFilteredGenotypesToNocall ) {
-            builder.genotypes(makeGenotypes(vc));
+            GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, vc, setFilteredGenotypesToNocall, this::getGenotypeFilters);
         }
 
         // make a new variant context based on filters
@@ -321,35 +329,27 @@ public final class VariantFiltration extends VariantWalker {
         writer.add(builder.make());
     }
 
-    private GenotypesContext makeGenotypes(final VariantContext vc) {
-        final GenotypesContext genotypes = GenotypesContext.create(vc.getGenotypes().size());
+    /**
+     * Get the genotype filters
+     *
+     * @param vc the variant context
+     * @param g the genotype
+     * @return list of genotype filter names
+     */
+    private List<String> getGenotypeFilters(final VariantContext vc, final Genotype g) {
+        final List<String> filters = new ArrayList<>();
+        if (g.isFiltered()) {
+            filters.addAll(Arrays.asList(g.getFilters().split(";")));
+        }
 
-        // for each genotype, check filters then create a new object
-        for ( final Genotype g : vc.getGenotypes() ) {
-            if ( g.isCalled() ) {
-                final List<String> filters = new ArrayList<>();
-                if ( g.isFiltered() ) {
-                    filters.add(g.getFilters());
-                }
-
-                // Add if expression filters the variant context
-                for ( final JexlVCMatchExp exp : genotypeFilterExps ) {
-                    if ( invertLogic(VariantContextUtils.match(vc, g, exp), invertGenotypeFilterExpression) ) {
-                        filters.add(exp.name);
-                    }
-                }
-
-                // if sample is filtered and --setFilteredGtToNocall, set genotype to non-call
-                if ( !filters.isEmpty() && setFilteredGenotypesToNocall ) {
-                    genotypes.add(new GenotypeBuilder(g).filters(filters).alleles(diploidNoCallAlleles).make());
-                } else {
-                    genotypes.add(new GenotypeBuilder(g).filters(filters).make());
-                }
-            } else {
-                genotypes.add(g);
+        // Add if expression filters the variant context
+        for (final JexlVCMatchExp exp : genotypeFilterExps) {
+            if (invertLogic(VariantContextUtils.match(vc, g, exp), invertGenotypeFilterExpression)) {
+                filters.add(exp.name);
             }
         }
-        return genotypes;
+
+        return filters;
     }
 
     /**

@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.VariantTypesVariantFilter;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
@@ -562,7 +563,11 @@ public final class SelectVariants extends VariantWalker {
         initalizeAlleleAnyploidIndicesCache(vc);
 
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
-        final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? setFilteredGenotypeToNocall(sub) : sub;
+        final VariantContextBuilder builder = new VariantContextBuilder(vc);
+        if ( setFilteredGenotypesToNocall ) {
+            GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, sub, setFilteredGenotypesToNocall, this::getGenotypeFilters);
+        }
+        final VariantContext filteredGenotypeToNocall = setFilteredGenotypesToNocall ? builder.make(): sub;
 
         // Not excluding non-variants or subsetted polymorphic variants AND including filtered loci or subsetted variant is not filtered
         if ((!XLnonVariants || filteredGenotypeToNocall.isPolymorphicInSamples()) && (!XLfiltered || !filteredGenotypeToNocall.isFiltered())) {
@@ -589,6 +594,22 @@ public final class SelectVariants extends VariantWalker {
                 vcfWriter.add(filteredGenotypeToNocall);
             }
         }
+    }
+
+    /**
+     * Get the genotype filters
+     *
+     * @param vc the variant context
+     * @param g the genotype
+     * @return list of genotype filter names
+     */
+    private List<String> getGenotypeFilters(final VariantContext vc, final Genotype g) {
+        final List<String> filters = new ArrayList<>();
+        if (g.isFiltered()) {
+            filters.add(g.getFilters());
+        }
+
+        return filters;
     }
 
     /**
@@ -738,6 +759,11 @@ public final class SelectVariants extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = VCFUtils.smartMergeHeaders(vcfHeaders.values(), true);
         headerLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
 
+        // need AC, AN and AF since output if set filtered genotypes to no-call
+        if (setFilteredGenotypesToNocall) {
+            GATKVariantContextUtils.addChromosomeCountsToHeader(headerLines);
+        }
+
         if (keepOriginalChrCounts) {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AC_KEY));
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AF_KEY));
@@ -747,7 +773,7 @@ public final class SelectVariants extends VariantWalker {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_DP_KEY));
         }
 
-        headerLines.addAll(Arrays.asList(ChromosomeCountConstants.descriptions));
+        headerLines.addAll(Arrays.asList(ChromosomeCounts.descriptions));
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
 
         return headerLines;
@@ -1006,7 +1032,7 @@ public final class SelectVariants extends VariantWalker {
 
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
-                    new GenotypeBuilder(genotype).alleles(diploidNoCallAlleles).noGQ().make()).collect(Collectors.toList());
+                    new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make()).collect(Collectors.toList());
             newGC = GenotypesContext.create(new ArrayList<>(genotypes));
         }
 
@@ -1018,20 +1044,6 @@ public final class SelectVariants extends VariantWalker {
         final VariantContext subset = builder.make();
 
         return preserveAlleles? subset : GATKVariantContextUtils.trimAlleles(subset,true,true);
-    }
-
-    /**
-     * If --setFilteredGtToNocall, set filtered genotypes to no-call
-     *
-     * @param vc the VariantContext record to set filtered genotypes to no-call
-     * @return the VariantContext with no-call genotypes if the sample was filtered
-     */
-    private VariantContext setFilteredGenotypeToNocall(final VariantContext vc) {
-        final GenotypesContext genotypes = GenotypesContext.create(vc.getGenotypes().size());
-        vc.getGenotypes().stream()
-                .map(g -> g.isCalled() && g.isFiltered() ? new GenotypeBuilder(g).alleles(diploidNoCallAlleles).make() : g)
-                .forEach(genotypes::add);
-        return new VariantContextBuilder(vc).genotypes(genotypes).make();
     }
 
     /**
