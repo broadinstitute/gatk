@@ -85,9 +85,7 @@ public final class RunBWAMEMViaCommandLine extends CommandLineProgram {
         validateUserOptions();
 
         final BWAMEMModule bwamem = new BWAMEMModule();
-        final Tuple3<ExternalCommandlineProgramModule.ReturnStatus, String, String> result = bwamem.run(Paths.get(pathToBWA),
-                                                                                                        new File(System.getProperty("user.dir")),
-                                                                                                        makeArgs());
+        final BWAMEMModule.RuntimeInfo result = bwamem.run(Paths.get(pathToBWA), new File(System.getProperty("user.dir")), makeArgs());
 
         return validateResults(result);
     }
@@ -102,13 +100,13 @@ public final class RunBWAMEMViaCommandLine extends CommandLineProgram {
         }
     }
 
-    private String validateResults(final Tuple3<ExternalCommandlineProgramModule.ReturnStatus, String, String> result) throws GATKException {
+    private String validateResults(final BWAMEMModule.RuntimeInfo result) throws GATKException {
 
-        switch (result._1()){
-            case STARTFAIL:     throw new GATKException("Failed to start bwa mem.\n" + result._3());
-            case INTERRUPTION:  throw new GATKException("The bwa mem process was interrupted.\n" + result._3());
-            case STDIOFAIL:     throw new GATKException("Failed to capture bwa stdout/stderr message\n" + result._3());
-            case PGFAIL:        throw new GATKException(result._3());
+        switch (result.returnStatus){
+            case STARTFAIL:     throw new GATKException("Failed to start bwa mem.\n" + result.stderrMsg);
+            case INTERRUPTION:  throw new GATKException("The bwa mem process was interrupted.\n" + result.stderrMsg);
+            case STDIOFAIL:     throw new GATKException("Failed to capture bwa stdout/stderr message\n" + result.stderrMsg);
+            case PGFAIL:        throw new GATKException(result.stderrMsg);
             default:            return writeSamFile(result);
         }
     }
@@ -117,27 +115,27 @@ public final class RunBWAMEMViaCommandLine extends CommandLineProgram {
      * Writes stdout from bwa mem to designated file.
      * Return stderr message as string, which will be empty if user decides to redirect stderr message to file (i.e. stderrDestFileName is set)
      */
-    private String writeSamFile(final Tuple3<ExternalCommandlineProgramModule.ReturnStatus, String, String> result){
+    private String writeSamFile(final BWAMEMModule.RuntimeInfo result){
 
         try{
             final File samFile = new File(samOutput);
             samFile.createNewFile();
-            FileUtils.writeStringToFile(samFile, result._2());
+            FileUtils.writeStringToFile(samFile, result.stdoutMsg);
 
         } catch (final IOException e){
             throw new GATKException("Failed to dump bwa mem stdout to designated sam file.\n"  + e.getMessage());
         }
 
         if(null==stderrDestFileName){
-            return result._3();
+            return result.stderrMsg;
         }else{
             final File stderrFile = new File(stderrDestFileName);
             try{
-                FileUtils.writeStringToFile(stderrFile, result._3());
+                FileUtils.writeStringToFile(stderrFile, result.stderrMsg);
             }catch(final IOException e){
                 System.err.println("Failed to dump stderr message form bwa mem to designated file:\n" + stderrDestFileName);
             }
-            return result._3();
+            return result.stderrMsg;
         }
     }
 
