@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -17,7 +18,14 @@ import java.util.*;
  * Dictionaries are tested for contig name overlaps, consistency in ordering in these overlap set, and length,
  * if available.
  */
-public class SequenceDictionaryUtils {
+public final class SequenceDictionaryUtils {
+
+    private SequenceDictionaryUtils(){}
+
+    /**
+     * Compares sequence records by their order
+     */
+    private static final Comparator<SAMSequenceRecord> SEQUENCE_INDEX_ORDER = Comparator.comparing(SAMSequenceRecord::getSequenceIndex);
 
     // The following sets of contig records are used to perform the non-canonical human ordering check.
     // This check ensures that the order is 1,2,3... instead of 1, 10, 11, 12...2, 20, 21...
@@ -308,21 +316,32 @@ public class SequenceDictionaryUtils {
 
     /**
      * Helper routine that returns whether two sequence records are equivalent, defined as having the same name and
-     * lengths
+     * lengths.
+     *
+     * NOTE: we allow the lengths to differ if one or both are UNKNOWN_SEQUENCE_LENGTH
      *
      * @param first first sequence record to compare
      * @param second second sequence record to compare
      * @return true if first and second have the same names and lengths, otherwise false
      */
-    private static boolean sequenceRecordsAreEquivalent(final SAMSequenceRecord first, final SAMSequenceRecord second) {
+    @VisibleForTesting
+    static boolean sequenceRecordsAreEquivalent(final SAMSequenceRecord first, final SAMSequenceRecord second) {
         if ( first == second ) {
             return true;
         }
         if ( first == null || second == null ) {
             return false;
         }
+        final int length1 = first.getSequenceLength();
+        final int length2 = second.getSequenceLength();
 
-        return first.getSequenceLength() == second.getSequenceLength() && first.getSequenceName().equals(second.getSequenceName());
+        if (length1 != length2 && length1 != SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH && length2 != SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH){
+            return false;
+        }
+        if (! first.getSequenceName().equals(second.getSequenceName())){
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -374,8 +393,10 @@ public class SequenceDictionaryUtils {
      * @return true if the common contigs occur in the same relative order in both dict1 and dict2, otherwise false
      */
     private static boolean commonContigsAreInSameRelativeOrder(Set<String> commonContigs, SAMSequenceDictionary dict1, SAMSequenceDictionary dict2) {
-        List<SAMSequenceRecord> list1 = sortSequenceListByIndex(getSequencesOfName(commonContigs, dict1));
-        List<SAMSequenceRecord> list2 = sortSequenceListByIndex(getSequencesOfName(commonContigs, dict2));
+        final List<SAMSequenceRecord> list1 = getSequencesOfName(commonContigs, dict1);
+        final List<SAMSequenceRecord> list2 = getSequencesOfName(commonContigs, dict2);
+        list1.sort(SEQUENCE_INDEX_ORDER);
+        list2.sort(SEQUENCE_INDEX_ORDER);
 
         for ( int i = 0; i < list1.size(); i++ ) {
             SAMSequenceRecord elt1 = list1.get(i);
@@ -395,33 +416,12 @@ public class SequenceDictionaryUtils {
      * @return
      */
     private static List<SAMSequenceRecord> getSequencesOfName(Set<String> commonContigs, SAMSequenceDictionary dict) {
-        List<SAMSequenceRecord> l = new ArrayList<SAMSequenceRecord>(commonContigs.size());
+        List<SAMSequenceRecord> l = new ArrayList<>(commonContigs.size());
         for ( String name : commonContigs ) {
             l.add(dict.getSequence(name) );
         }
 
         return l;
-    }
-
-    /**
-     * Compares sequence records by their order
-     */
-    private static class CompareSequenceRecordsByIndex implements Comparator<SAMSequenceRecord> {
-        public int compare(SAMSequenceRecord x, SAMSequenceRecord y) {
-            return Integer.valueOf(x.getSequenceIndex()).compareTo(y.getSequenceIndex());
-        }
-    }
-
-    /**
-     * Returns a sorted list of SAMSequenceRecords sorted by their indices.  Note that the
-     * list is modified in place, so the returned list is == to the unsorted list.
-     *
-     * @param unsorted
-     * @return
-     */
-    private static List<SAMSequenceRecord> sortSequenceListByIndex(List<SAMSequenceRecord> unsorted) {
-        Collections.sort(unsorted, new CompareSequenceRecordsByIndex());
-        return unsorted;
     }
 
     /**
@@ -446,58 +446,6 @@ public class SequenceDictionaryUtils {
         }
 
         return true;
-    }
-
-    /**
-     * Gets the set of names of the contigs found in both sequence dictionaries that have different indices
-     * in the two dictionaries.
-     *
-     * @param commonContigs Set of names of the contigs common to both dictionaries
-     * @param dict1 first sequence dictionary
-     * @param dict2 second sequence dictionary
-     * @return a Set containing the names of the common contigs indexed differently in dict1 vs. dict2,
-     *         or an empty Set if there are no such contigs
-     */
-    private static Set<String> getDifferentlyIndexedCommonContigs( final Set<String> commonContigs,
-                                                                   final SAMSequenceDictionary dict1,
-                                                                   final SAMSequenceDictionary dict2 ) {
-
-        final Set<String> differentlyIndexedCommonContigs = new LinkedHashSet<String>(Utils.optimumHashSize(commonContigs.size()));
-
-        for ( String commonContig : commonContigs ) {
-            if ( dict1.getSequence(commonContig).getSequenceIndex() != dict2.getSequence(commonContig).getSequenceIndex() ) {
-                differentlyIndexedCommonContigs.add(commonContig);
-            }
-        }
-
-        return differentlyIndexedCommonContigs;
-    }
-
-    /**
-     * Finds the names of any contigs indexed differently in the two sequence dictionaries that also
-     * occur in the provided set of intervals.
-     *
-     * @param intervals GenomeLocSortedSet containing the intervals to check
-     * @param dict1 first sequence dictionary
-     * @param dict2 second sequence dictionary
-     * @return a Set of the names of the contigs indexed differently in dict1 vs dict2 that also
-     *         occur in the provided intervals, or an empty Set if there are no such contigs
-     */
-    private static Set<String> findMisindexedContigsInIntervals( final List<SimpleInterval> intervals,
-                                                                 final SAMSequenceDictionary dict1,
-                                                                 final SAMSequenceDictionary dict2 ) {
-
-        final Set<String> differentlyIndexedCommonContigs = getDifferentlyIndexedCommonContigs(getCommonContigsByName(dict1, dict2), dict1, dict2);
-        final Set<String> misindexedContigsInIntervals = new LinkedHashSet<String>(Utils.optimumHashSize(differentlyIndexedCommonContigs.size()));
-
-        // We know differentlyIndexedCommonContigs is a HashSet, so this loop is O(intervals)
-        for ( SimpleInterval interval : intervals ) {
-            if ( differentlyIndexedCommonContigs.contains(interval.getContig()) ) {
-                misindexedContigsInIntervals.add(interval.getContig());
-            }
-        }
-
-        return misindexedContigsInIntervals;
     }
 
     /**
@@ -529,9 +477,7 @@ public class SequenceDictionaryUtils {
      * @return A String containing all of the contig names and lengths from the sequence dictionary it's passed
      */
     public static String getDictionaryAsString( final SAMSequenceDictionary dict ) {
-        if ( dict == null ) {
-            throw new IllegalArgumentException("Sequence dictionary must be non-null");
-        }
+        Utils.nonNull(dict, "Sequence dictionary must be non-null");
 
         StringBuilder s = new StringBuilder("[ ");
 
@@ -546,4 +492,5 @@ public class SequenceDictionaryUtils {
 
         return s.toString();
     }
+
 }

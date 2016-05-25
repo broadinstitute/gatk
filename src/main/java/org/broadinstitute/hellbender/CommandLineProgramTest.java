@@ -23,7 +23,6 @@ public abstract class CommandLineProgramTest extends BaseTest {
         return new File("src/test/resources/org/broadinstitute/hellbender/tools/");
     }
 
-
     /**
      * For testing support.  Given a name of a Main CommandLineProgram and it's arguments, builds the arguments appropriate for calling the
      * program through Main

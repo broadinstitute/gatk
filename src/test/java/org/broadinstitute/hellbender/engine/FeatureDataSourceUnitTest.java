@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -14,6 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class FeatureDataSourceUnitTest extends BaseTest {
     private static final String FEATURE_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
@@ -76,6 +78,15 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
             header = featureSource.getHeader();
         }
         Assert.assertTrue(header instanceof VCFHeader, "Header for " + QUERY_TEST_VCF.getAbsolutePath() + " not a VCFHeader");
+    }
+
+    @Test
+    public void testGetSequenceDictionary() {
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName")) {
+            final SAMSequenceDictionary dict = featureSource.getSequenceDictionary();
+            Assert.assertEquals(dict.size(), 4);
+            Assert.assertEquals(dict.getSequences().stream().map(s->s.getSequenceName()).collect(Collectors.toList()), Arrays.asList("1", "2", "3", "4"));
+        }
     }
 
     @DataProvider(name = "CompleteIterationTestData")
