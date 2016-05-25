@@ -20,7 +20,8 @@ public class LinkedReadAnalysisFilter implements ReadFilter {
                 .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
                 .and(read -> !read.isSupplementaryAlignment())
                 .and(read -> read.hasAttribute("BX"))
-                .and(read -> ! filterOut(read, 32, false));
+                .and(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO)
+                .and(read -> ! filterOut(read, 36, true));
         if (minEntropy > 0) {
             this.filter = this.filter.and(new ReadEntropyFilter(minEntropy));
         }
