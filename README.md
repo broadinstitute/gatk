@@ -1,6 +1,8 @@
 [![Build Status](https://travis-ci.org/broadinstitute/gatk.svg?branch=master)](https://travis-ci.org/broadinstitute/gatk)
 [![Coverage Status](https://coveralls.io/repos/broadinstitute/gatk/badge.svg?branch=master)](https://coveralls.io/r/broadinstitute/gatk?branch=master)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk/badge.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
+[![License (3-Clause BSD)](https://img.shields.io/badge/license-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+
 
 **This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**
 
