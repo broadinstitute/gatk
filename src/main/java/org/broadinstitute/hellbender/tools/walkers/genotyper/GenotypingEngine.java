@@ -22,6 +22,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Base class for genotyper engines.
@@ -56,21 +58,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     protected GenotypingEngine(final Config configuration,
                                final SampleList samples,
                                final AFCalculatorProvider afCalculatorProvider) {
-
-        if (configuration == null) {
-            throw new IllegalArgumentException("the configuration cannot be null");
-        }
-        if (samples == null) {
-            throw new IllegalArgumentException("the sample list provided cannot be null");
-        }
-        if (afCalculatorProvider == null) {
-            throw new IllegalArgumentException("the AF calculator provider cannot be null");
-        }
-
-        this.afCalculatorProvider = afCalculatorProvider;
-        this.configuration = configuration;
+        this.configuration = Utils.nonNull(configuration, "the configuration cannot be null");
+        this.samples = Utils.nonNull(samples, "the sample list cannot be null");
+        this.afCalculatorProvider = Utils.nonNull(afCalculatorProvider, "the AF calculator provider cannot be null");
         logger = LogManager.getLogger(getClass());
-        this.samples = samples;
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
         log10AlleleFrequencyPriorsSNPs = composeAlleleFrequencyPriorProvider(numberOfGenomes,
                 configuration.genotypeArgs.snpHeterozygosity, configuration.genotypeArgs.inputPrior);
@@ -87,8 +78,6 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @param inputPriors                      Input priors to use (in which case heterozygosity is ignored)
      */
     public static void computeAlleleFrequencyPriors(final int N, final double[] priors, final double heterozygosity, final List<Double> inputPriors) {
-
-
         double sum = 0.0;
 
         if (!inputPriors.isEmpty()) {
@@ -205,12 +194,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return can be {@code null} indicating that genotyping it not possible with the information provided.
      */
     public VariantCallContext calculateGenotypes(final VariantContext vc, final GenotypeLikelihoodsCalculationModel model, final SAMFileHeader header) {
-        if (vc == null) {
-            throw new IllegalArgumentException("vc cannot be null");
-        }
-        if (model == null) {
-            throw new IllegalArgumentException("the model cannot be null");
-        }
+        Utils.nonNull(vc, "vc cannot be null");
+        Utils.nonNull(model, "the model cannot be null");
         return calculateGenotypes(null,null,null,null,vc,model,false,null,header);
     }
 
@@ -249,7 +234,8 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult);
 
-        final double PoFGT0 = Math.pow(10, AFresult.getLog10PosteriorOfAFGT0());
+        // posterior probability that at least one alt allele exists in the samples
+        final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.getLog10PosteriorOfAFGT0());
 
         // note the math.abs is necessary because -10 * 0.0 => -0.0 which isn't nice
         final double log10Confidence =
@@ -268,7 +254,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             //  because it didn't take into account samples with no data, so let's get a better estimate
             final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
             final int INDEX_FOR_AC_EQUALS_1 = 1;
-            return limitedContext ? null : estimateReferenceConfidence(vc, stratifiedContexts, AFpriors[INDEX_FOR_AC_EQUALS_1], true, PoFGT0);
+            return limitedContext ? null : estimateReferenceConfidence(vc, stratifiedContexts, AFpriors[INDEX_FOR_AC_EQUALS_1], true, probOfAtLeastOneAltAllele);
         }
 
         // start constructing the resulting VC
@@ -308,7 +294,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             vcCall = GATKVariantContextUtils.reverseTrimAlleles(vcCall);
         }
 
-        return new VariantCallContext(vcCall, confidentlyCalled(phredScaledConfidence, PoFGT0));
+        return new VariantCallContext(vcCall, confidentlyCalled(phredScaledConfidence, probOfAtLeastOneAltAllele));
     }
 
     /**
@@ -339,31 +325,22 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         private List<Allele> outputAlleles(final Allele referenceAllele) {
-            final ArrayList<Allele> result = new ArrayList<>(count + 1);
-            result.add(referenceAllele);
-            for (int i = 0; i < count; i++) {
-                result.add(alleles[i]);
-            }
-            return result;
+            return Stream.concat(Stream.of(referenceAllele), Arrays.stream(alleles, 0, count)).collect(Collectors.toList());
         }
 
         public List<Integer> alternativeAlleleMLECounts() {
-            final List<Integer> result = new ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                result.add(mleCounts[i]);
-            }
-            return result;
+            return Arrays.stream(mleCounts, 0, count).boxed().collect(Collectors.toList());
         }
     }
 
 
     /**
-     * Provided the exact mode computations it returns the appropiate subset of alleles that progress to genotyping.
-     * @param afcr the exact model calcualtion result.
+     * Provided the exact mode computations it returns the appropriate subset of alleles that progress to genotyping.
+     * @param afCalculationResult the allele fraction calculation result.
      * @return never {@code null}.
      */
-    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afcr) {
-        final List<Allele> alleles = afcr.getAllelesUsedInGenotyping();
+    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult) {
+        final List<Allele> alleles = afCalculationResult.getAllelesUsedInGenotyping();
 
         final int alternativeAlleleCount = alleles.size() - 1;
         final Allele[] outputAlleles = new Allele[alternativeAlleleCount];
@@ -374,7 +351,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             if (alternativeAllele.isReference()) {
                 continue;
             }
-            final boolean isPlausible = afcr.isPolymorphicPhredScaledQual(alternativeAllele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING);
+            final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(alternativeAllele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING);
             final boolean toOutput = isPlausible || forceKeepAllele(alternativeAllele);
 
             siteIsMonomorphic &= ! isPlausible;
@@ -382,7 +359,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 continue;
             }
             outputAlleles[outputAlleleCount] = alternativeAllele;
-            mleCounts[outputAlleleCount++] = afcr.getAlleleCountAtMLE(alternativeAllele);
+            mleCounts[outputAlleleCount++] = afCalculationResult.getAlleleCountAtMLE(alternativeAllele);
         }
 
         return new OutputAlleleSubset(outputAlleleCount,outputAlleles,mleCounts,siteIsMonomorphic);
@@ -401,7 +378,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * Checks whether a variant site seems confidently called base on user threshold that the score provided
      * by the exact model.
      *
-     * @param conf
+     * @param conf the phred scaled quality score
      * @param PofF
      * @return {@code true} iff the variant is confidently called.
      */
@@ -603,7 +580,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // add the MLE AC and AF annotations
         if ( alleleCountsofMLE.size() > 0 ) {
             attributes.put(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, alleleCountsofMLE);
-            final ArrayList<Double> MLEfrequencies = calculateMLEAlleleFrequencies(alleleCountsofMLE, genotypes);
+            final List<Double> MLEfrequencies = calculateMLEAlleleFrequencies(alleleCountsofMLE, genotypes);
             attributes.put(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, MLEfrequencies);
         }
 
@@ -611,26 +588,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             attributes.put(GATKVCFConstants.NUMBER_OF_DISCOVERED_ALLELES_KEY, vc.getAlternateAlleles().size());
         }
 
-
         return attributes;
     }
 
-    private ArrayList<Double> calculateMLEAlleleFrequencies(final List<Integer> alleleCountsofMLE, final GenotypesContext genotypes) {
-        int AN = 0;
-        for (final Genotype g : genotypes) {
-            for (final Allele a : g.getAlleles()) {
-                if (!a.isNoCall()) {
-                    AN++;
-                }
-            }
-        }
-
-        final ArrayList<Double> MLEfrequencies = new ArrayList<>(alleleCountsofMLE.size());
-        // the MLEAC is allowed to be larger than the AN (e.g. in the case of all PLs being 0, the GT is ./. but the exact model may arbitrarily choose an AC>1)
-        for (final int AC : alleleCountsofMLE ) {
-            MLEfrequencies.add(Math.min(1.0, (double) AC / (double) AN));
-        }
-        return MLEfrequencies;
+    private List<Double> calculateMLEAlleleFrequencies(final List<Integer> alleleCountsofMLE, final GenotypesContext genotypes) {
+        final long AN = genotypes.stream().flatMap(g -> g.getAlleles().stream()).filter(Allele::isCalled).count();
+        return alleleCountsofMLE.stream().map(AC -> Math.min(1.0, (double) AC / AN)).collect(Collectors.toList());
     }
 
     /**

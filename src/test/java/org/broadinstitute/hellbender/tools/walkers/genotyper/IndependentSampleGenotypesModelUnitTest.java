@@ -13,9 +13,9 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Test {@link InfiniteRandomMatingPopulationModel}
+ * Test {@link IndependentSampleGenotypesModel}
  */
-public final class InfiniteRandomMatingPopulationModelUnitTest {
+public final class IndependentSampleGenotypesModelUnitTest {
 
     @Test(dataProvider="ploidyAndMaximumAlleleAndReadCountsData")
     public void testCalculateLikelihoods(final int[] ploidies, final int alleleCount, final int discardAlleleCount, final int[] readCounts) {
@@ -24,7 +24,7 @@ public final class InfiniteRandomMatingPopulationModelUnitTest {
         final SampleList sampleList = SampleListUnitTester.sampleList(ploidies.length);
         final PloidyModel ploidyModel = new HeterogeneousPloidyModel(sampleList,ploidies);
         final GenotypingData<Allele> data = new GenotypingData<>(ploidyModel,likelihoods);
-        final InfiniteRandomMatingPopulationModel model = new InfiniteRandomMatingPopulationModel();
+        final IndependentSampleGenotypesModel model = new IndependentSampleGenotypesModel();
         final GenotypingLikelihoods<Allele> gLikelihoods = model.calculateLikelihoods(genotypingAlleleList,data);
         Assert.assertNotNull(gLikelihoods);
         AlleleListUnitTester.assertAlleleList(gLikelihoods, genotypingAlleleList.asListOfAlleles());
