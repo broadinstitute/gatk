@@ -29,6 +29,10 @@
 \newcommand{\vlambda}{{\bf \lambda}}
 \newcommand{\vLambda}{{\bf \Lambda}}
 \newcommand{\vA}{{\bf A}}
+\newcommand{\MM}{M}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\norm}{{\mathcal N}}
 
 \newtheorem{lemma}{Lemma}
 \newtheorem{corollary}{Corollary}
@@ -40,6 +44,37 @@
 \newcommand{\HET}{$\mathsf{Het}$}
 \newcommand{\REF}{$\mathsf{Ref}$}
 \newcommand{\epss}{\varepsilon}
+
+\makeatletter
+\DeclareFontFamily{OMX}{MnSymbolE}{}
+\DeclareSymbolFont{MnLargeSymbols}{OMX}{MnSymbolE}{m}{n}
+\SetSymbolFont{MnLargeSymbols}{bold}{OMX}{MnSymbolE}{b}{n}
+\DeclareFontShape{OMX}{MnSymbolE}{m}{n}{
+    <-6>  MnSymbolE5
+   <6-7>  MnSymbolE6
+   <7-8>  MnSymbolE7
+   <8-9>  MnSymbolE8
+   <9-10> MnSymbolE9
+  <10-12> MnSymbolE10
+  <12->   MnSymbolE12
+}{}
+\DeclareFontShape{OMX}{MnSymbolE}{b}{n}{
+    <-6>  MnSymbolE-Bold5
+   <6-7>  MnSymbolE-Bold6
+   <7-8>  MnSymbolE-Bold7
+   <8-9>  MnSymbolE-Bold8
+   <9-10> MnSymbolE-Bold9
+  <10-12> MnSymbolE-Bold10
+  <12->   MnSymbolE-Bold12
+}{}
+
+\let\llangle\@undefined
+\let\rrangle\@undefined
+\DeclareMathDelimiter{\llangle}{\mathopen}%
+                     {MnLargeSymbols}{'164}{MnLargeSymbols}{'164}
+\DeclareMathDelimiter{\rrangle}{\mathclose}%
+                     {MnLargeSymbols}{'171}{MnLargeSymbols}{'171}
+\makeatother
 
 \begin{document}
 
@@ -604,7 +639,8 @@ p(f, \pi) \propto \prod_j
 where $f$ and $\pi$ may once again be sampled via adaptive Metropolis.
 
 \subsection{Generative Model for Read Counts} \label{coverage-model}
-In this section we address several goals:
+
+\noindent We wish to address several goals in this section:
 
 \begin{enumerate}
 
@@ -616,125 +652,154 @@ In this section we address several goals:
 
 \item Use an algorithm that does not waste time calculating all principal components when we only want the few most significant ones.
 
+\item Make a universal panel of normals for both sexes by taking into account targets on sex chromosomes on par with autosomal targets.
+
+\item A reliable method for detecting and excluding outlier samples from the panel of normals, in particular, those with abnormal ploidy.
+
 \item Correct for CNV events that occur in the panel of normals.
 
 \end{enumerate}
 
-Suppose we have vectors of read counts over a set of $T$ targets for $S$ samples, $\vn_s, \, s = 1 \ldots S$ where $n_{st}$ is the coverage of sample $s$ at target $t$.  We imagine that laboratory conditions for a particular sample yielding an underlying bias vector $\vb_s$, where $e^{b_{st}}$ is the propensity of target $t$ to be captured, sequenced, and mapped in the preparation of sample $s$.  Suppose also that sample $s$ has an average depth $d_s$ and a vector of copy numbers $\vc_s$, where the latent variable $c_{st}$ is the copy number of sample $s$ at target $t$.  Our model for coverage is\footnote{In Equation \ref{coverage_model} the quantity $d_s$ is a hypothetical quantity representing average coverage in the absence of bias.  Since this is impossible to know we use average coverage instead.  This doesn't matter since any constant factor will be absorbed into $e^b$ via the parameter $\vm$.}:
+Suppose we have vectors of read counts over a set of $T$ targets for $S$ samples, $\vn_s, \, s = 1 \ldots S$ where $n_{st}$ is the coverage of sample $s$ at target $t$. In order to include both sexes on an equal footing, we further define a ``ploidy matrix'' $\PP_{st}$ such that $\PP_{st}$ is the ploidy\footnote{For human autosomal targets, $\PP_{st} = 2$ for both sexes. In female samples, $P_{st} = 2$ for X chromosome targets and $P_{st} = 0$ for Y chromosome targets. Finally, $P_{st} = 1$ for X and Y chromosomes in male samples} of target $t$ of sample $s$. We imagine that laboratory conditions for a particular sample yielding an underlying bias vector $\vb_s$, where $e^{b_{st}}$ is the propensity of target $t$ to be captured, sequenced, and mapped in the preparation of sample $s$.  Suppose also that sample $s$ has an average depth $d_s$ and a vector of copy numbers $\vc_s$, where the latent variable $c_{st}$ is the copy number of sample $s$ at target $t$.  Our model for coverage is\footnote{In Equation \ref{coverage_model} the quantity $d_s$ is a hypothetical quantity representing average coverage in the absence of bias.  Since this is impossible to know we use average coverage instead.  This doesn't matter since any constant factor will be absorbed into $e^b$ via the parameter $\vm$.}:
 %
 \begin{equation}
-n_{st} \sim {\rm Poisson}(d_s c_{st} e^{b_{st}})
+n_{st} \sim {\rm Poisson}(d_s \PP_{st} c_{st} e^{b_{st}})
 \label{coverage_model}
 \end{equation}
 %
 We can achieve many of the goals listed above by performing probabilistic PCA not on $\vn$ directly but rather on $\vb$.  This is one reason why we choose a Poisson parameter proportional to $e^b$ and not simply $b$ -- probabilistic PCA involves a normal distribution on $\vb_s$, whereas the Poisson parameter must be positive.  Furthermore, since PCA is a linear model with additive effects of different latent features, using $e^b$ represents multiplicative effects, which is more plausible.  Our model is
 %
 \begin{align}
-\vz \sim& {\rm N}(\vzero, \vI) \\
-\vb \sim& {\rm N}(\vW \vz + \vm, \vPsi),
+\vz &\sim \norm(\vzero, \vI), \nonumber\\
+\vb &\sim \norm(\vW \vz + \vm, \vPsi),
 \end{align}
 %
-where $\vz \in \mathbb{R}^D$ is a low-dimensional latent vector of laboratory conditions, $\vW \in \mathbb{R}^{T \times D}$ is a linear map from latent space to target space, $\vm \in \mathbb{R}^T$ is the vector of mean biases, and $\vPsi \in \mathbb{R}^{T \times T}$ is a diagonal matrix of residual variance not explained by the latent features.  We approximate the Poisson as a Gaussian centered at its mode (as a function of $b_{st}$):
-%
-\begin{align}
-\prod_t {\rm Poisson}(n_{st} | d_s c_{st} e^{b_{st}}) \approx {\rm N}(\vb_s | \vm_s, \vSigma_s), \, m_{st} = \ln(n_{st}/(c_{st} d_s)), \, \Sigma_{st} = 1/n_{st}
-\end{align}
-%
-to obtain the joint likelihood
+where $\vz \in \mathbb{R}^D$ is a low-dimensional latent vector of laboratory conditions, $\vW \in \mathbb{R}^{T \times D}$ is a linear map from latent space to target space, $\vm \in \mathbb{R}^T$ is the vector of mean biases, and $\vPsi \in \mathbb{R}^{T \times T}$ is a diagonal matrix of residual variance not explained by the latent features. We approximate the Poisson as a Gaussian (an excellent approximation for $n_{st} \gtrsim 1000$) and expand the argument of the Gaussian exponential about the mode of $b_{st}$ to quadratic order to obtain:
 %
 \begin{equation}
-P(\vn, \vb, \vz | \vc, \vW, \vm, \vPsi, \vd ) = \prod_s {\rm N}(\vz_s | \vzero, \vI) {\rm N}(\vb_s | \vW \vz_s + \vm, \vPsi) {\rm N}(\vb_s | \vm_s, \vSigma_s)
+{\rm Poisson}(n_{st} | d_s c_{st} e^{b_{st}}) \approx \norm(b_{st} | m_{st}, \Sigma_{st}),
 \end{equation}
-%
-
-We can integrate out $\vb$ via the identity $\int {\rm N}(x | \mu_1, \sigma_1^2) {\rm N}(x | \mu_2, \sigma_2^2) \, dx = {\rm N}(\mu_1 | \mu_2, \sigma_1^2 + \sigma_2^2)$ to obtain
+where:
+\begin{align}
+m_{st} &= \ln(n_{st}/(\PP_{st} c_{st} d_s)), \nonumber\\
+\Sigma_{st} &= 1/n_{st}.
+\end{align}
+Note that $\Sigma_{st}$ can be thought of as the width of the distribution of $b_{st}$ about its maximum likelihood estimate such that in the limit $n_{st}, d_s \rightarrow \infty$, ${\rm Poisson}(n_{st} | d_s c_{st} e^{b_{st}}) \rightarrow \delta(b_{st} - b^*_{st})$ where $b^*_{st} = \lim_{n,d \rightarrow \infty} m_{st}$ is the true bias. The above approximation, while being excellent for well-covered targets, inevitably breaks down for targets that are uncovered {\em ex ante} in some samples, such as $Y$ chromosome targets in female samples. To this end, we define a ``sample-target mask matrix'' $\MM_{st}$ such that $\MM_{st} = 0$ if $\PP_{st} = 0$, and $\MM_{st} = 1$ if $\PP_{st} \neq 0$, and for each sample-target pair $(s,t)$, we only consider targets where the $\MM_{st} \neq 0$ in the joint likelihood function. The latter is thus written as:
+\begin{equation}
+P(\vn, \vb, \vz | \vc, \vW, \vm, \vPsi) = \prod_s \norm(\vz_s | \vzero, \vI) \prod_{t | \MM_{st} \neq 0} \norm(b_{st} | (\vW \vz_s)_t + m_t, \Psi_t) \, \norm(b_{st} | m_{st}, \Sigma_{st})
+\end{equation}
+We can integrate out $\vb$ via the identity $\int_{-\infty}^{+\infty} \norm(x | \mu_1, \sigma_1^2) \, \norm(x | \mu_2, \sigma_2^2) \, \mathrm{d}x = \norm(\mu_1 | \mu_2, \sigma_1^2 + \sigma_2^2)$ to obtain:
 %
 \begin{equation}
-P(\vn, \vz | \vc, \vW, \vm, \vPsi, \vd, \vn) = \prod_s {\rm N}(\vz_s | \vzero, \vI) {\rm N}(\vm_s | \vW \vz_s + \vm, \vPsi + \vSigma_s)
+P(\vn, \vz | \vc, \vW, \vm, \vPsi) = \prod_s \norm(\vz_s | \vzero, \vI) \prod_{t | \MM_{st} \neq 0} \norm(m_{st} | (\vW \vz_s)_t + m_t, \Psi_t + \Sigma_{st})
 \label{coverage_likelihood}
 \end{equation}
+Save for the presence of a sample-dependent bias uncertainy $\Sigma_{st}$, our learning objective is essentially the factor analysis problem. The MLE for parameters $(\vPsi, \vW, \vm)$ can be obtained via the EM algorithm. The presence of $\Sigma_{st}$, in particular its dependence on $s$, introduces undesirable complexities which we wish to avoid. To gain more insight about the role of $\Sigma_{st}$, let us mrginalizing $\vz_s$ from Eq.~\eqref{coverage_likelihood}. The final result can be put in a simple form using Woodbury identity and properties of projection matrices:
 %
-
-While we will learn $\vPsi$ and $\vW$ via the EM algorithm, we may determine $\vm$ by integrating out $\vz$ followed by direct maximization.  We marginalize $\vz_s$ from Equation \ref{coverage_likelihood} using a standard result for linear Gaussian models (Bishop Eq. 2.115) to obtain
-%
-\begin{align}
-P(\vn | \vc, \vW, \vm, \vPsi, \vd, \vn) =& \prod_s {\rm N} (\vm_s | \vm, \vPsi + \vSigma_s + \vW \vW^T) \\
-=& \exp \left( -\frac{1}{2} \sum_s (\vm - \vm_s)^T (\vPsi + \vSigma_s + \vW \vW^T)^{-1} (\vm - \vm_s) \right)
+\begin{equation}
+P(\vn | \vc, \vW, \vm, \vPsi) \propto \exp \left( -\frac{1}{2} \sum_s (\vm - \vm_s)^T \vM_s (\vPsi + \vSigma_s + \vM_s \vW \vW^T \vM_s)^{-1} \vM_s (\vm - \vm_s) \right)
 \label{marginalized coverage_likelihood}
-\end{align}
-%
-If $\vSigma_s$ were the same for each $s$, the likelihood in Equation \ref{marginalized coverage_likelihood} would be maximized by $\vm = \frac{1}{S} \sum_s \vm_s$.  As we now argue, this intuitively-appealing approximate is accurate and justified.  First, note that $\vPsi + \vW \vW^T$ is  the covariance of log-coverage due to experimental conditions, both those included explicitly in $\vW$ and the residual, unexplained covariance $\vPsi$.  The quantities $\vPsi + \vSigma_s + \vW \vW^T$ are essentially weighting factors that penalize lower-coverage samples (with larger $\vSigma$).  If variations in $\vSigma$ tend to be small compared to $\vPsi + \vW \vW^T$, then these weights will be very similar between samples and we may use the simple formula that assigns each sample the same weight.  It is an empirical fact that the noise before normalization is much greater than noise after normalization, which implies that $\vSigma$ is small compared to $\vPsi + \vW \vW^T$.  Variations in $\vSigma$ are, of course, even smaller, especially in the typical case that all PoN samples have similar depth.  Furthermore, if the depths of PoN samples are not correlated with their positions in latent space (as is reasonable) our approximation is an unbiased estimator, because for any given position in latent space our failure to use the exact weights will on average wash out.  Finally, suppose, contrary to empirical fact, that $\vSigma$ tended to be large compared to $\vPsi + \vW \vW^T$.  In this case either laboratory noise is small and we don't need this fancy model in the first place or PoN depth of coverage is very poor, in which case accurate normalization is hopeless\footnote{We have also derived exact EM updates for $\vm$ and compared simulated results to the approximation.  The difference is basically non-existent.}.  Thus we will use
-\begin{equation}
-\vm = \frac{1}{S} \sum_s \vm_s \quad {\rm (an~excellent~approximation)}
-\end{equation}
-The approximation that led to this can be interpreted as the replacement $\vSigma_s \rightarrow \bar{\vSigma} \equiv \frac{1}{S} \sum_s \vSigma_s$ and we will consider it again below when we discuss EM updates of $\vW$ and $\vPsi$.
-
-For fixed $\vc$ we may obtain maximum likelihood estimates of $\vW$ and $\vSigma$ by an iterative EM approach in which we alternate between computing the Gaussian posteriors of each $\vz_s$ (E step) and maximizing the log-likelihood with respect to $\vW$, $\vSigma$, and $\vm$ (M step).  This is similar to the factor analysis model discussed in Chapter 12 of Bishop.  We note calling $\vc$ at each iteration allows us to correct for CNV events that may be present in the panel of normals\footnote{If our copy-ratio calling algorithm is a maximum-likelihood method, for example calling via the Viterbi algorithm for an HMM, then provided that our likelihood is averaged with respect to the E step for $\vz$ the entire process including optimization of $\vc$, $\vm$, $\vW$, and $\vPsi$ is an EM algorithm and thus will increase likelihood at each iteration and converge.}.
-
-The E step follows from substituting $\vPsi \rightarrow \vPsi_s \equiv  \vPsi + \vSigma_s$ in Bishop's Equations 12.66-67 to get
-%
-\begin{align}
-\vG_s =& \left( \vI + \vW^T \vPsi_s^{-1} \vW \right)^{-1} \\
-E \left[ \vz_s \right] =& \vG_s \vW^T \vPsi_s^{-1} (\vm_s - \vm) \\
-E \left[ \vz_s \vz_s^T \right] =& \vG_s + E[\vz_s] E[\vz_s]^T
-\end{align}
-%
-
-For the M steps, we must maximize with respect to $E \left[ \sum_s \ln {\rm N}(\vm_s | \vW \vz_s + \vm, \vPsi + \vSigma_s) \right]$, which reduces to
-%
-\begin{equation}
- -\frac{1}{2} \sum_{st} \left[ \ln (\Psi_t + \Sigma_{st}) + \left(  \left( \vW E[\vz_s \vz_s^T] \vW^T \right)_{tt} +2 (m_t - m_{st}) \left( \vW E[\vz_s] \right)_t + (m_t - m_{st})^2 \right)\Psi_{st}^{-1} \right]
 \end{equation}
 %
+To simplify the discussion, let us assume that all samples share the same targets, i.e. $\vM_s = \mathbb{I}$.
+First, note that $\vPsi + \vW \vW^T$ is the covariance of log-coverage due to experimental conditions, both those included explicitly in $\vW$ and the residual, unexplained covariance $\vPsi$. The quantities $\vPsi + \vSigma_s + \vW \vW^T$ are essentially weighting factors that decrease the role of lower-coverage samples (i.e. those with larger $\vSigma$) in the likelihood. If variations in $\vSigma$ tend to be small compared to $\vPsi + \vW \vW^T$, then these weights will be very similar between samples and we may use the simple formula that assigns each sample the same weight. {\em It is an empirical fact that the noise before normalization is much greater than noise after normalization, which implies that $\vSigma$ is small compared to $\vPsi + \vW \vW^T$. Variations in $\vSigma$ are, of course, even smaller, especially in the typical case that all PoN samples have similar depth.} Furthermore, if the depths of PoN samples are not correlated with their positions in latent space (as is reasonable) our approximation is an unbiased estimator, because for any given position in latent space our failure to use the exact weights will on average wash out.  Finally, suppose, contrary to empirical fact, that $\vSigma$ tended to be large compared to $\vPsi + \vW \vW^T$. In this case, either the shared source of bias is small and we don't need this fancy model in the first place, or the depth of coverage is very poor, in which case accurate normalization is hopeless regardless. In summary, replacing $\Sigma_{st}$ with a typical sample-indendent value $\bar{\vSigma}$ is a very reasonable approxmiation.
 
-If we do not use the approximation for $\vm$, its M step is
-\begin{align}
-\vm = \left( \sum_s \vPsi_{s}^{-1} \right)^{-1} \sum_s \left[ \vPsi_{s}^{-1}  (\vm_{s}  - \vW  E[\vz_{s}] ) \right]. \quad {\rm (exact)}
-\end{align}
+A natural choice for $\bar{\Sigma}_t$ will be made apparent soon. In the meantime, we notice that the $\vSigma_s$ always appears in addition to $\vPsi$ such that the specific choice of $\bar{\Sigma}_t$ may seem to be immaterial: if $\vPsi^*$ is the MLE estimate obtained using the choice $\bar{\vSigma}^*$, we may infer that $\vPsi^* + \bar{\vSigma}^* - \bar{\vSigma}'$ is the MLE estimate had we used $\bar{\vSigma}'$ instead. However, the constraint $\Psi_t > 0$ implies that $\Psi^*_t + \bar{\Sigma}_t > 0$, such that our choice of $\bar{\Sigma}_t$ effectively sets a lower bound on the unexplained variance.\\
 
-The M step for $\Psi_t$ requires solving numerically for each $\Psi_t$ the following equations:
+
+\noindent {\bf EM algorithm for obtaing MLE of $(\vW, \vPsi, \vm)$:} For fixed $\vc$, we may obtain maximum likelihood estimates of the parameters via an iterative EM approach in which we alternate between computing the Gaussian posteriors of each $\vz_s$ (E step) and maximizing the log-likelihood with respect to $\vW$, $\vSigma$, and $\vm$ (M step). This is similar to the factor analysis model discussed in Chapter 12 of Bishop. We note calling $\vc$ while learning $(\vW, \vPsi, \vm)$ allows us to correct for CNV events that may be present in the panel of normals\footnote{If our copy-ratio calling algorithm is a maximum-likelihood method, for example calling via the Viterbi algorithm for an HMM, then provided that our likelihood is averaged with respect to the E step for $\vz$ the entire process including optimization of $(\vc, \vW, \vPsi, \vm)$ is an EM algorithm and thus will increase likelihood at each iteration and converge.}.\\
+
+The E step follows from substituting $\vPsi \rightarrow \vPsi_s \equiv  \vPsi + \vSigma_s$ in Bishop's Eqs. 12.66-67 and including the sample-target mask matrix $\vM$. The result is:
+%j
 \begin{align}
-\sum_s \left[ \frac{1}{\Psi_t + \Sigma_{st}} - \frac{\beta_{st}}{(\Psi_t + \Sigma_{st})^2} \right] = 0, \, \beta_{st} =\left( \vW E[\vz_s \vz_s^T] \vW^T \right)_{tt} +2 (m_t - m_{st}) \left( \vW E[\vz_s] \right)_t + (m_t - m_{st})^2
+\vG_s &= \left( \vI + \vW^T \vM_s \vPsi_s^{-1} \vW \right)^{-1}, \nonumber\\
+\EE \left[ \vz_s \right] &= \vG_s \vW^T \vM_s \vPsi_s^{-1} (\vm_s - \vm), \nonumber\\
+\EE \left[ \vz_s \vz_s^T \right] &= \vG_s + E[\vz_s] E[\vz_s]^T.
 \end{align}
-Alternatively, the aforementioned approximation $\vSigma_s \rightarrow \bar{\vSigma}$ gives
+%
+In the M step, we calculate the expectation value of the complete-data log likelihood with respect to the posperior estimate of $\vz_s$. Save for a constant, the result is:
 %
 \begin{equation}
-\Psi_{tt} = \frac{1}{S} \sum_s \beta_{st} - \bar{\Sigma}_{tt}, \, {\rm (simplified)}
+\mathcal{L} = -\frac{1}{2} \sum_{st} \left\{ M_{st} \ln \Psi_{st} + M_{st} \Psi_{st}^{-1} \left[  \left( \vW \EE[\vz_s \vz_s^T] \vW^T \right)_{tt} +2 (m_t - m_{st}) \left( \vW \EE[\vz_s] \right)_t + (m_t - m_{st})^2 \right] \right\},
 \end{equation}
 %
+The stationarity condition for $\mathcal{L}$ with respect to $\vm$ gives: 
+\begin{align}
+m_t = \left(\sum_s \vM_s \vPsi_{s}^{-1} \right)^{-1} \sum_s \left[ \vM_s \vPsi_{s}^{-1}  (\vm_{s}  - \vW  \EE[\vz_{s}] ) \right].
+\end{align}
+The stationarity condition with respect to $\Psi_t$ gives:
+\begin{equation}\label{eq:psi_stationarity}
+\sum_s M_{st}\left[\frac{1}{\Psi_t + \Sigma_{st}} - \frac{B_{st}}{(\Psi_t + \Sigma_{st})^2} \right] = 0,
+\end{equation}
+where:
+\begin{equation}
+B_{st} = \left( \vW E[\vz_s \vz_s^T] \vW^T \right)_{tt} +2 (m_t - m_{st}) \left( \vW E[\vz_s] \right)_t + (m_t - m_{st})^2
+\end{equation}
+The above nonlinear equation must be solved for each target, which is a computationally demanding task for a large number of targets. If this is to be avoided, we offer two approximation schemes:\\
 
-In the M step equation for $\vW$ we incorporate an automatic relevance determination (ARD) prior:
+\noindent {\bf (Scheme 1) Assuming small sample to sample variations in $\Sigma_{st}$:} Had $\Sigma_{st}$ been constant, then Eq.~\eqref{eq:psi_stationarity} would have the following simple solution:
+\begin{equation}
+\Psi^\mathrm{approx}_t = \llangle \mathbf{B} \rrangle_t - \bar{\Sigma}_t,
+\end{equation}
+where $\bar{\Sigma}_t$ is the sample-independent value of $\Sigma_{st}$, and we have defined the double angle bracket average as:
+\begin{equation}\label{eq:psi_approx}
+\llangle \mathbf{B} \rrangle_t \equiv \frac{\sum_s M_{st}B_{st}}{\sum_s M_{st}}.
+\end{equation}
+It is tempting to replace $\bar{\Sigma}_t$ with its $M$-averaged value. However, a more principled approach is to choose $\bar{\Sigma}_t$ such that the approximation solution given in \eqref{eq:psi_approx} is as close to the exact solution as possible. To this end, we assume $\Sigma_{st} = \bar{\Sigma}_t + (\Sigma_{st} - \bar{\Sigma}_t)$ such that $|\Sigma_{st} - \bar{\Sigma}_t| \ll \bar{\Sigma}_t$, expand Eq.~\eqref{eq:psi_stationarity} in $\Sigma_{st} - \bar{\Sigma}_t$ to linear order, and require that $\Psi^\mathrm{approx}_t$ represents the exact solution. This procedure yields:
+\begin{equation}
+\bar{\Sigma}_t = \frac{2 \llangle \mathbf{B} \vSigma \rrangle_t - \llangle \vSigma \rrangle_t \llangle \mathbf{B}\rrangle_t}{\llangle \mathbf{B}\rrangle_t}.
+\end{equation}
+Plugging this result back in Eq.~\eqref{eq:psi_approx}, we find:
+\begin{equation}
+\Psi^\mathrm{approx}_t = \llangle \mathbf{B} \rrangle_t + \llangle \vSigma \rrangle_t - 2 \, \frac{\llangle \mathbf{B} \vSigma \rrangle_t}{\llangle \mathbf{B}\rrangle_t}.
+\end{equation}
+This solution is accurate to linear order in deviations of $\Sigma_{st}$ about $\bar{\Sigma}_t$.\\
+
+\noindent {\bf (Scheme 2) Newton iterations:} The complexity of solving Eq.~\eqref{eq:psi_stationarity} numerically is not too high given that the Hessian matrix is diagonal. Expanding $\mathcal{L}$ about $\vPsi_0$, we find:
+\begin{equation}
+\mathcal{L}(\vPsi) = \mathcal{L}(\vPsi_0) + \alpha_t \, (\Psi_t - \Psi_{0,t}) + \frac{1}{2} \, \beta_t \, (\Psi_t - \Psi_{t,0})^2 + \ldots
+\end{equation}
+where:
+\begin{align}
+\alpha_t &= \frac{\partial \mathcal{L}}{\partial \Psi_t} = -\frac{1}{2}\sum_s M_{st}\left[\frac{1}{\Psi_t + \Sigma_{st}} - \frac{B_{st}}{(\Psi_t + \Sigma_{st})^2}\right],\nonumber\\
+\beta_t &= \frac{\partial^2 \mathcal{L}}{\partial \Psi_t^2} = +\frac{1}{2}\sum_s M_{st}\left[\frac{1}{(\Psi_t + \Sigma_{st})^2} - \frac{2B_{st}}{(\Psi_t + \Sigma_{st})^3}\right].
+\end{align}
+The Newton's approximate solution is therefore:
+\begin{equation}
+\Psi_{t,1} = \Psi_{t,0} - \frac{\alpha_t(\vPsi_0)}{\beta_t(\vPsi_0)}.
+\end{equation}
+One may start iterations using the result of Scheme 1 as the initial guess and continue until convergence.\\
+
+In the M step equation for $\vW$, we incorporate an automatic relevance determination (ARD) prior:
 %
 \begin{align}
-P(\vW) =& \prod_k \left( \frac{\alpha_\mu}{2 \pi} \right)^{T/2} \exp \left( -\frac{1}{2} \alpha_\mu \sum_t W_{t\mu}^2  \right).
+P(\vW) =& \prod_\mu \left( \frac{\alpha_\mu}{2 \pi} \right)^{T/2} \exp \left( -\frac{1}{2} \alpha_\mu \sum_t W_{t\mu}^2  \right).
 \end{align}
 %
-If $\alpha_\mu \rightarrow \infty$ latent feature $\mu$ is effectively turned off.  Thus we can initially choose a liberal estimate of $D$ and the model will automatically become more parsimonious.  The M step log likelihood times the ARD prior depend on the $t$-th row $\vW_{t \cdot}$ of $\vW$ as
+If $\alpha_\mu \rightarrow \infty$, latent feature $\mu$ is effectively turned off. Thus we can initially choose a liberal estimate of $D$ and the model will automatically become more parsimonious. The M step log likelihood times the ARD prior depend on the $t$-th row $\vW_{t \cdot}$ of $\vW$ as:
 %
 \begin{equation}
- -\frac{1}{2}   \left( -\sum_\mu \ln \alpha_\mu  + \vW_{t \cdot} \left(\vA +  \vQ_t  \right) \vW_{t \cdot}^T - 2 \vW_{t \cdot} \vv_t  \right) 
+ -\frac{1}{2}   \left( -\sum_\mu \ln \alpha_\mu  + \vW_{t \cdot} \left(\vA +  \vQ_t  \right) \vW_{t \cdot}^T - 2 \vW_{t \cdot} \vv_t  \right),
  \label{ARD_likelihood}
 \end{equation}
 %
-where $\vA \equiv {\rm Diag}(\alpha_1, \alpha_2 \ldots \alpha_D)$ and we have defined
+where $\vA \equiv {\rm diag}(\alpha_1, \alpha_2 \ldots \alpha_D)$ and we have defined:
 %
 \begin{equation}
-\vQ_t = \sum_s \Psi_{st}^{-1} E[\vz_s \vz_s^T], \, \vv_t = \sum_s \Psi_{st}^{-1} (m_{st} - m_t)E[\vz_s ]
+\vQ_t = \sum_s M_{st} \Psi_{st}^{-1} \, \EE\left[\vz_s \vz_s^T\right], \, \qquad \vv_t = \sum_s M_{st} \Psi_{st}^{-1} (m_{st} - m_t)\, \EE[\vz_s].
 \end{equation}
 %
-The maximum a posterior result for $\vW_{t \cdot}$ is
+The maximum a posterior result for $\vW_{t \cdot}$ is:
 %
 \begin{equation}
 \vW_{t \cdot} = \left(  \vA + \vQ_t \right)^{-1} \vv_t
 \label{M_step_W}
 \end{equation}
 %
-In the approximation $\vPsi_s \rightarrow \bar{\vPsi}$ this formula is unchanged but $\vQ_t$ is $S$ times as fast to calculate.  The other M steps and the E step are not affected by the ARD prior.
-
-To determine $\alpha_\mu$, we re-exponentiate Equation $\ref{ARD_likelihood}$\footnote{This is the distribution on $\vW$ that we would obtain from a mean-field variational factorization $q(\vz) q(\vW)$.} and integrate out $\vW$ to obtain the evidence for $\vA$:
+In the approximation $\vSigma_s \rightarrow \bar{\vSigma}$, this formula is unchanged but $\vQ_t$ is $S$ times as fast to calculate. The other M steps and the E step are not affected by the ARD prior. To determine $\alpha_\mu$, we re-exponentiate Eq.~$\eqref{ARD_likelihood}$\footnote{This is the distribution on $\vW$ that we would obtain from a mean-field variational factorization $q(\vz) q(\vW)$.} and integrate out $\vW$ to obtain the evidence for $\vA$:
 %
 \begin{align}
-P(\vn | \vA) \propto& \prod_k \alpha_k^{T/2} \prod_t \int e^{-\frac{1}{2} \vW_{t \cdot} (\vA + \vQ_t) \vW_{t \cdot}^T - \vW_{t \cdot} \vv_t} \, d \vW_{t \cdot}
+P(\vn | \vA) \propto& \prod_k \alpha_k^{T/2} \prod_t \int e^{-\frac{1}{2} \vW_{t \cdot} (\vA + \vQ_t) \vW_{t \cdot}^T - \vW_{t \cdot} \vv_t} \, \mathrm{d} \vW_{t \cdot}
 \label{ARD_evidence}
 \end{align}
 %
@@ -746,10 +811,10 @@ where the average $\ave{W_{t\mu}^2}$ is taken with respect to the density $q(\vW
 %
 \begin{equation}
 \ave{W_{t\mu}^2} = W_{t\mu}^2 + (\vA + \vQ_t)^{-1}_{\mu\mu}
-\end{equation}
+\end{equation}\\
 %
 
-Let us now summarize these steps.  First, in exact mode we have
+\textcolor{red}{(The summary must be updated) -- } Let us now summarize these steps.  First, in exact mode we have
 \begin{itemize}
 \item E step: $\vG_s = \left( \vI + \vW^T \vPsi_s^{-1} \vW \right)^{-1}, \,
 E \left[ \vz_s \right] = \vG_s \vW^T \vPsi_s^{-1} (\vm_s - \vm), \,
