@@ -7,6 +7,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Arrays;
 
 /**
  * Created by lichtens on 8/25/15.
@@ -212,6 +213,16 @@ public class ParamUtilsUnitTest {
         ParamUtils.isPositive(0.0, "That is zero!");
     }
 
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contains nulls!")
+    public void testNoNullsOnAnIterable() {
+        ParamUtils.noNulls(Arrays.asList("a", "b", null, "c"), "Contains nulls!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contains nulls!")
+    public void testNoNullsOnAnArray() {
+        ParamUtils.noNulls(new String[] {"a", "b", null, "c"}, "Contains nulls!");
+    }
 
 
     @Test

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.param;
 
 import com.google.common.primitives.Doubles;
+import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -330,5 +332,55 @@ public class ParamUtils {
                     prefix, value, validRange.getMinimumInteger(), validRange.getMaximumInteger()));
         }
         return value;
+    }
+
+    /**
+     * Check whether the input iterable contains any null.
+     * @param iterable the iterable to check.
+     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}.
+     */
+    public static void noNulls(final Iterable<?> iterable) {
+        noNulls(iterable, null);
+    }
+
+    /**
+     * Check whether the input iterable contains any null.
+     * @param iterable the iterable to check.
+     * @param message message for the exception to be thrown if indeed, {@code iterable} contains a null.
+     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}. Notice that
+     * the input message is only used if the latter.
+     */
+    public static void noNulls(final Iterable<?> iterable, final String message) {
+        Utils.nonNull(iterable);
+        for (final Object o : iterable) {
+            if (o == null) {
+                throw new IllegalArgumentException(message);
+            }
+        }
+    }
+
+    /**
+     * Check whether the input array contains any null.
+     * @param array the array to check.
+     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}.
+     */
+    public static void noNulls(final Object[] array) {
+        noNulls(array, null);
+    }
+
+    /**
+     * Check whether the input array contains any null.
+     * @param array the array to check.
+     * @param message message for the exception to be thrown if indeed, {@code array} contains a {@code null}.
+     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}. Notice that
+     * the input message is only used if the latter.
+     */
+    public static void noNulls(final Object[] array, final String message) {
+        Utils.nonNull(array);
+        for (final Object o : array) {
+            if (o == null) {
+                throw new IllegalArgumentException(message);
+            }
+        }
     }
 }
