@@ -200,8 +200,8 @@ tasks.withType(Jar) {
                 'Implementation-Version': version,
                 'Main-Class': project.mainClassName
     }
+    zip64 true
 }
-
 
 test {
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
@@ -317,6 +317,11 @@ task sparkJar(type: ShadowJar) {
     description = "Create a combined jar of project and runtime dependencies that excludes provided spark dependencies"
     configurations = [project.configurations.sparkConfiguration]
     classifier = 'spark'
+
+    #Those have to be excluded to prevent "Invalid signature file digest for Manifest main attributes"
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
