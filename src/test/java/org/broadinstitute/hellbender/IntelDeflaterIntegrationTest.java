@@ -12,7 +12,9 @@ import org.testng.annotations.Test;
  */
 public class IntelDeflaterIntegrationTest extends BaseTest {
 
-    @Test
+    // TODO: re-enable once intel-gkl is on maven central and the IntelDeflater
+    // TODO: is re-enabled at the htsjdk level
+    @Test(enabled = false)
     public void testIntelDeflaterIsAvailable(){
         if ( ! NativeUtils.runningOnLinux() ) {
             throw new SkipException("IntelDeflater not available on this platform");

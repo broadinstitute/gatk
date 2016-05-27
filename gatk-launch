@@ -23,7 +23,7 @@ BUILD_LOCATION = script +"/build/install/" + projectName + "/bin/"
 GATK_RUN_SCRIPT = BUILD_LOCATION + projectName
 BIN_PATH = script + "/build/libs"
 
-EXTRA_JAVA_OPTIONS="-Dsamjdk.intel_deflater_so_path=libIntelDeflater.so -Dsamjdk.compression_level=1 -DGATK_STACKTRACE_ON_USER_EXCEPTION=true "
+EXTRA_JAVA_OPTIONS="-Dsamjdk.try_use_intel_deflater=true -Dsamjdk.compression_level=1 -DGATK_STACKTRACE_ON_USER_EXCEPTION=true "
 
 DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
 "--conf", "spark.driver.maxResultSize=0",
@@ -31,7 +31,6 @@ DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
 "--conf", "spark.io.compression.codec=snappy",
 "--conf", "spark.io.compression.snappy.blockSize=524288", #Snappy with a bigger block size works best (512k)
 "--conf", "spark.yarn.executor.memoryOverhead=600",
-"--conf", "spark.yarn.dist.files=" + script + "/build/libIntelDeflater.so",
 "--conf", "spark.driver.extraJavaOptions=" + EXTRA_JAVA_OPTIONS,
 "--conf", "spark.executor.extraJavaOptions=" + EXTRA_JAVA_OPTIONS]
 
