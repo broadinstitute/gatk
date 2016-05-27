@@ -28,7 +28,8 @@ EXTRA_JAVA_OPTIONS="-Dsamjdk.intel_deflater_so_path=libIntelDeflater.so -Dsamjdk
 DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
 "--conf", "spark.driver.maxResultSize=0",
 "--conf", "spark.driver.userClassPathFirst=true",
-"--conf", "spark.io.compression.codec=lzf",
+"--conf", "spark.io.compression.codec=snappy",
+"--conf", "spark.io.compression.snappy.blockSize=524288", #Snappy with a bigger block size works best (512k)
 "--conf", "spark.yarn.executor.memoryOverhead=600",
 "--conf", "spark.yarn.dist.files=" + script + "/build/libIntelDeflater.so",
 "--conf", "spark.driver.extraJavaOptions=" + EXTRA_JAVA_OPTIONS,
