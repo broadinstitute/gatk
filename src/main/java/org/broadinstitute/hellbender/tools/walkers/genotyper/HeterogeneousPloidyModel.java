@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+
+import java.util.Arrays;
 
 /**
  * General heterogeneous ploidy model.
@@ -17,25 +20,12 @@ public final class HeterogeneousPloidyModel implements PloidyModel {
     private final boolean isHomogeneous;
 
     public HeterogeneousPloidyModel(final SampleList sampleList, final int[] ploidies) {
-        Utils.nonNull(sampleList, "the sample list cannot be null");
-        Utils.nonNull(ploidies, "the ploidies cannot be null");
-        if (sampleList.numberOfSamples() != ploidies.length) {
-            throw new IllegalArgumentException("sample-list and ploidy array length must match");
-        }
-
-        this.ploidies = ploidies.clone();
-
-        int ploidySum = 0;
-        for (int i = 0; i < ploidies.length; i++) {
-            final int p = this.ploidies[i];
-            if (p < 0) {
-                throw new IllegalArgumentException("no ploidy can be less than 0");
-            }
-            ploidySum += p;
-        }
-        this.ploidySum = ploidySum;
-        isHomogeneous = ploidies.length == 0 || ploidies.length * this.ploidies[0] == ploidySum;
-        this.sampleList = sampleList;
+        this.sampleList = Utils.nonNull(sampleList, "the sample list cannot be null");
+        this.ploidies = Utils.nonNull(ploidies, "the ploidies cannot be null").clone();
+        Utils.validateArg(sampleList.numberOfSamples() == ploidies.length, "sample-list and ploidy array length must match");
+        Arrays.stream(ploidies).forEach(p -> Utils.validateArg(p >= 0, "no ploidy can be less than 0"));
+        ploidySum = (int) MathUtils.sum(ploidies);
+        isHomogeneous = ploidies.length == 0 || Arrays.stream(ploidies).allMatch(p -> p == ploidies[0]);
     }
 
     @Override

@@ -19,20 +19,15 @@ public final class MinimalGenotypingEngine extends GenotypingEngine<UnifiedArgum
      * @param configuration the UG configuration.
      * @param samples list of samples
      */
-    public MinimalGenotypingEngine( final UnifiedArgumentCollection configuration,
-                                    final SampleList samples,
+    public MinimalGenotypingEngine(final UnifiedArgumentCollection configuration, final SampleList samples,
                                     final AFCalculatorProvider afCalculatorProvider ) {
         super(configuration, samples, afCalculatorProvider);
 
         if ( configuration.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
             throw new UserException("GENOTYPE_GIVEN_ALLELES mode not supported in the MinimalGenotypingEngine");
-        }
-
-        if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
+        } else if ( configuration.GLmodel != GenotypeLikelihoodsCalculationModel.SNP ) {
             throw new UserException("Only the diploid SNP model is supported in the MinimalGenotypingEngine");
-        }
-
-        if ( configuration.COMPUTE_SLOD ) {
+        } else if ( configuration.COMPUTE_SLOD ) {
             throw new UserException("--computeSLOD not supported in the MinimalGenotypingEngine");
         }
     }

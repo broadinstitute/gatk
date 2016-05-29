@@ -35,17 +35,11 @@ public final class GenotypingLikelihoods<A extends Allele> implements SampleList
      *  does not correspond with the number of likelihoods arrays in {@code likelihoods}
      */
     GenotypingLikelihoods(final AlleleList<A> alleles, final PloidyModel ploidyModel, final List<GenotypeLikelihoods> likelihoods) {
-        Utils.nonNull(alleles, "allele list cannot be null");
-        Utils.nonNull(ploidyModel, "the ploidy model cannot be null");
-        Utils.nonNull(likelihoods, "the likelihood collection cannot be null");
         Utils.validateArg (ploidyModel.numberOfSamples() ==  likelihoods.size(), "there must be exactly one likelihood set for each sample");
-        if (likelihoods.stream().anyMatch(lik -> lik == null)){
-            throw new IllegalArgumentException("no genotype likelihood is allowed to be null");
-        }
-
-        this.likelihoods = likelihoods.toArray(new GenotypeLikelihoods[likelihoods.size()]);
-        this.alleles = alleles;
-        this.ploidyModel = ploidyModel;
+        this.likelihoods = Utils.nonNull(likelihoods, "the likelihood collection cannot be null").toArray(new GenotypeLikelihoods[likelihoods.size()]);
+        Utils.containsNoNull(likelihoods, "no genotype likelihood is allowed to be null");
+        this.alleles = Utils.nonNull(alleles, "allele list cannot be null");
+        this.ploidyModel = Utils.nonNull(ploidyModel, "the ploidy model cannot be null");
     }
 
     @Override
