@@ -17,17 +17,17 @@ public enum CopyNumberTriState {
     /**
      * Represents a loss of one or more copies in a region.
      */
-    DELETION("-", Allele.create("<DEL>", false)),
+    DELETION("-", Allele.create("<DEL>", false), 0.5),
 
     /**
      * Represents not a loss nor a gain of any copy in a region.
      */
-    NEUTRAL("0", Allele.create("N", true)),
+    NEUTRAL("0", Allele.create("N", true), 1.0),
 
     /**
      * Represents a gain of one or more copies in a region.
      */
-    DUPLICATION("+", Allele.create("<DUP>", false));
+    DUPLICATION("+", Allele.create("<DUP>", false), 1.5);
 
     /**
      * Unmodifiable list alleles where the first allele is the reference allele
@@ -47,18 +47,12 @@ public enum CopyNumberTriState {
 
     public final Allele allele;
 
-    CopyNumberTriState(final String callString, final Allele allele) {
+    public final double copyRatio;
+
+    CopyNumberTriState(final String callString, final Allele allele, final double copyRatio) {
         this.callString = callString;
         this.allele = allele;
-    }
-
-    /**
-     * The string representation of the call.
-     *
-     * @return never {@code null}.
-     */
-    public String toCallString() {
-        return callString;
+        this.copyRatio = copyRatio;
     }
 
     /**
