@@ -100,7 +100,7 @@ task gcovTestReport(type: Exec){
 
 dependencies {
     compile 'com.google.guava:guava:18.0'
-    compile 'com.github.samtools:htsjdk:2.3.0'
+    compile 'com.github.samtools:htsjdk:2.4.1'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
@@ -182,17 +182,6 @@ dependencies {
 
 def findJarByName(Configuration config, String name) {
     config.filter { it.name.startsWith(name)}.singleFile
-}
-
-task extractIntelDeflater(type: Copy) {
-    def htsjdkJar = { findJarByName(configurations.compile, 'htsjdk') }
-    from {
-        zipTree( htsjdkJar ).matching{ include 'lib/jni/libIntelDeflater.so'}.singleFile
-    }
-    into "$buildDir"
-    rename "lib/jni/libIntelDeflater.so", "libIntelDeflater.so"
-    outputs.file "$buildDir/libIntelDeflater.so"
-    description = "extract libIntelDeflater from the htsjdk jar"
 }
 
 //add gatk-launch to the jar as a resource
@@ -440,8 +429,7 @@ uploadArchives {
 task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
-test.dependsOn extractIntelDeflater
-installDist.dependsOn downloadGsaLibFile, extractIntelDeflater
+installDist.dependsOn downloadGsaLibFile
 
 model {
     components {
