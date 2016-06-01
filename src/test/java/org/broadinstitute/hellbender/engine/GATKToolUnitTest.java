@@ -162,6 +162,25 @@ public final class GATKToolUnitTest extends BaseTest{
     }
 
     @Test
+    public void testReadsHeaderWithSymbolicName() throws Exception {
+        final GATKTool tool = new TestGATKToolWithReads();
+        final CommandLineParser clp = new CommandLineParser(tool);
+        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final String[] args = {"-I", "tumor:"+bamFile.getCanonicalPath()};
+        clp.parseArguments(System.out, args);
+        tool.onStartup();
+        final SAMFileHeader headerForReads = tool.getHeaderForReads();
+        final SAMFileHeader tumorHeader = tool.getHeaderForSymbolicName("tumor");
+        final SAMFileHeader nonExistentHeader = tool.getHeaderForSymbolicName("normal");
+
+        Assert.assertNull(nonExistentHeader);
+        Assert.assertEquals(headerForReads, tumorHeader);
+
+        tool.doWork();
+        tool.onShutdown();
+    }
+
+    @Test
     public void testFeaturesHeader() throws Exception {
         final TestGATKToolWithFeatures tool = new TestGATKToolWithFeatures();
         final CommandLineParser clp = new CommandLineParser(tool);
