@@ -6,5 +6,5 @@ https://github.com/broadinstitute/wdl
 
 https://github.com/broadinstitute/cromwell
 
-To get started, copy the template.json, for the workflow you wish to run, and adjust parameters accordingly.
+To get started, copy the template.json for the workflow you wish to run and adjust parameters accordingly.
 

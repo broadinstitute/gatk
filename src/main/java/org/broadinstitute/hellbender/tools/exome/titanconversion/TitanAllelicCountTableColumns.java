@@ -16,7 +16,7 @@ public enum TitanAllelicCountTableColumns {
     REF_COUNT("RefCount"),
     ALT_NUCLEOTIDE("Nref"),
     ALT_COUNT("NrefCount"),
-    NORMQUALITY("NormQuality");
+    NORM_QUALITY("NormQuality");
 
     private final String columnName;  //store the column names
 
@@ -28,7 +28,7 @@ public enum TitanAllelicCountTableColumns {
     }
 
     public static final List<String> FULL_COLUMN_NAME_ARRAY = createUnmodifiableList(
-            CONTIG, POSITION, REF_NUCLEOTIDE, REF_COUNT, ALT_NUCLEOTIDE, ALT_COUNT, NORMQUALITY);
+            CONTIG, POSITION, REF_NUCLEOTIDE, REF_COUNT, ALT_NUCLEOTIDE, ALT_COUNT, NORM_QUALITY);
 
     private static List<String> createUnmodifiableList(final TitanAllelicCountTableColumns... columns) {
         return Collections.unmodifiableList(Arrays.asList(columns).stream()

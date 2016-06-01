@@ -41,28 +41,19 @@ public class CallCNLoHAndSplitsIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(arguments);
 
-        final String gatkCnvFilename = outputDir.getAbsolutePath() + "/" +
-                FilenameUtils.removeExtension(SEGMENT_FILE.getAbsoluteFile().getName()) + "." +
-                CallCNLoHAndSplits.GATK_SEG_FILE_TAG + ".seg";
+        final String gatkCnvFilename = createFilename(outputDir, CallCNLoHAndSplits.GATK_SEG_FILE_TAG + ".seg", SEGMENT_FILE);
         Assert.assertTrue(new File(gatkCnvFilename).exists());
-        final String acsFilename = outputDir.getAbsolutePath() + "/" +
-                FilenameUtils.removeExtension(SEGMENT_FILE.getAbsoluteFile().getName()) + "." +
-                CallCNLoHAndSplits.CGA_ACS_SEG_FILE_TAG + ".seg";
+
+        final String acsFilename = createFilename(outputDir, CallCNLoHAndSplits.CGA_ACS_SEG_FILE_TAG + ".seg", SEGMENT_FILE);
         Assert.assertTrue(new File(acsFilename).exists());
 
-        final String cnlohFilename = outputDir.getAbsolutePath() + "/" +
-                FilenameUtils.removeExtension(SEGMENT_FILE.getAbsoluteFile().getName()) + "." +
-                CallCNLoHAndSplits.CNLOH_BALANCED_SEG_FILE_TAG + ".seg";
+        final String cnlohFilename = createFilename(outputDir, CallCNLoHAndSplits.CNLOH_BALANCED_SEG_FILE_TAG + ".seg", SEGMENT_FILE);
         Assert.assertTrue(new File(cnlohFilename).exists());
 
-        final String titanTNFilename = outputDir.getAbsolutePath() + "/" +
-                FilenameUtils.removeExtension(SEGMENT_FILE.getAbsoluteFile().getName()) + "." +
-                CallCNLoHAndSplits.TITAN_TN_FILE_TAG + ".tsv";
+        final String titanTNFilename = createFilename(outputDir, CallCNLoHAndSplits.TITAN_TN_FILE_TAG + ".tsv", SEGMENT_FILE);
         Assert.assertTrue(new File(titanTNFilename).exists());
 
-        final String titanHetFilename = outputDir.getAbsolutePath() + "/" +
-                FilenameUtils.removeExtension(SEGMENT_FILE.getAbsoluteFile().getName()) + "." +
-                CallCNLoHAndSplits.TITAN_HET_FILE_TAG + ".tsv";
+        final String titanHetFilename = createFilename(outputDir, CallCNLoHAndSplits.TITAN_HET_FILE_TAG + ".tsv", SEGMENT_FILE);
         Assert.assertTrue(new File(titanHetFilename).exists());
 
         // This is being done to make sure no exception is thrown
@@ -79,5 +70,11 @@ public class CallCNLoHAndSplitsIntegrationTest extends CommandLineProgramTest {
 
         final List<ACNVModeledSegment> acnvModeledSegments = SegmentUtils.readACNVModeledSegmentFile(SEGMENT_FILE);
         Assert.assertEquals(acnvModeledSegments.size(), acsModeledSegments.size());
+    }
+
+    private String createFilename(final File outputDir, final String extension, final File baseFile) {
+        return outputDir.getAbsolutePath() + "/" +
+                FilenameUtils.removeExtension(baseFile.getAbsoluteFile().getName()) + "." +
+                extension;
     }
 }

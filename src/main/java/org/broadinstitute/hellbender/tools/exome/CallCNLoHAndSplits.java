@@ -30,15 +30,14 @@ import java.util.List;
  */
 @CommandLineProgramProperties(
 
-        summary = "NOTE: This tool only works with diploid organisms.",
-        oneLineSummary = "",
+        summary = "For detailed explanation, please see the docs.  NOTE: This tool only works with diploid organisms.  This tool also converts files into TITAN and Broad CGA Allelic CapSeg formats.  Requires Spark.",
+        oneLineSummary = "Call whether segments are CNLoH (i.e. allele1 copies=2, allele2 copies=0) and/or balanced (i.e. MAF=0.5)",
         programGroup = CopyNumberProgramGroup.class
 )
 public class CallCNLoHAndSplits extends SparkCommandLineProgram {
 
     static final long serialVersionUID = 42123132L;
 
-    protected final static double DEFAULT_RHO_THRESHOLD=0.2;
     protected final static String RHO_SHORT_NAME="r";
     protected final static String RHO_LONG_NAME="rhoThreshold";
     protected final static int DEFAULT_NUM_ITERATIONS = 10;
@@ -70,12 +69,12 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
     protected String segmentsFile;
 
     @Argument(
-            doc = "(Advanced) Minimum rho (CCF*purity) to allow in calls.  Decreasing this value can yield false alarms for CN LoH and false negatives for balanced segments.",
+            doc = "(Advanced) Minimum rho (CCF*purity) to allow in calls.  Decreasing this value can yield false positives for CN LoH and false negatives for balanced segments.",
             shortName = CallCNLoHAndSplits.RHO_SHORT_NAME,
             fullName =  CallCNLoHAndSplits.RHO_LONG_NAME,
             optional = true
     )
-    protected double rhoThreshold = DEFAULT_RHO_THRESHOLD;
+    protected double rhoThreshold = CNLOHCaller.RHO_THRESHOLD_DEFAULT;
 
     @Argument(
             doc = "(Advanced) Number of iterations to perform for EM step in calling..",
@@ -108,11 +107,7 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
         cnlohCaller.setRhoThreshold(rhoThreshold);
 
         final List<ACNVModeledSegment> segs = SegmentUtils.readACNVModeledSegmentFile(new File(segmentsFile));
-        final List<String> sampleNames = SegmentUtils.readSampleNamesFromSegmentFile(new File(segmentsFile));
-        if (sampleNames.size() != 1) {
-            throw new UserException("This tool only supports exactly one sample in the input.");
-        }
-        String sampleName = sampleNames.get(0);
+        String sampleName = determineSampleName(new File(segmentsFile));
 
         // Create the outputdir
         try {
@@ -121,7 +116,6 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
             throw new UserException("Cannot create " + outputDir +".  Does a file (not directory) exist with the same name?  Do you have access to create?", ioe);
         }
 
-        // Create a Genome
         final Genome genome = new Genome(targetCoveragesFile, snpCountsFile, sampleName);
 
         // Make the calls
@@ -130,28 +124,36 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
 
         // write file for GATK CNV formatted seg file
         logger.info("Writing file with same output format as GATK CNV...");
-        final File finalModeledSegmentsFileAsGatkCNV = new File(outputDir + "/" + getSegmentsBasefilename() + "." + GATK_SEG_FILE_TAG + ".seg");
+        final File finalModeledSegmentsFileAsGatkCNV = new File(outputDir, getSegmentsBasefilename() + "." + GATK_SEG_FILE_TAG + ".seg");
         SegmentUtils.writeModeledSegmentFile(finalModeledSegmentsFileAsGatkCNV,
                 ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentsToModeledSegments(segs, genome), sampleName);
 
         //write file for ACS-compatible output to help Broad CGA
         logger.info("Writing file with same output format as Broad CGA Allelic CapSeg ...");
-        final File finalACSModeledSegmentsFile = new File(outputDir + "/" + getSegmentsBasefilename() + "." + CGA_ACS_SEG_FILE_TAG + ".seg");
+        final File finalACSModeledSegmentsFile = new File(outputDir, getSegmentsBasefilename() + "." + CGA_ACS_SEG_FILE_TAG + ".seg");
         ACSModeledSegmentUtils.writeACNVModeledSegmentFileAsAllelicCapSegFile(finalACSModeledSegmentsFile, calls, genome);
 
         //write files for TITAN-compatible output to help Broad CGA
         logger.info("Writing het file with input format for TITAN ...");
-        final File finalTitanHetFile = new File(outputDir + "/" + getSegmentsBasefilename() + "." + TITAN_HET_FILE_TAG + ".tsv");
+        final File finalTitanHetFile = new File(outputDir, getSegmentsBasefilename() + "." + TITAN_HET_FILE_TAG + ".tsv");
         TitanFileConverter.convertHetPulldownToTitanHetFile(snpCountsFile, finalTitanHetFile);
 
         logger.info("Writing tangent-normalized target CR estimates with input format for TITAN ...");
-        final File finalTitanTNFile = new File(outputDir + "/" + getSegmentsBasefilename() + "." + TITAN_TN_FILE_TAG + ".tsv");
+        final File finalTitanTNFile = new File(outputDir, getSegmentsBasefilename() + "." + TITAN_TN_FILE_TAG + ".tsv");
         TitanFileConverter.convertCRToTitanCovFile(targetCoveragesFile, finalTitanTNFile);
 
         // Write updated ACNV file with calls
         logger.info("Writing updated ACNV file with calls ...");
-        final File finalACNVModeledSegmentsFile = new File(outputDir + "/" + getSegmentsBasefilename() + "." + CNLOH_BALANCED_SEG_FILE_TAG + ".seg");
+        final File finalACNVModeledSegmentsFile = new File(outputDir, getSegmentsBasefilename() + "." + CNLOH_BALANCED_SEG_FILE_TAG + ".seg");
         SegmentUtils.writeCnLoHACNVModeledSegmentFile(finalACNVModeledSegmentsFile, calls, genome);
+    }
+
+    private String determineSampleName(final File segmentsFile) {
+        final List<String> sampleNames = SegmentUtils.readSampleNamesFromSegmentFile(segmentsFile);
+        if (sampleNames.size() != 1) {
+            throw new UserException.BadInput("This tool only supports exactly one sample in the input.  More than one found in " + segmentsFile.getAbsolutePath());
+        }
+        return sampleNames.get(0);
     }
 
     private String getSegmentsBasefilename() {

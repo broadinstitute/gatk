@@ -11,8 +11,8 @@ public class CNLOHCall implements Serializable, Locatable{
 
 
     private ACNVModeledSegment acnvSegment;
-    private CNLOHBalancedCallEnum balancedCall;
-    private CNLOHLoHCallEnum cnlohCall;
+    private CNLOHBalancedCall balancedCall;
+    private CNLOHLoHCall cnlohCall;
     private double fCr;
     private double fMaf;
     private double rho;
@@ -22,10 +22,9 @@ public class CNLOHCall implements Serializable, Locatable{
 
     public CNLOHCall(final ACNVModeledSegment acnvSegment) {
         this.acnvSegment = acnvSegment;
-        balancedCall = CNLOHBalancedCallEnum.NO_CALL;
-        cnlohCall = CNLOHLoHCallEnum.NO_CALL;
+        balancedCall = CNLOHBalancedCall.NO_CALL;
+        cnlohCall = CNLOHLoHCall.NO_CALL;
     }
-
 
     public ACNVModeledSegment getAcnvSegment() {
         return acnvSegment;
@@ -35,19 +34,19 @@ public class CNLOHCall implements Serializable, Locatable{
         this.acnvSegment = acnvSegment;
     }
 
-    public CNLOHBalancedCallEnum getBalancedCall() {
+    public CNLOHBalancedCall getBalancedCall() {
         return balancedCall;
     }
 
-    public void setBalancedCall(final CNLOHBalancedCallEnum balancedCall) {
+    public void setBalancedCall(final CNLOHBalancedCall balancedCall) {
         this.balancedCall = balancedCall;
     }
 
-    public CNLOHLoHCallEnum getCnlohCall() {
+    public CNLOHLoHCall getCnlohCall() {
         return cnlohCall;
     }
 
-    public void setCnlohCall(final CNLOHLoHCallEnum cnlohCall) {
+    public void setCnlohCall(final CNLOHLoHCall cnlohCall) {
         this.cnlohCall = cnlohCall;
     }
 
@@ -70,7 +69,7 @@ public class CNLOHCall implements Serializable, Locatable{
         return fCr;
     }
 
-    public void setfCr(double fCr) {
+    public void setfCr(final double fCr) {
         this.fCr = fCr;
     }
 
@@ -78,7 +77,7 @@ public class CNLOHCall implements Serializable, Locatable{
         return fMaf;
     }
 
-    public void setfMaf(double fMaf) {
+    public void setfMaf(final double fMaf) {
         this.fMaf = fMaf;
     }
 
@@ -86,7 +85,7 @@ public class CNLOHCall implements Serializable, Locatable{
         return rho;
     }
 
-    public void setRho(double rho) {
+    public void setRho(final double rho) {
         this.rho = rho;
     }
 
@@ -94,7 +93,7 @@ public class CNLOHCall implements Serializable, Locatable{
         return m;
     }
 
-    public void setM(int m) {
+    public void setM(final int m) {
         this.m = m;
     }
 
@@ -102,7 +101,7 @@ public class CNLOHCall implements Serializable, Locatable{
         return n;
     }
 
-    public void setN(int n) {
+    public void setN(final int n) {
         this.n = n;
     }
 }

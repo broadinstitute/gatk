@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.utils.SerializationTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -47,26 +48,26 @@ public class CNLOHCallerUnitTest extends BaseTest {
 
     @Test(dataProvider = "mafValues")
     public void testCalculateMaf(double rho, int m, int n, double gt) {
-        Assert.assertEquals(CNLOHCaller.calculateMaf(rho, m, n), gt, 1e-4);
-        Assert.assertEquals(CNLOHCaller.calculateMaf(rho, n, m), gt, 1e-4);
+        Assert.assertEquals(CNLOHCaller.calculateMaf(rho, m, n, HomoSapiensConstants.DEFAULT_PLOIDY), gt, 1e-4);
+        Assert.assertEquals(CNLOHCaller.calculateMaf(rho, n, m, HomoSapiensConstants.DEFAULT_PLOIDY), gt, 1e-4);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCalculateMafNaN() {
-        CNLOHCaller.calculateMaf(Double.NaN, 1, 1);
+        CNLOHCaller.calculateMaf(Double.NaN, 1, 1, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCalculateMafInf() {
-        CNLOHCaller.calculateMaf(Double.NEGATIVE_INFINITY, 1, 1);
+        CNLOHCaller.calculateMaf(Double.NEGATIVE_INFINITY, 1, 1, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCalculateMafNegative1() {
-        CNLOHCaller.calculateMaf(0.5, -5, 1);
+        CNLOHCaller.calculateMaf(0.5, -5, 1, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCalculateMafNegative2() {
-        CNLOHCaller.calculateMaf(0.5, 2, -1);
+        CNLOHCaller.calculateMaf(0.5, 2, -1, HomoSapiensConstants.DEFAULT_PLOIDY);
     }
 
     @DataProvider(name="mafValues")
@@ -85,8 +86,8 @@ public class CNLOHCallerUnitTest extends BaseTest {
     @Test(dataProvider = "fmafValues")
     public void testBasicFMaf(final double rho, final int m, final int n, final double credibleMode,
                               final double credibleLow, final double credibleHigh, final double gt) {
-        final double guess = CNLOHCaller.calculateFmaf(rho, m, n, credibleMode, credibleLow, credibleHigh);
-        final double guessCNSwitched = CNLOHCaller.calculateFmaf(rho, n, m, credibleMode, credibleLow, credibleHigh);
+        final double guess = CNLOHCaller.calculateFmaf(rho, m, n, credibleMode, credibleLow, credibleHigh, HomoSapiensConstants.DEFAULT_PLOIDY);
+        final double guessCNSwitched = CNLOHCaller.calculateFmaf(rho, n, m, credibleMode, credibleLow, credibleHigh, HomoSapiensConstants.DEFAULT_PLOIDY);
         Assert.assertEquals(guess, gt, 1e-9);
         Assert.assertEquals(guessCNSwitched, gt, 1e-9);
     }
@@ -113,16 +114,16 @@ public class CNLOHCallerUnitTest extends BaseTest {
 
     @Test(dataProvider = "crValues")
     public void testCalculateCr(double rho, int m, int n, double lambda, double gt) {
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda), gt, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda), gt, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda*2), gt/2, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda/2), gt*2, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda/2), gt*2, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda*2), gt/2, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda*4), gt/4, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda/4), gt*4, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda/4), gt*4, 1e-6);
-        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda*4), gt/4, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda, HomoSapiensConstants.DEFAULT_PLOIDY), gt, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda, HomoSapiensConstants.DEFAULT_PLOIDY), gt, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda*2, HomoSapiensConstants.DEFAULT_PLOIDY), gt/2, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda/2, HomoSapiensConstants.DEFAULT_PLOIDY), gt*2, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda/2, HomoSapiensConstants.DEFAULT_PLOIDY), gt*2, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda*2, HomoSapiensConstants.DEFAULT_PLOIDY), gt/2, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda*4, HomoSapiensConstants.DEFAULT_PLOIDY), gt/4, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda/4, HomoSapiensConstants.DEFAULT_PLOIDY), gt*4, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, m, n, lambda/4, HomoSapiensConstants.DEFAULT_PLOIDY), gt*4, 1e-6);
+        Assert.assertEquals(CNLOHCaller.calculateCopyRatio(rho, n, m, lambda*4, HomoSapiensConstants.DEFAULT_PLOIDY), gt/4, 1e-6);
     }
 
     // calculateCopyRatio(final double rho, final int m, final int n, final double lambda), ground truth
@@ -142,7 +143,7 @@ public class CNLOHCallerUnitTest extends BaseTest {
 
     @Test(dataProvider = "3dArray")
     public void testSumOnlyFirstDimension(double[][][] array3d, double[][] gt) {
-        Assert.assertEquals(CNLOHCaller.sumOnlyFirstDimension(array3d), gt);
+        Assert.assertEquals(CNLOHCaller.sumOverFirstDimension(array3d), gt);
     }
 
     @DataProvider(name="3dArray")
@@ -174,12 +175,12 @@ public class CNLOHCallerUnitTest extends BaseTest {
                                       final double crMode, final double crLow, final double crHigh,
                                       final double lambda, final double gt) {
         final List<ACNVModeledSegment> segments = SegmentUtils.readACNVModeledSegmentFile(new File(ACNV_SEG_FILE));
-        CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(0.2, segments);
+        CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(0.2, segments,
+                HomoSapiensConstants.DEFAULT_PLOIDY, CNLOHCaller.NUM_RHOS);
 
-        // calc_E_zsk_vsm_wsn_fast(E_ln_phi_k, pis, rhos, m_vals, n_vals, [.48 .499 .4999], [0.9 1 1.1], 2)
         final CNLOHCaller cnlohCaller = new CNLOHCaller();
-        final double[][][] responsibilities = cnlohCaller.calcE_zsk_vsm_wsn(state.getELnPhiK(), state.getCnToPiMap(), state.getRhos(),
-                mafMode, mafLo, mafHi, crMode, crLow, crHigh, lambda);
+        final double[][][] responsibilities = cnlohCaller.calculateResponsibilities(state.getEffectivePhis(), state.getEffectivePis(), state.getRhos(),
+                mafMode, mafLo, mafHi, crMode, crLow, crHigh, lambda, state.getmVals(), state.getnVals());
 
         // Will be slightly less than 1.0, but should be pretty close.  rho == 0, M == N == 1
         Assert.assertEquals(responsibilities[0][1][1], gt, 1e-4);

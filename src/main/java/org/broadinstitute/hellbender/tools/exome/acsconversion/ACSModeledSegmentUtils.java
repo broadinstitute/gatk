@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
-import org.broadinstitute.hellbender.tools.exome.cnlohcaller.CNLOHBalancedCallEnum;
+import org.broadinstitute.hellbender.tools.exome.cnlohcaller.CNLOHBalancedCall;
 import org.broadinstitute.hellbender.tools.exome.cnlohcaller.CNLOHCall;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -86,7 +86,7 @@ public class ACSModeledSegmentUtils {
         Utils.nonNull(cnlohCalls);
         Utils.nonNull(genome);
 
-        return cnlohCalls.stream().map(c -> convertACNVSegmentToACSSegment(c.getAcnvSegment(), divisor, genome, c.getBalancedCall() == CNLOHBalancedCallEnum.BALANCED))
+        return cnlohCalls.stream().map(c -> convertACNVSegmentToACSSegment(c.getAcnvSegment(), divisor, genome, c.getBalancedCall() == CNLOHBalancedCall.BALANCED))
                 .collect(Collectors.toList());
     }
 

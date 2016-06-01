@@ -121,17 +121,17 @@ public class GATKProtectedMathUtilsTest {
 
     @Test
     public void testLinspace() {
-        Assert.assertEquals(GATKProtectedMathUtils.linspace(-5, 1, 5), new double[] {-5.0000, -3.5000, -2.0000, -0.5000, 1.0000});
-        Assert.assertEquals(GATKProtectedMathUtils.linspace(-5, 1, 0), new double[] {});
-        Assert.assertEquals(GATKProtectedMathUtils.linspace(-5, 1, 1), new double[] {1.0});
-        Assert.assertEquals(GATKProtectedMathUtils.linspace(-5, 1, 2), new double[] {-5.0, 1.0});
-        Assert.assertEquals(GATKProtectedMathUtils.linspace(-5, -5, 2), new double[] {-5.0, -5.0});
-        Assert.assertEquals(GATKProtectedMathUtils.linspace(1e-10, 1, 2), new double[] {1e-10, 1});
+        Assert.assertEquals(GATKProtectedMathUtils.createEvenlySpacedPoints(-5, 1, 5), new double[] {-5.0000, -3.5000, -2.0000, -0.5000, 1.0000});
+        Assert.assertEquals(GATKProtectedMathUtils.createEvenlySpacedPoints(-5, 1, 0), new double[] {});
+        Assert.assertEquals(GATKProtectedMathUtils.createEvenlySpacedPoints(-5, 1, 1), new double[] {1.0});
+        Assert.assertEquals(GATKProtectedMathUtils.createEvenlySpacedPoints(-5, 1, 2), new double[] {-5.0, 1.0});
+        Assert.assertEquals(GATKProtectedMathUtils.createEvenlySpacedPoints(-5, -5, 2), new double[] {-5.0, -5.0});
+        Assert.assertEquals(GATKProtectedMathUtils.createEvenlySpacedPoints(1e-10, 1, 2), new double[] {1e-10, 1});
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLinspaceWithNegativePoints() {
-        GATKProtectedMathUtils.linspace(-5, 1, -2);
+        GATKProtectedMathUtils.createEvenlySpacedPoints(-5, 1, -2);
     }
 
 
@@ -164,7 +164,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testColumnSum() {
         final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.columnSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.columnSums(new Array2DRowRealMatrix(array));
         final double[] gt = {-2, 17, 29};
         Assert.assertEquals(guess.length, 3);
         Assert.assertEquals(guess, gt);
@@ -173,7 +173,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testColumnNaN() {
         final double[][] array = { {1,2, Double.NaN}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.columnSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.columnSums(new Array2DRowRealMatrix(array));
         final double[] gt = {-2, 17, Double.NaN};
         Assert.assertEquals(guess.length, 3);
         Assert.assertEquals(guess[0], gt[0]);
@@ -184,7 +184,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testColumnInf() {
         final double[][] array = { {1,2, Double.POSITIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.columnSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.columnSums(new Array2DRowRealMatrix(array));
         final double[] gt = {-2, 17, Double.POSITIVE_INFINITY};
         Assert.assertEquals(guess.length, 3);
         Assert.assertEquals(guess[0], gt[0]);
@@ -195,7 +195,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testColumnNegInf() {
         final double[][] array = { {1,2, Double.NEGATIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.columnSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.columnSums(new Array2DRowRealMatrix(array));
         final double[] gt = {-2, 17, Double.NEGATIVE_INFINITY};
         Assert.assertEquals(guess.length, 3);
         Assert.assertEquals(guess[0], gt[0]);
@@ -206,7 +206,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testRowSum() {
         final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.rowSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.rowSums(new Array2DRowRealMatrix(array));
         final double[] gt = {6, 15, 24, -1};
         Assert.assertEquals(guess.length, 4);
         Assert.assertEquals(guess, gt);
@@ -215,7 +215,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testRowNaN() {
         final double[][] array = { {1,2, Double.NaN}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.rowSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.rowSums(new Array2DRowRealMatrix(array));
         final double[] gt = {Double.NaN, 15, 24, -1};
         Assert.assertEquals(guess.length, 4);
         Assert.assertEquals(guess[1], gt[1]);
@@ -227,7 +227,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testRowInf() {
         final double[][] array = { {1,2, Double.POSITIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.rowSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.rowSums(new Array2DRowRealMatrix(array));
         final double[] gt = {Double.POSITIVE_INFINITY, 15, 24, -1};
         Assert.assertEquals(guess.length, 4);
         Assert.assertEquals(guess[1], gt[1]);
@@ -239,7 +239,7 @@ public class GATKProtectedMathUtilsTest {
     @Test
     public void testRowNegInf() {
         final double[][] array = { {1,2, Double.NEGATIVE_INFINITY}, {5,5,5}, {7,8,9}, {-15, 2, 12}};
-        final double[] guess = GATKProtectedMathUtils.rowSum(new Array2DRowRealMatrix(array));
+        final double[] guess = GATKProtectedMathUtils.rowSums(new Array2DRowRealMatrix(array));
         final double[] gt = {Double.NEGATIVE_INFINITY, 15, 24, -1};
         Assert.assertEquals(guess.length, 4);
         Assert.assertEquals(guess[1], gt[1]);
@@ -252,7 +252,7 @@ public class GATKProtectedMathUtilsTest {
     public void testSum() {
         final double[] array = {-2, 17, 29};
         final double gt = 44;
-        final double guess = GATKProtectedMathUtils.sum(array);
+        final double guess = MathUtils.sum(array);
         Assert.assertEquals(guess, gt);
     }
 

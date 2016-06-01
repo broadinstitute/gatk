@@ -21,22 +21,18 @@ import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.serializer.KryoSerializer;
-import org.apache.spark.serializer.SerializerInstance;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import scala.reflect.ClassTag;
-import scala.reflect.ClassTag$;
+import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.SortedMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -60,7 +56,7 @@ import java.util.stream.IntStream;
  *     <li>M -- absolute copy number for allele 1</li>
  *     <li>N -- absolute copy number for allele 2.  NOT assumed to have same or fewer copies than allele 1</li>
  *     <li>pi -- discrete pdf for values of M and N</li>
- *     <li>phi -- likelihood of each rho value</li>
+ *     <li>phi -- discrete pdf for each rho value</li>
  *     <li>maf -- minor allelic fraction</li>
  *     <li>fMaf -- likelihood of a minor allelic fraction, given other parameters</li>
  *     <li>cr -- copy ratio</li>
@@ -86,12 +82,27 @@ public class CNLOHCaller implements Serializable {
 
     private double rhoThreshold;
 
+    public static double RHO_THRESHOLD_DEFAULT = 0.2;
+
+    private static double NUM_STD_95_CONF_INTERVAL_GAUSSIAN = 1.96;
+
+    private static double CLOSE_ENOUGH_TO_COPY_NEUTRAL_IN_CR = 0.1;
+
+    /** Minimum value to integrate over in order to calculate E_alpha*/
+    private static double MIN_E_ELPHA_INTEGRATION_RANGE = 0.0;
+
+    /** Maximum value to integrate over in order to calculate E_alpha*/
+    private static double MAX_E_ELPHA_INTEGRATION_RANGE = 10.0;
+
     /** How many copies expected in a normal.  For humans, this is 2 */
     private int normalNumCopies;
 
+    /** Number of discrete rho values to use. A.k.a "K"*/
+    protected static int NUM_RHOS = 25;
+
     public CNLOHCaller(){
-        rhoThreshold = 0.2;
-        normalNumCopies = 2;
+        rhoThreshold = RHO_THRESHOLD_DEFAULT;
+        normalNumCopies = HomoSapiensConstants.DEFAULT_PLOIDY;
     }
 
     public int getNormalNumCopies() {
@@ -113,14 +124,14 @@ public class CNLOHCaller implements Serializable {
     /**
      * Calculate the likelihood of a MAF.
      *
-     * This is done by assuming with two Gaussians each modeling below the mode and above the mode.  While this is not a
+     * This is done by assuming with two half-Gaussians each modeling below the mode and above the mode.  While this is not a
      *  particularly good form for a distribution, it is quick to calculate and generates reasonable results.  This is
-     *  also done, because we do not know the exact form of the distribution when coming from ACNV.
+     *  also done because we do not know the exact form of the distribution when coming from ACNV.
      *
      */
     @VisibleForTesting
     static double calculateFmaf(final double rho, final int m, final int n, final double credibleMode,
-                                   final double credibleLow, final double credibleHigh) {
+                                   final double credibleLow, final double credibleHigh, final double normalPloidy) {
         ParamUtils.inRange(rho, 0.0, 1.0, "Invalid rho value: " + rho + ".  Must be [0,1]");
         ParamUtils.isPositiveOrZero(m, "M must be positive.");
         ParamUtils.isPositiveOrZero(n, "N must be positive.");
@@ -129,7 +140,7 @@ public class CNLOHCaller implements Serializable {
             return 1;
         }
 
-        final double maf = calculateMaf(rho, m, n);
+        final double maf = calculateMaf(rho, m, n, normalPloidy);
         return Math.max(calculateDoubleGaussian(maf, credibleMode, credibleLow, credibleHigh), MIN_L);
 
     }
@@ -145,23 +156,19 @@ public class CNLOHCaller implements Serializable {
      * @return calculated minor allele fraction
      */
     @VisibleForTesting
-    static double calculateMaf(final double rho, final int m, final int n) {
-
+    static double calculateMaf(final double rho, final int m, final int n, final double normalPloidy) {
         ParamUtils.inRange(rho, 0.0, 1.0, "Invalid rho value: " + rho + ".  Must be [0,1]");
         ParamUtils.isPositiveOrZero(m, "M must be >= 0");
         ParamUtils.isPositiveOrZero(n, "N must be >= 0");
 
-        double result = ((1-rho) + rho * (Math.min(n,m))) / ( (1-rho)*2 + rho * (n+m) );
+        double result = ((1-rho) + rho * (Math.min(n,m))) / ( (1-rho)*normalPloidy + rho * (n+m) );
 
         // If result is NaN, that means that we had rho = 1 and M,N = 0
-        if ((result < MIN_L) || (Double.isNaN(result))) {
-            result = MIN_L;
-        }
-        return result;
+        return (result < MIN_L) || (Double.isNaN(result)) ? MIN_L : result;
     }
 
     /**
-     * This function takes two Gaussian distributions and uses one for the values below the mode and the other for values above the
+     * This function takes two half-Gaussian distributions and uses one for the values below the mode and the other for values above the
      *  mode.
      *
      *  If the mode is outside the credible interval, the calculation is done as if the interval boundary is
@@ -178,20 +185,9 @@ public class CNLOHCaller implements Serializable {
     static double calculateDoubleGaussian(final double val, final double credibleMode, final double credibleLow,
                                              final double credibleHigh) {
 
-        double hiDist = credibleHigh - credibleMode;
-        if (credibleMode >= credibleHigh) {
-            hiDist = MIN_DIST_FROM_MODE;
-        }
-        double loDist = credibleMode - credibleLow;
-        if (credibleMode <= credibleLow) {
-            loDist = MIN_DIST_FROM_MODE;
-        }
-
-        if (val >= credibleMode) {
-            return new NormalDistribution(credibleMode, hiDist / 1.96).density(val);
-        } else {
-            return new NormalDistribution(credibleMode, loDist / 1.96).density(val);
-        }
+        final double hiDist = Math.max(credibleHigh - credibleMode, MIN_DIST_FROM_MODE);
+        final double loDist = Math.max(credibleMode - credibleLow, MIN_DIST_FROM_MODE);
+        return new NormalDistribution(null, credibleMode, ( val >= credibleMode ? hiDist : loDist)/NUM_STD_95_CONF_INTERVAL_GAUSSIAN).density(val);
     }
 
     /**
@@ -201,11 +197,12 @@ public class CNLOHCaller implements Serializable {
      * @param m Absolute copy number of allele 1
      * @param n Absolute copy number of allele 2
      * @param lambda CCF * ploidy
+     * @param normalPloidy ploidy for the normal cells.  For humans, this is 2.
      * @return copy ratio in CR space
      */
     @VisibleForTesting
-    static double calculateCopyRatio(final double rho, final int m, final int n, final double lambda) {
-        return ((1-rho) * 2 + rho*(n+m)) / lambda;
+    static double calculateCopyRatio(final double rho, final int m, final int n, final double lambda, final double normalPloidy) {
+        return ((1-rho) * normalPloidy + rho*(n+m)) / lambda;
     }
 
     /**
@@ -219,11 +216,12 @@ public class CNLOHCaller implements Serializable {
      * @param credibleLow  low point of the credible interval from for the copy ratio.
      * @param credibleHigh  high point of the credible interval from for the copy ratio.
      * @param additionalVariance Additional variance that should be included in the segment mean pdf
+     * @param normalPloidy ploidy for the normal cells.  For humans, this is 2.
      * @return likelihood, with a minimum value of {@link CNLOHCaller#MIN_L}
      */
     @VisibleForTesting
     static double calculateFcr(final double rho, final int m, final int n, final double lambda, final double credibleMode,
-                         final double credibleLow, final double credibleHigh, final double additionalVariance) {
+                         final double credibleLow, final double credibleHigh, final double additionalVariance, final double normalPloidy) {
         ParamUtils.inRange(rho, 0.0, 1.0, "Invalid rho value: " + rho + ".  Must be [0,1]");
         ParamUtils.isPositiveOrZero(m, "M must be positive.");
         ParamUtils.isPositiveOrZero(n, "N must be positive.");
@@ -231,9 +229,10 @@ public class CNLOHCaller implements Serializable {
         if (Double.isNaN(credibleMode) || Double.isNaN(credibleLow) || Double.isNaN(credibleHigh)){
             return 1;
         }
-        final double cr = calculateCopyRatio(rho, m, n, lambda);
+        final double cr = calculateCopyRatio(rho, m, n, lambda, normalPloidy);
         final double avgDist = ((credibleMode - credibleLow) + (credibleHigh - credibleMode))/2.0;
-        return Math.max(new NormalDistribution(credibleMode, (avgDist / 1.96) + Math.sqrt(additionalVariance)).density(cr), MIN_L);
+        return Math.max(new NormalDistribution(null, credibleMode,
+                (avgDist / NUM_STD_95_CONF_INTERVAL_GAUSSIAN) + Math.sqrt(additionalVariance)).density(cr), MIN_L);
     }
 
     /**
@@ -246,24 +245,25 @@ public class CNLOHCaller implements Serializable {
     private double calculateVarianceOfCopyNeutralSegmentMeans(final List<ACNVModeledSegment> segments, final double meanBiasInCR) {
         Utils.nonNull(segments);
 
-        final Variance varianceCalculator = new Variance();
-
         // Only consider values "close enough" to copy neutral (CR == 1).
-        return varianceCalculator.evaluate(segments.stream()
-                .filter(s -> Math.abs(s.getSegmentMeanInCRSpace() - 1 + meanBiasInCR) < 0.1)
-                .mapToDouble(s -> s.getSegmentMeanInCRSpace()).toArray());
+        final double neutralCR = 1 + meanBiasInCR;
+        final double[] neutralSegmentMeans = segments.stream()
+                .mapToDouble(ACNVModeledSegment::getSegmentMeanInCRSpace)
+                .filter(m -> Math.abs(m - neutralCR) < CLOSE_ENOUGH_TO_COPY_NEUTRAL_IN_CR).toArray();
+        return new Variance().evaluate(neutralSegmentMeans);
     }
 
     private double calculateSegmentMeanBiasInCRSpace(final List<ACNVModeledSegment> segments) {
         Utils.nonNull(segments);
-        final Percentile percentile = new Percentile();
+
+        final double neutralCRApprox = 1;
 
         // Only consider values "close enough" to copy neutral (CR == 1).
-        final double modeInCRSpace =  percentile.evaluate(segments.stream()
-                .filter(s -> Math.abs(s.getSegmentMeanInCRSpace() - 1) < 0.1)
-                .mapToDouble(s -> s.getSegmentMeanInCRSpace()).toArray(), 50);
+        final double[] neutralSegmentMeans = segments.stream().mapToDouble(ACNVModeledSegment::getSegmentMeanInCRSpace)
+                .filter(x -> Math.abs(x - neutralCRApprox) < CLOSE_ENOUGH_TO_COPY_NEUTRAL_IN_CR)
+                .toArray();
 
-        return modeInCRSpace - 1;
+        return new Percentile().evaluate(neutralSegmentMeans) - 1;
     }
 
     /**
@@ -277,7 +277,6 @@ public class CNLOHCaller implements Serializable {
      * @return Never {@code null}
      */
     public List<CNLOHCall> makeCalls(final List<ACNVModeledSegment> segments, final int numIterations, final JavaSparkContext ctx) {
-
         ParamUtils.isPositive(numIterations, "Must be more than zero iterations.");
         Utils.nonNull(segments);
         Utils.nonNull(ctx, "Java SparkContext can't be null when attempting to make CNLOH and balance calls.");
@@ -285,7 +284,8 @@ public class CNLOHCaller implements Serializable {
         segmentMeanBiasInCR = calculateSegmentMeanBiasInCRSpace(segments);
         segmentMeanVarianceInCR = calculateVarianceOfCopyNeutralSegmentMeans(segments, segmentMeanBiasInCR);
 
-        CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(rhoThreshold, segments);
+        final CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(rhoThreshold, segments,
+                normalNumCopies, NUM_RHOS);
 
         // Create a Spark RDD for the segments.
         final JavaRDD<ACNVModeledSegment> segs = ctx.parallelize(segments);
@@ -296,7 +296,7 @@ public class CNLOHCaller implements Serializable {
         for (int i = 1; i <= numIterations; i++) {
 
             logger.info("Starting iteration " + i + " of " + numIterations + " ... ");
-            logger.info("Calculating big E_zsk_vsm_wsn for each segment (iteration " + i + " of " + numIterations + ") ... ");
+            logger.info("Calculating responsibilities (E_zsk_vsm_wsn) for each segment ... ");
 
             // We are not broadcasting state, since it will only be used once before values change.  In that case,
             //  there is no gain for broadcasting
@@ -304,134 +304,123 @@ public class CNLOHCaller implements Serializable {
             // Effectively, the responsibilities are a 4D array:  S x K x M x N.  We do the responsibility calculation
             //  over the segments.  So the JavaRDD will be of length S.
             // Update E_zsk_vsm_wsn (responsibilities) for each segment (Steps 1 & 2)  {K x M x N} in S entries.  The RDD is of length S.
-            final JavaRDD<double[][][]> eZskVsmWsnBySeg = segs.map(s -> calcE_zsk_vsm_wsn(state.getELnPhiK(), state.getCnToPiMap(), state.getRhos(),
+            final JavaRDD<double[][][]> responsibilitiesForSegs = segs.map(s -> calculateResponsibilities(state.getEffectivePhis(), state.getEffectivePis(), state.getRhos(),
                     s.getMinorAlleleFractionPosteriorSummary().getCenter(),
                     s.getMinorAlleleFractionPosteriorSummary().getLower(),
                     s.getMinorAlleleFractionPosteriorSummary().getUpper(),
                     Math.pow(2, s.getSegmentMeanPosteriorSummary().getCenter()) - segmentMeanBiasInCR,
                     Math.pow(2, s.getSegmentMeanPosteriorSummary().getLower()) - segmentMeanBiasInCR,
                     Math.pow(2, s.getSegmentMeanPosteriorSummary().getUpper()) - segmentMeanBiasInCR,
-                    state.getLambda()));
+                    state.getLambda(), state.getmVals(), state.getnVals()));
 
-            // Create an array (for each segment) that is a sum of eZskVsmWsnBySeg on the rhos.  (length:K for S entries)
-            final JavaRDD<double[]> eZskBySeg = eZskVsmWsnBySeg.map(da -> sumOverFirstDimension(da));
-            final JavaRDD<double[]> eVsmBySeg = eZskVsmWsnBySeg.map(da -> sumOverSecondDimension(da));
-            final JavaRDD<double[]> eWsnBySeg = eZskVsmWsnBySeg.map(da -> sumOverThirdDimension(da));
+            // Create an array (for each segment) that is a sum of responsibilities for each rho.  (length:K for S entries)
+            final JavaRDD<double[]> responsibilitiesByRhoForSegs = responsibilitiesForSegs.map(da -> sumOverSecondAndThirdDimension(da));
+            final JavaRDD<double[]> responsibilitiesByAllele1ForSegs = responsibilitiesForSegs.map(da -> sumOverFirstAndThirdDimension(da));
+            final JavaRDD<double[]> responsibilitiesByAllele2ForSegs = responsibilitiesForSegs.map(da -> sumOverFirstAndSecondDimension(da));
 
             // Create arrays summed in one dimension (incl. over segs).
-            final double[] eZskSummedOverSegs = sumOverSegs(eZskBySeg);
-            final double[] eVsmSummedOverSegs = sumOverSegs(eVsmBySeg);
-            final double[] eWsnSummedOverSegs = sumOverSegs(eWsnBySeg);
+            final double[] responsibilitiesByRho = sumOverSegments(responsibilitiesByRhoForSegs);
+            final double[] responsibilitiesByAllele1 = sumOverSegments(responsibilitiesByAllele1ForSegs);
+            final double[] responsibilitiesByAllele2 = sumOverSegments(responsibilitiesByAllele2ForSegs);
 
-            final List<double[][][]> eZskVsmWsnBySegAsList = eZskVsmWsnBySeg.collect();
+            final List<double[][][]> responsibilitiesForSegsAsList = responsibilitiesForSegs.collect();
 
-            // Update E_ln_phi_k (Step 3)
-            logger.info("Updating E_ln_phi_k (iteration " + i + " of " + numIterations +  ") ... ");
-            state.setELnPhiK(calc_E_ln_phi_k(state.getEAlpha(), eZskSummedOverSegs));
+            // Update EffectivePhis (Step 3)
+            logger.info("Updating effective phis (iteration " + i + " of " + numIterations +  ") ... ");
+            state.setEffectivePhis(calcEffectivePhis(state.getEffectiveAlpha(), responsibilitiesByRho));
 
             // Update pis (Step 4)
-            logger.info("Updating pis (iteration " + i + " of " + numIterations +  ") ... ");
-            final double[] pis = calcPis(eVsmSummedOverSegs, eWsnSummedOverSegs);
-            final List<Integer> keys = new ArrayList<>(state.getCnToPiMap().keySet());
-            for (int p = 0; p < pis.length; p++) {
-                state.getCnToPiMap().put(keys.get(p), pis[p]);
-            }
+            logger.info("Updating pis (iteration " + i + " of " + numIterations + ") ... ");
+            state.setEffectivePis(calcPis(responsibilitiesByAllele1, responsibilitiesByAllele2));
 
             // Update E_alpha (Step 5)
             logger.info("Updating E_alpha (iteration " + i + " of " + numIterations + ") ... ");
-            final int minCN = state.getCnToPiMap().keySet().stream().min(Integer::compare).get();
-            final int maxCN = state.getCnToPiMap().keySet().stream().max(Integer::compare).get();
-            state.setEAlpha(calcEAlpha(state.getELnPhiK(), minCN, maxCN));
+            state.setEffectiveAlpha(calcEffectiveAlpha(state.getEffectivePhis()));
 
             // Update rhos (Step 6)
-            logger.info("Updating rhos (iteration " + i + ") ... ");
-            state.setRhos(calcNewRhos(segments, eZskVsmWsnBySegAsList, state.getCnToPiMap(), state.getLambda(),
-                    state.getRhos(), ctx));
+            logger.info("Updating rhos (iteration " + i + " of " + numIterations +  ") ... ");
+            state.setRhos(calcNewRhos(segments, responsibilitiesForSegsAsList, state.getLambda(),
+                    state.getRhos(), state.getmVals(), state.getnVals(), ctx));
 
             // This only really needs to  be done once, but is necessary here due to scoping issues that will cause
             //  compiler issues.
-            cnlohCalls = createCNLoHCalls(segments, state, eZskVsmWsnBySegAsList);
+            logger.info("Updating calls (iteration " + i + " of " + numIterations +  ") ... ");
+            cnlohCalls = createCNLoHCalls(segments, state, responsibilitiesForSegsAsList);
         }
         logger.info("ACNV segments bias, variance (around copy neutral only): " + segmentMeanBiasInCR + ", " + segmentMeanVarianceInCR);
         logger.info("Output file is not adjusted for the bias and variance.  No user action required.");
         return cnlohCalls;
     }
 
-    private List<CNLOHCall> createCNLoHCalls(List<ACNVModeledSegment> segments, CNLOHCallerModelState state, List<double[][][]> eZskVsmWsnBySegAsList) {
+    private List<CNLOHCall> createCNLoHCalls(final List<ACNVModeledSegment> segments, final CNLOHCallerModelState state, final List<double[][][]> responsibilitiesForSegs) {
 
-        final List<CNLOHCall> cnlohCalls = segments.stream().map(s -> new CNLOHCall(s)).collect(Collectors.toList());
+        final List<CNLOHCall> cnlohCalls = segments.stream().map(CNLOHCall::new).collect(Collectors.toList());
 
-        final List<Pair<Integer, Integer>> maxMiNiPerSeg = IntStream.range(0, segments.size()).boxed()
-                .map(s -> max2dIndices(sumOnlyFirstDimension(eZskVsmWsnBySegAsList.get(s))))
+        final List<Pair<Integer, Integer>> maxMIdxNIdxPerSeg = IntStream.range(0, segments.size()).boxed()
+                .map(s -> max2dIndices(sumOverFirstDimension(responsibilitiesForSegs.get(s))))
                 .collect(Collectors.toList());
 
         final List<double[]> rhosForBestMN = IntStream.range(0, segments.size()).boxed()
-                .map(s -> getFirstDimensionArray(eZskVsmWsnBySegAsList.get(s), maxMiNiPerSeg.get(s).getFirst(), maxMiNiPerSeg.get(s).getSecond()))
+                .map(s -> getFirstDimensionArray(responsibilitiesForSegs.get(s), maxMIdxNIdxPerSeg.get(s).getFirst(), maxMIdxNIdxPerSeg.get(s).getSecond()))
                 .collect(Collectors.toList());
 
-        final List<Integer> maxRhoi = rhosForBestMN.stream().map(da -> maxIndex(da)).collect(Collectors.toList());
-        final int[] mVals = state.getCnToPiMap().keySet().stream().mapToInt(Integer::intValue).toArray();
-        final int[] nVals = state.getCnToPiMap().keySet().stream().mapToInt(Integer::intValue).toArray();
-
-        final int[] calledMPerSeg = maxMiNiPerSeg.stream().mapToInt(p -> mVals[p.getFirst()]).toArray();
-        final int[] calledNPerSeg = maxMiNiPerSeg.stream().mapToInt(p -> nVals[p.getSecond()]).toArray();
-        final double[] calledRhoPerSeg = maxRhoi.stream().mapToDouble(ri -> state.getRhos()[ri]).toArray();
+        final double[] calledRhoPerSeg = rhosForBestMN.stream().map(MathUtils::maxElementIndex).mapToDouble(ri -> state.getRhos()[ri]).toArray();
+        final int[] calledMPerSeg = maxMIdxNIdxPerSeg.stream().mapToInt(p -> state.getmVals()[p.getFirst()]).toArray();
+        final int[] calledNPerSeg = maxMIdxNIdxPerSeg.stream().mapToInt(p -> state.getnVals()[p.getSecond()]).toArray();
 
         // Set the rho, M, N, FCr, and FMaf for the call
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s).setRho(calledRhoPerSeg[s]));
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s).setM(calledMPerSeg[s]));
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s).setN(calledNPerSeg[s]));
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s)
-                        .setfCr(calculateFcr(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], state.getLambda(),
-                                Math.pow(2, cnlohCalls.get(s).getAcnvSegment().getSegmentMeanPosteriorSummary().getCenter()),
-                                Math.pow(2, cnlohCalls.get(s).getAcnvSegment().getSegmentMeanPosteriorSummary().getLower()),
-                                Math.pow(2, cnlohCalls.get(s).getAcnvSegment().getSegmentMeanPosteriorSummary().getUpper()),
-                                segmentMeanVarianceInCR
-                        ))
-        );
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s)
-                        .setfMaf(calculateFmaf(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s],
-                                        cnlohCalls.get(s).getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getCenter(),
-                                        cnlohCalls.get(s).getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getLower(),
-                                        cnlohCalls.get(s).getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getUpper())
-                        )
-        );
+        for (int s = 0; s < cnlohCalls.size(); s ++) {
+            final CNLOHCall cnlohCallForSeg = cnlohCalls.get(s);
+            cnlohCallForSeg.setRho(calledRhoPerSeg[s]);
+            cnlohCallForSeg.setM(calledMPerSeg[s]);
+            cnlohCallForSeg.setN(calledNPerSeg[s]);
+            cnlohCallForSeg.setfCr(
+                    calculateFcr(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], state.getLambda(),
+                            Math.pow(2, cnlohCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getCenter()),
+                            Math.pow(2, cnlohCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getLower()),
+                            Math.pow(2, cnlohCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getUpper()),
+                            segmentMeanVarianceInCR, normalNumCopies
+                    ));
+            cnlohCallForSeg.setfMaf(
+                    calculateFmaf(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s],
+                            cnlohCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getCenter(),
+                            cnlohCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getLower(),
+                            cnlohCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getUpper(),
+                            normalNumCopies)
+            );
 
-        // Set the balanced calls
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s).setBalancedCall(isBalanced(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s])));
+            // Set the balanced call
+            cnlohCallForSeg.setBalancedCall(isBalanced(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s]));
 
-        // Set the CNLoH calls
-        IntStream.range(0, cnlohCalls.size()).forEach(s -> cnlohCalls.get(s).setCnlohCall(isCNLoH(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], cnlohCalls.get(s).getAcnvSegment())));
+            // Set the CNLoH call
+            cnlohCallForSeg.setCnlohCall(isCNLoH(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], cnlohCallForSeg.getAcnvSegment()));
+        }
 
         return cnlohCalls;
     }
 
-    private CNLOHBalancedCallEnum isBalanced(final double rho, final int m, final int n) {
-        if ((m == n) || (rho <= getRhoThreshold())) {
-            return CNLOHBalancedCallEnum.BALANCED;
-        } else {
-            return CNLOHBalancedCallEnum.NOT_BALANCED;
-        }
+    private CNLOHBalancedCall isBalanced(final double rho, final int m, final int n) {
+        return ( (m == n) || (rho <= getRhoThreshold()) ? CNLOHBalancedCall.BALANCED : CNLOHBalancedCall.NOT_BALANCED);
     }
 
-    private CNLOHLoHCallEnum isCNLoH(final double rho, final int m, final int n, final ACNVModeledSegment segment) {
+    private CNLOHLoHCall isCNLoH(final double rho, final int m, final int n, final ACNVModeledSegment segment) {
         if (Double.isNaN(segment.getMinorAlleleFractionPosteriorSummary().getCenter())) {
-            return CNLOHLoHCallEnum.NO_CALL;
+            return CNLOHLoHCall.NO_CALL;
         } else if (((m == getNormalNumCopies()) && (n == 0)) || ((n == getNormalNumCopies()) && (m == 0))
             && (rho > getRhoThreshold())) {
-            return CNLOHLoHCallEnum.CNLOH;
+            return CNLOHLoHCall.CNLOH;
         } else {
-            return CNLOHLoHCallEnum.NOT_CNLOH;
+            return CNLOHLoHCall.NOT_CNLOH;
         }
     }
 
-    private double[] sumOverSegs(JavaRDD<double[]> eZskBySeg) {
+    private double[] sumOverSegments(final JavaRDD<double[]> eZskBySeg) {
         final double[][] eZskBySeg2D = eZskBySeg.collect().stream().toArray(double[][]::new); // S x K
         final RealMatrix eZskBySegMatrix = MatrixUtils.createRealMatrix(eZskBySeg2D);
-        return GATKProtectedMathUtils.columnSum(eZskBySegMatrix);
+        return GATKProtectedMathUtils.columnSums(eZskBySegMatrix);
     }
 
-    private double[] sumOverFirstDimension(final double[][][] data) {
+    private double[] sumOverSecondAndThirdDimension(final double[][][] data) {
         final double [] result = new double[data.length];
         for (int i = 0; i < data.length; i++) {
             result[i] = 0;
@@ -460,28 +449,12 @@ public class CNLOHCaller implements Serializable {
         return result;
     }
 
-    private int maxIndex(final double[] data) {
-        double maxValue = Double.NEGATIVE_INFINITY;
-        int result = -1;
-        for (int i=0; i < data.length; i++) {
-            if (data[i] > maxValue) {
-                maxValue = data[i];
-                result = i;
-            }
-        }
-        return result;
-    }
-
     private double[] getFirstDimensionArray(final double[][][] array, final int dim2Index, final int dim3Index) {
-        final double[] result = new double[array.length];
-        for (int i = 0; i < result.length; i++) {
-            result[i] = array[i][dim2Index][dim3Index];
-        }
-        return result;
+        return Arrays.stream(array).mapToDouble(array2D -> array2D[dim2Index][dim3Index]).toArray();
     }
 
     @VisibleForTesting
-    static double[][] sumOnlyFirstDimension(final double[][][] data) {
+    static double[][] sumOverFirstDimension(final double[][][] data) {
         final double [][] result = new double[data[0].length][data[0][0].length];
 
         for (int j = 0; j < data[0].length; j++) {
@@ -496,7 +469,7 @@ public class CNLOHCaller implements Serializable {
         return result;
     }
 
-    private double[] sumOverSecondDimension(final double[][][] data) {
+    private double[] sumOverFirstAndThirdDimension(final double[][][] data) {
         final double [] result = new double[data[0].length];
         for (int j = 0; j < data[0].length; j++) {
             result[j] = 0;
@@ -510,7 +483,7 @@ public class CNLOHCaller implements Serializable {
         return result;
     }
 
-    private double[] sumOverThirdDimension(final double[][][] data) {
+    private double[] sumOverFirstAndSecondDimension(final double[][][] data) {
         final double [] result = new double[data[0][0].length];
         for (int k = 0; k < data[0][0].length; k++) {
             result[k] = 0;
@@ -525,15 +498,12 @@ public class CNLOHCaller implements Serializable {
     }
 
     // Assumes that the pis parameter is a SortedMap.
-    protected double[][][] calcE_zsk_vsm_wsn(final double[] E_ln_phi_k, final SortedMap<Integer, Double> pis,
-                                             final double[] rhos, final double mafCredibleMode,
-                                             final double mafCredibleLow, final double mafCredibleHigh,
-                                             final double crCredibleMode, final double crCredibleLow,
-                                             final double crCredibleHigh, final double lambda) {
-
-
-        final int[] mVals = pis.keySet().stream().mapToInt(Integer :: intValue).toArray();
-        final int[] nVals = pis.keySet().stream().mapToInt(Integer :: intValue).toArray();
+    protected double[][][] calculateResponsibilities(final double[] effectivePhis, final double[] pis,
+                                                     final double[] rhos, final double mafCredibleMode,
+                                                     final double mafCredibleLow, final double mafCredibleHigh,
+                                                     final double crCredibleMode, final double crCredibleLow,
+                                                     final double crCredibleHigh, final double lambda, final int[] mVals,
+                                                     final int[] nVals) {
 
         final double[][][] result = new double[rhos.length][mVals.length][nVals.length];
         double total = 0.0;
@@ -545,19 +515,28 @@ public class CNLOHCaller implements Serializable {
                     final int m = mVals[mi];
                     final int n = nVals[ni];
 
+                    // Do not allow rho to be less than zero or greater than one, since it is a proportion.
                     if ((rho < 0) || (rho > 1)) {
                         result[rhoi][mi][ni] = 0;
+
+                        // Do not allow rho to be zero and M = N = 1, since this would imply a rho of zero on a variant.
                     } else if ((rho == 0) && ((m != 1) || (n != 1))) {
                         result[rhoi][mi][ni] = 0;
+
+                        // Do not allow rho to take on a value less than the threshold, unless it is zero
                     } else if ((rho > 0) && (rho < rhoThreshold)) {
                         result[rhoi][mi][ni] = 0;
+
+                        // Do not allow rho to be greater than zero and M = N = 1, since this would imply a rho of non-zero
+                        //  on a normal ploidy.
                     } else if ((rho != 0) && ((m == 1) && (n == 1))) {
                         result[rhoi][mi][ni] = 0;
                     } else {
-                        result[rhoi][mi][ni] = Math.exp(E_ln_phi_k[rhoi]) *
-                                pis.get(m) * pis.get(n) *
-                                calculateFmaf(rho, m, n, mafCredibleMode, mafCredibleLow, mafCredibleHigh) *
-                                calculateFcr(rho, m, n, lambda, crCredibleMode, crCredibleLow, crCredibleHigh, segmentMeanVarianceInCR);
+                        result[rhoi][mi][ni] = effectivePhis[rhoi] *
+                                pis[mi] * pis[ni] *
+                                calculateFmaf(rho, m, n, mafCredibleMode, mafCredibleLow, mafCredibleHigh, normalNumCopies) *
+                                calculateFcr(rho, m, n, lambda, crCredibleMode, crCredibleLow, crCredibleHigh,
+                                        segmentMeanVarianceInCR, normalNumCopies);
                     }
 
                     total += result[rhoi][mi][ni];
@@ -577,94 +556,57 @@ public class CNLOHCaller implements Serializable {
         return result;
     }
 
-    protected double[] calc_E_ln_phi_k(final double E_alpha, final double[] eZskSummedOverSegs) {
+    protected double[] calcEffectivePhis(final double E_alpha, final double[] responsibilitiesByRho) {
 
-        /**
-         *
-         E_zsk_summed_over_segs = sum(E_zsk_for_each_seg, 2); % K x 1
-         E_zsk_summed_over_k_and_segs = sum(E_zsk_summed_over_segs);
+        final double sumResponsibilities = MathUtils.sum(responsibilitiesByRho);
 
-         % Slight modifications to stabilize values (+1 and +K) and add a bias towards rho = 0.
-         pseudocounts = ones(size(E_zsk_summed_over_segs));
-         pseudocounts(1) = 20;
-         term1 = psi(E_alpha/K + pseudocounts + E_zsk_summed_over_segs);
-         term2 = psi(E_alpha + sum(pseudocounts) + E_zsk_summed_over_k_and_segs);
-
-         result = term1 - term2;
-
-         */
-
-        final double eZskSummedOverAll = GATKProtectedMathUtils.sum(eZskSummedOverSegs);
-
-        final double[] result = new double[eZskSummedOverSegs.length];
-        final int k = eZskSummedOverSegs.length;
+        final double[] result = new double[responsibilitiesByRho.length];
+        final int k = responsibilitiesByRho.length;
 
         // Initialize all pseudocounts to 1, except for index 0, which is 20;
         //  This artificially increases the odds for a rho = 0.
-        final RealVector pseudocounts = new ArrayRealVector(eZskSummedOverSegs.length);
+        final RealVector pseudocounts = new ArrayRealVector(responsibilitiesByRho.length);
         pseudocounts.set(1.0);
         pseudocounts.setEntry(0, 20.0);
-        final double sumPseudocounts = GATKProtectedMathUtils.sum(pseudocounts.toArray());
 
+        final double sumPseudocounts = MathUtils.sum(pseudocounts.toArray());
+        final double term2 = Gamma.digamma(E_alpha + sumPseudocounts + sumResponsibilities);
         for (int i=0; i < result.length; i++) {
-            final double term1 = Gamma.digamma(E_alpha/k + pseudocounts.getEntry(i) + eZskSummedOverSegs[i]);
-            final double term2 = Gamma.digamma(E_alpha + sumPseudocounts + eZskSummedOverAll);
-            result[i] = term1 - term2;
+            final double term1 = Gamma.digamma(E_alpha/k + pseudocounts.getEntry(i) + responsibilitiesByRho[i]);
+            result[i] = Math.exp(term1 - term2);
         }
 
         return result;
     }
 
-    protected double[] calcPis(final double[] eVsm, final double[] eWsn) {
+    // Sum (and normalize) the responsibilities for each possible value of the absolute copy numbers.
+    protected double[] calcPis(final double[] responsibilitiesByAllele1, final double[] responsibilitiesByAllele2) {
 
-        // Sum (and normalize) the responsibilities for each possible value of the absolute copy numbers.
+        final double total = MathUtils.sum(responsibilitiesByAllele1) + MathUtils.sum(responsibilitiesByAllele2);
 
-        double total = 0;
-        for (int i = 0; i < eVsm.length; i++) {
-            total += eVsm[i] + eWsn[i];
-        }
-
-        final double[] result = new double[eVsm.length];
+        final double[] result = new double[responsibilitiesByAllele1.length];
         for (int i = 0; i < result.length; i++) {
-            result[i] = (eVsm[i] + eWsn[i]) / total;
+            result[i] = (responsibilitiesByAllele1[i] + responsibilitiesByAllele2[i]) / total;
         }
         return result;
     }
 
-    protected double calcEAlpha(final double[] E_ln_phi_k, final int minCN, final int maxCN) {
-        /**
-         *
-         numerator = integral(@(a) (a.*q_alpha(a, K, E_ln_phi_k)), 0, 5);
-         denominator = integral(@(a) (q_alpha(a, K, E_ln_phi_k)), 0, 5);
-         if numerator == 0
-         result = 0;
-         else
-         result = numerator/denominator;
-         end
-         */
+    protected double calcEffectiveAlpha(final double[] effectivePhis) {
 
-        final QAlphaUnivariateFunction qAlpha = new QAlphaUnivariateFunction(E_ln_phi_k);
-        final AQAlphaUnivariateFunction aQAlpha = new AQAlphaUnivariateFunction(E_ln_phi_k);
+        final QAlphaUnivariateFunction qAlpha = new QAlphaUnivariateFunction(effectivePhis);
+        final AQAlphaUnivariateFunction aQAlpha = new AQAlphaUnivariateFunction(effectivePhis);
         final BaseAbstractUnivariateIntegrator integrator = new SimpsonIntegrator();
 
-        final double numerator = integrator.integrate(10, aQAlpha, minCN, maxCN);
-        final double denominator = integrator.integrate(10, qAlpha, minCN, maxCN);
+        final double numerator = integrator.integrate(10, aQAlpha, MIN_E_ELPHA_INTEGRATION_RANGE, MAX_E_ELPHA_INTEGRATION_RANGE);
+        final double denominator = integrator.integrate(10, qAlpha, MIN_E_ELPHA_INTEGRATION_RANGE, MAX_E_ELPHA_INTEGRATION_RANGE);
 
-        // If denominator and numerator are both zero, we want to return zero.  But that simplifies to the
-        //  numerator being zero.
-        if (numerator == 0) {
-            return 0;
-        } else {
-            return numerator/denominator;
-        }
+        return numerator/denominator;
     }
 
     private double[] calcNewRhos(final List<ACNVModeledSegment> segments,
-                               final List<double[][][]> eZskVsmWsnBySeg, final SortedMap<Integer, Double> pis,
-                               final double lambda, final double[] rhos, final JavaSparkContext ctx) {
-
-        final int[] mVals = pis.keySet().stream().mapToInt(i->i).toArray();
-        final int[] nVals = pis.keySet().stream().mapToInt(i->i).toArray();
+                                 final List<double[][][]> responsibilitiesBySeg,
+                                 final double lambda, final double[] rhos, final int[] mVals, final int[] nVals,
+                                 final JavaSparkContext ctx) {
 
         // Since, we pass in the entire responsibilities matrix, we need the correct index for each rho.  That, and the
         //  fact that this is a univariate objective function, means we need to create an instance for each rho.  And
@@ -675,7 +617,7 @@ public class CNLOHCaller implements Serializable {
                         new Function<Double, Double>() {
                             @Override
                             public Double apply(Double rho) {
-                                return calculateESmnObjective(rho, segments, eZskVsmWsnBySeg, mVals, nVals, lambda, i);
+                                return calculateESmnObjective(rho, segments, responsibilitiesBySeg, mVals, nVals, lambda, i);
                             }
                         },
                         new SearchInterval(0.0, 1.0, rhos[i])))
@@ -696,14 +638,14 @@ public class CNLOHCaller implements Serializable {
     //
     //  HACK: All rhos have to be passed in with the index of interest.  Under the hood, all other values of rho are ignored.
     private double calculateESmnObjective(final double rho, List<ACNVModeledSegment> segments,
-                                          final List<double[][][]> eZskVsmWsnBySeg,
-                                          final int[] m_vals, final int[] n_vals, final double lambda, final int rhoIndex) {
+                                          final List<double[][][]> responsibilitiesForSegsAsList,
+                                          final int[] mVals, final int[] nVals, final double lambda, final int rhoIndex) {
 
         // We will want to sum an entire matrix that is S x M x N for the given rho.
-        final double[][][] eSMN = new double[eZskVsmWsnBySeg.size()][m_vals.length][n_vals.length];
+        final double[][][] eSMN = new double[responsibilitiesForSegsAsList.size()][mVals.length][nVals.length];
 
         // Populate eSMN
-        for (int s=0; s<eZskVsmWsnBySeg.size(); s++) {
+        for (int s=0; s<responsibilitiesForSegsAsList.size(); s++) {
             final ACNVModeledSegment seg = segments.get(s);
             final double mafMode = seg.getMinorAlleleFractionPosteriorSummary().getCenter();
             final double mafLow = seg.getMinorAlleleFractionPosteriorSummary().getLower();
@@ -712,14 +654,15 @@ public class CNLOHCaller implements Serializable {
             final double crLow = Math.pow(2, seg.getSegmentMeanPosteriorSummary().getLower()) - segmentMeanBiasInCR;
             final double crHigh = Math.pow(2, seg.getSegmentMeanPosteriorSummary().getUpper()) - segmentMeanBiasInCR;
 
-            for (int m=0; m<m_vals.length; m++) {
-                for (int n=0; n<n_vals.length; n++) {
-                    final double mafLikelihood = calculateFmaf(rho, m_vals[m], n_vals[n], mafMode, mafLow, mafHigh);
-                    final double crLikelihood = calculateFcr(rho, m_vals[m], n_vals[n], lambda, crMode, crLow, crHigh, segmentMeanVarianceInCR);
+            for (int m=0; m<mVals.length; m++) {
+                for (int n=0; n<nVals.length; n++) {
+                    final double mafLikelihood = calculateFmaf(rho, mVals[m], nVals[n], mafMode, mafLow, mafHigh, normalNumCopies);
+                    final double crLikelihood = calculateFcr(rho, mVals[m], nVals[n], lambda, crMode, crLow, crHigh,
+                            segmentMeanVarianceInCR, normalNumCopies);
                     if ( ((rho > 1) || (rho < 0)) || ((rho > 0) && (rho < rhoThreshold)))  {
                         eSMN[s][m][n] = MIN_L;
                     } else {
-                        eSMN[s][m][n] = eZskVsmWsnBySeg.get(s)[rhoIndex][m][n] * Math.log(mafLikelihood * crLikelihood);
+                        eSMN[s][m][n] = responsibilitiesForSegsAsList.get(s)[rhoIndex][m][n] * Math.log(mafLikelihood * crLikelihood);
                     }
                 }
             }
@@ -732,49 +675,37 @@ public class CNLOHCaller implements Serializable {
         private static final double GAMMA_SHAPE = 1.0;
         private static final double GAMMA_SCALE = 1.0;
 
-        private double[] E_ln_phi_k;
-        private double sumE_ln_phi_k;
+        private int numEffectivePhis;
+        private double sumLogEffectivePhis;
         private GammaDistribution gammaDistribution;
 
-        public QAlphaUnivariateFunction(final double[] E_ln_phi_k) {
-            this.E_ln_phi_k = E_ln_phi_k;
-            this.sumE_ln_phi_k = GATKProtectedMathUtils.sum(E_ln_phi_k);
-            this.gammaDistribution = new GammaDistribution(GAMMA_SHAPE, GAMMA_SCALE);
+        public QAlphaUnivariateFunction(final double[] effectivePhis) {
+            this.numEffectivePhis = effectivePhis.length;
+            this.sumLogEffectivePhis = Arrays.stream(effectivePhis).map(Math::log).sum();
+            this.gammaDistribution = new GammaDistribution(null, GAMMA_SHAPE, GAMMA_SCALE);
         }
 
         @Override
         public double value(double a) {
-            /**
-             * P_alpha = gampdf(a, 1, 1);
-             gamma_alpha = gamma(max(a, eps));
-             K = length(k);
 
-             numerator = P_alpha .* gamma_alpha;
-             denominator = gamma(a/K).^K;
-
-             coeff = numerator ./ denominator;
-
-             result = coeff .* exp( (a/K) * sum(E_ln_phi_k) );
-             */
             // Cannot evaluate a gamma at zero, so set a to a minimum value..
             final double aPrime = Math.max(a, MIN_L);
-            final double pAlpha = gammaDistribution.probability(aPrime);
+            final double pAlpha = gammaDistribution.density(aPrime);
             final double gammaAlpha = Gamma.gamma(aPrime);
-            final int k = E_ln_phi_k.length;
 
             final double numerator = pAlpha * gammaAlpha;
-            final double denominator = Math.pow(Gamma.gamma(aPrime/k), k);
+            final double denominator = Math.pow(Gamma.gamma(aPrime/numEffectivePhis), numEffectivePhis);
             final double coeff = numerator/denominator;
 
-            return coeff * Math.exp((aPrime/k) * sumE_ln_phi_k);
+            return coeff * Math.exp((aPrime/numEffectivePhis) * sumLogEffectivePhis);
         }
     }
 
     private class AQAlphaUnivariateFunction implements UnivariateFunction {
         private QAlphaUnivariateFunction qAlpha;
 
-        public AQAlphaUnivariateFunction(final double[] E_ln_phi_k) {
-            qAlpha = new QAlphaUnivariateFunction(E_ln_phi_k);
+        public AQAlphaUnivariateFunction(final double[] effectivePhis) {
+            qAlpha = new QAlphaUnivariateFunction(effectivePhis);
         }
 
         @Override
@@ -782,7 +713,6 @@ public class CNLOHCaller implements Serializable {
             return a * qAlpha.value(a);
         }
     }
-
 
     private double optimizeIt(final Function<Double, Double> objectiveFxn, final SearchInterval searchInterval) {
         final MaxEval BRENT_MAX_EVAL = new MaxEval(1000);
@@ -792,12 +722,5 @@ public class CNLOHCaller implements Serializable {
 
         final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(x -> objectiveFxn.apply(x));
         return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
-    }
-
-    public static <T> T roundTripInKryo(T input, Class<?> inputClazz, final SparkConf conf) {
-        KryoSerializer kryoSerializer = new KryoSerializer(conf);
-        SerializerInstance sparkSerializer = kryoSerializer.newInstance();
-        final ClassTag<T> tag = ClassTag$.MODULE$.apply(inputClazz);
-        return sparkSerializer.deserialize(sparkSerializer.serialize(input, tag), tag);
     }
 }
