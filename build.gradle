@@ -172,6 +172,7 @@ dependencies {
     // Dependency change for including MLLib
     compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 
+    compile "com.intel:intel-gkl:0.0.1-20160525.160915-2"
     compile 'com.github.lindenb:jbwa:bd72b489f9697a857671533c86ad5906967f8672-20160521.042635-1'
 
     //needed for DataflowAssert
