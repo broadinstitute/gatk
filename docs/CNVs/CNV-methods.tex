@@ -44,16 +44,17 @@
 \begin{document}
 
 \title{Notes on CNV Methods}
-\author{Samuel K. Lee}
-\email{slee@broadinstitute.org}
+
+\author{Mehrtash Babadi}
+\email{mbabadi@broadinstitute.org}
 \affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
 
 \author{David Benjamin}
 \email{davidben@broadinstitute.org}
 \affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
 
-\author{Mehrtash Babadi}
-\email{mehrtash@broadinstitute.org}
+\author{Samuel K. Lee}
+\email{slee@broadinstitute.org}
 \affiliation{Broad Institute, 75 Ames Street, Cambridge, MA 02142}
 
 \date{\today}
@@ -66,24 +67,26 @@ Some notes on current and proposed methods used in the GATK CNV and ACNV workflo
 
 \section{Introduction}\label{introduction}
 
-The GATK uses two types of information from sequencing data to detect copy number variations (CNVs).  First, targets (usually exons but in principle any genomic locus) with abnormally high or low coverage suggest amplifications or deletions, respectively.  Second, sites that are heterozygous in a normal sample and have allele ration significantly different from 1:1 in the matched tumor sample imply a CNV event involving one or both alleles.  The workflow is as follows:
+The GATK uses two types of information from sequencing data to detect copy number variations (CNVs).  First, targets (usually exons, but in principle any genomic locus) with abnormally high or low coverage suggest amplifications or deletions, respectively.  Second, sites that are heterozygous in a normal sample and have allele ratios significantly different from 1:1 in the matched tumor sample imply a CNV event involving one or both alleles.  The workflow is correspondingly split into two major portions:
 
 \begin{enumerate}
 
-\item Partition targets into continuous segments that represent the same copy-number event using coverage data.  The segmentation is performed by a circular-binary-segmentation (CBS) algorithm described by Olshen et al. 2004 that was originally developed to segment noisy array copy-number data.\footnote{Specifically, the CBS implementation provided by the \texttt{R} package \texttt{DNACopy} is used.}
+\item GATK CNV:  Using coverage data that has been normalized against a panel of normals to remove sequencing noise, targets are partitioned into continuous segments that represent the same copy-number event.  The segmentation is performed by a circular-binary-segmentation (CBS) algorithm described by Olshen et al. 2004 that was originally developed to segment noisy array copy-number data.\footnote{Specifically, the CBS implementation provided by the \texttt{R} package \texttt{DNACopy} is used.}  Amplifications, deletions, and copy-neutral regions are called from the segmentation.
 
-\item Find heterozygous sites in the normal case sample and segment these, again using CBS, according to their ref:alt allele ratios in the tumor sample.
-
-\item Combine the two sets of segments in a liberal manner that tends to produce too many segments.
-
-\item Alternate between modeling the copy ratio and minor allele fraction of each segment with merging adjacent segments that are sufficiently similar according to this model.
+\item GATK ACNV:  Heterozygous sites are identified in the normal case sample and segmented, again using CBS, according to their ref:alt allele ratios in the tumor sample.  These allele-fraction segments are combined with the copy-ratio segments found by GATK CNV to form a common set of segments.  Modeling of both the copy ratio and minor allele fraction of each segment is alternated with the merging adjacent segments that are sufficiently similar according to this model, until convergence.
 
 \end{enumerate}
 
-\section{Segmentation by Coverage and Minor Allele Fraction} \label{recapseg-overview}
+\section{Steps in the GATK CNV and ACNV Workflows} \label{recapseg-overview}
 
-\subsection{Panel of Normals}
-We cannot simply divide the coverage of each target by the average sequencing depth to obtain an estimate of its copy ratio.  The coverage of different targets is heavily-biased by factors including the efficiency of their baits, GC content, and mappability.  In order to detect CNVs we must model the coverage of each target in the absence of CNVs, which requires a panel of normal samples (PoN) that are representative of the sequencing conditions of the case sample.  PoN samples must be created using the same baits as the case sample.  The steps for creating a panel of normals are
+\subsection{Coverage collection}
+
+\SL{Details of coverage collection go here.}  This is implemented by the GATK command-line tool \texttt{CalculateTargetCoverage}.
+
+\subsection{Creation of a panel of normals}
+We cannot simply divide the coverage of each target by the average sequencing depth to obtain an estimate of its copy ratio.  This is because the coverage of different targets is heavily-biased by factors including the efficiency of their baits, GC content, and mappability.  In order to detect CNVs, we must determine these systematic effects on the coverage of each target in the absence of CNVs, which requires a panel of normal samples (PoN) that are representative of the sequencing conditions of the case sample.  PoN samples must also be created using the same baits as the case sample.
+
+The steps for creating a panel of normals are:
 
 \begin{enumerate}
 
@@ -115,30 +118,77 @@ We cannot simply divide the coverage of each target by the average sequencing de
 
 \end{enumerate}
 
-The output is: a $N \times k$ matrix $P$, the columns of which are the the retained right eigenvectors (eigensamples), and its pseudoinverse $P^+$; and the target medians (before any transformations).  Here $N$ denotes the number of targets.
+This procedure is implemented by the GATK tool \texttt{CreatePanelOfNormals}.  The output is: a $N \times k$ matrix $P$, the columns of which are the the retained right eigenvectors (eigensamples), and its pseudoinverse $P^+$; and the target medians (before any transformations).  Here $N$ denotes the number of targets.
 
 \subsection{Segmentation by tangent-normalized coverage}
-We first divide the integer coverage of the case sample at each target by the corresponding target median from the PoN and take the $\log_2$ transformation to obtain an $N \times 1$ column matrix ${\bf x}$.  We then calculate the ``tangent-normalized'' coverage: ${\bf x} - PP^+ {\bf x}$.  The meaning of this is as follows: $PP^+$ is an operator that projects onto the column space of $P$.  That is, it projects onto the space spanned by the $k$ most significant eigensamples representing the (non-CNV-related) variability of the coverage.  Subtracting the projection $PP^+ {\bf x}$ therefore isolates the CNV signal and removes noise due to fluctuations in sequencing bias.
+We first divide the integer coverage of the case sample at each target by the corresponding target median from the PoN and take the $\log_2$ transformation to obtain an $N \times 1$ column matrix ${\bf x}$.  We then calculate the ``tangent-normalized'' coverage: ${\bf x} - PP^+ {\bf x}$.  The meaning of this is as follows: $PP^+$ is an operator that projects onto the column space of $P$.  That is, it projects onto the space spanned by the $k$ most significant eigensamples representing the (non-CNV-related) variability of the coverage.  Subtracting the projection $PP^+ {\bf x}$ therefore isolates the CNV signal and removes noise due to fluctuations in sequencing bias.  This is implemented by the GATK tool \texttt{NormalizeSomaticReadCounts}.
 
-Finally, the tangent-normalized coverage vector is passed to CBS to obtain coverage segments.
+Finally, the tangent-normalized coverage vector is passed to CBS to obtain coverage segments.  This is implemented by the GATK tool \texttt{PerformSegmentation}.
 
-\subsection{Het coverage and segmentation by minor allele fraction}
-Given a large database of common SNPs, we search the normal control sample for heterozygous sites.  To determine whether a site with $r$ ref reads and $a$ alt reads is heterozygous, we calculate the two-sided $p$-value under the null hypothesis that the number of alt reads follows a binomial distribution: $a \sim {\rm Binom}(a + r, 1/2)$.  If the $p$-value is not too small we consider the site heterozygous.
+\subsection{Calling of events from coverage segments} \label{gatk-cnv-caller}
+\SL{Description of caller goes here.}  This is performed by the GATK tool \texttt{CallSegments}, which is the final step in the GATK CNV portion of the case-sample workflow.
 
-Ref and alt counts are then obtained at these sites in the tumor case sample.  To obtain initial minor-allele-fraction segments, we estimate the minor allele fraction for each het site by taking the maximum-likelihood estimate given by Equation~\ref{likelihood} with allelic bias ignored (i.e., $\lambda_j = 1$) and pass the resulting list to CBS.
+\subsection{Collection of allele counts at het sites}
+The first step in the GATK ACNV portion of the case-sample workflow is to gather the necessary allele-count data.  This procedure is implemented by the GATK tool \texttt{GetHetCoverage}. 
 
-\subsection{Target/SNP segment union} \label{targetsnp-segment-union}
+Given a large database of common SNPs, we search the normal control sample for heterozygous sites.  To determine whether a site with $r$ ref reads and $a$ alt reads is heterozygous, we calculate the two-sided $p$-value under the null hypothesis that the number of alt reads follows a binomial distribution: $a \sim {\rm Binom}(a + r, 1/2)$.  If the $p$-value is not too small we consider the site heterozygous.  Ref and alt counts are then obtained at these sites in the tumor case sample. 
 
-\SL{SL will fill this in.}
+Alternatively, the GATK tool \texttt{GetBayesianHetCoverage}, which instead performs Bayesian hypothesis testing to identify het sites, can be used to perform this step; see Sec.~\ref{bayesian-het-coverage} for details.
+
+The results of this step are combined with the coverage segments generated by GATK CNV and passed to the GATK tool \texttt{AllelicCNV}, which performs the rest of the steps in the GATK ACNV workflow.
+
+\subsection{Segmentation by minor allele fraction}
+
+To obtain initial minor-allele-fraction segments, we estimate the minor allele fraction for each het site under the allele-fraction model discussed in Sec.~\ref{allelic-model}.  Specifically, we begin by taking the maximum-likelihood estimates given by Equation~\ref{likelihood} with reference bias ignored (i.e., $\lambda_j = 1$) and segmenting them with CBS.  Using this initial segmentation, the maximum-likelihood values for the reference-bias hyperparameters $\alpha$ and $\beta$ (see Sec.~\ref{allelic-model})  are found.  The minor allele fraction for each het site is then re-estimated as before, but now assuming $\lambda_j = \alpha / \beta$ (i.e., the reference bias at each site is taken to be the mean reference bias across all sites\footnote{An issue is filed to relax this assumption, which is only made so that maximum-likelihood estimates of the minor allele fraction can be easily cached as a function of the ref and alt counts.  In future releases, we may also incorporate the distribution across samples of reference bias at each site, which can be learned from an allelic panel of normals (discussed in Sec.~\ref{allelic-PoN}), into the het-segmentation step.}), and again segmented upon.  This procedure is iterated until the segmentation converges or the number of iterations reaches a specified limit; if a cycle occurs, the first repeated segmentation is taken.
+
+\subsection{Union of copy-ratio and minor-allele-fraction segments} \label{segment-union}
+
+At this point, per-target estimates of copy ratio (i.e., tangent-normalized coverage) and per-het estimates of minor allele fraction have been segmented separately by CBS.  We now perform a segment-union step to combine both segmentations into a single one, the idea being that there may be breakpoints present in the copy-ratio segmentation that were missed in the minor-allele-fraction segmentation and vice versa.\footnote{Note that there are several issues filed concerning this step and that it will most likely be modified in the near future.}
+
+Such a segment union could be created naively by simply taking all segments created by the union of both sets of breakpoints.  However, this typically results in oversegmentation, for two reasons: 1) the copy-ratio segmentation itself is typically oversegmented, due to residual systematic noise that is not removed normalization against the panel of normals\footnote{This can be somewhat alleviated by using the \texttt{undo.splits} parameter of CBS, with varying results.  With \texttt{undo.splits="sdundo"}, CBS will merge segments within a certain number of standard deviations of each other (analogous to the heuristic procedure we use to perform similar-segment merging, which is discussed in Sec.~\ref{similar-segment-merging}).  With \texttt{undo.splits="prune"}, CBS instead merges segments that result in a proportional increase of the squared error that is less than a specified threshold; however, note that enabling this option often causes CBS to hang indefinitely on samples with a large number ($\gtrsim$200-300) of segments.  Issues are filed to investigate alternatives to segmentation algorithms that could offer the possibility of controlling the amount of segmentation in a more principled way than those offered by CBS.}, and 2) the genomic locations of the copy-ratio and minor-allele-fraction breakpoints corresponding to a single underlying event do not exactly overlap (instead, the breakpoints are given by the minimum spanning intervals containing the targets and hets in that event, respectively, and these intervals are not necessarily identical).  We thus perform some heuristic steps to reduce the resulting number of segments.
+
+First, if the copy-ratio segments have been called amplified, deleted, or copy neutral (e.g., by the caller described in Sec.~\ref{gatk-cnv-caller}), we can use the calls to merge adjacent copy-neutral segments, which partially addresses the first issue.  Note, however, that oversegmentation can still remain in adjacent amplified or deleted segments.
+
+Second, we can improve upon a naive union of breakpoints by merging segments that are spuriously created due to the inexact overlap of copy-ratio and minor-allele-fraction breakpoints.  Not allowing the formation of segments by the addition of minor-allele-fraction breakpoints near the starts and ends of segments that originate from the copy-ratio segmentation partially addresses this issue.  Likewise, merging those segments formed by the addition of minor-allele-fraction breakpoints to the middle of segments that originate from the copy-ratio segmentation also reduces oversegmentation.\footnote{Both of these procedures treat the copy-ratio segments as the primary segmentation, to which the minor-allele-fraction breakpoints are added.  This is done for legacy reasons, even though, as previously mentioned, the copy-ratio segmentation often contains residual segmentation from systematic noise.  Furthermore, both corrections are only necessary because a naive union of breakpoints only approximates the true procedure we would like to perform here---that is, using changepoints in one series of data to identify changepoints in a second series of data, in the case where the locations of the data points from both series do not strictly overlap.  Perhaps a better procedure would be: 1) perform multiple changepoint detection (e.g., using CBS) on both series, 2) use single changepoint detection to look for additional changepoints in the first series that fall in between those from the second series, and vice versa.}  Here, whether such a segment is merged with the adjacent segment to the left or with the adjacent segment to the right is decided by nonparametric tests of similarity between the tangent-normalized coverages and the allele counts in the segments and the genomic distances between the segments.  These tests are also used for small-segment merging, which we describe next.
+
 
 \subsection{Small-segment merging} \label{small-segment-merging}
 
-\SL{SL to update this to the new method.}
+Using CBS to segment the targets in GATK CNV results in segments that contain at least a specified minimum number of targets $n_t$ (by default, $n_t = 3$).  However, after taking the union of target and SNP segments, small segments with less than $n_t$ targets may be introduced.  To be consistent with CBS and CNV, ACNV treats these small segments as spurious, and removes them by merging them with adjacent segments.
 
-Using CBS to segment the targets in GATK CNV results in segments that are larger than a specified minimum number of targets $n_t$ (by default, $n_t = 2$).  However, after taking the union of target and SNP segments, small segments with less than $n_t$ targets may be introduced.  To be consistent with CBS and CNV, ACNV treats these small segments as spurious, and removes them by merging them with adjacent segments.
+For each small segment, the question we want to answer is: which of the two adjacent segments (i.e., those to the left or right of the small segment in the center) is most similar to the small segment, and hence, should be merged with it?  We would like to determine this based on the tangent-normalized $\log_2$ coverages, allele counts, and genomic locations of each of the three segments.  Note that each segment may be missing either coverages or allele counts, but not both.  However, this question is not statistically well defined, so we will use the following heuristic procedure:
 
-\subsection{A Bayesian model for detecting Heterozygous sites}
-Here, we would like to propose a slightly different scheme for calling Heterozygous (\HET) sites that (1) takes into account the base read alignment and sequencing qualities, and (2) works for both normal and tumor data. Provisioning situations that only the tumor data is available to us (``tumor-only''), in addition to the presently cosindered situation of paired normal-tumor data (``paired normal-tumor''), we need to modify our criterion for calling a \HET~site. Conceptually, since reads from tumor samples are not pure (contaminated with subclones, normals, etc), a statistical test that rejects the \HET~hypothesis based on the premise of having equal probability of $\mathsf{Ref}$ and $\mathsf{Alt}$ reads is bound to reject \HET~cases when applied to tumor reads. Here, we propose a more sensible Bayesian model.\\
+We first examine the allele counts (as opposed to the coverages---this is because the center segment has a small number of targets, by construction, and so the ability to determine which adjacent segment is more similar to it using the coverages is inherently limited).  In particular, we examine the alternate-allele fractions in each of the segments; these should have a bimodal (unimodal) distribution for unbalanced (balanced) segemnts.  The Kolmogorov-Smirnov test statistic, which measures the similarity of two data sets, is used to construct two distances between the alternate-allele fractions in the left and center segments and those in the right and center segments, respectively.  Including corrections that account for the sizes of the data sets, the distances are used to construct a pair of scores for merging with the left and right segments, respectively.  The adjacent segment with the higher score has alternate-allele fractions that are more similar, and hence should be merged with the center small segment.
+
+However, if the Kolmogorov-Smirnov distances are not sufficiently dissimilar, if they are both close to unity (i.e., if the alternate-allele fractions in neither the left nor the right segment overlap significantly with those in the center segment), or if there are not enough hets ($>$2 data points in each data set) to calculate the Kolmogorov-Smirnov distances, we instead use the inverse minor-allele fractions in each of the three segments.   These, ideally, have a distribution that is roughly unimodal in each segment.  Two distances between the two pairs of data sets are constructed using the Hodges-Lehmann estimator, which gives a measure of the difference in the location parameters of two data sets, and these distances are used to construct a pair of scores as above.
+
+ If the scores generated from the allele counts are too similar or if any of the segments is missing hets, then we attempt to use the coverages instead.  Here, we simply use the Hodges-Lehmann estimator to construct two distances and a corresponding pair of scores as above.
+
+If the scores generated from the coverages are too similar or if any of the segments is missing targets, we then simply use genomic distance (defined between adjacent breakpoints) to decide which adjacent segment is closer.  For consistency, we also convert the two genomic distances into a pair of scores that sum to unity.
+
+In the unlikely event that all of the above scores are equal, we randomly choose one of the adjacent segments and merge it with the center small segment.
+
+Although this procedure is admittedly quite ad-hoc, it performs reasonably well on simulated data.  Furthermore, it is unlikely that incorrect merging of small segments has a significant adverse effect on the subsequent model-fitting step, which we discuss next.
+
+\subsection{Model fitting} \label{model-fitting}
+
+At this point, a common segmentation of the genome has been derived from both the tangent-normalized coverage and the het allele counts.  Each segment contains at least $n_t$ coverages and may or may not also contain hets.
+
+We now proceed to separately fit a copy-ratio model to the coverages and a minor-allele-fraction model to the allele counts.  Both models contain local, segment-level parameters which represent the $\log_2$ copy ratio and minor allele fraction, respectively, as well as global parameters that attempt to model systematic noise and biases arising from sequencing.  These models are discussed in detail in Sec.~\ref{models}.
+
+We use Markov Chain Monte Carlo (MCMC) to generate a specified number of samples from the posteriors of each of the parameters.  These samples are used to generate posterior summary statistics; the posterior mode, the $95\%$ highest posterior density credible interval, and deciles are reported for the segment-level parameters.
+
+\subsection{Similar-segment merging} \label{similar-segment-merging}
+
+We next perform a smoothing step on the fitted copy-ratio and minor-allele-fraction models to further reduce the segmentation.\footnote{This step is analogous to the aforementioned \texttt{undo.splits="sdundo"} procedure optionally performed by CBS.}  Proceeding across the genome from left to right, we examine the posterior summaries for adjacent pairs of segments.  If both the credible intervals for the local copy-ratio and minor-allele-fraction parameters overlap by a specified amount, the segments are merged.  The posterior summaries for the newly created segment are determined from those of the original two segments by approximating all posteriors as Gaussian (i.e., using inverse-variance weighting).  The new segment is then repeatedly checked for similarity against the adjacent segment to the right and merged until it is no longer similar, at which point we proceed to the next pair of adjacent segments.  After one complete traversal of the genome, we optionally refit both models using MCMC.
+
+This procedure is iterated until the segmentation converges or the number of iterations reaches a specified limit.  Both models are then refit using MCMC if necessary, resulting in the final output of GATK ACNV: posterior summaries for both $\log_2$ copy ratio and minor allele fraction in each segment.
+
+\subsection{Detection of het sites using a Bayesian model} \label{bayesian-het-coverage}
+
+Here, we describe a procedure for calling heterozygous (\HET) sites that (1) takes into account the base read alignment and sequencing qualities, and (2) works for both normal and tumor data.  This procedure is implemented by the GATK command-line tool \texttt{GetBayesianHetCoverage}.
+
+Provisioning situations that only the tumor data is available to us (``tumor-only''), in addition to the presently considered situation of paired normal-tumor data (``paired normal-tumor''), we need to modify our criterion for calling a \HET~site. Conceptually, since reads from tumor samples are not pure (contaminated with subclones, normals, etc), a statistical test that rejects the \HET~hypothesis based on the premise of having equal probability of $\mathsf{Ref}$ and $\mathsf{Alt}$ reads is bound to reject \HET~cases when applied to tumor reads. Here, we propose a more sensible Bayesian model.\\
 
 \noindent {\bf Notation:} Let us first focus on a single site $j$, with $R_{kj} \in \{A, C, T, G\}$ denoting the mapped base at site $j$ from read $k$, and $\varepsilon^B_{kj}$ and $\varepsilon^M_k$ denoting the err probability of base calling and mapping. Also, let $\mathsf{Ref}_j$ and $\mathsf{Alt}_j$ denote the Ref and Alt alleles at this site.\\
 
@@ -146,7 +196,7 @@ Here, we would like to propose a slightly different scheme for calling Heterozyg
 
 \noindent{\bf Rareness of somatic SNP events:} In order to proceed with the model, we assume that somatic SNPs are rare events such that Hom/Het sites retain their germline identity.\\
 
-\noindent{\bf Likelihood of \HOM$_j$:} Assuming that site $j$ is \HOM, we find the likelihood of the reads by conditioning over the allele and error events. We easily find:
+\noindent{\bf Likelihood of \HOM$_j$:} Assuming that site $j$ is homozygous (\HOM), we find the likelihood of the reads by conditioning over the allele and error events. We easily find:
 \begin{multline}
 P(R_{kj}|\mathsf{Hom}_j) = P(\mathsf{Ref}_j|\mathsf{Hom}_j)\prod_{k=1}^{N_j}\left[\frac{\epss^B_{kj}}{3} + \frac{\epss^M_{k}}{4} + \left(1 - \frac{4}{3}\,\epss^B_{kj} - \epss^M_k\right)\delta_{R_{kj}, \mathsf{Ref}_j}\right] +\\
 P(\mathsf{Alt}_j|\mathsf{Hom}_j)\prod_{k=1}^{N_j}\left[\frac{\epss^B_{kj}}{3} + \frac{\epss^M_{k}}{4} + \left(1 - \frac{4}{3}\,\epss^B_{kj} - \epss^M_k\right)\delta_{R_{kj}, \mathsf{Alt}_j}\right].
@@ -234,7 +284,11 @@ Todo. The basic idea is to utilize SNP correlations to test multiple correlated 
 
 \subsection{Copy-ratio model} \label{copy-ratio-model}
 
-\SL{SL will fill this in.}
+We fit a simple, heuristic copy-ratio model to the segmented, tangent-normalized $\log_2$ coverages.  Our primary goal is to estimate accurate mean $\log_2$ copy ratios within each segment for use in downstream tools, so a simple model suffices assuming that the tangent-normalization step has removed most of the systematic noise.
+
+The model assumes that the tangent-normalized $\log_2$ coverages in each segment are distributed as a mixture of: 1) a Gaussian distribution, with mean given by a segment-level $\log_2$ copy-ratio parameter and a variance that is common to all the segments\footnote{Note that this differs from \texttt{AllelicCapSeg}, which assumed that non-outlier, tangent-normalized non-$\log_2$ coverages were Gaussian distributed with variance proportional to the mean in each segment.  However, examination of many samples shows that this proportionality is only weakly exhibited, on average, in the non-$\log_2$ coverages---and even less so in the $\log_2$ coverages, which exhibit a variance than is, on average, constant with mean $\log_2$ copy ratio.  It is true that allowing the variance in each segment to be drawn from a global distribution, rather than fixed to a single number, would  provide a better fit to the data; however, the estimates of the mean $\log_2$ copy ratio are not likely to be strongly biased under the simple model.  Furthermore, this copy-ratio model will soon be superseded by the generative coverage model proposed in Sec.~\ref{coverage-model}.}, and 2) a uniform distribution, which is meant to model outlier $\log_2$ coverages and is truncated at the minimum and maximum observed values.
+
+This model can be expressed in terms of local target-level outlier indicators and segment-level parameters for the mean $\log_2$ copy ratio, as well as global parameters for the variance and outlier-distribution mixture fraction.  We generate posterior samples by Gibbs sampling the conditional distributions for each parameter in succession; slice sampling is used for continuous parameters.
 
 \subsection{Allelic model} \label{allelic-model}
 We want a generative model for allelic fractions that infers its parameters from the data.  We observe alt and ref read counts for each het site and wish to infer the minor allelic fraction of every segment.  Let's consider what other hidden variables belong in the model.  Read counts obey an overdispersed binomial distribution in which the probability of an alt read is a site-dependent random variable.  Letting $\theta_j$ be the probability that a mapped read at het $j$ is an alt we have
@@ -391,7 +445,7 @@ Similarly, the minor allele fraction is a weighted sum of $1 - \rho$ diploid cel
 %
 It is convenient to represent the latent state $(m,n)$ via binary indicator variables $v$ and $w$ with e.g. $v_{sm} = 1, w_{sn} = 1$ if segment $s$ has $m$ and $n$ copies of the original homologs.
 
-Finally, we place a simple factorized multinomial prior on $(m,n)$: $P(m,n) = P(m)P(n) = \phi_m \phi_n$, which we can do if we set of maximum copy number of, say, $m, n < 4$.  The factorization assumption realistic regarding the origin of CNVs but not necessarily regarding their \textit{viability}.  For example, a homozygous deletion could be lethal when a heterozygous deletion is not.  However, we expect this effect to be less dramatic for small segments, which have less phenotypic impact.  Large segments ought to have sufficient statistical power that the prior is less important.  Taking into account the copy ratio and minor allele fraction posteriors from ACNV as well as the mulitnomial prior, the model likelihood is
+Finally, we place a simple factorized multinomial prior on $(m,n)$: $P(m,n) = P(m)P(n) = \phi_m \phi_n$, which we can do if we set of maximum copy number of, say, $m, n < 4$.  The factorization assumption realistic regarding the origin of CNVs but not necessarily regarding their \textit{viability}.  For example, a homozygous deletion could be lethal when a heterozygous deletion is not.  However, we expect this effect to be less dramatic for small segments, which have less phenotypic impact.  Large segments ought to have sufficient statistical power that the prior is less important.  Taking into account the copy ratio and minor allele fraction posteriors from ACNV as well as the multinomial prior, the model likelihood is
 %
 \begin{equation}
 P(z_s, v_s, w_s, \pi, \phi, \rho, \alpha) = P(\alpha) \frac{ \Gamma(\alpha) }{\Gamma(\alpha/K)^K} \prod_k \pi_k^{\alpha/K - 1} \prod_{s, k,n,m} \left[ \pi_k \phi_m \phi_n f_s^{\rm CR}({\rm cr}(m,n,\rho_k) f_s^{\rm MAF}({\rm maf}(m,n,\rho_k) \right]^{z_{sk} v_{sm} w_{sn}}
@@ -832,7 +886,7 @@ g(\lambda, \alpha, \beta, f, a, r) =  \frac{\beta^\alpha}{\Gamma(\alpha)}  \frac
 %
 An extremely good approximation for all values of $f$, $\alpha$, $\beta$, and $a, \, r$ is
 \begin{equation}
-g(\lambda, \alpha, \beta, f, a, r) = \frac{\lambda^{\alpha + r - 1} e^{-\beta \lambda_j}}{ \left( f + (1-f) \lambda \right)^{a+r}} \approx c \lambda^{\rho - 1} e^{-\tau \lambda}.
+g(\lambda, \alpha, \beta, f, a, r) \approx c \lambda^{\rho - 1} e^{-\tau \lambda}.
 \end{equation}
 where $\rho$ and $\tau$ are chosen to reproduce the mode of $g(\lambda, \alpha, \beta, f, a, r)$ and the curvature at its mode.  Having approximated our integrand as a gamma distribution's pdf on $\lambda$, we integrate it analytically
 %
