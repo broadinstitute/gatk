@@ -28,6 +28,10 @@ public class PlotACNVResultsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(arguments);
         Assert.assertTrue(new File(tDir, sampleName + "_ACNV.png").exists());
         Assert.assertTrue(new File(tDir, sampleName + "_ACNV.png").length() > 0);
+        Assert.assertTrue(new File(tDir, sampleName + "_Chr_1_30116_62393753.png").exists());
+        Assert.assertTrue(new File(tDir, sampleName + "_Chr_1_30116_62393753.png").length() > 0);
+        Assert.assertTrue(new File(tDir, sampleName + "_Chr_10_92745_49997881.png").exists());
+        Assert.assertTrue(new File(tDir, sampleName + "_Chr_10_92745_49997881.png").length() > 0);
     }
 
     @Test

@@ -40,10 +40,10 @@ create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, s
     plot_file_name = file.path(output_dir, paste(sample_name, "_ACNV.png", sep=""))
     png(plot_file_name, 12, 7, units="in", type="cairo", res=300, bg="white")
     par(mfrow=c(2,1), cex=0.75, las=1)
-    SetUpPlot("Minor Allele Fraction", 0, 0.5, "Chromosome", TRUE, num_chromosomes)
-    PlotAlleleFraction(snp_counts, segments)
     SetUpPlot("Tangent-Normalized Coverage", 0, 4, "Chromosome", TRUE, num_chromosomes)
     PlotCopyRatioWithSegments(coverage, segments, TRUE)
+    SetUpPlot("Minor Allele Fraction", 0, 0.5, "Chromosome", TRUE, num_chromosomes)
+    PlotAlleleFraction(snp_counts, segments)
     dev.off()
 
     #check for created file and quit with error code if not found
