@@ -21,11 +21,14 @@ import java.util.stream.Collectors;
  *    read counts must be present in the targets file but the reverse need not be true.
  *
  * Output is a read counts file with the same targets (rows) and samples (columns) as the input, corrected for GC bias.
+ * Coverage is represented by doubles in {@link ReadCountCollection}.
+ *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
         oneLineSummary = "Correct for per-sample GC bias effects.",
-        summary = "Correct for per-sample GC bias effects.",
+        summary = "Correct coverage in a read counts files by estimating per-sample bias as a function of target GC" +
+                " content and dividing input coverage by these derived bias curves.",
         programGroup = CopyNumberProgramGroup.class
 )
 public class CorrectGCBias extends CommandLineProgram {
