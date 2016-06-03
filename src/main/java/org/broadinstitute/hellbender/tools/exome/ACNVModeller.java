@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegment
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 
 import java.io.File;
@@ -23,12 +24,16 @@ import java.util.List;
 public final class ACNVModeller {
     //use 95% HPD interval to construct {@link PosteriorSummary} for segment means and minor allele fractions
     private static final double CREDIBLE_INTERVAL_ALPHA = 0.05;
+    private static final DecileCollection NAN_DECILE_COLLECTION = new DecileCollection(Collections.singletonList(Double.NaN));
 
     public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 
     private SegmentedModel segmentedModel;
     private final AllelicPanelOfNormals allelicPON;
     private final List<ACNVModeledSegment> segments = new ArrayList<>();
+
+    //similar-segment merging may leave model in a state where it is not completely fit (i.e., deciles will be unspecified)
+    private boolean isModelFit;
 
     private final int numSamplesCopyRatio;
     private final int numBurnInCopyRatio;
@@ -89,20 +94,30 @@ public final class ACNVModeller {
 
     /**
      * Performs one iteration of similar-segment merging on the list of {@link ACNVModeledSegment} held internally.
-     * Markov-Chain Monte Carlo model fitting is performed after each iteration using the
-     * number of total samples and number of burn-in samples pecified at construction.
+     * Markov-Chain Monte Carlo model fitting is optionally performed after each iteration using the
+     * number of total samples and number of burn-in samples specified at construction.
      * @param intervalThresholdSegmentMean         threshold number of credible intervals for segment-mean similarity
      * @param intervalThresholdMinorAlleleFraction threshold number of credible intervals for minor-allele-fraction similarity
+     * @param doModelFit                           if true, refit MCMC model after merging
      */
     public void performSimilarSegmentMergingIteration(final double intervalThresholdSegmentMean,
-                                                      final double intervalThresholdMinorAlleleFraction) {
+                                                      final double intervalThresholdMinorAlleleFraction,
+                                                      final boolean doModelFit) {
         logger.info("Number of segments before similar-segment merging iteration: " + segments.size());
         final List<ACNVModeledSegment> mergedSegments =
                 SegmentMergeUtils.mergeSimilarSegments(segments, intervalThresholdSegmentMean, intervalThresholdMinorAlleleFraction);
         logger.info("Number of segments after similar-segment merging iteration: " + mergedSegments.size());
         segmentedModel = new SegmentedModel(toUnmodeledSegments(mergedSegments), segmentedModel.getGenome());
-        //refit model
-        fitModel();
+        if (doModelFit) {
+            fitModel();
+        } else {
+            //deciles will be set to NaN
+            segments.clear();
+            segments.addAll(mergedSegments);
+            segments.forEach(s -> s.getSegmentMeanPosteriorSummary().setDeciles(NAN_DECILE_COLLECTION));
+            segments.forEach(s -> s.getMinorAlleleFractionPosteriorSummary().setDeciles(NAN_DECILE_COLLECTION));
+            isModelFit = false;
+        }
     }
 
     /**
@@ -129,6 +144,17 @@ public final class ACNVModeller {
             segments.add(new ACNVModeledSegment(unmodeledSegments.get(segment),
                     segmentMeansPosteriorSummaries.get(segment), minorAlleleFractionsPosteriorSummaries.get(segment)));
         }
+        isModelFit = true;
+    }
+
+    /**
+     * Return the state of the model fit, which we trust is accurately recorded by {@link ACNVModeller#isModelFit}.
+     * This should be true if the model is completely fit (i.e., the deciles are specified);
+     * however, similar-segment merging may leave the model in a state where it is not completely fit
+     * (i.e., the deciles are unspecified).
+     */
+    public boolean isModelFit() {
+        return isModelFit;
     }
 
     /**
@@ -137,6 +163,10 @@ public final class ACNVModeller {
      * @param outFile   output file
      */
     public void writeACNVModeledSegmentFile(final File outFile) {
+        if (!isModelFit) {
+            logger.warn("Attempted to write ACNV segment file when model was not completely fit. Performing model fit now.");
+            fitModel();
+        }
         SegmentUtils.writeACNVModeledSegmentFile(outFile, segments, segmentedModel.getGenome());
     }
 

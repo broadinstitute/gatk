@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -8,19 +9,62 @@ import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegment
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Integration tests for {@link AllelicCNV}.  Note that behavior of the tests depends on the content of the input files
+ * and that changing them may break the tests.
+ *
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
+ */
 public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
+    private static final String DUMMY_OUTPUT_PREFIX = "dummyOutputPrefix";
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-allelic-integration.seg");
     private static final File ALLELIC_PON_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
     private static final String SAMPLE_NAME = "test";
+
+    @DataProvider(name = "dataACNVArgumentValidation")
+    public Object[][] dataACNVArgumentValidation() {
+        return new Object[][]{
+                {new String[]{"--" + AllelicCNV.MAX_NUM_SNP_SEGMENTATION_ITERATIONS_LONG_NAME, "0"}},
+                {new String[]{"--" + AllelicCNV.MAX_NUM_SNP_SEGMENTATION_ITERATIONS_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "0"}},
+                {new String[]{"--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "5",
+                              "--" + AllelicCNV.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10"}},
+                {new String[]{"--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "0"}},
+                {new String[]{"--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "5",
+                              "--" + AllelicCNV.NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10"}},
+                {new String[]{"--" + AllelicCNV.INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME, "0"}},
+                {new String[]{"--" + AllelicCNV.INTERVAL_THRESHOLD_COPY_RATIO_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME, "0"}},
+                {new String[]{"--" + AllelicCNV.INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.MAX_NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_LONG_NAME, "-1"}},
+                {new String[]{"--" + AllelicCNV.NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_PER_FIT_LONG_NAME, "-1"}},
+        };
+    }
+
+    @Test(dataProvider = "dataACNVArgumentValidation", expectedExceptions = IllegalArgumentException.class)
+    public void testACNVArgumentValidation(final String[] testArguments) {
+        final String[] commonArguments = {
+                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
+                "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, DUMMY_OUTPUT_PREFIX
+        };
+        final String[] arguments = ArrayUtils.addAll(commonArguments, testArguments);
+        testACNV(arguments, DUMMY_OUTPUT_PREFIX);
+    }
 
     @Test
     public void testACNVWithoutAllelicPON() {
@@ -61,6 +105,64 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--verbosity", "INFO",
         };
         testACNV(arguments, outputPrefix);
+    }
+
+    @Test
+    public void testACNVWithoutSimilarSegmentMerging() {
+        final File tempDir = createTempDir("acnv-integration-without-sim-seg-" + SAMPLE_NAME);
+        final String tempDirPath = tempDir.getAbsolutePath();
+        final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
+
+        final String[] arguments = {
+                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
+                "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
+                "--" + AllelicCNV.USE_ALL_COPY_RATIO_SEGMENTS_LONG_NAME, "true",
+                "--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "25",
+                "--" + AllelicCNV.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
+                "--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
+                "--" + AllelicCNV.NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
+                "--" + AllelicCNV.MAX_NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_LONG_NAME, "0",
+                "--verbosity", "INFO",
+        };
+        testACNV(arguments, outputPrefix);
+
+        //check that no similar segments were merged
+        final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.INITIAL_SEG_FILE_TAG + ".seg");
+        final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + ".seg");
+        final List<ACNVModeledSegment> initialACNVModeledSegments = SegmentUtils.readACNVModeledSegmentFile(initialSimilarSegmentsFile);
+        final List<ACNVModeledSegment> finalACNVModeledSegments = SegmentUtils.readACNVModeledSegmentFile(finalSimilarSegmentsFile);
+        Assert.assertEquals(initialACNVModeledSegments.size(), finalACNVModeledSegments.size());
+    }
+
+    @Test
+    public void testACNVWithSomeSimilarSegmentMergingRefitting() {
+        final File tempDir = createTempDir("acnv-integration-with-some-sim-seg-refitting" + SAMPLE_NAME);
+        final String tempDirPath = tempDir.getAbsolutePath();
+        final String outputPrefix = tempDirPath + "/" + SAMPLE_NAME;
+
+        final String[] arguments = {
+                "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME, COVERAGES_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, SEGMENT_FILE.getAbsolutePath(),
+                "--" + AllelicCNV.OUTPUT_PREFIX_LONG_NAME, outputPrefix,
+                "--" + AllelicCNV.USE_ALL_COPY_RATIO_SEGMENTS_LONG_NAME, "true",
+                "--" + AllelicCNV.NUM_SAMPLES_COPY_RATIO_LONG_NAME, "25",
+                "--" + AllelicCNV.NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
+                "--" + AllelicCNV.NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
+                "--" + AllelicCNV.NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
+                "--" + AllelicCNV.NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_PER_FIT_LONG_NAME, "2",
+                "--verbosity", "INFO",
+        };
+        testACNV(arguments, outputPrefix);
+
+        //check that some similar segments were merged
+        final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.INITIAL_SEG_FILE_TAG + ".seg");
+        final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + AllelicCNV.FINAL_SEG_FILE_TAG + ".seg");
+        final List<ACNVModeledSegment> initialACNVModeledSegments = SegmentUtils.readACNVModeledSegmentFile(initialSimilarSegmentsFile);
+        final List<ACNVModeledSegment> finalACNVModeledSegments = SegmentUtils.readACNVModeledSegmentFile(finalSimilarSegmentsFile);
+        Assert.assertTrue(initialACNVModeledSegments.size() > finalACNVModeledSegments.size());
     }
 
     private void testACNV(final String[] arguments, final String outputPrefix) {
