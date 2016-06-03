@@ -214,8 +214,8 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      * @param <E>            the element type of {@code exonCollection}, it must be a {@link BEDFeature}.
      * @return never {@code null}.
      * @throws UserException.CouldNotReadInputFile if there was some problem
-     *                                             trying to read from {@code readCountsFile}.
-     * @throws UserException.BadInput              if there is some format issue with the input file {@code readCountsFile},
+     *                                             trying to read from {@code inputReadCountsFile}.
+     * @throws UserException.BadInput              if there is some format issue with the input file {@code inputReadCountsFile},
      *                                             or it does not contain target names and {@code exonCollection} is {@code null}
      *                                             or the input read counts contain more thanb one sample.
      */

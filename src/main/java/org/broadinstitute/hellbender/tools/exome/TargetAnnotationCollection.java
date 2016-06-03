@@ -9,7 +9,7 @@ import java.util.*;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-final class TargetAnnotationCollection {
+public final class TargetAnnotationCollection {
 
     private final EnumMap<TargetAnnotation, String> values = new EnumMap<TargetAnnotation, String>(TargetAnnotation.class);
 
