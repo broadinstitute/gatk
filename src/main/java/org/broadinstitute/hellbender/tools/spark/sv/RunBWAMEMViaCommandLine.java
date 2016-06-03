@@ -84,8 +84,9 @@ public final class RunBWAMEMViaCommandLine extends CommandLineProgram {
 
         validateUserOptions();
 
+        // stdout capture of bwa mem process must be enabled because bwa mem output is dumped to stdout
         final BWAMEMModule bwamem = new BWAMEMModule();
-        final BWAMEMModule.RuntimeInfo result = bwamem.run(Paths.get(pathToBWA), new File(System.getProperty("user.dir")), makeArgs());
+        final BWAMEMModule.RuntimeInfo result = bwamem.run(Paths.get(pathToBWA), new File(System.getProperty("user.dir")), makeArgs(), true);
 
         return validateResults(result);
     }

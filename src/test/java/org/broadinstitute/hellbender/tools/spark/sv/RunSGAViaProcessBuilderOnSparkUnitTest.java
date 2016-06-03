@@ -7,6 +7,7 @@ import htsjdk.samtools.fastq.FastqReader;
 import htsjdk.samtools.fastq.FastqRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;
@@ -95,12 +96,52 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
         Assert.assertTrue( FileUtils.contentEqualsIgnoreEOL(copied._2(), originalFASTQFile, StandardCharsets.UTF_8.name()) );
     }
 
+    // Test if disabling stdout stderr works
+    @Test(groups = "sv")
+    public void stdioCaptureTest() throws IOException{
+
+        final File dir = BaseTest.createTempDir("xyz");
+        dir.deleteOnExit();
+
+        FileUtils.copyFileToDirectory(rawFASTQFiles.get(0)._2(), dir);
+
+        final String fileName = rawFASTQFiles.get(0)._2().getName();
+
+        File rawFASTQFile = new File(dir, fileName);
+
+        final List<SGAModule.RuntimeInfo> runtimeInfo = new ArrayList<>();
+
+        final ArrayList<String> indexerArgs = new ArrayList<>();
+        indexerArgs.add("--algorithm"); indexerArgs.add("ropebwt");
+        indexerArgs.add("--check");
+        indexerArgs.add(fileName);
+
+        RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, dir, indexer, indexerArgs, runtimeInfo, false);
+
+        for(final SGAModule.RuntimeInfo info : runtimeInfo){
+            Assert.assertTrue(info.stdoutMsg.isEmpty() && info.stderrMsg.isEmpty());
+        }
+
+        runtimeInfo.clear();
+
+        // deliberately let the process fail and see if stdout stderr is captured
+        // sga preprocess produces runtime metrics to stderr, and
+        // sga index is provided with wrong arguments this time, so it should also fill stderr with message
+        indexerArgs.set(1, "wrongAlgo");
+        RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, dir, indexer, indexerArgs, runtimeInfo, true);
+        for(final SGAModule.RuntimeInfo info : runtimeInfo){
+            Assert.assertFalse(info.stderrMsg.isEmpty());
+        }
+
+        FileUtils.cleanDirectory(dir);
+    }
+
     @Test(groups = "sv")
     public void assemblyOneStepTest() throws IOException{
 
         for(final Tuple2<Long, File> breakpoint : rawFASTQFiles){
 
-            final RunSGAViaProcessBuilderOnSpark.SGAAssemblyResult result = RunSGAViaProcessBuilderOnSpark.runSGAModulesInSerial(sgaPath.toAbsolutePath().toString(), breakpoint._2(), true);
+            final RunSGAViaProcessBuilderOnSpark.SGAAssemblyResult result = RunSGAViaProcessBuilderOnSpark.runSGAModulesInSerial(sgaPath.toAbsolutePath().toString(), breakpoint._2(), true, false);
 
             Assert.assertTrue(result.assembledContigs!=null);
 
@@ -137,42 +178,42 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
 
         final String filenamePrefix = FilenameUtils.getBaseName(rawFASTQFile.getName());
 
-        final File actualPreppedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, workingDir, indexer, indexerArgs, runtimeInfo));
+        final File actualPreppedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
         final File expectedPreppedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.fa");
         final String preppedFileName = compareNamesAndComputeSeqEditDist(actualPreppedFile, expectedPreppedFile, true, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
         final File preppedFile = new File(workingDir, preppedFileName);
-        final File actualCorrectedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGACorrect(sgaPath, preppedFile, workingDir, indexer, indexerArgs, runtimeInfo));
+        final File actualCorrectedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGACorrect(sgaPath, preppedFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
         final File expectedCorrectedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.fa");
         final String correctedFileName = compareNamesAndComputeSeqEditDist(actualCorrectedFile, expectedCorrectedFile, true, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
         final File correctedFile = new File(workingDir, correctedFileName);
-        final File actualFilterPassingFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFilter(sgaPath, correctedFile, workingDir, runtimeInfo));
+        final File actualFilterPassingFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFilter(sgaPath, correctedFile, workingDir, runtimeInfo, false));
         final File expectedFilterPassingFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.fa");
         final String filterPassingFileName = compareNamesAndComputeSeqEditDist(actualFilterPassingFile, expectedFilterPassingFile, true, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
         final File filterPassingFile = new File(workingDir, filterPassingFileName);
-        final File actualRmdupFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGARmDuplicate(sgaPath, filterPassingFile, workingDir, indexer, indexerArgs, runtimeInfo));
+        final File actualRmdupFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGARmDuplicate(sgaPath, filterPassingFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
         final File expectedRmdupFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.rmdup.fa");
         final String duplicateRemovedFileName = compareNamesAndComputeSeqEditDist(actualRmdupFile, expectedRmdupFile, false, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
         final File duplicateRemovedFile = new File(workingDir, duplicateRemovedFileName);
-        final File actualMergedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFMMerge(sgaPath, duplicateRemovedFile, workingDir, indexer, indexerArgs, runtimeInfo));
+        final File actualMergedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFMMerge(sgaPath, duplicateRemovedFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
         final File expectedMergedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.rmdup.merged.fa");
         final String mergedFileName = compareNamesAndComputeSeqEditDist(actualMergedFile, expectedMergedFile, false, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         // final assembled contig test
         final File mergedFile = new File(workingDir, mergedFileName);
-        final File actualAssembledContigsFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAOverlapAndAssemble(sgaPath, mergedFile, workingDir, runtimeInfo));
+        final File actualAssembledContigsFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAOverlapAndAssemble(sgaPath, mergedFile, workingDir, runtimeInfo, false));
         final List<String> actualAssembledContigs   = (null==actualAssembledContigsFile  ) ? null : Files.readAllLines(Paths.get(actualAssembledContigsFile.getAbsolutePath()  ));
         final List<String> expectedAssembledContigs   = (null==expectedAssembledContigsFile  ) ? null : Files.readAllLines(Paths.get(expectedAssembledContigsFile.getAbsolutePath()  ));
 
