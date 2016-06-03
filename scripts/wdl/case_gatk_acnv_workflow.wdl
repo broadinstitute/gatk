@@ -12,8 +12,9 @@
 #    java -jar cromwell.jar run case_gatk_acnv_workflow.wdl myParameters.json
 # - See case_gatk_acnv_workflow_template.json for a template json file to modify with your own parameters (please save
 #    your modified version with a different filename and do not commit to gatk-protected repo).
-# - Plotting tasks are not included yet.
+# - Plotting tasks are not included yet. (issue #519)
 # - Many segmenter parameters are still unexposed. (issue #520)
+# - CNLoH/Balanced Segment calling not integrated (issue #528)
 #
 ###########
 

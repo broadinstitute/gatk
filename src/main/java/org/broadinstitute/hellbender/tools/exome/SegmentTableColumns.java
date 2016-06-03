@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import java.util.stream.Stream;
 
 
@@ -36,6 +38,15 @@ enum SegmentTableColumns {
     MINOR_ALLELE_FRACTION_POSTERIOR_70("MAF_Post_70"),
     MINOR_ALLELE_FRACTION_POSTERIOR_80("MAF_Post_80"),
     MINOR_ALLELE_FRACTION_POSTERIOR_90("MAF_Post_90"),
+
+    /** For appending results of the CN LoH Caller to an ACNV segment tsv.*/
+    BALANCED_CALL("Segment_Balanced"),
+    CNLOH_CALL("Segment_CNLoH"),
+    RHO_CALL("Segment_Rho_Call"),
+    M_CALL("Segment_M_Call"),
+    N_CALL("Segment_N_Call"),
+    F_CR("Segment_F_CR"),
+    F_MAF("Segment_F_MAF"),
 
     // Germline Segments quality scores:
 
@@ -95,17 +106,33 @@ enum SegmentTableColumns {
     private static final SegmentTableColumns[] NUM_TARGETS_AND_SNPS_ENUM_ARRAY =
             new SegmentTableColumns[]{SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS};
 
-    private static final SegmentTableColumns[] ACNV_MODELED_SEGMENT_ENUM_ARRAY =
-            new SegmentTableColumns[]{SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS,
-                    SEGMENT_MEAN_POSTERIOR_MODE, SEGMENT_MEAN_POSTERIOR_LOWER, SEGMENT_MEAN_POSTERIOR_UPPER,
-                    SEGMENT_MEAN_POSTERIOR_10, SEGMENT_MEAN_POSTERIOR_20, SEGMENT_MEAN_POSTERIOR_30,
-                    SEGMENT_MEAN_POSTERIOR_40, SEGMENT_MEAN_POSTERIOR_50, SEGMENT_MEAN_POSTERIOR_60,
-                    SEGMENT_MEAN_POSTERIOR_70, SEGMENT_MEAN_POSTERIOR_80, SEGMENT_MEAN_POSTERIOR_90,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_MODE, MINOR_ALLELE_FRACTION_POSTERIOR_LOWER,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_UPPER,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_10, MINOR_ALLELE_FRACTION_POSTERIOR_20, MINOR_ALLELE_FRACTION_POSTERIOR_30,
+    private static final SegmentTableColumns[] ACNV_MODELED_SEGMENT_MAF_DECILES_ENUM_ARRAY =
+            new SegmentTableColumns[]{MINOR_ALLELE_FRACTION_POSTERIOR_10, MINOR_ALLELE_FRACTION_POSTERIOR_20, MINOR_ALLELE_FRACTION_POSTERIOR_30,
                     MINOR_ALLELE_FRACTION_POSTERIOR_40, MINOR_ALLELE_FRACTION_POSTERIOR_50, MINOR_ALLELE_FRACTION_POSTERIOR_60,
                     MINOR_ALLELE_FRACTION_POSTERIOR_70, MINOR_ALLELE_FRACTION_POSTERIOR_80, MINOR_ALLELE_FRACTION_POSTERIOR_90};
+
+    private static final SegmentTableColumns[] ACNV_MODELED_SEGMENT_MEAN_DECILES_ENUM_ARRAY =
+            new SegmentTableColumns[]{SEGMENT_MEAN_POSTERIOR_10, SEGMENT_MEAN_POSTERIOR_20, SEGMENT_MEAN_POSTERIOR_30,
+                    SEGMENT_MEAN_POSTERIOR_40, SEGMENT_MEAN_POSTERIOR_50, SEGMENT_MEAN_POSTERIOR_60,
+                    SEGMENT_MEAN_POSTERIOR_70, SEGMENT_MEAN_POSTERIOR_80, SEGMENT_MEAN_POSTERIOR_90};
+
+    private static final SegmentTableColumns[] ACNV_MODELED_SEGMENT_ENUM_ARRAY =
+            ArrayUtils.addAll(
+                    ArrayUtils.addAll(
+                        ArrayUtils.addAll(
+                            ArrayUtils.toArray(SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS,
+                            SEGMENT_MEAN_POSTERIOR_MODE, SEGMENT_MEAN_POSTERIOR_LOWER, SEGMENT_MEAN_POSTERIOR_UPPER),
+                            ACNV_MODELED_SEGMENT_MEAN_DECILES_ENUM_ARRAY),
+                        MINOR_ALLELE_FRACTION_POSTERIOR_MODE, MINOR_ALLELE_FRACTION_POSTERIOR_LOWER,
+                        MINOR_ALLELE_FRACTION_POSTERIOR_UPPER),
+            ACNV_MODELED_SEGMENT_MAF_DECILES_ENUM_ARRAY);
+
+
+
+
+    private static final SegmentTableColumns[] CNLOH_ACNV_MODELED_SEGMENT_ENUM_ARRAY =
+            ArrayUtils.addAll(ACNV_MODELED_SEGMENT_ENUM_ARRAY, BALANCED_CALL, CNLOH_CALL, RHO_CALL, M_CALL, N_CALL,
+                    F_CR, F_MAF);
 
     private static final SegmentTableColumns[] GERMLINE_CALL_OUTPUT_COLUMNS =
             new SegmentTableColumns[]{
@@ -122,6 +149,11 @@ enum SegmentTableColumns {
     public static final String[] NUM_TARGETS_AND_SNPS_COLUMN_NAME_ARRAY = toStringArray(NUM_TARGETS_AND_SNPS_ENUM_ARRAY);
 
     public static final String[] ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY = toStringArray(ACNV_MODELED_SEGMENT_ENUM_ARRAY);
+
+    public static final String[] CNLOH_ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY = toStringArray(CNLOH_ACNV_MODELED_SEGMENT_ENUM_ARRAY);
+
+    public static final String[] ACNV_MODELED_SEGMENT_MEAN_DECILES_COLUMN_NAME_ARRAY = toStringArray(ACNV_MODELED_SEGMENT_MEAN_DECILES_ENUM_ARRAY);
+    public static final String[] ACNV_MODELED_SEGMENT_MAF_DECILES_COLUMN_NAME_ARRAY = toStringArray(ACNV_MODELED_SEGMENT_MAF_DECILES_ENUM_ARRAY);
 
     private static String[] toStringArray(final SegmentTableColumns[] enumArray) {
         return Stream.of(enumArray).map(SegmentTableColumns::toString).toArray(String[]::new);
