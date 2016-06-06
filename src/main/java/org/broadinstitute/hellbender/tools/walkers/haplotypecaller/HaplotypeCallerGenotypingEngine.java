@@ -36,7 +36,7 @@ public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<Asse
 
     protected final boolean doPhysicalPhasing;
 
-    private final InfiniteRandomMatingPopulationModel genotypingModel;
+    private final IndependentSampleGenotypesModel genotypingModel;
 
     private final PloidyModel ploidyModel;
 
@@ -50,7 +50,7 @@ public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<Asse
         super(configuration, samples, afCalculatorProvider);
         this.doPhysicalPhasing= doPhysicalPhasing;
         ploidyModel = new HomogeneousPloidyModel(samples,configuration.genotypeArgs.samplePloidy);
-        genotypingModel = new InfiniteRandomMatingPopulationModel();
+        genotypingModel = new IndependentSampleGenotypesModel();
     }
 
 
@@ -771,7 +771,7 @@ public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<Asse
      *
      * @return never {@code null}.
      */
-    public InfiniteRandomMatingPopulationModel getGenotypingModel() {
+    public IndependentSampleGenotypesModel getGenotypingModel() {
         return genotypingModel;
     }
 }
