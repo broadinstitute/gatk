@@ -123,16 +123,8 @@ check.dependsOn installDist
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
-    compile 'org.apache.commons:commons-math3:3.5'
     compile 'org.broadinstitute:gatk:4.alpha.1-104-g213595d-20160606.150121-2'
     compile 'com.opencsv:opencsv:3.4'
-    compile 'org.ojalgo:ojalgo:39.0'
-    compile ('org.apache.spark:spark-mllib_2.10:1.5.0') {
-        // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
-        exclude module: 'jul-to-slf4j'
-        exclude module: 'javax.servlet'
-        exclude module: 'servlet-api'
-    }
 
     // HDF5 and HDF-Java jar files
     if (isMacOsX) {
@@ -143,27 +135,6 @@ dependencies {
     }
 
     testCompile 'org.testng:testng:6.8.8'
-
-    // Comment the next line to disable native code proxies in Spark MLLib
-    compile('com.github.fommil.netlib:all:1.1.2')
-
-    // Dependency change for including MLLib
-    compile('org.objenesis:objenesis:1.2')
-    testCompile('org.objenesis:objenesis:2.1')
-
-    // Dependency change for including MLLib
-    compile('de.javakaffee:kryo-serializers:0.26') {
-        exclude module: 'kryo' // use Spark's version
-    }
-
-    // Dependency change for including MLLib
-    compile('com.esotericsoftware:kryo:3.0.3'){
-        exclude group: 'com.esotericsoftware', module: 'reflectasm'
-        exclude group: 'org.ow2.asm', module: 'asm'
-    }
-
-    // Dependency change for including MLLib
-    compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 }
 
 // Dependency change for including MLLib
