@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseEdge;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.BaseGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqVertex;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.Utils;
 

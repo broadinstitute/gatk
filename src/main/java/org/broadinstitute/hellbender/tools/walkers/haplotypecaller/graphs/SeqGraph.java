@@ -7,7 +7,9 @@ import org.apache.logging.log4j.Logger;
 import org.jgrapht.EdgeFactory;
 
 import java.io.File;
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * A graph that contains base sequence at each node

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.param;
 
 import com.google.common.primitives.Doubles;
-import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
@@ -11,7 +10,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**

@@ -34,7 +34,6 @@ import java.util.function.Function;
 public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
     private static final int NUM_DATAPOINTS = 10000;
 
-    private static final String VARIANCE_NAME = "variance";
     private static final double VARIANCE_MIN = 0.;
     private static final double VARIANCE_MAX = Double.POSITIVE_INFINITY;
     private static final double VARIANCE_WIDTH = 0.1;
@@ -42,7 +41,6 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
     private static final double VARIANCE_TRUTH = 1.;
     private static final double VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH = 0.014;
 
-    private static final String MEAN_NAME = "mean";
     private static final double MEAN_WIDTH = 0.1;
     private static final double MEAN_INITIAL = 5.;
     private static final double MEAN_TRUTH = 1.;
@@ -84,30 +82,33 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         }
     }
 
+    //We enumerate the parameters of the model using an enum that implements the ParameterEnum interface.
+    private enum GaussianParameter implements ParameterEnum {
+        VARIANCE, MEAN
+    }
+
     //We create a Modeller helper class to initialize the model state and specify the parameter samplers.
     private final class GaussianModeller {
         //Create fields in the Modeller for the model and samplers.
-        private final ParameterizedModel<ParameterizedState, GaussianDataCollection> model;
-        private final Sampler<Double, ParameterizedState, GaussianDataCollection> varianceSampler;
-        private final Sampler<Double, ParameterizedState, GaussianDataCollection> meanSampler;
+        private final ParameterizedModel<GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> model;
+        private final ParameterSampler<Double, GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> varianceSampler;
+        private final ParameterSampler<Double, GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> meanSampler;
 
         //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
         //(here, the initial variance and the initial mean) and the DataCollection (here, the list of datapoints).
         private GaussianModeller(final double varianceInitial, final double meanInitial, final List<Double> datapoints) {
             //Construct the initial ParameterizedState by passing a list of Parameters of mixed type to the constructor.
-            //Names and initial value (and, implicitly, types) of each of the parameters are set here.
-            //Here, we name the variance parameter "variance" and set its initial value to 5.0,
-            //implicitly specifying it as a Double);  likewise, we name the mean parameter "mean" and also set its
-            //initial value to 5.0, implicitly specifying it as a Double.
-            final List<Parameter<?>> initialParameters =
-                    Arrays.asList(new Parameter<>(VARIANCE_NAME, varianceInitial), new Parameter<>(MEAN_NAME, meanInitial));
-            final ParameterizedState initialState = new ParameterizedState(initialParameters);
+            //Initial values (and, implicitly, types) for each of the parameters are set here.
+            final List<Parameter<GaussianParameter, ?>> initialParameters = Arrays.asList(
+                    new Parameter<>(GaussianParameter.VARIANCE, varianceInitial),
+                    new Parameter<>(GaussianParameter.MEAN, meanInitial));
+            final ParameterizedState<GaussianParameter> initialState = new ParameterizedState<>(initialParameters);
 
             //Construct the GaussianDataCollection by passing a list of datapoints to the constructor.
-            //Here, we pass 10000 datapoints, which are generated above,
+            //Here, we pass 10000 datapoints, which were generated above,
             final GaussianDataCollection dataset = new GaussianDataCollection(datapoints);
 
-            //Implement Samplers for each parameter by overriding sample().  This can be done via a lambda that takes
+            //Implement ParameterSamplers for each parameter by overriding sample().  This can be done via a lambda that takes
             //(rng, state, dataCollection) and returns a new sample of the parameter with type identical to that
             //specified during initialization above.
 
@@ -121,13 +122,12 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
                 final Function<Double, Double> logConditionalPDF =
                         newVariance -> -0.5 * Math.log(newVariance) * dataCollection.getDatapoints().size() +
                                 dataCollection.getDatapoints().stream()
-                                        .mapToDouble(c -> -normalTerm(c, state.get(MEAN_NAME, Double.class), newVariance))
+                                        .mapToDouble(c -> -normalTerm(c, state.get(GaussianParameter.MEAN, Double.class), newVariance))
                                         .sum();
 
                 final SliceSampler sampler =
-                        new SliceSampler(rng, logConditionalPDF, state.get(VARIANCE_NAME, Double.class),
-                                VARIANCE_MIN, VARIANCE_MAX, VARIANCE_WIDTH);
-                return sampler.sample();
+                        new SliceSampler(rng, logConditionalPDF, VARIANCE_MIN, VARIANCE_MAX, VARIANCE_WIDTH);
+                return sampler.sample(state.get(GaussianParameter.VARIANCE, Double.class));
             };
 
             //Sampler for the mean global parameter.  Assuming a uniform prior, the relevant log conditional PDF
@@ -137,20 +137,20 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
             meanSampler = (rng, state, dataCollection) -> {
                 final Function<Double, Double> logConditionalPDF =
                         newMean -> dataCollection.getDatapoints().stream()
-                                .mapToDouble(c -> -normalTerm(c, newMean, state.get(VARIANCE_NAME, Double.class)))
+                                .mapToDouble(c -> -normalTerm(c, newMean, state.get(GaussianParameter.VARIANCE, Double.class)))
                                 .sum();
 
                 final SliceSampler sampler =
-                        new SliceSampler(rng, logConditionalPDF, state.get(MEAN_NAME, Double.class), MEAN_WIDTH);
-                return sampler.sample();
+                        new SliceSampler(rng, logConditionalPDF, MEAN_WIDTH);
+                return sampler.sample(state.get(GaussianParameter.MEAN, Double.class));
             };
 
             //Build the ParameterizedModel using the GibbsBuilder pattern.
             //Pass in the initial ParameterizedState and DataCollection, and specify the class of the ParameterizedState.
             //Add samplers for each of the parameters, with names matching those used in initialization.
-            model = new ParameterizedModel.GibbsBuilder<>(initialState, dataset, ParameterizedState.class)
-                    .addParameterSampler(VARIANCE_NAME, varianceSampler, Double.class)
-                    .addParameterSampler(MEAN_NAME, meanSampler, Double.class)
+            model = new ParameterizedModel.GibbsBuilder<>(initialState, dataset)
+                    .addParameterSampler(GaussianParameter.VARIANCE, varianceSampler, Double.class)
+                    .addParameterSampler(GaussianParameter.MEAN, meanSampler, Double.class)
                     .build();
         }
     }
@@ -167,15 +167,15 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         final GaussianModeller modeller = new GaussianModeller(VARIANCE_INITIAL, MEAN_INITIAL, datapointsList);
         //Create a GibbsSampler, passing the total number of samples (including burn-in samples)
         //and the model held by the Modeller.
-        final GibbsSampler<ParameterizedState, GaussianDataCollection> gibbsSampler =
+        final GibbsSampler<GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> gibbsSampler =
                 new GibbsSampler<>(NUM_SAMPLES, modeller.model);
         //Run the MCMC.
         gibbsSampler.runMCMC();
 
         //Get the samples of each of the parameter posteriors (discarding burn-in samples) by passing the
         //parameter name, type, and burn-in number to the getSamples method.
-        final double[] varianceSamples = Doubles.toArray(gibbsSampler.getSamples(VARIANCE_NAME, Double.class, NUM_BURN_IN));
-        final double[] meanSamples = Doubles.toArray(gibbsSampler.getSamples(MEAN_NAME, Double.class, NUM_BURN_IN));
+        final double[] varianceSamples = Doubles.toArray(gibbsSampler.getSamples(GaussianParameter.VARIANCE, Double.class, NUM_BURN_IN));
+        final double[] meanSamples = Doubles.toArray(gibbsSampler.getSamples(GaussianParameter.MEAN, Double.class, NUM_BURN_IN));
 
         //Check that the statistics---i.e., the means and standard deviations---of the posteriors
         //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.

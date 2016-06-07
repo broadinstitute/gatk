@@ -263,14 +263,14 @@ public class AllelicCNV extends SparkCommandLineProgram {
 
         //small-segment merging (note that X and Y are always small segments and dropped, since GATK CNV drops them)
         logger.info("Merging small segments...");
-        final SegmentedModel segmentedModelWithSmallSegments = new SegmentedModel(unionedSegments, genome);
-        final SegmentedModel segmentedModel = segmentedModelWithSmallSegments.mergeSmallSegments(smallSegmentTargetNumberThreshold);
-        final File segmentedModelFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + ".seg");
-        segmentedModel.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedModelFile);
-        logger.info("Number of segments after small-segment merging: " + segmentedModel.getSegments().size());
+        final SegmentedGenome segmentedGenomeWithSmallSegments = new SegmentedGenome(unionedSegments, genome);
+        final SegmentedGenome segmentedGenome = segmentedGenomeWithSmallSegments.mergeSmallSegments(smallSegmentTargetNumberThreshold);
+        final File segmentedGenomeFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + ".seg");
+        segmentedGenome.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedGenomeFile);
+        logger.info("Number of segments after small-segment merging: " + segmentedGenome.getSegments().size());
 
         //initial MCMC model fitting performed by ACNVModeller constructor
-        final ACNVModeller modeller = new ACNVModeller(segmentedModel, allelicPON,
+        final ACNVModeller modeller = new ACNVModeller(segmentedGenome, allelicPON,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
 
         final File initialModeledSegmentsFile = new File(outputPrefix + "-" + INITIAL_SEG_FILE_TAG + ".seg");
@@ -366,8 +366,8 @@ public class AllelicCNV extends SparkCommandLineProgram {
 
     //use AlleleFractionInitializer to determine mean of global allelic-bias distribution given SNP segmentation file
     private double calculateAllelicBias(final Genome genome, final File snpSegmentFile) {
-        final SegmentedModel segmentedModelForSNPSegmentation = new SegmentedModel(snpSegmentFile, genome);
-        final AlleleFractionData data = new AlleleFractionData(segmentedModelForSNPSegmentation);
+        final SegmentedGenome segmentedGenomeForSNPSegmentation = new SegmentedGenome(snpSegmentFile, genome);
+        final AlleleFractionData data = new AlleleFractionData(segmentedGenomeForSNPSegmentation);
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
         return initialState.meanBias();
     }

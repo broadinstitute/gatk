@@ -11,11 +11,11 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Unit tests for {@link SegmentedModel}.
+ * Unit tests for {@link SegmentedGenome}.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SegmentedModelUnitTest extends BaseTest {
+public final class SegmentedGenomeUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
     private static final File TARGET_FILE_SMALL_SEGMENT_MERGING
@@ -37,7 +37,7 @@ public final class SegmentedModelUnitTest extends BaseTest {
     public void testCountSmallSegments() {
         final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING,
                 SAMPLE_NAME);
-        final SegmentedModel model = new SegmentedModel(SEGMENT_FILE_SMALL_SEGMENT_MERGING, genome);
+        final SegmentedGenome model = new SegmentedGenome(SEGMENT_FILE_SMALL_SEGMENT_MERGING, genome);
 
         final int resultNumberOfSegmentsBeforeMerging = model.getSegments().size();
         final int resultNumberOfSmallSegmentsBeforeMerging =
@@ -52,9 +52,9 @@ public final class SegmentedModelUnitTest extends BaseTest {
     public void testSmallSegmentMergingBase() {
         final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING,
                 SAMPLE_NAME);
-        final SegmentedModel model = new SegmentedModel(SEGMENT_FILE_SMALL_SEGMENT_MERGING, genome);
+        final SegmentedGenome model = new SegmentedGenome(SEGMENT_FILE_SMALL_SEGMENT_MERGING, genome);
 
-        final SegmentedModel modelMerged = model.mergeSmallSegments(SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);
+        final SegmentedGenome modelMerged = model.mergeSmallSegments(SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);
 
         final List<SimpleInterval> result = modelMerged.getSegments();
 
@@ -85,11 +85,11 @@ public final class SegmentedModelUnitTest extends BaseTest {
     public void testSmallSegmentMergingNoSmallSegments() {
         final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING,
                 SAMPLE_NAME);
-        final SegmentedModel model = new SegmentedModel(SEGMENT_FILE_SMALL_SEGMENT_MERGING_NO_SMALL, genome);
+        final SegmentedGenome model = new SegmentedGenome(SEGMENT_FILE_SMALL_SEGMENT_MERGING_NO_SMALL, genome);
 
         final List<SimpleInterval> expected = model.getSegments();
 
-        final SegmentedModel modelMerged = model.mergeSmallSegments(SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);
+        final SegmentedGenome modelMerged = model.mergeSmallSegments(SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);
 
         final List<SimpleInterval> result = modelMerged.getSegments();
 
@@ -97,7 +97,7 @@ public final class SegmentedModelUnitTest extends BaseTest {
     }
 
     //returns the number of segments that contain a number of targets below a given threshold.
-    private static int countSmallSegments(final SegmentedModel model,
+    private static int countSmallSegments(final SegmentedGenome model,
                                           final int targetNumberThreshold) {
         return (int) model.getSegments().stream()
                 .filter(s -> model.getGenome().getTargets().targetCount(s) < targetNumberThreshold)

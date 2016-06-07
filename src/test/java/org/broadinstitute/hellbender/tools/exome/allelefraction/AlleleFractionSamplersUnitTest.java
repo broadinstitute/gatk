@@ -47,7 +47,7 @@ public class AlleleFractionSamplersUnitTest {
 
         final AlleleFractionSimulatedData SIMULATED_DATA = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments, averageDepth, meanBias, biasVariance, outlierProbability);
         final AlleleFractionState INITIAL_STATE = SIMULATED_DATA.getTrueState();
-        final AlleleFractionData DATA = new AlleleFractionData(SIMULATED_DATA.getSegmentedModel());
+        final AlleleFractionData DATA = new AlleleFractionData(SIMULATED_DATA.getSegmentedGenome());
 
         final AlleleFractionSamplers.MeanBiasSampler meanBiasSampler =
                 new AlleleFractionSamplers.MeanBiasSampler(INITIAL_STATE, 0.01);
@@ -58,7 +58,7 @@ public class AlleleFractionSamplersUnitTest {
         final AlleleFractionSamplers.MinorFractionsSampler minorFractionsSampler =
                 new AlleleFractionSamplers.MinorFractionsSampler(INITIAL_STATE, Collections.nCopies(numSegments, 0.01));
 
-        final AlleleFractionState state = INITIAL_STATE.copy(AlleleFractionState.class);
+        final AlleleFractionState state = INITIAL_STATE;
         final List<Double> meanBiasSamples = new ArrayList<>();
         final List<Double> biasVarianceSamples = new ArrayList<>();
         final List<Double> outlierProbabilitySamples = new ArrayList<>();
@@ -91,7 +91,7 @@ public class AlleleFractionSamplersUnitTest {
 
         double totalSegmentError = 0.0;
         for (int segment = 0; segment < numSegments; segment++) {
-            totalSegmentError += Math.abs(estimatedMinorFractions.get(segment) - INITIAL_STATE.minorFractionInSegment(segment));
+            totalSegmentError += Math.abs(estimatedMinorFractions.get(segment) - INITIAL_STATE.segmentMinorFraction(segment));
         }
 
         Assert.assertEquals(totalSegmentError / numSegments, 0.0, MINOR_FRACTION_TOLERANCE);

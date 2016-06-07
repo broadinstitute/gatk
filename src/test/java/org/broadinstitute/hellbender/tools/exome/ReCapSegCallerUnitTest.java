@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.utils.SimpleInterval;

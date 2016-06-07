@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumns.AllelicCountTableVerbosity;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
-import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumns.AllelicCountTableVerbosity;
 
 import java.io.File;
 import java.io.IOException;

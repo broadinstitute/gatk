@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.tools.exome.SegmentedModel;
+import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Given a {@link org.broadinstitute.hellbender.tools.exome.SegmentedModel} and counts of alt and ref reads over a list of het sites,
+ * Given a {@link SegmentedGenome} and counts of alt and ref reads over a list of het sites,
  * infers the minor allele fraction of each segment.  For example, a segment
  * with (alt,ref) counts (10,90), (11,93), (88,12), (90,10) probably has a minor allele fraction
  * somewhere around 0.1.  The model takes into account allelic bias due to mapping etc. by learning
@@ -43,22 +43,22 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleFractionModeller {
-    private final SegmentedModel segmentedModel;
-    private final ParameterizedModel<AlleleFractionState, AlleleFractionData> model;
+    private final SegmentedGenome segmentedGenome;
+    private final ParameterizedModel<AlleleFractionParameter, AlleleFractionState, AlleleFractionData> model;
     private final List<Double> meanBiasSamples = new ArrayList<>();
     private final List<Double> biasVarianceSamples = new ArrayList<>();
     private final List<Double> outlierProbabilitySamples = new ArrayList<>();
     private final List<AlleleFractionState.MinorFractions> minorFractionsSamples = new ArrayList<>();
     private final int numSegments;
 
-    public AlleleFractionModeller(final SegmentedModel segmentedModel) {
-        this(segmentedModel, AllelicPanelOfNormals.EMPTY_PON);
+    public AlleleFractionModeller(final SegmentedGenome segmentedGenome) {
+        this(segmentedGenome, AllelicPanelOfNormals.EMPTY_PON);
     }
 
-    public AlleleFractionModeller(final SegmentedModel segmentedModel, final AllelicPanelOfNormals allelicPON) {
-        this.segmentedModel = segmentedModel;
-        final AlleleFractionData data = new AlleleFractionData(segmentedModel, allelicPON);
-        numSegments = data.numSegments();
+    public AlleleFractionModeller(final SegmentedGenome segmentedGenome, final AllelicPanelOfNormals allelicPON) {
+        this.segmentedGenome = segmentedGenome;
+        final AlleleFractionData data = new AlleleFractionData(segmentedGenome, allelicPON);
+        numSegments = data.getNumSegments();
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
 
         // Initialization got us to the mode of the likelihood
@@ -71,23 +71,23 @@ public final class AlleleFractionModeller {
         final double outlierProbabilityInitialStepSize = estimateWidthAtMode(outlierProbability ->
                 AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(outlierProbability), data), initialState.outlierProbability());
         final List<Double> minorFractionsInitialStepSizes = IntStream.range(0, numSegments).mapToDouble(segment ->
-                estimateWidthAtMode(AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(initialState, data, segment), initialState.minorFractionInSegment(segment)))
+                estimateWidthAtMode(AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(initialState, data, segment), initialState.segmentMinorFraction(segment)))
                 .boxed().collect(Collectors.toList());
 
-        final Sampler<Double, AlleleFractionState, AlleleFractionData> meanBiasSampler =
+        final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> meanBiasSampler =
                 new AlleleFractionSamplers.MeanBiasSampler(initialState, meanBiasInitialStepSize);
-        final Sampler<Double, AlleleFractionState, AlleleFractionData> biasVarianceSampler =
+        final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> biasVarianceSampler =
                 new AlleleFractionSamplers.BiasVarianceSampler(initialState, biasVarianceInitialStepSize);
-        final Sampler<Double, AlleleFractionState, AlleleFractionData> outlierProbabilitySampler =
+        final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> outlierProbabilitySampler =
                 new AlleleFractionSamplers.OutlierProbabilitySampler(initialState, outlierProbabilityInitialStepSize);
-        final Sampler<AlleleFractionState.MinorFractions, AlleleFractionState, AlleleFractionData> minorFractionsSampler =
+        final ParameterSampler<AlleleFractionState.MinorFractions, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> minorFractionsSampler =
                 new AlleleFractionSamplers.MinorFractionsSampler(initialState, minorFractionsInitialStepSizes);
 
-        model = new ParameterizedModel.GibbsBuilder<>(initialState, data, AlleleFractionState.class)
-                .addParameterSampler(AlleleFractionState.MEAN_BIAS_NAME, meanBiasSampler, Double.class)
-                .addParameterSampler(AlleleFractionState.BIAS_VARIANCE_NAME, biasVarianceSampler, Double.class)
-                .addParameterSampler(AlleleFractionState.P_OUTLIER_NAME, outlierProbabilitySampler, Double.class)
-                .addParameterSampler(AlleleFractionState.MINOR_FRACTIONS_NAME, minorFractionsSampler, AlleleFractionState.MinorFractions.class)
+        model = new ParameterizedModel.GibbsBuilder<>(initialState, data)
+                .addParameterSampler(AlleleFractionParameter.MEAN_BIAS, meanBiasSampler, Double.class)
+                .addParameterSampler(AlleleFractionParameter.BIAS_VARIANCE, biasVarianceSampler, Double.class)
+                .addParameterSampler(AlleleFractionParameter.OUTLIER_PROBABILITY, outlierProbabilitySampler, Double.class)
+                .addParameterSampler(AlleleFractionParameter.MINOR_ALLELE_FRACTIONS, minorFractionsSampler, AlleleFractionState.MinorFractions.class)
                 .build();
     }
 
@@ -100,24 +100,31 @@ public final class AlleleFractionModeller {
      */
     public void fitMCMC(final int numSamples, final int numBurnIn) {
         //run MCMC
-        final GibbsSampler<AlleleFractionState, AlleleFractionData> gibbsSampler = new GibbsSampler<>(numSamples, model);
+        final GibbsSampler<AlleleFractionParameter, AlleleFractionState, AlleleFractionData> gibbsSampler = new GibbsSampler<>(numSamples, model);
         gibbsSampler.runMCMC();
 
         //update posterior samples
-        meanBiasSamples.addAll(gibbsSampler.getSamples(AlleleFractionState.MEAN_BIAS_NAME, Double.class, numBurnIn));
-        biasVarianceSamples.addAll(gibbsSampler.getSamples(AlleleFractionState.BIAS_VARIANCE_NAME, Double.class, numBurnIn));
-        outlierProbabilitySamples.addAll(gibbsSampler.getSamples(AlleleFractionState.P_OUTLIER_NAME, Double.class, numBurnIn));
-        minorFractionsSamples.addAll(gibbsSampler.getSamples(AlleleFractionState.MINOR_FRACTIONS_NAME, AlleleFractionState.MinorFractions.class, numBurnIn));
+        meanBiasSamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.MEAN_BIAS, Double.class, numBurnIn));
+        biasVarianceSamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.BIAS_VARIANCE, Double.class, numBurnIn));
+        outlierProbabilitySamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.OUTLIER_PROBABILITY, Double.class, numBurnIn));
+        minorFractionsSamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.MINOR_ALLELE_FRACTIONS, AlleleFractionState.MinorFractions.class, numBurnIn));
     }
 
     public List<Double> getmeanBiasSamples() {
         return Collections.unmodifiableList(meanBiasSamples);
     }
+
     public List<Double> getBiasVarianceSamples() {
         return Collections.unmodifiableList(biasVarianceSamples);
     }
-    public List<Double> getOutlierProbabilitySamples() { return Collections.unmodifiableList(outlierProbabilitySamples); }
-    public List<AlleleFractionState.MinorFractions> getMinorFractionsSamples() { return Collections.unmodifiableList(minorFractionsSamples); }
+
+    public List<Double> getOutlierProbabilitySamples() {
+        return Collections.unmodifiableList(outlierProbabilitySamples);
+    }
+
+    public List<AlleleFractionState.MinorFractions> getMinorFractionsSamples() {
+        return Collections.unmodifiableList(minorFractionsSamples);
+    }
 
     public List<List<Double>> getMinorFractionSamplesBySegment() {
         final List<List<Double>> result = new ArrayList<>();
@@ -140,7 +147,7 @@ public final class AlleleFractionModeller {
      *                              minor-allele-fraction posterior for each segment
      */
     public List<PosteriorSummary> getMinorAlleleFractionsPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
-        final int numSegments = segmentedModel.getSegments().size();
+        final int numSegments = segmentedGenome.getSegments().size();
         final List<PosteriorSummary> posteriorSummaries = new ArrayList<>(numSegments);
         for (int segment = 0; segment < numSegments; segment++) {
             final int j = segment;

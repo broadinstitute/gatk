@@ -8,11 +8,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Represents a segmented copy-number model of target-coverage and SNP-allele-count data.
+ * Represents segmented target-coverage and SNP-allele-count data.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class SegmentedModel {
+public final class SegmentedGenome {
     private final List<SimpleInterval> segments;
     private final Genome genome;
 
@@ -21,7 +21,7 @@ public final class SegmentedModel {
      * @param segmentFile   segment file (only "Sample", "Chromosome", "Start", "End" columns are used)
      * @param genome        genome containing target coverages and SNP allele counts to be segmented
      */
-    public SegmentedModel(final File segmentFile, final Genome genome) {
+    public SegmentedGenome(final File segmentFile, final Genome genome) {
         this(SegmentUtils.readIntervalsFromSegmentFile(segmentFile), genome);
     }
 
@@ -31,7 +31,7 @@ public final class SegmentedModel {
      * @param segments  list of segments, cannot be {@code null}
      * @param genome    genome containing target coverages and SNP allele counts to be segmented, cannot be {@code null}
      */
-    public SegmentedModel(final List<SimpleInterval> segments, final Genome genome) {
+    public SegmentedGenome(final List<SimpleInterval> segments, final Genome genome) {
         Utils.nonNull(segments, "List of segments cannot be null.");
         Utils.nonNull(genome, "Genome cannot be null.");
         this.segments = Collections.unmodifiableList(segments);
@@ -51,15 +51,15 @@ public final class SegmentedModel {
     public Genome getGenome() { return genome;  }
 
     /**
-     * Returns a new SegmentedModel with the small segments merged, using the algorithm implemented in
+     * Returns a new SegmentedGenome with the small segments merged, using the algorithm implemented in
      * {@link SegmentMergeUtils}.
      * @param targetNumberThreshold number of targets below which a segment is considered small
-     * @return                      a new SegmentedModel with the small segments merged
+     * @return                      a new SegmentedGenome with the small segments merged
      */
-    public SegmentedModel mergeSmallSegments(final int targetNumberThreshold) {
+    public SegmentedGenome mergeSmallSegments(final int targetNumberThreshold) {
         final List<SimpleInterval> mergedSegments =
                 SegmentMergeUtils.mergeSmallSegments(segments, genome, targetNumberThreshold);
-        return new SegmentedModel(mergedSegments, genome);
+        return new SegmentedGenome(mergedSegments, genome);
     }
 
     /**

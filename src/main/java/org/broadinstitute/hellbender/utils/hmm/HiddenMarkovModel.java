@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.hmm;
 
-import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;

@@ -19,7 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Unit test for {@link GibbsSampler}.  Demonstrates application of {@link GibbsSampler} to a hierarchichal
+ * Unit test for {@link GibbsSampler}.  Demonstrates application of {@link GibbsSampler} to a hierarchical
  * {@link ParameterizedModel} that is specified using helper classes that extend
  * {@link ParameterizedState} or implement {@link DataCollection}.
  * <p>
@@ -92,71 +92,55 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     }
 
     //In contrast to GibbsSamplerSingleGaussianUnitTest, our model here is complicated enough to warrant
-    //creating helper classes to make defining the parameter Samplers and referring to the data easier.  For example,
-    //this will allow us to refer to the variance as simply "state.variance()", rather than
-    //"state.get(VARIANCE_NAME, Double.class)".  Likewise, we will easily be able to refer to the coverages per segment.
+    //creating helper classes to make defining the parameter ParameterSamplers and referring to the data easier.
 
-    //Using helper classes that extend AbstractParameterizedState, we can make it easier to refer to the
-    //100 segment-level mean parameters and the global variance parameter.  This is easily done, but does require
-    //some boilerplate code (in particular, creation of a copy constructor and overriding of the copy method in
-    //AbstractParameterizedState.
+    //First, we enumerate the parameters of the model using an enum that implements the ParameterEnum interface.
+    private enum CopyRatioParameter implements ParameterEnum {
+        VARIANCE, SEGMENT_MEANS
+    }
 
-    //First, we create a subclass SegmentMeans.  This is a simple class that represents a "parameter block" of
-    //100 parameters, one for each segment-level mean.
-    private final class SegmentMeans {
-        private final List<Double> segmentMeans;
-
+    //Next, we create a subclass SegmentMeans.  This is a simple class that represents a "parameter block" of
+    //100 parameters, one for each segment-level mean.  NOTE: We don't actually enforce that the list of means
+    //is of length 100 or perform other such checks, although one could if desired.
+    private final class SegmentMeans extends ArrayList<Double> {
+        private static final long serialVersionUID = 147369L;
         public SegmentMeans(final List<Double> segmentMeans) {
-            this.segmentMeans = new ArrayList<>(segmentMeans);
-        }
-
-        public double getMeanInSegment(final int segment) {
-            return segmentMeans.get(segment);
+            super(new ArrayList<>(segmentMeans));
         }
     }
 
-    //We then create a subclass CopyRatioState.  This is an AbstractParameterizedState with
-    //two parameters.  The first parameter is a double for the global variance, while the second parameter is
-    //a "parameter block" object named SegmentMeans that holds all of the segment-level means.  We see that we can
-    //easily use such blocks to create a hierarchical model.
-    private final class CopyRatioState extends AbstractParameterizedState {
-        private static final String VARIANCE_NAME = "variance";
-        private static final String MEANS_NAME = "means";
+    //Using a helper class that extends ParameterizedState, we can make it easier to refer to the
+    //100 segment-level mean parameters and the global variance parameter.  For example,
+    //this will allow us to refer to the variance as simply "state.variance()", rather than
+    //"state.get(CopyRatioParameter.VARIANCE, Double.class)".  Likewise, we will easily be able to refer
+    //to the coverages per segment.
 
-        /**
-         * required boilerplate to override copy; this only makes a shallow copy (see {@link AbstractParameterizedState#copy(Class)})
-         */
-        @Override
-        protected <S extends AbstractParameterizedState> S copy(final Class<S> stateClass) {
-            return stateClass.cast(new CopyRatioState(this));
-        }
-
-        //boilerplate copy constructor called by the copy method
-        public CopyRatioState(final CopyRatioState state) {
-            super(state);
-        }
-
+    //We thus create a subclass CopyRatioState.  This is a ParameterizedState<CopyRatioParameter> with
+    //two parameters enumerated by <CopyRatioParameter>.  The first parameter is a double for the global variance,
+    //while the second parameter is a "parameter block" object named SegmentMeans that holds all of the segment-level means.
+    //We see that we can easily use such blocks to create a hierarchical model.
+    private final class CopyRatioState extends ParameterizedState<CopyRatioParameter> {
         //this constructor conveniently creates a CopyRatioState from a given variance and mean (used for initialization)
         //all segment means are set to the given value
         public CopyRatioState(final double variance, final double mean, final int numSegments) {
             super(Arrays.asList(
-                    new Parameter<>(VARIANCE_NAME, variance),
-                    new Parameter<>(MEANS_NAME, new SegmentMeans(Collections.nCopies(numSegments, mean)))));
+                    new Parameter<>(CopyRatioParameter.VARIANCE, variance),
+                    new Parameter<>(CopyRatioParameter.SEGMENT_MEANS, new SegmentMeans(Collections.nCopies(numSegments, mean)))));
         }
 
-        //this getter allows us to conveniently refer to the variance when constructing the Samplers below
+        //this getter allows us to conveniently refer to the variance when constructing the ParameterSamplers below
         public double variance() {
-            return get(VARIANCE_NAME, Double.class);
+            return get(CopyRatioParameter.VARIANCE, Double.class);
         }
 
-        //this getter allows us to conveniently refer to the segment means when constructing the Samplers below
+        //this getter allows us to conveniently refer to the segment means when constructing the ParameterSamplers below
         public double meanInSegment(final int segment) {
-            return get(MEANS_NAME, SegmentMeans.class).getMeanInSegment(segment);
+            return get(CopyRatioParameter.SEGMENT_MEANS, SegmentMeans.class).get(segment);
         }
     }
 
     //Likewise, we will create a CopyRatioDataCollection (which implements DataCollection) to make it easier to refer
-    //to the coverages per segment when constructing the Samplers below.
+    //to the coverages per segment when constructing the ParameterSamplers below.
     private final class CopyRatioDataCollection implements DataCollection {
         private final int numSegments;
 
@@ -178,12 +162,12 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
             this(loadList(coveragesFile, Double::parseDouble), loadList(numTargetsPerSegmentFile, Integer::parseInt));
         }
 
-        //this getter allows us to conveniently refer to the coverages per segment when constructing the Samplers below
+        //this getter allows us to conveniently refer to the coverages per segment when constructing the ParameterSamplers below
         public List<Double> getCoveragesInSegment(final int segment) {
             return coveragesPerSegment.get(segment);
         }
 
-        //this getter allows us to conveniently refer to the number of targets per segment when constructing the Samplers below
+        //this getter allows us to conveniently refer to the number of targets per segment when constructing the ParameterSamplers below
         public int getNumTargetsInSegment(final int segment) {
             return coveragesPerSegment.get(segment).size();
         }
@@ -192,9 +176,9 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     //We create a Modeller helper class to initialize the model state and specify the parameter samplers.
     private final class CopyRatioModeller {
         //Create fields in the Modeller for the model and samplers.
-        private final ParameterizedModel<CopyRatioState, CopyRatioDataCollection> model;
-        private final Sampler<Double, CopyRatioState, CopyRatioDataCollection> varianceSampler;
-        private final Sampler<SegmentMeans, CopyRatioState, CopyRatioDataCollection> meansSampler;  //note that this returns a SegmentMeans sample
+        private final ParameterizedModel<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> model;
+        private final ParameterSampler<Double, CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> varianceSampler;
+        private final ParameterSampler<SegmentMeans, CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> meansSampler;  //note that this returns a SegmentMeans sample
 
         //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
         //(here, the initial variance and the initial mean) and the DataCollection.
@@ -203,7 +187,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
             //Construct the initial CopyRatioState by passing all necesssary quantities.
             final CopyRatioState initialState = new CopyRatioState(initialVariance, initalMean, dataset.numSegments);
 
-            //Implement Samplers for each parameter by overriding sample().  This can be done via a lambda that takes
+            //Implement ParameterSamplers for each parameter by overriding sample().  This can be done via a lambda that takes
             //(rng, state, dataCollection) and returns a new sample of the parameter with type identical to that
             //specified during initialization above.
 
@@ -223,10 +207,8 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
                     return ll;
                 };
 
-                final SliceSampler sampler =
-                        new SliceSampler(rng, logConditionalPDF, state.variance(),
-                                VARIANCE_MIN, VARIANCE_MAX, VARIANCE_WIDTH);
-                return sampler.sample();
+                final SliceSampler sampler = new SliceSampler(rng, logConditionalPDF, VARIANCE_MIN, VARIANCE_MAX, VARIANCE_WIDTH);
+                return sampler.sample(state.variance());
             };
 
             //Sampler for the segment-level mean parameters.  Assuming uniform priors, for each segment s, the relevant
@@ -238,7 +220,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
             //NOTE: It is possible to shoot yourself in the foot here if you incorrectly specify the sampler!
             //For example, note that there is no check that the number of segments sampled here matches the
             //number of segments given during initialization.  Such consistency checks can be added (e.g., in the
-            //contructor of SegmentMeans), if desired, but may impact performance.
+            //constructor of SegmentMeans), if desired, but may impact performance.
             meansSampler = (rng, state, dataCollection) -> {
                 final List<Double> means = new ArrayList<>();
                 for (int segment = 0; segment < dataCollection.numSegments; segment++) {
@@ -248,9 +230,8 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
                                     .mapToDouble(c -> -normalTerm(c, newMean, state.variance()))
                                     .sum();
 
-                    final SliceSampler sampler =
-                            new SliceSampler(rng, logConditionalPDF, state.meanInSegment(segment), MEAN_WIDTH);
-                    means.add(sampler.sample());
+                    final SliceSampler sampler = new SliceSampler(rng, logConditionalPDF, MEAN_WIDTH);
+                    means.add(sampler.sample(state.meanInSegment(segment)));
                 }
                 return new SegmentMeans(means);
             };
@@ -258,9 +239,9 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
             //Build the ParameterizedModel using the GibbsBuilder pattern.
             //Pass in the initial CopyRatioState and CopyRatioDataCollection, and specify the class of the CopyRatioState.
             //Add samplers for each of the parameters, with names matching those used in initialization.
-            model = new ParameterizedModel.GibbsBuilder<>(initialState, dataset, CopyRatioState.class)
-                    .addParameterSampler(CopyRatioState.VARIANCE_NAME, varianceSampler, Double.class)
-                    .addParameterSampler(CopyRatioState.MEANS_NAME, meansSampler, SegmentMeans.class)
+            model = new ParameterizedModel.GibbsBuilder<>(initialState, dataset)
+                    .addParameterSampler(CopyRatioParameter.VARIANCE, varianceSampler, Double.class)
+                    .addParameterSampler(CopyRatioParameter.SEGMENT_MEANS, meansSampler, SegmentMeans.class)
                     .build();
         }
 
@@ -294,13 +275,13 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
      * </p>
      */
     @Test
-    public void testRunMCMCOnCopyRatioSegmentedModel() {
+    public void testRunMCMCOnCopyRatioSegmentedGenome() {
         //Create new instance of the Modeller helper class, passing all quantities needed to initialize state and data.
         final CopyRatioModeller modeller =
                 new CopyRatioModeller(VARIANCE_INITIAL, MEAN_INITIAL, COVERAGES_FILE, NUM_TARGETS_PER_SEGMENT_FILE);
         //Create a GibbsSampler, passing the total number of samples (including burn-in samples)
         //and the model held by the Modeller.
-        final GibbsSampler<CopyRatioState, CopyRatioDataCollection> gibbsSampler =
+        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
                 new GibbsSampler<>(NUM_SAMPLES, modeller.model);
         //Run the MCMC.
         gibbsSampler.runMCMC();
@@ -308,7 +289,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         //Check that the statistics---i.e., the mean and standard deviation---of the variance posterior
         //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.
         final double[] varianceSamples =
-                Doubles.toArray(gibbsSampler.getSamples("variance", Double.class, NUM_BURN_IN));
+                Doubles.toArray(gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, NUM_BURN_IN));
         final double variancePosteriorMean = new Mean().evaluate(varianceSamples);
         final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
         Assert.assertEquals(relativeError(variancePosteriorMean, VARIANCE_TRUTH), 0., 0.01);
@@ -321,7 +302,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         final List<Double> meansTruth = loadList(MEANS_TRUTH_FILE, Double::parseDouble);
         final int numSegments = meansTruth.size();
         final List<SegmentMeans> meansSamples =
-                gibbsSampler.getSamples(CopyRatioState.MEANS_NAME, SegmentMeans.class, NUM_BURN_IN);
+                gibbsSampler.getSamples(CopyRatioParameter.SEGMENT_MEANS, SegmentMeans.class, NUM_BURN_IN);
         int numMeansOutsideOneSigma = 0;
         int numMeansOutsideTwoSigma = 0;
         int numMeansOutsideThreeSigma = 0;
@@ -329,7 +310,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         for (int segment = 0; segment < numSegments; segment++) {
             final int j = segment;
             final double[] meanInSegmentSamples =
-                    Doubles.toArray(meansSamples.stream().map(s -> s.getMeanInSegment(j)).collect(Collectors.toList()));
+                    Doubles.toArray(meansSamples.stream().map(s -> s.get(j)).collect(Collectors.toList()));
             final double meanPosteriorMean = new Mean().evaluate(meanInSegmentSamples);
             final double meanPosteriorStandardDeviation =
                     new StandardDeviation().evaluate(meanInSegmentSamples);
@@ -360,13 +341,13 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
             new CopyRatioState(VARIANCE_INITIAL, MEAN_INITIAL, 1);
     private final CopyRatioDataCollection SIMPLE_DATA =
             new CopyRatioDataCollection(Collections.singletonList(1.), Collections.singletonList(1));
-    private final ParameterizedModel.GibbsBuilder<CopyRatioState, CopyRatioDataCollection> EXCEPTION_BUILDER =
-            new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA, CopyRatioState.class);
+    private final ParameterizedModel.GibbsBuilder<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> EXCEPTION_BUILDER =
+            new ParameterizedModel.GibbsBuilder<>(SIMPLE_STATE, SIMPLE_DATA);
     private final CopyRatioModeller EXCEPTION_MODELLER =
             new CopyRatioModeller(VARIANCE_INITIAL, MEAN_INITIAL, SIMPLE_DATA);
-    private final ParameterizedModel<CopyRatioState, CopyRatioDataCollection> EXCEPTION_MODEL = EXCEPTION_BUILDER
-            .addParameterSampler(CopyRatioState.VARIANCE_NAME, EXCEPTION_MODELLER.varianceSampler, Double.class)
-            .addParameterSampler(CopyRatioState.MEANS_NAME, EXCEPTION_MODELLER.meansSampler, SegmentMeans.class)
+    private final ParameterizedModel<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> EXCEPTION_MODEL = EXCEPTION_BUILDER
+            .addParameterSampler(CopyRatioParameter.VARIANCE, EXCEPTION_MODELLER.varianceSampler, Double.class)
+            .addParameterSampler(CopyRatioParameter.SEGMENT_MEANS, EXCEPTION_MODELLER.meansSampler, SegmentMeans.class)
             .build();
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -376,7 +357,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNegativeNumSamplesPerLogEntryException() {
-        final GibbsSampler<CopyRatioState, CopyRatioDataCollection> gibbsSampler =
+        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
                 new GibbsSampler<>(1, EXCEPTION_MODEL);
         gibbsSampler.setNumSamplesPerLogEntry(1);
         gibbsSampler.setNumSamplesPerLogEntry(-1);
@@ -384,16 +365,16 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNegativeNumBurnInException() {
-        final GibbsSampler<CopyRatioState, CopyRatioDataCollection> gibbsSampler =
+        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
                 new GibbsSampler<>(1, EXCEPTION_MODEL);
-        gibbsSampler.getSamples(CopyRatioState.VARIANCE_NAME, Double.class, -1);
+        gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, -1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNumBurnInExceedsNumSamplesException() {
-        final GibbsSampler<CopyRatioState, CopyRatioDataCollection> gibbsSampler =
+        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
                 new GibbsSampler<>(5, EXCEPTION_MODEL);
-        gibbsSampler.getSamples(CopyRatioState.VARIANCE_NAME, Double.class, 0);
-        gibbsSampler.getSamples(CopyRatioState.VARIANCE_NAME, Double.class, 10);
+        gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, 0);
+        gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, 10);
     }
 }
