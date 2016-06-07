@@ -93,6 +93,7 @@ public abstract class ExternalCommandlineProgramModule {
     public RuntimeInfo run(final Path pathToProgram,
                            final File directoryToWorkIn,
                            final List<String> runtimeArguments,
+                           final boolean enableSTDIOCapture,
                            final String... workingEnvironmentArgs) {
 
         List<String> commands = initializeCommands(pathToProgram);
@@ -108,10 +109,12 @@ public abstract class ExternalCommandlineProgramModule {
         }
 
         try{
-            final File stdoutFile = Files.createTempFile("stdout", "log").toFile();
-            final File stderrFile = Files.createTempFile("stderr", "log").toFile();
-            builder.redirectOutput(stdoutFile);
-            builder.redirectError(stderrFile);
+            final File stdoutFile = enableSTDIOCapture ? Files.createTempFile("stdout", "log").toFile() : null;
+            final File stderrFile = enableSTDIOCapture ? Files.createTempFile("stderr", "log").toFile() : null;
+            if(enableSTDIOCapture){
+                builder.redirectOutput(stdoutFile);
+                builder.redirectError(stderrFile);
+            }
 
             String out = "";
             String err = "";
@@ -119,11 +122,13 @@ public abstract class ExternalCommandlineProgramModule {
             final Process process = builder.start();
             final int exitStatus = process.waitFor();
 
-            try{
-                out = FileUtils.readFileToString(stdoutFile, Charset.defaultCharset());
-                err = FileUtils.readFileToString(stderrFile, Charset.defaultCharset());
-            }catch (final IOException ex){
-                return new RuntimeInfo(getModuleName(), RuntimeInfo.ReturnStatus.STDIOFAIL, null, ex.getMessage());
+            if(enableSTDIOCapture){
+                try{
+                    out = FileUtils.readFileToString(stdoutFile, Charset.defaultCharset());
+                    err = FileUtils.readFileToString(stderrFile, Charset.defaultCharset());
+                }catch (final IOException ex){
+                    return new RuntimeInfo(getModuleName(), RuntimeInfo.ReturnStatus.STDIOFAIL, null, ex.getMessage());
+                }
             }
 
             if(0!=exitStatus){
