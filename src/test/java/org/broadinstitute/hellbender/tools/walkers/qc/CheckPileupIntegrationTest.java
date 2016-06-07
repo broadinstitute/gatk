@@ -11,21 +11,13 @@ import java.util.Arrays;
 /**
  * Run validating pileup across a set of core data as proof of the integrity of the GATK core.
  *
- * Tests both types of old-school pileup formats (basic and consensus).
+ * Tests only single-sample mpileups (no consensus)
  *
- * @author Daniel Gómez-Sánchez (magicDGS)
+ * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public class CheckPileupIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
-
-    /**
-     * This test runs on a consensus pileup containing 10-column lines for SNPs and 13-column lines for indels
-     */
-    @Test(enabled = false)
-    public void testConsensusPileup() throws IOException {
-        // TODO
-    }
 
     /**
      * This test runs on a basic pileup obtained with samtools (version 1.1) and options -B --min-BQ 0

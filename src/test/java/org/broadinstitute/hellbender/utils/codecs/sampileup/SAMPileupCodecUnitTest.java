@@ -9,9 +9,11 @@ public class SAMPileupCodecUnitTest {
     public void testCanDecode() {
         final String EXTRA_CHAR = "1";
         SAMPileupCodec codec = new SAMPileupCodec();
-        Assert.assertTrue(codec.canDecode("filename." + SAMPileupCodec.FILE_EXT));
-        Assert.assertTrue(codec.canDecode("filename" + EXTRA_CHAR + "." + SAMPileupCodec.FILE_EXT));
-        Assert.assertFalse(codec.canDecode("filename." + SAMPileupCodec.FILE_EXT + "1"));
-        Assert.assertFalse(codec.canDecode("filename" + SAMPileupCodec.FILE_EXT));
+        for(final String ext: SAMPileupCodec.FILE_EXTENSIONS) {
+            Assert.assertTrue(codec.canDecode("filename." + ext));
+            Assert.assertTrue(codec.canDecode("filename" + EXTRA_CHAR + "." + ext));
+            Assert.assertFalse(codec.canDecode("filename." + ext + "1"));
+            Assert.assertFalse(codec.canDecode("filename" + ext));
+        }
     }
 }
