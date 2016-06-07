@@ -99,6 +99,7 @@ task gcovTestReport(type: Exec){
 }
 
 dependencies {
+    compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:2.3.0'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
