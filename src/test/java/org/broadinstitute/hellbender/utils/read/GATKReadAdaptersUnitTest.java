@@ -497,6 +497,9 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         read.setBases(newBases);
         Assert.assertEquals(read.getBases(), newBases, "Wrong bases for read after setBases()");
         Assert.assertEquals(read.getBasesString(), "GCGG", "Wrong base string for read after setBases()");
+        for (int i = 0; i < newBases.length; i++) {
+            Assert.assertEquals(read.getBase(i), newBases[i], "Wrong base string for read after setBases()");
+        }
     }
 
     @DataProvider(name = "GetAndSetBaseQualitiesData")
@@ -526,10 +529,15 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
     @Test(dataProvider = "GetAndSetBaseQualitiesData")
     public void testGetAndSetBaseQualities( final GATKRead read, final byte[] expectedQuals ) {
         Assert.assertEquals(read.getBaseQualities(), expectedQuals, "Wrong base qualities for read");
+        Assert.assertEquals(read.getBaseQualityCount(), expectedQuals.length, "Wrong number of base qualities for read");
 
         final byte[] newQuals = {1, 2, 3, 4};
         read.setBaseQualities(newQuals);
         Assert.assertEquals(read.getBaseQualities(), newQuals, "Wrong base qualities for read after setBaseQualities()");
+        Assert.assertEquals(read.getBaseQualityCount(), newQuals.length, "Wrong number of base qualities for read after setBaseQualities()");
+        for (int i = 0; i < newQuals.length; i++) {
+            Assert.assertEquals(read.getBaseQuality(i), newQuals[i], "Wrong base quality for read after setBaseQualities()");
+        }
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -566,10 +574,13 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
     @Test(dataProvider = "GetAndSetCigarData")
     public void testGetAndSetCigar( final GATKRead read, final Cigar expectedCigar ) {
         Assert.assertEquals(read.getCigar(), expectedCigar, "Wrong cigar for read");
+        Assert.assertEquals(read.numCigarElements(), expectedCigar.numCigarElements(), "Wrong numCigarElements for read");
 
         final Cigar newCigar = TextCigarCodec.decode("4M");
         read.setCigar(newCigar);
         Assert.assertEquals(read.getCigar(), newCigar, "Wrong cigar for read after setCigar()");
+        Assert.assertEquals(read.numCigarElements(), newCigar.numCigarElements(), "Wrong numCigarElements for read");
+        Assert.assertEquals(read.getCigarElement(0), newCigar.getCigarElement(0), "Wrong numCigarElement for read");
 
         read.setCigar("2M2I");
         Assert.assertEquals(read.getCigar(), TextCigarCodec.decode("2M2I"), "Wrong cigar for read after setCigar()");

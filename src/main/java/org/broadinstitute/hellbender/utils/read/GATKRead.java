@@ -269,6 +269,17 @@ public interface GATKRead extends Locatable {
     }
 
     /**
+     * Return the cigar element at a given index.
+     *
+     * Note: the default implementation return <code>getCigarElements().get(i)</code>.
+     * Subclasses may override, for example to reduce the memory allocation or improve speed.
+     * @throws IndexOutOfBoundsException if the index is out of range  (<code>index < 0 || index >= numCigarElements()</code>)
+     */
+    default CigarElement getCigarElement(final int i){
+       return getCigarElements().get(i);
+    }
+
+    /**
      * The number of cigar elements in this read. The default implementation returns <code>getCigar().numCigarElements()</code>.
      * Subclasses may override to provide more efficient implementations.
      */

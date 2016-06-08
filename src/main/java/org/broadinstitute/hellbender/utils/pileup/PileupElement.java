@@ -368,12 +368,11 @@ public final class PileupElement {
     CigarOperator getAdjacentOperator(final Direction direction) {
         final int increment = direction.getIncrement();
 
-        final List<CigarElement> cigarElements = read.getCigarElements();
         final int i = currentCigarOffset + increment;
-        if (i < 0 || i >= cigarElements.size()) {
+        if (i < 0 || i >= read.numCigarElements()) {
             return null;
         }
-        return cigarElements.get(i).getOperator();
+        return read.getCigarElement(i).getOperator();
     }
     /**
      * Get the cigar element of the previous genomic aligned position
@@ -411,7 +410,7 @@ public final class PileupElement {
         final int nCigarElements = read.numCigarElements();
 
         for ( int i = currentCigarOffset + increment; i >= 0 && i < nCigarElements; i += increment) {
-            final CigarElement elt = read.getCigar().getCigarElement(i);
+            final CigarElement elt = read.getCigarElement(i);
             if ( ON_GENOME_OPERATORS.contains(elt.getOperator()) ) {
                 return elt;
             }

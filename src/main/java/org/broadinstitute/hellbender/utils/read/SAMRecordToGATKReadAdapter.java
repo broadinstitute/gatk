@@ -11,6 +11,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Implementation of the {@link GATKRead} interface for the {@link SAMRecord} class.
@@ -268,6 +269,19 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     public List<CigarElement> getCigarElements(){
         //Cigar.getCigarElements returns an unmodifiable list so we don't wrap it again
         return samRecord.getCigar() == null ? Collections.emptyList() : samRecord.getCigar().getCigarElements();
+    }
+
+    /**
+     * This implementation avoids the creation of the unmodifiable view of the underlying list of CigarElements
+     * and simply retrieves the element that is requested.
+     */
+    @Override
+    public CigarElement getCigarElement(final int index) {
+        //we can't blow up with NPE, we promised in the contract
+        if (samRecord.getCigar() == null){
+            throw new IndexOutOfBoundsException("Index: "+index);
+        }
+        return samRecord.getCigar().getCigarElement(index);
     }
 
     /**
@@ -579,13 +593,13 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
         SAMRecordToGATKReadAdapter that = (SAMRecordToGATKReadAdapter) o;
 
-        return !(samRecord != null ? !samRecord.equals(that.samRecord) : that.samRecord != null);
+        return Objects.equals(samRecord, that.samRecord);
 
     }
 
     @Override
     public int hashCode() {
-        return samRecord != null ? samRecord.hashCode() : 0;
+        return Objects.hashCode(samRecord);
     }
 
     @Override
