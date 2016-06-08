@@ -49,6 +49,11 @@ create_tangent_plots_file = function(sample_name, tn_file, pre_tn_file, segments
     preQc = QC(preTn$VALUE)
     postQc = QC(tn$VALUE)
 
+    write.table(round(preQc, 3), file.path( output_dir, paste(sample_name, "_preQc.txt", sep="")), col.names=FALSE, row.names=FALSE)
+    write.table(round(postQc, 3), file.path( output_dir, paste(sample_name, "_postQc.txt", sep="")), col.names=FALSE, row.names=FALSE)
+    write.table(round(preQc - postQc, 3), file.path( output_dir, paste(sample_name, "_dQc.txt", sep="")), col.names=FALSE, row.names=FALSE)
+    write.table(round((preQc - postQc)/preQc, 3), file.path( output_dir, paste(sample_name, "_scaled_dQc.txt", sep="")), col.names=FALSE, row.names=FALSE)
+
     #plot tangent-normalized coverage with segments
     plot.fn = file.path( output_dir, paste(sample_name, "_FullGenome.png", sep=""))
     png(plot.fn, 12, 7, units="in", type="cairo", res=300, bg="white")
