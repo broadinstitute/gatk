@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Collection of allele counts for a genotype. It encompasses what alleles are present in the genotype and in what number.</p>
@@ -624,17 +626,12 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     public <T extends Allele> List<T> asAlleleList(final List<T> allelesToUse) {
         Utils.nonNull(allelesToUse, "the input allele list cannot be null");
         Utils.validateArg(allelesToUse.size() >= maximumAlleleIndex(), "the provided alleles to use does not contain an element for the maximum allele");
-        if (distinctAlleleCount == 1 ) {
-            return Collections.nCopies(ploidy, allelesToUse.get(sortedAlleleCounts[0]));
-        } else {
-            final List<T> result = new ArrayList<>(ploidy);
-            for (int distinctAlleleIndex = 0; distinctAlleleIndex < distinctAlleleCount; distinctAlleleIndex++) {
-                final T allele = allelesToUse.get(sortedAlleleCounts[2*distinctAlleleIndex]);
-                final int repeats = sortedAlleleCounts[2*distinctAlleleIndex+1];
-                result.addAll(Collections.nCopies(repeats, allele));
-            }
-            return result;
-        }
+        return distinctAlleleCount == 1 ? Collections.nCopies(ploidy, allelesToUse.get(sortedAlleleCounts[0])) :
+                IntStream.range(0, distinctAlleleCount).boxed().flatMap(distinctAllele -> {
+                            final T allele = allelesToUse.get(sortedAlleleCounts[2*distinctAllele]);
+                            final int repeats = sortedAlleleCounts[2*distinctAllele+1];
+                            return Collections.nCopies(repeats, allele).stream();
+                        }).collect(Collectors.toList());
     }
 
 }

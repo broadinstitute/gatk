@@ -18,27 +18,27 @@ public interface AlleleList<A extends Allele>{
     /**
      * Returns the number of alleles in this AlleleList.
      */
-    public int numberOfAlleles();
+    int numberOfAlleles();
 
     /**
      * Returns the index of the given Allele in this AlleleList.
      * Returns a negative number if the given allele is not present in this AlleleList.
      * @throws IllegalArgumentException if allele is null.
      */
-    public int indexOfAllele(final A allele);
+    int indexOfAllele(final A allele);
 
     /**
      * Returns the allele at the given index in this AlleleList.
      * @throws IllegalArgumentException if index is negative or equal
      * to or higher than the number of elements in this AlleleList {@link AlleleList#numberOfAlleles()}).
      */
-    public A getAllele(final int index);
+    A getAllele(final int index);
 
     /**
      * Returns <code>true</code> if this AlleleList contains the specified allele
      * and <code>false</code> otherwise.
      */
-    public default boolean containsAllele(final A allele){
+    default boolean containsAllele(final A allele){
         return indexOfAllele(allele) >= 0;
     }
 
@@ -67,7 +67,7 @@ public interface AlleleList<A extends Allele>{
      * @return never {@code null}.
      */
     @SuppressWarnings("unchecked")
-    public static <A extends Allele> AlleleList<A> emptyAlleleList() {
+    static <A extends Allele> AlleleList<A> emptyAlleleList() {
         return (AlleleList<A>)EMPTY_LIST;
     }
 
@@ -80,7 +80,7 @@ public interface AlleleList<A extends Allele>{
      *
      * @return {@code true} iff both list are equal.
      */
-    public static <A extends Allele> boolean equals(final AlleleList<A> first, final AlleleList<A> second) {
+    static <A extends Allele> boolean equals(final AlleleList<A> first, final AlleleList<A> second) {
         if (first == null || second == null) {
             throw new IllegalArgumentException("no null list allowed");
         }
@@ -110,14 +110,12 @@ public interface AlleleList<A extends Allele>{
      *     it returns the first occurrence (lowest index).
      * </p>
      *
-     * @param list the search allele-list.
-     * @param <A> allele component type.
      *
      * @throws IllegalArgumentException if {@code list} is {@code null}.
      *
      * @return -1 if there is no reference allele, or a values in [0,{@code list.alleleCount()}).
      */
-    default public int indexOfReference() {
+    default int indexOfReference() {
         final int alleleCount = this.numberOfAlleles();
         for (int i = 0; i < alleleCount; i++) {
             if (this.getAllele(i).isReference()) {
@@ -156,7 +154,7 @@ public interface AlleleList<A extends Allele>{
      *
      * @return never {@code null}
      */
-    default public AlleleListPermutation<A> permutation(final AlleleList<A> target) {
+    default AlleleListPermutation<A> permutation(final AlleleList<A> target) {
         if (equals(this, target)) {
             return new NonPermutation<>(this);
         } else {
@@ -167,7 +165,7 @@ public interface AlleleList<A extends Allele>{
     /**
      * This is the identity permutation.
      */
-    static final class NonPermutation<A extends Allele> implements AlleleListPermutation<A> {
+    final class NonPermutation<A extends Allele> implements AlleleListPermutation<A> {
 
         private final AlleleList<A> list;
 
@@ -194,6 +192,9 @@ public interface AlleleList<A extends Allele>{
         public int fromIndex(final int toIndex) {
             return toIndex;
         }
+
+        @Override
+        public boolean isKept(final int fromIndex) { return true; }
 
         @Override
         public int fromSize() {
@@ -231,7 +232,7 @@ public interface AlleleList<A extends Allele>{
         }
     }
 
-     static final class ActualPermutation<A extends Allele> implements AlleleListPermutation<A> {
+    final class ActualPermutation<A extends Allele> implements AlleleListPermutation<A> {
 
         private final AlleleList<A> from;
 
@@ -239,6 +240,8 @@ public interface AlleleList<A extends Allele>{
 
         private final int[] fromIndex;
 
+        private final boolean[] keptFromIndices;
+        
         private final boolean nonPermuted;
 
         private final boolean isPartial;
@@ -246,6 +249,7 @@ public interface AlleleList<A extends Allele>{
         private ActualPermutation(final AlleleList<A> original, final AlleleList<A> target) {
             this.from = original;
             this.to = target;
+            keptFromIndices = new boolean[original.numberOfAlleles()];
             final int toSize = target.numberOfAlleles();
             final int fromSize = original.numberOfAlleles();
             if (fromSize < toSize) {
@@ -260,6 +264,7 @@ public interface AlleleList<A extends Allele>{
                 if (originalIndex < 0) {
                     throw new IllegalArgumentException("target allele list is not a permutation of the original allele list");
                 }
+                keptFromIndices[originalIndex] = true;
                 fromIndex[i] = originalIndex;
                 nonPermuted &= originalIndex == i;
             }
@@ -285,6 +290,11 @@ public interface AlleleList<A extends Allele>{
         @Override
         public int fromIndex(final int toIndex) {
             return fromIndex[toIndex];
+        }
+
+        @Override
+        public boolean isKept(final int fromIndex) {
+            return keptFromIndices[fromIndex];
         }
 
         @Override

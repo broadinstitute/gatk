@@ -1,5 +1,6 @@
-package org.broadinstitute.hellbender.tools.walkers.genotyper;
+package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
+import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFPriorProvider;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.util.Arrays;

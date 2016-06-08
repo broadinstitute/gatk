@@ -62,7 +62,7 @@ import java.util.*;
  * as P(D | AF_* == 0) = prod_i P (D | AF_i == 0), after applying the theta^i
  * prior for the ith least likely allele.
  */
- public final class IndependentAllelesDiploidExactAFCalculator extends DiploidExactAFCalculator {
+ public final class IndependentAllelesDiploidExactAFCalculator extends ExactAFCalculator {
 
     private static final int[] BIALLELIC_NON_INFORMATIVE_PLS = {0,0,0};
     private static final List<Allele> BIALLELIC_NOCALL = Arrays.asList(Allele.NO_CALL, Allele.NO_CALL);

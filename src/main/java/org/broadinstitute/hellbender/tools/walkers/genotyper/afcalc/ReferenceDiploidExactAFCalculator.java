@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * Reference implementation of multi-allelic EXACT model.  Extremely slow for many alternate alleles.
  */
-public final class ReferenceDiploidExactAFCalculator extends DiploidExactAFCalculator {
+public final class ReferenceDiploidExactAFCalculator extends ExactAFCalculator {
 
     private static final double LOG10_OF_2 = MathUtils.log10(2);
 
