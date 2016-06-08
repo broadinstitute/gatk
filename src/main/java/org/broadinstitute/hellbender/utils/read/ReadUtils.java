@@ -447,7 +447,7 @@ public final class ReadUtils {
      * @return the length of the first insertion, or 0 if there is none (see warning).
      */
     public static int getFirstInsertionOffset(final GATKRead read) {
-        final CigarElement e = read.getCigarElements().get(0);
+        final CigarElement e = read.getCigarElement(0);
         if ( e.getOperator() == CigarOperator.I ) {
             return e.getLength();
         } else {
