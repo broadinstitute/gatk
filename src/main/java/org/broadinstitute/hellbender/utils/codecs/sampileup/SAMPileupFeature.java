@@ -3,36 +3,39 @@ package org.broadinstitute.hellbender.utils.codecs.sampileup;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.tribble.Feature;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.apache.commons.lang.ArrayUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A tribble feature representing a SAM pileup.
  *
  * Allows intake of simple mpileups. Simple pileup features will contain only basic information, no reconstructed reads.
  *
- * @author mhanna
- * @version 0.1
+ * @author Danil Gomez-Sanchez (magiDGS)
  */
 public class SAMPileupFeature implements Feature {
 
-    private String contig;            // genomic location of this genotyped site
-    private int start;
+    // genomic location
+    private final String contig;
+    private final int position;
+    // reference base
+    private final byte refBase;
 
-    private char refBaseChar; // what we have set for the reference base (is set to a '*' for indel!)
+    // list of pileup elements
+    private final List<SAMPileupElement> pileupElements;
 
-    private String pileupQuals;     // the read base qualities
-    private String pileupBases;     // the read bases themselves
-
-    // TODO: change for PileupElement list
-    // private final List<PileupElement> elementList = new ArrayList<>();
-
-    /**
-     * create the pileup feature.  Default protection so that only other classes in this package can create it.
-     */
-    SAMPileupFeature() {}
+    SAMPileupFeature(final String contig, final int position, final byte refBase, final List<SAMPileupElement> pileupElements) {
+        Utils.nonNull(pileupElements);
+        this.contig = contig;
+        this.position = position;
+        this.refBase = refBase;
+        this.pileupElements = pileupElements;
+    }
 
     @Override
     @Deprecated
@@ -45,61 +48,51 @@ public class SAMPileupFeature implements Feature {
         return contig;
     }
 
-    protected void setChr(final String chr) {
-        this.contig = chr;
-    }
-
     @Override
     public int getStart() {
-        return start;
-    }
-
-    protected void setStart(final int start) {
-        this.start = start;
+        return position;
     }
 
     @Override
     public int getEnd() {
-        return start;
-    }
-
-    public String getQualsAsString() {
-        return pileupQuals;
-    }
-
-    protected void setPileupQuals(final String pileupQuals) {
-        this.pileupQuals = pileupQuals;
+        return position;
     }
 
     /**
-     * Returns reference base for point genotypes or '*' for indel genotypes, as a char.
+     * Returns pile of obseved qualities over the genomic location
+     *
+     * Note: this call costs O(n) and allocates fresh array each time
      */
-    public char getRef() {
-        return refBaseChar;
-    }
-
-    protected void setRef(char ref) {
-        this.refBaseChar = ref;
-    }
-
-    public int size() {
-        return pileupQuals.length();
+    public String getQualsAsString() {
+        return SAMUtils.phredToFastq(getBases());
     }
 
     /**
-     * Returns pile of observed bases over the current genomic location.
+     * Returns pile of observed bases over the genomic location.
+     *
+     * Note: this call costs O(n) and allocates fresh array each time
      */
     public String getBasesAsString() {
-        return pileupBases;
-    }
-
-    protected void setPileupBases(String pileupBases) {
-        this.pileupBases = pileupBases;
+        return StringUtil.bytesToString(getBases());
     }
 
     /**
-     * Returns formatted pileup string for the current genomic location as "location: reference_base observed_base_pile
-     * observed_qual_pile"
+     * Returns the reference basse
+     */
+    public byte getRef() {
+        return refBase;
+    }
+
+    /**
+     * Return the number of observed bases over the genomic location
+     */
+    public int size() {
+        return pileupElements.size();
+    }
+
+    /**
+     * Returns formatted pileup string for the genomic location as
+     * "location: reference_base observed_base_pile observed_qual_pile"
      */
     public String getPileupString() {
         return String.format("%s:%d: %s %s %s",
@@ -107,21 +100,37 @@ public class SAMPileupFeature implements Feature {
     }
 
     /**
-     * Gets the bases in byte array form.
+     * Gets the bases in byte array form
      *
-     * @return byte array of the available bases.
+     * Note: this call costs O(n) and allocates fresh array each time
      */
     public byte[] getBases() {
-        return StringUtil.stringToBytes(getBasesAsString());
+        final List<Byte> bases = getBasesStream().collect(Collectors.toList());
+        return ArrayUtils.toPrimitive(bases.toArray(new Byte[bases.size()]));
     }
 
     /**
-     * Gets the Phred base qualities without ASCII offset.
+     * Gets the PHRED base qualities.
      *
-     * @return Phred base qualities.
+     * Note: this call costs O(n) and allocates fresh array each time
      */
     public byte[] getQuals() {
-        return SAMUtils.fastqToPhred(getQualsAsString());
+        final List<Byte> quals = getQualsStream().collect(Collectors.toList());
+        return ArrayUtils.toPrimitive(quals.toArray(new Byte[quals.size()]));
+    }
+
+    /**
+     * Get the bases as a stream
+     */
+    public Stream<Byte> getBasesStream() {
+        return pileupElements.stream().map(SAMPileupElement::getBase);
+    }
+
+    /**
+     * Get the qualities as a stream
+     */
+    public Stream<Byte> getQualsStream() {
+        return pileupElements.stream().map(SAMPileupElement::getBaseQuality);
     }
 
 }

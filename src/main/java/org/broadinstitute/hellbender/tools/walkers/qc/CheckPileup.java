@@ -94,18 +94,18 @@ public final class CheckPileup extends LocusWalker {
     }
 
     public void apply(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
-        ReadPileup pileup = context.getBasePileup();
-        SAMPileupFeature truePileup = getTruePileup(featureContext);
+        final ReadPileup pileup = context.getBasePileup();
+        final SAMPileupFeature truePileup = getTruePileup(featureContext);
 
         if ( truePileup == null ) {
             out.printf("No truth pileup data available at %s%n", pileup.getPileupString((char) ref.getBase()));
             if ( !continueAfterAnError) {
-                throw new UserException.BadInput(String.format("No pileup data available at %s given GATK's output of %s -- this walker requires samtools mpileup data over all bases",
+                throw new UserException.BadInput(
+                        String.format("No pileup data available at %s given GATK's output of %s -- this walker requires samtools mpileup data over all bases",
                         context.getLocation(), new String(pileup.getBases())));
             }
         } else {
-            // TODO: hardcoded order-dependent -> either simplify code or add parameter
-            String pileupDiff = pileupDiff(pileup, truePileup, true);
+            final String pileupDiff = pileupDiff(pileup, truePileup);
             if ( pileupDiff != null ) {
                 out.printf("%s vs. %s%n", pileup.getPileupString((char) ref.getBase()), truePileup.getPileupString());
                 if ( !continueAfterAnError) {
@@ -113,45 +113,32 @@ public final class CheckPileup extends LocusWalker {
                 }
             }
         }
-
         nLoci++;
         nBases += pileup.size();
     }
 
-    // TODO: change method to sort bases and qualities together
-    private static String maybeSorted( final String x, boolean sortMe )
-    {
-        if ( sortMe ) {
-            byte[] bytes = x.getBytes();
-            Arrays.sort(bytes);
-            return new String(bytes);
-        }
-        return x;
-    }
-
-    public String pileupDiff(final ReadPileup a, final SAMPileupFeature b, boolean orderDependent) {
+    public String pileupDiff(final ReadPileup a, final SAMPileupFeature b) {
+        // compare sizes
         if ( a.size() != b.size() ) {
-            // TODO: this change the format for diff w.r.t. GATK3
             return String.format("Sizes not equal: %s vs. %s", a.size(), b.size());
         }
+        // compare locations
         if (IntervalUtils.compareLocatables(a.getLocation(), b, getReferenceDictionary()) != 0 ) {
-            // TODO: this change the format for diff w.r.t. GATK3
-            return String.format("Locations not equal: %s vs. %s", a.getLocation(), (Locatable) b);
+            return String.format("Locations not equal: %s vs. %s", a.getLocation(), b);
         }
-
-        // TODO: sorting of the bases and qualities are independent, when they should not
-        String aBases = maybeSorted(new String(a.getBases()), ! orderDependent );
-        String bBases = maybeSorted(b.getBasesAsString(), ! orderDependent );
+        // compare bases
+        final String aBases = new String(a.getBases());
+        final String bBases = b.getBasesAsString();
         if ( ! aBases.toUpperCase().equals(bBases.toUpperCase()) ) {
-            return "Bases not equal";
+            return String.format("Bases not equal: %s vs. %s", aBases, bBases);
         }
 
-        String aQuals = maybeSorted(new String(a.getBaseQuals()), ! orderDependent );
-        String bQuals = maybeSorted(new String(b.getQuals()), ! orderDependent );
+        // compare the qualities
+        final String aQuals = new String(a.getBaseQuals());
+        final String bQuals = new String(b.getQuals());
         if ( ! aQuals.equals(bQuals) ) {
-            return "Quals not equal";
+            return String.format("Quals not equal: %s vs. %s", aQuals, bQuals);
         }
-
         return null;
     }
 
