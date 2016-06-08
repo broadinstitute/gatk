@@ -32,7 +32,7 @@ public final class CopyNumberTriStateSegmentRecordWriter extends TableWriter<Cop
                 .append(segment.getContig())
                 .append(segment.getStart())
                 .append(segment.getEnd())
-                .append(segment.getCall().toCallString())
+                .append(segment.getCall().callString)
                 .append(segment.getTargetCount())
                 .append(formatDouble(segment.getMean()))
                 .append(formatDouble(segment.getStdev()))

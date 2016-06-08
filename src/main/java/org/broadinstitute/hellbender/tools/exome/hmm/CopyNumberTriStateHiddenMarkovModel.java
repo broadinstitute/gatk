@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome.hmm;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.random.RandomGenerator;
+import org.apache.commons.math3.random.RandomGeneratorFactory;
+import org.broadinstitute.hellbender.tools.coveragemodel.XHMMTargetLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,36 +15,18 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import java.util.*;
 
 /**
- * Implements the Three state copy number distance dependent model described in
- * <a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3484655">Fromer et al. Am J Hum Genet. 2012 Oct 5; 91(4):597-607</a>
- *
- * <p>
- *     This model has the following parameters:
- *     <dl>
- *         <dt>Event-Rate</dt><dd>(p in the paper) the exome-wide event rate; what is the probability of any given
- *         target to be the start target for an event (either a deletion or duplication).</dd>
- *         <dt>Mean number of targets per event</dt><dd>(T in the paper) the average number of targets per each event
- *         (either a deletion or duplication).</dd>
- *         <dt>Mean event target distance</dt><dd>(meanEventSize in the paper) the expectation of the distance (in base-pairs) between
- *         consecutive targets in an event.</dd>
- *         <dt>Mean coverage depth shift for deletions</dt><dd>(-M in the paper) what is the average negative shift
- *         in coverage in regions that have undergone a copy loss.</dd>
- *         <dt>Mean coverage depth shift for duplications</dt><dd>(+M in the paper) what is the average positive
- *         shift in coverage depth in regions that have undergone a copy gain</dd>
- *     </dl>
- *     <p>
- *      Notice that this implementation allows a different shift magnitude for deletions and duplications which is fix
- *      to the same value in the original paper.
- *     </p>
- * </p>
+ *  This model has the following parameters:
+ *  Event start probability: the probability of a CNV event beginning at any given base.
+ *  Mean event size: the average size (in base-pairs) of an event.
+ *  Mean coverage shift for deletions: the mean coverage in regions that have undergone a copy loss.
+ *  Mean coverage shift for duplications:  the mean coverage in regions that have undergone a copy gain.
  *
  * <p>
  * This model assumes that target are provided in genomic coordinate order although it can handle either ascending
  * and descending orders.
  * </p>
  * <p>
- * When any of the targets provided does not have a defined interval, the model automatically switches to the
- * non-distance dependent simpler model described in the same publication.
+ * When any of the targets provided does not have a defined interval, the model uses a default distance.
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
@@ -57,21 +41,11 @@ public final class CopyNumberTriStateHiddenMarkovModel
             Collections.unmodifiableList(Arrays.asList(CopyNumberTriState.values()));
 
     /**
-    * The assumed stddev for coverage values in a copy neutral segment.
+    * The assumed stddev for likelihoods, regardless of copy number state.
     */
-    private static final double NEUTRAL_DISTRIBUTION_SD = 1.0;
+    private static final double EMISSION_SD = 1.0;
 
-    /**
-     * The assumed stddev for coverage values in a deletion.
-     */
-    private static final double DELETION_DISTRIBUTION_SD = 1.0;
-
-    /**
-     * The assumed stddev for coverage values in a duplication.
-     */
-    private static final double DUPLICATION_DISTRIBUTION_SD = 1.0;
-
-    private final Map<CopyNumberTriState, NormalDistribution> emissionDistributionByState;
+    private final XHMMTargetLikelihoodCalculator likelihoodsCalculator;
 
     private final CopyNumberTriStateTransitionProbabilityCache logTransitionProbabilityCache;
 
@@ -83,6 +57,8 @@ public final class CopyNumberTriStateHiddenMarkovModel
 
     //average size in bases of CNVs
     private final double meanEventSize;
+
+    private final static int RANDOM_SEED = 1767;
 
     /**
      * Creates a new model instance.
@@ -103,10 +79,8 @@ public final class CopyNumberTriStateHiddenMarkovModel
         this.eventStartProbability = eventStartProbability;
         this.meanEventSize = meanEventSize;
         logTransitionProbabilityCache = new CopyNumberTriStateTransitionProbabilityCache(meanEventSize, eventStartProbability);
-        emissionDistributionByState = new EnumMap<>(CopyNumberTriState.class);
-        emissionDistributionByState.put(CopyNumberTriState.NEUTRAL, new NormalDistribution(0, NEUTRAL_DISTRIBUTION_SD));
-        emissionDistributionByState.put(CopyNumberTriState.DELETION, new NormalDistribution(deletionMeanShift, DELETION_DISTRIBUTION_SD));
-        emissionDistributionByState.put(CopyNumberTriState.DUPLICATION, new NormalDistribution(duplicationMeaShift, DUPLICATION_DISTRIBUTION_SD));
+        final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
+        likelihoodsCalculator = new XHMMTargetLikelihoodCalculator(deletionMeanShift, duplicationMeaShift, EMISSION_SD, rng);
     }
 
     @Override
@@ -178,16 +152,14 @@ public final class CopyNumberTriStateHiddenMarkovModel
     public double logEmissionProbability(final Double data,
                                          final CopyNumberTriState state,
                                          final Target target) {
-        final NormalDistribution distribution = emissionDistributionByState.get(Utils.nonNull(state));
-        return distribution.logDensity(data);
+        return likelihoodsCalculator.logLikelihood(target, state.copyRatio, data);
     }
 
     @VisibleForTesting
     public Double randomDatum(final CopyNumberTriState state, final Random rdn) {
         Utils.nonNull(state);
         Utils.nonNull(rdn);
-        final NormalDistribution stateDistro = emissionDistributionByState.get(state);
-        return rdn.nextGaussian() * stateDistro.getStandardDeviation() + stateDistro.getMean();
+        return likelihoodsCalculator.generateRandomZScoreData(state.copyRatio);
     }
 
     /**
@@ -195,7 +167,7 @@ public final class CopyNumberTriStateHiddenMarkovModel
      * @return a valid negative finite double value.
      */
     public double getDeletionMean() {
-        return emissionDistributionByState.get(CopyNumberTriState.DELETION).getMean();
+        return likelihoodsCalculator.deletionMean();
     }
 
     /**
@@ -203,7 +175,7 @@ public final class CopyNumberTriStateHiddenMarkovModel
      * @return a valid positive finite double value.
      */
     public double getDuplicationMean() {
-        return emissionDistributionByState.get(CopyNumberTriState.DUPLICATION).getMean();
+        return likelihoodsCalculator.duplicationMean();
     }
 
     public double getEventStartProbability() { return eventStartProbability; }
