@@ -2,19 +2,19 @@ package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.Header;
-
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.metrics.*;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsCollector;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Worker class to collect insert size metrics, add metrics to file, and provides

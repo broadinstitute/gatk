@@ -28,6 +28,8 @@ import java.util.stream.Stream;
  */
 public abstract class GenotypingEngine<Config extends StandardCallerArgumentCollection> {
 
+    protected final AFCalculator newAFCalculator;
+
     protected final AFCalculatorProvider afCalculatorProvider   ;
 
     protected final Config configuration;
@@ -65,6 +67,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                 configuration.genotypeArgs.snpHeterozygosity, configuration.genotypeArgs.inputPrior);
         log10AlleleFrequencyPriorsIndels = composeAlleleFrequencyPriorProvider(numberOfGenomes,
                 configuration.genotypeArgs.indelHeterozygosity, configuration.genotypeArgs.inputPrior);
+
+        final double refPseudocount = configuration.genotypeArgs.snpHeterozygosity / Math.pow(configuration.genotypeArgs.heterozygosityStandardDeviation,2);
+        final double snpPseudocount = configuration.genotypeArgs.snpHeterozygosity * refPseudocount;
+        final double indelPseudocount = configuration.genotypeArgs.indelHeterozygosity * refPseudocount;
+        newAFCalculator = new NewAFCalculator(refPseudocount, snpPseudocount, indelPseudocount, configuration.genotypeArgs.samplePloidy);
     }
 
     /**
@@ -223,7 +230,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         final int defaultPloidy = configuration.genotypeArgs.samplePloidy;
         final int maxAltAlleles = configuration.genotypeArgs.MAX_ALTERNATE_ALLELES;
-        final AFCalculator afCalculator = afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles);
+
 
         VariantContext reducedVC = vc;
         if (maxAltAlleles < vc.getAlternateAlleles().size()) {
@@ -233,6 +240,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             reducedVC = new VariantContextBuilder(vc).alleles(allelesToKeep).genotypes(reducedGenotypes).make();
         }
 
+
+        final AFCalculator afCalculator = configuration.genotypeArgs.USE_NEW_AF_CALCULATOR ? newAFCalculator
+                : afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles);
         final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy,maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult);
 

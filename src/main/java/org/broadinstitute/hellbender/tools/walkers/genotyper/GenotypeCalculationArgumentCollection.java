@@ -26,6 +26,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public GenotypeCalculationArgumentCollection( final GenotypeCalculationArgumentCollection other ) {
         Utils.nonNull(other);
 
+        this.USE_NEW_AF_CALCULATOR = other.USE_NEW_AF_CALCULATOR;
         this.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = other.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
         this.snpHeterozygosity = other.snpHeterozygosity;
         this.indelHeterozygosity = other.indelHeterozygosity;
@@ -35,6 +36,12 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.inputPrior = new ArrayList<>(other.inputPrior);
         this.samplePloidy = other.samplePloidy;
     }
+
+    /**
+     * Use the new allele frequency / QUAL score model
+     */
+    @Argument(fullName = "useNewAFCalculator", shortName = "newQual", doc = "If provided, we will use the new AF model instead of the so-called exact model", optional = true)
+    public boolean USE_NEW_AF_CALCULATOR = false;
 
     /**
      * Depending on the value of the --max_alternate_alleles argument, we may genotype only a fraction of the alleles being sent on for genotyping.
@@ -79,6 +86,13 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Argument(fullName = "indel_heterozygosity", shortName = "indelHeterozygosity", doc = "Heterozygosity for indel calling.  See the GATKDocs for heterozygosity for full details on the meaning of this population genetics concept", optional = true)
     public double indelHeterozygosity = HomoSapiensConstants.INDEL_HETEROZYGOSITY;
+
+    /**
+     * The standard deviation of the distribution of alt allele fractions.  The above heterozygosity parameters give the
+     * *mean* of this distribution; this parameter gives its spread.
+     */
+    @Argument(fullName = "heterozygosity_stdev", shortName = "heterozygosityStandardDeviation", doc = "Standard deviation of eterozygosity for SNP and indel calling.", optional = true)
+    public double heterozygosityStandardDeviation = 0.1;
 
     /**
      * The minimum phred-scaled Qscore threshold to separate high confidence from low confidence calls. Only genotypes with

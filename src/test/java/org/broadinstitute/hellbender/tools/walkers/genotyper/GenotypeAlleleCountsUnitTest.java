@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.base.Strings;
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -66,6 +67,7 @@ public final class GenotypeAlleleCountsUnitTest {
         Assert.assertNotNull(subject);
         Assert.assertEquals(subject.ploidy(), ploidy);
         Assert.assertEquals(subject.distinctAlleleCount(), 1);
+        Assert.assertEquals(subject.log10CombinationCount(), 0.0);
         Assert.assertEquals(subject.alleleCountAt(0), ploidy);
         Assert.assertEquals(subject.alleleCountFor(0), ploidy);
         Assert.assertEquals(subject.alleleRankFor(0), 0);
@@ -135,6 +137,7 @@ public final class GenotypeAlleleCountsUnitTest {
 
        while (!current.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
             final GenotypeAlleleCounts next = current.next();
+            Assert.assertEquals(next.log10CombinationCount(), 0.0);
             Assert.assertEquals(next.minimumAlleleIndex(), next.maximumAlleleIndex());
             Assert.assertEquals(next.minimumAlleleIndex(), current.minimumAlleleIndex() + 1);
             Assert.assertEquals(next.alleleCountAt(0), 1);
@@ -183,6 +186,33 @@ public final class GenotypeAlleleCountsUnitTest {
 
         while (!current.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
             final GenotypeAlleleCounts next = current.next();
+
+            // test log10CombinationCount
+            if (ploidy == 2) {
+                Assert.assertEquals(next.log10CombinationCount(), next.distinctAlleleCount() == 2 ? Math.log10(2) : 0.0);
+            } else if (ploidy == 3) {
+                    Assert.assertEquals(next.log10CombinationCount(),
+                            next.distinctAlleleCount() == 3 ? Math.log10(6) : (next.distinctAlleleCount() == 2 ? Math.log10(6) - Math.log10(2) : 0.0));
+            } else {
+                if (next.distinctAlleleCount() == 1) {
+                    Assert.assertEquals(next.log10CombinationCount(), 0.0);
+                } else if (next.distinctAlleleCount() == ploidy) {
+                    Assert.assertEquals(next.log10CombinationCount(), MathUtils.log10Factorial(ploidy));
+                }
+            }
+
+            //test forEach
+            final List<Integer> alleleCountsAsList = new ArrayList<>(next.distinctAlleleCount()*2);
+            next.forEachAlleleIndexAndCount((alleleIndex, alleleCount) -> {
+                alleleCountsAsList.add(alleleIndex);
+                alleleCountsAsList.add(alleleCount);});
+            final int[] actualAlleleCounts = new int[next.distinctAlleleCount()*2];
+            next.copyAlleleCounts(actualAlleleCounts, 0);
+
+            Assert.assertEquals(alleleCountsAsList.stream().mapToInt(n->n).toArray(), actualAlleleCounts);
+
+
+
             if (current.distinctAlleleCount() == 1) {
                 Assert.assertEquals(next.maximumAlleleIndex(), current.maximumAlleleIndex() + 1);
                 Assert.assertEquals(next.distinctAlleleCount(), 2);
