@@ -34,7 +34,7 @@ public final class CountVariantsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final VariantsSparkSource vss = new VariantsSparkSource(ctx);
-        final JavaRDD<VariantContext> variants = vss.getParallelVariantContexts(input);
+        final JavaRDD<VariantContext> variants = vss.getParallelVariantContexts(input, getIntervals());
 
         final long count = variants.count();
         System.out.println(count);

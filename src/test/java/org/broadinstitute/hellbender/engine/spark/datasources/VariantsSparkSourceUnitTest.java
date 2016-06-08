@@ -41,7 +41,7 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<GATKVariant> rddParallelVariants =
-                variantsSparkSource.getParallelVariants(vcf);
+                variantsSparkSource.getParallelVariants(vcf, null);
 
         List<GATKVariant> serialVariants = getSerialVariants(vcf);
         List<GATKVariant> parallelVariants = rddParallelVariants.collect();
@@ -54,7 +54,7 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<VariantContext> rddParallelVariantContexts =
-                variantsSparkSource.getParallelVariantContexts(vcf);
+                variantsSparkSource.getParallelVariantContexts(vcf, null);
 
         VariantContextTestUtils.assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
     }
@@ -72,7 +72,7 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
 
         JavaRDD<GATKVariant> rddParallelVariants =
-                variantsSparkSource.getParallelVariants(vcfList);
+                variantsSparkSource.getParallelVariants(vcfList, null);
 
         // retrieve the same set of variants, but through VariantsSource, and wrapped by
         // the same wrapper class used by VariantsSparkSource to facilitate comparison

@@ -79,7 +79,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
 
         JavaRDD<GATKRead> initialReads = getReads();
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants);
+        JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants, getIntervals());
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).

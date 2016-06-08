@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import htsjdk.samtools.util.BlockCompressedInputStream;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -7,7 +8,9 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 
 public final class CountVariantsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -37,6 +40,43 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
                 {new File(getTestDataDir(), "count_variants.blockgz.gz"), 26L},
                 {new File(dbsnp_138_b37_1_65M_vcf), 1375319L},
         };
+    }
+
+    @DataProvider(name="intervals")
+    public Object[][] intervals(){
+        File vcf = new File(largeFileTestDir, "dbsnp_138.b37.20.21.vcf");
+        File vcf_gz = new File(largeFileTestDir, "dbsnp_138.b37.20.21.vcf.blockgz.gz");
+        return new Object[][]{
+                new Object[]{vcf, "", 9594L}, // no intervals specified
+                new Object[]{vcf, "-L 20", 5657L},
+                new Object[]{vcf, "-L 20:10200000-11000000", 933L},
+                new Object[]{vcf, "-L 21", 3937L},
+                new Object[]{vcf, "-L 20 -L 21", 9594L},
+                new Object[]{vcf, "-XL 20", 3937L},
+                new Object[]{vcf_gz, "", 9594L}, // no intervals specified
+                new Object[]{vcf_gz, "-L 20", 5657L},
+                new Object[]{vcf_gz, "-L 20:10200000-11000000", 933L},
+                new Object[]{vcf_gz, "-L 21", 3937L},
+                new Object[]{vcf_gz, "-L 20 -L 21", 9594L},
+                new Object[]{vcf_gz, "-XL 20", 3937L},
+        };
+    }
+
+    @Test(dataProvider = "intervals", groups = "spark")
+    public void testCountVariantsWithIntervals(final File fileIn, final String intervalArgs, final long expected) throws Exception {
+
+        File f = new File(largeFileTestDir, "dbsnp_138.b37.20.21.vcf.blockgz.gz");
+        System.out.println("tw: " + BlockCompressedInputStream.isValidFile(new BufferedInputStream(new FileInputStream(f))));
+        final File outputTxt = createTempFile("count_variants", ".txt");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addVCF(fileIn);
+        args.add(intervalArgs);
+        args.addReference(new File(largeFileTestDir, "human_g1k_v37.20.21.fasta"));
+        args.addOutput(outputTxt);
+        this.runCommandLine(args.getArgsArray());
+
+        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+        Assert.assertEquals((int)Integer.valueOf(readIn), expected);
     }
 
     @Test(groups = "spark")
