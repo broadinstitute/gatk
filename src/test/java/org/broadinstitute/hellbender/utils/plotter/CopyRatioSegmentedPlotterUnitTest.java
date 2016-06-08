@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.plotter;
 
 import org.broadinstitute.hellbender.utils.R.RScriptExecutorException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -26,6 +27,20 @@ public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_preQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_preQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_postQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_postQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_dQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_dQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_scaled_dQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_scaled_dQc.txt").length() > 0);
+        final double postQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_preQc.txt"))[0];
+        final double preQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_postQc.txt"))[0];
+        final double dQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_dQc.txt"))[0];
+        final double scaled_dQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_scaled_dQc.txt"))[0];
+        Assert.assertEquals(dQc, preQc - postQc);
+        Assert.assertEquals(scaled_dQc, (preQc - postQc)/preQc);
     }
 
     @Test
@@ -39,6 +54,20 @@ public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
         Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_preQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_preQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_postQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_postQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_dQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_dQc.txt").length() > 0);
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_scaled_dQc.txt").exists());
+        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_scaled_dQc.txt").length() > 0);
+        final double postQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_preQc.txt"))[0];
+        final double preQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_postQc.txt"))[0];
+        final double dQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_dQc.txt"))[0];
+        final double scaled_dQc = ParamUtils.readValuesFromFile(new File(tDir, SAMPLE_NAME + "_scaled_dQc.txt"))[0];
+        Assert.assertEquals(dQc, preQc - postQc);
+        Assert.assertEquals(scaled_dQc, (preQc - postQc)/preQc);
     }
 
     @Test(expectedExceptions = RScriptExecutorException.class)
