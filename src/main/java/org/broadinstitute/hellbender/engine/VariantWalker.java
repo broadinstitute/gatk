@@ -20,8 +20,8 @@ import java.util.stream.StreamSupport;
  * optional contextual information from a reference, sets of reads, and/or supplementary sources
  * of Features.
  *
- * VariantWalker authors must implement the apply() method to process each read, and may optionally implement
- * onTraversalStart() and/or onTraversalSuccess().
+ * VariantWalker authors must implement the {@link #apply} method to process each variant, and may optionally implement
+ * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
 public abstract class VariantWalker extends GATKTool {
 
@@ -41,11 +41,15 @@ public abstract class VariantWalker extends GATKTool {
     private FeatureDataSource<VariantContext> drivingVariants;
     private FeatureInput<VariantContext> drivingVariantsFeatureInput;
 
-    /*
-     * TODO: It's awkward that this traversal type requires variants yet can't override requiresFeatures() from
-     * TODO: GATKTool, since the required source of variants is managed separately (as drivingVariants) from
-     * TODO: our main FeatureManager in GATKTool. May need a way to register additional data sources with GATKTool.
+    @Override
+    public boolean requiresFeatures() { return true; }
+
+    /**
+     * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalStart} instead.
      */
+    protected final void onStartup() {
+        super.onStartup();
+    }
 
     @Override
     void initializeFeatures() {
@@ -141,7 +145,7 @@ public abstract class VariantWalker extends GATKTool {
      *                     an empty array/iterator)
      * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
      *                         if there is no backing source of reference data (in which case all queries on it will return
-     *                         an empty array/iterator). Can request extra bases of context around the current read's interval
+     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
      *                         by invoking {@link ReferenceContext#setWindow}
      *                         on this object before calling {@link ReferenceContext#getBases}
      * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
@@ -151,9 +155,10 @@ public abstract class VariantWalker extends GATKTool {
     public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
-     * Close the reads and reference data sources.
+     * Close all data sources.
      *
-     * Marked final so that tool authors don't override it. Tool authors should override onTraversalSuccess() instead.
+     * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalSuccess} and/or
+     * {@link #closeTool} instead.
      */
     @Override
     protected final void onShutdown() {
