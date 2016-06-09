@@ -414,8 +414,7 @@ public final class ReferenceConfidenceModel {
      * Compute the sum of mismatching base qualities for readBases aligned to refBases at readStart / refStart
      * assuming no insertions or deletions in the read w.r.t. the reference
      *
-     * @param readBases non-null bases of the read
-     * @param readQuals non-null quals of the read
+     * @param read the read
      * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
      * @param refBases the reference bases
      * @param refStart the offset into refBases that aligns to the readStart position in readBases
@@ -423,34 +422,31 @@ public final class ReferenceConfidenceModel {
      * @return the sum of quality scores for readBases that mismatch their corresponding ref bases
      */
     @VisibleForTesting
-    int sumMismatchingQualities(final byte[] readBases,
-                                                final byte[] readQuals,
-                                                final int readStart,
-                                                final byte[] refBases,
-                                                final int refStart,
-                                                final int maxSum) {
-        final int n = Math.min(readBases.length - readStart, refBases.length - refStart);
+    int sumMismatchingQualities(final GATKRead read,
+                                final int readStart,
+                                final byte[] refBases,
+                                final int refStart,
+                                final int maxSum) {
+        final int n = Math.min(read.getLength() - readStart, refBases.length - refStart);
         int sum = 0;
 
         for ( int i = 0; i < n; i++ ) {
-            final byte readBase = readBases[readStart + i];
+            final byte readBase = read.getBase(readStart + i);
             final byte refBase  = refBases[refStart + i];
             if ( readBase != refBase ) {
-                sum += readQuals[readStart + i];
+                sum += read.getBaseQuality(readStart + i);
                 if ( sum > maxSum ){ // abort early
                     return sum;
                 }
             }
         }
-
         return sum;
     }
 
     /**
      * Compute whether a read is informative to eliminate an indel of size <= maxIndelSize segregating at readStart/refStart
      *
-     * @param readBases non-null bases of the read
-     * @param readQuals non-null quals of the read
+     * @param read the read
      * @param readStart the starting position of the read (i.e., that aligns it to a position in the reference)
      * @param refBases the reference bases
      * @param refStart the offset into refBases that aligns to the readStart position in readBases
@@ -458,28 +454,27 @@ public final class ReferenceConfidenceModel {
      * @return true if read can eliminate the possibility that there's an indel of size <= maxIndelSize segregating at refStart
      */
     @VisibleForTesting
-    boolean isReadInformativeAboutIndelsOfSize(final byte[] readBases,
-                                                         final byte[] readQuals,
-                                                         final int readStart,
-                                                         final byte[] refBases,
-                                                         final int refStart,
-                                                         final int maxIndelSize) {
+    boolean isReadInformativeAboutIndelsOfSize(final GATKRead read,
+                                             final int readStart,
+                                             final byte[] refBases,
+                                             final int refStart,
+                                             final int maxIndelSize) {
         // fast exit when n bases left < maxIndelSize
-        if( readBases.length - readStart < maxIndelSize || refBases.length - refStart < maxIndelSize ) {
+        if( read.getLength() - readStart < maxIndelSize || refBases.length - refStart < maxIndelSize ) {
             return false;
         }
 
-        final int baselineMMSum = sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart, Integer.MAX_VALUE);
+        final int baselineMMSum = sumMismatchingQualities(read, readStart, refBases, refStart, Integer.MAX_VALUE);
 
         // consider each indel size up to max in term, checking if an indel that deletes either the ref bases (deletion
         // or read bases (insertion) would fit as well as the origin baseline sum of mismatching quality scores
         for ( int indelSize = 1; indelSize <= maxIndelSize; indelSize++ ) {
             // check insertions:
-            if (sumMismatchingQualities(readBases, readQuals, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(read, readStart + indelSize, refBases, refStart, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
             // check deletions:
-            if (sumMismatchingQualities(readBases, readQuals, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
+            if (sumMismatchingQualities(read, readStart, refBases, refStart + indelSize, baselineMMSum) <= baselineMMSum) {
                 return false;
             }
         }
@@ -509,7 +504,7 @@ public final class ReferenceConfidenceModel {
             }
 
             // todo -- this code really should handle CIGARs directly instead of relying on the above tests
-            if ( isReadInformativeAboutIndelsOfSize(read.getBases(), read.getBaseQualities(), offset, ref, pileupOffsetIntoRef, maxIndelSize) ) {
+            if ( isReadInformativeAboutIndelsOfSize(read, offset, ref, pileupOffsetIntoRef, maxIndelSize) ) {
                 nInformative++;
                 if( nInformative > MAX_N_INDEL_INFORMATIVE_READS ) {
                     return MAX_N_INDEL_INFORMATIVE_READS;
