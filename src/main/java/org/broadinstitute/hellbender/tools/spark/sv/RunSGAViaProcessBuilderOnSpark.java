@@ -20,11 +20,13 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-// TODO: choose which parameters allowed to be tunable
-// TODO: choose output contents (currently output information is more developer friendly than user friendly)
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 @CommandLineProgramProperties(
         summary        = "Program to call SGA to perform local assembly and return assembled contigs if successful, " +
-                          "or runtime error messages if the process erred for some breakpoints.",
+                         "or runtime error messages if the process erred for some breakpoints.",
         oneLineSummary = "Perform SGA-based local assembly on fasta files on Spark.",
         programGroup   = StructuralVariationSparkProgramGroup.class)
 public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
@@ -56,11 +58,11 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = false)
     public String outDirPrefix = null;
 
-    @Argument(doc       = "To run k-mer based read correction, filter and duplication removal in SGA or not, with default parameters.",
+    @Argument(doc       = "To run k-mer based read correction with default parameters (as provided by SGA) or not.",
               shortName = "correct",
-              fullName  = "correctNFilter",
+              fullName  = "kmerCorrectReads",
               optional  = true)
-    public boolean runCorrectionSteps = false;
+    public boolean runCorrection = false;
 
     @Argument(doc       = "If true, capture the stdout and stderr of the SGA processes along with the assembly output (valuable for debugging but hurts performance)",
               shortName = "captureStdIO",
@@ -68,31 +70,87 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = true)
     public boolean enableSTDIOCapture = false;
 
+    @Argument(doc       = "An estimate on the number of fastq files in the input directory to be fed to the tool",
+              shortName = "fileCntEst",
+              fullName  = "fastqFileCountEstimate",
+              optional  = true)
+    public int fastqFileCountEstimate = inputSizeNotSet;
+
+
+
+    // for developer performance debugging use
+    private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    /**
+     * parameter to control how many FASTQ files in each RDD, if {@link RunSGAViaProcessBuilderOnSpark#fastqFileCountEstimate} is not set by user
+     */
+    private static final long NUM_OF_FILES_PER_PARTITION = 10L;
+    private static final int inputSizeNotSet = -1;
+
     @Override
     public void runTool(final JavaSparkContext ctx){
 
-        // first load RDD of pair that has path to FASTQ file path as its first and FASTQ file contents as its second
-        JavaPairRDD<String, String> fastqContentsForEachBreakpoint = ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles);
+        System.err.println("SGAOnSpark_debug: Start job at " + dateFormat.format(new Date()));
 
-        final JavaPairRDD<Long, SGAAssemblyResult> assembly = fastqContentsForEachBreakpoint.mapToPair(entry -> performAssembly(entry, subStringToStrip, pathToSGA, runCorrectionSteps, enableSTDIOCapture));
+        // first load RDD of pair that has path to FASTQ file path as its first and FASTQ file contents as its second
+        final JavaPairRDD<String, String> fastqContentsForEachBreakpointPartitionedAppropriately = loadFASTQFiles(ctx, pathToAllInterleavedFASTQFiles, fastqFileCountEstimate);
+
+        final JavaPairRDD<Long, SGAAssemblyResult> assembly = fastqContentsForEachBreakpointPartitionedAppropriately.mapToPair(entry -> performAssembly(entry, subStringToStrip, pathToSGA, runCorrection, enableSTDIOCapture));
 
         validateAndSaveResults(assembly, outDirPrefix);
+
+        System.err.println("SGAOnSpark_debug: Finish job at " + dateFormat.format(new Date()));
+    }
+
+    /**
+     * Load the FASTQ files in the user specified directory and returns an RDD that satisfies the same requirement as described in {@link JavaSparkContext#wholeTextFiles(String)}
+     * and {@link JavaSparkContext#wholeTextFiles(String, int)}.
+     * @param ctx
+     * @param pathToAllInterleavedFASTQFiles
+     * @param inputSizeEstimate
+     * @return
+     */
+    private static JavaPairRDD<String, String> loadFASTQFiles(final JavaSparkContext ctx, final String pathToAllInterleavedFASTQFiles, final int inputSizeEstimate){
+        if(inputSizeEstimate!=inputSizeNotSet){
+            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles, inputSizeEstimate);
+        }else{
+
+            final JavaPairRDD<String, String> fastqContentsForEachBreakpoint = ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles);
+            JavaPairRDD<String, String> repartitionedRDD = null;
+
+            final long elementCount  = fastqContentsForEachBreakpoint.count();
+            final long numPartitions = fastqContentsForEachBreakpoint.getNumPartitions();
+
+            System.err.println(String.format("SGAOnSpark_debug: Default number of partitions %d for %d of input FASTQ files", numPartitions, elementCount));
+
+            if(elementCount/numPartitions>NUM_OF_FILES_PER_PARTITION) {
+
+                // BAD but experimental (will be bad already if count is 10 times larger than INTEGER.MAX_VALUE
+                repartitionedRDD = fastqContentsForEachBreakpoint.repartition((int) Math.ceil(elementCount/NUM_OF_FILES_PER_PARTITION));
+
+                System.err.println("SGAOnSpark_debug: Number of partitions after forced repartition " + repartitionedRDD.getNumPartitions());
+                System.err.println("SGAOnSpark_debug: Repartitioning finished at " + dateFormat.format(new Date()));
+            }else{
+                repartitionedRDD = fastqContentsForEachBreakpoint;
+            }
+
+            return repartitionedRDD;
+        }
     }
 
     /**
      * Validates the returned result from running the local assembly pipeline:
      *   if all steps executed successfully, the contig file is nonnull so we save the contig file and discard the runtime information
      *   if any sga step returns non-zero code, the contig file is null so we save the runtime information for that break point
-     *   if any non-SGA steps erred, save the error message logged during the step.
      * @param results       the local assembly result and its associated breakpoint ID
      * @param outputDir     output directory to save the contigs (if assembly succeeded) or runtime info (if erred)
      */
     private static void validateAndSaveResults(final JavaPairRDD<Long, SGAAssemblyResult> results, final String outputDir){
-        results.cache(); // cache because Spark doesn't have an efficient RDD.split(predicate) yet
+
+        final JavaPairRDD<Long, SGAAssemblyResult> cachedResults = results.cache(); // cache because Spark doesn't have an efficient RDD.split(predicate) yet
 
         // save fasta file contents or failure message
-        final JavaPairRDD<Long, SGAAssemblyResult> success = results.filter(entry -> entry._2().assembledContigs!=null);
-        final JavaPairRDD<Long, SGAAssemblyResult> failure = results.filter(entry -> entry._2().assembledContigs==null);
+        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null);
+        final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null);
 
         if(!success.isEmpty()){
             success.map(entry -> entry._1().toString() + "\n" + entry._2().assembledContigs.toString())
@@ -122,7 +180,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
                                                            final String sgaPath,
                                                            final boolean runCorrections,
                                                            final boolean enableSTDIOCapture)
-    throws IOException{
+            throws IOException{
 
         final Tuple2<Long, File> localFASTQFileForOneBreakpoint = writeToLocal(fastqOfABreakpoint, subStringInFilenameToScrub);
 
@@ -135,6 +193,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      * Utility function that unloads the FASTQ contents for a breakpoint to a local file for later consumption by SGA.
      * @param oneBreakPoint input for one breakpoint, where the first is the path to the FASTQ file and the second is the FASTQ file's content
      * @return              the breakpoint ID and with the FASTQ file contents dumped to a local File
+     * @throws IOException  if fails to create the temporary directory or fails to write to local file
      */
     @VisibleForTesting
     static Tuple2<Long, File> writeToLocal(final Tuple2<String, String> oneBreakPoint, final String subStringToStripout) throws IOException{
@@ -167,7 +226,9 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
                                                    final File rawFASTQFile,
                                                    final boolean runCorrections,
                                                    final boolean enableSTDIOCapture)
-    throws IOException{
+            throws IOException{
+
+        System.out.println("SGAOnSpark_debug: start actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
         final Path sga = Paths.get(sgaPath);
 
@@ -180,7 +241,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         indexerArgs.add("--check");
         indexerArgs.add("");
 
-        // collect runtime information along the way
+        // collect runtime information along the way, if user requests
         final List<SGAModule.RuntimeInfo> runtimeInfo = new ArrayList<>();
 
         String preppedFileName = runAndStopEarly("preprocess", rawFASTQFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
@@ -188,29 +249,27 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             return new SGAAssemblyResult(null, runtimeInfo);
         }
 
-        if(runCorrections){// correction, filter, and remove duplicates stringed together
-            final File preprocessedFile = new File(tempWorkingDir, preppedFileName);
-
-            preppedFileName = runAndStopEarly("correct", preprocessedFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-            if( null == preppedFileName ){
-                return new SGAAssemblyResult(null, runtimeInfo);
-            }
-            final File correctedFile = new File(tempWorkingDir, preppedFileName);
-
-            preppedFileName = runAndStopEarly("filter", correctedFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-            if( null == preppedFileName ){
-                return new SGAAssemblyResult(null, runtimeInfo);
-            }
-            final File filterPassingFile = new File(tempWorkingDir, preppedFileName);
-
-            preppedFileName = runAndStopEarly("rmdup", filterPassingFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
+        if(runCorrections){
+            preppedFileName = runAndStopEarly("correct", new File(tempWorkingDir, preppedFileName), sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
             if( null == preppedFileName ){
                 return new SGAAssemblyResult(null, runtimeInfo);
             }
         }
 
-        final File fileToMerge      = new File(tempWorkingDir, preppedFileName);
-        final String fileNameToAssemble = runAndStopEarly("fm-merge", fileToMerge, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
+        final File preppedFile = new File(tempWorkingDir, preppedFileName);
+        final String filteredFileName = runAndStopEarly("filter", preppedFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
+        if(null == filteredFileName){
+            return new SGAAssemblyResult(null, runtimeInfo);
+        }
+
+        final File fileToMerge = new File(tempWorkingDir, filteredFileName);
+        final String fileNameToDedup = runAndStopEarly("fm-merge", fileToMerge, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
+        if(null == fileNameToDedup){
+            return new SGAAssemblyResult(null, runtimeInfo);
+        }
+
+        final File fileToDeduplicate = new File(tempWorkingDir, fileNameToDedup);
+        final String fileNameToAssemble = runAndStopEarly("rmdup", fileToDeduplicate, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
         if(null == fileNameToAssemble){
             return new SGAAssemblyResult(null, runtimeInfo);
         }
@@ -220,6 +279,8 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         if(null == contigsFileName){
             return new SGAAssemblyResult(null, runtimeInfo);
         }
+
+        System.out.println("SGAOnSpark_debug: finished actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
         // if code reaches here, all steps in the SGA pipeline went smoothly,
         // but the following conversion from File to ContigsCollection may still err
