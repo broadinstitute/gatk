@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -608,5 +610,283 @@ public final class UtilsUnitTest extends BaseTest {
     @Test
     public void testListFromPrimitivesNoneEmpty() throws Exception {
         Assert.assertEquals(Utils.listFromPrimitives(new int[]{1,2}), Arrays.asList(1,2));
+    }
+
+    @Test
+    public void testInRangeSuccess(){
+        Assert.assertTrue(4 == Utils.inRange(4L, 3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(4 == Utils.inRange(4, 3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(4 == Utils.inRange(new IntRange(3, 6), 4, "error"));
+        Assert.assertTrue(4.1 == Utils.inRange(4.1, 3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(4.1 == Utils.inRange(4.1, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(4.1 == Utils.inRange(new DoubleRange(-3, 6), 4.1, "error"));
+        Assert.assertTrue(0 == Utils.inRange(0L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0 == Utils.inRange(0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0 == Utils.inRange(new IntRange(-3, 6), 0, "error"));
+        Assert.assertTrue(0.0 == Utils.inRange(0.0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0.0 == Utils.inRange(new DoubleRange(-3, 6), 0.0, "error"));
+        Assert.assertTrue(0 == Utils.inRange(0L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0 == Utils.inRange(0, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(0 == Utils.inRange(new IntRange(-3, 6), 0, "error"));
+        Assert.assertTrue(-1 == Utils.inRange(-1L, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(-1 == Utils.inRange(-1, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(-1 == Utils.inRange(new IntRange(-3, 6), -1, "error"));
+        Assert.assertTrue(-1.5 == Utils.inRange(-1.5, -3, 6, "Range calculation did not work properly"), "Did not return proper value");
+        Assert.assertTrue(-1.5 == Utils.inRange(new DoubleRange(-3, 6), -1.5, "error"));
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureAllPositiveLong(){
+        Utils.inRange(4L, 7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureAllPositiveInt(){
+        Utils.inRange(4, 7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureAllPositiveIntRange(){
+        Utils.inRange(new IntRange(7, 10), 4, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureAllPositiveDoubleRange(){
+        Utils.inRange(new DoubleRange(7, 10), 4, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaN(){
+        Utils.inRange(Double.NaN, 7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNHigh(){
+        Utils.inRange(7, 10, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNDoubleRange(){
+        Utils.inRange(new DoubleRange(7, 10), Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNLow(){
+        Utils.inRange(7, Double.NaN, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNTwo1(){
+        Utils.inRange(7, Double.NaN, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNTwo2(){
+        Utils.inRange(Double.NaN, 10, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureNaNThree(){
+        Utils.inRange(Double.NaN, Double.NaN, Double.NaN, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureAllPositiveDouble(){
+        Utils.inRange(4.1, 7.2, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureMinNegativeDouble(){
+        Utils.inRange(45.2, -7.2, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValNegativeDouble(){
+        Utils.inRange(-10.3, -7.2, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValNegativeLong(){
+        Utils.inRange(-10L, -7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValNegativeInt(){
+        Utils.inRange(-10, -7, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValNegativeInt2(){
+        Utils.inRange(-10, -7.2, 10, "Range calculation did not work properly");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureIntValMinMaxUnreasonable(){
+        Utils.inRange(5, 10, -7, "Range calculation did not work properly.  Min was greater than max, so will always throw exception.");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInRangeFailureValMinMaxUnreasonable(){
+        Utils.inRange(5L, 10, -7, "Range calculation did not work properly.  Min was greater than max, so will always throw exception.");
+    }
+
+    @Test
+    public void testInRangeLongDoubleDouble(){
+        Utils.inRange(5, -1.2, 7.1, "Range calculation did not work properly!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is infinite!")
+    public void testInfinite(){
+        Utils.isFinite(Double.POSITIVE_INFINITY, "That is infinite!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is infinite!")
+    public void testNegInfinite(){
+        Utils.isFinite(Double.NEGATIVE_INFINITY, "That is infinite!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
+    public void testNegativeIsNotPositive(){
+        Utils.isPositiveOrZero(Double.NEGATIVE_INFINITY, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
+    public void testNegativeIsGreaterThanZero(){
+        Utils.isPositive(Double.NEGATIVE_INFINITY, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "ERROR")
+    public void testNaNIsGreaterThanZero(){
+        Utils.isPositive(Double.NaN, "ERROR");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
+    public void testNegativeIsNotPositive2(){
+        Utils.isPositiveOrZero(-4.2, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "ERROR")
+    public void testIsPositiveOnNan(){
+        Utils.isPositiveOrZero(Double.NaN, "ERROR");
+    }
+
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is negative!")
+    public void testNegativeIsGreaterThanZero2(){
+        Utils.isPositive(-4.2, "That is negative!");
+    }
+
+    @Test
+    public void testPositiveIsGreaterThanZero(){
+        Utils.isPositive(4.2, "That is negative!");
+    }
+
+    @Test
+    public void testPositiveIsGreaterThanZero2(){
+        Assert.assertEquals(Utils.isPositive(4L, "That is negative!"), 4L);
+    }
+
+    @Test
+    public void testPositiveIntIsGreaterThanZero2() {
+        Assert.assertEquals(Utils.isPositive(4, "That is negative!"), 4);
+    }
+
+    @Test
+    public void testPositiveIsGreaterThanZeroWithInf(){
+        Utils.isPositive(Double.POSITIVE_INFINITY, "That is negative!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
+    public void testZeroIsGreaterThanZero2(){
+        Utils.isPositive(0L, "That is zero!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
+    public void testIntZeroIsGreaterThanZero2(){
+        Utils.isPositive(0, "That is zero!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "That is zero!")
+    public void testZeroIsGreaterThanZero3(){
+        Utils.isPositive(0.0, "That is zero!");
+    }
+
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contains nulls!")
+    public void testNoNullsOnAnIterable() {
+        Utils.noNulls(Arrays.asList("a", "b", null, "c"), "Contains nulls!");
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contains nulls!")
+    public void testNoNullsOnAnArray() {
+        Utils.noNulls(new String[] {"a", "b", null, "c"}, "Contains nulls!");
+    }
+
+
+    @Test
+    public void testLogB(){
+        Assert.assertEquals(Utils.logb(4, 2), 2.0);
+        Assert.assertEquals(Utils.logb(4.1, 2), 2.0356, 1e-3);
+        Assert.assertEquals(Utils.logb(4.1, 2.1), 1.9018, 1e-3);
+        Assert.assertEquals(Utils.logb(4, 2.1), 1.8685, 1e-3);
+
+    }
+
+    @Test
+    public void testLog2(){
+        Assert.assertEquals(2.0, Utils.log2(4));
+        Assert.assertEquals(10.0, Utils.log2(1024));
+        Assert.assertEquals(-13.2877, Utils.log2(.0001), 1e-3);
+    }
+
+    @Test
+    public void testLogBOfBaseZero(){
+        Assert.assertEquals(-0.0, Utils.logb(337, -0));
+        Assert.assertEquals(-0.0, Utils.logb(337, 0));
+        Assert.assertTrue(Double.isNaN(Utils.logb(-337, 0)));
+        Assert.assertTrue(Double.isNaN(Utils.logb(-337, -0)));
+        Assert.assertTrue(Double.isNaN(Utils.logb(0, 0)));
+        Assert.assertTrue(Double.isNaN(Utils.logb(-0, -0)));
+        Assert.assertTrue(Double.isNaN(Utils.logb(-0, 0)));
+        Assert.assertTrue(Double.isNaN(Utils.logb(0, -0)));
+    }
+
+    @Test
+    public void testLogBOfZero(){
+        Assert.assertEquals(Utils.logb(0, 337), Double.NEGATIVE_INFINITY);
+        Assert.assertEquals(Utils.logb(-0, 337), Double.NEGATIVE_INFINITY);
+    }
+
+    @Test
+    public void testLogBOfNegativeNumber() {
+        // Note you cannot do Double.NaN == val  see: http://stackoverflow.com/questions/1456566/how-do-you-test-to-see-if-a-double-is-equal-to-nan
+        Assert.assertTrue(Double.isNaN(Utils.logb(-4, 5)));
+        Assert.assertTrue(Double.isNaN(Utils.logb(4, -5.1)));
+    }
+
+    @Test
+    public void testLog2OfNegativeNumber() {
+        Assert.assertTrue(Double.isNaN(Utils.log2(-4)));
+        Assert.assertTrue(Double.isNaN(Utils.log2(-5.1)));
+    }
+
+    @Test
+    public void testWriteAndReadDoublesToFile() {
+        final double [] testData = {0.0, 1.234552345, Math.PI, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -3.91};
+        final File outputFile = IOUtils.createTempFile("param-test-write-doubles-", ".txt");
+        Utils.writeValuesToFile(testData, outputFile);
+
+        // Test values
+        final double[] valuesInFile = Utils.readValuesFromFile(outputFile);
+
+        Assert.assertEquals(valuesInFile.length, testData.length);
+
+        for (int i = 0; i < testData.length; i++) {
+            if (Double.isNaN(testData[i])) {
+                Assert.assertTrue(Double.isNaN(valuesInFile[i]));
+            } else {
+                Assert.assertEquals(valuesInFile[i], testData[i], 1e-20);
+            }
+        }
     }
 }
