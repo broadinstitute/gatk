@@ -31,22 +31,22 @@ public class CopyNumberTriStateSegmentRecordReader extends TableReader<CopyNumbe
     @Override
     protected CopyNumberTriStateSegmentRecord createRecord(DataLine dataLine) {
         final SimpleInterval interval = new SimpleInterval(
-                dataLine.get(SegmentTableColumns.CONTIG),
-                dataLine.getInt(SegmentTableColumns.START),
-                dataLine.getInt(SegmentTableColumns.END)
+                dataLine.get(SegmentTableColumn.CONTIG),
+                dataLine.getInt(SegmentTableColumn.START),
+                dataLine.getInt(SegmentTableColumn.END)
         );
         final CopyNumberTriStateSegment segment = new CopyNumberTriStateSegment(
-                interval, dataLine.getInt(SegmentTableColumns.NUM_TARGETS),
-                dataLine.getDouble(SegmentTableColumns.MEAN),
-                dataLine.getDouble(SegmentTableColumns.SD),
-                CopyNumberTriState.fromCallString(dataLine.get(SegmentTableColumns.CALL)),
-                dataLine.getDouble(SegmentTableColumns.EXACT_QUALITY),
-                dataLine.getDouble(SegmentTableColumns.SOME_QUALITY),
-                dataLine.getDouble(SegmentTableColumns.START_QUALITY),
-                dataLine.getDouble(SegmentTableColumns.END_QUALITY),
-                dataLine.getDouble(SegmentTableColumns.EVENT_QUALITY));
+                interval, dataLine.getInt(SegmentTableColumn.NUM_TARGETS),
+                dataLine.getDouble(SegmentTableColumn.MEAN),
+                dataLine.getDouble(SegmentTableColumn.SD),
+                CopyNumberTriState.fromCallString(dataLine.get(SegmentTableColumn.CALL)),
+                dataLine.getDouble(SegmentTableColumn.EXACT_QUALITY),
+                dataLine.getDouble(SegmentTableColumn.SOME_QUALITY),
+                dataLine.getDouble(SegmentTableColumn.START_QUALITY),
+                dataLine.getDouble(SegmentTableColumn.END_QUALITY),
+                dataLine.getDouble(SegmentTableColumn.EVENT_QUALITY));
 
         return new CopyNumberTriStateSegmentRecord(
-                dataLine.get(SegmentTableColumns.SAMPLE), segment);
+                dataLine.get(SegmentTableColumn.SAMPLE), segment);
     }
 }

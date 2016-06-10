@@ -26,8 +26,8 @@ import java.io.*;
  *
  *         public class PeopleTableWriter extends TableWriter&lt;Person&gt; {
  *
- *             public MyRecordWriter() {
- *                 super(new TableColumns("name","age","net.worth"));
+ *             public MyRecordWriter(final File file) {
+ *                 super(file, new TableColumnCollection("name","age","net.worth"));
  *             }
  *
  *             &#64;Override
@@ -133,7 +133,7 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws IOException              if one was raised when opening the the destination file for writing.
      */
     public TableWriter(final File file, final TableColumnCollection tableColumns) throws IOException {
-        this(new FileWriter(Utils.nonNull(file, "the file cannot be null")), tableColumns);
+        this(new FileWriter(Utils.nonNull(file, "The file cannot be null.")), tableColumns);
     }
 
     /**
@@ -146,7 +146,7 @@ public abstract class TableWriter<R> implements Closeable {
      */
     public TableWriter(final Writer writer, final TableColumnCollection columns) throws IOException {
 
-        this.columns = Utils.nonNull(columns, "the columns cannot be null");
+        this.columns = Utils.nonNull(columns, "The columns cannot be null.");
         this.writer = new CSVWriter(Utils.nonNull(writer, "the input writer cannot be null"),
                 TableUtils.COLUMN_SEPARATOR, TableUtils.QUOTE_CHARACTER, TableUtils.ESCAPE_CHARACTER);
     }
@@ -165,7 +165,7 @@ public abstract class TableWriter<R> implements Closeable {
      * @throws IOException              if any was raised by this operation.
      */
     public final void writeComment(final String comment) throws IOException {
-        Utils.nonNull(comment, "the comment cannot be null");
+        Utils.nonNull(comment, "The comment cannot be null.");
         writer.writeNext(new String[]{TableUtils.COMMENT_PREFIX + comment}, false);
         lineNumber++;
     }
@@ -181,7 +181,7 @@ public abstract class TableWriter<R> implements Closeable {
      *                                  as per the implementation of this writer (see {@link #composeLine}).
      */
     public void writeRecord(final R record) throws IOException {
-        Utils.nonNull(record, "the record cannot be null");
+        Utils.nonNull(record, "The record cannot be null.");
         writeHeaderIfApplies();
         final DataLine dataLine = new DataLine(lineNumber + 1, columns,IllegalArgumentException::new);
         composeLine(record,dataLine);
@@ -204,7 +204,7 @@ public abstract class TableWriter<R> implements Closeable {
      *                                  that value. Previous record in the iterable would have been already written by then.
      */
     public final void writeAllRecords(final Iterable<R> records) throws IOException {
-        Utils.nonNull(records, "the record iterable cannot be null");
+        Utils.nonNull(records, "The record iterable cannot be null.");
         for (final R record : records) {
             writeRecord(record);
         }
@@ -253,7 +253,6 @@ public abstract class TableWriter<R> implements Closeable {
      *
      * @param record the record to write into the data-line.
      * @param dataLine the destination data-line object.
-     * @return never {@code null}.
      * @throws ClassCastException       if {@code record} is of the correct type
      *                                  for this writer.
      * @throws IllegalArgumentException if there is some conversion issue that does

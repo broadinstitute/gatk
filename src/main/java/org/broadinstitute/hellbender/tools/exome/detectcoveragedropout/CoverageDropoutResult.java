@@ -46,11 +46,10 @@ public final class CoverageDropoutResult {
     private static final String COMMENT_COLUMN = "comment";
 
     /** All columns that are required */
-    private static final String[] outputColumnNames = {COVERAGE_DROPOUT_COLUMN, GOOD_SEGMENT_THRESHOLD_COLUMN, MININUM_WEIGHT_COLUMN,
+    private static final TableColumnCollection outputColumnNames =
+            new TableColumnCollection(COVERAGE_DROPOUT_COLUMN, GOOD_SEGMENT_THRESHOLD_COLUMN, MININUM_WEIGHT_COLUMN,
             MININUM_TARGET_PROPORTION_COLUMN, NUM_GOOD_SEGMENTS_COLUMN, NUM_SEGMENTS_AFTER_FILTERING_COLUMN, NUM_SEGMENTS_COLUMN,
-            THRESHOLD_DISTANCE_PER_SEGMENTS_COLUMN, COMMENT_COLUMN};
-
-
+            THRESHOLD_DISTANCE_PER_SEGMENTS_COLUMN, COMMENT_COLUMN);
 
     public CoverageDropoutResult(final boolean isCoverageDropout, final double goodSegmentThreshold,
                                  final double minWeight, final double minTargetProportion, final long numGoodSegments,
@@ -104,9 +103,7 @@ public final class CoverageDropoutResult {
     }
 
     public static void writeCoverageDropoutResults(final List<CoverageDropoutResult> coverageDropoutResults, final File outFile) {
-        final TableColumnCollection tcc = new TableColumnCollection(outputColumnNames);
-
-        try (final TableWriter<CoverageDropoutResult> writer = TableUtils.writer(outFile, tcc, (cdr, dataLine) -> {
+        try (final TableWriter<CoverageDropoutResult> writer = TableUtils.writer(outFile, outputColumnNames, (cdr, dataLine) -> {
                 dataLine.set(COVERAGE_DROPOUT_COLUMN, cdr.isCoverageDropout())
                         .set(GOOD_SEGMENT_THRESHOLD_COLUMN, cdr.getGoodSegmentThreshold())
                         .set(MININUM_WEIGHT_COLUMN, cdr.getMinWeight())

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.exome.pulldown;
 
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

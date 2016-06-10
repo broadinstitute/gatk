@@ -1,19 +1,16 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 /**
  * Table columns of an allelic count tab-separated file at different verbosity levels.
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public enum AllelicCountTableColumns {
+public enum AllelicCountTableColumn {
     CONTIG,
     POSITION,
     REF_COUNT,
@@ -27,37 +24,31 @@ public enum AllelicCountTableColumns {
         BASIC, INTERMEDIATE, FULL
     }
 
-    public static final List<String> BASIC_COLUMN_NAME_ARRAY = createUnmodifiableList(
+    public static final TableColumnCollection BASIC_COLUMNS = new TableColumnCollection(
             CONTIG, POSITION, REF_COUNT, ALT_COUNT);
 
-    public static final List<String> INTERMEDIATE_COLUMN_NAME_ARRAY = createUnmodifiableList(
+    public static final TableColumnCollection INTERMEDIATE_COLUMNS = new TableColumnCollection(
             CONTIG, POSITION, REF_COUNT, ALT_COUNT, REF_NUCLEOTIDE, ALT_NUCLEOTIDE, READ_DEPTH);
 
-    public static final List<String> FULL_COLUMN_NAME_ARRAY = createUnmodifiableList(
-            CONTIG, POSITION, REF_COUNT, ALT_COUNT, REF_NUCLEOTIDE, ALT_NUCLEOTIDE, READ_DEPTH, HET_LOG_ODDS);
+    public static final TableColumnCollection FULL_COLUMNS = new TableColumnCollection((Object[]) values());
 
     /**
      * Get {@link AllelicCount} table columns at a given {@link AllelicCountTableVerbosity} level
      *
      * @param verbosity verbosity level
-     * @return list of column names
+     * @return {@link TableColumnCollection} of column names
      * @throws UserException.BadInput
      */
-    public static List<String> getColumns(final AllelicCountTableVerbosity verbosity) {
+    public static TableColumnCollection getColumns(final AllelicCountTableVerbosity verbosity) {
         switch (verbosity) {
             case BASIC:
-                return BASIC_COLUMN_NAME_ARRAY;
+                return BASIC_COLUMNS;
             case INTERMEDIATE:
-                return INTERMEDIATE_COLUMN_NAME_ARRAY;
+                return INTERMEDIATE_COLUMNS;
             case FULL:
-                return FULL_COLUMN_NAME_ARRAY;
+                return FULL_COLUMNS;
             default:
                 throw new UserException.BadInput("The AllelicCount verbosity is invalid.");
         }
-    }
-
-    private static List<String> createUnmodifiableList(final AllelicCountTableColumns ... columns) {
-        return Collections.unmodifiableList(Arrays.asList(columns).stream()
-                .map(AllelicCountTableColumns::name).collect(Collectors.toList()));
     }
 }

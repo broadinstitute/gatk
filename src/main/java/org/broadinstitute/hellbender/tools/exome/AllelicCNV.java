@@ -44,8 +44,11 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected static final String SNP_MAF_SEG_FILE_TAG = "MAF";
     protected static final String UNION_SEG_FILE_TAG = "union";
     protected static final String SMALL_MERGED_SEG_FILE_TAG = "no-small";
-    protected static final String INITIAL_SEG_FILE_TAG = "sim-initial";
-    protected static final String FINAL_SEG_FILE_TAG = "sim-final";
+    protected static final String INITIAL_FIT_FILE_TAG = "sim-initial";
+    protected static final String FINAL_FIT_FILE_TAG = "sim-final";
+    protected static final String SEGMENT_FILE_SUFFIX = ".seg";
+    protected static final String CR_PARAMETER_FILE_SUFFIX = ".cr.param";
+    protected static final String AF_PARAMETER_FILE_SUFFIX = ".af.param";
 
     //CLI arguments
     protected static final String OUTPUT_PREFIX_LONG_NAME = "outputPrefix";
@@ -257,32 +260,33 @@ public class AllelicCNV extends SparkCommandLineProgram {
         //combine SNP and target-coverage segments
         logger.info("Combining SNP and target-coverage segments...");
         final List<SimpleInterval> unionedSegments = SegmentUtils.unionSegments(targetSegments, snpSegments, genome);
-        final File unionedSegmentsFile = new File(outputPrefix + "-" + UNION_SEG_FILE_TAG + ".seg");
-        SegmentUtils.writeSegmentFileWithNumTargetsAndNumSNPs(unionedSegmentsFile, unionedSegments, genome);
         logger.info("Number of segments after segment union: " + unionedSegments.size());
+        final File unionedSegmentsFile = new File(outputPrefix + "-" + UNION_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        SegmentUtils.writeSegmentFileWithNumTargetsAndNumSNPs(unionedSegmentsFile, unionedSegments, genome);
+        logSegmentFileWrittenMessage(unionedSegmentsFile);
 
         //small-segment merging (note that X and Y are always small segments and dropped, since GATK CNV drops them)
         logger.info("Merging small segments...");
         final SegmentedGenome segmentedGenomeWithSmallSegments = new SegmentedGenome(unionedSegments, genome);
         final SegmentedGenome segmentedGenome = segmentedGenomeWithSmallSegments.mergeSmallSegments(smallSegmentTargetNumberThreshold);
-        final File segmentedGenomeFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + ".seg");
-        segmentedGenome.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedGenomeFile);
         logger.info("Number of segments after small-segment merging: " + segmentedGenome.getSegments().size());
+        final File segmentedGenomeFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        segmentedGenome.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedGenomeFile);
+        logSegmentFileWrittenMessage(segmentedGenomeFile);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller = new ACNVModeller(segmentedGenome, allelicPON,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
 
-        final File initialModeledSegmentsFile = new File(outputPrefix + "-" + INITIAL_SEG_FILE_TAG + ".seg");
-        modeller.writeACNVModeledSegmentFile(initialModeledSegmentsFile);
+        //write initial segments and parameters to file
+        writeACNVModeledSegmentAndParameterFiles(modeller, INITIAL_FIT_FILE_TAG);
 
         //similar-segment merging (segment files are output for each merge iteration)
         logger.info("Merging similar segments...");
         performSimilarSegmentMergingStep(modeller);
 
-        //write final model fit to file
-        final File finalModeledSegmentsFile = new File(outputPrefix + "-" + FINAL_SEG_FILE_TAG + ".seg");
-        modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
+        //write final segments and parameters to file
+        writeACNVModeledSegmentAndParameterFiles(modeller, FINAL_FIT_FILE_TAG);
 
         ctx.setLogLevel(originalLogLevel);
         logger.info("SUCCESS: Allelic CNV run complete for sample " + sampleName + ".");
@@ -326,7 +330,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
         logger.info("Performing initial SNP segmentation (assuming no allelic bias)...");
         final File snpSegmentFile;
         try {
-            snpSegmentFile = File.createTempFile(outputPrefix + "-" + SNP_MAF_SEG_FILE_TAG + "-tmp", ".seg");
+            snpSegmentFile = File.createTempFile(outputPrefix + "-" + SNP_MAF_SEG_FILE_TAG + "-tmp", SEGMENT_FILE_SUFFIX);
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Could not create temporary SNP segmentation file.", e);
         }
@@ -349,8 +353,9 @@ public class AllelicCNV extends SparkCommandLineProgram {
             if (snpSegmentationsFound.contains(snpSegments)) {
                 //take final SNP segmentation to be the same as the last one found
                 logger.info("Final number of SNP segments: " + snpSegments.size());
-                final File finalSNPSegmentFile = new File(outputPrefix + "-" + SNP_MAF_SEG_FILE_TAG + ".seg");
+                final File finalSNPSegmentFile = new File(outputPrefix + "-" + SNP_MAF_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
                 snpSegments = calculateAndWriteSNPSegmentation(sampleName, genome, finalSNPSegmentFile, allelicBias);
+                logSegmentFileWrittenMessage(finalSNPSegmentFile);
                 break;
             }
         }
@@ -395,5 +400,19 @@ public class AllelicCNV extends SparkCommandLineProgram {
             modeller.fitModel();
         }
         logger.info("Final number of segments after similar-segment merging: " + modeller.getACNVModeledSegments().size());
+    }
+
+    //write modeled segments and global parameters to file
+    private void writeACNVModeledSegmentAndParameterFiles(final ACNVModeller modeller, final String fileTag) {
+        final File modeledSegmentsFile = new File(outputPrefix + "-" + fileTag + SEGMENT_FILE_SUFFIX);
+        modeller.writeACNVModeledSegmentFile(modeledSegmentsFile);
+        logSegmentFileWrittenMessage(modeledSegmentsFile);
+        final File copyRatioParameterFile = new File(outputPrefix + "-" + fileTag + CR_PARAMETER_FILE_SUFFIX);
+        final File alleleFractionParameterFile = new File(outputPrefix + "-" + fileTag + AF_PARAMETER_FILE_SUFFIX);
+        modeller.writeACNVModelParameterFiles(copyRatioParameterFile, alleleFractionParameterFile);
+    }
+
+    private void logSegmentFileWrittenMessage(final File file) {
+        logger.info("Segments written to file " + file);
     }
 }

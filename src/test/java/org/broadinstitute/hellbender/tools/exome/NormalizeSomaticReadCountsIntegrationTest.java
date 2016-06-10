@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTest;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.testng.Assert;
@@ -327,12 +328,12 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         assertTangentNormalized(tangentNormalized, preTangentNormalized, betaHats, TEST_PON);
     }
 
-    private RealMatrix readBetaHats(File betaHatsOutput, ReadCountCollection input) throws IOException {
+    private RealMatrix readBetaHats(final File betaHatsOutput, final ReadCountCollection input) throws IOException {
         final double[][] betaHats;
 
         try (final TableReader<double[]> reader = TableUtils.reader(betaHatsOutput,
                 (columns, formatExceptionFactory) -> {
-                    TableUtils.checkMandatoryColumns(columns, input.columnNames(), formatExceptionFactory);
+                    TableUtils.checkMandatoryColumns(columns, new TableColumnCollection(input.columnNames()), formatExceptionFactory);
                     if (!columns.matches(0, NormalizeSomaticReadCounts.PON_SAMPLE_BETA_HAT_COLUMN_NAME) ||
                             columns.columnCount() != input.columnNames().size() + 1) {
                         Assert.fail("Beta-hats has bad header");

@@ -67,7 +67,7 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
     {
         final SAMSequenceDictionary referenceDictionary = resolveReferenceDictionary();
         final List<SimpleInterval> targetIntervals = createRandomIntervals(referenceDictionary, NUMBER_OF_TARGETS, MIN_TARGET_SIZE, MAX_TARGET_SIZE, MEAN_TARGET_SIZE, TARGET_SIZE_STDEV);
-        final TargetTableWriter writer = new TargetTableWriter(TARGET_FILE);
+        final TargetWriter writer = new TargetWriter(TARGET_FILE);
         for (int i = 0; i < targetIntervals.size(); i++) {
             final Target target = new Target("target_" + i, targetIntervals.get(i));
             writer.writeRecord(target);

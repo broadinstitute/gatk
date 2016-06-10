@@ -42,11 +42,9 @@ import java.util.stream.Stream;
  */
 public class HDF5PoNCreatorUnitTest extends BaseTest {
     private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private final static String LARGE_TEST_DIR = "src/test/resources/large/";
-    private final static String TEST_PCOV_FILE = "create-pon-control-full.pcov";
-    private final static String GT_TARGET_VAR_FILE = TEST_DIR + "dummy_pon_target_variances_matlab.txt";
-    private final static String TEST_FULL_PON = TEST_DIR + "create-pon-all-targets.pon";
-    private final static String BIG_TARGET_LIST = LARGE_TEST_DIR + "test_wgs_1k_bins.bed";
+    private final static File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
+    private final static File GT_TARGET_VAR_FILE = new File(TEST_DIR, "dummy_pon_target_variances_matlab.txt");
+    private final static File TEST_FULL_PON_FILE = new File(TEST_DIR, "create-pon-all-targets.pon");
 
     @Test
     public void testCreateVariance() {
@@ -55,8 +53,8 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         some text parsing, and matlab.  This simply tests that the variances are correctly calculated from a matrix.
         */
         final int numEigenSamples = 20;
-        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(new File(TEST_DIR + TEST_PCOV_FILE), numEigenSamples);
-        final double[] gtTargetVariances = ParamUtils.readValuesFromFile(new File(GT_TARGET_VAR_FILE));
+        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, numEigenSamples);
+        final double[] gtTargetVariances = ParamUtils.readValuesFromFile(GT_TARGET_VAR_FILE);
 
         try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
             final HDF5PoN pon = new HDF5PoN(ponHDF5File);
@@ -70,8 +68,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
 
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        final File ponFile = new File(TEST_FULL_PON);
-        try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
+        try (final HDF5File ponHDF5File = new HDF5File(TEST_FULL_PON_FILE)) {
             final PoN pon = new HDF5PoN(ponHDF5File);
             final TangentNormalizationResult tnWithSpark = TangentNormalizer.tangentNormalizeNormalsInPoN(pon, ctx);
             final double[] variances = HDF5PoNCreator.calculateRowVariances(tnWithSpark.getTangentNormalized().counts());
@@ -372,7 +369,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
     public void testRedoReductionWithSameEigenSampleCount() {
         final int numEigenSamples = 20;
         final File tempOutputPoN = IOUtils.createTempFile("redo-reduction-same-count-", ".pon");
-        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(new File(TEST_DIR + TEST_PCOV_FILE), numEigenSamples);
+        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, numEigenSamples);
         HDF5PoNCreator.redoReduction(null, OptionalInt.of(numEigenSamples), ponFile, tempOutputPoN);
         PoNTestUtils.assertEquivalentPoN(ponFile, tempOutputPoN);
     }

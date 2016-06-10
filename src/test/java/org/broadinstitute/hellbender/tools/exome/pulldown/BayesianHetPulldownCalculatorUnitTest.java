@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.exome.pulldown;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
@@ -6,6 +6,8 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.IntervalList;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumn;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -265,7 +267,7 @@ public final class BayesianHetPulldownCalculatorUnitTest extends BaseTest {
             /* test 1: normal, loose threshold */
             testPulldown = calculator.getHetPulldown(NORMAL_BAM_FILE, 2);
             tempFile = File.createTempFile("testPulldownNormalLoose", ".txt");
-            testPulldown.write(tempFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+            testPulldown.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
 
             expectedPulldown = new Pulldown(normalHeader);
             expectedPulldown.add(new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4,
@@ -284,7 +286,7 @@ public final class BayesianHetPulldownCalculatorUnitTest extends BaseTest {
             /* test 2: normal, tight threshold */
             testPulldown = calculator.getHetPulldown(NORMAL_BAM_FILE, 12);
             tempFile = File.createTempFile("testPulldownNormalTight", ".txt");
-            testPulldown.write(tempFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+            testPulldown.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
 
             expectedPulldown = new Pulldown(normalHeader);
             expectedPulldown.add(new AllelicCount(new SimpleInterval("1", 12098, 12098), 8, 6,
@@ -299,7 +301,7 @@ public final class BayesianHetPulldownCalculatorUnitTest extends BaseTest {
             /* test 3: tumor, loose threshold */
             testPulldown = calculator.getHetPulldown(TUMOR_BAM_FILE, 2);
             tempFile = File.createTempFile("testPulldownTumorLoose", ".txt");
-            testPulldown.write(tempFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+            testPulldown.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
 
             expectedPulldown = new Pulldown(tumorHeader);
             expectedPulldown.add(new AllelicCount(new SimpleInterval("1", 11522, 11522), 7, 4,
@@ -318,7 +320,7 @@ public final class BayesianHetPulldownCalculatorUnitTest extends BaseTest {
             /* test 4: tumor, tight threshold */
             testPulldown = calculator.getHetPulldown(TUMOR_BAM_FILE, 12);
             tempFile = File.createTempFile("testPulldownTumorTight", ".txt");
-            testPulldown.write(tempFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+            testPulldown.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
 
             expectedPulldown = new Pulldown(tumorHeader);
             expectedPulldown.add(new AllelicCount(new SimpleInterval("1", 14630, 14630), 9, 8,

@@ -6,7 +6,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.tools.exome.TargetTableColumns;
+import org.broadinstitute.hellbender.tools.exome.TargetTableColumn;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -104,8 +104,8 @@ public final class HDF5PoN implements PoN {
     private final Lazy<List<String>> logNormalSampleNames;
 
     private final static Map<String, Integer> targetColumnToPoNIndex = ImmutableMap.of(
-            TargetTableColumns.CONTIG.toString(), 0, TargetTableColumns.START.toString(), 1,
-            TargetTableColumns.END.toString(), 2
+            TargetTableColumn.CONTIG.toString(), 0, TargetTableColumn.START.toString(), 1,
+            TargetTableColumn.END.toString(), 2
     );
 
     private final static int NUM_TARGETS_COLS = targetColumnToPoNIndex.size();
@@ -475,9 +475,9 @@ public final class HDF5PoN implements PoN {
 
         final String[][] targetValues = new String[targets.size()][NUM_TARGETS_COLS];
         for (int i = 0; i < targets.size(); i++) {
-            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumns.CONTIG.toString())] = targets.get(i).getContig();
-            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumns.START.toString())] = String.valueOf(targets.get(i).getStart());
-            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumns.END.toString())] = String.valueOf(targets.get(i).getEnd());
+            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumn.CONTIG.toString())] = targets.get(i).getContig();
+            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumn.START.toString())] = String.valueOf(targets.get(i).getStart());
+            targetValues[i][targetColumnToPoNIndex.get(TargetTableColumn.END.toString())] = String.valueOf(targets.get(i).getEnd());
         }
         file.makeStringMatrix(fullPath, targetValues, NUM_TARGETS_COLS_PATH);
     }

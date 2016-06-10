@@ -1,13 +1,19 @@
 package org.broadinstitute.hellbender.tools.exome.copyratio;
 
+import org.apache.commons.math3.util.Pair;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -141,6 +147,15 @@ public final class CopyRatioModeller {
     }
 
     /**
+     * Returns an unmodifiable view of the list of samples of the outlier-indicators posterior, represented as a list of
+     * {@link CopyRatioState.OutlierIndicators} objects.
+     * @return  unmodifiable view of the list of samples of the outlier-indicators posterior
+     */
+    public List<CopyRatioState.OutlierIndicators> getOutlierIndicatorsSamples() {
+        return Collections.unmodifiableList(outlierIndicatorsSamples);
+    }
+
+    /**
      * Returns a list of {@link PosteriorSummary} elements summarizing the segment-mean posterior for each segment.
      * Should only be called after {@link CopyRatioModeller#fitMCMC(int, int)} has been called.
      * @param credibleIntervalAlpha credible-interval alpha, must be in (0, 1)
@@ -162,11 +177,16 @@ public final class CopyRatioModeller {
     }
 
     /**
-     * Returns an unmodifiable view of the list of samples of the outlier-indicators posterior, represented as a list of
-     * {@link CopyRatioState.OutlierIndicators} objects.
-     * @return  unmodifiable view of the list of samples of the outlier-indicators posterior
+     * Returns a Map of {@link PosteriorSummary} elements summarizing the global parameters.
+     * Should only be called after {@link CopyRatioModeller#fitMCMC(int, int)} has been called.
+     * @param credibleIntervalAlpha credible-interval alpha, must be in (0, 1)
+     * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
+     * @return                      list of {@link PosteriorSummary} elements summarizing the global parameters
      */
-    public List<CopyRatioState.OutlierIndicators> getOutlierIndicatorsSamples() {
-        return Collections.unmodifiableList(outlierIndicatorsSamples);
+    public Map<CopyRatioParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
+        final Map<CopyRatioParameter, PosteriorSummary> posteriorSummaries = new LinkedHashMap<>();
+        posteriorSummaries.put(CopyRatioParameter.VARIANCE, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(varianceSamples, credibleIntervalAlpha, ctx));
+        posteriorSummaries.put(CopyRatioParameter.OUTLIER_PROBABILITY, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(outlierProbabilitySamples, credibleIntervalAlpha, ctx));
+        return posteriorSummaries;
     }
 }

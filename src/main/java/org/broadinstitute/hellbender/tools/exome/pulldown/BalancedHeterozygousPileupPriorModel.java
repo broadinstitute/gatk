@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.exome.pulldown;
 
 import org.apache.commons.lang3.tuple.Pair;
 

@@ -121,10 +121,10 @@ public final class ReadCountCollectionUtils {
 
         final List<String> columnNames = new ArrayList<>();
 
-        columnNames.add(TargetTableColumns.CONTIG.toString());
-        columnNames.add(TargetTableColumns.START.toString());
-        columnNames.add(TargetTableColumns.END.toString());
-        columnNames.add(TargetTableColumns.NAME.toString());
+        columnNames.add(TargetTableColumn.CONTIG.toString());
+        columnNames.add(TargetTableColumn.START.toString());
+        columnNames.add(TargetTableColumn.END.toString());
+        columnNames.add(TargetTableColumn.NAME.toString());
         columnNames.addAll(Utils.nonNull(countColumnNames));
         final TableColumnCollection columns = new TableColumnCollection(columnNames);
 
@@ -148,7 +148,7 @@ public final class ReadCountCollectionUtils {
                                                                        final ReadCountCollection collection) throws IOException {
 
         final List<String> columnNames = new ArrayList<>();
-        columnNames.add(TargetTableColumns.NAME.toString());
+        columnNames.add(TargetTableColumn.NAME.toString());
         columnNames.addAll(collection.columnNames());
         return createReadCountRecordTableWriterWithoutIntervals(writer, columnNames);
     }

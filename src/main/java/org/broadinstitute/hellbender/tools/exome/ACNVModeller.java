@@ -3,17 +3,24 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionModeller;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.tools.exome.copyratio.CopyRatioModeller;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
+import org.broadinstitute.hellbender.utils.mcmc.ParameterEnum;
+import org.broadinstitute.hellbender.utils.mcmc.ParameterWriter;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Represents an ACNV segmented model for copy ratio and allele fraction.
@@ -21,6 +28,8 @@ import java.util.List;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ACNVModeller {
+    public static final String ACNV_DOUBLE_FORMAT = "%6.8f";
+
     //use 95% HPD interval to construct {@link PosteriorSummary} for segment means and minor allele fractions
     private static final double CREDIBLE_INTERVAL_ALPHA = 0.05;
     private static final DecileCollection NAN_DECILE_COLLECTION = new DecileCollection(Collections.singletonList(Double.NaN));
@@ -28,7 +37,11 @@ public final class ACNVModeller {
     public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 
     private SegmentedGenome segmentedGenome;
+    private CopyRatioModeller copyRatioModeller;
+    private AlleleFractionModeller alleleFractionModeller;
+
     private final AllelicPanelOfNormals allelicPON;
+
     private final List<ACNVModeledSegment> segments = new ArrayList<>();
 
     //similar-segment merging may leave model in a state where it is not completely fit (i.e., deciles will be unspecified)
@@ -87,6 +100,8 @@ public final class ACNVModeller {
         this.numSamplesAlleleFraction = numSamplesAlleleFraction;
         this.numBurnInAlleleFraction = numBurnInAlleleFraction;
         this.ctx = ctx;
+        copyRatioModeller = new CopyRatioModeller(segmentedGenome);
+        alleleFractionModeller = new AlleleFractionModeller(segmentedGenome, allelicPON);
         logger.info("Fitting initial model...");
         fitModel();
     }
@@ -126,10 +141,10 @@ public final class ACNVModeller {
     public void fitModel() {
         //perform MCMC to generate posterior samples
         logger.info("Fitting copy-ratio model...");
-        final CopyRatioModeller copyRatioModeller = new CopyRatioModeller(segmentedGenome);
+        copyRatioModeller = new CopyRatioModeller(segmentedGenome);
         copyRatioModeller.fitMCMC(numSamplesCopyRatio, numBurnInCopyRatio);
         logger.info("Fitting allele-fraction model...");
-        final AlleleFractionModeller alleleFractionModeller = new AlleleFractionModeller(segmentedGenome, allelicPON);
+        alleleFractionModeller = new AlleleFractionModeller(segmentedGenome, allelicPON);
         alleleFractionModeller.fitMCMC(numSamplesAlleleFraction, numBurnInAlleleFraction);
 
         //update list of ACNVModeledSegment with new PosteriorSummaries
@@ -157,24 +172,49 @@ public final class ACNVModeller {
     }
 
     /**
+     * Writes posterior summaries for the global model parameters to a file.
+     * @param copyRatioParameterFile        output file for global copy-ratio parameters
+     * @param alleleFractionParameterFile   output file for global allele-fraction parameters
+     */
+    public void writeACNVModelParameterFiles(final File copyRatioParameterFile,
+                                             final File alleleFractionParameterFile) {
+        Utils.nonNull(copyRatioParameterFile);
+        Utils.nonNull(alleleFractionParameterFile);
+        ensureModelIsFit();
+        logger.info("Writing posterior summaries for copy-ratio global parameters to " + copyRatioParameterFile);
+        writeModelParameterFile(copyRatioModeller.getGlobalParameterPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx), copyRatioParameterFile);
+        logger.info("Writing posterior summaries for allele-fraction global parameters to " + alleleFractionParameterFile);
+        writeModelParameterFile(alleleFractionModeller.getGlobalParameterPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx), alleleFractionParameterFile);
+    }
+
+    /**
      * Writes the list of {@link ACNVModeledSegment} held internally to file.
      * See {@link SegmentUtils#writeACNVModeledSegmentFile}.
      * @param outFile   output file
      */
     public void writeACNVModeledSegmentFile(final File outFile) {
+        ensureModelIsFit();
+        SegmentUtils.writeACNVModeledSegmentFile(outFile, segments, segmentedGenome.getGenome());
+    }
+
+    private void ensureModelIsFit() {
         if (!isModelFit) {
-            logger.warn("Attempted to write ACNV segment file when model was not completely fit. Performing model fit now.");
+            logger.warn("Attempted to write ACNV results to file when model was not completely fit. Performing model fit now.");
             fitModel();
         }
-        SegmentUtils.writeACNVModeledSegmentFile(outFile, segments, segmentedGenome.getGenome());
+    }
+
+    private <T extends ParameterEnum> void writeModelParameterFile(final Map<T, PosteriorSummary> parameterPosteriorSummaries,
+                                                                   final File outFile) {
+        try (final ParameterWriter<T> writer = new ParameterWriter<>(outFile, ACNV_DOUBLE_FORMAT)) {
+            writer.writeAllRecords(parameterPosteriorSummaries.entrySet());
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
     }
 
     //converts list of ACNVModeledSegments to list of SimpleIntervals
     private List<SimpleInterval> toUnmodeledSegments(final List<ACNVModeledSegment> segments) {
-        final List<SimpleInterval> unmodeledSegments = new ArrayList<>();
-        for (final ACNVModeledSegment segment : segments) {
-            unmodeledSegments.add(segment.getInterval());
-        }
-        return unmodeledSegments;
+        return segments.stream().map(ACNVModeledSegment::getInterval).collect(Collectors.toList());
     }
 }

@@ -1,8 +1,10 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.exome.pulldown;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;

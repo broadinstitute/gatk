@@ -50,12 +50,12 @@ import java.util.stream.Collectors;
 public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/utils/mcmc/";
 
-    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
-            + "coverages-for-gibbs-sampler-copy-ratio-test.txt");
+    private static final File COVERAGES_FILE =
+            new File(TEST_SUB_DIR, "coverages-for-gibbs-sampler-copy-ratio-test.txt");
     private static final File NUM_TARGETS_PER_SEGMENT_FILE =
-            new File(TEST_SUB_DIR + "number-of-targets-per-segment-for-gibbs-sampler-copy-ratio-test.txt");
-    private static final File MEANS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "means-truth-for-gibbs-sampler-copy-ratio-test.txt");
+            new File(TEST_SUB_DIR, "number-of-targets-per-segment-for-gibbs-sampler-copy-ratio-test.txt");
+    private static final File MEANS_TRUTH_FILE =
+            new File(TEST_SUB_DIR, "means-truth-for-gibbs-sampler-copy-ratio-test.txt");
 
     private static final double VARIANCE_MIN = 0.;
     private static final double VARIANCE_MAX = Double.POSITIVE_INFINITY;
@@ -290,9 +290,9 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.
         final double[] varianceSamples =
                 Doubles.toArray(gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, NUM_BURN_IN));
-        final double variancePosteriorMean = new Mean().evaluate(varianceSamples);
+        final double variancePosteriorCenter = new Mean().evaluate(varianceSamples);
         final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
-        Assert.assertEquals(relativeError(variancePosteriorMean, VARIANCE_TRUTH), 0., 0.01);
+        Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH), 0., 0.01);
         Assert.assertEquals(
                 relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
                 0., 0.1);
@@ -311,11 +311,11 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
             final int j = segment;
             final double[] meanInSegmentSamples =
                     Doubles.toArray(meansSamples.stream().map(s -> s.get(j)).collect(Collectors.toList()));
-            final double meanPosteriorMean = new Mean().evaluate(meanInSegmentSamples);
+            final double meanPosteriorCenter = new Mean().evaluate(meanInSegmentSamples);
             final double meanPosteriorStandardDeviation =
                     new StandardDeviation().evaluate(meanInSegmentSamples);
             meanPosteriorStandardDeviations.add(meanPosteriorStandardDeviation);
-            final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorMean - meansTruth.get(segment));
+            final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorCenter - meansTruth.get(segment));
             if (absoluteDifferenceFromTruth > meanPosteriorStandardDeviation) {
                 numMeansOutsideOneSigma++;
             }

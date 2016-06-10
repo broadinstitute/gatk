@@ -351,7 +351,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
 
     private File createTargetFile(final List<Target> targets, final Set<TargetAnnotation> annotations) {
         final File result = createTempFile("filter-test-target", ".tab");
-        try (final TargetTableWriter writer = new TargetTableWriter(result, annotations)) {
+        try (final TargetWriter writer = new TargetWriter(result, annotations)) {
             for (final Target target : targets.stream()
                     .sorted((a, b) -> IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR.compare(a.getInterval(), b.getInterval()))
                     .collect(Collectors.toList())) {

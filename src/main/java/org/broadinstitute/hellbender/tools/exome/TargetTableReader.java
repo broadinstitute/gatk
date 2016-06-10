@@ -47,23 +47,23 @@ public final class TargetTableReader extends TableReader<Target> {
 
     @Override
     protected void processColumns(final TableColumnCollection columns) {
-        TableUtils.checkMandatoryColumns(columns, TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY, this::formatException);
+        TableUtils.checkMandatoryColumns(columns, TargetTableColumn.MANDATORY_COLUMNS, this::formatException);
         annotationCollection = new TargetTableAnnotationManager(getSource(), columns);
     }
 
     @Override
     protected Target createRecord(final DataLine dataLine) {
 
-        final String contig = dataLine.get(TargetTableColumns.CONTIG);
-        final int start = dataLine.getInt(TargetTableColumns.START);
-        final int end = dataLine.getInt(TargetTableColumns.END);
+        final String contig = dataLine.get(TargetTableColumn.CONTIG);
+        final int start = dataLine.getInt(TargetTableColumn.START);
+        final int end = dataLine.getInt(TargetTableColumn.END);
         if (start < 0) {
             throw formatException("the start position must not be negative: " + start);
         } else if (start > end) {
             throw formatException(String.format("the start position %d cannot be greater than the end position %d", start, end));
         }
         final SimpleInterval interval = new SimpleInterval(contig, start, end);
-        final String name = dataLine.get(TargetTableColumns.NAME);
+        final String name = dataLine.get(TargetTableColumn.NAME);
         return new Target(name, interval, annotationCollection.createTargetAnnotationCollection(dataLine));
     }
 }

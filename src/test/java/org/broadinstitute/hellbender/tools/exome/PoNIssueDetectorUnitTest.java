@@ -18,11 +18,11 @@ public class PoNIssueDetectorUnitTest extends BaseTest {
 
     private static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
     // These files were created by adding simulated events to real data.
-    private static File TEST_FILE_AMP = new File(TEST_DIR + "events_tn.txt");
-    private static File TEST_FILE_DEL = new File(TEST_DIR + "del_events_tn.txt");
+    private static File TEST_FILE_AMP = new File(TEST_DIR, "events_tn.txt");
+    private static File TEST_FILE_DEL = new File(TEST_DIR, "del_events_tn.txt");
 
     // This file was created manually from real normal sample tn file.
-    private static File TEST_NO_SUSPICIOUS_SAMPLES_FILE = new File(TEST_DIR + "no_events_tn_an.txt");
+    private static File TEST_NO_SUSPICIOUS_SAMPLES_FILE = new File(TEST_DIR, "no_events_tn_an.txt");
 
     @Test
     public void testIdentifySamplesWithSuspiciousContigsAmps() {

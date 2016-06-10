@@ -51,7 +51,7 @@ public class ACSModeledSegmentUtils {
 
         final List<ACSModeledSegment> acsModeledSegments = convertACNVSegmentsToACSSegments(cnlohCalls, DIVISOR, genome);
         try (final TableWriter<ACSModeledSegment> writer =
-                     TableUtils.writer(outFile, new TableColumnCollection(ACSTableColumns.COLUMN_NAME_ARRAY),
+                     TableUtils.writer(outFile, ACSTableColumn.COLUMNS,
                              //lambda for creating DataLine with sampleName and segment fields
                              (segment, dataLine) -> {
                                  dataLine.append(segment.getContig()).append(segment.getStart()).append(segment.getEnd())
@@ -129,22 +129,22 @@ public class ACSModeledSegmentUtils {
     public static List<ACSModeledSegment> readACSFile(final File acsSegFile) {
         Utils.nonNull(acsSegFile);
         Utils.regularReadableUserFile(acsSegFile);
-        return SegmentUtils.readSegmentFile(acsSegFile, ACSTableColumns.COLUMN_NAME_ARRAY, ACSModeledSegmentUtils::toACSModeledSegment);
+        return SegmentUtils.readSegmentFile(acsSegFile, ACSTableColumn.COLUMNS, ACSModeledSegmentUtils::toACSModeledSegment);
     }
 
     private static ACSModeledSegment toACSModeledSegment(final DataLine dataLine) {
-        final SimpleInterval interval = SegmentUtils.toInterval(dataLine, ACSTableColumns.CHROMOSOME.toString(),
-                ACSTableColumns.START.toString(), ACSTableColumns.END.toString());
-        final int targetCount = dataLine.getInt(ACSTableColumns.NUM_PROBES);
-        final double segmentMeanInLog2CR = dataLine.getDouble(ACSTableColumns.TAU.toString())/2.0;
-        final int hetCount = dataLine.getInt(ACSTableColumns.NUM_HETS.toString());
-        final double f = dataLine.getDouble(ACSTableColumns.F.toString());
-        final double sigmaTau = dataLine.getDouble(ACSTableColumns.SIGMA_TAU.toString());
-        final double muMinor = dataLine.getDouble(ACSTableColumns.MU_MINOR.toString());
-        final double muMajor = dataLine.getDouble(ACSTableColumns.MU_MAJOR.toString());
-        final double sigmaMinor = dataLine.getDouble(ACSTableColumns.SIGMA_MINOR.toString());
-        final double sigmaMajor = dataLine.getDouble(ACSTableColumns.SIGMA_MAJOR.toString());
-        final int segLabelCNLOH = dataLine.getInt(ACSTableColumns.SEGLABELCNLOH.toString());
+        final SimpleInterval interval = SegmentUtils.toInterval(dataLine, ACSTableColumn.CHROMOSOME.toString(),
+                ACSTableColumn.START.toString(), ACSTableColumn.END.toString());
+        final int targetCount = dataLine.getInt(ACSTableColumn.NUM_PROBES);
+        final double segmentMeanInLog2CR = dataLine.getDouble(ACSTableColumn.TAU.toString())/2.0;
+        final int hetCount = dataLine.getInt(ACSTableColumn.NUM_HETS.toString());
+        final double f = dataLine.getDouble(ACSTableColumn.F.toString());
+        final double sigmaTau = dataLine.getDouble(ACSTableColumn.SIGMA_TAU.toString());
+        final double muMinor = dataLine.getDouble(ACSTableColumn.MU_MINOR.toString());
+        final double muMajor = dataLine.getDouble(ACSTableColumn.MU_MAJOR.toString());
+        final double sigmaMinor = dataLine.getDouble(ACSTableColumn.SIGMA_MINOR.toString());
+        final double sigmaMajor = dataLine.getDouble(ACSTableColumn.SIGMA_MAJOR.toString());
+        final int segLabelCNLOH = dataLine.getInt(ACSTableColumn.SEGLABELCNLOH.toString());
         return new ACSModeledSegment(interval, ModeledSegment.NO_CALL, targetCount, segmentMeanInLog2CR, hetCount, f,
                 sigmaTau, muMinor, sigmaMinor, muMajor, sigmaMajor, segLabelCNLOH);
     }

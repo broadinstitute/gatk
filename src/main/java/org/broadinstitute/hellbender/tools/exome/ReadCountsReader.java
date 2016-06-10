@@ -40,7 +40,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
             throw new IllegalArgumentException("When ignore missing targets is true, targets cannot be null");
         }
         countColumnNames = super.columns().names().stream()
-                .filter(name -> !TargetTableColumns.isStandardTargetColumnName(name))
+                .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
         final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(super.columns(),
                 (message) -> formatException(message));
@@ -66,7 +66,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
             throw new IllegalArgumentException("When ignore missing targets is true, targets cannot be null");
         }
         countColumnNames = super.columns().names().stream()
-                .filter(name -> !TargetTableColumns.isStandardTargetColumnName(name))
+                .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
         final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(super.columns(),
                 (message) -> formatException(message));
@@ -84,7 +84,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
             throw new IllegalArgumentException("When ignore missing targets is true, targets cannot be null");
         }
         countColumnNames = super.columns().names().stream()
-                .filter(name -> !TargetTableColumns.isStandardTargetColumnName(name))
+                .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
         final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(super.columns(),
                 (message) -> formatException(message));
@@ -146,14 +146,14 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
      * <p>
      * This method will return {@code null} if it is not possible to extract the target name from the input directly; for
      * example the input only contain the coordinates of the target and not the target name itself (
-     * (i.e. the {@link TargetTableColumns#NAME NAME} column is missing).
+     * (i.e. the {@link TargetTableColumn#NAME NAME} column is missing).
      * </p>
      *
      * @param columns the column-name array for that file.
      * @return non-{@code null} iff is not possible to extract the target name from the input directly.
      */
     private static Function<DataLine, String> targetNameExtractor(final TableColumnCollection columns) {
-        final int nameColumnIndex = columns.indexOf(TargetTableColumns.NAME.toString());
+        final int nameColumnIndex = columns.indexOf(TargetTableColumn.NAME.toString());
         return nameColumnIndex < 0 ? null : (v) -> v.get(nameColumnIndex);
     }
 
@@ -167,9 +167,9 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
     private static Function<DataLine, SimpleInterval> intervalExtractor(
             final TableColumnCollection columns, final Function<String, RuntimeException> errorExceptionFactory) {
 
-        final int contigColumnNumber = columns.indexOf(TargetTableColumns.CONTIG.toString());
-        final int startColumnNumber = columns.indexOf(TargetTableColumns.START.toString());
-        final int endColumnNumber = columns.indexOf(TargetTableColumns.END.toString());
+        final int contigColumnNumber = columns.indexOf(TargetTableColumn.CONTIG.toString());
+        final int startColumnNumber = columns.indexOf(TargetTableColumn.START.toString());
+        final int endColumnNumber = columns.indexOf(TargetTableColumn.END.toString());
         return composeIntervalBuilder(contigColumnNumber, startColumnNumber, endColumnNumber, errorExceptionFactory);
     }
 
@@ -286,7 +286,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
 
     private Function<DataLine, double[]> countExtractor(final TableColumnCollection columns) {
         final int[] countColumnIndexes = IntStream.range(0, columns.columnCount())
-                .filter(i -> !TargetTableColumns.isStandardTargetColumnName(columns.nameAt(i))).toArray();
+                .filter(i -> !TargetTableColumn.isStandardTargetColumnName(columns.nameAt(i))).toArray();
         return (v) -> {
             final double[] result = new double[countColumnIndexes.length];
             for (int i = 0; i < countColumnIndexes.length; i++) {
@@ -299,8 +299,8 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
     public boolean hasTargetIntervals() {
         return targets != null
                 || columns().containsAll(
-                TargetTableColumns.CONTIG.toString(),
-                TargetTableColumns.START.toString(),
-                TargetTableColumns.END.toString());
+                TargetTableColumn.CONTIG.toString(),
+                TargetTableColumn.START.toString(),
+                TargetTableColumn.END.toString());
     }
 }

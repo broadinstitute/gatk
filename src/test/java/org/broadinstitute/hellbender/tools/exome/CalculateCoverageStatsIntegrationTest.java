@@ -199,9 +199,9 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
         Assert.assertNotNull(targetOutputFile);
         try (final TargetCoverageStatsReader reader = new TargetCoverageStatsReader(targetOutputFile)) {
             if (withIntervals) {
-                Assert.assertTrue(reader.columns().containsAll(TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY));
+                Assert.assertTrue(reader.columns().containsAll(TargetTableColumn.MANDATORY_COLUMNS.names()));
             } else {
-                Assert.assertTrue(reader.columns().contains(TargetTableColumns.NAME.toString()));
+                Assert.assertTrue(reader.columns().contains(TargetTableColumn.NAME.toString()));
             }
             Assert.assertTrue(reader.columns().containsAll(TargetCoverageStats.MEAN_COLUMN_NAME,
                     TargetCoverageStats.VARIANCE_COLUMN_NAME, TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME));
@@ -254,7 +254,7 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
         if (values.length == 0) {
             ReadCountCollectionUtils.writerWithIntervals(new FileWriter(result), sampleNames).close();
         } else if (sampleNames.size() == 0) {
-            try (final TargetTableWriter writer = new TargetTableWriter(result)) {
+            try (final TargetWriter writer = new TargetWriter(result)) {
                 writer.writeAllRecords(targets);
             }
         } else {

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.exome.pulldown;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.Pair;
@@ -20,8 +20,6 @@ import java.util.stream.IntStream;
  * This prior is suitable for detecting heterozygous sites from reads that come from tumor or contaminated
  * normal samples.
  *
- * TODO
- *
  * <ul>
  *      <li> The quadrature order can be adaptively chosen based on the pileup size and the accuracy
  *      required for likelihood estimation. In theory, a Gaussian quadrature of order N yields
@@ -42,16 +40,14 @@ public final class HeterogeneousHeterozygousPileupPriorModel extends Heterozygou
     /* integration quadrature */
     @VisibleForTesting
     final List<Double> gaussIntegrationWeights = new ArrayList<>();
-    @VisibleForTesting
-    final List<Double> gaussIntegrationLogWeights = new ArrayList<>();
+    private final List<Double> gaussIntegrationLogWeights = new ArrayList<>();
     @VisibleForTesting
     final List<Double> gaussIntegrationAbscissas = new ArrayList<>();
 
     /* allele fraction prior for Het sites */
     @VisibleForTesting
     final List<Double> alleleFractionPriors = new ArrayList<>();
-    @VisibleForTesting
-    final List<Double> alleleFractionLogPriors = new ArrayList<>();
+    private final List<Double> alleleFractionLogPriors = new ArrayList<>();
 
     /* minimum order of the integration quadrature */
     private static final int MIN_QUADRATURE_ORDER = 50;

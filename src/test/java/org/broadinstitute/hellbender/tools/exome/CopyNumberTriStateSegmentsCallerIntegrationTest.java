@@ -48,8 +48,8 @@ public abstract class CopyNumberTriStateSegmentsCallerIntegrationTest extends Co
         //final File result = new File("/tmp/input");
         final List<String> sampleNames = IntStream.range(0, chain.data.size()).mapToObj(a -> "SAMPLE_" + a).collect(Collectors.toList());
         final List<String> columnNames = new ArrayList<>(sampleNames.size() + 4);
-        columnNames.addAll(Arrays.asList(TargetTableColumns.CONTIG.toString(), TargetTableColumns.START.toString(),
-                TargetTableColumns.END.toString(), TargetTableColumns.NAME.toString()));
+        columnNames.addAll(Arrays.asList(TargetTableColumn.CONTIG.toString(), TargetTableColumn.START.toString(),
+                TargetTableColumn.END.toString(), TargetTableColumn.NAME.toString()));
         columnNames.addAll(sampleNames);
         try (final TableWriter<Integer> writer = new TableWriter<Integer>(result,
                 new TableColumnCollection(columnNames)) {

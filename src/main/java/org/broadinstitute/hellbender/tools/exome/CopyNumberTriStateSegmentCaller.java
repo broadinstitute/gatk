@@ -147,10 +147,10 @@ public abstract class CopyNumberTriStateSegmentCaller extends CommandLineProgram
      * @param model the CN segment model.
      * @param targets the target under analysis.
      * @param inputCounts the input coverage values already processed.
-     * @return IllegalArgumentException if any of the parameters is {@code null} or otherwise invalid.
-     * @return IllegalStateException if the tool is no ready for calling (e.g. the output file was not properly opened).
-     * @return UserException if anything when wrong due to something under the users' control.
-     * @return GATKException if anything when wrong due to something outside the users' control.
+     * @throws IllegalArgumentException if any of the parameters is {@code null} or otherwise invalid.
+     * @throws IllegalStateException if the tool is not ready for calling (e.g. the output file was not properly opened).
+     * @throws UserException if anything went wrong due to something under the user's control.
+     * @throws GATKException if anything went wrong due to something outside the user's control.
      */
     protected abstract void makeCalls(final CopyNumberTriStateHiddenMarkovModel model,
                                         final TargetCollection<Target> targets,
@@ -160,7 +160,7 @@ public abstract class CopyNumberTriStateSegmentCaller extends CommandLineProgram
      * Transform read counts to z-scores.
      * @param inputCounts the input read-counts, modified in-situ.
      */
-    private final void applyZScoreTransformation(final ReadCountCollection inputCounts) {
+    private void applyZScoreTransformation(final ReadCountCollection inputCounts) {
         final RealMatrix counts = inputCounts.counts();
         switch (zscoreDimension) {
             case SAMPLE:
@@ -293,7 +293,7 @@ public abstract class CopyNumberTriStateSegmentCaller extends CommandLineProgram
      * @param x the input log probability.
      * @return {@code log(1-log(x))}
      */
-    private final double logProbComplement(final double x) {
+    private double logProbComplement(final double x) {
         return x >= LN_1_M_EXP_THRESHOLD
                 ? Math.log(-Math.expm1(x))
                 : Math.log1p(-Math.exp(x));
@@ -338,11 +338,11 @@ public abstract class CopyNumberTriStateSegmentCaller extends CommandLineProgram
         return roundPhred(exactValue);
     }
 
-    protected static final double roundPhred(final double value) {
+    protected static double roundPhred(final double value) {
         return Math.round(value / PHRED_SCORE_PRECISION) * PHRED_SCORE_PRECISION;
     }
 
-    protected static final double roundLog10Prob(final double value) {
+    protected static double roundLog10Prob(final double value) {
         return Math.round(value / LOG10_PROB_PRECISION) * LOG10_PROB_PRECISION;
     }
 }

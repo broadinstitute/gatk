@@ -67,7 +67,7 @@ public class AllelicCountCollection {
      * @param verbosity  verbosity level
      * @param outputFile  file to write to (if it exists, it will be overwritten)
      */
-    public void write(final File outputFile, final AllelicCountTableColumns.AllelicCountTableVerbosity verbosity) {
+    public void write(final File outputFile, final AllelicCountTableColumn.AllelicCountTableVerbosity verbosity) {
         try (final AllelicCountWriter writer = new AllelicCountWriter(outputFile, verbosity)) {
             writer.writeAllRecords(counts);
         } catch (final IOException e) {

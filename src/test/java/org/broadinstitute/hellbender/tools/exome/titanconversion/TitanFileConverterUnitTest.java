@@ -8,6 +8,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 
 public class TitanFileConverterUnitTest extends BaseTest {
@@ -35,8 +37,8 @@ public class TitanFileConverterUnitTest extends BaseTest {
         TitanFileConverter.convertHetPulldownToTitanHetFile(TUMOR_ALLELIC_COUNTS_FILE, tempOutput);
         try {
             Assert.assertEquals(FileUtils.readLines(tempOutput).size(), FileUtils.readLines(TUMOR_ALLELIC_COUNTS_FILE).size());
-            final String[] headers = ArrayUtils.toArray(FileUtils.readLines(tempOutput).get(0).split("\t"));
-            Assert.assertEquals(headers, TitanAllelicCountTableColumns.FULL_COLUMN_NAME_ARRAY.toArray());
+            final List<String> headers = Arrays.asList(FileUtils.readLines(tempOutput).get(0).split("\t"));
+            Assert.assertEquals(headers, TitanAllelicCountTableColumn.COLUMNS.names());
         } catch (final IOException ioe) {
             Assert.fail("Problem with unit test configuration.", ioe);
         }
