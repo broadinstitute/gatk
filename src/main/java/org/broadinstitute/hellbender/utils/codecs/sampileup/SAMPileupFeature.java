@@ -6,7 +6,6 @@ import htsjdk.tribble.Feature;
 import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -63,8 +62,8 @@ public class SAMPileupFeature implements Feature {
      *
      * Note: this call costs O(n) and allocates fresh array each time
      */
-    public String getQualsAsString() {
-        return SAMUtils.phredToFastq(getBases());
+    public String getQualsString() {
+        return SAMUtils.phredToFastq(getBaseQuals());
     }
 
     /**
@@ -72,7 +71,7 @@ public class SAMPileupFeature implements Feature {
      *
      * Note: this call costs O(n) and allocates fresh array each time
      */
-    public String getBasesAsString() {
+    public String getBasesString() {
         return StringUtil.bytesToString(getBases());
     }
 
@@ -91,12 +90,17 @@ public class SAMPileupFeature implements Feature {
     }
 
     /**
-     * Returns formatted pileup string for the genomic location as
-     * "location: reference_base observed_base_pile observed_qual_pile"
+     * Format in a samtools-like string.
+     * Each line represents a genomic position, consisting of chromosome name, coordinate,
+     * reference base, read bases and read qualities
      */
     public String getPileupString() {
-        return String.format("%s:%d: %s %s %s",
-				getContig(), getStart(), getRef(), getBasesAsString(), getQualsAsString());
+        // In the pileup format,
+        return String.format("%s %s %c %s %s",
+                getContig(), getStart(),    // chromosome name and coordinate
+                getRef(),                                                     // reference base
+                getBasesString(),
+                getQualsString());
     }
 
     /**
@@ -114,7 +118,7 @@ public class SAMPileupFeature implements Feature {
      *
      * Note: this call costs O(n) and allocates fresh array each time
      */
-    public byte[] getQuals() {
+    public byte[] getBaseQuals() {
         final List<Byte> quals = getQualsStream().collect(Collectors.toList());
         return ArrayUtils.toPrimitive(quals.toArray(new Byte[quals.size()]));
     }

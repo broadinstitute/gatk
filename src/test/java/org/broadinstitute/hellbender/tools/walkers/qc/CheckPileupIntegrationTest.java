@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
@@ -20,7 +21,7 @@ public class CheckPileupIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/walkers/qc/pileup/";
 
     /**
-     * This test runs on a basic pileup obtained with samtools (version 1.1) and options -B --min-BQ 0
+     * This test runs on a basic pileup obtained with samtools (version 1.3.1) and options -B --min-BQ 0
      */
     @Test
     public void testBasicPileup() throws IOException {
@@ -30,9 +31,27 @@ public class CheckPileupIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
             " -R " + hg19MiniReference +
             " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
-            " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.samp" +
+            " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.pileup" +
             " -O %s", Arrays.asList(emptyTemp.toString()));
 
         testSpec.executeTest("testBasicPileup", this);
     }
+
+    /**
+     * This test runs on a basic pileup obtained with samtools (version 1.3.1) and options --min-BQ 0
+     * BAQ quality recalibration is activated and should be different
+     */
+    @Test
+    public void testBAQPileup() throws IOException {
+        // pileup was generated with "samtools -f hg19MiniReference --min-BQ 0 reads_data_source_test1.bam"
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " --continue_after_error " +
+                " -R " + hg19MiniReference +
+                " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
+                " -pileup " +  TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.baq.pileup" +
+                " -O %s", Arrays.asList(TEST_OUTPUT_DIRECTORY + "reads_data_source_test1.samtools.baq.pileup.diff"));
+
+        testSpec.executeTest("testBasicPileup", this);
+    }
+
 }

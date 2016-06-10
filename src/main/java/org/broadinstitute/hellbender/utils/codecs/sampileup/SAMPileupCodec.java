@@ -37,7 +37,7 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
     // regular expression for indels
     private static final Pattern INDEL_REGEXP = Pattern.compile("([0-9]+).*");
     // codec file extensions
-    public static final List<String> SAM_PILEUP_FILE_EXTENSIONS = Arrays.asList("pileup", "mpileup", "samp");
+    public static final List<String> SAM_PILEUP_FILE_EXTENSIONS = Arrays.asList("pileup", "mpileup");
 
     public SAMPileupCodec() {
         super(SAMPileupFeature.class);
@@ -56,7 +56,7 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
      */
     @Override
     public boolean canDecode(final String path) {
-        return SAM_PILEUP_FILE_EXTENSIONS.stream().anyMatch(ext -> path.endsWith("."+ext));
+        return SAM_PILEUP_FILE_EXTENSIONS.stream().anyMatch(ext -> path.toLowerCase().endsWith("."+ext));
     }
 
     public SAMPileupFeature decode(String line) {
@@ -64,16 +64,17 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
         final String[] tokens = SPLIT_PATTERN.split(line.trim(), -1);
         // check the number of fields
         if(tokens.length < MINIMUM_FIELDS || tokens.length > MAXIMUM_FIELDS) {
-            throw new CodecLineParsingException("The SAM pileup line didn't have the expected number of columns. " +
-                    "Note that this codec is only valid for single-sample pileups.");
+            throw new CodecLineParsingException(String.format("The SAM pileup line didn't have the expected number of columns (%s-%s): %s. Note that this codes is only valid for single-sample pileups",
+                    MINIMUM_FIELDS, MAXIMUM_FIELDS, line));
         }
         // starting parsing
+        final String chr = tokens[0];
         final int pos = parseInteger(tokens[1], "position");
         final byte ref = parseBase(tokens[2], "reference");
         final int cov = parseInteger(tokens[3], "coverage");
         // we end parsing here if coverage is 0
         if(cov == 0) {
-            return new SAMPileupFeature(tokens[0], pos, ref, new ArrayList<>());
+            return new SAMPileupFeature(chr, pos, ref, new ArrayList<>());
         }
         // parse the elements
         final List<SAMPileupElement> pileupElements = parseBasesAndQuals(tokens[4], tokens[5], ref);
@@ -86,44 +87,47 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
 
     @VisibleForTesting
     protected List<SAMPileupElement> parseBasesAndQuals(final String bases, final String qualities, final byte ref) {
-        // TODO: probably a index out of bounds exception will be thrown
-        final List<SAMPileupElement> pileupElements = new ArrayList<>(qualities.length());
-        int i = 0, j = 0;
-        for( ; i < bases.length(); i++) {
-            final char c = bases.charAt(i);
-            switch ( c ) {
-                case '$': // end of read
-                    break;
-                case '^': // mapping quality
-                    i++; // the next symbol is a quality value
-                    break;
-                case '.':
-                case ',':   // matches reference
-                    pileupElements.add(new SAMPileupElement(ref, (byte) SAMUtils.fastqToPhred(qualities.charAt(j++))));
-                    break;
-                case '*': // deletion placeholder
-                    pileupElements.add(new SAMPileupElement(BaseUtils.Base.D.base, (byte) SAMUtils.fastqToPhred(qualities.charAt(j++))));
-                    break;
-                case '+':
-                case '-': // start of indel
-                    final String rest = bases.substring(i+1);
-                    final Matcher match = INDEL_REGEXP.matcher(rest);
-                    if(! match.matches()) {
-                        throw new CodecLineParsingException("The SAM pileup line have an indel marker (+/-) without lenght");
-                    }
-                    final String lengthString = match.group(1);
-                    final int indelLength = parseInteger(lengthString, "indel-length");
-                    i += indelLength + lengthString.length(); // length of number + that many bases + +/- at the start (included in the next i++)
-                    break;
-                default:
-                    final byte base = parseBase((byte) bases.charAt(i), "reads String");
-                    pileupElements.add(new SAMPileupElement(base, (byte) SAMUtils.fastqToPhred(qualities.charAt(j++))));
+        try {
+            final List<SAMPileupElement> pileupElements = new ArrayList<>(qualities.length());
+            int i = 0, j = 0;
+            for (; i < bases.length(); i++) {
+                final char c = bases.charAt(i);
+                switch (c) {
+                    case '$': // end of read
+                        break;
+                    case '^': // mapping quality
+                        i++; // the next symbol is a quality value
+                        break;
+                    case '.':
+                    case ',':   // matches reference
+                        pileupElements.add(new SAMPileupElement(ref, (byte) SAMUtils.fastqToPhred(qualities.charAt(j++))));
+                        break;
+                    case '*': // deletion placeholder
+                        pileupElements.add(new SAMPileupElement(BaseUtils.Base.D.base, (byte) SAMUtils.fastqToPhred(qualities.charAt(j++))));
+                        break;
+                    case '+':
+                    case '-': // start of indel
+                        final String rest = bases.substring(i + 1);
+                        final Matcher match = INDEL_REGEXP.matcher(rest);
+                        if (!match.matches()) {
+                            throw new CodecLineParsingException("The SAM pileup line has an indel marker (+/-) without length");
+                        }
+                        final String lengthString = match.group(1);
+                        final int indelLength = parseInteger(lengthString, "indel-length");
+                        i += indelLength + lengthString.length(); // length of number + that many bases + +/- at the start (included in the next i++)
+                        break;
+                    default:
+                        final byte base = parseBase((byte) bases.charAt(i), "reads String");
+                        pileupElements.add(new SAMPileupElement(base, (byte) SAMUtils.fastqToPhred(qualities.charAt(j++))));
+                }
             }
+            if (i != bases.length() || j != qualities.length()) {
+                throw new CodecLineParsingException("Not all bases/qualities have been parsed because of a malformed line");
+            }
+            return pileupElements;
+        } catch(IndexOutOfBoundsException e) {
+            throw new CodecLineParsingException("Malformed SAM pileup: Different number of bases and qualities found.");
         }
-        if(i != bases.length() || j != qualities.length()) {
-            throw new CodecLineParsingException("Not all bases/qualities have been parsed because of a malformed line");
-        }
-        return pileupElements;
     }
 
     /**

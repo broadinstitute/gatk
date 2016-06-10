@@ -1,12 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.codecs.sampileup.SAMPileupFeature;
@@ -15,7 +13,6 @@ import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -128,14 +125,14 @@ public final class CheckPileup extends LocusWalker {
         }
         // compare bases
         final String aBases = new String(a.getBases());
-        final String bBases = b.getBasesAsString();
+        final String bBases = b.getBasesString();
         if ( ! aBases.toUpperCase().equals(bBases.toUpperCase()) ) {
             return String.format("Bases not equal: %s vs. %s", aBases, bBases);
         }
 
         // compare the qualities
         final String aQuals = new String(a.getBaseQuals());
-        final String bQuals = new String(b.getQuals());
+        final String bQuals = new String(b.getBaseQuals());
         if ( ! aQuals.equals(bQuals) ) {
             return String.format("Quals not equal: %s vs. %s", aQuals, bQuals);
         }
