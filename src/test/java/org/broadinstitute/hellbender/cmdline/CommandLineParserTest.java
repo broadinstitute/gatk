@@ -666,31 +666,41 @@ public final class CommandLineParserTest {
     }
 
     /**
-     * Test that the special flags --help and --version are handled correctly
+     * Test that the special flag --version is handled correctly
+     * (no blowup)
      */
     @Test
-    public void testSpecialFlags(){
+    public void testVersionSpecialFlag(){
         final BooleanFlags o = new BooleanFlags();
         final CommandLineParser clp = new CommandLineParser(o);
 
-        String[] helpArgs = new String[]{"--"+SpecialArgumentsCollection.HELP_FULLNAME};
-
-        String out = BaseTest.captureStderr( () -> {
-            Assert.assertFalse(clp.parseArguments(System.err, helpArgs));
-            });
-        BaseTest.assertContains(out, "Usage:");
-
         final String[] versionArgs = {"--" + SpecialArgumentsCollection.VERSION_FULLNAME};
-        out = BaseTest.captureStderr(() -> {
+        String out = BaseTest.captureStderr(() -> {
                     Assert.assertFalse(clp.parseArguments(System.err, versionArgs));
             });
         BaseTest.assertContains(out,"Version:");
 
-        Assert.assertTrue(clp.parseArguments(System.err,  new String[]{"--help", "false"}));
         Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--version","false"}));
-
-        Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--help", "true"}));
         Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--version", "true"}));
+    }
+
+    /**
+     * Test that the special flag --help is handled correctly
+     * (no blowup)
+     */
+    @Test
+    public void testHelp(){
+        final BooleanFlags o = new BooleanFlags();
+        final CommandLineParser clp = new CommandLineParser(o);
+
+        final String[] versionArgs = {"--" + SpecialArgumentsCollection.HELP_FULLNAME};
+        String out = BaseTest.captureStderr(() -> {
+            Assert.assertFalse(clp.parseArguments(System.err, versionArgs));
+        });
+        BaseTest.assertContains(out,"USAGE:");
+
+        Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--help","false"}));
+        Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--help", "true"}));
     }
 
     /***************************************************************************************

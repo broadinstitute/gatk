@@ -10,6 +10,7 @@ import htsjdk.samtools.util.Log;
 import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -193,7 +194,18 @@ public abstract class CommandLineProgram {
     protected boolean parseArgs(final String[] argv) {
 
         commandLineParser = new CommandLineParser(this);
-        final boolean ret = commandLineParser.parseArguments(System.err, argv);
+        final boolean ret;
+        try{
+            ret = commandLineParser.parseArguments(System.err, argv);
+        } catch (final UserException.CommandLineException e){
+            //The CommandLineException is treated specially - we display help and no blow up
+            System.err.println(e.getMessage());
+            commandLineParser.usage(System.err, true);
+            //rethrow e - this will be caught upstream and the right exit code will be used.
+            //we don't exit here though - only Main.main is allowed to call System.exit.
+            throw e;
+        }
+
         commandLine = commandLineParser.getCommandLine();
         if (!ret) {
             return false;

@@ -36,7 +36,13 @@ public class Main {
      * exit value when an unrecoverable {@link UserException} occurs
      */
     private static final int USER_EXCEPTION_EXIT_VALUE = 2;
-    
+
+    /**
+     * exit value when an issue with the commandline is detected, ie {@link UserException.CommandLineException}.
+     * This is the same value as picard uses.
+     */
+    private static final int COMMANDLINE_EXCEPTION_EXIT_VALUE = 1;
+
     /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
      */
@@ -78,7 +84,8 @@ public class Main {
     }
 
     /**
-     * Override this if you want to include different java packages to search for classes that extend CommandLineProgram. *
+     * The entry point to GATK from commandline.
+     * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     public static void main(final String[] args) {
         try {
@@ -86,6 +93,10 @@ public class Main {
             if (result != null) {
               System.out.println("Tool returned:\n" + result);
             }
+        } catch (final UserException.CommandLineException e){
+            //the usage has already been printed.
+            // Stack traces are useless for commandline exceptions so just exit with the right code.
+            System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
             System.err.println("***********************************************************************");
             System.err.println();
