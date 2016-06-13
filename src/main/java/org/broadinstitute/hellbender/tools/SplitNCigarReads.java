@@ -117,7 +117,9 @@ public final class SplitNCigarReads extends CommandLineProgram {
 
     private SAMFileGATKReadWriter initialize(final SamReader in) {
         final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(in.getFileHeader());
-        final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, true, false, false));
+        //preSorted is set to false for this writer since ReadCoordinateComparator doesn't match HTSJDK's when an unmapped read has a mapped mate.
+        //Also, we don't want to assume that reads will be written in order by the manager because in deep, deep pileups it won't work
+        final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, false, false, false));
 
         try {
             final IndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_SEQUENCE);

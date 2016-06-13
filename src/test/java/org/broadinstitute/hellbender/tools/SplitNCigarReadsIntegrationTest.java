@@ -53,4 +53,12 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
                 Arrays.asList(getTestDataDir() +"/" + "expected.splitNCigarReadsSnippet.splitNcigarReads.fixNDN.bam"));
         spec.executeTest("test fix NDN", this);
     }
+
+    @Test //regression test for https://github.com/broadinstitute/gatk/pull/1853
+    public void testSplitsOfUnpairedAndUnmappedReads() throws Exception {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-R" + b37_reference_20_21 + " -I " + largeFileTestDir + "K-562.duplicateMarked.chr20.bam -O %s",
+                Arrays.asList(largeFileTestDir + "expected.K-562.splitNCigarReads.chr20.bam")); //results created using gatk3.5
+        spec.executeTest("regression test for unmapped and unpaired reads", this);
+    }
 }
