@@ -9,7 +9,7 @@ Please see the excellent docker documentation if you need info about docker:  ht
 
 Notes:
 - Image is built on ``ubuntu:14.04``
-- Once image is built, the hellbender-protected.jar (symlink) is found in ``/root`` (i.e. ``$HOME``).
+- Once image is built, the gatk-protected.jar (symlink) is found in ``/root`` (i.e. ``$HOME``).
 - HDF5 jni library is in ``/usr/lib/jni``, since this is the default for Ubuntu 14.04.  This has been added to the ``JAVA_LIBRARY_PATH`` environment variable.
 
 #### Create docker image
@@ -26,5 +26,14 @@ sudo docker run -i -t <image>
 
 # On the docker prompt
 cd hellbender-protected
-gradle test
+./gradlew test
+```
+
+#### See the GATK-protected version from the docker prompt
+```
+# Start a docker image
+sudo docker run -i -t <image>
+
+# In the image prompt:
+cat GATK_PROTECTED_VERSION
 ```

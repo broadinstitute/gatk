@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -111,6 +112,13 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
         Utils.regularReadableUserFile(ponFile);
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);
+
+            // Test the version of the PoN
+            if (pon.getVersion() < HDF5PoNCreator.CURRENT_PON_VERSION) {
+                logger.warn("The version of the specified PoN (" + pon.getVersion() + ") is older than the latest version " +
+                        "(" + HDF5PoNCreator.CURRENT_PON_VERSION + ").");
+            }
+
             final TargetCollection<? extends BEDFeature> exonCollection = readTargetCollection(targetFile);
             final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, exonCollection);
             final TangentNormalizationResult tangentNormalizationResult = TangentNormalizer.tangentNormalizePcov(pon, readCountCollection);
