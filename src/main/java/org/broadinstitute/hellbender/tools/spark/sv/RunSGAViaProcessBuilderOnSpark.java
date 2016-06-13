@@ -4,6 +4,9 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.fs.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -70,70 +73,44 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = true)
     public boolean enableSTDIOCapture = false;
 
-    @Argument(doc       = "An estimate on the number of fastq files in the input directory to be fed to the tool",
-              shortName = "fileCntEst",
-              fullName  = "fastqFileCountEstimate",
-              optional  = true)
-    public int fastqFileCountEstimate = inputSizeNotSet;
 
 
 
     // for developer performance debugging use
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-    /**
-     * parameter to control how many FASTQ files in each RDD, if {@link RunSGAViaProcessBuilderOnSpark#fastqFileCountEstimate} is not set by user
-     */
-    private static final long NUM_OF_FILES_PER_PARTITION = 10L;
-    private static final int inputSizeNotSet = -1;
+    private static final Logger logger = LogManager.getLogger(RunSGAViaProcessBuilderOnSpark.class);
 
     @Override
     public void runTool(final JavaSparkContext ctx){
 
-        System.err.println("SGAOnSpark_debug: Start job at " + dateFormat.format(new Date()));
+        logger.debug("SGAOnSpark_debug: Start job at " + dateFormat.format(new Date()));
 
         // first load RDD of pair that has path to FASTQ file path as its first and FASTQ file contents as its second
-        final JavaPairRDD<String, String> fastqContentsForEachBreakpointPartitionedAppropriately = loadFASTQFiles(ctx, pathToAllInterleavedFASTQFiles, fastqFileCountEstimate);
+        final JavaPairRDD<String, String> fastqContentsForEachBreakpoint = loadFASTQFiles(ctx, pathToAllInterleavedFASTQFiles);
 
-        final JavaPairRDD<Long, SGAAssemblyResult> assembly = fastqContentsForEachBreakpointPartitionedAppropriately.mapToPair(entry -> performAssembly(entry, subStringToStrip, pathToSGA, runCorrection, enableSTDIOCapture));
+        final JavaPairRDD<Long, SGAAssemblyResult> assembly = fastqContentsForEachBreakpoint.mapToPair(entry -> performAssembly(entry, subStringToStrip, pathToSGA, runCorrection, enableSTDIOCapture));
 
         validateAndSaveResults(assembly, outDirPrefix);
 
-        System.err.println("SGAOnSpark_debug: Finish job at " + dateFormat.format(new Date()));
+        logger.debug("SGAOnSpark_debug: Finish job at " + dateFormat.format(new Date()));
     }
 
     /**
-     * Load the FASTQ files in the user specified directory and returns an RDD that satisfies the same requirement as described in {@link JavaSparkContext#wholeTextFiles(String)}
-     * and {@link JavaSparkContext#wholeTextFiles(String, int)}.
+     * Load the FASTQ files in the user specified directory and returns an RDD that satisfies the same requirement
+     * as described in {@link JavaSparkContext#wholeTextFiles(String, int)}.
      * @param ctx
-     * @param pathToAllInterleavedFASTQFiles
-     * @param inputSizeEstimate
+     * @param pathToAllInterleavedFASTQFiles path to the directory where all FASTQ files to perform local assembly upon are located
+     * @throws GATKException when getting the file count in the specified directory
      * @return
      */
-    private static JavaPairRDD<String, String> loadFASTQFiles(final JavaSparkContext ctx, final String pathToAllInterleavedFASTQFiles, final int inputSizeEstimate){
-        if(inputSizeEstimate!=inputSizeNotSet){
-            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles, inputSizeEstimate);
-        }else{
-
-            final JavaPairRDD<String, String> fastqContentsForEachBreakpoint = ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles);
-            JavaPairRDD<String, String> repartitionedRDD = null;
-
-            final long elementCount  = fastqContentsForEachBreakpoint.count();
-            final long numPartitions = fastqContentsForEachBreakpoint.getNumPartitions();
-
-            System.err.println(String.format("SGAOnSpark_debug: Default number of partitions %d for %d of input FASTQ files", numPartitions, elementCount));
-
-            if(elementCount/numPartitions>NUM_OF_FILES_PER_PARTITION) {
-
-                // BAD but experimental (will be bad already if count is 10 times larger than INTEGER.MAX_VALUE
-                repartitionedRDD = fastqContentsForEachBreakpoint.repartition((int) Math.ceil(elementCount/NUM_OF_FILES_PER_PARTITION));
-
-                System.err.println("SGAOnSpark_debug: Number of partitions after forced repartition " + repartitionedRDD.getNumPartitions());
-                System.err.println("SGAOnSpark_debug: Repartitioning finished at " + dateFormat.format(new Date()));
-            }else{
-                repartitionedRDD = fastqContentsForEachBreakpoint;
-            }
-
-            return repartitionedRDD;
+    private static JavaPairRDD<String, String> loadFASTQFiles(final JavaSparkContext ctx, final String pathToAllInterleavedFASTQFiles){
+        try{
+            final FileSystem hadoopFileSystem = FileSystem.get(ctx.hadoopConfiguration());
+            final ContentSummary cs = hadoopFileSystem.getContentSummary(new org.apache.hadoop.fs.Path(pathToAllInterleavedFASTQFiles));
+            final int fileCount = (int) cs.getFileCount();
+            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles, fileCount);
+        }catch (final IOException e){
+            throw new GATKException(e.getMessage());
         }
     }
 
@@ -228,7 +205,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
                                                    final boolean enableSTDIOCapture)
             throws IOException{
 
-        System.out.println("SGAOnSpark_debug: start actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
+        logger.debug("SGAOnSpark_debug: start actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
         final Path sga = Paths.get(sgaPath);
 
@@ -280,7 +257,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             return new SGAAssemblyResult(null, runtimeInfo);
         }
 
-        System.out.println("SGAOnSpark_debug: finished actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
+        logger.debug("SGAOnSpark_debug: finished actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
         // if code reaches here, all steps in the SGA pipeline went smoothly,
         // but the following conversion from File to ContigsCollection may still err
