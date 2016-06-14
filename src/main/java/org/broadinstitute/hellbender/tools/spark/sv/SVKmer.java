@@ -19,7 +19,7 @@ public final class SVKmer implements Comparable<SVKmer>, Serializable {
     // Lookup table for reverse-complementing each possible byte value.
     // Each pair of bits represents a base, so you have to reverse bits pairwise and then invert all bits.
     // This is most quickly and easily done with a lookup table.
-    private static final long BYTEWISE_REVERSE_COMPLEMENT[];
+    private static final long[] BYTEWISE_REVERSE_COMPLEMENT;
     static {
         BYTEWISE_REVERSE_COMPLEMENT = new long[256];
         for ( int idx = 0; idx != 256; ++idx ) {
