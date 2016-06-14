@@ -313,10 +313,10 @@ public final class BaseRecalibrationEngine implements Serializable {
         if (recalArgs.defaultBaseQualities < 0) {
             return read;
         }
-        byte reads[] = read.getBases();
-        byte quals[] = read.getBaseQualities();
+        byte[] reads = read.getBases();
+        byte[] quals = read.getBaseQualities();
         if (quals == null || quals.length < reads.length) {
-            byte new_quals[] = new byte[reads.length];
+            byte[] new_quals = new byte[reads.length];
             Arrays.fill(new_quals, recalArgs.defaultBaseQualities);
             read.setBaseQualities(new_quals);
         }

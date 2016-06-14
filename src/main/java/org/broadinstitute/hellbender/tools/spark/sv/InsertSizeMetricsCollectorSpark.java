@@ -216,7 +216,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
 
     // small utility function to collect bin width on the untrimmed Histogram, but actual work delegated to computeRanges
     private static void collectSymmetricBinWidth(InsertSizeMetrics metrics, final Histogram<Integer> hist){
-        final long bin_widths[] = computeRanges(hist, (int) hist.getMedian(), metrics.READ_PAIRS); // metrics.REAR_PAIRS is assumed to be set properly already
+        final long[] bin_widths = computeRanges(hist, (int) hist.getMedian(), metrics.READ_PAIRS); // metrics.REAR_PAIRS is assumed to be set properly already
         metrics.WIDTH_OF_10_PERCENT = (int) bin_widths[0];
         metrics.WIDTH_OF_20_PERCENT = (int) bin_widths[1];
         metrics.WIDTH_OF_30_PERCENT = (int) bin_widths[2];
@@ -239,7 +239,7 @@ public final class InsertSizeMetricsCollectorSpark implements Serializable {
         int left = start;  // left and right boundaries of histogram bins
         int right = left;  //      start from median, and gradually open up
 
-        final long bin_widths[] = new long[10];   // for storing distance between left and right boundaries of histogram bins
+        final long[] bin_widths = new long[10];   // for storing distance between left and right boundaries of histogram bins
         // dimension is 10 because metrics requires 10 histogram bin width values.
         int i = 0;
         int j = 0;                          // represent lowest and highest indices of bin_widths that needs to be updated

@@ -338,7 +338,7 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
         double log10LofK = set.getLog10Likelihoods()[0];
 
         // update the MLE if necessary
-        final int altCounts[] = Arrays.copyOfRange(set.getACcounts().getCounts(), 1, set.getACcounts().getCounts().length);
+        final int[] altCounts = Arrays.copyOfRange(set.getACcounts().getCounts(), 1, set.getACcounts().getCounts().length);
         // TODO -- GUILLERMO THIS CODE MAY PRODUCE POSITIVE LIKELIHOODS OR -INFINITY
         stateTracker.updateMLEifNeeded(Math.max(log10LofK, -Double.MAX_VALUE), altCounts);
 

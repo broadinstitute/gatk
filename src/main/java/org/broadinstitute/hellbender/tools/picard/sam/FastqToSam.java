@@ -339,7 +339,7 @@ public final class FastqToSam extends PicardCommandLineProgram {
         if(readName.equals("")) throw new UserException(error(freader,"Pair read name "+pairNum+" cannot be empty: "+readName));
 
         final int idx = readName.lastIndexOf("/");
-        final String result[] = new String[2];
+        final String[] result = new String[2];
 
         if (idx == -1) {
             result[0] = readName;

@@ -264,7 +264,7 @@ public final class RevertSam extends PicardCommandLineProgram {
                     // The only valid quality score encoding scheme is standard; if it's not standard, change it.
                     final FastqQualityFormat recordFormat = readGroupToFormat.get(rec.getReadGroup());
                     if (!recordFormat.equals(FastqQualityFormat.Standard)) {
-                        final byte quals[] = rec.getBaseQualities();
+                        final byte[] quals = rec.getBaseQualities();
                         for (int i = 0; i < quals.length; i++) {
                             quals[i] -= SolexaQualityConverter.ILLUMINA_TO_PHRED_SUBTRAHEND;
                         }
