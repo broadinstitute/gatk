@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.qc;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -70,5 +73,18 @@ public class PileupIntegrationTest extends CommandLineProgramTest {
         );
         testSpec.executeTest("testInsertLengthPileup", this);
     }
+
+    @Test(expectedExceptions = UserException.CouldNotCreateOutputFile.class)
+    public void testInvalidOutputFile() throws IOException {
+        // GATK 3.5 code have a the last line with a REDUCE RESULT that was removed in this implementation
+        final String[] args = new String[] {
+                "-L" , "20:9999900-10000000",
+                "-R" , b37_reference_20_21,
+                "-I" , NA12878_20_21_WGS_bam,
+                "-O" , "/foobar/foobar"
+        };
+        runCommandLine(args);
+    }
+
 
 }
