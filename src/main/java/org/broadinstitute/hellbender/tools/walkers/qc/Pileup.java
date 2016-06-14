@@ -11,10 +11,13 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,7 +79,7 @@ public final class Pileup extends LocusWalker {
     private static final String VERBOSE_DELIMITER = "@"; // it's ugly to use "@" but it's literally the only usable character not allowed in read names
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "An output file created by the walker. Will overwrite contents if file exists")
-    public PrintStream out;
+    public File outFile;
 
     /**
      * In addition to the standard pileup output, adds 'verbose' output too. The verbose output contains the number of
@@ -102,6 +105,8 @@ public final class Pileup extends LocusWalker {
     @Argument(fullName = "outputInsertLength", shortName = "outputInsertLength", doc = "Output insert length", optional = true)
     public boolean outputInsertLength = false;
 
+    private PrintStream out;
+
     @Override
     public boolean includeDeletions() {
         return false;
@@ -114,6 +119,16 @@ public final class Pileup extends LocusWalker {
             .and(new CountingReadFilter("Not duplicate", ReadFilterLibrary.NOT_DUPLICATE))
             .and(new CountingReadFilter("Passes VQ check", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
             .and(new CountingReadFilter("Primary alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT));
+    }
+
+
+    @Override
+    public void onTraversalStart() {
+        try {
+            out = new PrintStream(outFile);
+        } catch (FileNotFoundException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
     }
 
     @Override
@@ -192,6 +207,8 @@ public final class Pileup extends LocusWalker {
 
     @Override
     public void closeTool() {
-        out.close();
+        if (out!=null) {
+            out.close();
+        }
     }
 }
