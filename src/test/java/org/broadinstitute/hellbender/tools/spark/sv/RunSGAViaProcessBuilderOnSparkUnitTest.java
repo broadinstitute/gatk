@@ -75,7 +75,7 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
             final File fastqFile = it.next();
             rawFASTQFiles.add(new Tuple2<>(i, fastqFile));
 
-            final File contigFile = new File(fastqFile.getParentFile(), fastqFile.getName().replace("fastq", "pp.ec.filter.pass.rmdup.merged-contigs.fa"));
+            final File contigFile = new File(fastqFile.getParentFile(), fastqFile.getName().replace("fastq", "pp.ec.filter.pass.merged.rmdup-contigs.fa"));
             expectedAssembledFASTAFiles.put(i++, contigFile);
         }
     }
@@ -199,23 +199,23 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
 
         editDistancesBetweenSeq = new ArrayList<>();
         final File filterPassingFile = new File(workingDir, filterPassingFileName);
-        final File actualRmdupFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGARmDuplicate(sgaPath, filterPassingFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
-        final File expectedRmdupFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.rmdup.fa");
-        final String duplicateRemovedFileName = compareNamesAndComputeSeqEditDist(actualRmdupFile, expectedRmdupFile, false, editDistancesBetweenSeq);
-        for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
-
-        editDistancesBetweenSeq = new ArrayList<>();
-        final File duplicateRemovedFile = new File(workingDir, duplicateRemovedFileName);
-        final File actualMergedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFMMerge(sgaPath, duplicateRemovedFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
-        final File expectedMergedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.rmdup.merged.fa");
+        final File actualMergedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFMMerge(sgaPath, filterPassingFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
+        final File expectedMergedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.merged.fa");
         final String mergedFileName = compareNamesAndComputeSeqEditDist(actualMergedFile, expectedMergedFile, false, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
-        // final assembled contig test
+        editDistancesBetweenSeq = new ArrayList<>();
         final File mergedFile = new File(workingDir, mergedFileName);
-        final File actualAssembledContigsFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAOverlapAndAssemble(sgaPath, mergedFile, workingDir, runtimeInfo, false));
-        final List<String> actualAssembledContigs   = (null==actualAssembledContigsFile  ) ? null : Files.readAllLines(Paths.get(actualAssembledContigsFile.getAbsolutePath()  ));
-        final List<String> expectedAssembledContigs   = (null==expectedAssembledContigsFile  ) ? null : Files.readAllLines(Paths.get(expectedAssembledContigsFile.getAbsolutePath()  ));
+        final File actualDeduplicatedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGARmDuplicate(sgaPath, mergedFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
+        final File expectedDeduplicatedFilie = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.merged.rmdup.fa");
+        final String readyForAssemblyFileName = compareNamesAndComputeSeqEditDist(actualDeduplicatedFile, expectedDeduplicatedFilie, false, editDistancesBetweenSeq);
+        for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
+
+        // final assembled contig test
+        final File readyForAssemblyFile = new File(workingDir, readyForAssemblyFileName);
+        final File actualAssembledContigsFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAOverlapAndAssemble(sgaPath, readyForAssemblyFile, workingDir, runtimeInfo, false));
+        final List<String> actualAssembledContigs   = (null==actualAssembledContigsFile  ) ? null : Files.readAllLines(Paths.get(actualAssembledContigsFile.getAbsolutePath()));
+        final List<String> expectedAssembledContigs = (null==expectedAssembledContigsFile) ? null : Files.readAllLines(Paths.get(expectedAssembledContigsFile.getAbsolutePath()));
 
         compareContigs(actualAssembledContigs, expectedAssembledContigs);
     }
