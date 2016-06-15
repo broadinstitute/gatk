@@ -130,7 +130,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null);
 
         if(!success.isEmpty()){
-            success.map(entry -> entry._1().toString() + "\n" + entry._2().assembledContigs.toString())
+            success.map(entry -> entry._1().toString() + "\t" + entry._2().assembledContigs.toOneLineString())
                     .saveAsTextFile(outputDir+"_0");
         }
 
@@ -522,6 +522,10 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         @Override
         public String toString(){
             return StringUtils.join(toListOfStrings(),"\n");
+        }
+
+        public String toOneLineString(){
+            return StringUtils.join(toListOfStrings(),"|");
         }
 
         public List<String> toListOfStrings(){
