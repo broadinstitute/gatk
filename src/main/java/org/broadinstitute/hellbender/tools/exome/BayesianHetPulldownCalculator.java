@@ -273,8 +273,7 @@ public final class BayesianHetPulldownCalculator {
      * @return a SamLocusIterator object
      */
     private SamLocusIterator getSamLocusIteratorWithDefaultFilters(final SamReader samReader) {
-        final SamLocusIterator locusIterator = new SamLocusIterator(samReader, snpIntervals,
-                snpIntervals.size() < MAX_INTERVALS_FOR_INDEX);
+        final SamLocusIterator locusIterator = new SamLocusIterator(samReader, snpIntervals, true);
 
         /* set read and locus filters */
         final List<SamRecordFilter> samFilters = Arrays.asList(new NotPrimaryAlignmentFilter(),
