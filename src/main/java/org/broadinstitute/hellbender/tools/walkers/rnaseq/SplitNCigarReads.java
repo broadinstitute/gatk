@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -14,6 +14,13 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
@@ -29,6 +36,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.stream.StreamSupport;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
@@ -46,17 +54,10 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
         oneLineSummary = "Split Reads with N in Cigar",
         programGroup = ReadProgramGroup.class
 )
-public final class SplitNCigarReads extends CommandLineProgram {
-
-    @Argument(fullName = INPUT_LONG_NAME, shortName= INPUT_SHORT_NAME, doc="The SAM/BAM file to read from.")
-    public File INPUT;
+public final class SplitNCigarReads extends ReadWalker {
 
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
     protected File OUTPUT;
-
-    @Argument(fullName = StandardArgumentDefinitions.REFERENCE_LONG_NAME, shortName = StandardArgumentDefinitions.REFERENCE_SHORT_NAME, doc = "Reference sequence file.",
-            common = true, optional = true)
-    public File REFERENCE_SEQUENCE = Defaults.REFERENCE_FASTA;
 
     /**
      * This flag tells GATK to refactor cigar string with NDN elements to one element. It intended primarily for use in
@@ -91,45 +92,46 @@ public final class SplitNCigarReads extends CommandLineProgram {
     @Argument(fullName="doNotFixOverhangs", shortName="doNotFixOverhangs", doc="do not have the walker hard-clip overhanging sections of the reads", optional=true)
     protected boolean doNotFixOverhangs = false;
 
-    /**
-     * This stores all of the already-split reads and manages any processing (e.g. clipping overhangs) that happens to them.
-     * It will emit reads to the underlying writer as needed so we don't need to worry about any of that in this class.
-     */
-    protected OverhangFixingManager overhangManager;
+    private SAMFileGATKReadWriter outputWriter;
+    private OverhangFixingManager overhangManager;
+    ReadTransformer rnaReadTransform;
+    private IndexedFastaSequenceFile referenceReader;
 
     @Override
-    protected Object doWork() {
-        IOUtil.assertFileIsReadable(INPUT);
-        final SamReader in = SamReaderFactory.makeDefault().open(INPUT);
-        final Iterable<GATKRead> readIter = new SAMRecordToReadIterator(in.iterator());
-        final SAMFileGATKReadWriter outputWriter = initialize(in);
-
-        final ReadTransformer rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
-
-        StreamSupport.stream(readIter.spliterator(), false)
-                .map(rnaReadTransform)
-                .forEach(read -> splitNCigarRead(read, overhangManager));
-        overhangManager.close();
-        CloserUtil.close(in);
-        CloserUtil.close(outputWriter);
-        return null;
+    public CountingReadFilter makeReadFilter() {
+        return new CountingReadFilter("ALL_READS", ReadFilterLibrary.ALLOW_ALL_READS);
     }
-
-    private SAMFileGATKReadWriter initialize(final SamReader in) {
-        final SAMFileHeader outputHeader = ReadUtils.cloneSAMFileHeader(in.getFileHeader());
-        //preSorted is set to false for this writer since ReadCoordinateComparator doesn't match HTSJDK's when an unmapped read has a mapped mate.
-        //Also, we don't want to assume that reads will be written in order by the manager because in deep, deep pileups it won't work
-        final SAMFileGATKReadWriter outputWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(OUTPUT, REFERENCE_SEQUENCE, outputHeader, false, false, false));
-
+    
+    @Override
+    public void onTraversalStart() {
+        SAMFileHeader header = getHeaderForSAMWriter();
+        rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
         try {
-            final IndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(REFERENCE_SEQUENCE);
-            GenomeLocParser genomeLocParser= new GenomeLocParser(referenceReader.getSequenceDictionary());
-            overhangManager = new OverhangFixingManager(outputHeader, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs);
-            return outputWriter;
+            referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceFile());
+            GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
+            outputWriter = createSAMWriter(OUTPUT, false);
+            overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs);
+
         } catch (FileNotFoundException ex) {
-            throw new UserException.CouldNotReadInputFile(REFERENCE_SEQUENCE, ex);
+            throw new UserException.CouldNotReadInputFile(referenceArguments.getReferenceFile(), ex);
         }
     }
+
+    @Override
+    public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
+        splitNCigarRead(rnaReadTransform.apply(read),overhangManager);
+    }
+
+    @Override
+    public void closeTool() {
+        if (overhangManager != null) { overhangManager.close(); }
+        if (outputWriter != null ) { outputWriter.close(); }
+        try {if (referenceReader != null) { referenceReader.close(); } }
+        catch (IOException ex) {
+            throw new UserException.MissingReference("Could not find reference file");
+        }
+    }
+
 
     /**
      * Goes through the cigar string of the read and create new reads for each consecutive non-N elements (while hard clipping the rest of the read).

@@ -1,11 +1,10 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
