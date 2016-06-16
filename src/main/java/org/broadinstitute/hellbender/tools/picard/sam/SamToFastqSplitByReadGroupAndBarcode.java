@@ -116,8 +116,8 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
             if (currentRecord.getReadFailsVendorQualityCheckFlag() && !INCLUDE_NON_PF_READS)
                 continue;
 
-            final String barcode = currentRecord.getStringAttribute("BC");
-            final FastqWriters fq = writers.get(currentRecord.getReadGroup() + "-" + barcode);
+            final String sampleBarcode = currentRecord.getStringAttribute("BC");
+            final FastqWriters fq = writers.get(currentRecord.getReadGroup() + "-" + sampleBarcode);
             if (currentRecord.getReadPairedFlag()) {
                 final String currentReadName = currentRecord.getReadName();
                 final SAMRecord firstRecord = firstSeenMates.remove(currentReadName);
@@ -211,7 +211,17 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
 
     private void writeRecord(final SAMRecord read, final Integer mateNumber, final FastqWriter writer,
                              final int basesToTrim, final Integer maxBasesToWrite, final FastqWriter barcode) {
-        final String seqHeader = mateNumber == null ? read.getReadName() : read.getReadName() + "/" + mateNumber;
+        final String seqHeader;
+        if (mateNumber == null) {
+            seqHeader = read.getReadName();
+        } else {
+            if (mateNumber == 1) {
+                seqHeader = read.getReadName() + " 1:N:0";
+            } else {
+                seqHeader = read.getReadName() + " 3:N:0";
+            }
+        }
+        final String indexReadHeader = read.getReadName() + " 2:N:0";
         String readString = read.getReadString();
         String baseQualities = read.getBaseQualityString();
 
@@ -250,10 +260,19 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
             baseQualities = baseQualities.substring(0, maxBasesToWrite);
         }
 
+        if (mateNumber != null && mateNumber == 1) {
+            final String tenxBC = read.getStringAttribute("RX");
+            final String tenxBCQ = read.getStringAttribute("QX");
+            final String fillerBases = "AAAAAAA";
+            final String fillerQuals = "AAAAAAA";
+            readString = tenxBC + fillerBases + readString;
+            baseQualities = tenxBCQ + fillerQuals + baseQualities;
+        }
+
         writer.write(new FastqRecord(seqHeader, readString, "", baseQualities));
 
-        if (mateNumber == 1) {
-            barcode.write(new FastqRecord(seqHeader, read.getStringAttribute("BC"), "", read.getStringAttribute("QT")));
+        if (mateNumber != null && mateNumber == 1) {
+            barcode.write(new FastqRecord(indexReadHeader, read.getStringAttribute("BC"), "", read.getStringAttribute("QT")));
         }
 
     }
