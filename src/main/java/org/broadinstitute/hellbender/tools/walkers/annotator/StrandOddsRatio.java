@@ -79,8 +79,7 @@ public final class StrandOddsRatio extends StrandBiasTest implements StandardAnn
      * @param table The table before adding pseudocounts
      * @return the SOR annotation value
      */
-    @VisibleForTesting
-    static double calculateSOR(final int[][] table) {
+    public static double calculateSOR(final int[][] table) {
         final double t00 = table[0][0] + PSEUDOCOUNT;
         final double t01 = table[0][1] + PSEUDOCOUNT;
         final double t11 = table[1][1] + PSEUDOCOUNT;

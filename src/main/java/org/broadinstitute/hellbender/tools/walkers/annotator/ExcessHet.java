@@ -33,14 +33,14 @@ public final class ExcessHet extends InfoFieldAnnotation implements StandardAnno
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
         final GenotypesContext genotypes = vc.getGenotypes();
         if (genotypes == null || !vc.isVariant()) {
-            return null;
+            return Collections.emptyMap();
         }
         final Pair<Integer, Double> sampleCountEH = calculateEH(vc, genotypes);
         final int sampleCount = sampleCountEH.getLeft();
         final double eh =  sampleCountEH.getRight();
 
         if (sampleCount < 1) {
-            return null;
+            return Collections.emptyMap();
         }
         return Collections.singletonMap(getKeyNames().get(0), (Object) String.format("%.4f", eh));
     }

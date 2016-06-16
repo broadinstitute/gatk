@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
@@ -8,11 +9,13 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,14 +29,17 @@ public final class RMSMappingQualityUnitTest {
         final VariantContext vc= null;
         final ReferenceContext referenceContext= null;
         final InfoFieldAnnotation cov = new RMSMappingQuality();
-        final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap); //vc can't be null
+        cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap); //vc can't be null
     }
 
     @Test
     public void testDescriptions() throws Exception {
         final InfoFieldAnnotation cov = new RMSMappingQuality();
-        Assert.assertEquals(cov.getDescriptions().size(), 1);
+        Assert.assertEquals(cov.getDescriptions().size(), 2);
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(cov.getDescriptions().get(1).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(new RMSMappingQuality().getRawKeyName(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(new RMSMappingQuality().getKeyNames(), Sets.newHashSet(VCFConstants.RMS_MAPPING_QUALITY_KEY, GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
     }
 
     @Test
@@ -43,9 +49,10 @@ public final class RMSMappingQualityUnitTest {
         final ReferenceContext referenceContext= null;
         final InfoFieldAnnotation cov = new RMSMappingQuality();
         final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
-        Assert.assertNull(annotate);
+        Assert.assertTrue(annotate.isEmpty());
 
-        Assert.assertEquals(cov.getDescriptions().size(), 1);
+        Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
+        Assert.assertEquals(cov.getDescriptions().get(1).getID(), GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY);
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.RMS_MAPPING_QUALITY_KEY);
     }
 
@@ -87,9 +94,10 @@ public final class RMSMappingQualityUnitTest {
         final ReferenceContext referenceContext= null;
         final Map<String, Object> annotate = new RMSMappingQuality().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
         Assert.assertEquals(annotate.size(), 1, "size");
-        Assert.assertEquals(annotate.keySet(), Collections.singleton(VCFConstants.RMS_MAPPING_QUALITY_KEY), "annots");
-        final double rms= MathUtils.rms(MQsListOK); //only those are MQ0
-        Assert.assertEquals(annotate.get(VCFConstants.RMS_MAPPING_QUALITY_KEY), String.format("%.2f", rms));
+        Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY), "annots");
+        final double rms= MathUtils.sumOfSquares(MQsListOK); //only those are MQ0
+        Assert.assertNull(annotate.get(VCFConstants.RMS_MAPPING_QUALITY_KEY));
+        Assert.assertEquals(annotate.get(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY), String.format("%.2f", rms));
     }
 
     @Test
@@ -98,6 +106,83 @@ public final class RMSMappingQualityUnitTest {
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
         final Map<String, Object> annotate = new RMSMappingQuality().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
-        Assert.assertNull(annotate);
+        Assert.assertTrue(annotate.isEmpty());
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testAllNull_AS() throws Exception {
+        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = null;
+        final VariantContext vc= null;
+        final ReferenceContext referenceContext= null;
+        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
+        cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap); //vc can't be null
+    }
+
+    @Test
+    public void testDescriptions_AS() throws Exception {
+        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
+        Assert.assertEquals(cov.getDescriptions().size(), 1);
+        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
+    }
+
+    @Test
+    public void testNullStratifiedPerReadAlleleLikelihoodMap_AS() throws Exception {
+        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = null;
+        final VariantContext vc= makeVC();
+        final ReferenceContext referenceContext= null;
+        final InfoFieldAnnotation cov = new AS_RMSMappingQuality();
+        final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
+        Assert.assertTrue(annotate.isEmpty());
+
+        Assert.assertEquals(cov.getDescriptions().size(), 1);
+        Assert.assertEquals(cov.getDescriptions().get(0).getID(), GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY);
+    }
+
+    @Test
+    public void testPerReadAlleleLikelihoodMap_AS(){
+        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
+
+        final Allele alleleA = Allele.create("A", true);
+        final double lik= -1.0;  //ignored
+
+        final int[] MQs = {1,2,3,4,5,6,7,8,9,10, QualityUtils.MAPPING_QUALITY_UNAVAILABLE};
+        final List<Integer> MQsList = Arrays.asList(ArrayUtils.toObject(MQs));
+
+        //MQ 255 are excluded from the calculations, we test it here.
+        final List<Integer> MQsListOK = new ArrayList<>(MQsList);
+        //NOTE: if we just call remove(i), Java thinks i is an index.
+        //A workaround for this overloading bogosity to to call removeAll and pass a collection
+        //(casting i to (Object) would work too but it's more error prone)
+        MQsListOK.removeAll(Collections.singleton(QualityUtils.MAPPING_QUALITY_UNAVAILABLE));
+
+        for (int MQ : MQs) {
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+            read.setMappingQuality(MQ);
+            map.add(read, alleleA, lik);
+        }
+
+        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.singletonMap("sample1", map);
+        final VariantContext vc = makeVC();
+        final ReferenceContext referenceContext= null;
+        final Map<String, Object> annotate = new AS_RMSMappingQuality().annotateRawData(referenceContext, vc, perReadAlleleLikelihoodMap);
+        Assert.assertEquals(annotate.size(), 1, "size");
+        Assert.assertEquals(annotate.keySet(), Collections.singleton(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY), "annots");
+        final double rms= MathUtils.sumOfSquares(MQsListOK); //only those are MQ0
+        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
+        Assert.assertEquals(split.length, 2);
+        Assert.assertEquals(split[0], String.format("%.2f", rms));
+        Assert.assertEquals(split[1], String.format("%.2f", 0.0));
+    }
+
+    @Test
+    public void testPerReadAlleleLikelihoodMapEmpty_AS() throws Exception {
+        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.emptyMap();
+        final VariantContext vc= makeVC();
+        final ReferenceContext referenceContext= null;
+        final Map<String, Object> annotate = new AS_RMSMappingQuality().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
+        final String[] split =((String)annotate.get(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY)).split(AS_RMSMappingQuality.SPLIT_DELIM);
+        Assert.assertEquals(split.length, 2);
+        Assert.assertEquals(split[0], String.format("%.2f", 0.0));
+        Assert.assertEquals(split[1], String.format("%.2f", 0.0));
     }
 }

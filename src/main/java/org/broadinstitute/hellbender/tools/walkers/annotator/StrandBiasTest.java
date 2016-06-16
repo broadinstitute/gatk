@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.StringTokenizer;
+import java.util.*;
 
 /**
  * Class of tests to detect strand bias.
@@ -32,7 +29,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if ( !vc.isVariant() ) {
-            return null;
+            return Collections.emptyMap();
         }
 
         // if the genotype and strand bias are provided, calculate the annotation from the Genotype (GT) field
@@ -47,7 +44,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
         if (stratifiedPerReadAlleleLikelihoodMap != null) {
             return calculateAnnotationFromLikelihoodMap(stratifiedPerReadAlleleLikelihoodMap, vc);
         }
-        return null;
+        return Collections.emptyMap();
     }
 
     protected abstract Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes);

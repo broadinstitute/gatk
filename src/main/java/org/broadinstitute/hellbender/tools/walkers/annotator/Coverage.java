@@ -37,7 +37,7 @@ public final class Coverage extends InfoFieldAnnotation implements StandardAnnot
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if (perReadAlleleLikelihoodMap == null || perReadAlleleLikelihoodMap.isEmpty()) {
-            return null;
+            return Collections.emptyMap();
         }
 
         final int depth = perReadAlleleLikelihoodMap.values().stream().mapToInt(maps -> maps.getLikelihoodReadMap().size()).sum();

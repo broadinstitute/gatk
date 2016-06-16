@@ -26,7 +26,7 @@ public final class SampleList extends InfoFieldAnnotation {
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if ( vc.isMonomorphicInSamples() || !vc.hasGenotypes() ) {
-            return null;
+            return Collections.emptyMap();
         }
 
         final StringBuilder samples = new StringBuilder();
@@ -40,7 +40,7 @@ public final class SampleList extends InfoFieldAnnotation {
         }
 
         if ( samples.length() == 0 ) {
-            return null;
+            return Collections.emptyMap();
         }
 
         return Collections.singletonMap(getKeyNames().get(0), samples.toString());

@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_FisherStrand;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -20,8 +22,8 @@ import static org.mockito.Mockito.when;
 
 
 public final class FisherStrandUnitTest {
-    private static final double DELTA_PRECISION = 10e-8;
-    private static final double DELTA_PRECISION_FOR_PHRED = 0.001;
+    public static final double DELTA_PRECISION = 10e-8;
+    public static final double DELTA_PRECISION_FOR_PHRED = 0.001;
 
     @DataProvider(name = "UsingTable")
     public Object[][] makeUsingTable() {
@@ -72,7 +74,10 @@ public final class FisherStrandUnitTest {
         final double actualPhredPval = Double.parseDouble((String) new FisherStrand().annotationForOneTable(pvalue).get(GATKVCFConstants.FISHER_STRAND_KEY));
         final double expectedPhredPvalue =  QualityUtils.phredScaleErrorRate(Math.max(expectedPvalue, FisherStrand.MIN_PVALUE));
         Assert.assertEquals(actualPhredPval, expectedPhredPvalue, DELTA_PRECISION_FOR_PHRED, "phred pvalues");
+    }
 
+    @Test
+    public void testLabels() throws Exception {
         Assert.assertEquals(new FisherStrand().getKeyNames(), Collections.singletonList(GATKVCFConstants.FISHER_STRAND_KEY));
         Assert.assertEquals(new FisherStrand().getDescriptions(), Collections.singletonList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.FISHER_STRAND_KEY)));
     }
@@ -130,7 +135,7 @@ public final class FisherStrandUnitTest {
 
     private GATKRead makeRead(final boolean forward) {
         Cigar cigar = TextCigarCodec.decode("10M");
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
+        final GATKRead read = ArtificialReadUtils.createUniqueArtificialRead(cigar);
         read.setIsReverseStrand(!forward);
         return read;
     }
@@ -148,7 +153,8 @@ public final class FisherStrandUnitTest {
 
     @Test
     public void testUsingMap(){
-
+        final InfoFieldAnnotation ann = new FisherStrand();
+        final String key= GATKVCFConstants.FISHER_STRAND_KEY;
         final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
         final Allele alleleRef = Allele.create("T", true);
@@ -178,9 +184,9 @@ public final class FisherStrandUnitTest {
 
         final VariantContext vc= makeVC(alleleRef, alleleAlt);
 
-        final Map<String, Object> annotatedMap = new FisherStrand().annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMap = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
         Assert.assertNotNull(annotatedMap, vc.toString());
-        final String pPhredStr = (String)annotatedMap.get(GATKVCFConstants.FISHER_STRAND_KEY);
+        final String pPhredStr = (String)annotatedMap.get(key);
 
         final double actualPhredPval = Double.parseDouble(pPhredStr);
 
@@ -192,9 +198,67 @@ public final class FisherStrandUnitTest {
     }
 
     @Test
-    public void testNullIfNonVariant() {
-        FisherStrand fs= new FisherStrand();
-        Assert.assertNull(fs.annotate(null, when(mock(VariantContext.class).isVariant()).thenReturn(false).getMock(), null));
+    public void testUsingMap_Raw(){
+        final AS_StrandBiasTest ann= new AS_FisherStrand();
+        final String key = GATKVCFConstants.AS_SB_TABLE_KEY;
+        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
+        final Allele alleleRef = Allele.create("T", true);
+        final Allele alleleAlt = Allele.create("A", false);
+
+        final int[][] table= {{2, 2},  // alt: two reads in each direction,
+                              {4, 0}}; // ref: 4 reads fwd, 0 reads back
+
+        final GATKRead read1 = makeRead(true);
+        final GATKRead read2 = makeRead(true);
+        final GATKRead read1a = makeRead(true);
+        final GATKRead read2a = makeRead(true);
+
+        final GATKRead read3 = makeRead(false);
+        final GATKRead read4 = makeRead(true);
+        final GATKRead read3a = makeRead(false);
+        final GATKRead read4a = makeRead(true);
+        map.add(read1, alleleAlt, -1.0);
+        map.add(read1, alleleRef, -100.0);
+        map.add(read1a, alleleAlt, -1.0);
+        map.add(read1a, alleleRef, -100.0);
+
+        map.add(read2, alleleAlt, -1.0);
+        map.add(read2, alleleRef, -100.0);
+        map.add(read2a, alleleAlt, -1.0);
+        map.add(read2a, alleleRef, -100.0);
+
+        map.add(read3, alleleAlt, -100.0);
+        map.add(read3, alleleRef, -1.0);
+        map.add(read3a, alleleAlt, -100.0);
+        map.add(read3a, alleleRef, -1.0);
+
+        map.add(read4, alleleAlt, -100.0);
+        map.add(read4, alleleRef, -1.0);
+        map.add(read4a, alleleAlt, -100.0);
+        map.add(read4a, alleleRef, -1.0);
+
+        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
+
+
+        final VariantContext vc= makeVC(alleleRef, alleleAlt);
+
+        final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMapNonRaw = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        Assert.assertNotNull(annotatedMapRaw, vc.toString());
+        final String actualStringRaw = (String)annotatedMapRaw.get(key);
+        Assert.assertNotNull(annotatedMapNonRaw, vc.toString());
+        final String actualStringNonRaw = (String)annotatedMapNonRaw.get(key);
+
+        final String expectedString = AS_StrandBiasTest.rawValueAsString(table);
+        Assert.assertEquals(actualStringRaw, expectedString);
+        Assert.assertEquals(actualStringNonRaw, expectedString);
+    }
+
+    @Test
+    public void testEmptyIfNonVariant() {
+        FisherStrand fs= new FisherStrand();
+        Map<String, Object> ann = fs.annotate(null, when(mock(VariantContext.class).isVariant()).thenReturn(false).getMock(), null);
+        Assert.assertTrue(ann.isEmpty());
     }
 }

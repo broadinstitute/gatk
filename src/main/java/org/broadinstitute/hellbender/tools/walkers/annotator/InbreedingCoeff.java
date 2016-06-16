@@ -59,14 +59,14 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
         Utils.nonNull(vc);
         final GenotypesContext genotypes = (founderIds == null || founderIds.isEmpty()) ? vc.getGenotypes() : vc.getGenotypes(founderIds);
         if (genotypes == null || genotypes.size() < MIN_SAMPLES || !vc.isVariant()) {
-            return null;
+            return Collections.emptyMap();
         }
         final Pair<Integer, Double> sampleCountCoeff = calculateIC(vc, genotypes);
         final int sampleCount = sampleCountCoeff.getLeft();
         final double F = sampleCountCoeff.getRight();
         if (sampleCount < MIN_SAMPLES) {
             logger.warn("Annotation will not be calculated, must provide at least " + MIN_SAMPLES + " samples");
-            return null;
+            return Collections.emptyMap();
         }
         return Collections.singletonMap(getKeyNames().get(0), (Object) String.format("%.4f", F));
     }

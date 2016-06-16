@@ -42,7 +42,7 @@ public final class CoverageUnitTest extends BaseTest {
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
         final Map<String, Object> annotate = new Coverage().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
-        Assert.assertNull(annotate);
+        Assert.assertTrue(annotate.isEmpty());
     }
 
     private VariantContext makeVC() {

@@ -36,7 +36,7 @@ public final class MappingQualityZeroUnitTest {
         final ReferenceContext referenceContext= null;
         final InfoFieldAnnotation cov = new MappingQualityZero();
         final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
-        Assert.assertNull(annotate);
+        Assert.assertTrue(annotate.isEmpty());
 
         Assert.assertEquals(cov.getDescriptions().size(), 1);
         Assert.assertEquals(cov.getDescriptions().get(0).getID(), VCFConstants.MAPPING_QUALITY_ZERO_KEY);

@@ -46,7 +46,7 @@ public final class ChromosomeCounts extends InfoFieldAnnotation implements Stand
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
         Utils.nonNull(vc);
         if ( ! vc.hasGenotypes() ) {
-            return null;
+            return Collections.emptyMap();
         }
 
         return VariantContextUtils.calculateChromosomeCounts(vc, new LinkedHashMap<>(), true, Collections.emptySet());
