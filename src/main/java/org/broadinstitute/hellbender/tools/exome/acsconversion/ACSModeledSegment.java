@@ -6,6 +6,16 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 /**
  * Class to represent AllelicCapSeg (R version) segments.  This class should only be used for conversion operations.
+ *
+ * f - minor allelic fraction
+ * tau - total copy ratio * 2
+ * sigmaTau - confidence interval around tau.
+ * muMinor - minor allelic copy number estimate: tau * f
+ * muMajor - major allelic copy number estimate: tau * (1-f)
+ * sigmaMinor and Major -- equal to each other.  Estimated error around muMinor and muMajor based on the credible
+ *  interval of f from ACNV.
+ * segLabelCNLOH -- always set to 2
+ * hetCount -- number of hets in a segment
  */
 public class ACSModeledSegment extends ModeledSegment {
 
