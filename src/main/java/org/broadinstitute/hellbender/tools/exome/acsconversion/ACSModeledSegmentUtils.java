@@ -112,7 +112,7 @@ public class ACSModeledSegmentUtils {
         final int targetCount = genome.getTargets().targetCount(acnvModeledSegment.getInterval());
         final int segLabelCNLOH = 2;
         final int hetCount = genome.getSNPs().targetCount(acnvModeledSegment.getInterval());
-        return new ACSModeledSegment(acnvModeledSegment.getInterval(), ModeledSegment.NO_CALL, targetCount, tau/2.0,
+        return new ACSModeledSegment(acnvModeledSegment.getInterval(), ModeledSegment.NO_CALL, targetCount, ParamUtils.log2(tau/2.0),
                 hetCount, f, sigmaTau, muMinor, sigmaMinor, muMajor, sigmaMajor, segLabelCNLOH);
     }
 
