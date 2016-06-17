@@ -35,7 +35,7 @@ public final class SampleCoverageStatsReader extends TableReader<SampleCoverageS
     public SampleCoverageStatsReader(final File file) throws IOException {
         super(file);
         final TableColumnCollection columns = columns();
-        TableUtils.checkMandatoryColumns(columns, SampleCoverageStats.COLUMN_NAME_ARRAY, this::formatException);
+        TableUtils.checkMandatoryColumns(columns, SampleCoverageStats.COLUMNS, this::formatException);
         sampleColumnIndex = columns.indexOf(SampleCoverageStats.SAMPLE_COLUMN_NAME);
         meanColumnIndex = columns.indexOf(SampleCoverageStats.MEAN_COLUMN_NAME);
         varianceColumnIndex = columns.indexOf(SampleCoverageStats.VARIANCE_COLUMN_NAME);

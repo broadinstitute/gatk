@@ -87,7 +87,7 @@ public class AnnotateTargets extends TargetWalker {
     )
     public File outputFile;
 
-    private TargetTableWriter outputWriter;
+    private TargetWriter outputWriter;
 
     private Map<TargetAnnotation, TargetAnnotator> annotators;
 
@@ -113,7 +113,7 @@ public class AnnotateTargets extends TargetWalker {
                             TargetAnnotation.GC_CONTENT, TargetAnnotation.REPEAT_FRACTION));
         }
         try {
-            outputWriter = new TargetTableWriter(outputFile, annotators.keySet());
+            outputWriter = new TargetWriter(outputFile, annotators.keySet());
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }

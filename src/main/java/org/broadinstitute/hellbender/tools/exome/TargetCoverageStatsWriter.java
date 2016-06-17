@@ -25,9 +25,9 @@ import java.io.IOException;
  * </p>
  * <p>
  *    Targets might be indicated by name only or by name and interval. If the former only the
- *    {@link TargetTableColumns#NAME NAME} column is present. If the latter also the coordinate
- *    columns are present: {@link TargetTableColumns#CONTIG CONTIG}, {@link TargetTableColumns#START START}
- *    and {@link TargetTableColumns#END END}.
+ *    {@link TargetTableColumn#NAME NAME} column is present. If the latter also the coordinate
+ *    columns are present: {@link TargetTableColumn#CONTIG CONTIG}, {@link TargetTableColumn#START START}
+ *    and {@link TargetTableColumn#END END}.
  * </p>
  * <p>
  * Example without coordinates:
@@ -67,15 +67,15 @@ public final class TargetCoverageStatsWriter extends TableWriter<TargetCoverageS
     public TargetCoverageStatsWriter(final File file, final boolean outputIntervals) throws IOException {
         super(file, outputIntervals ?
                 new TableColumnCollection(
-                        TargetTableColumns.CONTIG,
-                        TargetTableColumns.START,
-                        TargetTableColumns.END,
-                        TargetTableColumns.NAME,
+                        TargetTableColumn.CONTIG,
+                        TargetTableColumn.START,
+                        TargetTableColumn.END,
+                        TargetTableColumn.NAME,
                         TargetCoverageStats.MEAN_COLUMN_NAME,
                         TargetCoverageStats.VARIANCE_COLUMN_NAME,
                         TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME)
                : new TableColumnCollection(
-                        TargetTableColumns.NAME,
+                        TargetTableColumn.NAME,
                         TargetCoverageStats.MEAN_COLUMN_NAME,
                         TargetCoverageStats.VARIANCE_COLUMN_NAME,
                         TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME));

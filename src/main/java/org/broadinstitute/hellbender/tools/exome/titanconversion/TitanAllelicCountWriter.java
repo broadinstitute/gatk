@@ -11,7 +11,7 @@ import java.io.IOException;
 public class TitanAllelicCountWriter extends TableWriter<AllelicCount> {
 
     public TitanAllelicCountWriter(final File file) throws IOException {
-        super(file, new TableColumnCollection(TitanAllelicCountTableColumns.FULL_COLUMN_NAME_ARRAY));
+        super(file, TitanAllelicCountTableColumn.COLUMNS);
     }
 
     @Override

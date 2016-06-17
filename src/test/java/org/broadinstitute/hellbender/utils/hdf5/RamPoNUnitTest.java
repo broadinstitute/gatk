@@ -11,11 +11,11 @@ import java.io.File;
 public class RamPoNUnitTest extends BaseTest {
 
     private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private final static String TEST_PCOV_FILE = "create-pon-control-full.pcov";
+    private final static File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
 
     @Test
     public void testCopiesReturnedOfMatrices() {
-        final PoN filePoN = new HDF5PoN(new HDF5File(PoNTestUtils.createDummyHDF5FilePoN(new File(TEST_DIR + TEST_PCOV_FILE), 20), HDF5File.OpenMode.READ_ONLY));
+        final PoN filePoN = new HDF5PoN(new HDF5File(PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, 20), HDF5File.OpenMode.READ_ONLY));
 
         final PoN ramPoN = new RamPoN(filePoN);
 

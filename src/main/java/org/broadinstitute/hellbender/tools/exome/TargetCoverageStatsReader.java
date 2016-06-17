@@ -49,11 +49,11 @@ public final class TargetCoverageStatsReader extends TableReader<TargetCoverageS
     }
 
     private Function<DataLine,Target> createTargetExtractor(final TableColumnCollection columns) {
-        if (columns.containsAll(TargetTableColumns.MANDATORY_COLUMN_NAME_ARRAY)) {
-            final int nameColumnIndex = columns.indexOf(TargetTableColumns.NAME.toString());
-            final int contigColumnIndex = columns.indexOf(TargetTableColumns.CONTIG.toString());
-            final int startColumnIndex = columns.indexOf(TargetTableColumns.START.toString());
-            final int endColumnIndex = columns.indexOf(TargetTableColumns.END.toString());
+        if (columns.containsAll(TargetTableColumn.MANDATORY_COLUMNS.names())) {
+            final int nameColumnIndex = columns.indexOf(TargetTableColumn.NAME.toString());
+            final int contigColumnIndex = columns.indexOf(TargetTableColumn.CONTIG.toString());
+            final int startColumnIndex = columns.indexOf(TargetTableColumn.START.toString());
+            final int endColumnIndex = columns.indexOf(TargetTableColumn.END.toString());
             return dataLine ->
                     new Target(dataLine.get(nameColumnIndex),
                     new SimpleInterval(dataLine.get(contigColumnIndex),
@@ -61,10 +61,10 @@ public final class TargetCoverageStatsReader extends TableReader<TargetCoverageS
                             dataLine.getInt(endColumnIndex)));
 
         } else {
-            final int nameColumnIndex = columns.indexOf(TargetTableColumns.NAME.toString());
+            final int nameColumnIndex = columns.indexOf(TargetTableColumn.NAME.toString());
             if (nameColumnIndex == -1) {
                 throw formatException(String.format("compulsory column name '%s' is missing",
-                        TargetTableColumns.NAME.toString()));
+                        TargetTableColumn.NAME.toString()));
             }
             return dataLine -> new Target(dataLine.get(nameColumnIndex));
         }

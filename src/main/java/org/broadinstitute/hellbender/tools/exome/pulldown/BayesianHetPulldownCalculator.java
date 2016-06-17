@@ -1,7 +1,7 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.exome.pulldown;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.*;
 import htsjdk.samtools.filter.DuplicateReadFilter;
 import htsjdk.samtools.filter.NotPrimaryAlignmentFilter;
@@ -15,6 +15,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumn;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -304,8 +306,7 @@ public final class BayesianHetPulldownCalculator {
      * @param hetCallingStringency strigency for calling a Het site
      * @return Pulldown of heterozygous SNP sites in 1-based format
      */
-    @VisibleForTesting
-    Pulldown getHetPulldown(final File bamFile, final double hetCallingStringency) {
+    public Pulldown getHetPulldown(final File bamFile, final double hetCallingStringency) {
         /* log odds from stringency */
         final double hetThresholdLogOdds = FastMath.log(FastMath.pow(10, hetCallingStringency) - 1);
 
@@ -368,14 +369,13 @@ public final class BayesianHetPulldownCalculator {
      *
      * Note: this method does not perform any statistical inference. The Het SNP sites are directly carried over
      * from the matched normal pulldown. Here, we only collect statistics (ref count, alt count, read depth) and
-     * save to a pulldown. The verbosity level of the pulldown is INTERMEDIATE (see {@link AllelicCountTableColumns}).
+     * save to a pulldown. The verbosity level of the pulldown is INTERMEDIATE (see {@link AllelicCountTableColumn}).
      *
      * @param tumorBamFile the tumor BAM file
      * @param normalHetPulldown the matched normal Het pulldown
      * @return tumor Het pulldown
      */
-    @VisibleForTesting
-    Pulldown getTumorHetPulldownFromNormalPulldown(final File tumorBamFile, final Pulldown normalHetPulldown) {
+    public Pulldown getTumorHetPulldownFromNormalPulldown(final File tumorBamFile, final Pulldown normalHetPulldown) {
         try (final SamReader bamReader = SamReaderFactory.makeDefault().validationStringency(validationStringency)
                 .referenceSequence(refFile).open(tumorBamFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {

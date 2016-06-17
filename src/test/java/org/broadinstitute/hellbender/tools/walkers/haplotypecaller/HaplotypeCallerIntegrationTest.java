@@ -27,7 +27,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
-        final File expected = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk4.vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk4.vcf");
 
         final String[] args = new String[] {
             "-I", NA12878_20_21_WGS_bam,
@@ -51,7 +51,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testVCFModeIsConcordantWithGATK3Results", ".vcf");
-        final File gatk3Output = new File(TEST_FILES_DIR + "expected.testVCFMode.gatk3.4.vcf");
+        final File gatk3Output = new File(TEST_FILES_DIR, "expected.testVCFMode.gatk3.4.vcf");
 
         final String[] args = new String[] {
                 "-I", NA12878_20_21_WGS_bam,
@@ -75,7 +75,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testGVCFModeIsConsistentWithPastResults", ".g.vcf");
-        final File expected = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk4.g.vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk4.g.vcf");
 
         final String[] args = new String[] {
                 "-I", NA12878_20_21_WGS_bam,
@@ -100,7 +100,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Utils.resetRandomGenerator();
 
         final File output = createTempFile("testGVCFModeIsConcordantWithGATK3Results", ".g.vcf");
-        final File gatk3Output = new File(TEST_FILES_DIR + "expected.testGVCFMode.gatk3.4.g.vcf");
+        final File gatk3Output = new File(TEST_FILES_DIR, "expected.testGVCFMode.gatk3.4.g.vcf");
 
         final String[] args = new String[] {
                 "-I", NA12878_20_21_WGS_bam,

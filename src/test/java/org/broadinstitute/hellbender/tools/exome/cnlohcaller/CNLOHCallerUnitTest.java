@@ -19,7 +19,7 @@ import java.util.List;
 public class CNLOHCallerUnitTest extends BaseTest {
 
     private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/cnlohcaller/";
-    private final static String ACNV_SEG_FILE = TEST_DIR + "cell_line-sim-final.seg";
+    private final static File ACNV_SEG_FILE = new File(TEST_DIR, "cell_line-sim-final.seg");
 
     @Test
     public void testMakeCalls() {
@@ -28,7 +28,7 @@ public class CNLOHCallerUnitTest extends BaseTest {
         final CNLOHCaller cnlohCaller = new CNLOHCaller();
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-        final List<ACNVModeledSegment> segs = SegmentUtils.readACNVModeledSegmentFile(new File(ACNV_SEG_FILE));
+        final List<ACNVModeledSegment> segs = SegmentUtils.readACNVModeledSegmentFile(ACNV_SEG_FILE);
         SerializationTestUtils.roundTripInKryo(segs.get(0), ACNVModeledSegment.class, ctx.getConf());
 
         // Make sure the CNLOH Caller is serializable before making calls.
@@ -174,7 +174,7 @@ public class CNLOHCallerUnitTest extends BaseTest {
     public void testCalcE_zsk_vsm_wsn(final double mafMode, final double mafLo, final double mafHi,
                                       final double crMode, final double crLow, final double crHigh,
                                       final double lambda, final double gt) {
-        final List<ACNVModeledSegment> segments = SegmentUtils.readACNVModeledSegmentFile(new File(ACNV_SEG_FILE));
+        final List<ACNVModeledSegment> segments = SegmentUtils.readACNVModeledSegmentFile(ACNV_SEG_FILE);
         CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(0.2, segments,
                 HomoSapiensConstants.DEFAULT_PLOIDY, CNLOHCaller.NUM_RHOS);
 

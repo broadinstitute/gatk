@@ -179,15 +179,15 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
 
         //Check that the statistics---i.e., the means and standard deviations---of the posteriors
         //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.
-        final double variancePosteriorMean = new Mean().evaluate(varianceSamples);
+        final double variancePosteriorCenter = new Mean().evaluate(varianceSamples);
         final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
-        Assert.assertEquals(relativeError(variancePosteriorMean, VARIANCE_TRUTH), 0., 0.01);
+        Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH), 0., 0.01);
         Assert.assertEquals(
                 relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
                 0., 0.1);
-        final double meanPosteriorMean = new Mean().evaluate(meanSamples);
+        final double meanPosteriorCenter = new Mean().evaluate(meanSamples);
         final double meanPosteriorStandardDeviation = new StandardDeviation().evaluate(meanSamples);
-        Assert.assertEquals(relativeError(meanPosteriorMean, MEAN_TRUTH), 0., 0.01);
+        Assert.assertEquals(relativeError(meanPosteriorCenter, MEAN_TRUTH), 0., 0.01);
         Assert.assertEquals(
                 relativeError(meanPosteriorStandardDeviation, MEAN_POSTERIOR_STANDARD_DEVIATION_TRUTH),
                 0., 0.1);

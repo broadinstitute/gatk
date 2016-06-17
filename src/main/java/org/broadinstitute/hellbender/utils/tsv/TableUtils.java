@@ -9,8 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -241,27 +239,14 @@ public final class TableUtils {
     /**
      * Checks if all mandatory columns are present in a {@link TableColumnCollection}.
      * @param columns                   the TableColumnCollection of columns to check
-     * @param mandatoryColumnNames      the Collection of mandatory column names
+     * @param mandatoryColumns          the TableColumnCollection of mandatory columns
      * @param formatExceptionFactory    the format exception function factory
      * @throws UserException.BadInput   if any mandatory columns are missing
      */
-    public static void checkMandatoryColumns(final TableColumnCollection columns, final Collection<String> mandatoryColumnNames,
+    public static void checkMandatoryColumns(final TableColumnCollection columns, final TableColumnCollection mandatoryColumns,
                                              final Function<String, RuntimeException> formatExceptionFactory) {
-        final String[] mandatoryColumnNamesArray = mandatoryColumnNames.toArray(new String[mandatoryColumnNames.size()]);
-        checkMandatoryColumns(columns, mandatoryColumnNamesArray, formatExceptionFactory);
-    }
-
-    /**
-     * Checks if all mandatory columns are present in a {@link TableColumnCollection}.
-     * @param columns                   the TableColumnCollection of columns to check
-     * @param mandatoryColumnNames      the String array of mandatory column names
-     * @param formatExceptionFactory    the format exception function factory
-     * @throws UserException.BadInput   if any mandatory columns are missing
-     */
-    public static void checkMandatoryColumns(final TableColumnCollection columns, final String[] mandatoryColumnNames,
-                                             final Function<String, RuntimeException> formatExceptionFactory) {
-        if (!columns.containsAll(mandatoryColumnNames)) {
-            final Set<String> missingColumns = Sets.difference(new HashSet<>(Arrays.asList(mandatoryColumnNames)), new HashSet<>(columns.names()));
+        if (!columns.containsAll(mandatoryColumns.names())) {
+            final Set<String> missingColumns = Sets.difference(new HashSet<>(columns.names()), new HashSet<>(mandatoryColumns.names()));
             throw formatExceptionFactory.apply("Bad header in file.  Not all mandatory columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
         }
     }

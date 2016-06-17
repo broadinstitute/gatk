@@ -1,18 +1,22 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.util.Log;
+import org.apache.commons.io.FileUtils;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+
+import static org.broadinstitute.hellbender.tools.exome.AllelicCNV.*;
 
 /**
  * Unit tests for {@link ACNVModeller}.  Note that behavior of the tests depends on the content of the input files
@@ -22,17 +26,12 @@ import java.util.List;
  */
 public final class ACNVModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
-    private static final String FINAL_SEG_FILE_TAG = "sim-final";
 
     private static final String SAMPLE_NAME = "test";
-    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR
-            + "coverages-for-acnv-modeller.tsv");
-    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR
-            + "snps-for-acnv-modeller.tsv");
-    private static final File SEGMENT_FILE =
-            new File(TEST_SUB_DIR + "segments-for-acnv-modeller.seg");  //44 segments (some spurious)
-    private static final File SEGMENTS_TRUTH_FILE = new File(TEST_SUB_DIR
-            + "segments-truth-for-acnv-modeller.seg");  //30 true segments
+    private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-acnv-modeller.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-acnv-modeller.tsv");
+    private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-acnv-modeller.seg");  //44 segments (some spurious)
+    private static final File SEGMENTS_TRUTH_FILE = new File(TEST_SUB_DIR, "segments-truth-for-acnv-modeller.seg");  //30 true segments
 
     private static final int NUM_SAMPLES = 100;
     private static final int NUM_BURN_IN = 50;
@@ -45,6 +44,13 @@ public final class ACNVModellerUnitTest extends BaseTest {
     //similar-segment merging without refitting may miss some merges, depending on the input test data; we allow up to 2 misses
     private static final int DELTA_NUM_SEGMENTS_WITHOUT_REFITTING = 2;
 
+    private static final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+    @BeforeTest
+    private void doBeforeTest() {
+        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+    }
+
     /**
      * Test of similar-segment merging using only copy-ratio data (simulated coverages and segments).
      * Spurious breakpoints have been introduced into the list of true segments; similar-segment merging should
@@ -53,8 +59,6 @@ public final class ACNVModellerUnitTest extends BaseTest {
     @Test
     public void testMergeSimilarSegmentsCopyRatio() throws IOException {
         final boolean doRefit = true;
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
         final String tempDir = publicTestDir + "similar-segment-copy-ratio-test";
         final File tempDirFile = createTempDir(tempDir);
@@ -79,9 +83,9 @@ public final class ACNVModellerUnitTest extends BaseTest {
                 break;
             }
         }
-        //write final model fit to file
+        //write final segments to file
         final File finalModeledSegmentsFile =
-                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
+                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
 
         //check equality of segments
@@ -97,8 +101,6 @@ public final class ACNVModellerUnitTest extends BaseTest {
     @Test
     public void testMergeSimilarSegmentsWithRefitting() {
         final boolean doRefit = true;
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
         final String tempDir = publicTestDir + "similar-segment-test";
         final File tempDirFile = createTempDir(tempDir);
@@ -121,9 +123,9 @@ public final class ACNVModellerUnitTest extends BaseTest {
                 break;
             }
         }
-        //write final model fit to file
+        //write final segments to file
         final File finalModeledSegmentsFile =
-                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
+                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
 
         //check equality of segments
@@ -138,8 +140,6 @@ public final class ACNVModellerUnitTest extends BaseTest {
     @Test
     public void testMergeSimilarSegmentsWithoutRefitting() {
         final boolean doRefit = false;
-        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
 
         final String tempDir = publicTestDir + "similar-segment-test-without-refitting";
         final File tempDirFile = createTempDir(tempDir);
@@ -165,14 +165,56 @@ public final class ACNVModellerUnitTest extends BaseTest {
         //check that model is not completely fit at this point
         Assert.assertTrue(!modeller.isModelFit());
 
-        //write final model fit to file; this should force model refit
+        //write final segments to file; this should force model refit
         final File finalModeledSegmentsFile =
-                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_SEG_FILE_TAG + ".seg");
+                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
         Assert.assertTrue(modeller.isModelFit());
 
         //check final number of segments (we may miss some merges by not performing intermediate refits)
         final List<SimpleInterval> segmentsResult = SegmentUtils.readIntervalsFromSegmentFile(finalModeledSegmentsFile);
         Assert.assertEquals(segmentsResult.size(), SEGMENTS_TRUTH.size(), DELTA_NUM_SEGMENTS_WITHOUT_REFITTING);
+    }
+
+    /**
+     * Test for {@link ACNVModeller#writeACNVModeledSegmentFile} and {@link ACNVModeller#writeACNVModelParameterFiles}.
+     */
+    @Test
+    public void testSegmentAndParameterFileOutput() {
+        final String tempDir = publicTestDir + "acnv-modeller-file-output";
+        final File tempDirFile = createTempDir(tempDir);
+
+        //load data (coverages, SNP counts, and segments)
+        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
+        final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
+
+        //just do a few iterations
+        final int numSamples = 10;
+        final int numBurnIn = 0;
+
+        //initial MCMC model fitting performed by ACNVModeller constructor
+        final ACNVModeller modeller =
+                new ACNVModeller(segmentedGenome, numSamples, numBurnIn, numSamples, numBurnIn, ctx);
+
+        //write segments to file
+        final File modeledSegmentsFile = new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        modeller.writeACNVModeledSegmentFile(modeledSegmentsFile);
+
+        //write parameters to file
+        final File copyRatioParameterFile = new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + CR_PARAMETER_FILE_SUFFIX);
+        final File alleleFractionParameterFile = new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + AF_PARAMETER_FILE_SUFFIX);
+        modeller.writeACNVModelParameterFiles(copyRatioParameterFile, alleleFractionParameterFile);
+
+        //check that all files are created with appropriate size
+        Assert.assertTrue(modeledSegmentsFile.isFile(), modeledSegmentsFile.getAbsolutePath() + " is not a file.");
+        Assert.assertTrue(copyRatioParameterFile.isFile(), copyRatioParameterFile.getAbsolutePath() + " is not a file.");
+        Assert.assertTrue(alleleFractionParameterFile.isFile(), alleleFractionParameterFile.getAbsolutePath() + " is not a file.");
+        try {
+            Assert.assertTrue(FileUtils.readLines(modeledSegmentsFile).size() >= 2);            //column header + at least one segment
+            Assert.assertTrue(FileUtils.readLines(copyRatioParameterFile).size() == 3);         //column header + 2 global parameters
+            Assert.assertTrue(FileUtils.readLines(alleleFractionParameterFile).size() == 4);    //column header + 3 global parameters
+        } catch (final IOException e) {
+            Assert.fail("Error reading file size.", e);
+        }
     }
 }

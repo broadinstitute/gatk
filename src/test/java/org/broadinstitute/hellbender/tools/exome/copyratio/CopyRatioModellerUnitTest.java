@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -118,22 +119,25 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
         final CopyRatioModeller modeller = new CopyRatioModeller(segmentedGenome);
         modeller.fitMCMC(NUM_SAMPLES, NUM_BURN_IN);
 
-        //check statistics of global-parameter posterior samples (i.e., posterior mean and standard deviation)
-        final double[] varianceSamples = Doubles.toArray(modeller.getVarianceSamples());
-        final double variancePosteriorMean = new Mean().evaluate(varianceSamples);
-        final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
-        Assert.assertEquals(Math.abs(variancePosteriorMean - VARIANCE_TRUTH),
+        //check statistics of global-parameter posterior samples (i.e., posterior mode and standard deviation)
+        final Map<CopyRatioParameter, PosteriorSummary> globalParameterPosteriorSummaries =
+                modeller.getGlobalParameterPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
+
+        final PosteriorSummary variancePosteriorSummary = globalParameterPosteriorSummaries.get(CopyRatioParameter.VARIANCE);
+        final double variancePosteriorCenter = variancePosteriorSummary.getCenter();
+        final double variancePosteriorStandardDeviation = (variancePosteriorSummary.getUpper() - variancePosteriorSummary.getLower()) / 2;
+        Assert.assertEquals(Math.abs(variancePosteriorCenter - VARIANCE_TRUTH),
                 0., 3 * VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH);
         Assert.assertEquals(relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
                 0., 0.2);
 
-        final double[] outlierProbabilitySamples = Doubles.toArray(modeller.getOutlierProbabilitySamples());
-        final double outlierProbabilityPosteriorMean = new Mean().evaluate(outlierProbabilitySamples);
-        final double outlierProbabilityPosteriorStandardDeviation = new StandardDeviation().evaluate(outlierProbabilitySamples);
-        Assert.assertEquals(Math.abs(outlierProbabilityPosteriorMean - OUTLIER_PROBABILITY_TRUTH),
+        final PosteriorSummary outlierProbabilityPosteriorSummary = globalParameterPosteriorSummaries.get(CopyRatioParameter.OUTLIER_PROBABILITY);
+        final double outlierProbabilityPosteriorCenter = outlierProbabilityPosteriorSummary.getCenter();
+        final double outlierProbabilityPosteriorStandardDeviation = (outlierProbabilityPosteriorSummary.getUpper() - outlierProbabilityPosteriorSummary.getLower()) / 2;
+        Assert.assertEquals(Math.abs(outlierProbabilityPosteriorCenter - OUTLIER_PROBABILITY_TRUTH),
                 0., 3 * OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH);
         Assert.assertEquals(relativeError(outlierProbabilityPosteriorStandardDeviation,
-                        OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH), 0., 0.25);
+                        OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH), 0., 0.2);
 
         //check statistics of segment-mean posterior samples (i.e., posterior means and standard deviations)
         final List<Double> meansTruth = loadList(MEANS_TRUTH_FILE, Double::parseDouble);
@@ -147,11 +151,11 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
                 modeller.getSegmentMeansPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         final double[] meanPosteriorStandardDeviations = new double[numSegments];
         for (int segment = 0; segment < numSegments; segment++) {
-            final double meanPosteriorMean = meanPosteriorSummaries.get(segment).getCenter();
+            final double meanPosteriorCenter = meanPosteriorSummaries.get(segment).getCenter();
             final double meanPosteriorStandardDeviation =
                     (meanPosteriorSummaries.get(segment).getUpper() - meanPosteriorSummaries.get(segment).getLower()) / 2.;
             meanPosteriorStandardDeviations[segment] = meanPosteriorStandardDeviation;
-            final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorMean - meansTruth.get(segment));
+            final double absoluteDifferenceFromTruth = Math.abs(meanPosteriorCenter - meansTruth.get(segment));
             if (absoluteDifferenceFromTruth > meanPosteriorStandardDeviation) {
                 numMeansOutsideOneSigma++;
             }

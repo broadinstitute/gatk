@@ -25,14 +25,13 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.broadinstitute.hellbender.tools.exome.ACNVModeller.ACNV_DOUBLE_FORMAT;
+
 /**
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class SegmentUtils {
-
-    private static final String ACNV_DOUBLE_FORMAT = "%6.8f";
-
     private SegmentUtils() {}
 
     private static BiConsumer<CNLOHCall, DataLine> createDataLineFromCNLoHCallsFunction
@@ -217,7 +216,7 @@ public final class SegmentUtils {
      * Other columns are optional and are ignored.
      */
     public static List<SimpleInterval> readIntervalsFromSegmentFile(final File segmentsFile) {
-        return readSegmentFile(segmentsFile, SegmentTableColumns.INTERVAL_COLUMN_NAME_ARRAY, SegmentUtils::toInterval);
+        return readSegmentFile(segmentsFile, SegmentTableColumn.INTERVAL_COLUMNS, SegmentUtils::toInterval);
     }
 
     /**
@@ -233,7 +232,7 @@ public final class SegmentUtils {
      * Note that Segment_Call is optional.  Other columns are optional and are ignored.
      */
     public static List<ModeledSegment> readModeledSegmentsFromSegmentFile(final File segmentsFile) {
-        return readSegmentFile(segmentsFile, SegmentTableColumns.NO_CALL_COLUMN_NAME_ARRAY,
+        return readSegmentFile(segmentsFile, SegmentTableColumn.MEAN_AND_NO_CALL_COLUMNS,
                 dataLine -> toModeledSegment(dataLine, true));
     }
 
@@ -250,7 +249,7 @@ public final class SegmentUtils {
      * Note that Segment_Call is optional.  Other columns are optional and are ignored.
      */
     public static List<ModeledSegment> readModeledSegmentsFromLegacySegmentFile(final File segmentsFile) {
-        return readSegmentFile(segmentsFile, SegmentTableColumns.NO_CALL_COLUMN_NAME_ARRAY,
+        return readSegmentFile(segmentsFile, SegmentTableColumn.MEAN_AND_NO_CALL_COLUMNS,
                 dataLine -> toModeledSegment(dataLine, false));
     }
 
@@ -264,7 +263,7 @@ public final class SegmentUtils {
         Utils.regularReadableUserFile(segmentFile);
         try (final TableReader<String> reader = TableUtils.reader(segmentFile,
                 (columns, formatExceptionFactory) -> {
-                    if (!columns.contains(SegmentTableColumns.SAMPLE.toString())) {
+                    if (!columns.contains(SegmentTableColumn.SAMPLE.toString())) {
                         throw formatExceptionFactory.apply("No sample name in segment file.");
                     }
                     //return the lambda to translate dataLines into called segments
@@ -291,7 +290,7 @@ public final class SegmentUtils {
     public static <S extends ModeledSegment> void writeModeledSegmentFile(final File outFile,
                                                final List<S> segments,
                                                final String sampleName, final boolean isLog2Output) {
-        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumns.MEAN_AND_CALL_COLUMN_NAME_ARRAY,
+        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumn.MEAN_AND_CALL_COLUMNS,
                 //lambda for appending segment fields to a DataLine
                 (segment, dataLine) ->
                         dataLine.append(segment.getContig()).append(segment.getStart(), segment.getEnd())
@@ -352,7 +351,7 @@ public final class SegmentUtils {
         final TargetCollection<AllelicCount> snps = genome.getSNPs();
         final String sampleName = genome.getSampleName();
 
-        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumns.NUM_TARGETS_AND_SNPS_COLUMN_NAME_ARRAY,
+        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumn.NUM_TARGETS_AND_SNPS_COLUMNS,
                 //lambda for appending segment fields to a DataLine
                 (segment, dataLine) ->
                         dataLine.append(segment.getContig()).append(segment.getStart(), segment.getEnd())
@@ -375,7 +374,7 @@ public final class SegmentUtils {
         final TargetCollection<AllelicCount> snps = genome.getSNPs();
         final String sampleName = genome.getSampleName();
 
-        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY,
+        writeSegmentFile(outFile, segments, sampleName, SegmentTableColumn.ACNV_MODELED_SEGMENT_COLUMNS,
                 createDataLineFromACNVModeledSegmentFunction(targets, snps));
     }
 
@@ -395,7 +394,7 @@ public final class SegmentUtils {
         final TargetCollection<AllelicCount> snps = genome.getSNPs();
         final String sampleName = genome.getSampleName();
 
-        writeSegmentFile(outFile, calls, sampleName, SegmentTableColumns.CNLOH_ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY,
+        writeSegmentFile(outFile, calls, sampleName, SegmentTableColumn.CNLOH_ACNV_MODELED_SEGMENT_COLUMNS,
                 createDataLineFromCNLoHCallsFunction(targets, snps));
     }
 
@@ -408,8 +407,7 @@ public final class SegmentUtils {
     public static List<ACNVModeledSegment> readACNVModeledSegmentFile(final File acnvSegFile) {
         Utils.nonNull(acnvSegFile);
         Utils.regularReadableUserFile(acnvSegFile);
-
-        return readSegmentFile(acnvSegFile, SegmentTableColumns.ACNV_MODELED_SEGMENT_COLUMN_NAME_ARRAY, SegmentUtils::toACNVModeledSegment);
+        return readSegmentFile(acnvSegFile, SegmentTableColumn.ACNV_MODELED_SEGMENT_COLUMNS, SegmentUtils::toACNVModeledSegment);
     }
 
     /** Simple conversion to an interval given standard segment columns
@@ -419,8 +417,8 @@ public final class SegmentUtils {
      */
     public static SimpleInterval toInterval(final DataLine dataLine) {
         Utils.nonNull(dataLine);
-        return toInterval(dataLine, SegmentTableColumns.CONTIG.toString(), SegmentTableColumns.START.toString(),
-                SegmentTableColumns.END.toString());
+        return toInterval(dataLine, SegmentTableColumn.CONTIG.toString(), SegmentTableColumn.START.toString(),
+                SegmentTableColumn.END.toString());
 
     }
 
@@ -443,13 +441,13 @@ public final class SegmentUtils {
     }
 
     public static <T extends Locatable> List<T> readSegmentFile(final File segmentsFile,
-                                                                final String[] mandatoryColumnNames,
+                                                                final TableColumnCollection mandatoryColumns,
                                                                 final Function<DataLine, T> dataLineToSegmentFunction) {
         Utils.nonNull(segmentsFile);
         Utils.regularReadableUserFile(segmentsFile);
         try (final TableReader<T> reader = TableUtils.reader(segmentsFile,
                 (columns, formatExceptionFactory) -> {
-                    TableUtils.checkMandatoryColumns(columns, mandatoryColumnNames, formatExceptionFactory);
+                    TableUtils.checkMandatoryColumns(columns, mandatoryColumns, formatExceptionFactory);
                     //return the lambda to translate dataLines into called segments
                     return dataLineToSegmentFunction;
                 })) {
@@ -574,31 +572,29 @@ public final class SegmentUtils {
 
 
     private static ModeledSegment toModeledSegment(final DataLine dataLine, final boolean takeLog2) {
-        final double mean = dataLine.getDouble(SegmentTableColumns.MEAN.toString());
+        final double mean = dataLine.getDouble(SegmentTableColumn.MEAN.toString());
 
         return new ModeledSegment(
                 toInterval(dataLine),
-                dataLine.get(SegmentTableColumns.CALL.toString(), ModeledSegment.NO_CALL),
-                dataLine.getLong(SegmentTableColumns.NUM_PROBES.toString()),
+                dataLine.get(SegmentTableColumn.CALL.toString(), ModeledSegment.NO_CALL),
+                dataLine.getLong(SegmentTableColumn.NUM_PROBES.toString()),
                 takeLog2 ? ParamUtils.log2(mean) : mean);
     }
 
     private static ACNVModeledSegment toACNVModeledSegment(final DataLine dataLine) {
 
-        final PosteriorSummary segmentMeanPosteriorSummary = new PosteriorSummary(dataLine.getDouble(SegmentTableColumns.SEGMENT_MEAN_POSTERIOR_MODE.toString()),
-                dataLine.getDouble(SegmentTableColumns.SEGMENT_MEAN_POSTERIOR_LOWER.toString()),
-                dataLine.getDouble(SegmentTableColumns.SEGMENT_MEAN_POSTERIOR_UPPER.toString()));
-        final PosteriorSummary minorAlleleFractionPosteriorSummary = new PosteriorSummary(dataLine.getDouble(SegmentTableColumns.MINOR_ALLELE_FRACTION_POSTERIOR_MODE.toString()),
-                dataLine.getDouble(SegmentTableColumns.MINOR_ALLELE_FRACTION_POSTERIOR_LOWER.toString()),
-                dataLine.getDouble(SegmentTableColumns.MINOR_ALLELE_FRACTION_POSTERIOR_UPPER.toString()));
+        final PosteriorSummary segmentMeanPosteriorSummary = new PosteriorSummary(dataLine.getDouble(SegmentTableColumn.SEGMENT_MEAN_POSTERIOR_MODE.toString()),
+                dataLine.getDouble(SegmentTableColumn.SEGMENT_MEAN_POSTERIOR_LOWER.toString()),
+                dataLine.getDouble(SegmentTableColumn.SEGMENT_MEAN_POSTERIOR_UPPER.toString()));
+        final PosteriorSummary minorAlleleFractionPosteriorSummary = new PosteriorSummary(dataLine.getDouble(SegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_MODE.toString()),
+                dataLine.getDouble(SegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_LOWER.toString()),
+                dataLine.getDouble(SegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_UPPER.toString()));
 
         final DecileCollection mafDecileCollection = new DecileCollection(
-                Arrays.asList(SegmentTableColumns.ACNV_MODELED_SEGMENT_MAF_DECILES_COLUMN_NAME_ARRAY).stream()
-                        .map(s -> dataLine.getDouble(s)).collect(Collectors.toList()));
+                SegmentTableColumn.ACNV_MODELED_SEGMENT_MAF_DECILES_SUMMARY_COLUMNS.names().stream().map(dataLine::getDouble).collect(Collectors.toList()));
 
         final DecileCollection segmentMeanDecileCollection = new DecileCollection(
-                Arrays.asList(SegmentTableColumns.ACNV_MODELED_SEGMENT_MEAN_DECILES_COLUMN_NAME_ARRAY).stream()
-                        .map(s -> dataLine.getDouble(s)).collect(Collectors.toList()));
+                SegmentTableColumn.ACNV_MODELED_SEGMENT_MEAN_DECILES_SUMMARY_COLUMNS.names().stream().map(dataLine::getDouble).collect(Collectors.toList()));
 
         minorAlleleFractionPosteriorSummary.setDeciles(mafDecileCollection);
         segmentMeanPosteriorSummary.setDeciles(segmentMeanDecileCollection);
@@ -610,17 +606,17 @@ public final class SegmentUtils {
     }
 
     private static String toSampleName(final DataLine dataLine) {
-        return dataLine.get(SegmentTableColumns.SAMPLE.toString());
+        return dataLine.get(SegmentTableColumn.SAMPLE.toString());
     }
 
     private static <T extends Locatable> void writeSegmentFile(final File outFile,
                                                                final List<T> segments,
                                                                final String sampleName,
-                                                               final String[] columnArray,
+                                                               final TableColumnCollection columns,
                                                                final BiConsumer<T, DataLine> segmentToDataLineFunction) {
         Utils.nonNull(segments, "The list of segments cannot be null.");
         try (final TableWriter<T> writer =
-                     TableUtils.writer(outFile, new TableColumnCollection(columnArray),
+                     TableUtils.writer(outFile, columns,
                              //lambda for creating DataLine with sampleName and segment fields
                              (segment, dataLine) -> {
                                  segmentToDataLineFunction.accept(segment, dataLine.append(sampleName));

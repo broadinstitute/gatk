@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumns.AllelicCountTableVerbosity;
+import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumn.AllelicCountTableVerbosity;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
@@ -19,7 +18,7 @@ public class AllelicCountWriter extends TableWriter<AllelicCount> {
 
     public AllelicCountWriter(final File file, final AllelicCountTableVerbosity verbosity)
             throws IOException {
-        super(file, new TableColumnCollection(AllelicCountTableColumns.getColumns(verbosity)));
+        super(file, AllelicCountTableColumn.getColumns(verbosity));
         this.verbosity = verbosity;
     }
 

@@ -13,16 +13,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Unit tests for {@link TargetTableWriter}.
+ * Unit tests for {@link TargetWriter}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TargetTableWriterUnitTest {
+public class TargetWriterUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNullAnnotationSet() throws IOException {
         final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
-        new TargetTableWriter(testFile, null).close();
+        new TargetWriter(testFile, null).close();
     }
 
     @Test(dataProvider="correctAnnotationSets")
@@ -30,7 +30,7 @@ public class TargetTableWriterUnitTest {
         final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
         final int TARGET_COUNT = 10;
 
-        final TargetTableWriter subject = new TargetTableWriter(testFile, annotationSet);
+        final TargetWriter subject = new TargetWriter(testFile, annotationSet);
         for (int i = 0; i < TARGET_COUNT; i++) {
             final Map<TargetAnnotation, String> annotationMap = new HashMap<>(annotationSet.size());
             for (final TargetAnnotation annotation : annotationSet) {
@@ -61,7 +61,7 @@ public class TargetTableWriterUnitTest {
         final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
         final int TARGET_COUNT = 5;
 
-        final TargetTableWriter subject = new TargetTableWriter(testFile, expectedSet);
+        final TargetWriter subject = new TargetWriter(testFile, expectedSet);
         for (int i = 0; i < TARGET_COUNT; i++) {
             final Map<TargetAnnotation, String> annotationMap = new HashMap<>(expectedSet.size());
             for (final TargetAnnotation annotation : i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet) {
@@ -79,7 +79,7 @@ public class TargetTableWriterUnitTest {
         final File testFile = BaseTest.createTempFile("ttw-test", ".tsv");
         final int TARGET_COUNT = 5;
 
-        final TargetTableWriter subject = new TargetTableWriter(testFile, expectedSet);
+        final TargetWriter subject = new TargetWriter(testFile, expectedSet);
         for (int i = 0; i < TARGET_COUNT; i++) {
             final Map<TargetAnnotation, String> annotationMap = new HashMap<>(expectedSet.size());
             for (final TargetAnnotation annotation : i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet) {

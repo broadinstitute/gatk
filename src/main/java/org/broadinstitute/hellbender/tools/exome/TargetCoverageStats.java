@@ -13,17 +13,17 @@ public final class TargetCoverageStats {
     /**
      * Name of the column for the means.
      */
-    public static final String MEAN_COLUMN_NAME = TargetTableColumns.MEAN_COVERAGE.toString();
+    public static final String MEAN_COLUMN_NAME = TargetTableColumn.MEAN_COVERAGE.toString();
 
     /**
      * Name of the column for the variance.
      */
-    public static final String VARIANCE_COLUMN_NAME = TargetTableColumns.COVERAGE_VARIANCE.toString();
+    public static final String VARIANCE_COLUMN_NAME = TargetTableColumn.COVERAGE_VARIANCE.toString();
 
     /**
      * Name of the column for the interquartile range.
      */
-    public static final String INTERQUARTILE_RANGE_COLUMN_NAME = TargetTableColumns.COVERAGE_INTERQUARTILE_RANGE.toString();
+    public static final String INTERQUARTILE_RANGE_COLUMN_NAME = TargetTableColumn.COVERAGE_INTERQUARTILE_RANGE.toString();
 
     /**
      * Target the coverage statistics makes reference to.

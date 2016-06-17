@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.segmenter.RCBSSegmenter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,7 +54,7 @@ public final class SNPSegmenter {
             minorAlleleFractions.setColumn(0, snps.targets().stream()
                     .mapToDouble(ac -> ac.estimateMinorAlleleFraction(allelicBias)).toArray());
 
-            ReadCountCollectionUtils.write(targetsFromSNPCountsFile, new ReadCountCollection(targets, Arrays.asList(sampleName), minorAlleleFractions));
+            ReadCountCollectionUtils.write(targetsFromSNPCountsFile, new ReadCountCollection(targets, Collections.singletonList(sampleName), minorAlleleFractions));
 
             //segment SNPs based on observed log_2 minor allele fraction (log_2 is applied in CBS.R)
             RCBSSegmenter.writeSegmentFile(sampleName, targetsFromSNPCountsFile.getAbsolutePath(),

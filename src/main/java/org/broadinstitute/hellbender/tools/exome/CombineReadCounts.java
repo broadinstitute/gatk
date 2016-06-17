@@ -337,7 +337,7 @@ public final class CombineReadCounts extends CommandLineProgram {
      */
     private List<String> readCountColumnNames(final TableColumnCollection columns) {
         return columns.names().stream()
-                .filter(n -> !TargetTableColumns.isStandardTargetColumnName(n))
+                .filter(n -> !TargetTableColumn.isStandardTargetColumnName(n))
                 .collect(Collectors.toList());
     }
 
@@ -359,11 +359,11 @@ public final class CombineReadCounts extends CommandLineProgram {
 
                 @Override
                 public void processColumns(final TableColumnCollection columns) {
-                    hasCoordinates = columns.containsAll(TargetTableColumns.CONTIG.toString(), TargetTableColumns.START.toString(),
-                            TargetTableColumns.END.toString());
-                    hasName = columns.contains(TargetTableColumns.NAME.toString());
+                    hasCoordinates = columns.containsAll(TargetTableColumn.CONTIG.toString(), TargetTableColumn.START.toString(),
+                            TargetTableColumn.END.toString());
+                    hasName = columns.contains(TargetTableColumn.NAME.toString());
                     if (!hasCoordinates && !hasName) {
-                        throw this.formatException("header contain neither coordinates nor target name columns");
+                        throw formatException("header contain neither coordinates nor target name columns");
                     }
                     final List<String> countColumnNames = readCountColumnNames(columns);
                     countColumnCount = countColumnNames.size();
@@ -390,7 +390,7 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private Target createTarget(final DataLine dataLine) {
                     if (hasName) {
-                        final String name = dataLine.get(TargetTableColumns.NAME);
+                        final String name = dataLine.get(TargetTableColumn.NAME);
                         final Target target = targets.target(name);
                         final SimpleInterval interval = createInterval(dataLine);
                         if (target == null) {
@@ -418,9 +418,9 @@ public final class CombineReadCounts extends CommandLineProgram {
                  */
                 private SimpleInterval createInterval(final DataLine dataLine) {
                     if (hasCoordinates) {
-                        return new SimpleInterval(dataLine.get(TargetTableColumns.CONTIG),
-                                dataLine.getInt(TargetTableColumns.START),
-                                dataLine.getInt(TargetTableColumns.END));
+                        return new SimpleInterval(dataLine.get(TargetTableColumn.CONTIG),
+                                dataLine.getInt(TargetTableColumn.START),
+                                dataLine.getInt(TargetTableColumn.END));
                     } else {
                         return null;
                     }

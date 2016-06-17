@@ -17,7 +17,7 @@ import java.util.Set;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TargetTableWriter extends TableWriter<Target> {
+public class TargetWriter extends TableWriter<Target> {
 
     private List<TargetAnnotation> annotations;
 
@@ -26,7 +26,7 @@ public class TargetTableWriter extends TableWriter<Target> {
      * @param file the destination file.
      * @throws IOException if such an exception is throw when creating or writing in the file provided.
      */
-    public TargetTableWriter(final File file) throws IOException {
+    public TargetWriter(final File file) throws IOException {
         super(file, composeTableColumns(Collections.emptySet()));
         this.annotations = Collections.emptyList();
     }
@@ -37,7 +37,7 @@ public class TargetTableWriter extends TableWriter<Target> {
      * @param annotations the output annotations.
      * @throws IOException if such an exception is throw when creating or writing in the file provided.
      */
-    public TargetTableWriter(final File file, final Set<TargetAnnotation> annotations) throws IOException {
+    public TargetWriter(final File file, final Set<TargetAnnotation> annotations) throws IOException {
         super(file, composeTableColumns(annotations));
         this.annotations = new ArrayList<>(annotations);
     }
@@ -45,11 +45,11 @@ public class TargetTableWriter extends TableWriter<Target> {
     private static TableColumnCollection composeTableColumns(final Set<TargetAnnotation> annotations) {
         Utils.nonNull(annotations);
 
-        final List<TargetTableColumns> columns = new ArrayList<>(4 + annotations.size());
-        columns.add(TargetTableColumns.CONTIG);
-        columns.add(TargetTableColumns.START);
-        columns.add(TargetTableColumns.END);
-        columns.add(TargetTableColumns.NAME);
+        final List<TargetTableColumn> columns = new ArrayList<>(4 + annotations.size());
+        columns.add(TargetTableColumn.CONTIG);
+        columns.add(TargetTableColumn.START);
+        columns.add(TargetTableColumn.END);
+        columns.add(TargetTableColumn.NAME);
         annotations.stream()
                 .map(annotation -> annotation.column)
                 .forEach(columns::add);

@@ -25,8 +25,8 @@ public class TargetCoverageStatsReaderUnitTest extends BaseTest {
 
         final File file = createTempFile("tcsru-test", ".tab");
         final PrintWriter writer = new PrintWriter(new FileWriter(file));
-        writer.println(String.join("\t", TargetTableColumns.NAME.toString(), TargetTableColumns.CONTIG.toString(),
-                TargetTableColumns.START.toString(), TargetTableColumns.END.toString(),
+        writer.println(String.join("\t", TargetTableColumn.NAME.toString(), TargetTableColumn.CONTIG.toString(),
+                TargetTableColumn.START.toString(), TargetTableColumn.END.toString(),
                 TargetCoverageStats.MEAN_COLUMN_NAME, TargetCoverageStats.VARIANCE_COLUMN_NAME,
                 TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME));
         writer.println(String.join("\t", TEST_TARGET_1.getName(), TEST_TARGET_1.getInterval().getContig(),
@@ -58,7 +58,7 @@ public class TargetCoverageStatsReaderUnitTest extends BaseTest {
 
         final File file = createTempFile("tcsru-test", ".tab");
         final PrintWriter writer = new PrintWriter(new FileWriter(file));
-        writer.println(String.join("\t", TargetTableColumns.NAME.toString(),
+        writer.println(String.join("\t", TargetTableColumn.NAME.toString(),
                 TargetCoverageStats.MEAN_COLUMN_NAME, TargetCoverageStats.VARIANCE_COLUMN_NAME,
                 TargetCoverageStats.INTERQUARTILE_RANGE_COLUMN_NAME));
         writer.println(String.join("\t", TEST_TARGET_1.getName(), "10", "100.19", "70.3" ));

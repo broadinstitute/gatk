@@ -62,7 +62,7 @@ public class GCBiasSimulatedData {
         final double[] gcContentByTarget = data.getRight();
         ReadCountCollectionUtils.write(readCountsFile, inputCounts);
 
-        final TargetTableWriter writer = new TargetTableWriter(targetsFile, Collections.singleton(TargetAnnotation.GC_CONTENT));
+        final TargetWriter writer = new TargetWriter(targetsFile, Collections.singleton(TargetAnnotation.GC_CONTENT));
         for (int i = 0; i < gcContentByTarget.length; i++) {
             final Target unannotatedTarget = inputCounts.records().get(i).getTarget();
             final TargetAnnotationCollection annotations = new TargetAnnotationCollection();

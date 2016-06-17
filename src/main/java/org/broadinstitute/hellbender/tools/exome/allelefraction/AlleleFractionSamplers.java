@@ -56,7 +56,7 @@ final class AlleleFractionSamplers {
         private final AdaptiveMetropolisSampler sampler;
 
         public OutlierProbabilitySampler(final AlleleFractionState initialState, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialState.outlierProbability(), initialStepSize, 0, Double.POSITIVE_INFINITY);
+            sampler = new AdaptiveMetropolisSampler(initialState.outlierProbability(), initialStepSize, 0, 1);  //outlier probability must be in [0, 1]
         }
 
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
@@ -66,13 +66,12 @@ final class AlleleFractionSamplers {
 
     // sample minor fraction of a single segment
     private static final class PerSegmentMinorFractionSampler implements ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> {
-        private static final double MAX_MINOR_FRACTION = 0.5;   //by definition!
         private final AdaptiveMetropolisSampler sampler;
 
         private final int segmentIndex;
 
         public PerSegmentMinorFractionSampler(final int segmentIndex, final AlleleFractionState initialState, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialState.segmentMinorFraction(segmentIndex), initialStepSize, 0, MAX_MINOR_FRACTION);
+            sampler = new AdaptiveMetropolisSampler(initialState.segmentMinorFraction(segmentIndex), initialStepSize, 0, 0.5);  //minor-allele fraction must be in [0, 0.5]
             this.segmentIndex = segmentIndex;
         }
 

@@ -9,6 +9,10 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputA
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.pulldown.BalancedHeterozygousPileupPriorModel;
+import org.broadinstitute.hellbender.tools.exome.pulldown.BayesianHetPulldownCalculator;
+import org.broadinstitute.hellbender.tools.exome.pulldown.HeterogeneousHeterozygousPileupPriorModel;
+import org.broadinstitute.hellbender.tools.exome.pulldown.Pulldown;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
@@ -218,7 +222,7 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
         normalHetPulldown = normalHetPulldownCalculator.getHetPulldown(normalBamFile, hetCallingStringency);
 
         logger.info("Writing Het pulldown from normal reads to " + normalHetOutputFile.toString());
-        normalHetPulldown.write(normalHetOutputFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+        normalHetPulldown.write(normalHetOutputFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
     }
 
     /**
@@ -238,7 +242,7 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
         tumorHetPulldown = tumorHetPulldownCalculator.getHetPulldown(tumorBamFile, hetCallingStringency);
 
         logger.info("Writing Het pulldown from tumor reads to " + tumorHetOutputFile.toString());
-        tumorHetPulldown.write(tumorHetOutputFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+        tumorHetPulldown.write(tumorHetOutputFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
     }
 
     /**
@@ -257,7 +261,7 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
         normalHetPulldown = normalHetPulldownCalculator.getHetPulldown(normalBamFile, hetCallingStringency);
 
         logger.info("Writing Het pulldown from normal reads to " + normalHetOutputFile.toString());
-        normalHetPulldown.write(normalHetOutputFile, AllelicCountTableColumns.AllelicCountTableVerbosity.FULL);
+        normalHetPulldown.write(normalHetOutputFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);
 
         tumorHetPulldownCalculator = new BayesianHetPulldownCalculator(REFERENCE_ARGUMENTS.getReferenceFile(),
                 normalHetPulldown.getIntervals(), minimumMappingQuality, minimumBaseQuality, readDepthThreshold,
@@ -269,7 +273,7 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
                 normalHetPulldown);
 
         logger.info("Writing Het pulldown from tumor reads to " + tumorHetOutputFile.toString());
-        tumorHetPulldown.write(tumorHetOutputFile, AllelicCountTableColumns.AllelicCountTableVerbosity.INTERMEDIATE);
+        tumorHetPulldown.write(tumorHetOutputFile, AllelicCountTableColumn.AllelicCountTableVerbosity.INTERMEDIATE);
     }
 
     @Override

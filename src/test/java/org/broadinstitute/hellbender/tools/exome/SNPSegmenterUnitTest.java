@@ -24,14 +24,14 @@ public final class SNPSegmenterUnitTest extends BaseTest {
     public void testAllelicFractionBasedSegmentation() {
         final String sampleName = "test";
 
-        final File snpFile = new File(TEST_SUB_DIR + "snps-simplified-for-allelic-fraction-segmentation.tsv");
+        final File snpFile = new File(TEST_SUB_DIR, "snps-simplified-for-allelic-fraction-segmentation.tsv");
         final List<AllelicCount> snpCounts = new AllelicCountCollection(snpFile).getCounts();
         final TargetCollection<AllelicCount> snps = new HashedListTargetCollection<>(snpCounts);
 
         final File resultFile = createTempFile("snp-segmenter-test-result", ".seg");
         SNPSegmenter.writeSegmentFile(snps, sampleName, resultFile);
 
-        final File expectedFile = new File(TEST_SUB_DIR + "snp-segmenter-test-expected.seg");
+        final File expectedFile = new File(TEST_SUB_DIR, "snp-segmenter-test-expected.seg");
 
         Assert.assertTrue(resultFile.exists(), "SNPSegmenterTest output was not written to temp file: " + resultFile);
 

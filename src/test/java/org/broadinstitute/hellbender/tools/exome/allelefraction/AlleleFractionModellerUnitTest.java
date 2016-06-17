@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.exome.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
+import org.broadinstitute.hellbender.tools.exome.copyratio.CopyRatioParameter;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -18,6 +19,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -39,6 +41,8 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
     private static final File SAMPLE_WITH_EVENT_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-sample-event.tsv");
 
     private static final File SEGMENTS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-segments.seg");
+
+    private static final double CREDIBLE_INTERVAL_ALPHA = 0.05;
 
     /**
      * Test MCMC inference on simulated data.  Note that hyperparameter values used to generate the data should be recovered
@@ -74,6 +78,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
                           final double meanBiasExpected, final double biasVarianceExpected,
                           final AllelicPanelOfNormals allelicPON) {
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
+        final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         final int numSamples = 150;
         final int numBurnIn = 50;
@@ -93,29 +98,29 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments,
                 averageDepth, meanBiasSimulated, biasVarianceSimulated, outlierProbability);
 
-        final AlleleFractionModeller model = new AlleleFractionModeller(simulatedData.getSegmentedGenome(), allelicPON);
-        model.fitMCMC(numSamples, numBurnIn);
+        final AlleleFractionModeller modeller = new AlleleFractionModeller(simulatedData.getSegmentedGenome(), allelicPON);
+        modeller.fitMCMC(numSamples, numBurnIn);
 
-        final List<Double> meanBiasSamples = model.getmeanBiasSamples();
+        final List<Double> meanBiasSamples = modeller.getmeanBiasSamples();
         Assert.assertEquals(meanBiasSamples.size(), numSamples - numBurnIn);
 
-        final List<Double> biasVarianceSamples = model.getBiasVarianceSamples();
+        final List<Double> biasVarianceSamples = modeller.getBiasVarianceSamples();
         Assert.assertEquals(biasVarianceSamples.size(), numSamples - numBurnIn);
 
-        final List<Double> outlierProbabilitySamples = model.getOutlierProbabilitySamples();
+        final List<Double> outlierProbabilitySamples = modeller.getOutlierProbabilitySamples();
         Assert.assertEquals(outlierProbabilitySamples.size(), numSamples - numBurnIn);
 
-        final List<AlleleFractionState.MinorFractions> minorFractionsSamples = model.getMinorFractionsSamples();
+        final List<AlleleFractionState.MinorFractions> minorFractionsSamples = modeller.getMinorFractionsSamples();
         Assert.assertEquals(minorFractionsSamples.size(), numSamples - numBurnIn);
         for (final AlleleFractionState.MinorFractions sample : minorFractionsSamples) {
             Assert.assertEquals(sample.size(), numSegments);
         }
 
-        final List<List<Double>> minorFractionsSamplesBySegment = model.getMinorFractionSamplesBySegment();
+        final List<List<Double>> minorFractionsSamplesBySegment = modeller.getMinorFractionSamplesBySegment();
 
         final double mcmcMeanBias = meanBiasSamples.stream().mapToDouble(x -> x).average().getAsDouble();
         final double mcmcBiasVariance = biasVarianceSamples.stream().mapToDouble(x -> x).average().getAsDouble();
-        final double mcmcOutlierProbabilityr = outlierProbabilitySamples.stream().mapToDouble(x -> x).average().getAsDouble();
+        final double mcmcOutlierProbability = outlierProbabilitySamples.stream().mapToDouble(x -> x).average().getAsDouble();
         final List<Double> mcmcMinorFractions = minorFractionsSamplesBySegment
                 .stream().map(list -> list.stream().mapToDouble(x -> x).average().getAsDouble())
                 .collect(Collectors.toList());
@@ -127,8 +132,33 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
 
         Assert.assertEquals(mcmcMeanBias, meanBiasExpected, meanBiasTolerance);
         Assert.assertEquals(mcmcBiasVariance, biasVarianceExpected, biasVarianceTolerance);
-        Assert.assertEquals(mcmcOutlierProbabilityr, outlierProbability, outlierProbabilityTolerance);
+        Assert.assertEquals(mcmcOutlierProbability, outlierProbability, outlierProbabilityTolerance);
         Assert.assertEquals(totalSegmentError / numSegments, 0.0, minorFractionTolerance);
+
+        //test posterior summaries
+        final Map<AlleleFractionParameter, PosteriorSummary> globalParameterPosteriorSummaries =
+                modeller.getGlobalParameterPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
+
+        final PosteriorSummary meanBiasPosteriorSummary = globalParameterPosteriorSummaries.get(AlleleFractionParameter.MEAN_BIAS);
+        final double meanBiasPosteriorCenter = meanBiasPosteriorSummary.getCenter();
+        Assert.assertEquals(meanBiasPosteriorCenter, meanBiasExpected, meanBiasTolerance);
+
+        final PosteriorSummary biasVariancePosteriorSummary = globalParameterPosteriorSummaries.get(AlleleFractionParameter.BIAS_VARIANCE);
+        final double biasVariancePosteriorCenter = biasVariancePosteriorSummary.getCenter();
+        Assert.assertEquals(biasVariancePosteriorCenter, biasVarianceExpected, biasVarianceTolerance);
+
+        final PosteriorSummary outlierProbabilityPosteriorSummary = globalParameterPosteriorSummaries.get(AlleleFractionParameter.OUTLIER_PROBABILITY);
+        final double outlierProbabilityPosteriorCenter = outlierProbabilityPosteriorSummary.getCenter();
+        Assert.assertEquals(outlierProbabilityPosteriorCenter, outlierProbability, outlierProbabilityTolerance);
+
+        final List<PosteriorSummary> minorAlleleFractionPosteriorSummaries =
+                modeller.getMinorAlleleFractionsPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
+        final List<Double> minorFractionsPosteriorCenters = minorAlleleFractionPosteriorSummaries.stream().map(PosteriorSummary::getCenter).collect(Collectors.toList());
+        double totalPosteriorCentersSegmentError = 0.0;
+        for (int segment = 0; segment < numSegments; segment++) {
+            totalPosteriorCentersSegmentError += Math.abs(minorFractionsPosteriorCenters.get(segment) - simulatedData.getTrueState().segmentMinorFraction(segment));
+        }
+        Assert.assertEquals(totalPosteriorCentersSegmentError / numSegments, 0.0, minorFractionTolerance);
     }
 
     @DataProvider(name = "biasCorrection")
@@ -178,7 +208,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
      * about the high bias at these sites ("ALLELIC_PON_WITH_BAD_SNPS") we correctly infer that all of the segments are balanced.
      *
      * <p>
-     *     Note that alpha and beta are not actually correctly recovered in this PON via MLE because the biases
+     *     Note that alpha and beta are not actually correctly recovered in this PON via MLE because the biases are
      *     drawn from a mixture of gamma distributions (as opposed to a single gamma distribution as assumed in the model).
      *     TODO https://github.com/broadinstitute/gatk-protected/issues/421
      * </p>
@@ -201,9 +231,8 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedGenome, allelicPON);
         modeller.fitMCMC(numSamples, numBurnIn);
 
-        final double credibleAlpha = 0.05;
         final List<PosteriorSummary> minorAlleleFractionPosteriorSummaries =
-                modeller.getMinorAlleleFractionsPosteriorSummaries(credibleAlpha, ctx);
+                modeller.getMinorAlleleFractionsPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
         final List<Double> minorFractionsResult = minorAlleleFractionPosteriorSummaries.stream().map(PosteriorSummary::getCenter).collect(Collectors.toList());
 
         final double minorFractionBalanced = 0.5;

@@ -213,7 +213,7 @@ public final class FilterTargets extends CommandLineProgram {
 
         final TargetCollection<Target> targets = targetArguments.readTargetCollection(false);
 
-        try (final TargetTableWriter outputWriter = new TargetTableWriter(outputFile);
+        try (final TargetWriter outputWriter = new TargetWriter(outputFile);
              final TargetRejectWriter rejectWriter = new TargetRejectWriter(rejectedOutputFile)) {
             for (final Target target : targets.targets()) {
                 if (filters.stream().anyMatch(filter -> !filter.test(target))) {

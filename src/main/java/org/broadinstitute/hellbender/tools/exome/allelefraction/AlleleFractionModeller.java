@@ -4,9 +4,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -51,10 +49,6 @@ public final class AlleleFractionModeller {
     private final List<AlleleFractionState.MinorFractions> minorFractionsSamples = new ArrayList<>();
     private final int numSegments;
 
-    public AlleleFractionModeller(final SegmentedGenome segmentedGenome) {
-        this(segmentedGenome, AllelicPanelOfNormals.EMPTY_PON);
-    }
-
     public AlleleFractionModeller(final SegmentedGenome segmentedGenome, final AllelicPanelOfNormals allelicPON) {
         this.segmentedGenome = segmentedGenome;
         final AlleleFractionData data = new AlleleFractionData(segmentedGenome, allelicPON);
@@ -62,16 +56,16 @@ public final class AlleleFractionModeller {
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
 
         // Initialization got us to the mode of the likelihood
-        // if we approximate conditionals as normal we can guess the width from the curvature at the mode
+        // if we approximate conditionals as normal we can guess the width from the curvature at the mode and use as the step size
 
-        final double meanBiasInitialStepSize = estimateWidthAtMode(meanBias ->
+        final double meanBiasInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(meanBias ->
                 AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(meanBias), data), initialState.meanBias());
-        final double biasVarianceInitialStepSize = estimateWidthAtMode(biasVariance ->
+        final double biasVarianceInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(biasVariance ->
                 AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedBiasVariance(biasVariance), data), initialState.biasVariance());
-        final double outlierProbabilityInitialStepSize = estimateWidthAtMode(outlierProbability ->
+        final double outlierProbabilityInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(outlierProbability ->
                 AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(outlierProbability), data), initialState.outlierProbability());
         final List<Double> minorFractionsInitialStepSizes = IntStream.range(0, numSegments).mapToDouble(segment ->
-                estimateWidthAtMode(AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(initialState, data, segment), initialState.segmentMinorFraction(segment)))
+                getStepSizeFromApproximatePosteriorWidthAtMode(AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(initialState, data, segment), initialState.segmentMinorFraction(segment)))
                 .boxed().collect(Collectors.toList());
 
         final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> meanBiasSampler =
@@ -158,10 +152,26 @@ public final class AlleleFractionModeller {
         return posteriorSummaries;
     }
 
-    //guess the width of a probability distribution given the position of its mode using a gaussian approximation
-    private static double estimateWidthAtMode(final Function<Double, Double> logPDF, final double mode) {
-        final double EPSILON = Math.min(1e-6, Math.abs(mode)/2);    //adjust scale is mode is very near zero
-        final double DEFAULT = 1.0; //should never be needed; only used if mode is not a mode
+    /**
+     * Returns a Map of {@link PosteriorSummary} elements summarizing the global parameters.
+     * Should only be called after {@link AlleleFractionModeller#fitMCMC(int, int)} has been called.
+     * @param credibleIntervalAlpha credible-interval alpha, must be in (0, 1)
+     * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
+     * @return                      list of {@link PosteriorSummary} elements summarizing the global parameters
+     */
+    public Map<AlleleFractionParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
+        final Map<AlleleFractionParameter, PosteriorSummary> posteriorSummaries = new LinkedHashMap<>();
+        posteriorSummaries.put(AlleleFractionParameter.MEAN_BIAS, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(meanBiasSamples, credibleIntervalAlpha, ctx));
+        posteriorSummaries.put(AlleleFractionParameter.BIAS_VARIANCE, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(biasVarianceSamples, credibleIntervalAlpha, ctx));
+        posteriorSummaries.put(AlleleFractionParameter.OUTLIER_PROBABILITY, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(outlierProbabilitySamples, credibleIntervalAlpha, ctx));
+        return posteriorSummaries;
+    }
+
+    //use width of a probability distribution given the position of its mode (estimated from Gaussian approximation) as step size
+    private static double getStepSizeFromApproximatePosteriorWidthAtMode(final Function<Double, Double> logPDF, final double mode) {
+        final double absMode = Math.abs(mode);
+        final double EPSILON = Math.min(1e-6, absMode / 2);    //adjust scale is mode is very near zero
+        final double DEFAULT = absMode / 10;                   //if "mode" is not close to true mode of logPDF, approximation may not apply; just use 1/10 of absMode in this case
         final double secondDerivative = (logPDF.apply(mode + EPSILON) - 2*logPDF.apply(mode) + logPDF.apply(mode - EPSILON))/(EPSILON*EPSILON);
         return secondDerivative < 0 ? Math.sqrt(-1.0 / secondDerivative) : DEFAULT;
     }

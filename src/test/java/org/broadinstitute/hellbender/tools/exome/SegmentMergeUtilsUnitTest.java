@@ -1050,7 +1050,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
         private static ACNVModeledSegment constructSegment(final String contig, final int start, final int end,
                                                           final double segmentMeanPosteriorCenter,
                                                           final double segmentMeanPosteriorHalfWidth,
-                                                          final double minorAlleleFractionPosteriorMean,
+                                                          final double minorAlleleFractionPosteriorCenter,
                                                           final double minorAlleleFractionPosteriorHalfWidth) {
             return new ACNVModeledSegment(new SimpleInterval(contig, start, end),
                     new PosteriorSummary(
@@ -1058,9 +1058,9 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
                             segmentMeanPosteriorCenter - segmentMeanPosteriorHalfWidth,
                             segmentMeanPosteriorCenter + segmentMeanPosteriorHalfWidth),
                     new PosteriorSummary(
-                            minorAlleleFractionPosteriorMean,
-                            minorAlleleFractionPosteriorMean - minorAlleleFractionPosteriorHalfWidth,
-                            minorAlleleFractionPosteriorMean + minorAlleleFractionPosteriorHalfWidth));
+                            minorAlleleFractionPosteriorCenter,
+                            minorAlleleFractionPosteriorCenter - minorAlleleFractionPosteriorHalfWidth,
+                            minorAlleleFractionPosteriorCenter + minorAlleleFractionPosteriorHalfWidth));
         }
 
         @DataProvider(name = "dataSimilarSegmentMerging")
