@@ -138,12 +138,11 @@ final class CopyRatioSamplers {
                     final double notOutlierUnnormalizedLogProbability =
                             notOutlierUnnormalizedLogProbabilityPrefactor
                                     - normalTerm(c.getCoverage(), state.segmentMean(segment), state.variance());
-                    //note: we are working in natural log space, but this differs from log10 by a multiplicative
-                    //constant which is absorbed into the normalization.  Thus normalizeFromLog10 works here.
+                    //note: we are working in natural log space, so we divide by ln(10) before using normalizeFromLog10
                     final double conditionalProbability =
                             MathUtils.normalizeFromLog10(new double[]{
-                                    outlierUnnormalizedLogProbability,
-                                    notOutlierUnnormalizedLogProbability})[0];
+                                    MathUtils.logToLog10(outlierUnnormalizedLogProbability),
+                                    MathUtils.logToLog10(notOutlierUnnormalizedLogProbability)})[0];
                     indicators.add(rng.nextDouble() < conditionalProbability);
                 }
             }
