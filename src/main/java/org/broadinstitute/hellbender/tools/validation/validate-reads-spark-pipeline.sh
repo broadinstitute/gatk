@@ -7,12 +7,12 @@
 #
 # Example usage
 # ./validate-reads-spark-pipeline.sh \
-#   src/test/resources/org/broadinstitute/hellbender/tools/spark/validation/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam \
+#   src/test/resources/org/broadinstitute/hellbender/tools/validation/CEUTrio.HiSeq.WGS.b37.ch20.1m-1m1k.NA12878.bam \
 #   src/test/resources/large/human_g1k_v37.20.21.fasta \
 #   src/test/resources/large/human_g1k_v37.20.21.2bit \
 #   src/test/resources/large/dbsnp_138.b37.20.21.vcf \
 #   [optionally, throwOnDiff]
-#   [optionally, saveIntermediateBams]
+#   [optionally, saveIntermediateFiles]
 
 set -ex
 
@@ -43,12 +43,12 @@ if [ "$#" -ge 6 ] && [ "$6" == "throwOnDiff" ]; then
     CRASH_ON_DIFF="true"
 fi
 
-SAVE_INTERMEDIATE_BAMS="false"
-if [ "$#" -ge 5 ] && [ "$5" == "saveIntermediateBams" ]; then
-    SAVE_INTERMEDIATE_BAMS="true"
+SAVE_INTERMEDIATE_FILES="false"
+if [ "$#" -ge 5 ] && [ "$5" == "saveIntermediateFiles" ]; then
+    SAVE_INTERMEDIATE_FILES="true"
 fi
-if [ "$#" -ge 6 ] && [ "$6" == "saveIntermediateBams" ]; then
-    SAVE_INTERMEDIATE_BAMS="true"
+if [ "$#" -ge 6 ] && [ "$6" == "saveIntermediateFiles" ]; then
+    SAVE_INTERMEDIATE_FILES="true"
 fi
 
 GATK4_JAR="${GATK_HOME}/build/install/gatk/bin/gatk"
@@ -88,14 +88,11 @@ echo "################################################"
 echo "############## Run GATK 4 tools ################"
 echo "################################################"
 # Run MarkDuplicates
-${GATK4_JAR} MarkDuplicatesSpark -I ${CLEAN_BAM} -O ${MARKED_BAM} --METRICS_FILE=tmp.metrics -parallelism 1 -DS SUM_OF_BASE_QUALITIES
+${GATK4_JAR} MarkDuplicatesSpark -I ${CLEAN_BAM} -O ${MARKED_BAM} --METRICS_FILE=tmp.metrics -DS SUM_OF_BASE_QUALITIES
 
 # Run BQSR
 ${GATK4_JAR} BaseRecalibratorSpark -I ${MARKED_BAM} -R $3 -knownSites $4 -O ${RECAL_TABLE}
 ${GATK4_JAR} ApplyBQSRSpark -bqsr_recal_file ${RECAL_TABLE} -I ${MARKED_BAM} -O ${GATK4_BAM}
-
-
-rm ${RECAL_TABLE}
 
 
 
@@ -108,16 +105,15 @@ java -jar ${PICARD_JAR} MarkDuplicates I=${CLEAN_BAM} O=${PICARD_MARKED_BAM} MET
 # Run GATK 3 BQSR
 java -jar ${GATK3_JAR} -T BaseRecalibrator -I ${PICARD_MARKED_BAM} -R $2 -knownSites $4 -o ${LEGACY_RECAL_TABLE}
 java -jar ${GATK3_JAR} -T PrintReads -R $2 -BQSR ${LEGACY_RECAL_TABLE} -I ${PICARD_MARKED_BAM} -o ${LEGACY_BAM} -DIQ
-rm ${LEGACY_RECAL_TABLE}
 
 echo "################################################"
 echo "############### Run diff tools #################"
 echo "################################################"
-${GATK4_JAR} CompareDuplicates -I ${LEGACY_BAM} -I2 ${GATK4_BAM} -cd ${CRASH_ON_DIFF}
+${GATK4_JAR} CompareDuplicatesSpark -I ${LEGACY_BAM} -I2 ${GATK4_BAM} -cd ${CRASH_ON_DIFF}
 
-${GATK4_JAR} CompareBaseQualities -I ${LEGACY_BAM} -I2 ${GATK4_BAM} -cd ${CRASH_ON_DIFF}
+${GATK4_JAR} CompareBaseQualities -cd ${CRASH_ON_DIFF} --VALIDATION_STRINGENCY SILENT ${LEGACY_BAM} ${GATK4_BAM} 
 
-if [ "$SAVE_INTERMEDIATE_BAMS" == "false" ]; then
+if [ "$SAVE_INTERMEDIATE_FILES" == "false" ]; then
     echo "deleting temp results"
     rm tmp.*.bam tmp.*.bai tmp.metrics tmp.picard.metrics .tmp*
 fi
