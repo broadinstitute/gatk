@@ -1,5 +1,5 @@
 #NOTE: the Java wrapper for this script first sources CNV_plotting_library.R
-options(error = quote({dump.frames(dumpto = "plotting_dump", to.file = TRUE); q()}))    # Useful for debugging
+options(error = quote({dump.frames(dumpto = "plotting_dump", to.file = TRUE); q(status = 1)}))    # Useful for debugging
 
 library(optparse)
 option_list = list(
@@ -32,8 +32,12 @@ create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, s
     segments = read.table(segments_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
     snp_counts[, "CONTIG"] = convert_XY_to_23_24(snp_counts[, "CONTIG"])
     coverage = read.table(coverage_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
-    names(coverage)[names(coverage) == sample_name] = "VALUE"
-    coverage$VALUE=2^coverage$VALUE #ACNV is in log space
+
+    #convert the sample name field to "VALUE" for uniformity
+    headers = names(coverage)
+    headers[!headers %in% c("contig", "start", "stop", "name")] = "VALUE"
+    names(coverage) = headers
+    coverage$VALUE = 2^coverage$VALUE #ACNV is in log space
     segments[, "Chromosome"] = convert_XY_to_23_24(segments[, "Chromosome"])
     num_segs = length(which(segments[,"Chromosome"] <= num_chromosomes))
 
@@ -42,7 +46,7 @@ create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, s
     single_seg_chrs = Filter(is_single_seg, c(1:num_chromosomes))
 
     #if the last segment is on its own segment, we need to plot it additionally
-    if(tail(single_seg_chrs, 1) == segments[nrow(segments), "Chromosome"]){ num_segs=num_segs+1 }
+    if(length(single_seg_chrs)>0 && tail(single_seg_chrs, 1) == segments[nrow(segments), "Chromosome"]){ num_segs=num_segs+1 }
     for( i in 1:(num_segs-1) ) {
         seg1=segments[i,]
         chr = seg1[, "Chromosome"]

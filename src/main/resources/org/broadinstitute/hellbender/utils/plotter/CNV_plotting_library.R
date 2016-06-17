@@ -59,11 +59,11 @@ SetUpPlotPerSeg = function(y.lab, y.min, y.max, x.lab, label.x, x.axt, segs){
   plot(1, type="n", xlab="", ylab="", xlim=c(start, end), ylim=c(y.min, y.max), bty='n', xaxt='n')
   scaled_start = start/scaling
   scaled_end = end/scaling
-  labels=signif(seq(scaled_start, scaled_end, by=((scaled_end-scaled_start)/10)), 2)
-  sigs = 0
+  labels=round(seq(scaled_start, scaled_end, by=((scaled_end-scaled_start)/10)), 2)
+  digits = 0
   while(length(labels) > length(unique(labels))) {
-    sigs = sigs+1
-    labels=signif(seq(scaled_start, scaled_end, by=(scaled_end-scaled_start)/10), 2+sigs)
+    digits = digits+1
+    labels=round(seq(scaled_start, scaled_end, by=(scaled_end-scaled_start)/10), 2+digits)
   }
   if(x.axt) { axis(1, labels=labels, at=seq(start, end, by=(end-start)/10), line=-0.2, padj=1) }
   if(label.x) { mtext(side=1, line=1.5, x.lab, cex=0.75, outer=FALSE) }
