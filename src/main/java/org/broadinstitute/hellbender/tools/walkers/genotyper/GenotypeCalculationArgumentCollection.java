@@ -98,11 +98,31 @@ public final class GenotypeCalculationArgumentCollection {
      * scales exponentially based on the number of alternate alleles.  Unless there is a good reason to change the default value, we highly recommend
      * that you not play around with this parameter.
      *
-     * As of GATK 2.2 the genotyper can handle a very large number of events, so the default maximum has been increased to 6.
+     * See also {@link #MAX_GENOTYPE_COUNT}.
      */
     @Advanced
     @Argument(fullName = "max_alternate_alleles", shortName = "maxAltAlleles", doc = "Maximum number of alternate alleles to genotype", optional = true)
     public int MAX_ALTERNATE_ALLELES = 6;
+
+    /**
+     * If there are more than this number of genotypes at a locus presented to the genotyper, then only this many genotypes will be used.
+     * The possible genotypes are simply different ways of partitioning alleles given a specific ploidy asumption.
+     * Therefore, we remove genotypes from consideration by removing alternate alleles that are the least well supported.
+     * The estimate of allele support is based on the ranking of the candidate haplotypes coming out of the graph building step.
+     * Note that the reference allele is always kept.
+     *
+     * Note that genotyping sites with large genotype counts is both CPU and memory intensive.
+     * Unless there is a good reason to change the default value, we highly recommend that you not play around with this parameter.
+     *
+     * The maximum number of alternative alleles used in the genotyping step will be the lesser of the two:
+     * 1. the largest number of alt alleles, given ploidy, that yields a genotype count no higher than {@link #MAX_GENOTYPE_COUNT}
+     * 2. the value of {@link #MAX_ALTERNATE_ALLELES}
+     *
+     * See also {@link #MAX_ALTERNATE_ALLELES}.
+     */
+    @Advanced
+    @Argument(fullName = "max_genotype_count", shortName = "maxGT", doc = "Maximum number of genotypes to consider at any site", optional = true)
+    public int MAX_GENOTYPE_COUNT = 1024;
 
     /**
      * By default, the prior specified with the argument --heterozygosity/-hets is used for variant discovery at a particular locus, using an infinite sites model,
