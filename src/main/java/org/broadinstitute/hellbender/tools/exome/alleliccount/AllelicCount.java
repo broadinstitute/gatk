@@ -13,14 +13,16 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class AllelicCount implements Locatable {
+public class AllelicCount implements Locatable {
 
     /* these are mandatory */
     private final SimpleInterval interval;
-    private final int refReadCount, altReadCount;
+    private final int refReadCount;
+    private final int altReadCount;
 
     /* these are extra metadata and can be null */
-    private final Nucleotide refNucleotide, altNucleotide;
+    private final Nucleotide refNucleotide;
+    private final Nucleotide altNucleotide;
     private final Integer readDepth;
     private final Double hetLogOdds;
 
@@ -58,6 +60,17 @@ public final class AllelicCount implements Locatable {
                         final Nucleotide refNucleotide, final Nucleotide altNucleotide,
                         final Integer readDepth) {
         this(interval, refReadCount, altReadCount, refNucleotide, altNucleotide, readDepth, null);
+    }
+
+    public AllelicCount(final AllelicCount count) {
+        Utils.nonNull(count, "AllelicCount cannot be null.");
+        interval = count.interval;
+        refReadCount = count.refReadCount;
+        altReadCount = count.altReadCount;
+        refNucleotide = count.refNucleotide;
+        altNucleotide = count.altNucleotide;
+        readDepth = count.readDepth;
+        hetLogOdds = count.hetLogOdds;
     }
 
     @Override

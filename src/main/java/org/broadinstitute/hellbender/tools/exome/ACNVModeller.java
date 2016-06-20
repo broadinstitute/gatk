@@ -204,8 +204,8 @@ public final class ACNVModeller {
         }
     }
 
-    private <T extends ParameterEnum> void writeModelParameterFile(final Map<T, PosteriorSummary> parameterPosteriorSummaries,
-                                                                   final File outFile) {
+    private <T extends Enum<T> & ParameterEnum> void writeModelParameterFile(final Map<T, PosteriorSummary> parameterPosteriorSummaries,
+                                                                             final File outFile) {
         try (final ParameterWriter<T> writer = new ParameterWriter<>(outFile, ACNV_DOUBLE_FORMAT)) {
             writer.writeAllRecords(parameterPosteriorSummaries.entrySet());
         } catch (final IOException e) {

@@ -42,8 +42,8 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-    summary = "Normalizes coverage counts by subtracting principal coverage components",
-    oneLineSummary = "Normalizes coverage by subtracting principal components",
+    summary = "Normalize coverage counts by subtracting principal coverage components",
+    oneLineSummary = "Normalize coverage by subtracting principal components",
     programGroup = CopyNumberProgramGroup.class
 )
 public final class SubtractCoverageComponents extends CommandLineProgram {

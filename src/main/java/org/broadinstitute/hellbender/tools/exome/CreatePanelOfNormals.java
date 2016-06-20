@@ -38,8 +38,8 @@ import java.util.OptionalInt;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Creates a Panel of Normals (PoN) given the proportional read counts for the samples that are part of the panel.  Supports Apache Spark for some operations.",
-        oneLineSummary = "Creates a Panel of Normals.",
+        summary = "Create a Panel of Normals (PoN) given the proportional read counts for the samples that are part of the panel.  Supports Apache Spark for some operations.",
+        oneLineSummary = "Create a Panel of Normals",
         programGroup = CopyNumberProgramGroup.class
 )
 public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {

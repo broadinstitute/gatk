@@ -12,7 +12,7 @@ import java.util.Map;
  *
  * @author Samuel Lee &lt;valentin@broadinstitute.org&gt;
  */
-public final class ParameterWriter<T extends ParameterEnum> extends TableWriter<Map.Entry<T, PosteriorSummary>> {
+public final class ParameterWriter<T extends Enum<T> & ParameterEnum> extends TableWriter<Map.Entry<T, PosteriorSummary>> {
     
     private final String doubleFormat;
 

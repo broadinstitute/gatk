@@ -113,8 +113,8 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        oneLineSummary = "Combines Read Counts",
-        summary = "Combines Read Counts",
+        oneLineSummary = "Combine read Counts",
+        summary = "Combine read Counts",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class CombineReadCounts extends CommandLineProgram {

@@ -44,8 +44,8 @@ import java.util.function.Predicate;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "filters targets based on coverage and annotations",
-        oneLineSummary = "filters targets on coverage and annotations",
+        summary = "Filter targets based on coverage and annotations",
+        oneLineSummary = "Filter targets on coverage and annotations",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class FilterTargets extends CommandLineProgram {

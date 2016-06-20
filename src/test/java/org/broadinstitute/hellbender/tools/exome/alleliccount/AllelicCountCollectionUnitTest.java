@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.alleliccount;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountTableColumn;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -27,12 +24,12 @@ public class AllelicCountCollectionUnitTest extends BaseTest {
     private static final File SNPS_WITH_MISSING_COLUMN_FILE = new File(TEST_SUB_DIR, "snps-with-missing-column.tsv");
 
     @Test(expectedExceptions = UserException.class)
-    public void testReadWithMissingColumns() throws Exception {
+    public void testReadWithMissingColumns() {
         new AllelicCountCollection(SNPS_WITH_MISSING_COLUMN_FILE);
     }
 
     @Test
-    public void testAddAndGetCounts() throws Exception {
+    public void testAddAndGetCounts() {
         final AllelicCountCollection counts = new AllelicCountCollection();
         final AllelicCount count = new AllelicCount(new SimpleInterval("1", 1, 1), 1, 1);
         counts.add(new AllelicCount(new SimpleInterval("1", 1, 1), 1, 1));
@@ -41,7 +38,7 @@ public class AllelicCountCollectionUnitTest extends BaseTest {
     }
 
     @Test
-    public void testReadAndWriteBasicCollection() throws Exception {
+    public void testReadAndWriteBasicCollection() {
         final File tempFile = createTempFile("allelic-count-collection-test", "tsv");
         final AllelicCountCollection snps = new AllelicCountCollection(BASIC_SNPS_FILE);
         snps.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.BASIC);
@@ -58,7 +55,7 @@ public class AllelicCountCollectionUnitTest extends BaseTest {
     }
 
     @Test
-    public void testReadAndWriteItermediateCollection() throws Exception {
+    public void testReadAndWriteIntermediateCollection() {
         final File tempFile = createTempFile("allelic-count-collection-test", "tsv");
         final AllelicCountCollection snps = new AllelicCountCollection(INTERMEDIATE_SNPS_FILE);
         snps.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.INTERMEDIATE);
@@ -79,7 +76,7 @@ public class AllelicCountCollectionUnitTest extends BaseTest {
     }
 
     @Test
-    public void testReadAndWriteFullCollection() throws Exception {
+    public void testReadAndWriteFullCollection() {
         final File tempFile = createTempFile("allelic-count-collection-test", "tsv");
         final AllelicCountCollection snps = new AllelicCountCollection(FULL_SNPS_FILE);
         snps.write(tempFile, AllelicCountTableColumn.AllelicCountTableVerbosity.FULL);

@@ -9,7 +9,7 @@ import java.io.File;
 
 @CommandLineProgramProperties(
         summary = "Create plots of allele fraction data used for finding copy number variants.  Please note that this tool is only supported for hg19 and b37 references.  All other references may fail.",
-        oneLineSummary = "Create plots of allele fraction data.",
+        oneLineSummary = "Create plots of allele fraction data",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class PlotACNVResults extends CommandLineProgram {

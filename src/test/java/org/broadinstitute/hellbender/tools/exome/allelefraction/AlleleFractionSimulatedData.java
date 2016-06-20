@@ -7,14 +7,18 @@ import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.Genome;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
+import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -24,8 +28,8 @@ import java.util.stream.IntStream;
  */
 public final class AlleleFractionSimulatedData {
     public static final ReadCountCollection TRIVIAL_TARGETS = new ReadCountCollection(
-            Arrays.asList(new Target("target", new SimpleInterval("chr99", 999999999, 999999999))),
-            Arrays.asList("SAMPLE"),
+            Collections.singletonList(new Target("target", new SimpleInterval("chr99", 999999999, 999999999))),
+            Collections.singletonList("SAMPLE"),
             new Array2DRowRealMatrix(new double[][] {{1}}));
 
     private static final int MIN_HETS_PER_SEGMENT = 3;
@@ -37,6 +41,7 @@ public final class AlleleFractionSimulatedData {
     }
 
     private final AlleleFractionState trueState;
+    private final PhaseIndicators truePhases = new PhaseIndicators(new ArrayList<>());
     private final SegmentedGenome segmentedGenome;
     private final int numSegments;
 
@@ -57,28 +62,40 @@ public final class AlleleFractionSimulatedData {
         final double gammaScale = biasVariance / biasMean;
         final GammaDistribution biasGenerator = new GammaDistribution(rng, gammaShape, gammaScale);
 
-        for (int segment = 0; segment < numSegments; segment++) {
+        //put each segment on its own chromosome and sort by lexicographical order
+        final List<String> chromosomes = IntStream.range(0, numSegments).mapToObj(Integer::toString).collect(Collectors.toList());
+        Collections.sort(chromosomes);
+
+        for (final String chromosome : chromosomes) {
             // calculate the range of het indices for this segment
             final int numHetsInSegment = Math.max(MIN_HETS_PER_SEGMENT, segmentLengthGenerator.sample());
 
             final double minorFraction = minorFractionGenerator.sample();
             minorFractions.add(minorFraction);
 
-            //we will put all the hets in this segment on chromosome <segment> at loci 1, 2, 3 etc
-            segments.add(new SimpleInterval(Integer.toString(segment), 1, numHetsInSegment + 1));
+            //we will put all the hets in this segment/chromosome at loci 1, 2, 3 etc
+            segments.add(new SimpleInterval(chromosome, 1, numHetsInSegment + 1));
             for (int het = 1; het < numHetsInSegment + 1; het++) {
                 final double bias = biasGenerator.sample();
 
                 //flip a coin to decide alt minor (alt fraction = minor fraction) or ref minor (alt fraction = 1 - minor fraction)
-                final double altFraction =  rng.nextDouble() < 0.5 ? minorFraction : 1 - minorFraction;
+                final boolean isAltMinor = rng.nextDouble() < 0.5;
+                final double altFraction =  isAltMinor ? minorFraction : 1 - minorFraction;
 
                 //the probability of an alt read is the alt fraction modified by the bias or, in the case of an outlier, random
-                final double pAlt = rng.nextDouble() < outlierProbability ? rng.nextDouble() : altFraction / (altFraction + (1 - altFraction) * bias);
+                final double pAlt;
+                if (rng.nextDouble() < outlierProbability) {
+                    truePhases.add(AlleleFractionIndicator.OUTLIER);
+                    pAlt = rng.nextDouble();
+                } else {
+                    truePhases.add(isAltMinor ? AlleleFractionIndicator.ALT_MINOR : AlleleFractionIndicator.REF_MINOR);
+                    pAlt = altFraction / (altFraction + (1 - altFraction) * bias);
+                }
 
                 final int numReads = readDepthGenerator.sample();
                 final int numAltReads = new BinomialDistribution(rng, numReads, pAlt).sample();
                 final int numRefReads = numReads - numAltReads;
-                alleleCounts.add(new AllelicCount(new SimpleInterval(Integer.toString(segment), het, het), numRefReads, numAltReads));
+                alleleCounts.add(new AllelicCount(new SimpleInterval(chromosome, het, het), numRefReads, numAltReads));
             }
         }
 
@@ -87,7 +104,16 @@ public final class AlleleFractionSimulatedData {
         trueState = new AlleleFractionState(biasMean, biasVariance, outlierProbability, minorFractions);
     };
 
+
     public AlleleFractionState getTrueState() { return trueState; }
+
+    /**
+     * Returns the ArrayList of phase indicators held internally, which should not be modified by the caller.
+     */
+    public PhaseIndicators getTruePhases() {
+        return truePhases;
+    }
+
     public SegmentedGenome getSegmentedGenome() { return segmentedGenome; }
 
     public AlleleFractionStateError error(final AlleleFractionState state) {
@@ -110,6 +136,13 @@ public final class AlleleFractionSimulatedData {
             this.biasMeanError = biasMeanError;
             this.biasVarianceError = biasVarianceError;
             this.outlierProbabilityError = outlierProbabilityError;
+        }
+    }
+
+    public static final class PhaseIndicators extends ArrayList<AlleleFractionIndicator> {
+        private static final long serialVersionUID = 60652L;
+        public PhaseIndicators(final List<AlleleFractionIndicator> outlierIndicators) {
+            super(new ArrayList<>(outlierIndicators));
         }
     }
 }

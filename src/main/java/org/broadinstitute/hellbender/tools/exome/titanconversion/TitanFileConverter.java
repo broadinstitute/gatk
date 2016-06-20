@@ -1,10 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome.titanconversion;
 
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -16,6 +18,8 @@ import java.io.IOException;
  * http://genome.cshlp.org/content/early/2014/07/24/gr.180281.114.abstract
  */
 public class TitanFileConverter {
+    private static final Logger logger = LogManager.getLogger(TitanFileConverter.class);
+
     private TitanFileConverter() {}
 
     /**
@@ -25,9 +29,7 @@ public class TitanFileConverter {
      * @param outputFile Not {@code null}
      */
     public static void convertHetPulldownToTitanHetFile(final File hetPulldown, final File outputFile) {
-
         Utils.regularReadableUserFile(hetPulldown);
-
         try {
             final AllelicCountCollection acc = new AllelicCountCollection(hetPulldown);
             final TitanAllelicCountWriter titanAllelicCountWriter = new TitanAllelicCountWriter(outputFile);
@@ -35,6 +37,8 @@ public class TitanFileConverter {
             titanAllelicCountWriter.close();
         } catch (final IOException ioe) {
             throw new UserException.BadInput("Bad output file: " + outputFile);
+        } catch (final IllegalArgumentException iae) {
+            logger.warn("Cannot convert pulldown with basic verbosity (i.e., missing ref/alt nucleotide information) to TITAN-compatible file.  An empty file will be output.");
         }
     }
 

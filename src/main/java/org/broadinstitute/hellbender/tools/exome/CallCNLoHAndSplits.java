@@ -102,11 +102,15 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
 
 
     @Override
-    protected void runPipeline(JavaSparkContext ctx) {
+    protected void runPipeline(final JavaSparkContext ctx) {
+        final String originalLogLevel =
+                (ctx.getLocalProperty("logLevel") != null) ? ctx.getLocalProperty("logLevel") : "INFO";
+        ctx.setLogLevel("WARN");
+
         final CNLOHCaller cnlohCaller = new CNLOHCaller();
         cnlohCaller.setRhoThreshold(rhoThreshold);
 
-        final List<ACNVModeledSegment> segs = SegmentUtils.readACNVModeledSegmentFile(new File(segmentsFile));
+        final List<ACNVModeledSegment> segments = SegmentUtils.readACNVModeledSegmentFile(new File(segmentsFile));
         String sampleName = determineSampleName(new File(segmentsFile));
 
         // Create the outputdir
@@ -120,32 +124,35 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
 
         // Make the calls
         logger.info("Making the CNLoH and balanced-segment calls...");
-        final List<CNLOHCall> calls = cnlohCaller.makeCalls(segs, numIterations, ctx);
+        final List<CNLOHCall> calls = cnlohCaller.makeCalls(segments, numIterations, ctx);
+
+        // Write updated ACNV file with calls
+        logger.info("Writing updated ACNV file with calls ...");
+        final File finalACNVModeledSegmentsFile = new File(outputDir, getSegmentsBaseFilename() + "." + CNLOH_BALANCED_SEG_FILE_TAG + ".seg");
+        SegmentUtils.writeCnLoHACNVModeledSegmentFile(finalACNVModeledSegmentsFile, calls, genome);
 
         // write file for GATK CNV formatted seg file
         logger.info("Writing file with same output format as GATK CNV...");
-        final File finalModeledSegmentsFileAsGatkCNV = new File(outputDir, getSegmentsBasefilename() + "." + GATK_SEG_FILE_TAG + ".seg");
+        final File finalModeledSegmentsFileAsGatkCNV = new File(outputDir, getSegmentsBaseFilename() + "." + GATK_SEG_FILE_TAG + ".seg");
         SegmentUtils.writeModeledSegmentFile(finalModeledSegmentsFileAsGatkCNV,
-                ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentsToModeledSegments(segs, genome), sampleName);
+                ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentsToModeledSegments(segments, genome), sampleName);
 
         //write file for ACS-compatible output to help Broad CGA
         logger.info("Writing file with same output format as Broad CGA Allelic CapSeg ...");
-        final File finalACSModeledSegmentsFile = new File(outputDir, getSegmentsBasefilename() + "." + CGA_ACS_SEG_FILE_TAG + ".seg");
+        final File finalACSModeledSegmentsFile = new File(outputDir, getSegmentsBaseFilename() + "." + CGA_ACS_SEG_FILE_TAG + ".seg");
         ACSModeledSegmentUtils.writeACNVModeledSegmentFileAsAllelicCapSegFile(finalACSModeledSegmentsFile, calls, genome);
 
         //write files for TITAN-compatible output to help Broad CGA
         logger.info("Writing het file with input format for TITAN ...");
-        final File finalTitanHetFile = new File(outputDir, getSegmentsBasefilename() + "." + TITAN_HET_FILE_TAG + ".tsv");
+        final File finalTitanHetFile = new File(outputDir, getSegmentsBaseFilename() + "." + TITAN_HET_FILE_TAG + ".tsv");
         TitanFileConverter.convertHetPulldownToTitanHetFile(snpCountsFile, finalTitanHetFile);
 
         logger.info("Writing tangent-normalized target CR estimates with input format for TITAN ...");
-        final File finalTitanTNFile = new File(outputDir, getSegmentsBasefilename() + "." + TITAN_TN_FILE_TAG + ".tsv");
+        final File finalTitanTNFile = new File(outputDir, getSegmentsBaseFilename() + "." + TITAN_TN_FILE_TAG + ".tsv");
         TitanFileConverter.convertCRToTitanCovFile(targetCoveragesFile, finalTitanTNFile);
 
-        // Write updated ACNV file with calls
-        logger.info("Writing updated ACNV file with calls ...");
-        final File finalACNVModeledSegmentsFile = new File(outputDir, getSegmentsBasefilename() + "." + CNLOH_BALANCED_SEG_FILE_TAG + ".seg");
-        SegmentUtils.writeCnLoHACNVModeledSegmentFile(finalACNVModeledSegmentsFile, calls, genome);
+        ctx.setLogLevel(originalLogLevel);
+        logger.info("SUCCESS: CNLoH and splits called for sample " + sampleName + ".");
     }
 
     private String determineSampleName(final File segmentsFile) {
@@ -156,7 +163,7 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
         return sampleNames.get(0);
     }
 
-    private String getSegmentsBasefilename() {
+    private String getSegmentsBaseFilename() {
         return FilenameUtils.removeExtension(new File(segmentsFile).getAbsoluteFile().getName());
     }
 

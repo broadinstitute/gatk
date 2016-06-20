@@ -14,7 +14,7 @@ public class TitanAllelicCountWriter extends TableWriter<AllelicCount> {
     }
 
     @Override
-    protected void composeLine(AllelicCount record, DataLine dataLine) {
+    protected void composeLine(final AllelicCount record, final DataLine dataLine) {
 
         // Chr	Position	Ref	RefCount	Nref	NrefCount	NormQuality
         dataLine.append(record.getInterval().getContig())

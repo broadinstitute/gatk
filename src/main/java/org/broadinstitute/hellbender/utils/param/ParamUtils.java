@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.param;
 
-import com.google.common.primitives.Doubles;
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.math3.exception.NotFiniteNumberException;
@@ -9,8 +8,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class should eventually be merged into Utils, which is in hellbender, and then this class should be deleted.
@@ -275,7 +272,7 @@ public class ParamUtils {
     public static double inRange(final DoubleRange validRange, final double value, final String definition) {
         Utils.nonNull(validRange);
         Utils.validateArg(validRange.containsDouble(value), String.format("invalid value for %s: %g is not in [%g, %g]",
-                    definition, value, validRange.getMinimumDouble(), validRange.getMaximumDouble()));
+                definition, value, validRange.getMinimumDouble(), validRange.getMaximumDouble()));
         return value;
     }
 

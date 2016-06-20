@@ -62,8 +62,8 @@ import java.util.Map;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        oneLineSummary = "Annotate targets",
-        summary = "Annotate targets with various properties such as GC content and repeat fraction",
+        oneLineSummary = "Annotate targets with various properties, such as GC content and repeat fraction",
+        summary = "Annotate targets with various properties, such as GC content and repeat fraction",
         programGroup = CopyNumberProgramGroup.class
 )
 public class AnnotateTargets extends TargetWalker {

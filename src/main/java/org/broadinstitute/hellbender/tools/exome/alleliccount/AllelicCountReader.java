@@ -52,12 +52,19 @@ public class AllelicCountReader extends TableReader<AllelicCount> {
 
     @Override
     protected AllelicCount createRecord(final DataLine dataLine) {
+        return createAllelicCountWithVerbosity(dataLine, verbosity);
+    }
+
+    public AllelicCountTableColumn.AllelicCountTableVerbosity getVerbosity() {
+        return verbosity;
+    }
+
+    static AllelicCount createAllelicCountWithVerbosity(final DataLine dataLine, final AllelicCountTableColumn.AllelicCountTableVerbosity verbosity) {
         /* mandatory (basic) fields */
-        final int position = dataLine.getInt(AllelicCountTableColumn.POSITION.name());
-        final SimpleInterval interval = new SimpleInterval(
-                dataLine.get(AllelicCountTableColumn.CONTIG.name()), position, position);
-        final int refReadCount = dataLine.getInt(AllelicCountTableColumn.REF_COUNT.name());
-        final int altReadCount = dataLine.getInt(AllelicCountTableColumn.ALT_COUNT.name());
+        final int position = dataLine.getInt(AllelicCountTableColumn.POSITION);
+        final SimpleInterval interval = new SimpleInterval(dataLine.get(AllelicCountTableColumn.CONTIG), position, position);
+        final int refReadCount = dataLine.getInt(AllelicCountTableColumn.REF_COUNT);
+        final int altReadCount = dataLine.getInt(AllelicCountTableColumn.ALT_COUNT);
 
         if (verbosity == AllelicCountTableColumn.AllelicCountTableVerbosity.BASIC) {
             return new AllelicCount(interval, refReadCount, altReadCount);
@@ -67,12 +74,10 @@ public class AllelicCountReader extends TableReader<AllelicCount> {
             final int readDepth = dataLine.getInt(AllelicCountTableColumn.READ_DEPTH.name());
             if (verbosity == AllelicCountTableColumn.AllelicCountTableVerbosity.INTERMEDIATE) {
                 return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide, readDepth);
-            } else { /* verbosity == AllelicCountTableVerbosity.FULL */
-                final double hetLogOdds = dataLine.getDouble(AllelicCountTableColumn.HET_LOG_ODDS.name());
-                return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide, readDepth,
-                        hetLogOdds);
+            } else {/* verbosity == AllelicCountTableVerbosity.FULL */
+                final double hetLogOdds = dataLine.getDouble(AllelicCountTableColumn.HET_LOG_ODDS);
+                return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide, readDepth, hetLogOdds);
             }
         }
     }
-
 }

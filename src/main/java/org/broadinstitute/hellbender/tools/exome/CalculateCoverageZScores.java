@@ -23,8 +23,8 @@ import java.io.IOException;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Expresses coverage of a read counts file in terms of Z scores.",
-        oneLineSummary = "Expresses coverage of a read counts file in terms of Z scores.",
+        summary = "Express coverage of a read counts file in terms of Z scores.",
+        oneLineSummary = "Express coverage of a read counts file in terms of Z scores",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class CalculateCoverageZScores extends CommandLineProgram {

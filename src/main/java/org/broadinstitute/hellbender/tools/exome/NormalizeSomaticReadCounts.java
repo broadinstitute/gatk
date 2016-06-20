@@ -28,8 +28,8 @@ import java.util.List;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Normalizes PCOV read counts using a panel of normals",
-        oneLineSummary = "Normalizes proportional coverage (PCOV) read counts using a panel of normals",
+        summary = "Normalize PCOV read counts using a panel of normals",
+        oneLineSummary = "Normalize proportional coverage (PCOV) read counts using a panel of normals",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class NormalizeSomaticReadCounts extends CommandLineProgram {

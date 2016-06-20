@@ -7,7 +7,10 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.ReadCountRecord;
+import org.broadinstitute.hellbender.tools.exome.ReadCountsReader;
+import org.broadinstitute.hellbender.tools.exome.Target;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +42,7 @@ import java.util.List;
  */
 @CommandLineProgramProperties(
         summary = "Calculates the mean and variance of the coverage per target and sample",
-        oneLineSummary = "Calculates some statistics of the coverage per target and sample",
+        oneLineSummary = "Calculate statistics of the coverage per target and sample",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class CalculateCoverageStats extends CommandLineProgram {

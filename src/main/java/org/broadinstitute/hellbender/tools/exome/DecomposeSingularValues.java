@@ -22,7 +22,7 @@ import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "(EXPERIMENTAL) Performs a SVD",
-        oneLineSummary = "(EXPERIMENTAL) Runs a SVD on Spark and writes the matrix to a text file (tsv).  The output file has no header and is just the raw numbers.  This tool is unsupported.",
+        oneLineSummary = "(EXPERIMENTAL) Run a SVD on Spark and write the matrix to a text file (tsv).  The output file has no header and is just the raw numbers.  This tool is unsupported.",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class DecomposeSingularValues extends SparkToggleCommandLineProgram {
