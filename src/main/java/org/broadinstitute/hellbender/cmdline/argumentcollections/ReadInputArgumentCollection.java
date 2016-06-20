@@ -4,10 +4,14 @@ import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.TaggedInputFileArgument;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 
 /**
@@ -29,16 +33,36 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */
-    public abstract List<File> getReadFiles();
+    public List<File> getReadFiles() {
+        return getReadInputs().stream().map(TaggedInputFileArgument::getFile).collect(Collectors.toList());
+    }
 
     /**
      * Get the list of BAM/SAM/CRAM filenames specified at the command line
      */
-    public abstract List<String> getReadFilesNames();
+    public List<String> getReadFileNames() {
+        return getReadInputs().stream().map(TaggedInputFileArgument::getFilePath).collect(Collectors.toList());
+    }
+
+    /**
+     * Returns a map of symbolicName -> ReadInput.
+     * The map is sorted by symbolic name
+     */
+    public SortedMap<String, TaggedInputFileArgument> getInputsBySymbolicName(){
+        final List<TaggedInputFileArgument> readInputs = getReadInputs();
+        final SortedMap<String, TaggedInputFileArgument> result = new TreeMap<>();//sort by name
+        readInputs.forEach(ri -> result.put(ri.getName(), ri));
+        return result;
+    }
+
+    /**
+     * Returns all ReadInputs in this argument collection.
+     */
+    public abstract List<TaggedInputFileArgument> getReadInputs();
 
     /**
      * Get the read validation stringency specified at the command line, or the default value if none was specified
      * at the command line.
      */
-    public ValidationStringency getReadValidationStringency() { return readValidationStringency; };
+    public ValidationStringency getReadValidationStringency() { return readValidationStringency; }
 }
