@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
@@ -1306,7 +1307,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
                 Assert.assertEquals(gc.size(), genotypes.size());
                 for ( int i = 0; i < genotypes.size(); i++ ) {
 //                    logger.warn("Testing " + genotypes.get(i) + " => " + gc.get(i) + " " + tests.get(genotypes.get(i)));
-                    assertGenotypesAreEqual(gc.get(i), tests.get(genotypes.get(i)));
+                    VariantContextTestUtils.assertGenotypesAreEqual(gc.get(i), tests.get(genotypes.get(i)));
                 }
             }
         }
@@ -1414,7 +1415,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         for ( final Genotype expected : expectedGenotypes ) {
             final Genotype actualGT = actual.get(expected.getSampleName());
             Assert.assertNotNull(actualGT);
-            assertGenotypesAreEqual(actualGT, expected);
+            VariantContextTestUtils.assertGenotypesAreEqual(actualGT, expected);
         }
     }
 

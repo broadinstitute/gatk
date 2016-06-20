@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import org.testng.Assert;
@@ -55,7 +56,7 @@ public final class VariantsSparkSourceUnitTest extends BaseTest {
         JavaRDD<VariantContext> rddParallelVariantContexts =
                 variantsSparkSource.getParallelVariantContexts(vcf);
 
-        assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
+        VariantContextTestUtils.assertEqualVariants(getSerialVariantContexts(vcf), rddParallelVariantContexts.collect());
     }
 
     @DataProvider(name = "loadMultipleVCFs")

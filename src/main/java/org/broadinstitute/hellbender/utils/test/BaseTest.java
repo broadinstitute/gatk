@@ -5,9 +5,6 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Log;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AuthHolder;
@@ -16,7 +13,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -28,7 +24,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 
@@ -36,7 +39,6 @@ import java.util.function.Consumer;
  * This is the base test class for all of our test cases.  All test cases should extend from this
  * class; it sets up the logger, and resolves the location of directories that we rely on.
  */
-@SuppressWarnings("unchecked")
 public abstract class BaseTest {
 
     static {
@@ -384,88 +386,6 @@ public abstract class BaseTest {
         }
     }
 
-    private static void assertAttributeEquals(final String key, final Object actual, final Object expected) {
-        if ( expected instanceof Double ) {
-            // must be very tolerant because doubles are being rounded to 2 sig figs
-            assertEqualsDoubleSmart(actual, (Double) expected, 1e-2);
-        } else
-            Assert.assertEquals(actual, expected, "Attribute " + key);
-    }
-
-    public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected) {
-        Assert.assertEquals(actual.getSampleName(), expected.getSampleName(), "Genotype names");
-        Assert.assertEquals(actual.getAlleles(), expected.getAlleles(), "Genotype alleles");
-        Assert.assertEquals(actual.getGenotypeString(), expected.getGenotypeString(), "Genotype string");
-        Assert.assertEquals(actual.getType(), expected.getType(), "Genotype type");
-
-        // filters are the same
-        Assert.assertEquals(actual.getFilters(), expected.getFilters(), "Genotype fields");
-        Assert.assertEquals(actual.isFiltered(), expected.isFiltered(), "Genotype isFiltered");
-
-        // inline attributes
-        Assert.assertEquals(actual.getDP(), expected.getDP(), "Genotype dp");
-        Assert.assertTrue(Arrays.equals(actual.getAD(), expected.getAD()));
-        Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype gq");
-        Assert.assertEquals(actual.hasPL(), expected.hasPL(), "Genotype hasPL");
-        Assert.assertEquals(actual.hasAD(), expected.hasAD(), "Genotype hasAD");
-        Assert.assertEquals(actual.hasGQ(), expected.hasGQ(), "Genotype hasGQ");
-        Assert.assertEquals(actual.hasDP(), expected.hasDP(), "Genotype hasDP");
-
-        Assert.assertEquals(actual.hasLikelihoods(), expected.hasLikelihoods(), "Genotype haslikelihoods");
-        Assert.assertEquals(actual.getLikelihoodsString(), expected.getLikelihoodsString(), "Genotype getlikelihoodsString");
-        Assert.assertEquals(actual.getLikelihoods(), expected.getLikelihoods(), "Genotype getLikelihoods");
-        Assert.assertTrue(Arrays.equals(actual.getPL(), expected.getPL()));
-
-        Assert.assertEquals(actual.getGQ(), expected.getGQ(), "Genotype phredScaledQual");
-        assertAttributesEquals(actual.getExtendedAttributes(), expected.getExtendedAttributes());
-        Assert.assertEquals(actual.isPhased(), expected.isPhased(), "Genotype isPhased");
-        Assert.assertEquals(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy");
-    }
-
-    private static void assertAttributesEquals(final Map<String, Object> actual, Map<String, Object> expected) {
-        final Set<String> expectedKeys = new LinkedHashSet<>(expected.keySet());
-
-        for ( final Map.Entry<String, Object> act : actual.entrySet() ) {
-            final Object actualValue = act.getValue();
-            if ( expected.containsKey(act.getKey()) && expected.get(act.getKey()) != null ) {
-                final Object expectedValue = expected.get(act.getKey());
-                if ( expectedValue instanceof List ) {
-                    final List<Object> expectedList = (List<Object>)expectedValue;
-                    Assert.assertTrue(actualValue instanceof List, act.getKey() + " should be a list but isn't");
-                    final List<Object> actualList = (List<Object>)actualValue;
-                    Assert.assertEquals(actualList.size(), expectedList.size(), act.getKey() + " size");
-                    for ( int i = 0; i < expectedList.size(); i++ )
-                        assertAttributeEquals(act.getKey(), actualList.get(i), expectedList.get(i));
-                } else
-                    assertAttributeEquals(act.getKey(), actualValue, expectedValue);
-            } else {
-                // it's ok to have a binding in x -> null that's absent in y
-                Assert.assertNull(actualValue, act.getKey() + " present in one but not in the other");
-            }
-            expectedKeys.remove(act.getKey());
-        }
-
-        // now expectedKeys contains only the keys found in expected but not in actual,
-        // and they must all be null
-        for ( final String missingExpected : expectedKeys ) {
-            final Object value = expected.get(missingExpected);
-            Assert.assertTrue(isMissing(value), "Attribute " + missingExpected + " missing in one but not in other" );
-        }
-    }
-
-    private static boolean isMissing(final Object value) {
-        if ( value == null ) return true;
-        else if ( value.equals(VCFConstants.MISSING_VALUE_v4) ) return true;
-        else if ( value instanceof List ) {
-            // handles the case where all elements are null or the list is empty
-            for ( final Object elt : (List)value)
-                if ( elt != null )
-                    return false;
-            return true;
-        } else
-            return false;
-    }
-
 
     /**
      * captures {@link System#out} while runnable is executing
@@ -499,24 +419,6 @@ public abstract class BaseTest {
 
     public static void assertContains(String actual, String expectedSubstring){
         Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual+ ".");
-    }
-
-    /**
-     * Validates that the given lists have variant
-     * context that correspond to the same variants in the same order.
-     * Compares VariantContext by comparing toStringDecodeGenotypes
-     */
-    public static void assertEqualVariants(final List<VariantContext> v1, final List<VariantContext> v2) {
-        Utils.nonNull(v1, "v1");
-        Utils.nonNull(v2, "v2");
-        if (v1.size() != v2.size()){
-            throw new AssertionError("different sizes " + v1.size()+ " vs " + v2.size());
-        }
-        for (int i = 0; i < v1.size(); i++) {
-            if (! v1.get(i).toStringDecodeGenotypes().equals(v2.get(i).toStringDecodeGenotypes())){
-                throw new AssertionError("different element (compared by toStringDecodeGenotypes) " + i + "\n" + v1.get(i) + "\n" + v2.get(i) );
-            }
-        }
     }
 
 }
