@@ -8,6 +8,7 @@
 \usepackage{color}
 
 %Put an averaged random variable between brackets
+\DeclareMathOperator*{\argmax}{\arg\!\max}
 \newcommand{\ave}[1]{\left\langle #1 \right\rangle}
 
 \newcommand{\vzero}{{\bf 0}}
@@ -867,6 +868,98 @@ We can easily integrate sample-specific GC bias into this model.  Let $f_s({\rm 
 c_{st} d_s \exp \left( \vW_t E[\vz_s] + m_t \right)
 \end{equation}
 and thus the ratio $n_{st} / \left[ c_{st} d_s \exp \left( \vW_t E[\vz_s] + m_t \right) \right]$ (with error bars of size $1/\sqrt{n}$ if we want to do a weighted regression) is an estimate of $f_s({\rm GC}_t)$ that we can feed into our favorite regression model.  This is more sophisticated than the standard approach of simply regressing $n$ versus ${\rm GC}$ in that it seeks to explain with GC only the bias that cannot be explained by linear latent features.
+
+
+\subsection{HMM-based segmentation of somatic CNVs} \label{HMM-segmentation}
+In CNV segmentation, the hidden states are defined at genomic loci -- targets or SNPs.  The transition matrix of an HMM for segmentation will be a function of the distances between consecutive loci, similar to what already exists in our germline code.  The emission likelihoods of the HMM will be given by probabilistic models for allele counts at het sites (which we already have) and total coverage of targets (another proposed method).  Broadly speaking, all that remains is to define the hidden states and to tweak the transition model for the somatic case.  For concreteness we will begin the discussion in terms of het allele fraction segmentation.
+
+We already have a probabilistic model $P(a_i, r_i | f_i)$, where $a_i$ and $r_i$ are observed alt and ref allele counts at het site $i$ and $f_i$ is the underlying minor allele fraction of the segment to which this het belongs.  This is the emission likelihood of our HMM.  The hidden states are therefore are discrete set of minor allele fractions $f$.  The discreteness of these states follows from the discreteness of the tumor's phylogeny.  In order to learn a finite set of minor allele fractions without knowing its size a priori we choose some sufficiently large number (i.e. an overestimate of the number of different values of $f$) $K$ combined with a sparsity-promoting Dirichlet prior on the multinomial weights for the different values of $f$.  A simple transition model assumes a length scale $D$, so that over $d$ bases the CNV state is unchanged with probability $e^{-d/D}$, and with probability $1 - e^{-d/D}$ a new CNV state is chosen from a multinomial distribution ${\bf \pi}$.  Thus every site $n$ has an associated binary indicator $s_n$ with prior probability $P(s_n = 0) = e^{-d_n/D}$, where $d_n$ is the distance from the previous het to the $n$th het.  This corresponds to the following transition probabilities for the $n$th site:
+%
+\begin{equation}
+P(f_j \rightarrow f_k) = \left[ e^{-d_n/D} \delta_{jk}\right]^{1 - s_n} \left[ (1-e^{-d_n/D}) \pi_k \right]^{s_n}
+\end{equation}
+%
+We encourage sparsity by placing a symmetric Dirichlet prior with concentration parameter $\alpha$, $\pi | \alpha \sim {\rm Dir}(\alpha/K, \ldots \alpha /K)$, on $\pi$.  Letting $z_{nk}$ be a binary indicator for hidden state $f_k$ at het site $n$, the model likelihood is
+\begin{equation}
+P(\alpha)  P(\pi | \alpha) \left(  \prod_{nk} P(a_n, r_n | f_k)^{z_{nk}} \right) \left( \prod_{njk} \left( \left[ e^{-d_n/D} \delta_{jk}\right]^{1 - s_n} \left[ (1-e^{-d_n/D}) \pi_k \right]^{s_n} \right)^{z_{(n-1)j} z_{nk}} \right)
+\label{HMM_likelihood}
+\end{equation}
+
+Supposing that we can obtain the posterior joint probability of the hidden states $s$ and $z$, we can take the logarithm of Equation \ref{HMM_likelihood} and read off the M step equations.  The M step for $D$ is
+\begin{equation}
+D = \argmax_D    \sum_{n} \left( E \left[s_n  \right] \ln (1 - e^{-d_n/D}) - \frac{d_n}{D} E \left[(1-s_n)  \right] \right)
+\label{M_D}
+\end{equation}
+The M step for $f_k$ is
+\begin{equation}
+f_k = \argmax_{f_k} \sum_{nk} E[z_{nk}] \ln P(a_n, r_n | f_k)
+\label{M_f}
+\end{equation}
+
+Due to the singularity of the Dirichlet prior we must use variational Bayes, rather than maximum likelihood, on $\pi$.  By conjugacy of the likelihood Equation \ref{HMM_likelihood} to the Dirichlet prior, we see that each $\pi_k$ is associated with
+\begin{equation}
+N_k \equiv \sum_{nj} E[s_n z_{(n-1)j} z_{nk}]
+\label{pseudocounts}
+\end{equation}
+pseudocounts and thus the M step posterior on ${\bf \pi}$ is
+%
+\begin{equation}
+q(\pi) = {\rm Dir}(\pi | \alpha/K + N_1, \ldots \alpha/K + N_K)
+\end{equation}
+%
+By inspection (i.e. by seeing how $\pi_k$ enters into the logarithm of Equation \ref{HMM_likelihood}) we also see that the variational Bayes prescription for $\pi_k$ to be used in the E step for $z$ and the M step for $\alpha$ is the replacement
+\begin{equation}
+\pi_k \rightarrow \bar{\pi}_k \equiv  \exp E[\ln \pi_k] = \exp \left( \psi(\alpha/K + N_k) - \psi(\alpha + \sum_k N_k) \right)
+\label{pi_bar}
+\end{equation}
+where $\psi$ is the digamma function and we have used a standard result for log-moments of a Dirichlet distribution.
+
+It is also seen by inspection that the effective value of $\alpha$ to be used in the M step for $\pi$ is the mean $\bar{\alpha}$ of the posterior $q(\alpha)$ (that is, the part of the likelihood containing $\alpha$ with the replacement $\pi_k \rightarrow \bar{\pi}_k$), which amounts to a simple 1-D quadrature.  Substituting in the dependence of the Dirichlet prior on $\pi$ on $\alpha$, we find that
+\begin{equation}
+q(\alpha) \propto P(\alpha) \left( \frac{ \Gamma(\alpha) }{\Gamma(\alpha/K)^K} \prod_k \bar{\pi}_k^{\alpha/K} \right), \, \bar{\alpha} = \frac{ \int_0^\infty \alpha q(\alpha) \, d \alpha}{\int_0^\infty q(\alpha) \, d \alpha}
+\label{alpha_bar}
+\end{equation}
+
+The above model contains a hidden chain of states $z_n$ along with an additional hidden node $s_n$ for each $n$ that is a parent of $z_n$ in the DAG\footnote{Note that the $s_n$ have no links with each other and are not a chain.}.  This model cannot be fed into a black-box HMM due to the extra nodes.  It is trivial to marginalize out the $s_n$ to obtain a simple HMM with transition matrix
+\begin{equation}
+P(f_j \rightarrow f_k) = e^{-d_n/D} \delta_{jk}  + (1-e^{-d_n/D}) \bar{\pi}_k,
+\label{transition}
+\end{equation}
+however using such a model the forward-backward algorithm will only output the E step posteriors $E[z_{nk}]$ and $E[z_{(n-1)j} z_{nk}]$, while we need $E[s_n z_{(n-1)j} z_{nk}]$ and $E[s_n]$.  Fortunately, these are actually easy to obtain from Bayes' Rule.
+%
+\begin{align}
+E \left[s_n  z_{(n-1)j} z_{nk} \right] =& P(s_n = 1, z_{(n-1)j} = 1, z_{nk} = 1) \\
+=& P(z_{(n-1)j} = 1,  z_{nk} = 1) P(s_n = 1| z_{(n-1)j} = 1, z_{nk} = 1) \\
+=& E[z_{(n-1)j} z_{nk}] \frac{ P(z_{nk} = 1 | z_{(n-1)j} = 1, s_n = 1 ) P(s_n = 1) }{ P(z_{nk} = 1 | z_{(n-1)j} = 1)} \\
+=& E[z_{(n-1)j} z_{nk}] \frac{  (1 - e^{-d_n/D}) \pi_k }{ e^{-d_n/D} \delta_{jk} + (1 - e^{-d_n/D}) \pi_k},
+\label{augmented_posterior}
+\end{align}
+%
+after which we easily obtain $E[s_n] = \sum_{jk} E \left[s_n  z_{(n-1)j} z_{nk} \right]$ and $E[1-s_n] = 1 - E[s_n]$.  Thus we can perform the desired E step using only the forward-backward algorithm of the marginalized model.
+
+The M step amounts to $K + 1$ numerical optimizations (for $D$ and $\{ f_k \}$) of objectives containing $T$ terms each along with several very cheap operations.  The E step's time complexity is the cost $O(K^2 T)$ of the forward-backward algorithm.  We note that since the allele-fraction model requires segmentation information, during EM iteration we should also perform segmentations via the Viterbi algorithm and relearn the parameters of the allele-fraction model.  The Viterbi algorithm also has cost $O(K^2 T)$.  The steps described above are summarized in Algorithm \ref{HMM}.
+
+ \begin{algorithm}
+\begin{algorithmic}[1]
+\State Initialize $D$ with a reasonable guess of an average CNV size.
+\State Initialize $(f_1, f_2, \ldots f_K) = (1/(2K), 2/(2K), \ldots 1/2)$
+\State Initialize $\bar{\pi}_k = 1/K$ for all $k$.
+\Repeat
+	\State Run the forward-backward algorithm on the HMM given by transitions Eq. \ref{transition} to obtain $E[z_{nk}]$ and $E[z_{(n-1)j} z_{nk}]$.
+	\State Calculate $E \left[s_n  z_{(n-1)j} z_{nk} \right]$ from Eq. \ref{augmented_posterior}.
+	\State Calculate $E[s_n] = \sum_{jk} E \left[s_n  z_{(n-1)j} z_{nk} \right]$ and $E[1-s_n] = 1 - E[s_n]$.
+	\State Update $D$ via Eq. \ref{M_D}.
+	\State Update $f_k$ via Eq. \ref{M_f}.
+	\State Calculate $N_k$ via Eq. \ref{pseudocounts}.
+	\State Calculate $\bar{\pi_k}$ via Eq. \ref{pi_bar}.
+	\State Calculate $\bar{\alpha}$ from Eq. \ref{alpha_bar}.
+\Until{convergence}
+\end{algorithmic}
+\caption{HMM segmentation of somatic allele fraction}
+\label{HMM}
+\end{algorithm}
+
+The framework we described above works equally well for hidden copy ratio states, provided we have a generative model for copy ratio with an associated likelihood.  Furthermore, by using two-dimensional hidden states containing minor allele fraction and copy ratio we may segment both simultaneously.  The HMM machinery has no difficulty with heterogeneous emission likelihoods.
 
 %%%APPENDICES
 \appendix

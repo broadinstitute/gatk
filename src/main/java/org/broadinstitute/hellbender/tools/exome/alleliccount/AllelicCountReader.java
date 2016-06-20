@@ -75,7 +75,7 @@ public class AllelicCountReader extends TableReader<AllelicCount> {
             if (verbosity == AllelicCountTableColumn.AllelicCountTableVerbosity.INTERMEDIATE) {
                 return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide, readDepth);
             } else {/* verbosity == AllelicCountTableVerbosity.FULL */
-                final double hetLogOdds = dataLine.getDouble(AllelicCountTableColumn.HET_LOG_ODDS);
+                final double hetLogOdds = dataLine.getDouble(AllelicCountTableColumn.HET_LOG_ODDS.name());
                 return new AllelicCount(interval, refReadCount, altReadCount, refNucleotide, altNucleotide, readDepth, hetLogOdds);
             }
         }

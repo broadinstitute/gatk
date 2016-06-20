@@ -127,9 +127,11 @@ public class CalculatePulldownPhasePosteriors extends CommandLineProgram {
             if (segmentIndex < 0) {
                 throw new UserException.EmptyIntersection(String.format("The AllelicCount at %s is not located within one of the input segments.", count.getInterval()));
             }
-            final double refMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(state, segmentIndex, count, AlleleFractionIndicator.REF_MINOR, allelicPON);
-            final double altMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(state, segmentIndex, count, AlleleFractionIndicator.ALT_MINOR, allelicPON);
-            final double outlierLogProb = AlleleFractionLikelihoods.hetLogLikelihood(state, segmentIndex, count, AlleleFractionIndicator.OUTLIER, allelicPON);
+            final AlleleFractionGlobalParameters parameters = state.globalParameters();
+            final double minorFraction = state.segmentMinorFraction(segmentIndex);
+            final double refMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.REF_MINOR, allelicPON);
+            final double altMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.ALT_MINOR, allelicPON);
+            final double outlierLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.OUTLIER, allelicPON);
             final AllelicCountWithPhasePosteriors countWithPhasePosteriors = new AllelicCountWithPhasePosteriors(count, refMinorLogProb, altMinorLogProb, outlierLogProb);
             countsWithPhasePosteriors.add(countWithPhasePosteriors);
         }

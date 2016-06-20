@@ -28,7 +28,8 @@ final class AlleleFractionSamplers {
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             final AllelicPanelOfNormals allelicPON = data.getPON();
             if (allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON)) {
-                return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(state.shallowCopyWithProposedMeanBias(x), data));
+                return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(
+                        state.globalParameters().copyWithNewMeanBias(x),  state.minorFractions(), data));
             }
             return allelicPON.getMLEMeanBias(); // if PON is available, always return MLE mean bias as "sample"
         }
@@ -45,7 +46,8 @@ final class AlleleFractionSamplers {
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             final AllelicPanelOfNormals allelicPON = data.getPON();
             if (allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON)) {
-                return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(state.shallowCopyWithProposedBiasVariance(x), data));
+                return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(
+                        state.globalParameters().copyWithNewBiasVariance(x), state.minorFractions(), data));
             }
             return allelicPON.getMLEBiasVariance(); // if PON is available, always return MLE bias variance as "sample"
         }
@@ -60,7 +62,8 @@ final class AlleleFractionSamplers {
         }
 
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(state.shallowCopyWithProposedOutlierProbability(x), data));
+            return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(
+                    state.globalParameters().copyWithNewOutlierProbability(x), state.minorFractions(), data));
         }
     }
 
@@ -71,7 +74,7 @@ final class AlleleFractionSamplers {
         private final int segmentIndex;
 
         public PerSegmentMinorFractionSampler(final int segmentIndex, final AlleleFractionState initialState, final double initialStepSize) {
-            sampler = new AdaptiveMetropolisSampler(initialState.segmentMinorFraction(segmentIndex), initialStepSize, 0, 0.5);  //minor-allele fraction must be in [0, 0.5]
+            sampler = new AdaptiveMetropolisSampler(initialState.segmentMinorFraction(segmentIndex), initialStepSize, AlleleFractionState.MIN_MINOR_FRACTION, AlleleFractionState.MAX_MINOR_FRACTION);
             this.segmentIndex = segmentIndex;
         }
 
@@ -79,7 +82,8 @@ final class AlleleFractionSamplers {
             if (data.getNumHetsInSegment(segmentIndex) == 0) {
                 return Double.NaN;
             }
-            return sampler.sample(rng, AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(state, data, segmentIndex));
+
+            return sampler.sample(rng, f -> AlleleFractionLikelihoods.segmentLogLikelihood(state.globalParameters(), f, data.getCountsInSegment(segmentIndex), data.getPON()));
         }
     }
 

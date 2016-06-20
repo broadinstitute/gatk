@@ -1,16 +1,13 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import org.apache.commons.math3.optim.MaxEval;
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
-import org.apache.commons.math3.optim.univariate.BrentOptimizer;
-import org.apache.commons.math3.optim.univariate.SearchInterval;
-import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.OptimizationUtils;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * A helper class to maintain a cache of computed maximum-likelihood estimates of minor allele fraction
@@ -21,13 +18,6 @@ import java.util.Map;
  */
 public final class MinorAlleleFractionCache {
     private MinorAlleleFractionCache() {}
-
-    // constants for Brent optimization of minor allele fraction
-    private static final MaxEval BRENT_MAX_EVAL = new MaxEval(100);
-    private static final double MINOR_ALLELE_FRACTION_RELATIVE_TOLERANCE = 0.00001;
-    private static final double MINOR_ALLELE_FRACTION_ABSOLUTE_TOLERANCE = 0.00001;
-    private static final BrentOptimizer OPTIMIZER =
-            new BrentOptimizer(MINOR_ALLELE_FRACTION_RELATIVE_TOLERANCE, MINOR_ALLELE_FRACTION_ABSOLUTE_TOLERANCE);
 
     private static final Map<MinorAlleleFractionCacheKey, Double> cache = new HashMap<>();
 
@@ -46,10 +36,9 @@ public final class MinorAlleleFractionCache {
     private static double estimateMinorAlleleFraction(final int a, final int r, final double bias) {
         final double altFraction = (double) a / (a + r);
         final double initialEstimate = altFraction < 0.5 ? altFraction : 1. - altFraction;
-        final SearchInterval searchInterval = new SearchInterval(0.0, 0.5, initialEstimate);
 
         // work in log space to avoid underflow
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(f -> {
+        final Function<Double, Double> objective = f -> {
             final double logf = Math.log(f);
             final double logOneMinusf = Math.log(1. - f);
             final double logBias = Math.log(bias);
@@ -60,9 +49,9 @@ public final class MinorAlleleFractionCache {
             final double refMinorLogLikelihood =
                     r * (logf + logBias) + a * logOneMinusf - (a + r) * logRefMinorDenominatorTerm;
             return GATKProtectedMathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood);
-        });
+        };
 
-        return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
+        return OptimizationUtils.argmax(objective, AlleleFractionState.MIN_MINOR_FRACTION, AlleleFractionState.MAX_MINOR_FRACTION, initialEstimate);
     }
 
     /**

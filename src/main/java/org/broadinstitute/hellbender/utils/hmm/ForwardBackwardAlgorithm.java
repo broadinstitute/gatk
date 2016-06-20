@@ -49,7 +49,7 @@ public final class ForwardBackwardAlgorithm {
         List<T> positions();
 
         /**
-         * Returns the model passed to the foward-backward algorithm.
+         * Returns the model passed to the forward-backward algorithm.
          * @return never {@code null}.
          */
         HiddenMarkovModel<D, T, S> model();
