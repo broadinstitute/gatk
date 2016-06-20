@@ -55,7 +55,7 @@ import java.util.List;
  *  reference source returned by {@link #getReference}.
  */
 public abstract class GATKSparkTool extends SparkCommandLineProgram {
-    private static final long serialVersionUID = 1l;
+    private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
     public final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();

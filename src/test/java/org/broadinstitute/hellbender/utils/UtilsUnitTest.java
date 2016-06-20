@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
@@ -15,12 +17,64 @@ import java.io.File;
 import java.util.*;
 
 import static java.util.Arrays.asList;
+import static org.testng.Assert.assertEquals;
 
 /**
  * Testing framework for general purpose utilities class.
  *
  */
 public final class UtilsUnitTest extends BaseTest {
+
+    @Test
+    public void testConcat() {
+        check(ImmutableList.of(ImmutableList.of()), ImmutableList.of());
+        check(ImmutableList.of(ImmutableList.of("a")), ImmutableList.of("a"));
+        check(ImmutableList.of(ImmutableList.of("a", "b")), ImmutableList.of("a", "b"));
+        check(ImmutableList.of(ImmutableList.of("a"), ImmutableList.of("b")), ImmutableList.of("a", "b"));
+        check(ImmutableList.of(ImmutableList.of(), ImmutableList.of("a"), ImmutableList.of("b")), ImmutableList.of("a", "b"));
+        check(ImmutableList.of(ImmutableList.of("a"), ImmutableList.of(), ImmutableList.of("b")), ImmutableList.of("a", "b"));
+        check(ImmutableList.of(ImmutableList.of("a"), ImmutableList.of("b"), ImmutableList.of()), ImmutableList.of("a", "b"));
+        check(ImmutableList.of(ImmutableList.of("a", "b"), ImmutableList.of("c", "d")),
+                ImmutableList.of("a", "b", "c", "d"));
+    }
+
+    private <T> void check(List<? extends Iterable<T>> input, List<T> expected) {
+        assertEquals(Lists.newArrayList(Utils.concatIterators(input.iterator())), expected);
+    }
+
+    @Test
+    public void testTransformParallel() {
+        final Iterator<Integer> integers = Utils.transformParallel(ImmutableList.of(5, 4, 3, 2, 1).iterator(), i -> {
+            try { Thread.sleep(i * 100); } catch (InterruptedException e) { }
+            return i;
+        }, 2);
+        assertEquals(Lists.newArrayList(integers), ImmutableList.of(5, 4, 3, 2, 1));
+    }
+
+    @Test
+    public void testIteratorConcat() throws Exception {
+        final List<Integer> ints1 = Arrays.asList(0, 1, 2);
+        final List<Integer> ints2 = Arrays.asList(3, 4, 5);
+        final Iterator<Integer> it = Utils.concatIterators(Arrays.asList(ints1, ints2).iterator());
+        final List<Integer> lst = Lists.newArrayList(it);
+        Assert.assertEquals(lst, Arrays.asList(0,1,2, 3, 4, 5));
+    }
+
+    @Test
+    public void testTransform() throws Exception {
+        final Iterator<String> it= Arrays.asList("1", "2", "3").iterator();
+        final Iterator<Integer> objectIterator = Utils.transformParallel(it, Integer::parseInt, 1);
+        final List<Integer> lst = Lists.newArrayList(objectIterator);
+        Assert.assertEquals(lst, Arrays.asList(1,2,3));
+    }
+
+    @Test
+    public void testTransformInParallel() throws Exception {
+        final Iterator<String> it= Arrays.asList("1", "2", "3").iterator();
+        final Iterator<Integer> objectIterator = Utils.transformParallel(it, Integer::parseInt, 2);
+        final List<Integer> lst = Lists.newArrayList(objectIterator);
+        Assert.assertEquals(lst, Arrays.asList(1,2,3));
+    }
 
     @Test
     public void testXor()  {

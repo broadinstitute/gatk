@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Iterators;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.commons.io.FileUtils;
@@ -9,8 +11,10 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -18,6 +22,11 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Function;
 
 public final class Utils {
 
@@ -934,5 +943,78 @@ public final class Utils {
     public static List<Integer> listFromPrimitives(final int[] ar) {
         Utils.nonNull(ar);
         return Ints.asList(ar);
+    }
+
+    /**
+     * Concatenates a series of {@link Iterator}s (all of the same type) into a single {@link Iterator}.
+     * @param iterator an {@link Iterator} of {@link Iterator}s
+     * @param <T> the type of the iterator
+     * @return an {@link Iterator} over the underlying {@link Iterator}s
+     */
+    public static <T> Iterator<T> concatIterators(final Iterator<? extends Iterable<T>> iterator) {
+        Utils.nonNull(iterator, "iterator");
+
+        return new AbstractIterator<T>() {
+            Iterator<T> subIterator;
+            @Override
+            protected T computeNext() {
+                if (subIterator != null && subIterator.hasNext()) {
+                    return subIterator.next();
+                }
+                while (iterator.hasNext()) {
+                    subIterator = iterator.next().iterator();
+                    if (subIterator.hasNext()) {
+                        return subIterator.next();
+                    }
+                }
+                return endOfData();
+            }
+        };
+    }
+
+    /**
+     * Like Guava's {@link Iterators#transform(Iterator, com.google.common.base.Function)}, but runs a fixed number
+     * ({@code numThreads}) of transformations in parallel, while maintaining ordering of the output iterator.
+     * This is useful if the transformations are CPU intensive.
+     */
+    public static <F, T> Iterator<T> transformParallel(final Iterator<F> fromIterator, final Function<F, T> function, final int numThreads) {
+        Utils.nonNull(fromIterator, "fromIterator");
+        Utils.nonNull(function, "function");
+        Utils.validateArg(numThreads >= 1, "numThreads must be at least 1");
+
+        if (numThreads == 1) { // defer to Guava for single-threaded case
+            return Iterators.transform(fromIterator, new com.google.common.base.Function<F, T>() {
+                @Nullable
+                @Override
+                public T apply(@Nullable final F input) {
+                    return function.apply(input);
+                }
+            });
+        }
+        // use an executor service for the multi-threaded case
+        final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        final Queue<Future<T>> futures = new LinkedList<>();
+        return new AbstractIterator<T>() {
+            @Override
+            protected T computeNext() {
+                try {
+                    while (fromIterator.hasNext()) {
+                        if (futures.size() == numThreads) {
+                            return futures.remove().get();
+                        }
+                        final F next = fromIterator.next();
+                        final Future<T> future = executorService.submit(() -> function.apply(next));
+                        futures.add(future);
+                    }
+                    if (!futures.isEmpty()) {
+                        return futures.remove().get();
+                    }
+                    executorService.shutdown();
+                    return endOfData();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new GATKException("Problem running task", e);
+                }
+            }
+        };
     }
 }
