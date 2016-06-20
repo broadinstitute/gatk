@@ -1,0 +1,60 @@
+##fileFormat  = tsv
+##commandLine = org.broadinstitute.hellbender.tools.exome.ExomeReadCounts  --output /var/folders/b1/rr8s40sd3dx5rxsnjzm8m6f9c73134/T/GATK4-ERCTest-cohort-output182767689623747865.tmp --columnSummaryOutput /var/folders/b1/rr8s40sd3dx5rxsnjzm8m6f9c73134/T/GATK4-ERCTest-cohort-column-output3346563608620205532.tmp --rowSummaryOutput /var/folders/b1/rr8s40sd3dx5rxsnjzm8m6f9c73134/T/GATK4-ERCTest-cohort-row-output7739646532230015870.tmp --groupBy read group --transform RAW --intervals /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-intervals.list --input /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12878.bam --input /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12778.bam --input /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12872.bam --VERBOSITY ERROR  --cohortName <ALL> --disable_all_read_filters false --interval_set_rule UNION --interval_padding 0 --help false --version false --QUIET false
+##title       = Summary counts per read group
+##metaData    = {
+##    exonCount = 5,
+##    exomeSize = 476 (bp)
+##}
+READ_GROUP	SUM	AVG.BP
+ERR015474	9	0.0189
+ERR243103	1	0.0021
+ERR243132	1	0.0021
+ERR243153	3	0.0063
+ERR243174	3	0.0063
+ERR243195	2	0.0042
+ERR243216	2	0.0042
+ERR243237	1	0.0021
+ERR243258	2	0.0042
+ERR243279	2	0.0042
+ERR243307	0	0.0000
+ERR243328	2	0.0042
+ERR243349	0	0.0000
+ERR243370	1	0.0021
+ERR243391	1	0.0021
+ERR243412	2	0.0042
+ERR243433	2	0.0042
+ERR243454	0	0.0000
+ERR243475	1	0.0021
+ERR243496	0	0.0000
+ERR243517	0	0.0000
+ERR243538	0	0.0000
+ERR243559	0	0.0000
+ERR243580	2	0.0042
+ERR243601	1	0.0021
+ERR243622	0	0.0000
+ERR243643	2	0.0042
+ERR243664	0	0.0000
+ERR243685	1	0.0021
+ERR243706	1	0.0021
+ERR243727	5	0.0105
+ERR243748	0	0.0000
+ERR243769	0	0.0000
+ERR243790	0	0.0000
+ERR243811	1	0.0021
+ERR243832	2	0.0042
+ERR243853	0	0.0000
+ERR243874	2	0.0042
+ERR243895	0	0.0000
+ERR243916	1	0.0021
+ERR244834	0	0.0000
+ERR244873	0	0.0000
+ERR244894	0	0.0000
+ERR244915	1	0.0021
+ERR244936	1	0.0021
+ERR244957	1	0.0021
+ERR244978	2	0.0042
+ERR244994	0	0.0000
+ERR246119	2	0.0042
+SRR741366	59	0.1239
+SRR741367	55	0.1155
+SRR622461	63	0.1324

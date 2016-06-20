@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -11,16 +10,17 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.List;
 
 
 public class PadTargetsIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
-    private static final File TEST_FILE = new File(TEST_FILE_DIR, "targets.bed");
+    private static final File TEST_FILE = new File(TEST_FILE_DIR, "targets.tsv");
 
     @Test
     public void testZeroPadding() {
-        final File outputFile = createTempFile("test", ".bed");
+        final File outputFile = createTempFile("test", ".tsv");
 
         final String[] arguments = {
                 "-" + PadTargets.PADDING_SHORT_NAME, "0",
@@ -46,13 +46,13 @@ public class PadTargetsIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(testMd5, gtMd5, "Files should have been exactly the same, but weren't.");
 
-        final TargetCollection<? extends BEDFeature> tc = TargetUtils.readTargetFile(outputFile);
+        final List<Target> tc = TargetTableReader.readTargetFile(outputFile);
         Assert.assertNotNull(tc);
     }
 
     @Test
     public void testSimplePadding() {
-        final File outputFile = createTempFile("test", ".bed");
+        final File outputFile = createTempFile("test", ".tsv");
         final int testPadding = 250;
         final String[] arguments = {
                 "-" + PadTargets.PADDING_SHORT_NAME, String.valueOf(testPadding),
@@ -61,24 +61,22 @@ public class PadTargetsIntegrationTest extends CommandLineProgramTest {
         };
         runCommandLine(arguments);
 
-        final TargetCollection<? extends BEDFeature> tc = TargetUtils.readTargetFile(outputFile);
+        final List<Target> tc = TargetTableReader.readTargetFile(outputFile);
         Assert.assertNotNull(tc);
 
-        // Note that this converts to BED space (0-based, end is noninclusive) ... targets are stored 1-based, end inclusive
-        // GT values are in BED space
-        Assert.assertEquals(tc.target(0).getStart() - 1, 27003849 - testPadding);
-        Assert.assertEquals(tc.target(0).getEnd(), 27003987 + testPadding);
-        Assert.assertEquals(tc.target(0).getName(), "target_179698_CRYBB1");
+        Assert.assertEquals(tc.get(0).getStart(), 27003849 - testPadding);
+        Assert.assertEquals(tc.get(0).getEnd(), 27003987 + testPadding);
+        Assert.assertEquals(tc.get(0).getName(), "target_179698_CRYBB1");
 
         // index: 93 22	29754711	29754962	target_179839_AP1B1
-        Assert.assertEquals(tc.target(93).getStart() - 1, 29754711 - testPadding);
-        Assert.assertEquals(tc.target(93).getEnd(), 29754962 + testPadding);
-        Assert.assertEquals(tc.target(93).getName(), "target_179839_AP1B1");
+        Assert.assertEquals(tc.get(93).getStart(), 29754711 - testPadding);
+        Assert.assertEquals(tc.get(93).getEnd(), 29754962 + testPadding);
+        Assert.assertEquals(tc.get(93).getName(), "target_179839_AP1B1");
     }
 
     @Test
     public void testBigPadding() {
-        final File outputFile = createTempFile("test", ".bed");
+        final File outputFile = createTempFile("test", ".tsv");
         final int testPadding = 25000;
         final String[] arguments = {
                 "-" + PadTargets.PADDING_SHORT_NAME, String.valueOf(testPadding),
@@ -87,24 +85,22 @@ public class PadTargetsIntegrationTest extends CommandLineProgramTest {
         };
         runCommandLine(arguments);
 
-        final TargetCollection<? extends BEDFeature> tc = TargetUtils.readTargetFile(outputFile);
+        final List<Target> tc = TargetTableReader.readTargetFile(outputFile);
         Assert.assertNotNull(tc);
 
-        // Note that this converts to BED space (0-based, end is noninclusive) ... targets are stored 1-based, end inclusive
-        // GT values are in BED space
-        Assert.assertEquals(tc.target(0).getStart() - 1, 27003849 - testPadding);
-        Assert.assertEquals(tc.target(0).getEnd(), ((27003987 + 27008032)/2) + 1);
-        Assert.assertEquals(tc.target(0).getName(), "target_179698_CRYBB1");
+        Assert.assertEquals(tc.get(0).getStart(), 27003849 - testPadding);
+        Assert.assertEquals(tc.get(0).getEnd(), ((27003987 + 27008032)/2));
+        Assert.assertEquals(tc.get(0).getName(), "target_179698_CRYBB1");
 
         // index: 93 (line 95) 22	29754711	29754962	target_179839_AP1B1
-        Assert.assertEquals(tc.target(93).getStart() - 1, (29752607 + 29754711)/2);
-        Assert.assertEquals(tc.target(93).getEnd(), ((29754962 + 29755809)/2) + 1);
-        Assert.assertEquals(tc.target(93).getName(), "target_179839_AP1B1");
+        Assert.assertEquals(tc.get(93).getStart(), (29752607 + 29754711)/2 + 1);
+        Assert.assertEquals(tc.get(93).getEnd(), ((29754962 + 29755809)/2));
+        Assert.assertEquals(tc.get(93).getName(), "target_179839_AP1B1");
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testInvalidPadding() {
-        final File outputFile = createTempFile("test", ".bed");
+        final File outputFile = createTempFile("test", ".tsv");
         final int testPadding = -25000;
         final String[] arguments = {
                 "-" + PadTargets.PADDING_SHORT_NAME, String.valueOf(testPadding),

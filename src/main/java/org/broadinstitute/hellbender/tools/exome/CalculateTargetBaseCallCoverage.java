@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
@@ -564,5 +565,100 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
                 };
             }
         }
+    }
+
+    /**
+     * The piece of evidence used to quantify coverage.
+     */
+    protected enum CoverageDatum {
+
+        /**
+         * Coverage is measured by the number of overlapping reads.
+         */
+        READ,
+
+        /**
+         * Coverage is measured by the number of overlapping base calls.
+         */
+        BASE_CALL,
+    }
+
+    /**
+     * Coverage units supported.
+     */
+    protected enum CoverageUnit {
+
+        /**
+         * Each qualifying read contributes 1 to the coverage.
+         */
+        OVERLAPPING_READ(CoverageDatum.READ, CoverageTransformation.NONE, false),
+
+        /**
+         * Each qualifying fragment contributes 1 to the coverage.
+         * <p>
+         *     Qualifying fragments are the ones that have at least one qualifying read.
+         * </p>
+         */
+        OVERLAPPING_FRAGMENT(CoverageDatum.READ, CoverageTransformation.NONE, true),
+
+        /**
+         * Average number of reads stacked up across the target.
+         * <p>
+         *  Notice that deletions in the read does not contribute to the depth on the overlapping site.
+         * </p>
+         */
+        AVERAGE_READ_DEPTH(CoverageDatum.BASE_CALL, CoverageTransformation.AVERAGE_PER_BP, false),
+
+        /**
+         * Average number of fragments stacked up across the target.
+         * <p>
+         *  Notice that deletions in reads belonging to the target or gaps between read pairs are not counted.
+         * </p>
+         */
+        AVERAGE_FRAGMENT_DEPTH(CoverageDatum.BASE_CALL, CoverageTransformation.AVERAGE_PER_BP, true);
+
+        /**
+         * Reference to the corresponding datum type.
+         */
+        final CoverageDatum datum;
+
+        /**
+         * Reference to the transformation to be carried out on the absolute data count to
+         * obtain the actual coverage value to report.
+         */
+        final CoverageTransformation transformation;
+
+        /**
+         * Whether it counts evidences based on fragments rather than reads.
+         */
+        final boolean basedOnFragments;
+
+        /**
+         * Creates a new unit given the relevant datum and transformation.
+         * @param datum the datum type the unit is based on.
+         * @param transformation the transformation that need to be performed to the absolute count.
+         */
+        CoverageUnit(final CoverageDatum datum, final CoverageTransformation transformation, final boolean basedOnFragments) {
+            this.datum = Utils.nonNull(datum);
+            this.transformation = Utils.nonNull(transformation);
+            this.basedOnFragments = basedOnFragments;
+        }
+    }
+
+    /**
+     * Transformation performed to the evidence count.
+     */
+    protected enum CoverageTransformation {
+
+        /**
+         * The final coverage figure is the absolute number of overlapping data.
+         */
+        NONE,
+
+        /**
+         * The final coverage figure is the average number of overlapping data per
+         * base-pair in the target.
+         */
+        AVERAGE_PER_BP
     }
 }

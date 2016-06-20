@@ -1,14 +1,20 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.List;
 
+/**
+ * Pad targets.  This tool behaves intelligently when padding consecutive targets naively would yield overlapping targets.
+ *
+ * Input and output target files are both in the format described in {@link TargetWriter}.
+ */
 @CommandLineProgramProperties(
-        summary = "Creates a new target BED file with targets extended on both sides by the specified number of bases.  IMPORTANT:  This tool will only preserve contig, start, end, and name columns.",
+        summary = "Creates a new target file with targets extended on both sides by the specified number of bases.  IMPORTANT:  This tool will only preserve contig, start, stop, and name columns.",
         oneLineSummary = "Create a new target file with padded targets.",
         programGroup = CopyNumberProgramGroup.class
 )
@@ -21,7 +27,7 @@ public final class PadTargets extends CommandLineProgram {
     protected static final String PADDING_FULL_NAME = "padding";
 
     @Argument(
-            doc = "File containing the targets (BED) for padding.  Should have no existing overlap.",
+            doc = "File containing the targets for padding.  Should have no existing overlap.",
             shortName = TARGET_FILE_SHORT_NAME,
             fullName = TARGET_FILE_FULL_NAME,
             optional = false
@@ -29,7 +35,7 @@ public final class PadTargets extends CommandLineProgram {
     protected File targetFile = null;
 
     @Argument(
-            doc = "Output target BED file name.",
+            doc = "Output target file name.",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = false
@@ -46,17 +52,13 @@ public final class PadTargets extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-
         if (padding < 0) {
             throw new UserException.BadInput("Padding parameter must be >= 0");
         }
 
-        final TargetCollection<? extends BEDFeature> inputTargetCollection = TargetUtils.readTargetFile(targetFile);
-
-        final TargetCollection<Target> paddedTargetCollection = TargetPadder.padTargetsFromBEDFeatures(inputTargetCollection, padding);
-
-        TargetUtils.writeTargetsAsBed(outFile, paddedTargetCollection.targets());
-
+        final List<Target> inputTargets = TargetTableReader.readTargetFile(targetFile);
+        final List<Target> paddedTargets = TargetPadder.padTargets(inputTargets, padding);
+        TargetWriter.writeTargetsToFile(outFile, paddedTargets);
         return "SUCCESS";
     }
 }

@@ -197,9 +197,8 @@ public final class ReadCountCollectionUtils {
      *                                  resolve a target name based on the input file content and the target collection provided as long as
      *                                  {@code ignoreMissingTargets} is {@code false}.
      */
-    public static <E> ReadCountCollection parse(final File file, final TargetCollection<E> targets, final boolean ignoreMissingTargets) throws IOException {
+    public static ReadCountCollection parse(final File file, final TargetCollection<Target> targets, final boolean ignoreMissingTargets) throws IOException {
         Utils.nonNull(file, "the input file cannot be null");
-
         final ReadCountsReader reader = new ReadCountsReader(file, targets, ignoreMissingTargets);
         return readCounts(file, reader, reader.getCountColumnNames());
     }
@@ -294,10 +293,9 @@ public final class ReadCountCollectionUtils {
             }
 
             for (final Locatable locatable : byKeySorted.keySet()) {
-                final String name = TargetUtils.createDummyTargetName(locatable);
                 final SimpleInterval interval = new SimpleInterval(locatable);
                 final double coverage = byKeySorted.get(locatable).doubleValue();
-                writer.writeRecord(new ReadCountRecord.SingleSampleRecord(new Target(name, interval), coverage));
+                writer.writeRecord(new ReadCountRecord.SingleSampleRecord(new Target(interval), coverage));
             }
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);

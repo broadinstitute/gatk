@@ -1,18 +1,14 @@
 package org.broadinstitute.hellbender.tools.genome;
 
-import htsjdk.tribble.bed.BEDCodec;
-import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
-import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
-import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.TargetCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_FILE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/genome");
@@ -33,15 +29,15 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(outputFile.length() > 0);
         final ReadCountCollection coverage = ReadCountCollectionUtils.parse(outputFile);
-        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
-        Assert.assertTrue(bedFile.exists());
-        Assert.assertTrue(bedFile.length() > 0);
+        final File targetsFile = new File(outputFile.getAbsolutePath()+".targets.tsv");
+        Assert.assertTrue(targetsFile.exists());
+        Assert.assertTrue(targetsFile.length() > 0);
 
-        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
-        Assert.assertEquals(bedFeatureCollection.targets().size(), 8);
-        Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
-        Assert.assertEquals(bedFeatureCollection.target(5).getName(), "target_3_10001_16000");
-        Assert.assertEquals(coverage.targets().size(), bedFeatureCollection.targetCount());
+        final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
+        Assert.assertEquals(targets.size(), 8);
+        Assert.assertEquals(targets.get(1).getEnd(), 16000);
+        Assert.assertEquals(targets.get(5).getName(), "target_3_10001_16000");
+        Assert.assertEquals(coverage.targets().size(), targets.size());
     }
 
     @Test
@@ -58,15 +54,15 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(outputFile.exists());
         Assert.assertTrue(outputFile.length() > 0);
         final ReadCountCollection coverage = ReadCountCollectionUtils.parse(outputFile);
-        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
-        Assert.assertTrue(bedFile.exists());
-        Assert.assertTrue(bedFile.length() > 0);
+        final File targetsFile = new File(outputFile.getAbsolutePath()+".targets.tsv");
+        Assert.assertTrue(targetsFile.exists());
+        Assert.assertTrue(targetsFile.length() > 0);
 
-        TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
-        Assert.assertEquals(bedFeatureCollection.targets().size(), 4);
-        Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 16000);
-        Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_3_1_16000");
-        Assert.assertEquals(coverage.targets().size(), bedFeatureCollection.targetCount());
+        final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
+        Assert.assertEquals(targets.size(), 4);
+        Assert.assertEquals(targets.get(1).getEnd(), 16000);
+        Assert.assertEquals(targets.get(2).getName(), "target_3_1_16000");
+        Assert.assertEquals(coverage.targets().size(), targets.size());
     }
 
     @Test
@@ -98,17 +94,17 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         // The reads are all in three bins of contig 3 with values
         Assert.assertEquals(coverage.records().stream().filter(t -> t.getContig().equals("3")).filter(t -> Math.abs(t.getDouble(0)) >= 1).count(), 3);
 
-        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
-        Assert.assertTrue(bedFile.exists());
-        Assert.assertTrue(bedFile.length() > 0);
+        final File targetsFile = new File(outputFile.getAbsolutePath()+".targets.tsv");
+        Assert.assertTrue(targetsFile.exists());
+        Assert.assertTrue(targetsFile.length() > 0);
 
-        final TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
-        Assert.assertEquals(bedFeatureCollection.targets().size(), 16000/2000 * 4); // 4 is the number of contigs in the fasta file
-        Assert.assertEquals(bedFeatureCollection.target(1).getEnd(), 4000);
-        Assert.assertEquals(bedFeatureCollection.target(2).getName(), "target_1_4001_6000");
-        Assert.assertEquals(bedFeatureCollection.target(8).getName(), "target_2_1_2000");
-        Assert.assertEquals(bedFeatureCollection.target(17).getName(), "target_3_2001_4000");
-        Assert.assertEquals(proportionalCoverage.targets().size(), bedFeatureCollection.targetCount());
+        final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
+        Assert.assertEquals(targets.size(), 16000/2000 * 4); // 4 is the number of contigs in the fasta file
+        Assert.assertEquals(targets.get(1).getEnd(), 4000);
+        Assert.assertEquals(targets.get(2).getName(), "target_1_4001_6000");
+        Assert.assertEquals(targets.get(8).getName(), "target_2_1_2000");
+        Assert.assertEquals(targets.get(17).getName(), "target_3_2001_4000");
+        Assert.assertEquals(proportionalCoverage.targets().size(), targets.size());
     }
 
     private ReadCountCollection loadReadCountCollection(File outputFile) {
@@ -140,9 +136,9 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         final ReadCountCollection rawCoverage = loadReadCountCollection(new File(outputFile.getAbsolutePath() + SparkGenomeReadCounts.RAW_COV_OUTPUT_EXTENSION));
         Assert.assertTrue(rawCoverage.records().stream().noneMatch(t -> t.getContig().equals("2") || t.getContig().equals("3")));
 
-        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
-        final TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
-        Assert.assertTrue(bedFeatureCollection.targets().stream().allMatch(t -> t.getContig().equals("1")));
+        final File targetsFile = new File(outputFile.getAbsolutePath()+".targets.tsv");
+        final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
+        Assert.assertTrue(targets.stream().allMatch(t -> t.getContig().equals("1")));
     }
 
     @Test
@@ -169,9 +165,9 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(rawCoverage.records().stream().anyMatch(t -> t.getContig().equals("2")));
         Assert.assertTrue(rawCoverage.records().stream().noneMatch(t -> t.getContig().equals("3") || t.getContig().equals("4")));
 
-        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
-        final TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
-        Assert.assertTrue(bedFeatureCollection.targets().stream().allMatch(t -> (t.getContig().equals("1")) || (t.getContig().equals("2"))));
+        final File targetsFile = new File(outputFile.getAbsolutePath()+".targets.tsv");
+        final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
+        Assert.assertTrue(targets.stream().allMatch(t -> (t.getContig().equals("1")) || (t.getContig().equals("2"))));
     }
 
     @Test
@@ -187,14 +183,14 @@ public class SparkGenomeReadCountsIntegrationTest extends CommandLineProgramTest
         };
         runCommandLine(arguments);
 
-        final File bedFile = new File(outputFile.getAbsolutePath()+".bed");
-        final TargetCollection<BEDFeature> bedFeatureCollection = TargetCollectionUtils.fromBEDFeatureFile(bedFile, new BEDCodec());
-        Assert.assertTrue(bedFeatureCollection.targets().stream().allMatch(t -> t.getContig().equals("1")));
-        Assert.assertEquals(bedFeatureCollection.targets().size(), 5);
+        final File targetsFile = new File(outputFile.getAbsolutePath()+".targets.tsv");
+        final List<Target> targets = TargetTableReader.readTargetFile(targetsFile);
+        Assert.assertTrue(targets.stream().allMatch(t -> t.getContig().equals("1")));
+        Assert.assertEquals(targets.size(), 5);
 
-        for (int i = 0; i < bedFeatureCollection.targets().size(); i ++) {
-            Assert.assertEquals(bedFeatureCollection.targets().get(i).getStart(), i*100 + 1);
-            Assert.assertEquals(bedFeatureCollection.targets().get(i).getEnd(), (i+1)*100);
+        for (int i = 0; i < targets.size(); i ++) {
+            Assert.assertEquals(targets.get(i).getStart(), i*100 + 1);
+            Assert.assertEquals(targets.get(i).getEnd(), (i+1)*100);
         }
     }
 }

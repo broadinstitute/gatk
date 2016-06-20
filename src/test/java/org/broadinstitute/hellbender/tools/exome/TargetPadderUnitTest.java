@@ -13,19 +13,19 @@ import java.util.List;
 public class TargetPadderUnitTest extends BaseTest {
 
     @Test(dataProvider = "simple")
-    public void testSimplePaddingWithoutOverlap(TargetCollection<Target> targets){
-        final TargetCollection<Target> tc = TargetPadder.padTargets(targets, 100);
-        Assert.assertTrue(tc.target(0).equals(new Target("target1", new SimpleInterval("1", 100, 275))));
-        Assert.assertTrue(tc.target(1).equals(new Target("target2", new SimpleInterval("1", 276, 450))));
-        Assert.assertTrue(tc.target(2).equals(new Target("target3", new SimpleInterval("1", 800, 1050))));
+    public void testSimplePaddingWithoutOverlap(List<Target> targets){
+        final List<Target> tc = TargetPadder.padTargets(targets, 100);
+        Assert.assertTrue(tc.get(0).equals(new Target("target1", new SimpleInterval("1", 100, 275))));
+        Assert.assertTrue(tc.get(1).equals(new Target("target2", new SimpleInterval("1", 276, 450))));
+        Assert.assertTrue(tc.get(2).equals(new Target("target3", new SimpleInterval("1", 800, 1050))));
     }
 
     @Test(dataProvider = "simpleNearStartOfChromosome")
-    public void testSimplePaddingWithZero(TargetCollection<Target> targets){
-        final TargetCollection<Target> tc = TargetPadder.padTargets(targets, 100);
-        Assert.assertTrue(tc.target(0).equals(new Target("target1", new SimpleInterval("1", 1, 275))));
-        Assert.assertTrue(tc.target(1).equals(new Target("target2", new SimpleInterval("1", 276, 450))));
-        Assert.assertTrue(tc.target(2).equals(new Target("target3", new SimpleInterval("1", 800, 1050))));
+    public void testSimplePaddingWithZero(List<Target> targets){
+        final List<Target> tc = TargetPadder.padTargets(targets, 100);
+        Assert.assertTrue(tc.get(0).equals(new Target("target1", new SimpleInterval("1", 1, 275))));
+        Assert.assertTrue(tc.get(1).equals(new Target("target2", new SimpleInterval("1", 276, 450))));
+        Assert.assertTrue(tc.get(2).equals(new Target("target3", new SimpleInterval("1", 800, 1050))));
     }
 
     @DataProvider(name="simple")
@@ -36,7 +36,7 @@ public class TargetPadderUnitTest extends BaseTest {
         final List<Target> targetList = Arrays.asList(t1,t2,t3);
         final List<Object[]> result = new ArrayList<>();
 
-        result.add(new Object[]{new HashedListTargetCollection<>(targetList)});
+        result.add(new Object[]{targetList});
         return result.toArray(new Object[result.size()][]);
     }
 
@@ -48,7 +48,7 @@ public class TargetPadderUnitTest extends BaseTest {
         final List<Target> targetList = Arrays.asList(t1,t2,t3);
         final List<Object[]> result = new ArrayList<>();
 
-        result.add(new Object []{new HashedListTargetCollection<>(targetList)});
+        result.add(new Object []{targetList});
         return result.toArray(new Object[result.size()][]);
     }
 }

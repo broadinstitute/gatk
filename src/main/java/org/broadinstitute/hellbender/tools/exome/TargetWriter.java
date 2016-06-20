@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -7,10 +8,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Table writer for target tables.
@@ -72,6 +70,20 @@ public class TargetWriter extends TableWriter<Target> {
         final TargetAnnotationCollection annotationCollection = record.getAnnotations();
         for (final TargetAnnotation annotation : annotations) {
             dataLine.append(annotationCollection.get(annotation));
+        }
+    }
+
+    /**
+     * Utility method that wraps the try. . . catch block of writing targets to file.
+     *
+     * @param outputFile    file for output
+     * @param targets       targets to write to file
+     */
+    public static void writeTargetsToFile(final File outputFile, final Collection<Target> targets) {
+        try (final TargetWriter writer = new TargetWriter(outputFile)) {
+            writer.writeAllRecords(targets);
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotCreateOutputFile("Could not write output targets file", ex);
         }
     }
 }

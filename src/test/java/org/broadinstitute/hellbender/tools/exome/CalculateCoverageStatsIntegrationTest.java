@@ -254,9 +254,7 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
         if (values.length == 0) {
             ReadCountCollectionUtils.writerWithIntervals(new FileWriter(result), sampleNames).close();
         } else if (sampleNames.size() == 0) {
-            try (final TargetWriter writer = new TargetWriter(result)) {
-                writer.writeAllRecords(targets);
-            }
+            TargetWriter.writeTargetsToFile(result, targets);
         } else {
             final ReadCountCollection coverage = new ReadCountCollection(withIntervals ? new ArrayList<>(targets) :
                     targets.stream().map(t -> new Target(t.getName())).collect(Collectors.toList()),

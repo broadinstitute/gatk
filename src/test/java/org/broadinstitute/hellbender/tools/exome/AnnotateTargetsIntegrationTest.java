@@ -22,6 +22,7 @@ import org.testng.annotations.Test;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Integration tests for {@link AnnotateTargets}.
@@ -67,12 +68,8 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
     {
         final SAMSequenceDictionary referenceDictionary = resolveReferenceDictionary();
         final List<SimpleInterval> targetIntervals = createRandomIntervals(referenceDictionary, NUMBER_OF_TARGETS, MIN_TARGET_SIZE, MAX_TARGET_SIZE, MEAN_TARGET_SIZE, TARGET_SIZE_STDEV);
-        final TargetWriter writer = new TargetWriter(TARGET_FILE);
-        for (int i = 0; i < targetIntervals.size(); i++) {
-            final Target target = new Target("target_" + i, targetIntervals.get(i));
-            writer.writeRecord(target);
-        }
-        writer.close();
+        final List<Target> targets = targetIntervals.stream().map(Target::new).collect(Collectors.toList());
+        TargetWriter.writeTargetsToFile(TARGET_FILE, targets);
         final Index index = IndexFactory.createIndex(TARGET_FILE, new TargetCodec(), IndexFactory.IndexType.LINEAR);
         final LittleEndianOutputStream stream = new LittleEndianOutputStream(new FileOutputStream(TARGET_FILE_IDX));
         index.write(stream);

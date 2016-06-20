@@ -67,7 +67,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + CalculateTargetBaseCallCoverage.MINIMUM_MAPPING_QUALITY_SHORT_NAME,
                         "-10"
                 });
@@ -89,7 +89,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + CalculateTargetBaseCallCoverage.MINIMUM_BASE_QUALITY_SHORT_NAME,
                         "-10"
                 });
@@ -111,7 +111,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + CalculateTargetBaseCallCoverage.MAXIMUM_COVERAGE_SHORT_NAME,
                         "-10"
                 });
@@ -133,7 +133,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + CalculateTargetBaseCallCoverage.MAXIMUM_COVERAGE_SHORT_NAME,
                         "nan"
                 });
@@ -153,7 +153,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                         TEST_BAM_NA12872.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });
@@ -183,7 +183,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + CalculateTargetBaseCallCoverage.MINIMUM_BASE_QUALITY_SHORT_NAME,
                         "" + (CalculateTargetBaseCallCoverage.MINIMUM_BASE_QUALITY_DEFAULT + 30),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });
@@ -211,7 +211,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + CalculateTargetBaseCallCoverage.MINIMUM_MAPPING_QUALITY_SHORT_NAME,
                         "30",
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_READ.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });
@@ -240,7 +240,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                             "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                             TEST_BAM_NA12878.toString(),
                             "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                            CoverageUnit.OVERLAPPING_READ.toString(),
+                            CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_READ.toString(),
                             "-" + CalculateTargetBaseCallCoverage.MINIMUM_MAPPING_QUALITY_SHORT_NAME,
                             String.valueOf(minMQ),
                             "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -275,7 +275,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                                 "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                                 TEST_BAM_NA12878.toString(),
                                 "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                                CoverageUnit.AVERAGE_READ_DEPTH.toString(),
+                                CalculateTargetBaseCallCoverage.CoverageUnit.AVERAGE_READ_DEPTH.toString(),
                                 "-" + CalculateTargetBaseCallCoverage.MINIMUM_MAPPING_QUALITY_SHORT_NAME,
                                 String.valueOf(minMQ),
                                 "-" + CalculateTargetBaseCallCoverage.MINIMUM_BASE_QUALITY_SHORT_NAME,
@@ -309,7 +309,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                         TEST_BAM_NA12872.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.AVERAGE_FRAGMENT_DEPTH.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.AVERAGE_FRAGMENT_DEPTH.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });
@@ -337,7 +337,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                         TEST_BAM_NA12872.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.OVERLAPPING_FRAGMENT.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.OVERLAPPING_FRAGMENT.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });
@@ -364,7 +364,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                         "-" + StandardArgumentDefinitions.INPUT_SHORT_NAME,
                         TEST_BAM_NA12872.toString(),
                         "-" + CalculateTargetBaseCallCoverage.COVERAGE_UNIT_SHORT_NAME,
-                        CoverageUnit.AVERAGE_READ_DEPTH.toString(),
+                        CalculateTargetBaseCallCoverage.CoverageUnit.AVERAGE_READ_DEPTH.toString(),
                         "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
                         outputFile.toString()
                 });

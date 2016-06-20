@@ -13,15 +13,13 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
-import org.broadinstitute.hellbender.tools.exome.SampleCollection;
-import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.tools.exome.TargetUtils;
+import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -139,8 +137,8 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         logger.info("Creating full genome bins...");
         final long createGenomeBinsStartTime = System.currentTimeMillis();
         final List<SimpleInterval> fullGenomeBins = createFullGenomeBins(binsize);
-        List<Target> fullGenomeTargetCollection = createTargetCollectionFromSimpleInterval(fullGenomeBins);
-        TargetUtils.writeTargetsAsBed(new File(outputFile.getAbsolutePath() + ".bed"), fullGenomeTargetCollection);
+        List<Target> fullGenomeTargetCollection = createTargetListFromSimpleInterval(fullGenomeBins);
+        TargetWriter.writeTargetsToFile(new File(outputFile.getAbsolutePath() + ".targets.tsv"), fullGenomeTargetCollection);
         final long createGenomeBinsEndTime = System.currentTimeMillis();
         logger.info(String.format("Finished creating genome bins. Elapse of %d seconds",
                 (createGenomeBinsEndTime - createGenomeBinsStartTime) / 1000));
@@ -219,9 +217,8 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
     }
 
-    private List<Target> createTargetCollectionFromSimpleInterval(final List<SimpleInterval> intervalList){
-        return intervalList.stream().map(s->new Target(TargetUtils.createDummyTargetName(s),
-                new SimpleInterval(s))).collect(Collectors.toList());
+    private List<Target> createTargetListFromSimpleInterval(final List<SimpleInterval> intervalList){
+        return intervalList.stream().map(Target::new).collect(Collectors.toList());
     }
 }
 
