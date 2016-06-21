@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.tools.exome.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
-import org.broadinstitute.hellbender.tools.exome.copyratio.CopyRatioParameter;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;

@@ -79,7 +79,7 @@ segment_data = function(sample_name, tn_file, output_file, log_input, weights_fi
 	set.seed(25)
 
 	# segment has an issue with passing in weights of NULL.  Better to not specify.
-	if (! is.null(weights_file)) {
+	if (!is.null(weights_file)) {
 		segmented = segment(smooth.CNA(cna_dat), min.width=min_width, weights=weights,alpha=alpha, nperm=nperm, p.method=pmethod, kmax=kmax, nmin=nmin, eta=eta, trim=trim, undo.splits=undosplits, undo.prune=undoprune, undo.SD=undoSD)$output
 	} else {
 		segmented = segment(smooth.CNA(cna_dat), min.width=min_width, alpha=alpha, nperm=nperm, p.method=pmethod, kmax=kmax, nmin=nmin, eta=eta, trim=trim, undo.splits=undosplits, undo.prune=undoprune, undo.SD=undoSD)$output
@@ -94,6 +94,14 @@ segment_data = function(sample_name, tn_file, output_file, log_input, weights_fi
 
 	# Undo conversion of sample_name to R format (retain dashes, spaces, etc.)
 	segmented[,"Sample"] = sample_name
+
+	# Change segment start to start of first target in segment (rather than end of first target in segment)
+	segmented$rowID = 1:nrow(segmented)
+	first_targets = merge(segmented[,c("rowID","Chromosome","Start")], tn[,c("contig","start","stop")], by.x=c("Chromosome","Start"), by.y=c("contig","stop"))
+	# merge does not maintain order; restore order of original segmented dataframe
+	first_targets = first_targets[order(first_targets$rowID), ]
+	segmented[,"Start"] = first_targets[,"start"]
+	segmented$rowID = NULL
 
     # Order based on contig (already ordered based on start)
     sorting = unique(naturalsort(segmented[,"Chromosome"]))

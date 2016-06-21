@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.exome.titanconversion;
 
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
-import java.util.stream.Stream;
-
 /**
  * Table columns of a TITAN allelic count tab-separated file.
  */
