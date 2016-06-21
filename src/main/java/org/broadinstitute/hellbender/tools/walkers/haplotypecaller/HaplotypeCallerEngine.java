@@ -103,7 +103,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     // reference base padding size
     private static final int REFERENCE_PADDING = 500;
 
-    private byte MIN_TAIL_QUALITY;
+    private byte minTailQuality;
     private static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
 
     /**
@@ -172,7 +172,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Must be called after initializeSamples()
         validateAndInitializeArgs();
-        MIN_TAIL_QUALITY = (byte)(hcArgs.MIN_BASE_QUALTY_SCORE - 1);
+        minTailQuality = (byte)(hcArgs.MIN_BASE_QUALTY_SCORE - 1);
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
@@ -183,6 +183,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel);
 
+        //Allele-specific annotations are not yet supported in the VCF mode
+        if (isAlleleSpecficMode(annotationEngine) && isVCFMode()){
+           throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
+        }
         initializeReferenceReader();
 
         initializeHaplotypeBamWriter();
@@ -194,6 +198,21 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         trimmer.initialize(hcArgs.assemblyRegionTrimmerArgs, readsHeader.getSequenceDictionary(), hcArgs.DEBUG,
                 hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
+    }
+
+    private boolean isVCFMode() {
+        return hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.NONE;
+    }
+
+    private boolean isAlleleSpecficMode(final VariantAnnotatorEngine annotationEngine) {
+        //HACK. Note: we can't use subclass information from ReducibleAnnotation (which would be the obvious choice)
+        // because RMSMappingQuality is both a reducible annotation and a standard annotation.
+        final boolean infoAnnAlleleSpefic = annotationEngine.getInfoAnnotations().stream().anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().startsWith("AS_"));
+        if (infoAnnAlleleSpefic){
+            return true;
+        }
+        final boolean genoAnnAlleleSpefic = annotationEngine.getGenotypeAnnotations().stream().anyMatch(genotypeAnnotation -> genotypeAnnotation.getClass().getSimpleName().startsWith("AS_"));
+        return genoAnnAlleleSpefic;
     }
 
     private void validateAndInitializeArgs() {
@@ -637,7 +656,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 // output variant containing region.
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
                         calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
-                        readLikelihoods, genotypingEngine.getPloidyModel(), genotypingEngine.getGenotypingModel(), calledHaplotypes.getCalls()));
+                        readLikelihoods, genotypingEngine.getPloidyModel(), calledHaplotypes.getCalls()));
                 // output right-flanking non-variant section:
                 if (trimmingResult.hasRightFlankingRegion()) {
                     result.addAll(referenceModelForNoVariation(trimmingResult.nonVariantRightFlankRegion(), false));
@@ -756,7 +775,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                     paddedLoc, region, createDummyStratifiedReadMap(refHaplotype, samplesList, region),
-                    genotypingEngine.getPloidyModel(), genotypingEngine.getGenotypingModel(), Collections.<VariantContext>emptyList());
+                    genotypingEngine.getPloidyModel(), Collections.emptyList());
         }
         else {
             return NO_CALLS;
@@ -801,7 +820,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 clippedRead = ReadClipper.hardClipLowQualEnds(myRead, MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION);
             }
             else { // default case: clip low qual ends of reads
-                clippedRead = ReadClipper.hardClipLowQualEnds(myRead, MIN_TAIL_QUALITY);
+                clippedRead = ReadClipper.hardClipLowQualEnds(myRead, minTailQuality);
             }
 
             if ( hcArgs.dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(clippedRead) ) {

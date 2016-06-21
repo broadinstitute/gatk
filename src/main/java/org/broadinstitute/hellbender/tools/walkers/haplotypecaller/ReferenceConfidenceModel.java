@@ -11,7 +11,6 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.IndependentSampleGenotypesModel;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.PloidyModel;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -138,7 +137,6 @@ public final class ReferenceConfidenceModel {
      * @param activeRegion the active region we want to get the reference confidence over
      * @param readLikelihoods a map from a single sample to its PerReadAlleleLikelihoodMap for each haplotype in calledHaplotypes
      * @param ploidyModel indicate the ploidy of each sample in {@code stratifiedReadMap}.
-     * @param model genotyping model.
      * @param variantCalls calls made in this region.  The return result will contain any variant call in this list in the
      *                     correct order by genomic position, and any variant in this list will stop us emitting a ref confidence
      *                     under any position it covers (for snps and insertions that is 1 bp, but for deletions its the entire ref span)
@@ -151,7 +149,6 @@ public final class ReferenceConfidenceModel {
                                                        final AssemblyRegion activeRegion,
                                                        final ReadLikelihoods<Haplotype> readLikelihoods,
                                                        final PloidyModel ploidyModel,
-                                                       final IndependentSampleGenotypesModel model,
                                                        final List<VariantContext> variantCalls) {
         Utils.nonNull(refHaplotype, "refHaplotype cannot be null");
         Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
@@ -162,7 +159,6 @@ public final class ReferenceConfidenceModel {
         if ( readLikelihoods.numberOfSamples() != 1 ) throw new IllegalArgumentException("readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
         if ( refHaplotype.length() != activeRegion.getExtendedSpan().size() ) throw new IllegalArgumentException("refHaplotype " + refHaplotype.length() + " and activeRegion location size " + activeRegion.getSpan().size() + " are different");
         Utils.nonNull(ploidyModel, "the ploidy model cannot be null");
-        Utils.nonNull(model, "the genotyping model cannot be null");
         final int ploidy = ploidyModel.samplePloidy(0); // the first sample = the only sample in reference-confidence mode.
 
         final SimpleInterval refSpan = activeRegion.getSpan();

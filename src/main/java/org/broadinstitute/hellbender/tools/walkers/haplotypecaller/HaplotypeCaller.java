@@ -205,8 +205,8 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
-    public void apply( AssemblyRegion region, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        List<VariantContext> callsInRegion = hcEngine.callRegion(region, featureContext);
+    public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+        final List<VariantContext> callsInRegion = hcEngine.callRegion(region, featureContext);
 
         for ( final VariantContext call : callsInRegion ) {
             // Only include calls that start within the current read shard (as opposed to the padded regions around it).
@@ -218,7 +218,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     @Override
-    public Object onTraversalSuccess() {
+    public void closeTool() {
         if ( vcfWriter != null ) {
             vcfWriter.close();
         }
@@ -226,7 +226,5 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
         if ( hcEngine != null ) {
             hcEngine.shutdown();
         }
-
-        return null;
     }
 }
