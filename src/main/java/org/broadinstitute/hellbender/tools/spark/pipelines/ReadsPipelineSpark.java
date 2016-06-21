@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -22,6 +21,7 @@ import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.tools.walkers.bqsr.BaseRecalibrator;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
@@ -37,7 +37,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Takes aligned reads (likely from BWA) and runs MarkDuplicates and BQSR. The final result is analysis-ready reads.",
         oneLineSummary = "Takes aligned reads (likely from BWA) and runs MarkDuplicates and BQSR. The final result is analysis-ready reads",
-        usageExample = "Hellbender ReadsPipelineSpark -I single.bam -R referenceURL -knownSites variants.vcf -O file:///tmp/output.bam",
+        usageExample = "ReadsPipelineSpark -I single.bam -R referenceURL -knownSites variants.vcf -O file:///tmp/output.bam",
         programGroup = SparkPipelineProgramGroup.class
 )
 
@@ -53,6 +53,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
 
     @Override
     public boolean requiresReference() { return true; }
+
 
     @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)
     protected List<String> baseRecalibrationKnownVariants;
@@ -79,7 +80,6 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     public ApplyBQSRUniqueArgumentCollection applyBqsrArgs = new ApplyBQSRUniqueArgumentCollection();
 
-
     @Override
     public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
         return BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION;
@@ -92,10 +92,11 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         }
 
         final JavaRDD<GATKRead> initialReads = getReads();
+
         final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
         final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
 
-        // The marked reads have already had the WellformedReadFilter applied to them, which
+        // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
         // filtering performed, so we do that here.
         final ReadFilter bqsrReadFilter = BaseRecalibrator.makeBQSRSpecificReadFilters();
