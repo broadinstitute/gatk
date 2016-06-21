@@ -457,8 +457,8 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
         }
     }
 
-    private FeatureDataSource.FeatureCache<ArtificialTestFeature> initializeFeatureCache( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheEnd ) {
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = new FeatureDataSource.FeatureCache<>();
+    private FeatureCache<ArtificialTestFeature> initializeFeatureCache( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheEnd ) {
+        FeatureCache<ArtificialTestFeature> cache = new FeatureCache<>();
 
         cache.fill(features.iterator(), new SimpleInterval(cacheContig, cacheStart, cacheEnd));
         return cache;
@@ -477,7 +477,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "FeatureCacheFillDataProvider")
     public void testCacheFill( final List<ArtificialTestFeature> features, final String cacheContig, final int cacheStart, final int cacheEnd) {
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, cacheContig, cacheStart, cacheEnd);
+        FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, cacheContig, cacheStart, cacheEnd);
 
         List<ArtificialTestFeature> cachedFeatures = cache.getCachedFeaturesUpToStopPosition(cacheEnd);
         Assert.assertEquals(cache.getContig(), cacheContig, "Wrong contig reported by cache after fill");
@@ -491,7 +491,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
         List<ArtificialTestFeature> features = Arrays.asList(new ArtificialTestFeature("1", 1, 100),
                                                              new ArtificialTestFeature("1", 50, 150),
                                                              new ArtificialTestFeature("1", 200, 300));
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, "1", 50, 250);
+        FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(features, "1", 50, 250);
 
         return new Object[][] {
                 // Exact match for cache boundaries
@@ -516,7 +516,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "FeatureCacheHitDetectionDataProvider")
-    public void testCacheHitDetection( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache,
+    public void testCacheHitDetection( final FeatureCache<ArtificialTestFeature> cache,
                                        final SimpleInterval testInterval, final boolean cacheHitExpectedResult ) {
         Assert.assertEquals(cache.cacheHit(testInterval), cacheHitExpectedResult,
                             "Cache hit detection failed for interval " + testInterval);
@@ -545,7 +545,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
                 new ArtificialTestFeature("1", 100, 150), // Feature 15
                 new ArtificialTestFeature("1", 100, 199)  // Feature 16
         );
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(feats, "1", 1, 200);
+        FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(feats, "1", 1, 200);
 
         // Pairing of start position to which to trim the cache with the List of Features we expect to see
         // in the cache after trimming
@@ -574,7 +574,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "FeatureCacheTrimmingDataProvider")
-    public void testCacheTrimming( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache, final List<Pair<Integer, List<ArtificialTestFeature>>> trimOperations ) {
+    public void testCacheTrimming( final FeatureCache<ArtificialTestFeature> cache, final List<Pair<Integer, List<ArtificialTestFeature>>> trimOperations ) {
         // Repeatedly trim the cache to ever-increasing start positions, and verify after each trim operation
         // that the cache holds the correct Features in the correc order
         for ( Pair<Integer, List<ArtificialTestFeature>> trimOperation : trimOperations ) {
@@ -603,7 +603,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
                 new ArtificialTestFeature("1", 75, 75),    // Feature 9
                 new ArtificialTestFeature("1", 80, 100)    // Feature 10
         );
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(feats, "1", 1, 100);
+        FeatureCache<ArtificialTestFeature> cache = initializeFeatureCache(feats, "1", 1, 100);
 
         // Pairing of end position with which to bound cache retrieval with the List of Features we expect to see
         // after retrieval
@@ -632,7 +632,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "FeatureCacheRetrievalDataProvider")
-    public void testCacheFeatureRetrieval( final FeatureDataSource.FeatureCache<ArtificialTestFeature> cache, final List<Pair<Integer, List<ArtificialTestFeature>>> retrievalOperations ) {
+    public void testCacheFeatureRetrieval( final FeatureCache<ArtificialTestFeature> cache, final List<Pair<Integer, List<ArtificialTestFeature>>> retrievalOperations ) {
         for ( Pair<Integer, List<ArtificialTestFeature>> retrievalOperation: retrievalOperations ) {
             final int stopPosition = retrievalOperation.getLeft();
             final List<ArtificialTestFeature> expectedFeatures = retrievalOperation.getRight();
@@ -648,7 +648,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
      */
     @Test
     public void testHandleCachingOfEmptyRegion() {
-        FeatureDataSource.FeatureCache<ArtificialTestFeature> cache = new FeatureDataSource.FeatureCache<>();
+        FeatureCache<ArtificialTestFeature> cache = new FeatureCache<>();
         List<ArtificialTestFeature> emptyRegion = new ArrayList<>();
 
         cache.fill(emptyRegion.iterator(), new SimpleInterval("1", 1, 100));
