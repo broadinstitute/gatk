@@ -1,3 +1,4 @@
+language: java
 sudo: required
 dist: trusty
 jdk:
@@ -88,7 +89,7 @@ script:
 after_success:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't try to record coverage tests";
-  else
+  else if [[ $CLOUD == false ]]; then
    ./gradlew coveralls;
   fi
 - if [[ $TRAVIS_BRANCH == master && $CLOUD == false ]]; then ./gradlew uploadArchives; fi
