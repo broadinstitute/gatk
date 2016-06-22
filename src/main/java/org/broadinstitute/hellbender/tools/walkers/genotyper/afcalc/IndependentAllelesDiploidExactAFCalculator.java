@@ -77,9 +77,11 @@ import java.util.*;
      * The AFCalc model we are using to do the bi-allelic computation
      */
     private final AFCalculator biAlleleExactModel;
+    private final GenotypeLikelihoodCalculators calculators;
 
     IndependentAllelesDiploidExactAFCalculator() {
         biAlleleExactModel = new ReferenceDiploidExactAFCalculator();
+        calculators = new GenotypeLikelihoodCalculators();
     }
 
     @Override
@@ -113,7 +115,7 @@ import java.util.*;
         return biAlleleExactModel.getLog10PNonRef(combinedAltAllelesVariantContext, defaultPloidy, vc.getNAlleles() - 1, log10AlleleFrequencyPriors);
     }
 
-    private static VariantContext makeCombinedAltAllelesVariantContext(final VariantContext vc) {
+    private VariantContext makeCombinedAltAllelesVariantContext(final VariantContext vc) {
         final int nAltAlleles = vc.getNAlleles() - 1;
 
         if ( nAltAlleles == 1 ) {
@@ -122,7 +124,7 @@ import java.util.*;
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
         final Allele reference = vcb.getAlleles().get(0);
         vcb.alleles(Arrays.asList(reference, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
-        final int genotypeCount = new GenotypeLikelihoodCalculators().genotypeCount(2, vc.getNAlleles());
+        final int genotypeCount = calculators.genotypeCount(2, vc.getNAlleles());
         final double[] hetLikelihoods = new double[vc.getNAlleles() - 1];
         final double[] homAltLikelihoods = new double[genotypeCount - hetLikelihoods.length - 1];
         final double[] newLikelihoods = new double[3];

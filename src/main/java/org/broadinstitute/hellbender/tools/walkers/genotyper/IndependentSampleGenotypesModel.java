@@ -21,6 +21,7 @@ public final class IndependentSampleGenotypesModel {
     private final int cacheAlleleCountCapacity;
     private final int cachePloidyCapacity;
     private GenotypeLikelihoodCalculator[][] likelihoodCalculators;
+    private final GenotypeLikelihoodCalculators calculators;
 
     public IndependentSampleGenotypesModel() { this(DEFAULT_CACHE_PLOIDY_CAPACITY, DEFAULT_CACHE_ALLELE_CAPACITY); }
 
@@ -31,6 +32,7 @@ public final class IndependentSampleGenotypesModel {
         cachePloidyCapacity = calculatorCachePloidyCapacity;
         cacheAlleleCountCapacity = calculatorCacheAlleleCapacity;
         likelihoodCalculators = new GenotypeLikelihoodCalculator[calculatorCachePloidyCapacity][calculatorCacheAlleleCapacity];
+        calculators = new GenotypeLikelihoodCalculators();
     }
 
     public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data) {
@@ -62,13 +64,13 @@ public final class IndependentSampleGenotypesModel {
 
     private GenotypeLikelihoodCalculator getLikelihoodsCalculator(final int samplePloidy, final int alleleCount) {
         if (samplePloidy >= cachePloidyCapacity || alleleCount >= cacheAlleleCountCapacity) {
-            return new GenotypeLikelihoodCalculators().getInstance(samplePloidy, alleleCount);
+            return calculators.getInstance(samplePloidy, alleleCount);
         }
         final GenotypeLikelihoodCalculator result = likelihoodCalculators[samplePloidy][alleleCount];
         if (result != null) {
             return result;
         } else {
-            final GenotypeLikelihoodCalculator newOne = new GenotypeLikelihoodCalculators().getInstance(samplePloidy, alleleCount);
+            final GenotypeLikelihoodCalculator newOne = calculators.getInstance(samplePloidy, alleleCount);
             likelihoodCalculators[samplePloidy][alleleCount] = newOne;
             return newOne;
         }

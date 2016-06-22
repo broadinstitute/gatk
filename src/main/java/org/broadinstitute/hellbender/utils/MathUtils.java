@@ -8,6 +8,8 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.Arrays;
@@ -268,7 +270,7 @@ public final class MathUtils {
     }
 
     public static double log10(int i) {
-        return log10Cache.get(i);
+        return Log10Cache.get(i);
     }
 
     public static double log10sumLog10(final double[] log10values) {
@@ -291,12 +293,11 @@ public final class MathUtils {
         }
         double sum = 1.0;
         for (int i = start; i < finish; i++) {
-            double curVal = log10p[i];
-            double scaled_val = curVal - maxValue;
+            final double curVal = log10p[i];
             if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
                 continue;
-            }
-            else {
+            } else {
+                final double scaled_val = curVal - maxValue;
                 sum += Math.pow(10.0, scaled_val);
             }
         }
@@ -308,37 +309,60 @@ public final class MathUtils {
 
 
     /**
-     * A helper class to maintain a cache of log values.
-     * The cache is immutable after creation.
+     * A helper class to maintain a cache of log10 values.
+     * The cache expands when a number is not available.
+     * NOTE: this cache is thread safe and it may be accessed from multiple threads.
      */
     private static final class Log10Cache {
+        private static final Logger logger = LogManager.getLogger(Log10Cache.class);
 
-        private final double[] cache;
-
-        public Log10Cache(final int capacity) {
-            cache = new double[capacity + 1];
-            cache[0] = Double.NEGATIVE_INFINITY;    //initialize with the special case: log(0) = NEGATIVE_INFINITY
-            for (int i = 1; i < cache.length; i++) {
-                cache[i] = Math.log10(i);
-            }
-        }
+        //initialize with the special case: log(0) = NEGATIVE_INFINITY
+        private static double[] cache = new double[] { Double.NEGATIVE_INFINITY };
 
         /**
-         * Get the value of log10(i), fetching it from the cache or computing it afresh
+         * Get the value of log10(n), expanding the cache as necessary
          * @param i operand
-         * @return log10(i)
+         * @return log10(n)
          */
-        public double get(final int i) {
+        public static double get(final int i) {
             if (i < 0) {
                 throw new IllegalArgumentException(String.format("Can't take the log of a negative number: %d", i));
             }
             if (i >= cache.length) {
-                return Math.log10(i);
+                final int newCapacity = Math.max(i + 10, 2 * cache.length);
+                logger.debug("cache miss " + i + " > " + (cache.length-1) + " expanding to " + newCapacity);
+                expandCache(newCapacity);
             }
+            /*
+               Array lookups are not atomic.  It's possible that the reference to cache could be
+               changed between the time the reference is loaded and the data is fetched from the correct
+               offset.  However, the value retrieved can't change, and it's guaranteed to be present in the
+               old reference by the conditional above.
+             */
             return cache[i];
         }
 
-        public int size() {
+        /**
+         * Ensures that the cache contains a value for n.  After completion of expandCache(n),
+         * #get(n) is guaranteed to return without causing a cache expansion
+         * @param newCapacity desired value to be precomputed
+         */
+        private static synchronized void expandCache(final int newCapacity) {
+            if (newCapacity < cache.length) {
+                //prevents a race condition when multiple threads want to expand the cache at the same time.
+                //in that case, one of them will be first to enter the synchronized method expandCache and
+                //so the others may end up in this method even if n < cache.length
+                return;
+            }
+            final double[] newCache = new double[newCapacity + 1];
+            System.arraycopy(cache, 0, newCache, 0, cache.length);
+            for (int i = cache.length; i < newCache.length; i++) {
+                newCache[i] = Math.log10(i);
+            }
+            cache = newCache;
+        }
+
+        public static int size() {
             return cache.length;
         }
 
@@ -622,11 +646,11 @@ public final class MathUtils {
         }
         double sum = 1.0;
         for (int i = start; i < finish; i++) {
-            double curVal = log10Values[i];
-            double scaled_val = curVal - maxValue;
+            final double curVal = log10Values[i];
             if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
                 continue;
             } else {
+                final double scaled_val = curVal - maxValue;
                 sum += Math.pow(10.0, scaled_val);
             }
         }
@@ -803,15 +827,6 @@ public final class MathUtils {
         return result >= 0.0 && result <= 1.0 && ! Double.isInfinite(result) && ! Double.isNaN(result);
     }
 
-
-    /**
-     * The size of the precomputed cache of logs.
-     * The caches are immutable after creation and so it's no big deal that they are static.
-     */
-    private static final int PRECOMPUTED_LOGS = 10_000;
-    private static final Log10Cache log10Cache = new Log10Cache(PRECOMPUTED_LOGS);
-    private static final Log10FactorialCache log10FactorialCache = new Log10FactorialCache(log10Cache);
-
     public static double log10ToLog(final double log10){
         return log10 * LN_10;
     }
@@ -836,10 +851,10 @@ public final class MathUtils {
     }
 
     public static double log10Factorial(final int x) {
-       if (x >= log10FactorialCache.size() || x < 0)
+       if (x >= Log10FactorialCache.size() || x < 0)
           return log10Gamma(x + 1);
        else
-          return log10FactorialCache.get(x);
+          return Log10FactorialCache.get(x);
     }
 
     /**
@@ -861,27 +876,31 @@ public final class MathUtils {
      */
     private static class Log10FactorialCache {
 
-        private final double[] cache;
+        /**
+         * The size of the precomputed cache.  Must be a positive number!
+         */
+        private static final int CACHE_SIZE = 10_000;
 
-        public Log10FactorialCache(final Log10Cache logCache) {
-            cache = new double[logCache.size()];
-            cache[0] = 0.0;
-            for (int k = 1; k < cache.length; k++) {
-                cache[k] = cache[k - 1] + logCache.get(k);
+        private static double[] cache = null;
+
+        public static int size() { return CACHE_SIZE; }
+
+        public static double get(final int n) {
+            if (cache == null) {
+                initialize();
             }
+            return cache[n];
         }
 
-        public int size() { return cache.length; }
-
-        /**
-         * Retrieves the precomputed result or computes it afresh.
-         * @return log of factorial.
-         */
-        public double get(final int n) {
-            if (n >= size() || n < 0) {
-                return log10Gamma(n + 1);
-            } else {
-                return cache[n];
+        private static synchronized void initialize() {
+            if (cache == null) {//this null check is here to prevent a race condition
+                                // when multiple threads want to initialize the cache
+                Log10Cache.expandCache(CACHE_SIZE);
+                cache = new double[CACHE_SIZE];
+                cache[0] = 0.0;
+                for (int k = 1; k < cache.length; k++) {
+                    cache[k] = cache[k - 1] + Log10Cache.get(k);
+                }
             }
         }
     }

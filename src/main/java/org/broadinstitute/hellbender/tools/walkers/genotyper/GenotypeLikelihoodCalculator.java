@@ -536,7 +536,7 @@ public final class GenotypeLikelihoodCalculator {
      *
      * @return never {@code null}.
      */
-    public int[] genotypeIndexMap(final int[] oldToNewAlleleIndexMap) {
+    public int[] genotypeIndexMap(final int[] oldToNewAlleleIndexMap, final GenotypeLikelihoodCalculators calculators) {
         if (oldToNewAlleleIndexMap == null) {
             throw new IllegalArgumentException("the input encoding array cannot be null");
         }
@@ -547,7 +547,7 @@ public final class GenotypeLikelihoodCalculator {
                     + resultAlleleCount + " alleles ");
         }
         final int resultLength = resultAlleleCount == alleleCount
-                ? genotypeCount : new GenotypeLikelihoodCalculators().genotypeCount(ploidy,resultAlleleCount);
+                ? genotypeCount : calculators.genotypeCount(ploidy,resultAlleleCount);
 
         final int[] result = new int[resultLength];
         final int[] sortedAlleleCounts = new int[Math.max(ploidy, alleleCount) << 1];
