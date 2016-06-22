@@ -95,6 +95,8 @@ public final class GenotypeGVCFs extends VariantWalker {
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
 
+    private ReferenceConfidenceVariantContextMerger merger;
+
     private VariantContextWriter vcfWriter;
 
     @Override
@@ -109,6 +111,7 @@ public final class GenotypeGVCFs extends VariantWalker {
 
         genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
         annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(Collections.emptyList(), annotationsToUse, Collections.<String>emptyList(), dbsnp.dbsnp, Collections.emptyList());
+        merger = new ReferenceConfidenceVariantContextMerger();
 
         setupVCFWriter(inputVCFHeader, samples);
     }
@@ -138,7 +141,7 @@ public final class GenotypeGVCFs extends VariantWalker {
     @Override
     public void apply(VariantContext vc, ReadsContext reads, ReferenceContext ref, FeatureContext features ) {
         ref.setWindow(10,10);
-        final VariantContext mergedVC = ReferenceConfidenceVariantContextMerger.merge(Collections.singletonList(vc), vc, includeNonVariants ? ref.getBase() : null, true, false);
+        final VariantContext mergedVC = merger.merge(Collections.singletonList(vc), vc, includeNonVariants ? ref.getBase() : null, true, false);
         final VariantContext regenotypedVC = regenotypeVC(mergedVC, ref, features, includeNonVariants);
         if (regenotypedVC != null) {
             vcfWriter.add(regenotypedVC);

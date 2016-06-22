@@ -21,6 +21,12 @@ import java.util.stream.Collectors;
 @SuppressWarnings({"rawtypes","unchecked"}) //TODO fix uses of untyped Comparable.
 final class ReferenceConfidenceVariantContextMerger {
 
+    private final GenotypeLikelihoodCalculators calculators;
+
+    ReferenceConfidenceVariantContextMerger(){
+        calculators = new GenotypeLikelihoodCalculators();
+    }
+
     /**
      * Combine annotation values by computing the medianish middle element
      * @param values a list of integers
@@ -47,7 +53,7 @@ final class ReferenceConfidenceVariantContextMerger {
      * @param samplesAreUniquified  if true, sample names have been uniquified
      * @return new VariantContext representing the merge of all vcs or null if it not relevant
      */
-    public static VariantContext merge(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
+    public VariantContext merge(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
                                        final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified) {
         Utils.nonEmpty(vcs);
 
@@ -383,7 +389,7 @@ final class ReferenceConfidenceVariantContextMerger {
      * @param targetAlleles         the list of target alleles
      * @param samplesAreUniquified  true if sample names have been uniquified
      */
-    private static GenotypesContext mergeRefConfidenceGenotypes(final VariantContext vc,
+    private GenotypesContext mergeRefConfidenceGenotypes(final VariantContext vc,
                                                     final List<Allele> remappedAlleles,
                                                     final List<Allele> targetAlleles,
                                                     final boolean samplesAreUniquified) {
@@ -408,7 +414,6 @@ final class ReferenceConfidenceVariantContextMerger {
             if (g.hasPL()) {
                 // lazy initialization of the genotype index map by ploidy.
                 perSampleIndexesOfRelevantAlleles = getIndexesOfRelevantAlleles(remappedAlleles, targetAlleles, vc.getStart(), g);
-                final GenotypeLikelihoodCalculators calculators = new GenotypeLikelihoodCalculators();
                 final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
                             ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
                             : genotypeIndexMapsByPloidy[ploidy];
