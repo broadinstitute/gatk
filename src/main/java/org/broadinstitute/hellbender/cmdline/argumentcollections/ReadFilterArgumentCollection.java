@@ -62,6 +62,7 @@ public class ReadFilterArgumentCollection implements ArgumentCollectionDefinitio
          * new one and returns it.
          */
         ALIGNMENT_AGREES_WITH_HEADER((hdr, args) -> new AlignmentAgreesWithHeaderReadFilter(hdr)),
+        CUSTOM_READ_FILTER((hdr, args) -> getCustomReadFilter(hdr, args)),
         FRAGMENT_LENGTH((hdr, args) -> {
             validateArgs(CommandLineReadFilter.valueOf("FRAGMENT_LENGTH"), args.fragmentLengthFilter::validate);
             return args.fragmentLengthFilter;
@@ -135,13 +136,12 @@ public class ReadFilterArgumentCollection implements ArgumentCollectionDefinitio
          * read filter.
          */
         private BiFunction<SAMFileHeader, ReadFilterArgumentCollection, ReadFilter> filterSupplier = null;
-        CommandLineReadFilter(final BiFunction<SAMFileHeader, ReadFilterArgumentCollection,ReadFilter> filterSupplier) {
+        CommandLineReadFilter(final BiFunction<SAMFileHeader, ReadFilterArgumentCollection, ReadFilter> filterSupplier) {
             this.filterSupplier = filterSupplier;
         }
 
         /**
          * Execute the filter supplier and return the initialized filter
-         *
          */
         public ReadFilter getFilterInstance(
                 final SAMFileHeader samHeader,
@@ -150,6 +150,38 @@ public class ReadFilterArgumentCollection implements ArgumentCollectionDefinitio
             return filterSupplier.apply(samHeader, readFilterCollection);
         };
 
+        /**
+         * Return a read filter that represents the logical AND of all of the custom
+         * read filters named in the custom read filter list.
+         * @param args
+         * @return
+         */
+        public static ReadFilter getCustomReadFilter(
+                final SAMFileHeader header,
+                final ReadFilterArgumentCollection args) {
+            ReadFilter rf = null;
+
+            for (String filterClassName : args.customReadFilters.customReadFilters) {
+                try {
+                    Class<?> clazz = Class.forName(filterClassName);
+                    CustomReadFilter crf = (CustomReadFilter) clazz.newInstance();
+                    crf.setSAMFileHeader(header);
+                    rf = rf == null ? crf : rf.and(crf);
+                }
+                catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                    throw new IllegalArgumentException("Can't instantiate custom read filter class: " + filterClassName, e);
+                }
+            }
+
+           return rf;
+        }
+
+        /**
+         * Run the filter argument validator for the read filter and throw if the arguments fail validation.
+         * @param filter filter being validated
+         * @param validator the validation funtion for this filter
+         * @return
+         */
         public static boolean validateArgs(
                 final CommandLineReadFilter filter,
                 final Supplier<String> validator)
@@ -160,6 +192,7 @@ public class ReadFilterArgumentCollection implements ArgumentCollectionDefinitio
             }
             return true;
         }
+
     }
 
     @Argument(fullName = StandardArgumentDefinitions.READ_FILTER_LONG_NAME,
@@ -214,6 +247,9 @@ public class ReadFilterArgumentCollection implements ArgumentCollectionDefinitio
 
     @ArgumentCollection(doc="Read filter for sample name", dependsOnArgument="RF", dependsOnValue="SAMPLE")
     SampleReadFilter sampleFilter = new SampleReadFilter(null);
+
+    @ArgumentCollection(doc="Custom read filters", dependsOnArgument="RF", dependsOnValue="CUSTOM_READ_FILTER")
+    CustomReadFilterArgumentCollection customReadFilters = new CustomReadFilterArgumentCollection();
 
     /**
      * Returns the list of read filters that result from combining the provided default

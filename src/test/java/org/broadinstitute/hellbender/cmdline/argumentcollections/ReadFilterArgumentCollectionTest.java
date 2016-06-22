@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -19,17 +21,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-// - walker and spark tool integration tests
-
 public class ReadFilterArgumentCollectionTest {
 
     class TestArgCollection {
+
         @ArgumentCollection
         public ReadFilterArgumentCollection rfc = new ReadFilterArgumentCollection();
+
         public TestArgCollection(){};
-        public TestArgCollection (Consumer<ReadFilterArgumentCollection> t) {
-            t.accept(this.rfc);
-        }
     };
 
     @DataProvider(name="filtersWithArguments")
@@ -62,10 +61,7 @@ public class ReadFilterArgumentCollectionTest {
         clp.parseArguments(System.out, args);
 
         // we need to render the filter to trigger execution of the validation code
-        testArgs.rfc.getMergedCommandLineFilters(Arrays.asList())
-                .stream()
-                .map(f-> f.getFilterInstance(new SAMFileHeader(), testArgs.rfc))
-                .collect(Collectors.toList());
+        instantiateFilter(testArgs.rfc, new SAMFileHeader());
     }
 
     // verify that all filters that require arguments throw if the arguments are passed but the
@@ -80,7 +76,7 @@ public class ReadFilterArgumentCollectionTest {
         CommandLineParser clp = new CommandLineParser(tArgs);
         String[] args = { argName, argValue }; // no read filter set
 
-        // dependsOn errors are caught by the command line parser
+        // no need to instantiate the filters  - dependsOn errors are caught by the command line parser
         clp.parseArguments(System.out, args);
     }
 
@@ -96,7 +92,7 @@ public class ReadFilterArgumentCollectionTest {
         };
     }
 
-    // test that all filters that require validation fail given bad arguments
+    // test that all filters that require validation fail when given bad arguments
     @Test(dataProvider = "validationFailures", expectedExceptions =
             {UserException.CommandLineException.class, UserException.class})
     public void testArgumentFailsValidations(
@@ -112,10 +108,9 @@ public class ReadFilterArgumentCollectionTest {
         };
 
         clp.parseArguments(System.out, args);
-        testArgs.rfc.getMergedCommandLineFilters(Arrays.asList())
-                .stream()
-                .map(f-> f.getFilterInstance(new SAMFileHeader(), testArgs.rfc))
-                .collect(Collectors.toList());
+
+        // we need to render the filter to trigger execution of the validation code
+        instantiateFilter(testArgs.rfc, new SAMFileHeader());
     }
 
     @DataProvider(name="filtersWithGoodArguments")
@@ -292,6 +287,43 @@ public class ReadFilterArgumentCollectionTest {
         Assert.assertFalse(rf.test(read));
         read.setBases(new byte[15]);
         Assert.assertTrue(rf.test(read));
+    }
+
+    @Test
+    public void testCustomReadFilters() {
+        TestArgCollection testArgs = new TestArgCollection();
+        CommandLineParser clp = new CommandLineParser(testArgs);
+        String[] args = {
+                "--readFilter", ReadFilterArgumentCollection.CommandLineReadFilter.WELLFORMED.name(),
+                "--readFilter", "CUSTOM_READ_FILTER", "--customFilterName", "org.broadinstitute.hellbender.engine.filters.TestCustomReadFilter",
+        };
+
+        clp.parseArguments(System.out, args);
+
+        SAMFileHeader samHeader = new SAMFileHeader();
+        List<ReadFilter> filters =
+            testArgs.rfc.getMergedCommandLineFilters(Arrays.asList())
+                    .stream()
+                    .map(f-> f.getFilterInstance(samHeader, testArgs.rfc))
+                    .collect(Collectors.toList());
+
+        GATKRead gatkRead = new SAMRecordToGATKReadAdapter(new SAMRecord(samHeader));
+
+        Assert.assertEquals(filters.size(), 2);
+        Assert.assertFalse(filters.get(0).test(gatkRead)); // wellformed
+        Assert.assertTrue(filters.get(1).test(gatkRead)); // test custom rejects everything
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testNonExistentCustomReadFilters() {
+        TestArgCollection testArgs = new TestArgCollection();
+        CommandLineParser clp = new CommandLineParser(testArgs);
+        String[] args = {
+                "--readFilter", "CUSTOM_READ_FILTER", "--customFilterName", "JimmyReedFilter"
+        };
+
+        clp.parseArguments(System.out, args);
+        instantiateFilter(testArgs.rfc, new SAMFileHeader());
     }
 
     private ReadFilter instantiateFilter(final ReadFilterArgumentCollection rfc, final SAMFileHeader header) {
