@@ -145,8 +145,8 @@ public abstract class CommandLineProgram {
                 Defaults.allDefaults().entrySet().stream().forEach(e->
                         logger.info(Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
                 );
-
-                logger.info("Deflater " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
+// TODO: remove comment when this is working in HaplotypeCaller
+//                logger.info("Deflater " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
             }
             catch (final Exception e) { /* Unpossible! */ }
         }

@@ -13,7 +13,6 @@ plugins {
     id 'maven'
     id 'signing'
     id "jacoco"
-    id "cpp"
     id "de.undercouch.download" version "2.1.0" //used for downloading GSA lib
     id "com.github.johnrengelman.shadow" version "1.2.3"
     id "com.github.kt3k.coveralls" version "2.6.3"
@@ -23,7 +22,6 @@ plugins {
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
-import org.gradle.internal.os.OperatingSystem
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -173,28 +171,15 @@ dependencies {
     // Dependency change for including MLLib
     compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 
-    compile "com.intel:intel-gkl:0.0.1-20160525.160915-2"
+    compile('com.intel.gkl:gkl:0.1.0') {
+        exclude module: 'htsjdk'
+    }
     compile 'com.github.lindenb:jbwa:bd72b489f9697a857671533c86ad5906967f8672-20160521.042635-1'
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
     testCompile 'junit:junit:4.12'
     testCompile "org.mockito:mockito-core:1.10.19"
-}
-
-def findJarByName(Configuration config, String name) {
-    config.filter { it.name.startsWith(name)}.singleFile
-}
-
-task extractIntelDeflater(type: Copy) {
-    def htsjdkJar = { findJarByName(configurations.compile, 'htsjdk') }
-    from {
-        zipTree( htsjdkJar ).matching{ include 'lib/jni/libIntelDeflater.so'}.singleFile
-    }
-    into "$buildDir"
-    rename "lib/jni/libIntelDeflater.so", "libIntelDeflater.so"
-    outputs.file "$buildDir/libIntelDeflater.so"
-    description = "extract libIntelDeflater from the htsjdk jar"
 }
 
 //add gatk-launch to the jar as a resource
@@ -442,74 +427,4 @@ uploadArchives {
 task installSpark{ dependsOn sparkJar }
 task installAll{  dependsOn installSpark, installDist }
 
-test.dependsOn extractIntelDeflater
-installDist.dependsOn downloadGsaLibFile, extractIntelDeflater
-
-model {
-    components {
-        if (System.properties["os.arch"] != "ppc64le") {
-            VectorLoglessPairHMM(NativeLibrarySpec) {
-            // set location of source files
-            sources.cpp.source {
-                srcDirs "src/main/cpp/VectorLoglessPairHMM"
-                include "*.cc"
-            }
-
-            binaries.withType(SharedLibraryBinarySpec) { binary ->
-                if (System.env.GATK_SKIP_NATIVE_BUILD.toString().toBoolean()) {
-                    buildable = false
-                    println("INFO: \$GATK_SKIP_NATIVE_BUILD is true, skipping native AVX PairHMM library build.")
-                } else if (!OperatingSystem.current().isLinux() && !OperatingSystem.current().isMacOsX()) {
-                    buildable = false
-                    println("WARNING: Building the native AVX PairHMM library is not supported on this OS.")
-                } else {
-                    cppCompiler.args "-I", "${System.properties['java.home']}/../include"
-                    cppCompiler.args "-mavx"
-                    cppCompiler.args "-Wall"
-
-                    // build with gcov options on Travis
-                    if (System.env.CI.toString().toBoolean()) {
-                        cppCompiler.args "-g"
-                        cppCompiler.args "-O0"
-                        cppCompiler.args "--coverage"
-                        linker.args "--coverage"
-                    } else {
-                        cppCompiler.args "-O3"
-                    }
-
-                    if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
-                        cppCompiler.args "-I", "${System.properties['java.home']}/../include/Darwin"
-                    } else {
-                        cppCompiler.args "-I", "${System.properties['java.home']}/../include/linux"
-                        linker.args "-static-libgcc"
-                    }
-
-                    task copySharedLib(type: Copy) {
-                        from binary.sharedLibraryFile
-                        into "$compileJava.destinationDir/lib"
-                        dependsOn binary.tasks
-                    }
-
-                    jar.dependsOn copySharedLib
-                    shadowJar.dependsOn copySharedLib
-                    sparkJar.dependsOn copySharedLib
-                    test.dependsOn copySharedLib
-                }
-            }
-
-            // skip static library build
-            binaries.withType(StaticLibraryBinarySpec) { binary ->
-                buildable = false
-            }
-        }
-      }
-    }
-
-    toolChains {
-        if (org.gradle.internal.os.OperatingSystem.current().isMacOsX()) {
-            clang(Clang)
-        } else {
-            gcc(Gcc)
-        }
-    }
-}
+installDist.dependsOn downloadGsaLibFile
