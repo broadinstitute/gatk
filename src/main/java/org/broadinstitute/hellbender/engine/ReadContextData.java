@@ -59,7 +59,7 @@ public class ReadContextData implements Serializable {
         StringBuilder builder = new StringBuilder();
         builder.append("<");
         for (GATKVariant v : variants) {
-            builder.append(v + ",");
+            builder.append(v).append(",");
         }
         builder.append(">");
         return "ReadContextData{" +

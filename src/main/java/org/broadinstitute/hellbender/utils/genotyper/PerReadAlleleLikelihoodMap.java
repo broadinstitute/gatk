@@ -265,7 +265,7 @@ public final class PerReadAlleleLikelihoodMap {
 
         sb.append("Alelles in map:");
         for (final Allele a:alleles) {
-            sb.append(a.getDisplayString()+",");
+            sb.append(a.getDisplayString()).append(",");
         }
         sb.append("\n");
         for (final Map.Entry <GATKRead, Map<Allele, Double>> el : getLikelihoodReadMap().entrySet() ) {
