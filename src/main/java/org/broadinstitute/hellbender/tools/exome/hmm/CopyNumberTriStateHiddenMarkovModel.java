@@ -12,7 +12,10 @@ import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriStateTransitionProba
 import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 /**
  *  This model has the following parameters:

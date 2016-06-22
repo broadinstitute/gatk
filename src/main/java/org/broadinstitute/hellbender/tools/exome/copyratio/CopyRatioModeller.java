@@ -1,18 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome.copyratio;
 
-import org.apache.commons.math3.util.Pair;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 

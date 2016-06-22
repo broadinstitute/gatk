@@ -19,12 +19,15 @@ import java.util.List;
 
 public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
+    private static final String inputTestDir = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/";
+    private static final String outputTestDir = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/";
+
     @DataProvider(name="inputFileData")
     public Object[][] inputFileData() {
         return new Object[][] {
-                new Object[] { new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced.tsv"), new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
-                new Object[] { new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_short.tsv"), new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_short_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
-                new Object[] { new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/Simple.tsv"), new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/Simple_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "Simple"},
+                new Object[] { new File(inputTestDir, "HCC1143_reduced.tsv"), new File(outputTestDir, "HCC1143_reduced_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
+                new Object[] { new File(inputTestDir, "HCC1143_short.tsv"), new File(outputTestDir, "HCC1143_short_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
+                new Object[] { new File(inputTestDir, "Simple.tsv"), new File(outputTestDir, "Simple_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "Simple"},
         };
     }
 
@@ -41,8 +44,8 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
     @Test()
     public void testUnLoggedCommandLine() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced_log.tsv");
-        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
+        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
+        final File EXPECTED = new File(outputTestDir, "HCC1143_reduced_result.seg");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
@@ -57,8 +60,8 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
     @Test()
     public void testUnLoggedCommandLineWithWeights() throws IOException {
-        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced_log.tsv");
-        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
+        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
+        final File EXPECTED = new File(outputTestDir, "HCC1143_reduced_result.seg");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File tmpWeightsFile = IOUtils.createTempFile("integration-weight-file", ".txt");
         final double [] weights = new double[7677];
@@ -81,10 +84,10 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
         // This test simply tests that if we change the value of the parameter that the output is altered.
 
-        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced_log.tsv");
+        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File outputNewParam = createTempFile("gatkcnv.HCC1143.sdundo", ".seg");
-        final File EXPECTED = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/HCC1143_reduced_result.seg");
+        final File EXPECTED = new File(outputTestDir, "HCC1143_reduced_result.seg");
         final File tmpWeightsFile = IOUtils.createTempFile("integration-weight-file", ".txt");
         final double [] weights = new double[7677];
         Arrays.fill(weights, 1.0);
@@ -100,7 +103,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
         SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
 
-        List<String> fullNewArgumentsAsList = Lists.newArrayList(arguments);
+        final List<String> fullNewArgumentsAsList = Lists.newArrayList(arguments);
         // Change the output file
         fullNewArgumentsAsList.remove("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         fullNewArgumentsAsList.remove(output.getAbsolutePath());
@@ -110,7 +113,6 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
         runCommandLine(fullNewArgumentsAsList.toArray(new String[fullNewArgumentsAsList.size()]));
         SegmenterUnitTest.assertNotEqualSegments(outputNewParam, output);
-
     }
 
     @Test
@@ -118,7 +120,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
         // This test simply tests that if we change the value of the parameter that the output is altered.
 
-        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced_log.tsv");
+        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File outputNewParam = createTempFile("gatkcnv.HCC1143.sdundo", ".seg");
 
@@ -155,7 +157,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
         // This test simply tests that if we change the value of the parameter that the output is altered.
 
-        final File INPUT_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/HCC1143_reduced_log.tsv");
+        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File outputNewParam = createTempFile("gatkcnv.HCC1143.sdundo", ".seg");
 

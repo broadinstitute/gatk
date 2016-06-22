@@ -105,12 +105,14 @@ public final class SegmentUtils {
      *===============================================================================================================*/
 
     /**
-     * Target segments from CBS (i.e., {@link PerformSegmentation}) are specified by target-end--target-end intervals.
-     * This method converts these to the corresponding target-start--target-end intervals, returning a new,
-     * modifiable list of segments.
+     * Legacy target segments from CBS (i.e., from legacy versions of {@link PerformSegmentation})
+     * are specified by target-end--target-end intervals.  This method converts these to the corresponding
+     * target-start--target-end intervals, returning a new, modifiable list of segments.  Non-legacy segments that are
+     * already specified by target-start--target-end intervals are also returned as a new, modifiable list of segments
+     * with no changes.
      */
-    public static List<SimpleInterval> fixTargetSegmentStarts(final List<SimpleInterval> targetSegments,
-                                                              final TargetCollection<? extends Locatable> targets) {
+    public static List<SimpleInterval> fixLegacyTargetSegmentStarts(final List<SimpleInterval> targetSegments,
+                                                                    final TargetCollection<? extends Locatable> targets) {
         Utils.nonNull(targetSegments, "The list of target segments cannot be null.");
         Utils.nonNull(targets, "The collection of targets cannot be null.");
 
@@ -118,7 +120,7 @@ public final class SegmentUtils {
         for (final SimpleInterval segment : targetSegments) {
             try {
                 final Locatable firstTarget = targets.targets(segment).get(0);
-                if (firstTarget.getEnd() == segment.getStart()) {
+                if (firstTarget.getEnd() == segment.getStart() || firstTarget.getStart() == segment.getStart()) {
                     targetSegmentsFixed.add(
                             new SimpleInterval(segment.getContig(), firstTarget.getStart(), segment.getEnd()));
                 } else {
