@@ -707,7 +707,42 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_maxNOCALLnumber2.vcf")
         );
 
-        spec.executeTest("testMaxNoCall0_25--" + testFile, this);
+        spec.executeTest("testMaxNoCall0_5--" + testFile, this);
     }
 
+    @Test
+    public void testHaploid() throws IOException {
+        final String testFile = getToolTestDataDir() + "haploid-multisample.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn HG00610 -select 'DP > 7' -trimAlternates ", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_Haploid.vcf")
+        );
+
+        spec.executeTest("testHaploid--" + testFile, this);
+    }
+
+    @Test
+    public void testTetraploid() throws IOException {
+        final String testFile = getToolTestDataDir() + "tetraploid-multisample.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn NA18486 -select 'DP > 57' -trimAlternates ", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_Tetraploid.vcf")
+        );
+
+        spec.executeTest("testTetraploid--" + testFile, this);
+    }
+
+    @Test
+    public void testTetraDiploid() throws IOException {
+        final String testFile = getToolTestDataDir() + "tetra-diploid.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn NA12878 -select 'DP > 48' -trimAlternates ", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_TetraDiploid.vcf")
+        );
+
+        spec.executeTest("testTetraDiploid--" + testFile, this);
+    }
 }

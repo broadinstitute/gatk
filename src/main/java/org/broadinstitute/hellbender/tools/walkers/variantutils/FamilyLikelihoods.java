@@ -121,7 +121,7 @@ public final class FamilyLikelihoods {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype);
 
         //update genotype types based on posteriors
-        GATKVariantContextUtils.updateGenotypeAfterSubsetting(vc.getAlleles(), builder,
+        GATKVariantContextUtils.updateGenotypeAfterSubsetting(vc.getAlleles(), genotype.getPloidy(), builder,
                 GATKVariantContextUtils.GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, log10Posteriors, vc.getAlleles());
 
         builder.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY,

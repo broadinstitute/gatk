@@ -19,7 +19,7 @@ public abstract class DiploidExactAFCalculator extends ExactAFCalculator {
     protected final GenotypesContext reduceScopeGenotypes(final VariantContext vc, final int defaultPloidy, final List<Allele> allelesToUse) {
         Utils.nonNull(vc, "vc is null");
         Utils.nonNull(allelesToUse, "allelesToUse is null");
-        return GATKVariantContextUtils.subsetDiploidAlleles(vc, allelesToUse, GATKVariantContextUtils.GenotypeAssignmentMethod.SET_TO_NO_CALL);
+        return GATKVariantContextUtils.subsetAlleles(vc, allelesToUse, GATKVariantContextUtils.GenotypeAssignmentMethod.SET_TO_NO_CALL);
     }
 
     @Override
@@ -51,12 +51,10 @@ public abstract class DiploidExactAFCalculator extends ExactAFCalculator {
                                           final boolean assignGenotypes) {
         Utils.nonNull(vc, "vc is null");
         Utils.nonNull(allelesToUse, "allelesToUse is null");
-        if (defaultPloidy != 2) {
-            throw new IllegalArgumentException("cannot support ploidy different than 2 and the default ploidy is " + defaultPloidy);
-        }
+
         return allelesToUse.size() == 1
-                ? GATKVariantContextUtils.subsetToRefOnly(vc, 2)
-                : GATKVariantContextUtils.subsetDiploidAlleles(vc, allelesToUse,
+                ? GATKVariantContextUtils.subsetToRefOnly(vc, defaultPloidy)
+                : GATKVariantContextUtils.subsetAlleles(vc, allelesToUse,
                      assignGenotypes ? GATKVariantContextUtils.GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN : GATKVariantContextUtils.GenotypeAssignmentMethod.SET_TO_NO_CALL);
     }
 }
