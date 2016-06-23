@@ -55,7 +55,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public String getContig() {
-        if ( isUnmapped() ) {
+        return getContig(isUnmapped());
+    }
+
+    @Override
+    public String getContig(final boolean isUnmapped) {
+        if ( isUnmapped ) {
             return null;
         }
 
@@ -65,7 +70,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public int getStart() {
-        if ( isUnmapped() ) {
+        return getStart(isUnmapped());
+    }
+
+    @Override
+    public int getStart(final boolean isUnmapped){
+        if ( isUnmapped ) {
             return ReadConstants.UNSET_POSITION;
         }
 
@@ -75,7 +85,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public int getEnd() {
-        if ( isUnmapped() ) {
+        return getEnd(isUnmapped());
+    }
+
+    @Override
+    public int getEnd(final boolean isUnmapped){
+        if ( isUnmapped ) {
             return ReadConstants.UNSET_POSITION;
         }
 
@@ -115,7 +130,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public int getUnclippedStart() {
-        if ( isUnmapped() ) {
+        return getUnclippedStart(isUnmapped());
+    }
+
+    @Override
+    public int getUnclippedStart(final boolean isUnmapped) {
+        if ( isUnmapped ) {
             return ReadConstants.UNSET_POSITION;
         }
 
@@ -124,7 +144,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public int getUnclippedEnd() {
-        if ( isUnmapped() ) {
+        return getUnclippedEnd (isUnmapped());
+    }
+
+    @Override
+    public int getUnclippedEnd(final boolean isUnmapped) {
+        if ( isUnmapped ) {
             return ReadConstants.UNSET_POSITION;
         }
 
@@ -133,7 +158,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public String getMateContig() {
-        if ( mateIsUnmapped() ) {
+        return getMateContig(mateIsUnmapped());
+    }
+
+    @Override
+    public String getMateContig(final boolean mateIsUnmapped) {
+        if ( mateIsUnmapped ) {
             return null;
         }
 
@@ -142,7 +172,12 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public int getMateStart() {
-        if ( mateIsUnmapped() ) {
+        return getMateStart(mateIsUnmapped());
+    }
+
+    @Override
+    public int getMateStart(final boolean mateIsUnmapped) {
+        if ( mateIsUnmapped ) {
             return ReadConstants.UNSET_POSITION;
         }
 
@@ -354,8 +389,9 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     @Override
     public boolean isUnmapped() {
         return samRecord.getReadUnmappedFlag() ||
-               samRecord.getReferenceName() == null || samRecord.getReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) ||
-               samRecord.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START;
+               samRecord.getReferenceName() == null ||
+               samRecord.getAlignmentStart() == SAMRecord.NO_ALIGNMENT_START ||
+               samRecord.getReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
     }
 
     @Override
@@ -370,8 +406,9 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
         }
 
         return samRecord.getMateUnmappedFlag() ||
-               samRecord.getMateReferenceName() == null || samRecord.getMateReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) ||
-               samRecord.getMateAlignmentStart() == SAMRecord.NO_ALIGNMENT_START;
+               samRecord.getMateReferenceName() == null ||
+               samRecord.getMateAlignmentStart() == SAMRecord.NO_ALIGNMENT_START ||
+               samRecord.getMateReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
     }
 
     @Override
