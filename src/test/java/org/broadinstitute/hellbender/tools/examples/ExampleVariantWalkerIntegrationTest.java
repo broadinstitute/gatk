@@ -40,4 +40,5 @@ public final class ExampleVariantWalkerIntegrationTest extends CommandLineProgra
         );
         testSpec.executeTest("testExampleVariantWalker", this);
     }
+
 }

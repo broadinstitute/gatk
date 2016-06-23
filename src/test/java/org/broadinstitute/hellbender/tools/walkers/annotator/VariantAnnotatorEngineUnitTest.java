@@ -250,8 +250,8 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude= Collections.emptyList();
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
-        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>("dbsnp", Collections.emptyMap(), file);
+        final String path = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
+        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(path, "dbsnp", Collections.emptyMap());
 
         final List<FeatureInput<VariantContext>> features = Collections.emptyList();
         final VariantAnnotatorEngine vae = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbSNPBinding, features);
@@ -263,7 +263,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final int ref = 3;
 
         final SimpleInterval loc= new SimpleInterval("1", 69428, 69428);
-        final VariantContext vcRS = new FeatureDataSource<>(file, new VCFCodec(), null, 0).query(loc).next();
+        final VariantContext vcRS = new FeatureDataSource<VariantContext>(path, null, 0, VariantContext.class).query(loc).next();
 
         final Allele refAllele = vcRS.getReference();
         final Allele altAllele = vcRS.getAlternateAllele(0);
@@ -282,11 +282,11 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude= Collections.emptyList();
-        final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
+        final String path = publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
         final FeatureInput<VariantContext> dbSNPBinding = null;
 
         final String featureSourceName = "fred";
-        final FeatureInput<VariantContext> fredInput = new FeatureInput<>(featureSourceName, Collections.emptyMap(), file);//we'll just reuse the DBSnp file under a different name
+        final FeatureInput<VariantContext> fredInput = new FeatureInput<>(path, featureSourceName, Collections.emptyMap());//we'll just reuse the DBSnp file under a different name
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 
         final VariantAnnotatorEngine vae = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbSNPBinding, features);
@@ -300,7 +300,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final int ref = 3;
 
         final SimpleInterval loc= new SimpleInterval("1", 69428, 69428);
-        final VariantContext vcRS = new FeatureDataSource<>(file, new VCFCodec(), null, 0).query(loc).next();
+        final VariantContext vcRS = new FeatureDataSource<VariantContext>(path, null, 0, VariantContext.class).query(loc).next();
 
         final Allele refAllele = vcRS.getReference();
         final Allele altAllele = vcRS.getAlternateAllele(0);
@@ -323,12 +323,12 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude= Collections.emptyList();
-        final File dbSNPFile= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
-        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>("dbsnp", Collections.emptyMap(), dbSNPFile);
+        final String dbSNPPath= publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf";
+        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(dbSNPPath, "dbsnp", Collections.emptyMap());
 
         final File fredFile = getTestFile("one_entry_source.vcf");
         final String featureSourceName = "fred";
-        final FeatureInput<VariantContext> fredInput = new FeatureInput<>(featureSourceName, Collections.emptyMap(), fredFile);
+        final FeatureInput<VariantContext> fredInput = new FeatureInput<>(fredFile.getAbsolutePath(), featureSourceName, Collections.emptyMap());
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 
         final VariantAnnotatorEngine vae = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbSNPBinding, features);
@@ -344,8 +344,8 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final int ref = 3;
 
         final SimpleInterval loc= new SimpleInterval("1", 69428, 69428);
-        final VariantContext vcDbSNP = new FeatureDataSource<>(dbSNPFile, new VCFCodec(), null, 0).query(loc).next();
-        final VariantContext vcFred = new FeatureDataSource<>(fredFile, new VCFCodec(), null, 0).query(loc).next();
+        final VariantContext vcDbSNP = new FeatureDataSource<VariantContext>(dbSNPPath, null, 0, VariantContext.class).query(loc).next();
+        final VariantContext vcFred = new FeatureDataSource<VariantContext>(fredFile.getAbsolutePath(), null, 0, VariantContext.class).query(loc).next();
 
         final Allele refAllele = vcDbSNP.getReference();
         final Allele altAllele = vcDbSNP.getAlternateAllele(0);
@@ -372,10 +372,10 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName());//good one
         final List<String> annotationsToExclude = Collections.emptyList();
         final File dbSNPFile = new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
-        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(VCFConstants.DBSNP_KEY, Collections.emptyMap(), dbSNPFile);
+        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(dbSNPFile.getAbsolutePath(), VCFConstants.DBSNP_KEY, Collections.emptyMap());
 
         final File fredFile = getTestFile("one_entry_source.vcf");
-        final FeatureInput<VariantContext> fredInput = new FeatureInput<>(VCFConstants.DBSNP_KEY, Collections.emptyMap(), fredFile);
+        final FeatureInput<VariantContext> fredInput = new FeatureInput<>(fredFile.getAbsolutePath(), VCFConstants.DBSNP_KEY, Collections.emptyMap());
         final List<FeatureInput<VariantContext>> features = Arrays.asList(fredInput);
 
         VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbSNPBinding, features);
@@ -384,7 +384,7 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
     @Test
     public void testCoverageAnnotationViaEngine() throws Exception {
         final File file= new File(publicTestDir + "Homo_sapiens_assembly19.dbsnp135.chr1_1M.exome_intervals.vcf");
-        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>("dbsnp", Collections.emptyMap(), file);
+        final FeatureInput<VariantContext> dbSNPBinding = new FeatureInput<>(file.getAbsolutePath(), "dbsnp", Collections.emptyMap());
 
         final List<String> annotationGroupsToUse= Collections.emptyList();
         final List<String> annotationsToUse = Arrays.asList(Coverage.class.getSimpleName(),

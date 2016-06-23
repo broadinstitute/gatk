@@ -154,16 +154,8 @@ public final class FeatureManager implements AutoCloseable {
      * (but not actual tools, so it's not protected).
      */
     void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType) {
-        // Record the expected Feature type as declared in the parameterized type of the Field declaration
-        // (eg., VariantContext if the field was a FeatureInput<VariantContext> or List<FeatureInput<VariantContext>>).
-        // This is used for type-checking purposes.
-        featureInput.setFeatureType(featureType);
-
-        // Select the right codec for decoding the underlying file
-        final FeatureCodec<? extends Feature, ?> codec = getCodecForFile(featureInput.getFeatureFile(), featureType);
-
         // Create a new FeatureDataSource for this file, and add it to our query pool
-        featureSources.put(featureInput, new FeatureDataSource<>(featureInput.getFeatureFile(), codec, featureInput.getName(), featureQueryLookahead));
+        featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType));
     }
 
     /**

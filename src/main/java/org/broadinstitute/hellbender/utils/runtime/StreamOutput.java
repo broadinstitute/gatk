@@ -41,4 +41,9 @@ public abstract class StreamOutput {
      * @return true if the buffer was truncated.
      */
     public abstract boolean isBufferTruncated();
+
+    @Override
+    public String toString(){
+        return getBufferString();
+    }
 }

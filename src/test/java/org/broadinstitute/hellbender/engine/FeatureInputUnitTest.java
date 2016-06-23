@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.codecs.table.TableFeature;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -32,7 +31,8 @@ public final class FeatureInputUnitTest extends BaseTest {
                 { "::" },
                 { "" },
                 { "name,key=value1,key=value2:file" },   //duplicate key
-                { "name,key=value,key=value:file" }      //duplicate key
+                { "name,key=value,key=value:file" },      //duplicate key
+                { "name:name:gendb://mydb" }
         };
     }
 
@@ -52,20 +52,41 @@ public final class FeatureInputUnitTest extends BaseTest {
                 {"key1=value,myFile"}             //allowed - all of this is treated as a file name
         };
     }
+
     @Test(dataProvider = "ValidFileOnlyFeatureArgumentValuesDataProvider")
     public void testNoFeatureNameSpecified(final String validFileOnlyFeatureArgumentValue) {
         FeatureInput<Feature> featureInput = new FeatureInput<>(validFileOnlyFeatureArgumentValue);   //"myName,key1=value,myFile"
 
-        Assert.assertEquals(featureInput.getFeatureFile(), new File(validFileOnlyFeatureArgumentValue), "Wrong File in FeatureInput");
+        Assert.assertEquals(featureInput.getFeaturePath(), validFileOnlyFeatureArgumentValue, "Wrong File in FeatureInput");
         // Name should default to the absolute path of the File when no name is specified
         Assert.assertEquals(featureInput.getName(), new File(validFileOnlyFeatureArgumentValue).getAbsolutePath(), "Wrong default name in FeatureInput");
+    }
+
+    @DataProvider(name = "GenDbPathAndNameData")
+    public Object[][] genDbPathAndNameData() {
+        return new Object[][] {
+                // input String, expected Feature path, expected logical name
+                {"gendb://myJsons", "gendb://myJsons", "gendb://" + new File("myJsons").getAbsolutePath()},
+                {"myname:gendb://myJsons", "gendb://myJsons", "myname"},
+                {"myname,key1=value1:gendb://myJsons", "gendb://myJsons", "myname"},
+                {"myname//:gendb://myJsons", "gendb://myJsons", "myname//"},
+                {"myname:gendb://", "gendb://", "myname"}
+        };
+    }
+
+    @Test(dataProvider = "GenDbPathAndNameData")
+    public void testGenDbPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
+        final FeatureInput<VariantContext> gendbInput = new FeatureInput<>(inputString);
+
+        Assert.assertEquals(gendbInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
+        Assert.assertEquals(gendbInput.getName(), expectedLogicalName, "wrong logical name");
     }
 
     @Test
     public void testFeatureNameSpecified() {
         FeatureInput<Feature> featureInput = new FeatureInput<>("myName:myFile");
 
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"), "Wrong File in FeatureInput");
+        Assert.assertEquals(featureInput.getFeaturePath(), "myFile", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "myName", "Wrong name in FeatureInput");
     }
 
@@ -73,7 +94,7 @@ public final class FeatureInputUnitTest extends BaseTest {
     public void testNullOKAsFeatureName() {
         FeatureInput<Feature> featureInput = new FeatureInput<>("null:myFile");
 
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"), "Wrong File in FeatureInput");
+        Assert.assertEquals(featureInput.getFeaturePath(), "myFile", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "null", "Wrong name in FeatureInput");
     }
 
@@ -81,7 +102,7 @@ public final class FeatureInputUnitTest extends BaseTest {
     public void testNullOKAsFileName() {
         FeatureInput<Feature> featureInput = new FeatureInput<>("myName:null");
 
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("null"), "Wrong File in FeatureInput");
+        Assert.assertEquals(featureInput.getFeaturePath(), "null", "Wrong File in FeatureInput");
         Assert.assertEquals(featureInput.getName(), "myName", "Wrong name in FeatureInput");
     }
 
@@ -96,7 +117,7 @@ public final class FeatureInputUnitTest extends BaseTest {
         Assert.assertEquals(featureInput.getAttribute("key3"), null, "wrong attribute value for key3 (not present)");
 
         Assert.assertEquals(featureInput.getName(), "myName");
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"));
+        Assert.assertEquals(featureInput.getFeaturePath(), "myFile");
     }
 
     @Test
@@ -107,7 +128,7 @@ public final class FeatureInputUnitTest extends BaseTest {
         Assert.assertEquals(featureInput.getAttribute("key2"), null, "wrong attribute value for key2 (not present)");
 
         Assert.assertEquals(featureInput.getName(), "myName");
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"));
+        Assert.assertEquals(featureInput.getFeaturePath(), "myFile");
     }
 
     @Test
@@ -118,7 +139,7 @@ public final class FeatureInputUnitTest extends BaseTest {
         Assert.assertEquals(featureInput.getAttribute("key2"), "value", "wrong attribute value for key2");
 
         Assert.assertEquals(featureInput.getName(), "myName");
-        Assert.assertEquals(featureInput.getFeatureFile(), new File("myFile"));
+        Assert.assertEquals(featureInput.getFeaturePath(), "myFile");
     }
 
     @DataProvider(name = "KeyValuesDataProviderForTestingNull")
@@ -141,26 +162,15 @@ public final class FeatureInputUnitTest extends BaseTest {
     }
 
     @Test
-    public void testGetFeatureType() {
-        FeatureInput<Feature> featureFeatureInput = new FeatureInput<>("file1");
-        FeatureInput<VariantContext> variantContextFeatureInput = new FeatureInput<>("file2");
-        FeatureInput<TableFeature> tableFeatureInput = new FeatureInput<>("file3");
-
-        featureFeatureInput.setFeatureType(Feature.class);
-        variantContextFeatureInput.setFeatureType(VariantContext.class);
-        tableFeatureInput.setFeatureType(TableFeature.class);
-
-        Assert.assertEquals(featureFeatureInput.getFeatureType(), Feature.class, "Wrong Feature type for FeatureInput<Feature>");
-        Assert.assertEquals(variantContextFeatureInput.getFeatureType(), VariantContext.class, "Wrong Feature type for FeatureInput<VariantContext>");
-        Assert.assertEquals(tableFeatureInput.getFeatureType(), TableFeature.class, "Wrong Feature type for FeatureInput<TableFeature>");
-    }
-
-    @Test
     public void testToString() {
         final FeatureInput<Feature> namelessFeatureInput = new FeatureInput<>("file1");
         final FeatureInput<Feature> namedFeatureInput = new FeatureInput<>("name:file1");
+        final FeatureInput<Feature> namelessGenomicsDB = new FeatureInput<>("gendb://file1");
+        final FeatureInput<Feature> namedGenomicsDB = new FeatureInput<>("name:gendb://file1");
 
         Assert.assertEquals(namelessFeatureInput.toString(), new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput incorrect");
         Assert.assertEquals(namedFeatureInput.toString(), "name:" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput incorrect");
+        Assert.assertEquals(namelessGenomicsDB.toString(), "gendb://" + new File("file1").getAbsolutePath(), "String representation of nameless FeatureInput with genomicsDB path incorrect");
+        Assert.assertEquals(namedGenomicsDB.toString(), "name:gendb://" + new File("file1").getAbsolutePath(), "String representation of named FeatureInput with genomicsDB path incorrect");
     }
 }

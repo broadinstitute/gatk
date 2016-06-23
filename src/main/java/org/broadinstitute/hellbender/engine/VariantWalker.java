@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -11,9 +8,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.io.File;
-import java.util.Collections;
 import java.util.stream.StreamSupport;
 
 /**
@@ -29,7 +25,7 @@ public abstract class VariantWalker extends GATKTool {
     // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
-    public File drivingVariantFile;
+    public String drivingVariantFile;
 
     /**
      * This number controls the size of the cache for our primary and auxiliary FeatureInputs
@@ -80,16 +76,13 @@ public abstract class VariantWalker extends GATKTool {
 
     @SuppressWarnings("unchecked")
     private void initializeDrivingVariants() {
-        // Need to discover the right codec for the driving source of variants manually, since we are
-        // treating it specially (separate from the other sources of Features in our FeatureManager).
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingVariantFile, VariantContext.class);
+        drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
         //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
-        drivingVariants = new FeatureDataSource<>(drivingVariantFile, (FeatureCodec<VariantContext, ?>)codec, "drivingVariants", FEATURE_CACHE_LOOKAHEAD);
+        drivingVariants = new FeatureDataSource<>(drivingVariantsFeatureInput, FEATURE_CACHE_LOOKAHEAD, VariantContext.class);
 
         //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
-        drivingVariantsFeatureInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingVariantFile);
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class);
 
         //Note: the intervals for the driving variants are set in onStartup
@@ -132,7 +125,7 @@ public abstract class VariantWalker extends GATKTool {
         final Object header = drivingVariants.getHeader();
 
         if ( ! (header instanceof VCFHeader) ) {
-            throw new GATKException("Header for " + drivingVariantFile.getAbsolutePath() + " is not in VCF header format");
+            throw new GATKException("Header for " + drivingVariantFile + " is not in VCF header format");
         }
 
         return (VCFHeader)header;

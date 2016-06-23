@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.stream.StreamSupport;
 
 /**
@@ -40,9 +39,9 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
         final File drivingFile = getDrivingFeatureFile();
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(drivingFile);
         if (isAcceptableFeatureType(codec.getFeatureType())) {
-            drivingFeatures = new FeatureDataSource<>(drivingFile, (FeatureCodec<F, ?>)codec);
+            drivingFeatures = new FeatureDataSource<>(drivingFile);
 
-            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>("drivingFeatureFile", Collections.emptyMap(), drivingFile);
+            final FeatureInput<F> drivingFeaturesInput = new FeatureInput<>(drivingFile.getAbsolutePath(), "drivingFeatureFile");
             features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType());
         } else {
             throw new UserException("File " + drivingFile + " contains features of the wrong type.");

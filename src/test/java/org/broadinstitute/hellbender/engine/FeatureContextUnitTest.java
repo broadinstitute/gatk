@@ -61,7 +61,7 @@ public final class FeatureContextUnitTest extends BaseTest {
         try (final FeatureManager featureManager = new FeatureManager(toolInstance)) {
             final FeatureContext featureContext = new FeatureContext(featureManager, new SimpleInterval("1", 1, 1));
             final Object header = featureContext.getHeader(toolInstance.featureArgument);
-            Assert.assertTrue(header instanceof VCFHeader, "Header for " + toolInstance.featureArgument.getFeatureFile().getAbsolutePath() +
+            Assert.assertTrue(header instanceof VCFHeader, "Header for " + toolInstance.featureArgument.getFeaturePath() +
                     " not a VCFHeader");
         }
     }

@@ -297,8 +297,8 @@ public class UserException extends RuntimeException {
 
         public final ValidateVariants.ValidationType type;
 
-        public FailsStrictValidation(File f, ValidateVariants.ValidationType type, String message) {
-            super(String.format("File %s fails strict validation: %s of type:", f.getAbsolutePath(), message, type));
+        public FailsStrictValidation(String f, ValidateVariants.ValidationType type, String message) {
+            super(String.format("Input %s fails strict validation: %s of type:", f, message, type));
             this.type = type;
         }
     }

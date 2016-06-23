@@ -473,7 +473,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString("", testFile),
                 1,
-                UserException.NoSuitableCodecs.class
+                UserException.CouldNotReadInputFile.class
         );
 
         spec.executeTest("testNotFileVcfException--" + testFile, this);

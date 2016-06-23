@@ -6,7 +6,6 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;

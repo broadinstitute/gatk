@@ -9,7 +9,6 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -252,9 +251,8 @@ public final class IntervalUtils {
      */
     public static List<GenomeLoc> featureFileToIntervals( final GenomeLocParser parser, final String featureFileName ) {
         final File featureFile = new File(featureFileName);
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(featureFileName));
 
-        try ( final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile, codec) ) {
+        try ( final FeatureDataSource<? extends Feature> dataSource = new FeatureDataSource<>(featureFile) ) {
             final List<GenomeLoc> featureIntervals = new ArrayList<>();
 
             for ( final Feature feature : dataSource ) {

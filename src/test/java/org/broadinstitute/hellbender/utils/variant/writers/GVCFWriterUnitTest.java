@@ -458,7 +458,7 @@ public class GVCFWriterUnitTest extends BaseTest {
 
     private static void assertGVCFIsParseableAndVariantsMatch(File variantFile, List<MinimalData> expected) {
         Assert.assertTrue(variantFile.exists());
-        try ( FeatureDataSource<VariantContext> input = new FeatureDataSource<>(variantFile, new VCFCodec()))
+        try ( FeatureDataSource<VariantContext> input = new FeatureDataSource<>(variantFile))
         {
             final List<VariantContext> variants = Lists.newArrayList(input.iterator());
             Assert.assertEquals(variants.size(), expected.size());
