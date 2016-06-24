@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -162,7 +163,9 @@ public class Main {
         return clazz.getAnnotation(CommandLineProgramProperties.class);
     }
 
-    private static class SimpleNameComparator implements Comparator<Class<?>> {
+    private static class SimpleNameComparator implements Comparator<Class<?>>, Serializable {
+        private static final long serialVersionUID = 1096632824580028876L;
+
         @Override
         public int compare(final Class<?> aClass, final Class<?> bClass) {
             return aClass.getSimpleName().compareTo(bClass.getSimpleName());
