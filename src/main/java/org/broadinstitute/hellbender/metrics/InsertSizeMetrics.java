@@ -8,16 +8,16 @@ import java.io.Serializable;
 /**
  * Metrics about the insert size distribution of a paired-end library, created by the
  * CollectInsertSizeMetrics program and usually written to a file with the extension
- * ".insert_size_metrics".  In addition the insert size distribution is plotted to
- * a file with the extension ".insert_size_Histogram.pdf".
- *
- * @author Doug Voet (dvoet at broadinstitute dot org)
+ * ".insertSizeMetrics".  In addition the insert size distribution is plotted to
+ * a file with the extension ".insertSizeMetrics.pdf".
  */
 public final class InsertSizeMetrics extends MultiLevelMetrics implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** The MEDIAN insert size of all paired end reads where both ends mapped to the same chromosome. */
+    /**
+     *  The MEDIAN insert size of all paired end reads where both ends mapped to the same chromosome.
+     */
     public double MEDIAN_INSERT_SIZE;
 
     /**
@@ -71,4 +71,14 @@ public final class InsertSizeMetrics extends MultiLevelMetrics implements Serial
     public int WIDTH_OF_90_PERCENT;
     /** The "width" of the bins, centered around the median, that encompass 100% of all read pairs. */
     public int WIDTH_OF_99_PERCENT;
+
+    /**
+     * Return a disambiguating name suffix to be used by the multiple collectors to
+     * decorate output names, which are provided by the user in the form of a base name
+     * that needs to be disambiguated for each individual collector. This prevents
+     * a collector from clobbering the previous collectors output file(s). The value
+     * is not used here.
+     */
+    public static String getUniqueNameSuffix() { return "insertSizeMetrics";}
+
 }

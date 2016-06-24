@@ -106,8 +106,8 @@ public final class QualityYieldMetrics extends MetricBase implements Serializabl
         return this;
     }
 
-    //merges two objects
-    public QualityYieldMetrics merge(final QualityYieldMetrics that) {
+    //combines two objects
+    public QualityYieldMetrics combine(final QualityYieldMetrics that) {
         Utils.nonNull(that);
         if (useOriginalQualities != that.useOriginalQualities){
             throw new IllegalArgumentException("must have the same value for useOriginalQualities");
@@ -140,4 +140,14 @@ public final class QualityYieldMetrics extends MetricBase implements Serializabl
         finalized = true;
         return this;
     }
+
+    /**
+     * Return a disambiguating name suffix to be used by the multiple collectors to
+     * decorate output names, which are provided by the user in the form of a base name
+     * that needs to be disambiguated for each individual collector. This prevents
+     * a collector from clobbering the previous collectors output file(s). The value
+     * is not used here.
+     */
+    public static String getUniqueNameSuffix() { return "qualityYieldMetrics";}
+
 }

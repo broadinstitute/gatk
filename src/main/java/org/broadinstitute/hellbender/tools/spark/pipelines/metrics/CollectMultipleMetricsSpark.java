@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
-import htsjdk.samtools.SAMFileHeader.SortOrder;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -10,21 +10,17 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
-import org.broadinstitute.hellbender.metrics.QualityYieldMetricsArgumentCollection;
+import org.broadinstitute.hellbender.metrics.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.File;
 import java.util.*;
 
 /**
  * Tool that instantiates and executes multiple metrics programs using a single RDD.
  */
 @CommandLineProgramProperties(
-        summary = "Takes an input SAM/BAM/CRAM file and reference sequence and runs one or more " +
+        summary = "Takes an input SAM/BAM/CRAM file and reference sequence and runs one or more Spark " +
                 "metrics modules at the same time to cut down on I/O. Currently all programs are run with " +
                 "default options and fixed output extensions, but this may become more flexible in future.",
         oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM/CRAM file",
@@ -47,10 +43,12 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
     @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics. ", optional = true)
     public Set<MetricAccumulationLevel> metricAccumulationLevel = EnumSet.of(MetricAccumulationLevel.ALL_READS);
 
-    @Argument(doc = "List of metrics collectors to apply during the pass through the SAM file.")
-    public List<Collectors> collectors = new ArrayList<>();
+    @Argument(fullName="collectors",
+            doc = "List of metrics collectors to apply during the pass through the SAM file. " +
+                  "If no collectors are specified than all collectors will be run", optional = true)
+    public List<SparkCollectors> userCollectors = new ArrayList<>();
 
-    private interface CollectorProvider {
+    public interface SparkCollectorProvider {
         /**
          * For each collector type, provide a type-safe, collector-specific method
          * that creates and populates an instance of the  collector's input argument
@@ -60,30 +58,33 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
         MetricsCollectorSpark<? extends MetricsArgumentCollection> createCollector(
                 final String outputBaseName,
                 final Set<MetricAccumulationLevel> metricAccumulationLevel,
-                final List<Header> defaultHeaders
+                final List<Header> defaultHeaders,
+                final SAMFileHeader samHeader
         );
     }
 
     // Enum of Collector types that CollectMultipleMetrics can support.
-    public static enum Collectors implements CollectorProvider {
+    public static enum SparkCollectors implements SparkCollectorProvider {
         CollectInsertSizeMetrics {
             @Override
             public MetricsCollectorSpark<? extends MetricsArgumentCollection> createCollector(
                     final String outputBaseName,
                     final Set<MetricAccumulationLevel> metricAccumulationLevel,
-                    final List<Header> defaultHeaders)
+                    final List<Header> defaultHeaders,
+                    final SAMFileHeader samHeader)
             {
                 // disambiguate this collector's output files from the other collectors
-                final String localBaseName = outputBaseName + ".insertMetrics";
+                final String localBaseName = outputBaseName + "." + InsertSizeMetrics.getUniqueNameSuffix();
 
                 final InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();
-                isArgs.output = new File(localBaseName + ".txt");
+                isArgs.output = localBaseName + ".txt";
                 isArgs.histogramPlotFile = localBaseName + ".pdf";
+
                 isArgs.useEnd = InsertSizeMetricsArgumentCollection.EndToUse.SECOND;
                 isArgs.metricAccumulationLevel = metricAccumulationLevel;
 
                 final InsertSizeMetricsCollectorSpark collector = new InsertSizeMetricsCollectorSpark();
-                collector.initialize(isArgs, defaultHeaders);
+                collector.initialize(isArgs, samHeader, defaultHeaders);
 
                 return collector;
             }
@@ -93,60 +94,87 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
             public MetricsCollectorSpark<? extends MetricsArgumentCollection> createCollector(
                     final String outputBaseName,
                     final Set<MetricAccumulationLevel> metricAccumulationLevel,
-                    final List<Header> defaultHeaders)
+                    final List<Header> defaultHeaders,
+                    final SAMFileHeader samHeader)
             {
                 // disambiguate this collector's output files from the other collectors
-                final String localBaseName = outputBaseName + ".qualityYieldMetrics";
+                final String localBaseName = outputBaseName + "." + QualityYieldMetrics.getUniqueNameSuffix();
 
                 final QualityYieldMetricsArgumentCollection qyArgs = new QualityYieldMetricsArgumentCollection();
-                qyArgs.output = new File(localBaseName + ".txt");
+                qyArgs.output = localBaseName + ".txt";
 
                 final QualityYieldMetricsCollectorSpark collector = new QualityYieldMetricsCollectorSpark();
-                collector.initialize(qyArgs, defaultHeaders);
+                collector.initialize(qyArgs, samHeader, defaultHeaders);
 
                 return collector;
             }
         }
     }
 
+    /**
+     * List of external collectors so that an outside developer can invoke this class programmatically
+     * and provide alternative collectors to run by calling setCollectorsToRun().
+     */
+    private List<SparkCollectorProvider> externalCollectors = null;
+
+    /**
+     * Use this method when invoking CollectMultipleMetricsSpark programmatically to run programs other
+     * than the ones available via enum. This must be called before runTool().
+     */
+    public void setCollectorsToRun(List<SparkCollectorProvider> externalCollectorsToRun) {
+        this.externalCollectors = externalCollectorsToRun;
+    }
+
     @Override
     protected void runTool( final JavaSparkContext ctx ) {
         final JavaRDD<GATKRead> unFilteredReads = getUnfilteredReads();
-
-        if (collectors.isEmpty()) { // run all collectors
-            collectors.addAll(Arrays.asList(Collectors.values()));
-        }
-        if (collectors.size() > 1) {
+        List<SparkCollectorProvider> collectorsToRun = getCollectorsToRun();
+        if (collectorsToRun.size() > 1) {
             // if there is more than one collector to run, cache the
             // unfiltered RDD so we don't recompute it
             unFilteredReads.cache();
         }
-
-        for (final CollectorProvider provider : collectors) {
+        for (final SparkCollectorProvider provider : collectorsToRun) {
             MetricsCollectorSpark<? extends MetricsArgumentCollection> metricsCollector =
                     provider.createCollector(
                         outputBaseName,
                         metricAccumulationLevel,
-                        getDefaultHeaders()
+                        getDefaultHeaders(),
+                        getHeaderForReads()
                     );
-
-            validateCollector(metricsCollector, collectors.get(collectors.indexOf(provider)).name());
-
+            validateCollector(metricsCollector, collectorsToRun.get(collectorsToRun.indexOf(provider)).getClass().getName());
             // Execute the collector's lifecycle
-            ReadFilter readFilter =
-                    metricsCollector.getReadFilter(getHeaderForReads());
+            ReadFilter readFilter = metricsCollector.getReadFilter(getHeaderForReads());
             metricsCollector.collectMetrics(
                     unFilteredReads.filter(r -> readFilter.test(r)),
-                    getHeaderForReads(),
-                    getReadSourceName(),
-                    getAuthHolder()
+                    getHeaderForReads()
             );
-            metricsCollector.finishCollection();
+            metricsCollector.saveMetrics(getReadSourceName(), getAuthHolder());
+        }
+    }
+
+    /**
+     * Determine which collectors to run based on commandline args and programmatically
+     * specified custom collectors.
+     */
+    private List<SparkCollectorProvider> getCollectorsToRun() {
+        if (externalCollectors == null) {
+            if (userCollectors.size() == 0) { // run them all
+                return Arrays.asList(SparkCollectors.values());
+            }
+            else { // run the user specified collectors
+                List<SparkCollectorProvider> collectorsToRun = new ArrayList<>();
+                collectorsToRun.addAll(userCollectors);
+                return collectorsToRun;
+            }
+        }
+        else { // run the external collectors
+            return externalCollectors;
         }
     }
 
     // Validate requiresReference and expected sort order
-    private void validateCollector(final MetricsCollectorSpark<?> collector, final String name) {
+    private void validateCollector(final MetricsCollectorSpark<?> collector, final String sourceName) {
         if (collector.requiresReference()) {
             throw new UnsupportedOperationException("Requires reference for collector not yet implemented");
         }
@@ -154,7 +182,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
                 getHeaderForReads().getSortOrder(),
                 collector.getExpectedSortOrder(),
                 false,
-                name);
+                sourceName);
     }
 
 }

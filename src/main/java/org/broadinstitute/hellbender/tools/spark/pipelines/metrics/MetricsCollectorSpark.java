@@ -14,41 +14,72 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Interface implemented by Spark metrics collectors to allow them
- * to run as either a standalone Spark tool, or under the control of
- * CollectMultipleMetricsSpark, which reuses the same input RDD to run
- * multiple collectors.
+ * Each metrics collector has to be able to run from 4 different contexts:
  *
- * Spark collectors should be factored into the following implementation
- * classes:
+ *   - a standalone walker tool
+ *   - the {@link org.broadinstitute.hellbender.tools.picard.analysis.CollectMultipleMetrics} walker tool
+ *   - a standalone Spark tool
+ *   - the {@link org.broadinstitute.hellbender.tools.spark.pipelines.metrics.CollectMultipleMetricsSpark} tool
  *
- * <li>
- * A class derived from MetricsArgumentCollection that defines the input
- * arguments for the collector in a form that is suitable as a command
- * line argument collection.
- * A class that implements this interface, parameterized with the
- * MetricsArgumentCollection-derived class.
- * </li>
+ * In order to allow a single collector implementation to be shared across all of these
+ * contexts (standalone and CollectMultiple, Spark and non-Spark), collectors should be
+ * factored into the following classes, where X in the class names represents the specific
+ * type of metrics being collected:
  *
- * These two classes can then be used either in the standalone collector tool (see
- * CollectInsertSizeMetricsSpark as an example), or from CollectMultipleMetricsSpark.
+ *   XMetrics extends {@link htsjdk.samtools.metrics.MetricBase}: defines the aggregate metrics that we're trying to collect
+ *   XMetricsArgumentCollection: defines parameters for XMetrics, extends {@link org.broadinstitute.hellbender.metrics.MetricsArgumentCollection}
+ *   XMetricsCollector: processes a single read, and has a reduce/combiner
+ *       For multi level collectors, XMetricsCollector is composed of several classes:
+ *           XMetricsCollector extends {@link org.broadinstitute.hellbender.metrics.MultiLevelReducibleCollector}<
+ *              XMetrics, HISTOGRAM_KEY, XMetricsCollectorArgs, XMetricsPerUnitCollector>
+ *           XMetricsPerUnitCollector: per level collector, implements
+ *              {@link org.broadinstitute.hellbender.metrics.PerUnitMetricCollector}<XMetrics, HISTOGRAM_KEY, XMetricsCollectorArgs> (requires a combiner)
+ *           XMetricsCollectorArgs per-record argument (type argument for {@link org.broadinstitute.hellbender.metrics.MultiLevelReducibleCollector})
+ *   XMetricsCollectorSpark: adapter/bridge between RDD and the (read-based) XMetricsCollector,
+ *          implements {@link org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSpark}<XMetricsArgumentCollection>
+ *   CollectXMetrics extends {@link org.broadinstitute.hellbender.tools.picard.analysis.SinglePassSamProgram}
+ *   CollectXMetricsSpark extends {@link org.broadinstitute.hellbender.tools.spark.pipelines.metrics.MetricsCollectorSparkTool}<MyMetricsArgumentCollection>
  *
- * The general lifecycle of a Spark collector looks like this:
+ * The following schematic shows the general relationships of these collector component classes
+ * in the context of various tools, with the arrows indicating a "delegates to" relationship
+ * via composition or inheritance:
+ *
+ *     CollectXMetrics    CollectMultipleMetrics
+ *                \               /
+ *                \              /
+ *                v             v
+ *      _______________________________________
+ *      |          XMetricsCollector =========|=========> MultiLevelReducibleCollector
+ *      |                 |                   |                      |
+ *      |                 V                   |                      |
+ *      |             XMetrics                |                      V
+ *      | XMetricsCollectorArgumentCollection |             PerUnitXMetricCollector
+ *      ---------------------------------------
+ *                       ^
+ *                       |
+ *                       |
+ *             XMetricsCollectorSpark
+ *                ^              ^
+ *               /               \
+ *              /                \
+ *    CollectXMetricsSpark  CollectMultipleMetricsSpark
+ *
+ *
+ * The general lifecycle of a Spark collector (XMetricsCollectorSpark in the diagram
+ * above) looks like this:
  *
  *     CollectorType collector = new CollectorType<CollectorArgType>()
  *     CollectorArgType args = // get metric-specific input arguments
  *
- *     // pass the input arguments back to the collector for initialization
+ *     // pass the input arguments to the collector for initialization
  *     collector.initialize(args);
  *
- *     ReadFilter filter == collector.getReadFilter();
+ *     ReadFilter filter == collector.getReadFilter(samFileHeader);
  *     collector.collectMetrics(
  *         getReads().filter(filter),
- *         getHeaderForReads(),
- *         getReadSourceName(),
- *         getAuthHolder()
+ *         samFileHeader
  *     );
- *     collector.finishCollection();
+ *     collector.saveMetrics(getReadSourceName(), getAuthHolder());
  *
  */
 public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> extends Serializable
@@ -79,9 +110,10 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
      * initialize the readFilter) or collectMetrics.
      * @param inputArgs an object that contains the argument values to be used for
      *                  the collector
+     * @param samHeader the SAMFileHeader for the input
      * @param defaultHeaders default metrics headers from the containing tool
      */
-    void initialize(T inputArgs, List<Header> defaultHeaders);
+    void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
 
     /**
      * Return the read filter required for this collector. The default implementation
@@ -99,21 +131,16 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
      * @param filteredReads The reads to be analyzed for this collector. The reads will have already
      *                      been filtered by this collector's read filter.
      * @param samHeader The SAMFileHeader associated with the reads in the input RDD.
-     * @param inputBaseName base name of the input file
-     * @param authHolder authHolder
      */
-    void collectMetrics(
-            JavaRDD<GATKRead> filteredReads,
-            SAMFileHeader samHeader,
-            String inputBaseName,
-            AuthHolder authHolder
-    );
+    void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
 
     /**
      * This method is called after collectMetrics has returned and
      * all Spark partitions have completed metrics collection. This
      * gives the collector to serialize the resulting metrics, usually
      * to a metrics file.
+     * @param inputBaseName base name of the input file
+     * @param authHolder authentication info. May be null.
      */
-    default void finishCollection() { }
+    default void saveMetrics(String inputBaseName, AuthHolder authHolder) { }
 }

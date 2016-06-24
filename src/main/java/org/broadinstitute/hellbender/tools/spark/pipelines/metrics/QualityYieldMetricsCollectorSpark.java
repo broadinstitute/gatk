@@ -31,7 +31,10 @@ public class QualityYieldMetricsCollectorSpark
      * Initialize the collector with input arguments;
      */
     @Override
-    public void initialize(final QualityYieldMetricsArgumentCollection inputArgs, final List<Header> defaultHeaders) {
+    public void initialize(
+            final QualityYieldMetricsArgumentCollection inputArgs,
+            final SAMFileHeader samHeader,
+            final List<Header> defaultHeaders) {
         metricsFile = new MetricsFile<QualityYieldMetrics, Integer>();
         defaultHeaders.stream().forEach(h -> metricsFile.addHeader(h));
         this.args = inputArgs;
@@ -41,28 +44,27 @@ public class QualityYieldMetricsCollectorSpark
      * Do the actual metrics collection on the provided RDD.
      * @param filteredReads The reads to be analyzed for this collector.
      * @param samHeader The SAMFileHeader associated with the reads in the input RDD.
-     * @param authHolder authHolder
-     * @param inputBaseName base name of the input file
      */
     public void collectMetrics(
             final JavaRDD<GATKRead> filteredReads,
-            final SAMFileHeader samHeader,
-            final String inputBaseName,
-            final AuthHolder authHolder
-    )
+            final SAMFileHeader samHeader)
     {
         final QualityYieldMetrics metrics =
                 filteredReads.aggregate(new QualityYieldMetrics().setUseOriginalQualities(args.useOriginalQualities),
                         (hgp, read) -> hgp.addRead(read),
-                        (hgp1, hgp2) -> hgp1.merge(hgp2))
+                        (hgp1, hgp2) -> hgp1.combine(hgp2))
                         .finish();
 
         metricsFile.addMetric(metrics);
-
-        // this could be moved to finishCollection, but it needs the autholder/basename
-        MetricsUtils.saveMetrics(metricsFile, args.output.getAbsolutePath(), authHolder);
     }
 
-    public void finishCollection() {}
+    /**
+     * Write out the results of the metrics collection
+     * @param inputBaseName base name of the input file
+     * @param authHolder
+     */
+    public void saveMetrics(final String inputBaseName, final AuthHolder authHolder) {
+        MetricsUtils.saveMetrics(metricsFile, args.output, authHolder);
+    }
 
 }

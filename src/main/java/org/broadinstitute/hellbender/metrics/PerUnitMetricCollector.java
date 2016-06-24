@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.metrics;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 
+import java.io.Serializable;
+
 /**
  *  PerRecordCollector - An interface for classes that collect data in order to generate one or more metrics.
  *      This process usually occurs in the following fashion:
@@ -17,7 +19,7 @@ import htsjdk.samtools.metrics.MetricsFile;
  *                any information needed by multiple collectors we allow different types of arguments that
  *                extend DefaultPerRecordCollectorArgs to accommodate any computed values
  */
-public interface PerUnitMetricCollector<BEAN extends MetricBase, HKEY extends Comparable<HKEY>, ARGTYPE> {
+public interface PerUnitMetricCollector<BEAN extends MetricBase, HKEY extends Comparable<HKEY>, ARGTYPE> extends Serializable {
     /**
      * Add a SAMRecord (with ReferenceSequence and Read Group info) to the metric(s) being calculated)
      * @param args Contains SAMRecord, SAMReadGroupRecord, ReferenceSequence of current record and any previously

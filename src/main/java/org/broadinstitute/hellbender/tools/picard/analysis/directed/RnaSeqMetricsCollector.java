@@ -89,6 +89,7 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
     }
 
     private class PerUnitRnaSeqMetricsCollector implements PerUnitMetricCollector<RnaSeqMetrics, Integer, SAMRecord> {
+        private static final long serialVersionUID = 1L;
 
         final RnaSeqMetrics metrics = new RnaSeqMetrics();
         

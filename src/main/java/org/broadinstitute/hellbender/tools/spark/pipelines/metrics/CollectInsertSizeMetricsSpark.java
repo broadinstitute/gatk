@@ -9,12 +9,13 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.List;
 
 /**
- * Spark tool for collecting insert size metrics. Delegates to InsertSizeMetricsCollectorSpark.
+ * Spark tool for collecting insert size metrics.
  */
 @CommandLineProgramProperties(
         summary        = "Program to collect insert size distribution information in SAM/BAM/CRAM file(s)",
@@ -26,47 +27,43 @@ public final class CollectInsertSizeMetricsSpark
     private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
-    InsertSizeMetricsArgumentCollection insertSizeCollectorArgs = new InsertSizeMetricsArgumentCollection();
+    InsertSizeMetricsArgumentCollection insertSizeArgs = new InsertSizeMetricsArgumentCollection();
 
-    InsertSizeMetricsCollectorSpark insertSizeCollector = new InsertSizeMetricsCollectorSpark();
+    InsertSizeMetricsCollectorSpark insertSizeCollector = null;
 
-    @Override
-    public SortOrder getExpectedSortOrder() { return insertSizeCollector.getExpectedSortOrder(); }
-
-    @Override
     public InsertSizeMetricsArgumentCollection getInputArguments() {
-        return insertSizeCollectorArgs;
+        return insertSizeArgs;
+    }
+
+    public SortOrder getExpectedSortOrder() { return SortOrder.unsorted; }
+
+    public void initialize(
+            final InsertSizeMetricsArgumentCollection inputArgs,
+            final SAMFileHeader samHeader,
+            final List<Header> defaultHeaders)
+    {
+        insertSizeCollector = new InsertSizeMetricsCollectorSpark();
+        insertSizeCollector.initialize(inputArgs, samHeader, defaultHeaders);
     }
 
     /**
-     * Expose the read filter required for this collector
+     * Return the read filter required for this collector
      */
     @Override
     public ReadFilter getReadFilter(final SAMFileHeader samHeader) {
         return insertSizeCollector.getReadFilter(samHeader);
     }
 
-    public void initialize(
-            final InsertSizeMetricsArgumentCollection inputArgs,
-            final List<Header> defaultHeaders) {
-        insertSizeCollector.initialize(inputArgs, defaultHeaders);
-    }
-
     @Override
     public void collectMetrics(
             final JavaRDD<GATKRead> filteredReads,
-            final  SAMFileHeader samHeader,
-            final String inputBaseName,
-            final AuthHolder authHolder)
+            final SAMFileHeader samHeader)
     {
-        insertSizeCollector.collectMetrics(
-                filteredReads,
-                samHeader,
-                inputBaseName,
-                authHolder
-        );
+        insertSizeCollector.collectMetrics(filteredReads, samHeader);
     }
 
-    void finishCollection() { }
-
+    @Override
+    public void finish(final String inputName, final AuthHolder authHolder) {
+        insertSizeCollector.saveMetrics(inputName, authHolder);
+    }
 }

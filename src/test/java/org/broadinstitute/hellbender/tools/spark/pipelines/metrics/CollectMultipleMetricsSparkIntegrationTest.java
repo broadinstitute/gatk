@@ -1,11 +1,18 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
-import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.metrics.Header;
+import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
+import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
+import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -13,10 +20,11 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLineProgramTest{
-
-    //TODO: we're reaching over into picard for these test files
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
     public String getTestedClassName() {
@@ -26,23 +34,48 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
     @DataProvider(name="metricsTestFiles")
     public Object[][] insertSizeMetricsFiles() {
         return new Object[][] {
-                {"insert_size_metrics_test.bam", null},
-                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference}
+                // single level collection
+                {"insert_size_metrics_test.sam", null, "expectedInsertSizeMetricsL1.txt", "expectedQualityYieldOnInsertSizeMetrics.txt"},
+                {"insert_size_metrics_test.bam", null, "expectedInsertSizeMetricsL1.txt", "expectedQualityYieldOnInsertSizeMetrics.txt"},
+                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference, "expectedInsertSizeMetricsL1.txt", "expectedQualityYieldOnInsertSizeMetrics.txt"},
         };
     }
 
     @Test(dataProvider="metricsTestFiles", groups = "spark")
-    public void test(final String fileName, final String referenceName) throws IOException {
+    public void testBuiltInCollectors(
+            final String fileName,
+            final String referenceName,
+            final String expectedInsertSizeResults,
+            final String expectedQualityYieldResults) throws IOException
+    {
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        String outBase = setupMultipleCollector(args, fileName, referenceName);
 
-        // set up test data input and result outputs (two: one text one histogram plot in pdf)
+        // for now, run the only two conforming collectors that we have
+        args.add("--collectors" );
+        args.add("CollectInsertSizeMetrics" );
+
+        args.add("--collectors" );
+        args.add("CollectQualityYieldMetrics" );
+
+        this.runCommandLine(args.getArgsArray());
+
+        validateInsertSizeMetrics(outBase, expectedInsertSizeResults);
+        validateQualityYieldMetrics(outBase, expectedQualityYieldResults);
+    }
+
+    private String setupMultipleCollector(
+            final ArgumentsBuilder args,
+            final String fileName,
+            final String referenceName) throws IOException
+    {
+        // set up test data input and result output
         final File input = new File(TEST_DATA_DIR, fileName);
 
         // create a directory to contain the results since there will be multiple collectors
         // and each may create multiple files
-        final File outDir = BaseTest.createTempDir("collectMultiMetricsTest");
-        String outBase = outDir.getAbsolutePath() + "/collectMultiMetrics";
-
-        final ArgumentsBuilder args = new ArgumentsBuilder();
+        final File outDir = BaseTest.createTempDir("collectMultiMetricsSparkTest" );
+        String outBase = outDir.getAbsolutePath() + "/collectMultiSparkMetrics";
 
         // IO arguments
         args.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
@@ -59,73 +92,73 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
             args.add(REF.getAbsolutePath());
         }
 
-        // for now, run the only two conforming collectors that we have
-        args.add("--collectors");
-        args.add("CollectInsertSizeMetrics");
-
-        args.add("--collectors");
-        args.add("CollectQualityYieldMetrics");
-
-        this.runCommandLine(args.getArgsArray());
-
-        validateInsertSizeMetrics(outBase);
-        validateQualityYieldMetrics(outBase);
+        return outBase;
     }
 
-    private void validateQualityYieldMetrics(final String outBase) throws IOException {
-        String localOutBase = outBase + ".qualityYieldMetrics" + ".txt";
-        final MetricsFile<InsertSizeMetrics, Comparable<?>> output = new MetricsFile<>();
+    private void validateQualityYieldMetrics(final String outBase, final String expectedResults) throws IOException {
+        String localOut = outBase + "." + QualityYieldMetrics.getUniqueNameSuffix() + ".txt";
 
-        try (FileReader reader = new FileReader(localOutBase)) {
-            output.read(reader);
-            Assert.assertEquals(output.getMetrics().size(), 1);
+        IntegrationTestSpec.assertEqualTextFiles(
+                new File(localOut),
+                new File(TEST_DATA_DIR, expectedResults),
+                "#");
+    }
+
+    private void validateInsertSizeMetrics(final String outBase, final String expectedResults) throws IOException {
+        String localOut = outBase + "." + InsertSizeMetrics.getUniqueNameSuffix() + ".txt";
+
+        IntegrationTestSpec.assertEqualTextFiles(
+                new File(localOut),
+                new File(TEST_DATA_DIR, expectedResults),
+                "#");
+    }
+
+    // Test implementation of MetricsCollectorSpark used for testing CollectMultipleMetricsSpark
+    // with a custom collector added programmatically
+    public static class TestCustomCollector implements MetricsCollectorSpark<MetricsArgumentCollection> {
+        private static final long serialVersionUID = 1L;
+        long count = 0;
+        public void initialize(
+                MetricsArgumentCollection inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders) {}
+        public void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader) {
+            count = filteredReads.count();
         }
     }
 
-    private void validateInsertSizeMetrics(final String outBase) throws IOException {
-        String localOutBase = outBase + ".insertMetrics" + ".txt";
-        final MetricsFile<InsertSizeMetrics, Comparable<?>> output = new MetricsFile<>();
+    @Test(dataProvider="metricsTestFiles", groups = "spark")
+    public void testCustomCollectorAPI(
+        final String fileName,
+        final String referenceName,
+        final String expectedInsertSizeResults,
+        final String expectedQualityYieldResults) throws IOException
+    {
+        // Test CollectMultipleMetricsSpark with a custom collector
+        final TestCustomCollector testCollector = new TestCustomCollector();
 
-        try (FileReader reader = new FileReader(localOutBase)) {
-            output.read(reader);
-            Assert.assertEquals(output.getMetrics().size(), 1);
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        setupMultipleCollector(args, fileName, referenceName);
 
-            final double DOUBLE_TOLERANCE = 0.05;
-            for (final InsertSizeMetrics metrics : output.getMetrics()) {
-
-                // TODO: not yet checked
-                // Assert.assertEquals(metrics.PAIR_ORIENTATION.name(), "FR");
-
-                // TODO: add tests for different collection level
-                if (metrics.LIBRARY == null) {  // SAMPLE or ALL_READS level
-
-                    Assert.assertEquals(metrics.MIN_INSERT_SIZE, 36);
-                    Assert.assertEquals(metrics.MAX_INSERT_SIZE, 45);
-                    Assert.assertEquals(metrics.READ_PAIRS, 13);
-
-                    Assert.assertEquals(metrics.MEAN_INSERT_SIZE, 40.1, DOUBLE_TOLERANCE);
-                    Assert.assertEquals(metrics.STANDARD_DEVIATION, 3.12, DOUBLE_TOLERANCE);
-
-                    Assert.assertEquals((int) metrics.MEDIAN_INSERT_SIZE, 41);
-                    Assert.assertEquals((int) metrics.MEDIAN_ABSOLUTE_DEVIATION, 3);
-
-                    // following is also a test on symmetric bin width collection method
-                    Assert.assertEquals(metrics.WIDTH_OF_10_PERCENT, 1);
-                    Assert.assertEquals(metrics.WIDTH_OF_20_PERCENT, 1);
-                    Assert.assertEquals(metrics.WIDTH_OF_30_PERCENT, 1);
-                    Assert.assertEquals(metrics.WIDTH_OF_40_PERCENT, 7);
-                    Assert.assertEquals(metrics.WIDTH_OF_50_PERCENT, 7);
-                    Assert.assertEquals(metrics.WIDTH_OF_60_PERCENT, 7);
-                    Assert.assertEquals(metrics.WIDTH_OF_70_PERCENT, 9);
-                    Assert.assertEquals(metrics.WIDTH_OF_80_PERCENT, 11);
-                    Assert.assertEquals(metrics.WIDTH_OF_90_PERCENT, 11);
-                    Assert.assertEquals(metrics.WIDTH_OF_99_PERCENT, 11);
-
-                } else {
-                    Assert.fail("Unexpected metric: " + metrics);
+        // CollectMultipleMetricsSpark provider that creates an initializes a custom
+        // collector
+        CollectMultipleMetricsSpark.SparkCollectorProvider customProvider =
+            new CollectMultipleMetricsSpark.SparkCollectorProvider() {
+                public MetricsCollectorSpark<? extends MetricsArgumentCollection> createCollector(
+                    final String outputBaseName,
+                    final Set<MetricAccumulationLevel> metricAccumulationLevel,
+                    final List<Header> defaultHeaders,
+                    final SAMFileHeader samHeader)
+                {
+                    return testCollector;
                 }
-            }
-        }
+        };
+
+        // Manually create a tool and programmatically set the custome collector as the one
+        // to run
+        CollectMultipleMetricsSpark multipleCollectorTool = new CollectMultipleMetricsSpark();
+        multipleCollectorTool.setCollectorsToRun(Collections.singletonList(customProvider));
+        multipleCollectorTool.instanceMain(args.getArgsArray());
+
+        Assert.assertEquals(testCollector.count, 52L);
     }
 
 }
