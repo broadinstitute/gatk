@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -367,7 +368,9 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
         return startPosKeySet;
     }
 
-    private static class VariantContextComparator implements Comparator<VariantContext> {
+    private static class VariantContextComparator implements Comparator<VariantContext>, Serializable {
+        private static final long serialVersionUID = -2549166273822365485L;
+
         @Override
         public int compare(VariantContext vc1, VariantContext vc2) {
             return vc1.getStart() - vc2.getStart();

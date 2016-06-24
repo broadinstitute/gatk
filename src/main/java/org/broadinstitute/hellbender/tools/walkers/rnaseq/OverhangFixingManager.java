@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.*;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -310,8 +311,9 @@ public class OverhangFixingManager {
     }
 
     // class to represent the comparator for the split reads
-    private final class SplitReadComparator implements Comparator<SplitRead> {
+    private final class SplitReadComparator implements Comparator<SplitRead>, Serializable {
 
+        private static final long serialVersionUID = 7956407034441782842L;
         private final ReadCoordinateComparator readComparator;
 
         public SplitReadComparator() {
@@ -349,7 +351,8 @@ public class OverhangFixingManager {
     }
 
     // class to represent the comparator for the split reads
-    private final class SpliceComparator implements Comparator<Splice> {
+    private final class SpliceComparator implements Comparator<Splice>, Serializable {
+        private static final long serialVersionUID = -7783679773557594065L;
 
         public int compare(final Splice position1, final Splice position2) {
             return position1.loc.compareTo(position2.loc);
