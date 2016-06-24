@@ -13,7 +13,6 @@ import java.util.List;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public class CopyNumberTriStateUnitTest {
-
     @Test
     public void testAlleleListsLogic() {
         Assert.assertEquals(CopyNumberTriState.ALL_ALLELES.size(), CopyNumberTriState.values().length);
