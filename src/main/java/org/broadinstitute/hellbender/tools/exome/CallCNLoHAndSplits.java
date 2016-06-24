@@ -116,7 +116,7 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
             throw new UserException("Cannot create " + outputDir +".  Does a file (not directory) exist with the same name?  Do you have access to create?", ioe);
         }
 
-        final Genome genome = new Genome(targetCoveragesFile, snpCountsFile, sampleName);
+        final Genome genome = new Genome(targetCoveragesFile, snpCountsFile);
 
         // Make the calls
         logger.info("Making the CNLoH and balanced-segment calls...");

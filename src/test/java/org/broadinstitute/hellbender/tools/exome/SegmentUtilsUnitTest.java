@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -179,7 +180,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
                 new SimpleInterval("chr2", 10, 10));
 
         final List<SimpleInterval> unionedSegments =
-                SegmentUtils.unionSegments(targetSegments, snpSegments, new Genome(counts, snps, "test"));
+                SegmentUtils.unionSegments(targetSegments, snpSegments, new Genome(counts, snps));
         final List<SimpleInterval> expectedLeft = Arrays.asList(
                 new SimpleInterval("chr1", 1, 10),
                 new SimpleInterval("chr1", 20, 40),

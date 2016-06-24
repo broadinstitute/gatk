@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-enum SegmentTableColumn {
+public enum SegmentTableColumn {
     SAMPLE("Sample"), CONTIG("Chromosome"), START("Start"), END("End"),
     NUM_PROBES("Num_Probes"), MEAN("Segment_Mean"), SD("Segment_Std"), CALL("Segment_Call"),
     NUM_TARGETS("Num_Targets"), NUM_SNPS("Num_SNPs"),

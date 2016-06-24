@@ -26,7 +26,6 @@ public final class SegmentedGenomeUnitTest extends BaseTest {
             = new File(TEST_SUB_DIR, "segments-for-small-segment-merging-base.seg");
     private static final File SEGMENT_FILE_SMALL_SEGMENT_MERGING_NO_SMALL
             = new File(TEST_SUB_DIR, "segments-for-small-segment-merging-no-small.seg");
-    private static final String SAMPLE_NAME = "test";
 
     //a segment is small if number of targets it contains is strictly less than SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD
     private static final int SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD = 3;
@@ -35,8 +34,7 @@ public final class SegmentedGenomeUnitTest extends BaseTest {
     //and a single small segment (containing only a single target) on chromosome 2
     @Test
     public void testCountSmallSegments() {
-        final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING,
-                SAMPLE_NAME);
+        final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING);
         final SegmentedGenome model = new SegmentedGenome(SEGMENT_FILE_SMALL_SEGMENT_MERGING, genome);
 
         final int resultNumberOfSegmentsBeforeMerging = model.getSegments().size();
@@ -50,8 +48,7 @@ public final class SegmentedGenomeUnitTest extends BaseTest {
 
     @Test
     public void testSmallSegmentMergingBase() {
-        final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING,
-                SAMPLE_NAME);
+        final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING);
         final SegmentedGenome model = new SegmentedGenome(SEGMENT_FILE_SMALL_SEGMENT_MERGING, genome);
 
         final SegmentedGenome modelMerged = model.mergeSmallSegments(SMALL_SEGMENT_TARGET_NUMBER_THRESHOLD);
@@ -83,8 +80,7 @@ public final class SegmentedGenomeUnitTest extends BaseTest {
     //test case with no small segments; model should not change after merging
     @Test
     public void testSmallSegmentMergingNoSmallSegments() {
-        final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING,
-                SAMPLE_NAME);
+        final Genome genome = new Genome(TARGET_FILE_SMALL_SEGMENT_MERGING, SNP_FILE_SMALL_SEGMENT_MERGING);
         final SegmentedGenome model = new SegmentedGenome(SEGMENT_FILE_SMALL_SEGMENT_MERGING_NO_SMALL, genome);
 
         final List<SimpleInterval> expected = model.getSegments();

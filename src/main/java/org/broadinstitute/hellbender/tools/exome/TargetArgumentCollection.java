@@ -75,7 +75,7 @@ public final class TargetArgumentCollection {
      *                                    file name was indicated explicitly.
      * @throws IllegalArgumentException if {@code defaultTargetsFileSupplier} is {@code null}.
      */
-    protected TargetArgumentCollection(final Supplier<File> defaultTargetsFileSupplier) {
+    public TargetArgumentCollection(final Supplier<File> defaultTargetsFileSupplier) {
         this.defaultTargetsFileSupplier = Utils.nonNull(defaultTargetsFileSupplier, "the default target file supplier cannot be null");
     }
 

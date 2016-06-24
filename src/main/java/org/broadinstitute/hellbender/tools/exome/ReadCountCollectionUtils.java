@@ -265,6 +265,20 @@ public final class ReadCountCollectionUtils {
         return sampleName;
     }
 
+    /** Extract the sample name from a {@link ReadCountCollection}.
+     *
+     * Throws an exception if there is not exactly one sample in the file.
+     *
+     * @param counts Never {@code null}
+     * @return a single sample name.
+     */
+    public static String getSampleNameFromReadCounts(final ReadCountCollection counts) {
+        Utils.nonNull(counts);
+        final List<String> sampleNames = counts.columnNames();
+        Utils.validateArg(sampleNames.size() == 1, "read counts must have exactly one sample.");
+        return sampleNames.get(0);
+    }
+
     /**
      * Write a read counts file of targets with coverage to file with dummy names
      * @param outFile File to write targets with coverage. Never {@code null}

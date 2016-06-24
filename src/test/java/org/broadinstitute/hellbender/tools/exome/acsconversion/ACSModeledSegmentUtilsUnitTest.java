@@ -22,7 +22,7 @@ public class ACSModeledSegmentUtilsUnitTest extends BaseTest {
     @Test
     public void testConversion() {
         final List<ACNVModeledSegment> segs = SegmentUtils.readACNVModeledSegmentFile(new File(TEST_FILE_PATH));
-        final Genome genome = new Genome(AlleleFractionSimulatedData.TRIVIAL_TARGETS, Collections.emptyList(), "SAMPLE");
+        final Genome genome = new Genome(AlleleFractionSimulatedData.TRIVIAL_TARGETS, Collections.emptyList());
         final List<ACSModeledSegment> acsSegs = segs.stream().map(seg -> ACSModeledSegmentUtils.convertACNVSegmentToACSSegment(seg, 2.0, genome, true)).collect(Collectors.toList());
 
         for (int i = 0; i < segs.size(); i ++) {

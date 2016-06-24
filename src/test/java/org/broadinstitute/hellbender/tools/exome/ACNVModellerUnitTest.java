@@ -4,6 +4,7 @@ import htsjdk.samtools.util.Log;
 import org.apache.commons.io.FileUtils;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -67,7 +68,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final ReadCountCollection coverage = ReadCountCollectionUtils.parse(COVERAGES_FILE);
         final List<AllelicCount> snpCountsDummy =
                 Collections.singletonList(new AllelicCount(new SimpleInterval("1", 1, 1), 0, 1));
-        final Genome genome = new Genome(coverage, snpCountsDummy, SAMPLE_NAME);
+        final Genome genome = new Genome(coverage, snpCountsDummy);
         final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
@@ -106,7 +107,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
-        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
+        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE);
         final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
@@ -145,7 +146,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
-        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
+        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE);
         final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
@@ -185,7 +186,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
         final File tempDirFile = createTempDir(tempDir);
 
         //load data (coverages, SNP counts, and segments)
-        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE, SAMPLE_NAME);
+        final Genome genome = new Genome(COVERAGES_FILE, TUMOR_ALLELIC_COUNTS_FILE);
         final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //just do a few iterations

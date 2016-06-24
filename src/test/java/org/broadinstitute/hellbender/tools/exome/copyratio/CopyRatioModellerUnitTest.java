@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 public final class CopyRatioModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome";
 
-    private static final String SAMPLE_NAME = "test";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-copy-ratio-modeller.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-copy-ratio-modeller.seg");
     private static final File MEANS_TRUTH_FILE = new File(TEST_SUB_DIR, "segment-means-truth-for-copy-ratio-modeller.txt");
@@ -119,7 +118,7 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
 
         //load data (coverages and number of targets in each segment)
         final ReadCountCollection coverage = ReadCountCollectionUtils.parse(COVERAGES_FILE);
-        final Genome genome = new Genome(coverage, Collections.emptyList(), SAMPLE_NAME); //Genome with no SNPs
+        final Genome genome = new Genome(coverage, Collections.emptyList()); //Genome with no SNPs
         final SegmentedGenome segmentedGenome = new SegmentedGenome(SEGMENT_FILE, genome);
 
         //run MCMC
