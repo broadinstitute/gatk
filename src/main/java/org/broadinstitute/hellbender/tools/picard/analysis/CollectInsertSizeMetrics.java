@@ -10,6 +10,8 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsCollector;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.picard.analysis;
+package org.broadinstitute.hellbender.metrics;
 
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
@@ -10,12 +10,18 @@ import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.metrics.MultiLevelCollector;
 import org.broadinstitute.hellbender.metrics.PerUnitMetricCollector;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
- * Collects InserSizeMetrics on the specified accumulationLevels using
+ * Collects InsertSizeMetrics on the specified accumulationLevels using
  */
-public final class InsertSizeMetricsCollector extends MultiLevelCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
+public final class InsertSizeMetricsCollector
+        extends MultiLevelCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs>
+        implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     // When generating the Histogram, discard any data categories (out of FR, TANDEM, RF) that have fewer than this
     // percentage of overall reads. (Range: 0 to 1)
     private final double minimumPct;
@@ -40,16 +46,16 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
     // We will pass insertSize and PairOrientation with the DefaultPerRecordCollectorArgs passed to the record collectors
     // This method is called once Per samRecord
     @Override
-    protected InsertSizeCollectorArgs makeArg(SAMRecord samRecord, ReferenceSequence refSeq) {
+    protected InsertSizeMetricsCollectorArgs makeArg(SAMRecord samRecord, ReferenceSequence refSeq) {
         final int insertSize = Math.abs(samRecord.getInferredInsertSize());
         final SamPairUtil.PairOrientation orientation = SamPairUtil.getPairOrientation(samRecord);
 
-        return new InsertSizeCollectorArgs(insertSize, orientation);
+        return new InsertSizeMetricsCollectorArgs(insertSize, orientation);
     }
 
     /** Make an InsertSizeCollector with the given arguments */
     @Override
-    protected PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> makeChildCollector(final String sample, final String library, final String readGroup) {
+    protected PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs> makeChildCollector(final String sample, final String library, final String readGroup) {
         return new PerUnitInsertSizeMetricsCollector(sample, library, readGroup);
     }
 
@@ -69,7 +75,7 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
     }
 
     /** A Collector for individual InsertSizeMetrics for a given SAMPLE or SAMPLE/LIBRARY or SAMPLE/LIBRARY/READ_GROUP (depending on aggregation levels) */
-    public final class PerUnitInsertSizeMetricsCollector implements PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeCollectorArgs> {
+    public final class PerUnitInsertSizeMetricsCollector implements PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs> {
         final EnumMap<SamPairUtil.PairOrientation, Histogram<Integer>> Histograms = new EnumMap<>(SamPairUtil.PairOrientation.class);
         final String sample;
         final String library;
@@ -98,7 +104,7 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
             Histograms.put(SamPairUtil.PairOrientation.RF,     new Histogram<>("insert_size", prefix + "rf_count"));
         }
 
-        public void acceptRecord(final InsertSizeCollectorArgs args) {
+        public void acceptRecord(final InsertSizeMetricsCollectorArgs args) {
             Histograms.get(args.getPairOrientation()).increment(args.getInsertSize());
         }
 
@@ -177,26 +183,5 @@ public final class InsertSizeMetricsCollector extends MultiLevelCollector<Insert
                 }
             }
         }
-    }
-}
-
-// Arguments that need to be calculated once per SAMRecord that are then passed to each PerUnitMetricCollector
-// for the given record
-final class InsertSizeCollectorArgs {
-    private final int insertSize;
-    private final SamPairUtil.PairOrientation po;
-
-
-    public int getInsertSize() {
-        return insertSize;
-    }
-
-    public SamPairUtil.PairOrientation getPairOrientation() {
-        return po;
-    }
-
-    public InsertSizeCollectorArgs(final int insertSize, final SamPairUtil.PairOrientation po) {
-        this.insertSize = insertSize;
-        this.po = po;
     }
 }

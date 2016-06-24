@@ -16,6 +16,7 @@ public final class StandardArgumentDefinitions {
     public static final String LENIENT_LONG_NAME = "lenient";
     public static final String VERBOSITY_NAME = "verbosity";
     public static final String READ_VALIDATION_STRINGENCY_LONG_NAME = "readValidationStringency";
+    public static final String ASSUME_SORTED_LONG_NAME = "assumeSorted";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";

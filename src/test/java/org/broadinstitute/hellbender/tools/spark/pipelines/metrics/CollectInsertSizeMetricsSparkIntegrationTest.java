@@ -1,12 +1,13 @@
-package org.broadinstitute.hellbender.tools.spark.sv;
+package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.tools.picard.analysis.InsertSizeMetrics;
-import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
+
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,8 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 
-// TODO: add cram supports, which requires ref
-public final class CollectInsertSizeMetricsSparkUnitTest extends CommandLineProgramTest{
+public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandLineProgramTest{
 
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
     private static final double DOUBLE_TOLERANCE = 0.05;
@@ -30,14 +30,15 @@ public final class CollectInsertSizeMetricsSparkUnitTest extends CommandLineProg
         return CollectInsertSizeMetricsSpark.class.getSimpleName();
     }
 
-    @DataProvider(name="metricsfiles")
-    public Object[][] insertSizeMetricsFiles() {
+    @DataProvider(name="metricsInputFiles")
+    public Object[][] insertSizeMetricsInputFiles() {
         return new Object[][] {
-                {"insert_size_metrics_test.bam", null}
+                {"insert_size_metrics_test.bam", null},
+                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference}
         };
     }
 
-    @Test(dataProvider="metricsfiles", groups = "spark")
+    @Test(dataProvider="metricsInputFiles", groups = "spark")
     public void test(final String fileName, final String referenceName) throws IOException {
 
         // set up test data input and result outputs (two: one text one histogram plot in pdf)
@@ -49,14 +50,21 @@ public final class CollectInsertSizeMetricsSparkUnitTest extends CommandLineProg
         // IO arguments
         args.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         args.add(input.getAbsolutePath());
+
         args.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         args.add(textOut.getAbsolutePath());
         args.add("-" + "HIST");
         args.add(pdfOut.getAbsolutePath());
 
+        if (null != referenceName) {
+            final File REF = new File(referenceName);
+            args.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+            args.add(REF.getAbsolutePath());
+        }
+
         // some filter options
         args.add("-" + "E");
-        args.add(CollectInsertSizeMetricsSpark.EndToUse.SECOND);
+        args.add(InsertSizeMetricsArgumentCollection.EndToUse.SECOND);
 
         // accumulation level options (all included for better test coverage)
         args.add("-" + "LEVEL");
