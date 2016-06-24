@@ -130,6 +130,9 @@ public class SVKmer implements Comparable<SVKmer> {
         return reverseComplement(kSize);
     }
 
+    public final Base firstBase( final int kSize ) { return Base.values()[(int)(valHigh >> (kSize-2))]; }
+    public final Base lastBase() { return Base.values()[(int)(valLow & 3)]; }
+
     @Override
     public boolean equals( final Object obj ) {
         return obj instanceof SVKmer && equals((SVKmer)obj);

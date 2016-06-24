@@ -10,11 +10,15 @@ import java.util.stream.StreamSupport;
  * Iterator over successive Kmers from a sequence of characters.
  * Silently skips over parts of the sequence that has characters other than A, C, G, or T.
  */
-public final class SVKmerizer implements Iterator<SVKmer> {
-    private final CharSequence seq;
-    private final int kSize;
-    private int idx = 0;
-    private SVKmer nextKmer;
+public class SVKmerizer implements Iterator<SVKmer> {
+    protected final CharSequence seq;
+    protected final int kSize;
+    protected int idx = 0;
+    protected SVKmer nextKmer;
+
+    public SVKmerizer( final byte[] seq, final int kSize ) {
+        this(new ASCIICharSequence(seq), kSize);
+    }
 
     public SVKmerizer( final CharSequence seq, final int kSize ) {
         this.seq = seq;
@@ -22,8 +26,9 @@ public final class SVKmerizer implements Iterator<SVKmer> {
         this.nextKmer = nextKmer(new SVKmer(kSize), 0);
     }
 
-    public SVKmerizer( final byte[] seq, final int kSize ) {
-        this(new ASCIICharSequence(seq), kSize);
+    protected SVKmerizer( final int kSize, final CharSequence seq ) {
+        this.seq = seq;
+        this.kSize = kSize;
     }
 
     @Override
@@ -57,7 +62,7 @@ public final class SVKmerizer implements Iterator<SVKmer> {
         return stream(new ASCIICharSequence(seq),kSize);
     }
 
-    private SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
+    protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
         final int len = seq.length();
         while ( idx < len ) {
             switch ( seq.charAt(idx) ) {
