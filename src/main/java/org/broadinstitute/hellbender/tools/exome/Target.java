@@ -43,6 +43,20 @@ public class Target implements Locatable, Feature, Serializable {
         this(name, interval, null);
     }
 
+    public Target(final SimpleInterval interval) {
+        this(createDummyTargetName(interval), interval);
+    }
+
+    /**
+     * Creates a string for a locatable that can be used when creating dummy target names
+     * @param locatable The genome region to create a unique dummy target name. Never {@code null}
+     * @return never {@code null}
+     */
+    private static String createDummyTargetName(final Locatable locatable){
+        Utils.nonNull(locatable);
+        return "target_" + locatable.getContig() + "_" + String.valueOf(locatable.getStart()) + "_" + String.valueOf(locatable.getEnd());
+    }
+
     public TargetAnnotationCollection getAnnotations() {
         return annotations;
     }
@@ -145,5 +159,4 @@ public class Target implements Locatable, Feature, Serializable {
     public String getChr() {
         return interval.getContig();
     }
-
 }

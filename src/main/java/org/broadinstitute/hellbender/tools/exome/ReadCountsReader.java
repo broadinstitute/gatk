@@ -26,12 +26,12 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
 
     private final List<String> countColumnNames;
 
-    private final TargetCollection<?> targets;
+    private final TargetCollection<Target> targets;
 
     private final boolean ignoreMissingTargets;
 
     public ReadCountsReader(final String sourceName, final Reader sourceReader,
-                            final TargetCollection<?> targets,
+                            final TargetCollection<Target> targets,
                             final boolean ignoreMissingTargets) throws IOException {
         super(sourceName, sourceReader);
         this.targets = targets;
@@ -57,7 +57,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         return Collections.unmodifiableList(countColumnNames);
     }
 
-    public ReadCountsReader(final File file, final TargetCollection<?> targets, final boolean ignoreMissingTargets)
+    public ReadCountsReader(final File file, final TargetCollection<Target> targets, final boolean ignoreMissingTargets)
             throws IOException {
         super(file);
         this.targets = targets;
@@ -75,7 +75,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
     }
 
-    public ReadCountsReader(final Reader sourceReader, final TargetCollection<?> targets,
+    public ReadCountsReader(final Reader sourceReader, final TargetCollection<Target> targets,
                             final boolean ignoreMissingTargets) throws IOException {
         super(sourceReader);
         this.targets = targets;
@@ -220,12 +220,12 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
      * @throws UserException.BadInput if the overlapped target's location is not exactly the one provided in the input.
      * @return {@code null} if there is no target at {@code where}.
      */
-    private <E> Target createRecordTarget(final TargetCollection<E> targets, final SimpleInterval where) {
-        final E target = targets.target(where);
+    private Target createRecordTarget(final TargetCollection<Target> targets, final SimpleInterval where) {
+        final Target target = targets.target(where);
         if (target == null) {
             return null;
-        } else if (targets.location(target).equals(where)) {
-            return new Target(targets.name(target), where);
+        } else if (target.getInterval().equals(where)) {
+            return new Target(target.getName(), target.getInterval());
         } else {
             throw formatException(String.format("mismatching yet overlapping intervals in the input (%s) and the target collection (%s)", where, targets.location(target)));
         }

@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.bed.BEDCodec;
-import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
@@ -51,9 +49,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private static final File FULL_READ_COUNTS_BAD_NAME = new File(TEST_DIR,"full-read-counts-bad-target-name.txt");
     private static final File FULL_READ_COUNTS_BAD_NAME_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts-bad-target-name.1sample.txt");
 
-    private static final File TEST_TARGETS = new File(TEST_DIR,"targets.bed");
+    private static final File TEST_TARGETS = new File(TEST_DIR,"targets.tsv");
 
-    private static final File TEST_TARGETS_WITH_BAD_NAME = new File(TEST_DIR,"targets-with-bad-name.bed");
+    private static final File TEST_TARGETS_WITH_BAD_NAME = new File(TEST_DIR,"targets-with-bad-name.tsv");
 
     private static final File TEST_PON = HDF5LibraryUnitTest.TEST_PON;
 
@@ -376,7 +374,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         };
 
         runCommandLine(arguments);
-        final TargetCollection<? extends BEDFeature> exons = TargetCollectionUtils.fromBEDFeatureFile(TEST_TARGETS, new BEDCodec());
+        final List<Target> targets = TargetTableReader.readTargetFile(TEST_TARGETS);
+        final TargetCollection<Target> exons = new HashedListTargetCollection<>(targets);
         final ReadCountCollection input = ReadCountCollectionUtils.parse(COORD_ONLY_READ_COUNTS_INPUT_ONE_SAMPLE, exons, false);
         final ReadCountCollection factorNormalized = ReadCountCollectionUtils.parse(factorNormalizedOutput, exons, false);
 

@@ -10,12 +10,14 @@ import java.io.File;
 /**
  * Super class for tools that traverse through targets.
  *
+ * Target files have the format described in {@link org.broadinstitute.hellbender.tools.exome.TargetWriter}
+ *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public abstract class TargetWalker extends FeatureWalker<Target> {
 
     @Argument(
-            doc = "target BED file.",
+            doc = "target file -- not a BED file.  Should be formatted as a tsv with at least the following header columns: contig, start, stop, name.",
             shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
             fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
             optional = false

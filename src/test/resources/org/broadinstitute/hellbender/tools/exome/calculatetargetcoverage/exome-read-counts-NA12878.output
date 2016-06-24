@@ -1,0 +1,9 @@
+##fileFormat = tsv
+##commandLine = org.broadinstitute.hellbender.tools.exome.ExomeReadCounts  --output /tmp/1 --summaryPerColumnOutput /tmp/2 --summaryPerRowOutput /tmp/3 --groupBy SAMPLE --intervals ./src/test/resources/org/broadinstitute/hellbender/tools//exome-read-counts-intervals.list --input ./src/test/resources/org/broadinstitute/hellbender/tools/exome-read-counts-NA12872.bam --input ./src/test/resources/org/broadinstitute/hellbender/tools/exome-read-counts-NA12778.bam --input ./src/test/resources/org/broadinstitute/hellbender/tools/exome-read-counts-NA12878.bam  --cohortName <ALL> --countColumnFormat %^ --disable_all_read_filters false --interval_set_rule UNION --interval_padding 0 --help false --version false --VERBOSITY INFO --QUIET false
+##title = Raw read counts per exon and sample
+contig	start	stop	<ALL>
+20	68349	68410	18
+20	123268	123329	12
+20	138184	138236	12
+20	168525	168761	19
+20	207928	207989	9

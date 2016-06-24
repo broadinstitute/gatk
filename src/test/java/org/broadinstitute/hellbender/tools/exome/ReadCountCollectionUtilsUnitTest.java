@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.bed.BEDCodec;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -187,9 +186,9 @@ public class ReadCountCollectionUtilsUnitTest {
     public void testReadIntervalsOnlyFile() throws IOException {
         final File targetFile = createTempFile();
         final PrintWriter targetWriter = new PrintWriter(targetFile);
-        targetWriter.println("#" + CONTIG_START_END_NAME);
-        targetWriter.println("1\t99\t200\tTGT_0");
-        targetWriter.println("2\t199\t300\tTGT_1");
+        targetWriter.println(CONTIG_START_END_NAME);
+        targetWriter.println("1\t100\t200\tTGT_0");
+        targetWriter.println("2\t200\t300\tTGT_1");
         targetWriter.close();
         final File testFile = createTempFile();
         final PrintWriter writer = new PrintWriter(testFile);
@@ -199,7 +198,7 @@ public class ReadCountCollectionUtilsUnitTest {
         writer.close();
 
         final ReadCountCollection subject = ReadCountCollectionUtils.parse(testFile,
-                TargetCollectionUtils.fromBEDFeatureFile(targetFile, new BEDCodec()), false);
+                new HashedListTargetCollection<>(TargetTableReader.readTargetFile(targetFile)), false);
         Assert.assertNotNull(subject);
         Assert.assertEquals(subject.columnNames(), Arrays.asList("SAMPLE3", "SAMPLE2"));
         Assert.assertEquals(subject.targets().stream().map(Target::getInterval).collect(Collectors.toList()), Arrays.asList(new SimpleInterval("1", 100, 200), new SimpleInterval("2", 200, 300)));

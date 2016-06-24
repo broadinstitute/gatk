@@ -1,12 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import htsjdk.tribble.FeatureCodec;
-import htsjdk.tribble.bed.BEDFeature;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
@@ -60,7 +57,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     protected File readCountsFile;
 
     @Argument(
-            doc = "target BED file.",
+            doc = "target file -- not a BED file.  Should be formatted as a tsv with at least the following header columns: contig, start, stop, name.",
             shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
             fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
             optional = true
@@ -119,8 +116,8 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
                         "(" + HDF5PoNCreator.CURRENT_PON_VERSION + ").");
             }
 
-            final TargetCollection<? extends BEDFeature> exonCollection = readTargetCollection(targetFile);
-            final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, exonCollection);
+            final TargetCollection<Target> targetCollection = readTargetCollection(targetFile);
+            final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, targetCollection);
             final TangentNormalizationResult tangentNormalizationResult = TangentNormalizer.tangentNormalizePcov(pon, readCountCollection);
             outputTangentNormalizationResult(tangentNormalizationResult);
             return "SUCCESS";
@@ -185,50 +182,39 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     }
 
     /**
-     * Reads the exon collection from a file.
+     * Reads the target collection from a file.
      * @param targetFile the input target file.
      * @return never {@code null}.
      */
-    private TargetCollection<? extends BEDFeature> readTargetCollection(final File targetFile) {
+    private TargetCollection<Target> readTargetCollection(final File targetFile) {
         if (targetFile == null) {
             return null;
         } else {
             Utils.regularReadableUserFile(targetFile);
-            final FeatureCodec<?, ?> codec = FeatureManager.getCodecForFile(targetFile);
             logger.log(Level.INFO, String.format("Reading target intervals from exome file '%s' ...", new Object[]{targetFile.getAbsolutePath()}));
-            final Class<?> featureType = codec.getFeatureType();
-            if (BEDFeature.class.isAssignableFrom(featureType)) {
-                @SuppressWarnings("unchecked")
-                final FeatureCodec<? extends BEDFeature, ?> bedCodec = (FeatureCodec<? extends BEDFeature, ?>) codec;
-                final TargetCollection<? extends BEDFeature> result = TargetCollectionUtils.fromBEDFeatureFile(targetFile, bedCodec);
-                logger.log(Level.INFO, String.format("Found %d targets to analyze.", result.targetCount()));
-                return result;
-            } else {
-                throw new UserException.BadInput(String.format("currently only BED formatted target file are supported. '%s' does not seem to be a BED file",
-                        targetFile.getAbsolutePath()));
-            }
+            final List<Target> targets = TargetTableReader.readTargetFile(targetFile);
+            return new HashedListTargetCollection<>(targets);
         }
     }
 
     /**
-     * Reads the read-counts from the input file using an exon collection (if provided) to resolve target names if this
+     * Reads the read-counts from the input file using a target collection (if provided) to resolve target names if this
      * are missing.
      *
      * Even though the tangent normalization code works for multiple samples, our workflows are designed for single samples
      * and so we enforce it here.
      *
      * @param readCountsFile the read-counts file.
-     * @param targetCollection the input exon collection. {@code null} indicates that no collection was provided by the user.
-     * @param <E>            the element type of {@code exonCollection}, it must be a {@link BEDFeature}.
+     * @param targetCollection the input target collection. {@code null} indicates that no collection was provided by the user.
      * @return never {@code null}.
      * @throws UserException.CouldNotReadInputFile if there was some problem
      *                                             trying to read from {@code inputReadCountsFile}.
      * @throws UserException.BadInput              if there is some format issue with the input file {@code inputReadCountsFile},
-     *                                             or it does not contain target names and {@code exonCollection} is {@code null}
+     *                                             or it does not contain target names and {@code targetCollection} is {@code null}
      *                                             or the input read counts contain more thanb one sample.
      */
-    private <E extends BEDFeature> ReadCountCollection readInputReadCounts(final File readCountsFile,
-                                                                           final TargetCollection<E> targetCollection) {
+    private ReadCountCollection readInputReadCounts(final File readCountsFile,
+                                                                           final TargetCollection<Target> targetCollection) {
         try {
             final ReadCountCollection result = ReadCountCollectionUtils.parse(readCountsFile, targetCollection, false);
             if (result.columnNames().size() > 1) {

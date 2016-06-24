@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-
-import htsjdk.tribble.bed.BEDFeature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -18,31 +16,18 @@ public final class TargetPadder {
     private TargetPadder() {}
 
     /**
-     * Create a TargetCollection of padded Targets from BEDFeatures.
-     *
-     * @param inputTargets BEDFeatures for padding.  Cannot be {@code null}.
-     * @param paddingInBases Number of bases to pad.  Must be greater than or equal to zero.
-     * @return never {@code null}
-     */
-    public static TargetCollection<Target> padTargetsFromBEDFeatures(final TargetCollection<? extends BEDFeature> inputTargets, final int paddingInBases) {
-        ParamUtils.isPositiveOrZero(paddingInBases, "Padding must be >= 0");
-        Utils.nonNull(inputTargets, "Input targets cannot be null.");
-        final List<Target> targetList = inputTargets.targets().stream().map(t -> createTargetFromBEDFeature(t)).collect(Collectors.toList());
-        return padTargets(new HashedListTargetCollection<>(targetList), paddingInBases);
-    }
-    /**
      * Create a TargetCollection of padded Targets from Targets.
      *
-     * Note: Do not use this method on subclasses such as TargetCoverage.
+     * Note: Do not use this method on subclasses.
      *
-     * @param inputTargets BEDFeatures for padding.  Cannot be {@code null}.
+     * @param inputTargets Targets for padding.  Cannot be {@code null}.
      * @param paddingInBases Number of bases to pad.  Must be greater than or equal to zero.
      * @return never {@code null}
      */
-    public static TargetCollection<Target> padTargets(final TargetCollection<Target> inputTargets, final int paddingInBases) {
+    public static List<Target> padTargets(final List<Target> inputTargets, final int paddingInBases) {
         ParamUtils.isPositiveOrZero(paddingInBases, "Padding must be >= 0");
         Utils.nonNull(inputTargets, "Input targets cannot be null.");
-        final List<Target> paddedTargets = inputTargets.targets().stream().map(t -> createPaddedTarget(t, paddingInBases)).collect(Collectors.toList());
+        final List<Target> paddedTargets = inputTargets.stream().map(t -> createPaddedTarget(t, paddingInBases)).collect(Collectors.toList());
 
         // Alter the padded Targets to eliminate overlaps
         for (int i = 0; i < paddedTargets.size() - 1; i++){
@@ -50,8 +35,8 @@ public final class TargetPadder {
             final Target nextTarget = paddedTargets.get(i + 1);
             if (thisTarget.getInterval().overlaps(nextTarget.getInterval())) {
 
-                final int originalThisEnd = inputTargets.targets().get(i).getEnd();
-                final int originalNextStart = inputTargets.targets().get(i + 1).getStart();
+                final int originalThisEnd = inputTargets.get(i).getEnd();
+                final int originalNextStart = inputTargets.get(i + 1).getStart();
 
                 final int newThisEnd = (originalThisEnd + originalNextStart)/2;
                 final int newNextStart = newThisEnd + 1;
@@ -62,14 +47,10 @@ public final class TargetPadder {
 
         }
 
-        return new HashedListTargetCollection<>(paddedTargets);
+        return paddedTargets;
     }
 
     protected static Target createPaddedTarget(final Target t, final int paddingInBases){
         return new Target(t.getName(), new SimpleInterval(t.getContig(), Math.max(1, t.getStart() - paddingInBases), t.getEnd() + paddingInBases));
-    }
-
-    public static Target createTargetFromBEDFeature(final BEDFeature bedFeature) {
-        return new Target(bedFeature.getName(), new SimpleInterval(bedFeature.getContig(), bedFeature.getStart(), bedFeature.getEnd()));
     }
 }

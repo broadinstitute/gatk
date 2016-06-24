@@ -1,0 +1,13 @@
+##fileFormat  = tsv
+##commandLine = org.broadinstitute.hellbender.tools.exome.ExomeReadCounts  --output /var/folders/b1/rr8s40sd3dx5rxsnjzm8m6f9c73134/T/GATK4-ERCTest-cohort-output1440895511312209004.tmp --columnSummaryOutput /var/folders/b1/rr8s40sd3dx5rxsnjzm8m6f9c73134/T/GATK4-ERCTest-cohort-column-output8311211261620363829.tmp --rowSummaryOutput /var/folders/b1/rr8s40sd3dx5rxsnjzm8m6f9c73134/T/GATK4-ERCTest-cohort-row-output2554175052380522495.tmp --transform RAW --intervals /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-intervals.list --input /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12878.bam --input /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12778.bam --input /Users/valentin/Developer/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/exome/exome-read-counts-NA12872.bam --VERBOSITY ERROR  --groupBy cohort --cohortName <ALL> --disable_all_read_filters false --interval_set_rule UNION --interval_padding 0 --help false --version false --QUIET false
+##title       = Summary counts per exon
+##metaData = {
+##    groupBy     = cohort,
+##    columnCount = 1
+##}
+contig	start	stop	SUM	AVG.COL.BP
+20	68349	68410	47	0.7581
+20	123268	123329	39	0.6290
+20	138184	138236	38	0.7170
+20	168525	168761	82	0.3460
+20	207928	207989	31	0.5000
