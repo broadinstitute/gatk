@@ -212,7 +212,7 @@ public final class ValidateVariants extends VariantWalker {
      * @return the final set of type to validate. May be empty.
      */
     private Collection<ValidationType> calculateValidationTypesToApply(final List<ValidationType> excludeTypes) {
-        if (excludeTypes.size() == 0) {
+        if (excludeTypes.isEmpty()) {
             return Collections.singleton(ValidationType.ALL);
         }
         final Set<ValidationType> excludeTypeSet = new LinkedHashSet<>(excludeTypes);

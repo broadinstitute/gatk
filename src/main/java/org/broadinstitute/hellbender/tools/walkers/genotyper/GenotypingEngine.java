@@ -578,7 +578,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         // add the MLE AC and AF annotations
-        if ( alleleCountsofMLE.size() > 0 ) {
+        if (!alleleCountsofMLE.isEmpty()) {
             attributes.put(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, alleleCountsofMLE);
             final List<Double> MLEfrequencies = calculateMLEAlleleFrequencies(alleleCountsofMLE, genotypes);
             attributes.put(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY, MLEfrequencies);

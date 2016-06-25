@@ -318,7 +318,7 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
      * @return any integer between <code>-{@link #targetCount()}-1</code> and <code>{@link #targetCount()} - 1</code>.
      */
     private int uncachedBinarySearch(final Locatable location) {
-        if (sortedIntervals.size() == 0) {
+        if (sortedIntervals.isEmpty()) {
             return -1;
         }
 

@@ -109,7 +109,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      */
     public ReadsDataSource( final List<File> samFiles, SamReaderFactory customSamReaderFactory ) {
-        if ( samFiles == null || samFiles.size() == 0 ) {
+        if ( samFiles == null || samFiles.isEmpty()) {
             throw new IllegalArgumentException("ReadsDataSource cannot be created from empty file list");
         }
 

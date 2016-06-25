@@ -133,7 +133,7 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
     }
 
     private boolean isSequenceFiltered(final String sequenceName) {
-        return (SEQUENCE_NAMES != null) && (SEQUENCE_NAMES.size() > 0) && (!SEQUENCE_NAMES.contains(sequenceName));
+        return (SEQUENCE_NAMES != null) && (!SEQUENCE_NAMES.isEmpty()) && (!SEQUENCE_NAMES.contains(sequenceName));
     }
 
     private void assertIoFiles(final File summaryFile, final File detailsFile, final File plotsFile) {
@@ -163,6 +163,6 @@ public final class CollectRrbsMetrics extends PicardCommandLineProgram {
             errorMsgs.add("MINIMUM_READ_LENGTH must be > 0");
         }
 
-        return errorMsgs.size() == 0 ? null : errorMsgs.toArray(new String[errorMsgs.size()]);
+        return errorMsgs.isEmpty() ? null : errorMsgs.toArray(new String[errorMsgs.size()]);
     }
 }

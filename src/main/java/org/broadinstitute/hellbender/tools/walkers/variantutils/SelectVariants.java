@@ -629,7 +629,7 @@ public final class SelectVariants extends VariantWalker {
     protected VariantFilter makeVariantFilter() {
         VariantFilter compositeFilter = VariantFilterLibrary.ALLOW_ALL_VARIANTS;
 
-        if (selectedTypes.size() != 0) {
+        if (!selectedTypes.isEmpty()) {
             compositeFilter = compositeFilter.and(new VariantTypesVariantFilter(selectedTypes));
         }
 

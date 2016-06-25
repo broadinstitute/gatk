@@ -301,7 +301,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
                     }
                 }
                 String numsOnly = b.toString();
-                if (numsOnly.length() == 0) return 0;
+                if (numsOnly.isEmpty()) return 0;
                 return Integer.parseInt(numsOnly);
             }
         });

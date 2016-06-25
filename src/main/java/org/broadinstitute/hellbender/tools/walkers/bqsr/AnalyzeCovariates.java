@@ -390,7 +390,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         for (int i = 1; i < reportEntries.length; i++) {
             final Map<String,? extends CharSequence> diffs = exampleEntry.getValue().getRAC().compareReportArguments(
                     reportEntries[i].getValue().getRAC(),exampleEntry.getKey(),reportEntries[i].getKey());
-            if (diffs.size() != 0) {
+            if (!diffs.isEmpty()) {
                 throw new UserException.IncompatibleRecalibrationTableParameters("There are differences in relevant arguments of"
                         + " two or more input recalibration reports. Please make sure"
                         + " they have been created using the same recalibration parameters."

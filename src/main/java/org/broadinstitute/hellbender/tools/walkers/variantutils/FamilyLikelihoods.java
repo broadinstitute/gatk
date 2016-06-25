@@ -216,7 +216,7 @@ public final class FamilyLikelihoods {
             updateFamilyGenotypes(vc, mother, father, child, trioGenotypes);
 
             //replace uses sample names to match genotypes, so order doesn't matter
-            if (trioGenotypes.size() > 0) {
+            if (!trioGenotypes.isEmpty()) {
                 genotypesContext.replace(trioGenotypes.get(0));
                 genotypesContext.replace(trioGenotypes.get(1));
                 genotypesContext.replace(trioGenotypes.get(2));

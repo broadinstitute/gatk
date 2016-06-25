@@ -78,7 +78,7 @@ public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler
 
     @Override
     public boolean hasFinalizedItems() {
-        return groupsAreFinalized && groups.size() > 0;
+        return groupsAreFinalized && !groups.isEmpty();
     }
 
     @Override
@@ -95,7 +95,7 @@ public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler
 
     @Override
     public boolean hasPendingItems() {
-        return ! groupsAreFinalized && groups.size() > 0;
+        return ! groupsAreFinalized && !groups.isEmpty();
     }
 
     @Override

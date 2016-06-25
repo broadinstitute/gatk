@@ -100,7 +100,7 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
         while ((nextLine = this.in.readLine()) != null) {
             if (this.trimWhitespace) {
                 nextLine = nextLine.trim();
-                if (nextLine.length() == 0)
+                if (nextLine.isEmpty())
                     continue;
             }
             if (this.commentPrefix != null)

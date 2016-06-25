@@ -311,7 +311,7 @@ public final class IntervalUtils {
             } else {
                 try (XReadLines reader = new XReadLines(new File(fileName))) {
                     for (final String line : reader) {
-                        if (line.trim().length() > 0) {
+                        if (!line.trim().isEmpty()) {
                             ret.add(glParser.parseGenomeLoc(line));
                         }
                     }
@@ -338,8 +338,8 @@ public final class IntervalUtils {
      */
     public static List<GenomeLoc> mergeListsBySetOperator(final List<GenomeLoc> setOne, final List<GenomeLoc> setTwo, final IntervalSetRule rule) {
         // shortcut, if either set is zero, return the other set
-        if (setOne == null || setOne.size() == 0 || setTwo == null || setTwo.size() == 0) {
-            return Collections.unmodifiableList((setOne == null || setOne.size() == 0) ? setTwo : setOne);
+        if (setOne == null || setOne.isEmpty() || setTwo == null || setTwo.isEmpty()) {
+            return Collections.unmodifiableList((setOne == null || setOne.isEmpty()) ? setTwo : setOne);
         }
 
         // our master list, since we can't guarantee removal time in a generic list
@@ -377,7 +377,7 @@ public final class IntervalUtils {
         }
 
         //if we have an empty list, throw an exception.  If they specified intersection and there are no items, this is bad.
-        if (retList.size() == 0) {
+        if (retList.isEmpty()) {
             throw new UserException.EmptyIntersection("There was an empty intersection");
         }
 
@@ -883,7 +883,7 @@ public final class IntervalUtils {
      */
     public static List<GenomeLoc> getIntervalsWithFlanks(final GenomeLocParser parser, final List<GenomeLoc> locs, final int basePairs) {
 
-        if (locs.size() == 0) {
+        if (locs.isEmpty()) {
             return Collections.emptyList();
         }
 

@@ -113,7 +113,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
     protected void runTool( final JavaSparkContext ctx ) {
         final JavaRDD<GATKRead> unFilteredReads = getUnfilteredReads();
 
-        if (collectors.size() == 0) { // run all collectors
+        if (collectors.isEmpty()) { // run all collectors
             collectors.addAll(Arrays.asList(Collectors.values()));
         }
         if (collectors.size() > 1) {

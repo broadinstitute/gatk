@@ -32,7 +32,7 @@ final class MRUCachingSAMSequenceDictionary {
      */
     public MRUCachingSAMSequenceDictionary(final SAMSequenceDictionary dict) {
         if ( dict == null ) throw new IllegalArgumentException("Dictionary cannot be null");
-        if ( dict.size() == 0 ) throw new IllegalArgumentException("Dictionary cannot have size zero");
+        if (dict.isEmpty()) throw new IllegalArgumentException("Dictionary cannot have size zero");
 
         this.dict = dict;
     }

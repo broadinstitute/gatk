@@ -233,7 +233,7 @@ public final class SequenceDictionaryUtils {
 
         final Set<String> commonContigs = getCommonContigsByName(dict1, dict2);
 
-        if ( commonContigs.size() == 0 ) {
+        if (commonContigs.isEmpty()) {
             return SequenceDictionaryCompatibility.NO_COMMON_CONTIGS;
         }
         else if ( ! commonContigsHaveSameLengths(commonContigs, dict1, dict2) ) {
