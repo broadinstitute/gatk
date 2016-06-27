@@ -16,8 +16,10 @@ import java.util.Map;
 
 
 public class SparkCommandLineProgramUnitTest extends BaseTest {
+
     @CommandLineProgramProperties(summary = "test", programGroup = TestSparkProgramGroup.class, oneLineSummary = "line")
     private static class TestSparkCommandLineProgram extends SparkCommandLineProgram {
+        private static final long serialVersionUID = 1L;
         @Override
         protected void runPipeline(JavaSparkContext ctx) {
         }
