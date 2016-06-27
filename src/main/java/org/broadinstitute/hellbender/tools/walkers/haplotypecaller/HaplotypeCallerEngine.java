@@ -271,6 +271,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             logger.info("Using global mismapping rate of " + hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate + " => " + log10GlobalReadMismappingRate + " in log10 likelihood units");
         }
 
+        if (hcArgs.BASE_QUALITY_SCORE_THRESHOLD < QualityUtils.MIN_USABLE_Q_SCORE) {
+            throw new IllegalArgumentException("BASE_QUALITY_SCORE_THRESHOLD must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
+        }
+
         if ( emitReferenceConfidence() && samplesList.numberOfSamples() != 1 ) {
             throw new UserException.BadArgumentValue("--emitRefConfidence", "Can only be used in single sample mode currently. Use the sample_name argument to run on a single sample out of a multi-sample BAM file.");
         }
@@ -356,7 +360,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine() {
         switch ( hcArgs.likelihoodEngineImplementation) {
             case PairHMM:
-                return new PairHMMLikelihoodCalculationEngine((byte) hcArgs.likelihoodArgs.gcpHMM, hcArgs.likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, hcArgs.pcrErrorModel);
+                return new PairHMMLikelihoodCalculationEngine((byte) hcArgs.likelihoodArgs.gcpHMM, hcArgs.likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, hcArgs.pcrErrorModel, hcArgs.BASE_QUALITY_SCORE_THRESHOLD);
             case Random:
                 return new RandomLikelihoodCalculationEngine();
             default:
