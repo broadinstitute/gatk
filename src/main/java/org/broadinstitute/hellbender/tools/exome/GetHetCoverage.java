@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputA
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.AllelicCountTableColumn.AllelicCountTableVerbosity;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountTableColumn.AllelicCountTableVerbosity;
 import org.broadinstitute.hellbender.tools.exome.pulldown.HetPulldownCalculator;
 import org.broadinstitute.hellbender.tools.exome.pulldown.Pulldown;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;

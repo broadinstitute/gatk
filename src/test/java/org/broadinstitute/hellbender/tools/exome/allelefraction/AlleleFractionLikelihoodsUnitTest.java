@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import org.apache.commons.math3.special.Gamma;
-import org.broadinstitute.hellbender.tools.exome.AllelicCount;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;

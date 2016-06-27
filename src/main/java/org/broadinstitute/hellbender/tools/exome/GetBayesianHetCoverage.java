@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputA
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountTableColumn;
 import org.broadinstitute.hellbender.tools.exome.pulldown.BalancedHeterozygousPileupPriorModel;
 import org.broadinstitute.hellbender.tools.exome.pulldown.BayesianHetPulldownCalculator;
 import org.broadinstitute.hellbender.tools.exome.pulldown.HeterogeneousHeterozygousPileupPriorModel;

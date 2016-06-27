@@ -213,18 +213,6 @@ public class ParamUtilsUnitTest {
         ParamUtils.isPositive(0.0, "That is zero!");
     }
 
-
-    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contains nulls!")
-    public void testNoNullsOnAnIterable() {
-        ParamUtils.noNulls(Arrays.asList("a", "b", null, "c"), "Contains nulls!");
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class, expectedExceptionsMessageRegExp = "Contains nulls!")
-    public void testNoNullsOnAnArray() {
-        ParamUtils.noNulls(new String[] {"a", "b", null, "c"}, "Contains nulls!");
-    }
-
-
     @Test
     public void testLogB(){
         Assert.assertEquals(ParamUtils.logb(4, 2), 2.0);

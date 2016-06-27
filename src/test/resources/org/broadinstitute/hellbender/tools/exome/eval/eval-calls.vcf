@@ -13,7 +13,7 @@
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="End coordinate of this variant">
 ##INFO=<ID=NTARGETS,Number=1,Type=Integer,Description="Number of targets enclosed in this variant coordinates">
-##command=org.broadinstitute.hellbender.tools.exome.GenotypeCopyNumberTriStateSegments  --segmentsFile ./run2/segments.tsv --eventProb 1.0E-8 --meanEventSize 70000.0 --meanDeletionCoverageSigmaShift -3.0 --meanDuplicationCoverageSigmaShift 3.0 --standardizeBy NONE --input ./tangent_normalization/tn_z_scores.tsv --output ./run2/genotypes.vcf --targets ./tangent_normalization/tn_filtered_targets.tsv  --help false --version false --verbosity INFO --QUIET false
+##command=org.broadinstitute.hellbender.tools.exome.germlinehmm.GenotypeCopyNumberTriStateSegments  --segmentsFile ./run2/segments.tsv --eventProb 1.0E-8 --meanEventSize 70000.0 --meanDeletionCoverageSigmaShift -3.0 --meanDuplicationCoverageSigmaShift 3.0 --standardizeBy NONE --input ./tangent_normalization/tn_z_scores.tsv --output ./run2/genotypes.vcf --targets ./tangent_normalization/tn_filtered_targets.tsv  --help false --version false --verbosity INFO --QUIET false
 ##contig=<ID=1,length=249250621,assembly=human_g1k_v37.fasta>
 ##contig=<ID=2,length=243199373,assembly=human_g1k_v37.fasta>
 ##contig=<ID=3,length=198022430,assembly=human_g1k_v37.fasta>

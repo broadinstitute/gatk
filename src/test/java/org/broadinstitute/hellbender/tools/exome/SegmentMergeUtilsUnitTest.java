@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -135,7 +136,7 @@ public final class SegmentMergeUtilsUnitTest extends BaseTest {
             final List<Target> targets = records.stream().map(ReadCountRecord::getTarget).collect(Collectors.toList());
             final RealMatrix counts = new Array2DRowRealMatrix(targets.size(), 1);
             counts.setColumn(0, records.stream().mapToDouble(r -> r.getCount()).toArray());
-            return new Genome(new ReadCountCollection(targets, Arrays.asList("sample"), counts), snps, "sample");
+            return new Genome(new ReadCountCollection(targets, Arrays.asList("sample"), counts), snps);
         }
 
         private static final List<SimpleInterval> mergedSegmentsLeft =

@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModel;
-import org.broadinstitute.hellbender.tools.exome.hmm.CopyNumberTriStateHiddenMarkovModelArgumentCollection;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.*;
 import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
@@ -29,7 +28,7 @@ import java.util.stream.Stream;
  */
 public abstract class CopyNumberTriStateSegmentsCallerIntegrationTest extends CommandLineProgramTest {
 
-    public static final File REALISTIC_TARGETS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/hmm/realistic-targets.tab");
+    public static final File REALISTIC_TARGETS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/germlinehmm/realistic-targets.tab");
     public static final TargetCollection<Target> REALISTIC_TARGETS;
 
     static {

@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -32,11 +33,7 @@ public class TargetWriterUnitTest {
 
         final TargetWriter subject = new TargetWriter(testFile, annotationSet);
         for (int i = 0; i < TARGET_COUNT; i++) {
-            final Map<TargetAnnotation, String> annotationMap = new HashMap<>(annotationSet.size());
-            for (final TargetAnnotation annotation : annotationSet) {
-                annotationMap.put(annotation, annotation.name() + "_" + i);
-            }
-            final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection(annotationMap);
+            final TargetAnnotationCollection annotationCollection = createDummyAnnotations(annotationSet, i);
             subject.writeRecord(new Target("target_" + i, new SimpleInterval("1", (i + 1) * 100, (i + 1) * 100 + 50), annotationCollection));
         }
         subject.close();
@@ -63,11 +60,8 @@ public class TargetWriterUnitTest {
 
         final TargetWriter subject = new TargetWriter(testFile, expectedSet);
         for (int i = 0; i < TARGET_COUNT; i++) {
-            final Map<TargetAnnotation, String> annotationMap = new HashMap<>(expectedSet.size());
-            for (final TargetAnnotation annotation : i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet) {
-                annotationMap.put(annotation, annotation.name() + "_" + i);
-            }
-            final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection(annotationMap);
+            final TargetAnnotationCollection annotationCollection =
+                    createDummyAnnotations(i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet, i);
             subject.writeRecord(new Target("target_" + i, new SimpleInterval("1", (i + 1) * 100, (i + 1) * 100 + 50), annotationCollection));
         }
         subject.close();
@@ -81,11 +75,8 @@ public class TargetWriterUnitTest {
 
         final TargetWriter subject = new TargetWriter(testFile, expectedSet);
         for (int i = 0; i < TARGET_COUNT; i++) {
-            final Map<TargetAnnotation, String> annotationMap = new HashMap<>(expectedSet.size());
-            for (final TargetAnnotation annotation : i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet) {
-                annotationMap.put(annotation, annotation.name() + "_" + i);
-            }
-            final TargetAnnotationCollection annotationCollection = new TargetAnnotationCollection(annotationMap);
+            final TargetAnnotationCollection annotationCollection =
+                    createDummyAnnotations(i == TARGET_COUNT - 1 ? actualAnnotationSet : expectedSet, i);
             subject.writeRecord(new Target("target_" + i, new SimpleInterval("1", (i + 1) * 100, (i + 1) * 100 + 50), annotationCollection));
         }
         subject.close();
@@ -130,5 +121,11 @@ public class TargetWriterUnitTest {
             result.add(new Object[] { Collections.singleton(annotation), all });
         }
         return result.toArray(new Object[result.size()][]);
+    }
+
+    private TargetAnnotationCollection createDummyAnnotations(final Set<TargetAnnotation> annotationSet, final int index) {
+        final Map<TargetAnnotation, String> annotationMap = annotationSet.stream()
+                .collect(Collectors.toMap(annotation->annotation, annotation -> annotation.name() + "_" + index));
+        return new TargetAnnotationCollection(annotationMap);
     }
 }

@@ -6,8 +6,8 @@ import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.AllelicCount;
-import org.broadinstitute.hellbender.tools.exome.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 

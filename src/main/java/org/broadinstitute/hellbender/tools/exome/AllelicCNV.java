@@ -237,7 +237,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
 
         //make Genome from input target coverages and SNP counts
         logger.info("Loading input files...");
-        final Genome genome = new Genome(tangentNormalizedCoverageFile, snpCountsFile, sampleName);
+        final Genome genome = new Genome(tangentNormalizedCoverageFile, snpCountsFile);
 
         //load allelic-bias panel of normals if provided
         final AllelicPanelOfNormals allelicPON =

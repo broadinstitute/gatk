@@ -5,6 +5,9 @@ import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegment;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegmentRecord;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegmentRecordReader;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
@@ -27,7 +30,7 @@ public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgr
             new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/eval", "gs-calls.vcf.gz");
 
     private static final File TEST_TARGET_FILE =
-            new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/hmm/realistic-targets.tab");
+            new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/germlinehmm/realistic-targets.tab");
 
     @Override
     public String getTestedClassName() {

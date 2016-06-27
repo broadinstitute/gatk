@@ -20,6 +20,9 @@ import java.util.List;
  * Created by lichtens on 8/25/15.
  */
 public class ParamUtils {
+
+    public static final double INV_LOG_2 = 1/Math.log(2.0);
+
     private ParamUtils () {}
 
     /**
@@ -35,11 +38,8 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static double inRange(final double val, final double min, final double max, final String message) {
-        if ((val >= min) && (val <= max)){
-            return val;
-        } else {
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= min && val <= max, message);
+        return val;
     }
 
     /**
@@ -52,11 +52,8 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static long inRange(final long val, final double min, final double max, final String message) {
-        if ((val >= min) && (val <= max)){
-            return val;
-        } else {
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= min && val <= max, message);
+        return val;
     }
 
     /**
@@ -69,11 +66,8 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static long inRange(final long val, final long min, final long max, final String message) {
-        if ((val >= min) && (val <= max)){
-            return val;
-        } else {
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= min && val <= max, message);
+        return val;
     }
 
     /**
@@ -86,11 +80,8 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static int inRange(final int val, final int min, final int max, final String message) {
-        if ((val >= min) && (val <= max)){
-            return val;
-        } else {
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= min && val <= max, message);
+        return val;
     }
 
     /**
@@ -101,9 +92,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static double isPositiveOrZero(final double val, final String message) {
-        if (!(val >= 0)){
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= 0, message);
         return val;
     }
 
@@ -115,9 +104,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static double isNegativeOrZero(final double val, final String message) {
-        if (!(val <= 0)){
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val <= 0, message);
         return val;
     }
 
@@ -129,9 +116,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static long isPositiveOrZero(final long val, final String message) {
-        if (!(val >= 0)){
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= 0, message);
         return val;
     }
 
@@ -143,9 +128,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static int isPositiveOrZero(final int val, final String message) {
-        if (!(val >= 0)){
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val >= 0, message);
         return val;
     }
 
@@ -157,9 +140,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static long isPositive(final long val, final String message) {
-        if (val <= 0){
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val > 0, message);
         return val;
     }
 
@@ -172,9 +153,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException if the input value is 0 or less.
      */
     public static int isPositive(final int val, final String message) {
-        if (val <= 0) {
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val > 0, message);
         return val;
     }
 
@@ -186,9 +165,7 @@ public class ParamUtils {
      * @throws IllegalArgumentException
      */
     public static double isPositive(final double val, final String message) {
-        if (!(val > 0)){
-            throw new IllegalArgumentException(message);
-        }
+        Utils.validateArg(val > 0, message);
         return val;
     }
 
@@ -228,7 +205,7 @@ public class ParamUtils {
      *  is negative, returns Double.NaN.
      */
     public static double log2(final double val) {
-        return Math.log(val)/Math.log(2.0);
+        return Math.log(val) * INV_LOG_2;
     }
 
     /**
@@ -272,14 +249,8 @@ public class ParamUtils {
      */
     public static double[] readValuesFromFile(final File inputFile) {
         Utils.nonNull(inputFile, "input file cannot be null");
-        final List<Double> listDouble = new ArrayList<>();
         try (final BufferedReader reader = new BufferedReader(new FileReader(inputFile.getAbsolutePath()))) {
-            String line = reader.readLine();
-            while (line != null) {
-                listDouble.add(Double.parseDouble(line));
-                line = reader.readLine();
-            }
-            return Doubles.toArray(listDouble);
+            return reader.lines().mapToDouble(Double::parseDouble).toArray();
         } catch (final IOException ioe) {
             throw new GATKException("Cannot write to file.", ioe);
         }
@@ -303,10 +274,8 @@ public class ParamUtils {
      */
     public static double inRange(final DoubleRange validRange, final double value, final String definition) {
         Utils.nonNull(validRange);
-        if (!validRange.containsDouble(value)) {
-            throw new IllegalArgumentException(String.format("invalid value for %s: %g is not in [%g, %g]",
+        Utils.validateArg(validRange.containsDouble(value), String.format("invalid value for %s: %g is not in [%g, %g]",
                     definition, value, validRange.getMinimumDouble(), validRange.getMaximumDouble()));
-        }
         return value;
     }
 
@@ -330,55 +299,5 @@ public class ParamUtils {
                     prefix, value, validRange.getMinimumInteger(), validRange.getMaximumInteger()));
         }
         return value;
-    }
-
-    /**
-     * Check whether the input iterable contains any null.
-     * @param iterable the iterable to check.
-     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}.
-     */
-    public static void noNulls(final Iterable<?> iterable) {
-        noNulls(iterable, null);
-    }
-
-    /**
-     * Check whether the input iterable contains any null.
-     * @param iterable the iterable to check.
-     * @param message message for the exception to be thrown if indeed, {@code iterable} contains a null.
-     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}. Notice that
-     * the input message is only used if the latter.
-     */
-    public static void noNulls(final Iterable<?> iterable, final String message) {
-        Utils.nonNull(iterable);
-        for (final Object o : iterable) {
-            if (o == null) {
-                throw new IllegalArgumentException(message);
-            }
-        }
-    }
-
-    /**
-     * Check whether the input array contains any null.
-     * @param array the array to check.
-     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}.
-     */
-    public static void noNulls(final Object[] array) {
-        noNulls(array, null);
-    }
-
-    /**
-     * Check whether the input array contains any null.
-     * @param array the array to check.
-     * @param message message for the exception to be thrown if indeed, {@code array} contains a {@code null}.
-     * @throws IllegalArgumentException if {@code iterable} is {@code null} or contains {@code null}. Notice that
-     * the input message is only used if the latter.
-     */
-    public static void noNulls(final Object[] array, final String message) {
-        Utils.nonNull(array);
-        for (final Object o : array) {
-            if (o == null) {
-                throw new IllegalArgumentException(message);
-            }
-        }
     }
 }

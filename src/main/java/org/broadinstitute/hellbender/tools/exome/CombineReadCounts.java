@@ -547,16 +547,13 @@ public final class CombineReadCounts extends CommandLineProgram {
          * @return never {@code null}.
          */
         private ReadCountRecord composeMergedReadCountRecord(final List<ReadCountRecord> records) {
-            final double[] counts = new double[countColumnNames.size()];
             int nextIndex = 0;
             for (final ReadCountRecord record : records) {
                 final int size = record.size();
                 record.copyCountsTo(countsBuffer, nextIndex);
                 nextIndex += size;
             }
-            for (int i = 0; i < counts.length; i++) {
-                counts[i] = countsBuffer[countColumnSourceIndexMap[i]];
-            }
+            final double[] counts = Arrays.stream(countColumnSourceIndexMap).mapToDouble(idx -> countsBuffer[idx]).toArray();
             return new ReadCountRecord(records.get(0).getTarget(), counts);
         }
     }
