@@ -1,3 +1,6 @@
+/scripts/docker/clone_repo.sh
+/scripts/docker/checkout_tag.sh
+/scripts/docker/GITHUB_TAG
 /plotting_dump.rda
 
 # Mobile Tools for Java (J2ME)

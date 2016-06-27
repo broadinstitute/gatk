@@ -1,23 +1,47 @@
 # VERSION 0.2 -- very basic setup of an image.
 FROM ubuntu:14.04
 
-# Install some tools, including hdfview for HDF5 support and gradle for building the jar
-RUN apt-get update && apt-get install -y \
+## Not supported by docker-compose
+
+ARG GITHUB_TAG
+ARG GITHUB_DIR=tags/
+
+ENV GITHUB_TAG ${GITHUB_TAG}
+ENV GITHUB_DIR ${GITHUB_DIR}
+
+
+#### Basic image utilities
+RUN apt-get update && \
+     apt-get upgrade -y && \
+     apt-get install -y python && \
+     apt-get install -y python3-pip && \
+     apt-get install -y wget curl unzip gcc python-dev python-setuptools emacs git less lynx hdfview
+##########
+
+# Install some more useful tools
+RUN apt-get install -y \
  aufs-tools \
  automake \
  bedtools \
  btrfs-tools \
  build-essential \
- curl \
  dpkg-sig \
- git \
  iptables \
- hdfview \
  samtools \
- wget \
- curl \
- emacs \
  software-properties-common
+
+#### Specific for google cloud support
+RUN wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.zip \
+    && unzip google-cloud-sdk.zip \
+    && rm google-cloud-sdk.zip
+
+RUN google-cloud-sdk/install.sh --usage-reporting=true --path-update=true --bash-completion=true --rc-path=/.bashrc --disable-installation-options
+VOLUME ["/root/.config"]
+ENV PATH /google-cloud-sdk/bin:$PATH
+
+RUN yes | gcloud components update
+RUN yes | gcloud components update preview
+###########
 
 # Set environment variables.
 ENV HOME /root
@@ -55,18 +79,14 @@ RUN apt-get install -y --force-yes r-base-core=3.1.3-1trusty
 # Installing GATK4 protected (from repo: gatk-protected)
 #  This Dockerfile is getting the specified tag of gatk4-protected
 #  This Dockerfile generates a jar file that will work without spark or in spark standalone.  Not on a spark cluster.
-#  Unit tests are NOT being run
 
 RUN git clone https://github.com/broadinstitute/gatk-protected.git
 
-# Install custom R packages
-RUN Rscript /root/gatk-protected/scripts/install_R_packages.R
-
-# Build the shadowJar
-ENV GATK_PROTECTED_VERSION 1.0.0.0-alpha1.3
+# Install R dependencies and build the shadowJar
 WORKDIR /root/gatk-protected/
-RUN git checkout tags/${GATK_PROTECTED_VERSION}
-RUN ./gradlew clean shadowJar
+RUN git checkout ${GITHUB_DIR}${GITHUB_TAG}
+RUN Rscript /root/gatk-protected/scripts/install_R_packages.R
+RUN ./gradlew clean compileTestJava shadowJar
 
 WORKDIR /root
 
@@ -76,7 +96,16 @@ RUN java -jar gatk-protected.jar -h
 
 ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
+# Get the cromwell jar file
+RUN wget https://github.com/broadinstitute/cromwell/releases/download/0.19.3/cromwell-0.19.jar
+
+# Install git lfs and get latest big files
 WORKDIR /root/gatk-protected/
+RUN bash scripts/install_git_lfs.sh
+
 RUN echo This docker image is running gatk-protected `git describe --tags` > /root/GATK_PROTECTED_VERSION
+
+# Create a simple unit test runner
+RUN echo "cd /root/gatk-protected/ && ./gradlew test" >/root/run_unit_tests.sh
 
 WORKDIR /root

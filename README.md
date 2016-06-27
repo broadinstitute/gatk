@@ -129,7 +129,7 @@ ${HDF5_DIR}/hdfview_install_linux64.bin
 #  or put the jar location in your ~/.gradle/gradle.properties
 #  custom.jar.dir=${HDF5_DIR}/HDFView/lib
 
-./gradlew -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib build.gradle shadowJar
+./gradlew -Pcustom.jar.dir=${HDF5_DIR}/HDFView/lib shadowJar
 ```
 
 ### Get ```./gradlew test``` to work.
