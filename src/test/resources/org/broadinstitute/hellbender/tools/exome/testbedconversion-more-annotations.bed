@@ -1,0 +1,4 @@
+#contig	start	stop	name
+1	4999	5200	target_5	0	+
+1	14999	15200	target_15	0	-
+1	24999	25200	target_25	0	+
