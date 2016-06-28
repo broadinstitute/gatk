@@ -85,8 +85,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
             }
         }
         //write final segments to file
-        final File finalModeledSegmentsFile =
-                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        final File finalModeledSegmentsFile = new File(tempDirFile, "test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
 
         //check equality of segments
@@ -125,8 +124,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
             }
         }
         //write final segments to file
-        final File finalModeledSegmentsFile =
-                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        final File finalModeledSegmentsFile = new File(tempDirFile, "test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
 
         //check equality of segments
@@ -167,8 +165,7 @@ public final class ACNVModellerUnitTest extends BaseTest {
         Assert.assertTrue(!modeller.isModelFit());
 
         //write final segments to file; this should force model refit
-        final File finalModeledSegmentsFile =
-                new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        final File finalModeledSegmentsFile = new File(tempDirFile, "test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(finalModeledSegmentsFile);
         Assert.assertTrue(modeller.isModelFit());
 
@@ -198,12 +195,12 @@ public final class ACNVModellerUnitTest extends BaseTest {
                 new ACNVModeller(segmentedGenome, numSamples, numBurnIn, numSamples, numBurnIn, ctx);
 
         //write segments to file
-        final File modeledSegmentsFile = new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
+        final File modeledSegmentsFile = new File(tempDirFile, "test-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         modeller.writeACNVModeledSegmentFile(modeledSegmentsFile);
 
         //write parameters to file
-        final File copyRatioParameterFile = new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + CR_PARAMETER_FILE_SUFFIX);
-        final File alleleFractionParameterFile = new File(tempDirFile.getAbsolutePath() + "/test-" + FINAL_FIT_FILE_TAG + AF_PARAMETER_FILE_SUFFIX);
+        final File copyRatioParameterFile = new File(tempDirFile, "test-" + FINAL_FIT_FILE_TAG + CR_PARAMETER_FILE_SUFFIX);
+        final File alleleFractionParameterFile = new File(tempDirFile, "test-" + FINAL_FIT_FILE_TAG + AF_PARAMETER_FILE_SUFFIX);
         modeller.writeACNVModelParameterFiles(copyRatioParameterFile, alleleFractionParameterFile);
 
         //check that all files are created with appropriate size

@@ -171,13 +171,12 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
         //only check that files are created, do not check for correctness of results
         final File finalSNPSegmentsFile = new File(outputPrefix + "-" + SNP_MAF_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
         final File unionedSegmentsFile = new File(outputPrefix + "-" + UNION_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
-        final File noSmallSegmentsFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
         final File initialSimilarSegmentsFile = new File(outputPrefix + "-" + INITIAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         final File finalSimilarSegmentsFile = new File(outputPrefix + "-" + FINAL_FIT_FILE_TAG + SEGMENT_FILE_SUFFIX);
         final File finalCopyRatioParametersFile = new File(outputPrefix + "-" + FINAL_FIT_FILE_TAG + CR_PARAMETER_FILE_SUFFIX);
         final File finalAlleleFractionParametersFile = new File(outputPrefix + "-" + FINAL_FIT_FILE_TAG + AF_PARAMETER_FILE_SUFFIX);
 
-        for (final File outputFile : new File[] {finalSNPSegmentsFile, unionedSegmentsFile, noSmallSegmentsFile,
+        for (final File outputFile : new File[] {finalSNPSegmentsFile, unionedSegmentsFile,
                 initialSimilarSegmentsFile, finalSimilarSegmentsFile, finalCopyRatioParametersFile, finalAlleleFractionParametersFile}) {
             //check that all files are files with a size greater than 0.
             Assert.assertTrue(outputFile.isFile(), outputFile.getAbsolutePath() + " is not a file.");

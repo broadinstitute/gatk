@@ -41,10 +41,9 @@ public class AllelicCNV extends SparkCommandLineProgram {
     private static final double INITIAL_ALLELIC_BIAS_GUESS = 1.;
 
     //filename tags for output
-    protected static final String SNP_MAF_SEG_FILE_TAG = "MAF";
-    protected static final String UNION_SEG_FILE_TAG = "union";
-    protected static final String SMALL_MERGED_SEG_FILE_TAG = "no-small";
-    protected static final String INITIAL_FIT_FILE_TAG = "sim-initial";
+    protected static final String SNP_MAF_SEG_FILE_TAG = "maf-cbs";
+    protected static final String UNION_SEG_FILE_TAG = "seg-union";
+    protected static final String INITIAL_FIT_FILE_TAG = "sim-begin";
     protected static final String FINAL_FIT_FILE_TAG = "sim-final";
     protected static final String SEGMENT_FILE_SUFFIX = ".seg";
     protected static final String CR_PARAMETER_FILE_SUFFIX = ".cr.param";
@@ -270,9 +269,6 @@ public class AllelicCNV extends SparkCommandLineProgram {
         final SegmentedGenome segmentedGenomeWithSmallSegments = new SegmentedGenome(unionedSegments, genome);
         final SegmentedGenome segmentedGenome = segmentedGenomeWithSmallSegments.mergeSmallSegments(smallSegmentTargetNumberThreshold);
         logger.info("Number of segments after small-segment merging: " + segmentedGenome.getSegments().size());
-        final File segmentedGenomeFile = new File(outputPrefix + "-" + SMALL_MERGED_SEG_FILE_TAG + SEGMENT_FILE_SUFFIX);
-        segmentedGenome.writeSegmentFileWithNumTargetsAndNumSNPs(segmentedGenomeFile);
-        logSegmentFileWrittenMessage(segmentedGenomeFile);
 
         //initial MCMC model fitting performed by ACNVModeller constructor
         final ACNVModeller modeller = new ACNVModeller(segmentedGenome, allelicPON,
