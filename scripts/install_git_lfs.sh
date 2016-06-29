@@ -9,8 +9,8 @@ wget -qO- $GIT_LFS_LINK | tar xvz
 echo "ls"
 ls
 
-echo "resetting travis remote"
-git remote set-url origin "https://github.com/broadinstitute/gatk.git"
+#echo "resetting travis remote"
+#git remote set-url origin "https://github.com/broadinstitute/gatk.git"
 
 echo "git lfs install"
 GIT_TRACE=1 $GIT_LFS install
