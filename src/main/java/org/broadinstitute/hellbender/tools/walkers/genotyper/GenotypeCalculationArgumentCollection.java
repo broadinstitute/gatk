@@ -5,11 +5,13 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class GenotypeCalculationArgumentCollection {
+public final class GenotypeCalculationArgumentCollection implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Creates a GenotypeCalculationArgumentCollection with default values.

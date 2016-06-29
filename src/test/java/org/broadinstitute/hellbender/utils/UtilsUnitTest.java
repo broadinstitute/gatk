@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils;
 
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
@@ -676,6 +678,37 @@ public final class UtilsUnitTest extends BaseTest {
     @Test
     public void testListFromPrimitivesNoneEmpty() throws Exception {
         Assert.assertEquals(Utils.listFromPrimitives(new int[]{1,2}), Arrays.asList(1,2));
+    }
+
+    @DataProvider
+    public Object[][] getNonNullCollections(){
+        final List<String> someValues = Arrays.asList("some", "values");
+        return new Object[][]{
+                {Collections.emptyList()},
+                {Collections.emptySet()},
+                {someValues},
+                {new HashSet<>(someValues)},
+                {new TreeSet<>(someValues)},
+        };
+    }
+
+    @DataProvider
+    public Object[][] getCollectionsWithNulls(){
+        return new Object[][]{
+                {null},
+                {Arrays.asList("something", null)},
+                {Sets.newHashSet("something", null)},
+        };
+    }
+
+    @Test(dataProvider = "getNonNullCollections")
+    public void testContainsNoNull(Collection<?> collection){
+        Utils.containsNoNull(collection, "bad");
+    }
+
+    @Test(dataProvider = "getCollectionsWithNulls", expectedExceptions = IllegalArgumentException.class)
+    public void testContainsNull( Collection<?> collection){
+        Utils.containsNoNull(collection, "This was expected");
     }
 
     @Test

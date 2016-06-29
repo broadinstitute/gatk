@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Argument(fullName = "maxAssemblyRegionSize", shortName = "maxAssemblyRegionSize", doc = "Maximum size of an assembly region", optional = true)
     protected int maxAssemblyRegionSize = defaultMaxAssemblyRegionSize();
 
-    @Argument(fullName = "assemblyRegionPadding", shortName = "assemblyRegionPadding", doc = "Amount of additional bases of context to include around each assembly region", optional = true)
+    @Argument(fullName = "assemblyRegionPadding", shortName = "assemblyRegionPadding", doc = "Number of additional bases of context to include around each assembly region", optional = true)
     protected int assemblyRegionPadding = defaultAssemblyRegionPadding();
 
     @Argument(fullName = "maxReadsPerAlignmentStart", shortName = "maxReadsPerAlignmentStart", doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
@@ -118,8 +119,8 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Override
     public final boolean requiresReference() { return true; }
 
-    private List<ReadShard> readShards;
-    private ReadShard currentReadShard;
+    private List<LazyReadShard> readShards;
+    private Shard<GATKRead> currentReadShard;
 
     /**
      * Initialize data sources for traversal.
@@ -158,13 +159,13 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * Shard our intervals for traversal into ReadShards using the {@link #readShardSize} and {@link #readShardPadding} arguments
      *
      * @param intervals unmodified intervals for traversal
-     * @return List of {@link ReadShard} objects, sharded and padded as necessary
+     * @return List of {@link LazyReadShard} objects, sharded and padded as necessary
      */
-    private List<ReadShard> makeReadShards( final List<SimpleInterval> intervals ) {
-        final List<ReadShard> shards = new ArrayList<>();
+    private List<LazyReadShard> makeReadShards(final List<SimpleInterval> intervals ) {
+        final List<LazyReadShard> shards = new ArrayList<>();
 
         for ( final SimpleInterval interval : intervals ) {
-            shards.addAll(ReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
+            shards.addAll(LazyReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
         }
 
         return shards;
@@ -204,7 +205,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         // meter to check the time more frequently (every 10 regions instead of every 1000 regions).
         progressMeter.setRecordsBetweenTimeChecks(10L);
 
-        for ( final ReadShard readShard : readShards ) {
+        for ( final LazyReadShard readShard : readShards ) {
             // Since reads in each shard are lazily fetched, we need to pass the filter to the window
             // instead of filtering the reads directly here
             readShard.setReadFilter(countedFilter);
@@ -220,14 +221,14 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     }
 
     /**
-     * Divide the given ReadShard up into active/inactive AssemblyRegions using the {@link #assemblyRegionEvaluator},
+     * Divide the given Shard up into active/inactive AssemblyRegions using the {@link #assemblyRegionEvaluator},
      * and send each region to the tool implementation for processing.
      *
-     * @param shard ReadShard to process
+     * @param shard Shard to process
      * @param referenceContext Reference bases spanning the fully-padded interval of the shard
      * @param featureContext Features spanning the fully-padded interval of the shard
      */
-    private void processReadShard( ReadShard shard, ReferenceContext referenceContext, FeatureContext featureContext ) {
+    private void processReadShard(Shard<GATKRead> shard, ReferenceContext referenceContext, FeatureContext featureContext ) {
         // Divide each shard into one or more assembly regions using our AssemblyRegionEvaluator:
         final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shard,
                 getHeaderForReads(), referenceContext, featureContext, assemblyRegionEvaluator(),

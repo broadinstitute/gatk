@@ -621,13 +621,14 @@ public final class Utils {
 
     /**
      * Checks that the collection does not contain a {@code null} value (throws an {@link IllegalArgumentException} if it does).
-     * The implementation calls {@code c.contains(null)} to determine the presence of null.
-     * @param c collection
+     * @param collection collection
      * @param message the text message that would be pass to the exception thrown when c contains a null.
-     * @throws IllegalArgumentException if a {@code o == null}
+     * @throws IllegalArgumentException if collection is null or contains any null elements
      */
-    public static void containsNoNull(final Collection<?> c, final String message) {
-        if (c.contains(null)){
+    public static void containsNoNull(final Collection<?> collection, final String message) {
+        Utils.nonNull(collection, message);
+        //cannot use Collection.containsNull here because this throws a NullPointerException when used with many Sets
+        if (collection.stream().anyMatch( v -> v == null)){
             throw new IllegalArgumentException(message);
         }
     }
