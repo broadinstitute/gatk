@@ -416,13 +416,13 @@ public final class Utils {
         final String[] split = args.split(delimiter);
         for (int i = 0; i < split.length - 1; i += 2) {
             final String arg = split[i].trim();
-            if (arg.length() > 0) { // if the unescaped arg has a size
+            if (!arg.isEmpty()) { // if the unescaped arg has a size
                 command = ArrayUtils.addAll(command, arg.split(" +"));
             }
             command = ArrayUtils.addAll(command, split[i + 1]);
         }
         final String arg = split[split.length - 1].trim();
-        if (split.length % 2 == 1 && arg.length() > 0) { // if the last unescaped arg has a size
+        if (split.length % 2 == 1 && !arg.isEmpty()) { // if the last unescaped arg has a size
             command = ArrayUtils.addAll(command, arg.split(" +"));
         }
         return command;

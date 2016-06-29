@@ -104,7 +104,7 @@ public final class ReadUtils {
             return null;
         }
         final String oqString = read.getAttributeAsString(ORIGINAL_BASE_QUALITIES_TAG);
-        return oqString.length() > 0 ? SAMUtils.fastqToPhred(oqString) : null;
+        return !oqString.isEmpty() ? SAMUtils.fastqToPhred(oqString) : null;
     }
 
     /**

@@ -203,7 +203,7 @@ final class Tranche {
             Tranche t = findTranche(data, metric, trancheThreshold, model);
 
             if ( t == null ) {
-                if ( tranches.size() == 0 ) {
+                if (tranches.isEmpty()) {
                     throw new UserException(String.format("Couldn't find any tranche containing variants with a %s > %.2f. Are you sure the truth files contain unfiltered variants which overlap the input data?", metric.getName(), metric.getThreshold(trancheThreshold)));
                 }
                 break;

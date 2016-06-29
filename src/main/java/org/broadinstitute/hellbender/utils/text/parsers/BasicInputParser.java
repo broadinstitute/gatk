@@ -81,7 +81,7 @@ public class BasicInputParser extends AbstractInputParser {
             nextLine = line;
             return line.getBytes();
         }
-        if (inputs.size() > 0) {
+        if (!inputs.isEmpty()) {
             advanceFile();
             return readNextLine();
         }
@@ -89,7 +89,7 @@ public class BasicInputParser extends AbstractInputParser {
     }
 
     protected void advanceFile() {
-        currentFileName = fileNames.size() > 0 ? fileNames.remove(0) : null;
+        currentFileName = !fileNames.isEmpty() ? fileNames.remove(0) : null;
         nextLineNumber = 0;
         nextLine = null;
         reader = new BufferedLineReader(inputs.remove(0));

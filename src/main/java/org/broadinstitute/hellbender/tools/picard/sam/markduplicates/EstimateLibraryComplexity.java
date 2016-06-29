@@ -362,7 +362,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
                                 }
                             }
 
-                            if (dupes.size() > 0) {
+                            if (!dupes.isEmpty()) {
                                 dupes.add(lhs);
                                 final int duplicateCount = dupes.size();
                                 duplicationHisto.increment(duplicateCount);

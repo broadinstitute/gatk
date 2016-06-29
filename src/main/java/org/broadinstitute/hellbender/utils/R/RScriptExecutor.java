@@ -93,7 +93,7 @@ public final class RScriptExecutor {
 
             StringBuilder expression = new StringBuilder("tempLibDir = '").append(tempLibInstallationDir).append("';");
 
-            if (this.libraries.size() > 0) {
+            if (!this.libraries.isEmpty()) {
                 List<String> tempLibraryPaths = new ArrayList<>();
                 for (RScriptLibrary library: this.libraries) {
                     File tempLibrary = library.writeLibrary(tempLibSourceDir);

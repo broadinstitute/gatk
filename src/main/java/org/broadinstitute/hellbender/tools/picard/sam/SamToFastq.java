@@ -167,7 +167,7 @@ public final class SamToFastq extends PicardCommandLineProgram {
             writerMapping.closeAll();
         }
 
-        if (firstSeenMates.size() > 0) {
+        if (!firstSeenMates.isEmpty()) {
             SAMUtils.processValidationError(new SAMValidationError(SAMValidationError.Type.MATE_NOT_FOUND,
                     "Found " + firstSeenMates.size() + " unpaired mates", null), VALIDATION_STRINGENCY);
         }

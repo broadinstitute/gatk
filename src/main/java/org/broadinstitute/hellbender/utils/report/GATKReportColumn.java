@@ -104,7 +104,7 @@ public final class GATKReportColumn {
     public void updateFormatting(final Object value) {
         if (value != null) {
             final String formatted = formatValue(value);
-            if ( formatted.length() > 0 ) {
+            if (!formatted.isEmpty()) {
                 updateMaxWidth(formatted);
                 updateFormat(formatted);
             }

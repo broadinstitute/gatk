@@ -225,14 +225,14 @@ public final class MergeBamAlignment extends PicardCommandLineProgram {
                     "be included."};
         }
 
-        final boolean r1sExist = READ1_ALIGNED_BAM != null && READ1_ALIGNED_BAM.size() > 0;
-        final boolean r2sExist = READ2_ALIGNED_BAM != null && READ2_ALIGNED_BAM.size() > 0;
+        final boolean r1sExist = READ1_ALIGNED_BAM != null && !READ1_ALIGNED_BAM.isEmpty();
+        final boolean r2sExist = READ2_ALIGNED_BAM != null && !READ2_ALIGNED_BAM.isEmpty();
         if ((r1sExist && !r2sExist) || (r2sExist && !r1sExist)) {
             return new String[]{"READ1_ALIGNED_BAM and READ2_ALIGNED_BAM " +
                     "must both be supplied or neither should be included.  For " +
                     "single-end read use ALIGNED_BAM."};
         }
-        if (ALIGNED_BAM == null || ALIGNED_BAM.size() == 0 && !(r1sExist && r2sExist)) {
+        if (ALIGNED_BAM == null || ALIGNED_BAM.isEmpty() && !(r1sExist && r2sExist)) {
             return new String[]{"Either ALIGNED_BAM or the combination of " +
                     "READ1_ALIGNED_BAM and READ2_ALIGNED_BAM must be supplied."};
 

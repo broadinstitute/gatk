@@ -108,7 +108,7 @@ public final class MendelianViolation {
             Sample sample;
             while (sampleIterator.hasNext()) {
                 sample = sampleIterator.next();
-                if (sampleDB.getParents(sample).size() > 0) {
+                if (!sampleDB.getParents(sample).isEmpty()) {
                     updateViolations(sample.getFamilyID(), sample.getMaternalID(), sample.getPaternalID(), sample.getID(), vc);
                 }
             }

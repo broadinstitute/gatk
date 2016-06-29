@@ -81,9 +81,9 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
                 alignedReadsOnly, programRecord, attributesToRetain, attributesToRemove, read1BasesTrimmed,
                 read2BasesTrimmed, expectedOrientations, sortOrder, primaryAlignmentSelectionStrategy, addMateCigar);
 
-        if ((alignedSamFile == null || alignedSamFile.size() == 0) &&
-                (read1AlignedSamFile == null || read1AlignedSamFile.size() == 0 ||
-                        read2AlignedSamFile == null || read2AlignedSamFile.size() == 0)) {
+        if ((alignedSamFile == null || alignedSamFile.isEmpty()) &&
+                (read1AlignedSamFile == null || read1AlignedSamFile.isEmpty() ||
+                        read2AlignedSamFile == null || read2AlignedSamFile.isEmpty())) {
             throw new IllegalArgumentException("Either alignedSamFile or BOTH of read1AlignedSamFile and " +
                     "read2AlignedSamFile must be specified.");
         }
@@ -136,7 +136,7 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
         final SAMFileHeader header;
 
         // When the alignment records, including both ends of a pair, are in SAM files
-        if (alignedSamFile != null && alignedSamFile.size() > 0) {
+        if (alignedSamFile != null && !alignedSamFile.isEmpty()) {
             final List<SAMFileHeader> headers = new ArrayList<>(alignedSamFile.size());
             final List<SamReader> readers = new ArrayList<>(alignedSamFile.size());
             for (final File f : this.alignedSamFile) {

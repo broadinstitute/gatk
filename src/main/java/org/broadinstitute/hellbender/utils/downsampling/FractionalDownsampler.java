@@ -49,7 +49,7 @@ public final class FractionalDownsampler extends ReadsDownsampler {
 
     @Override
     public boolean hasFinalizedItems() {
-        return selectedReads.size() > 0;
+        return !selectedReads.isEmpty();
     }
 
     @Override

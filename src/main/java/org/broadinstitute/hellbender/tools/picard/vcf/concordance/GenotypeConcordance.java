@@ -106,7 +106,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         IOUtil.assertFileIsWritable(detailedMetricsFile);
         IOUtil.assertFileIsWritable(contingencyMetricsFile);
 
-        final boolean usingIntervals = this.INTERVALS != null && this.INTERVALS.size() > 0;
+        final boolean usingIntervals = this.INTERVALS != null && !this.INTERVALS.isEmpty();
         IntervalList intervals = null;
         SAMSequenceDictionary intervalsSamSequenceDictionary = null;
         if (usingIntervals) {

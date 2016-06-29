@@ -276,7 +276,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
 
         // if we have no other intervals yet or if the new loc is past the last one in the list (which is usually the
         // case because locs are generally added in order) then be extra efficient and just add the loc to the end
-        if ( mArray.size() == 0 || loc.isPast(mArray.get(mArray.size() - 1)) ) {
+        if (mArray.isEmpty() || loc.isPast(mArray.get(mArray.size() - 1)) ) {
             return mArray.add(loc);
         }
 

@@ -201,13 +201,13 @@ public final class CommandLineParser {
                 .collect(Collectors.partitioningBy(a -> a.optional));
 
         final List<ArgumentDefinition> reqArgs = argMap.get(false); // required args
-        if (reqArgs != null && reqArgs.size() != 0) {
+        if (reqArgs != null && !reqArgs.isEmpty()) {
             stream.println("\n\nRequired Arguments:\n");
             reqArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
         }
 
         final List<ArgumentDefinition> optArgs = argMap.get(true); // optional args
-        if (optArgs != null && optArgs.size() != 0) {
+        if (optArgs != null && !optArgs.isEmpty()) {
             stream.println("\nOptional Arguments:\n");
             optArgs.stream().forEach(argumentDefinition -> printArgumentUsage(stream, argumentDefinition));
         }
@@ -428,7 +428,7 @@ public final class CommandLineParser {
             try (BufferedReader reader = new BufferedReader(new FileReader(argumentsFile))){
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    if (!line.startsWith(COMMENT) && line.trim().length() != 0) {
+                    if (!line.startsWith(COMMENT) && !line.trim().isEmpty()) {
                         args.addAll(Arrays.asList(StringUtils.split(line)));
                     }
                 }
@@ -450,7 +450,7 @@ public final class CommandLineParser {
         String argumentLabel = name;
         if (type != null) argumentLabel = "--"+ argumentLabel;
 
-        if (shortName.length() > 0) {
+        if (!shortName.isEmpty()) {
             argumentLabel+=",-" + shortName;
         }
         argumentLabel += ":" + type;
@@ -475,7 +475,7 @@ public final class CommandLineParser {
 
     private String makeArgumentDescription(final ArgumentDefinition argumentDefinition) {
         final StringBuilder sb = new StringBuilder();
-        if (argumentDefinition.doc.length() > 0) {
+        if (!argumentDefinition.doc.isEmpty()) {
             sb.append(argumentDefinition.doc);
             sb.append("  ");
         }
@@ -505,7 +505,7 @@ public final class CommandLineParser {
                 }
 
                 sb.append(" ").append(mutextArgumentDefinition.fieldName);
-                if (mutextArgumentDefinition.shortName.length() > 0) {
+                if (!mutextArgumentDefinition.shortName.isEmpty()) {
                     sb.append(" (").append(mutextArgumentDefinition.shortName).append(")");
                 }
             }

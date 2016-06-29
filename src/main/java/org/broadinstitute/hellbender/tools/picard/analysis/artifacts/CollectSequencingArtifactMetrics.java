@@ -241,12 +241,12 @@ public final class CollectSequencingArtifactMetrics extends SinglePassSamProgram
             baitBiasSummaryMetricsFile.addAllMetrics(counter.getBaitBiasSummaryMetrics());
 
             for (final PreAdapterDetailMetrics preAdapterDetailMetrics : counter.getPreAdapterDetailMetrics()) {
-                if (CONTEXTS_TO_PRINT.size() == 0 || CONTEXTS_TO_PRINT.contains(preAdapterDetailMetrics.CONTEXT)) {
+                if (CONTEXTS_TO_PRINT.isEmpty() || CONTEXTS_TO_PRINT.contains(preAdapterDetailMetrics.CONTEXT)) {
                     preAdapterDetailMetricsFile.addMetric(preAdapterDetailMetrics);
                 }
             }
             for (final BaitBiasDetailMetrics baitBiasDetailMetrics : counter.getBaitBiasDetailMetrics()) {
-                if (CONTEXTS_TO_PRINT.size() == 0 || CONTEXTS_TO_PRINT.contains(baitBiasDetailMetrics.CONTEXT)) {
+                if (CONTEXTS_TO_PRINT.isEmpty() || CONTEXTS_TO_PRINT.contains(baitBiasDetailMetrics.CONTEXT)) {
                     baitBiasDetailMetricsFile.addMetric(baitBiasDetailMetrics);
                 }
             }

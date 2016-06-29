@@ -71,7 +71,7 @@ public final class TableCodec extends AsciiFeatureCodec<TableFeature> {
             isFirst &= line.startsWith(COMMENT_DELIMITER);
             if (line.startsWith(HEADER_DELIMITER)) {
                 reader.next(); // "Commit" the peek
-                if (header.size() > 0) {
+                if (!header.isEmpty()) {
                     throw new UserException.MalformedFile("Input table file seems to have two header lines.  The second is = " + line);
                 }
                 final String[] spl = line.split(DELIMITER_REGEX);
