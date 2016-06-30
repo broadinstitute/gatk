@@ -75,9 +75,9 @@ public final class GenotypeLikelihoodCalculatorsUnitTest extends BaseTest {
         }
     }
 
-    @Test
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGenotypeCountOverflow() throws Exception {
-        Assert.assertEquals(new GenotypeLikelihoodCalculators().genotypeCount(10_000, 10_000), GenotypeLikelihoodCalculators.GENOTYPE_COUNT_OVERFLOW);
+        final int genotypeCount = new GenotypeLikelihoodCalculators().genotypeCount(10_000, 10_000);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -90,4 +90,13 @@ public final class GenotypeLikelihoodCalculatorsUnitTest extends BaseTest {
         new GenotypeLikelihoodCalculators().genotypeCount(1, -1);
     }
 
+    @Test
+    public void testComputeMaxAcceptableAlleleCount(){
+        Assert.assertEquals(1024, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(1, 1024));
+        Assert.assertEquals(44, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(2, 1024));
+        Assert.assertEquals(17, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(3, 1024));
+        Assert.assertEquals(5, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(10, 1024));
+        Assert.assertEquals(3, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(20, 1024));
+        Assert.assertEquals(2, GenotypeLikelihoodCalculators.computeMaxAcceptableAlleleCount(100, 1024));
+    }
 }
