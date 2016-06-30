@@ -181,10 +181,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 { ceuSnippet, null, Arrays.asList("20:10000009-10000011", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i") },
                 { ceuSnippet, null, Arrays.asList("20:10000009-10000013", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "f", "f", "g", "h", "h", "i", "i") },
                 { ceuSnippetCram, b37_reference_20_21, Arrays.asList("unmapped"), Arrays.asList("g", "h", "h", "i", "i") },
-                // The below test case is currently disabled due to an apparent bug in which the cram reader returns the unmapped read "f"
-                // in this query, even though it has its mapped mate's position, and this position is outside the query intervals.
-                // This bug is being tracked here: https://github.com/broadinstitute/gatk/issues/1673
-                // { ceuSnippetCram, b37_reference_20_21, Arrays.asList("20:10000009-10000011", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i") },
+                { ceuSnippetCram, b37_reference_20_21, Arrays.asList("20:10000009-10000011", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "g", "h", "h", "i", "i") },
                 { ceuSnippetCram, b37_reference_20_21, Arrays.asList("20:10000009-10000013", "unmapped"), Arrays.asList("a", "b", "c", "d", "e", "f", "f", "g", "h", "h", "i", "i") }
         };
     }
