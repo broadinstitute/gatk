@@ -19,6 +19,11 @@ public final class ReadConstants {
     public static final int UNSET_POSITION = 0;
 
     /**
+     * Value used to represent the absence of a defined contig in a read
+     */
+    public static final String UNSET_CONTIG = "*";
+
+    /**
      * Value used to represent the absence of a mapping quality in a read
      */
     public static final int NO_MAPPING_QUALITY = 0;

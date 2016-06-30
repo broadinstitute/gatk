@@ -6,6 +6,8 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -30,6 +32,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     private final SimpleInterval paddedInterval;
     private final ReadsDataSource readsSource;
     private ReadFilter readFilter;
+    private ReadsDownsampler downsampler;
 
     /**
      * Create a new ReadShard spanning the specified interval, with the specified amount of padding.
@@ -63,12 +66,23 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     }
 
     /**
-     * Reads in this shard will be filtered using this filter before being returned
+     * Reads in this shard will be filtered using this filter before being returned.
+     * Read filtering will be performed before any requested downsampling.
      *
-     * @param filter filter to use (may be null)
+     * @param filter filter to use (may be null, which signifies that no filtering is to be performed)
      */
     public void setReadFilter( final ReadFilter filter ) {
         this.readFilter = filter;
+    }
+
+    /**
+     * Reads in this shard will be downsampled using this downsampler before being returned.
+     * Downsampling will be performed after any requested read filtering.
+     *
+     * @param downsampler downsampler to use (may be null, which signifies that no downsampling is to be performed)
+     */
+    public void setDownsampler( final ReadsDownsampler downsampler ) {
+        this.downsampler = downsampler;
     }
 
     /**
@@ -142,20 +156,33 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     }
 
     /**
-     * @return an iterator over reads in this shard, as filtered using the configured read filter;
-     *         reads are lazily loaded rather than pre-loaded
+     * @return an iterator over reads in this shard, as filtered using the configured read filter
+     *         and downsampled using the configured downsampler; reads are lazily loaded rather than pre-loaded
+     *
+     * Note that any read filtering is always performed before any downsampling.
      */
     @Override
     public Iterator<GATKRead> iterator() {
-        final Iterator<GATKRead> readsIterator = readsSource.query(paddedInterval);
+        Iterator<GATKRead> readsIterator = readsSource.query(paddedInterval);
 
-        return readFilter != null ? new ReadFilteringIterator(readsIterator, readFilter) : readsIterator;
+        if ( readFilter != null ) {
+            readsIterator = new ReadFilteringIterator(readsIterator, readFilter);
+        }
+
+        if ( downsampler != null ) {
+            readsIterator = new ReadsDownsamplingIterator(readsIterator, downsampler);
+        }
+
+        return readsIterator;
     }
 
     /**
-     * @return a List containing all reads in this shard, pre-loaded, and filtered using the configured read filter
+     * @return a List containing all reads in this shard, pre-loaded, filtered using the configured read filter,
+     *         and downsampled using the configured downsampler
      *
-     * note: call {@link #iterator} instead to avoid pre-loading all reads at once
+     * Call {@link #iterator} instead to avoid pre-loading all reads at once.
+     *
+     * Note that any read filtering is always performed before any downsampling.
      */
     public List<GATKRead> loadAllReads() {
         return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED), false).collect(Collectors.toList());

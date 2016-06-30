@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -95,6 +96,10 @@ public class ReadShardUnitTest extends BaseTest {
         final ReadShard filteredShard = new ReadShard(new SimpleInterval("1", 200, 210), new SimpleInterval("1", 200, 210), readsSource);
         filteredShard.setReadFilter(keepReadBOnly);
 
+        final ReadsDownsampler readsBAndCOnlyDownsampler = new KeepReadsBAndCOnlyDownsampler();
+        final ReadShard downsampledShard = new ReadShard(new SimpleInterval("1", 1, 5000), new SimpleInterval("1", 1, 5000), readsSource);
+        downsampledShard.setDownsampler(readsBAndCOnlyDownsampler);
+
         return new Object[][] {
                 { new ReadShard(new SimpleInterval("1", 200, 210), new SimpleInterval("1", 200, 210), readsSource), Arrays.asList("a", "b", "c") },
                 { new ReadShard(new SimpleInterval("1", 200, 209), new SimpleInterval("1", 200, 209), readsSource), Arrays.asList("a", "b") },
@@ -102,7 +107,8 @@ public class ReadShardUnitTest extends BaseTest {
                 { new ReadShard(new SimpleInterval("1", 200, 204), new SimpleInterval("1", 190, 210), readsSource), Arrays.asList("a", "b", "c") },
                 { new ReadShard(new SimpleInterval("1", 200, 204), new SimpleInterval("1", 200, 205), readsSource), Arrays.asList("a", "b") },
                 { new ReadShard(new SimpleInterval("1", 400, 500), new SimpleInterval("1", 400, 500), readsSource), Collections.<String>emptyList() },
-                { filteredShard, Arrays.asList("b") }
+                { filteredShard, Arrays.asList("b") },
+                { downsampledShard, Arrays.asList("b", "c")}
         };
     }
 
@@ -310,4 +316,71 @@ public class ReadShardUnitTest extends BaseTest {
     public void testDivideIntervalIntoShardInvalidArgument( final SimpleInterval originalInterval, final int shardSize, final int shardStep, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary ) {
         ReadShard.divideIntervalIntoShards(originalInterval, shardSize, shardStep, shardPadding, readsSource, dictionary);
     }
+
+    // Toy downsampler that keeps only reads with names "b" or "c"
+    private static class KeepReadsBAndCOnlyDownsampler extends ReadsDownsampler {
+        private List<GATKRead> finalizedReads = new ArrayList<>();
+
+        @Override
+        public boolean requiresCoordinateSortOrder() {
+            return false;
+        }
+
+        @Override
+        public void signalNoMoreReadsBefore( GATKRead read ) {
+            // no-op
+        }
+
+        @Override
+        public void submit( GATKRead item ) {
+            if ( item.getName() != null && (item.getName().equals("b") || item.getName().equals("c")) ) {
+                finalizedReads.add(item);
+            }
+            else {
+                incrementNumberOfDiscardedItems(1);
+            }
+        }
+
+        @Override
+        public boolean hasFinalizedItems() {
+            return ! finalizedReads.isEmpty();
+        }
+
+        @Override
+        public List<GATKRead> consumeFinalizedItems() {
+            final List<GATKRead> toReturn = finalizedReads;
+            finalizedReads = new ArrayList<>();
+            return toReturn;
+        }
+
+        @Override
+        public boolean hasPendingItems() {
+            return false;
+        }
+
+        @Override
+        public GATKRead peekFinalized() {
+            return hasFinalizedItems() ? finalizedReads.get(0) : null;
+        }
+
+        @Override
+        public GATKRead peekPending() {
+            return null;
+        }
+
+        @Override
+        public int size() {
+            return finalizedReads.size();
+        }
+
+        @Override
+        public void signalEndOfInput() {
+            // no-op
+        }
+
+        @Override
+        public void clearItems() {
+            finalizedReads.clear();
+        }
+    };
 }

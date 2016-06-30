@@ -104,7 +104,7 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
             if ( randomSlot < targetSampleSize ) {
                 reservoir.set(randomSlot, newRead);
             }
-            numDiscardedItems++;
+            incrementNumberOfDiscardedItems(1);
         }
     }
 

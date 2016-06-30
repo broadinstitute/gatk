@@ -237,6 +237,62 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
         read.setPosition(contig, start);
     }
 
+    @DataProvider(name = "GetAssignedPositionData")
+    public Object[][] getAssignedPositionData() {
+        List<Object[]> testCases = new ArrayList<>();
+
+        testCases.add(new Object[]{basicReadBackedBySam(), BASIC_READ_CONTIG, BASIC_READ_START});
+        testCases.add(new Object[]{basicReadBackedByGoogle(), BASIC_READ_CONTIG, BASIC_READ_START});
+
+        // SAMRecord, unmapped flag set, but has an assigned position
+        final SAMRecord unmappedFlagSam = basicSAMRecord();
+        unmappedFlagSam.setReadUnmappedFlag(true);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(unmappedFlagSam), BASIC_READ_CONTIG, BASIC_READ_START});
+
+        // SAMRecord, unmapped flag not set, but no contig
+        final SAMRecord unmappedContigSam = basicSAMRecord();
+        unmappedContigSam.setReferenceName(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(unmappedContigSam), SAMRecord.NO_ALIGNMENT_REFERENCE_NAME, BASIC_READ_START});
+
+        // SAMRecord, unmapped flag not set, but no start
+        final SAMRecord noAlignmentStartSam = basicSAMRecord();
+        noAlignmentStartSam.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        testCases.add(new Object[]{new SAMRecordToGATKReadAdapter(noAlignmentStartSam), BASIC_READ_CONTIG, ReadConstants.UNSET_POSITION});
+
+        // Google read, no alignment
+        final Read noAlignmentGoogleRead = basicGoogleGenomicsRead();
+        noAlignmentGoogleRead.setAlignment(null);
+        testCases.add(new Object[]{new GoogleGenomicsReadToGATKReadAdapter(noAlignmentGoogleRead), null, ReadConstants.UNSET_POSITION});
+
+        // Google read, no position
+        final Read noPositionGoogleRead = basicGoogleGenomicsRead();
+        noPositionGoogleRead.getAlignment().setPosition(null);
+        testCases.add(new Object[]{new GoogleGenomicsReadToGATKReadAdapter(noPositionGoogleRead), null, ReadConstants.UNSET_POSITION});
+
+        // Google read, position with no contig
+        final Read noContigGoogleRead = basicGoogleGenomicsRead();
+        noContigGoogleRead.getAlignment().getPosition().setReferenceName(null);
+        testCases.add(new Object[]{new GoogleGenomicsReadToGATKReadAdapter(noContigGoogleRead), null, BASIC_READ_START});
+
+        // Google read, position with * contig
+        final Read starContigGoogleRead = basicGoogleGenomicsRead();
+        starContigGoogleRead.getAlignment().getPosition().setReferenceName(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
+        testCases.add(new Object[]{new GoogleGenomicsReadToGATKReadAdapter(starContigGoogleRead), SAMRecord.NO_ALIGNMENT_REFERENCE_NAME, BASIC_READ_START});
+
+        // Google read, position with contig but no start
+        final Read noStartGoogleRead = basicGoogleGenomicsRead();
+        noStartGoogleRead.getAlignment().getPosition().setPosition(-1l);
+        testCases.add(new Object[]{new GoogleGenomicsReadToGATKReadAdapter(noStartGoogleRead), BASIC_READ_CONTIG, ReadConstants.UNSET_POSITION});
+
+        return testCases.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "GetAssignedPositionData")
+    public void testGetAssignedPosition( final GATKRead read, final String expectedAssignedContig, final int expectedAssignedStart ) {
+        Assert.assertEquals(read.getAssignedContig(), expectedAssignedContig, "Wrong assigned contig for read");
+        Assert.assertEquals(read.getAssignedStart(), expectedAssignedStart, "Wrong assigned start position for read");
+    }
+
     @DataProvider(name = "GetAndSetNameData")
     public Object[][] getAndSetNameData() {
         final SAMRecord namelessSam = basicSAMRecord();

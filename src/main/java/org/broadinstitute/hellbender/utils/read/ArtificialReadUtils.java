@@ -213,6 +213,26 @@ public final class ArtificialReadUtils {
         return new SAMRecordToGATKReadAdapter(createArtificialSAMRecord(TextCigarCodec.decode(cigarString)));
     }
 
+    public static GATKRead createArtificialUnmappedRead(final SAMFileHeader header, final byte[] bases, final byte[] qual) {
+        final SAMRecord read = new SAMRecord(header);
+        read.setReadUnmappedFlag(true);
+        read.setReadBases(bases);
+        read.setBaseQualities(qual);
+
+        return new SAMRecordToGATKReadAdapter(read);
+    }
+
+    public static GATKRead createArtificialUnmappedReadWithAssignedPosition(final SAMFileHeader header, final String contig, final int alignmentStart, final byte[] bases, final byte[] qual) {
+        final SAMRecord read = new SAMRecord(header);
+        read.setReferenceName(contig);
+        read.setAlignmentStart(alignmentStart);
+        read.setReadUnmappedFlag(true);
+        read.setReadBases(bases);
+        read.setBaseQualities(qual);
+
+        return new SAMRecordToGATKReadAdapter(read);
+    }
+
     /**
      * Makes a new read with a name that is unique (so that it will return false to equals(otherRead)
      */
