@@ -538,11 +538,11 @@ public final class ClipReads extends ReadWalker {
             nRangeClippedBases += data.nRangeClippedBases;
             nSeqClippedBases += data.nSeqClippedBases;
 
-            for (String seqClip : data.seqClipCounts.keySet()) {
-                Long count = data.seqClipCounts.get(seqClip);
-                if (seqClipCounts.containsKey(seqClip))
-                    count += seqClipCounts.get(seqClip);
-                seqClipCounts.put(seqClip, count);
+            for (Map.Entry<String, Long> entry : data.seqClipCounts.entrySet()) {
+                Long count = data.seqClipCounts.get(entry.getKey());
+                if (seqClipCounts.containsKey(entry.getKey()))
+                    count += entry.getValue();
+                seqClipCounts.put(entry.getKey(), count);
             }
         }
 
