@@ -217,11 +217,11 @@ public final class InsertSizeMetricsCollectorSpark
         if(accumLevels.contains(MetricAccumulationLevel.SAMPLE))    { extractors.add( new Tuple2<>(new ReadGroupSampleExtractor(),   new LinkedHashMap<>())); }
         if(accumLevels.contains(MetricAccumulationLevel.ALL_READS)) { extractors.add( new Tuple2<>(new ReadGroupAllReadsExtractor(), new LinkedHashMap<>())); }
 
-        for(final GroupMetaInfo groupMetaInfo : histogramsAtRGLevel.keySet()){
-            final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> readGroupHistograms = histogramsAtRGLevel.get(groupMetaInfo);
+        for(final Map.Entry<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> entry : histogramsAtRGLevel.entrySet()){
+            final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> readGroupHistograms = entry.getValue();
             for(final Tuple2<ReadGroupParentExtractor,
                     Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>> extractor : extractors){
-                distributeRGHistogramsToAppropriateLevel(groupMetaInfo, readGroupHistograms, extractor);
+                distributeRGHistogramsToAppropriateLevel(entry.getKey(), readGroupHistograms, extractor);
             }
         }
 
@@ -254,15 +254,15 @@ public final class InsertSizeMetricsCollectorSpark
         destination.putIfAbsent(correspondingHigherLevelGroup, new LinkedHashMap<>());
         final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> higherLevelHistograms = destination.get(correspondingHigherLevelGroup);
 
-        for(final SamPairUtil.PairOrientation orientation : readGroupHistograms.keySet()){
-            higherLevelHistograms.putIfAbsent(orientation, new TreeMap<>()); // second check if this orientation has been seen yet.
-            final SortedMap<Integer, Long> higherLevelHistogramOfThisOrientation = higherLevelHistograms.get(orientation);
-            final SortedMap<Integer, Long> readGroupHistogramOfThisOrientation = readGroupHistograms.get(orientation);
-            for(final Integer bin : readGroupHistogramOfThisOrientation.keySet()){
-                higherLevelHistogramOfThisOrientation.putIfAbsent(bin, 0L); // third check if this bin has been seen yet.
-                Long count = higherLevelHistogramOfThisOrientation.get(bin);
-                count += readGroupHistogramOfThisOrientation.get(bin);
-                higherLevelHistogramOfThisOrientation.put(bin, count);
+        for(final Map.Entry<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> entry : readGroupHistograms.entrySet()){
+            higherLevelHistograms.putIfAbsent(entry.getKey(), new TreeMap<>()); // second check if this orientation has been seen yet.
+            final SortedMap<Integer, Long> higherLevelHistogramOfThisOrientation = higherLevelHistograms.get(entry.getKey());
+            final SortedMap<Integer, Long> readGroupHistogramOfThisOrientation = entry.getValue();
+            for(final Map.Entry<Integer, Long> entrySet : readGroupHistogramOfThisOrientation.entrySet()){
+                higherLevelHistogramOfThisOrientation.putIfAbsent(entrySet.getKey(), 0L); // third check if this bin has been seen yet.
+                Long count = higherLevelHistogramOfThisOrientation.get(entrySet.getKey());
+                count += entrySet.getValue();
+                higherLevelHistogramOfThisOrientation.put(entrySet.getKey(), count);
             }
         }
     }
@@ -305,20 +305,20 @@ public final class InsertSizeMetricsCollectorSpark
                                                final Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> rawHistograms,
                                                final double histogramMADTolerance){
 
-        for(final GroupMetaInfo groupMetaInfo : rawHistograms.keySet()){
-            final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> rawHistogramsOfAGroup = rawHistograms.get(groupMetaInfo);
+        for(final Map.Entry<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> entry : rawHistograms.entrySet()){
+            final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> rawHistogramsOfAGroup = entry.getValue();
             for(final SamPairUtil.PairOrientation orientation : rawHistogramsOfAGroup.keySet()){
                 // convert to htsjdk Histogram
-                final Histogram<Integer> htsHist = new Histogram<>("insert_size", groupMetaInfo.getGroupName() + "." + orientationToString(orientation) + "_count");
+                final Histogram<Integer> htsHist = new Histogram<>("insert_size", entry.getKey().getGroupName() + "." + orientationToString(orientation) + "_count");
                 final SortedMap<Integer, Long> hist = rawHistogramsOfAGroup.get(orientation);
-                for(final int size : hist.keySet()){
-                    htsHist.increment(size, hist.get(size));
+                for(final Map.Entry<Integer, Long> entrySet : hist.entrySet()){
+                    htsHist.increment(entrySet.getKey(), entrySet.getValue());
                 }
 
                 final InsertSizeMetrics metrics = new InsertSizeMetrics();
                 metrics.PAIR_ORIENTATION = orientation;
 
-                collectMetricsBaseInfo(metrics, groupMetaInfo);
+                collectMetricsBaseInfo(metrics, entry.getKey());
                 collectSimpleStats(metrics, htsHist);
                 collectSymmetricBinWidth(metrics, htsHist);
                 trimHTSHistogramAndSetMean(metrics, htsHist, histogramMADTolerance);
@@ -326,7 +326,7 @@ public final class InsertSizeMetricsCollectorSpark
                 // save result
                 final Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>> mapToStats = new LinkedHashMap<>();
                 mapToStats.put(orientation, new Tuple2<>(htsHist, metrics));
-                htsjdkHistogramsAndMetrics.put(groupMetaInfo, mapToStats);
+                htsjdkHistogramsAndMetrics.put(entry.getKey(), mapToStats);
             }
         }
     }
@@ -449,10 +449,10 @@ public final class InsertSizeMetricsCollectorSpark
      */
     private static void dumpToFile(final MetricsFile<InsertSizeMetrics, Integer> metricsFile,
                                    final Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>> stats){
-        for(final GroupMetaInfo groupMetaInfo : stats.keySet()){
-            for(final SamPairUtil.PairOrientation orientation : stats.get(groupMetaInfo).keySet()){
-                metricsFile.addMetric(stats.get(groupMetaInfo).get(orientation)._2());
-                metricsFile.addHistogram(stats.get(groupMetaInfo).get(orientation)._1());
+        for(final Map.Entry<GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>> entry : stats.entrySet()){
+            for(final SamPairUtil.PairOrientation orientation : entry.getValue().keySet()){
+                metricsFile.addMetric(entry.getValue().get(orientation)._2());
+                metricsFile.addHistogram(entry.getValue().get(orientation)._1());
             }
         }
     }

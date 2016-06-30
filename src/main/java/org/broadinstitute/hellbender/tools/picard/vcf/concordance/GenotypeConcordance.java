@@ -248,8 +248,8 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         genotypeConcordanceContingencyMetricsFile.addMetric(contingencyMetrics);
         genotypeConcordanceContingencyMetricsFile.write(contingencyMetricsFile);
 
-        for (final String condition : unClassifiedStatesMap.keySet()) {
-            logger.info("Uncovered truth/call Variant Context Type Counts: " + condition + " " + unClassifiedStatesMap.get(condition));
+        for (final Map.Entry<String, Integer> entry : unClassifiedStatesMap.entrySet()) {
+            logger.info("Uncovered truth/call Variant Context Type Counts: " + entry.getKey() + " " + entry.getValue());
         }
 
         return null;

@@ -31,8 +31,8 @@ public final class IntervalsSkipList<T extends Locatable> implements Serializabl
             variantsPerContig.get(k).add(v);
         }
         intervals = new LinkedHashMap<>();
-        for (String k : variantsPerContig.keySet()) {
-            intervals.put(k, new IntervalsSkipListOneContig<>(variantsPerContig.get(k)));
+        for (Map.Entry<String, List<T>> entry : variantsPerContig.entrySet()) {
+            intervals.put(entry.getKey(), new IntervalsSkipListOneContig<>(entry.getValue()));
         }
     }
 

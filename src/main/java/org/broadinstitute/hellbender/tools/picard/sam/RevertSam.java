@@ -211,8 +211,8 @@ public final class RevertSam extends PicardCommandLineProgram {
                 readGroupToFormat.put(rg, QualityEncodingDetector.detect(QualityEncodingDetector.DEFAULT_MAX_RECORDS_TO_ITERATE, new FilteringSamIterator(reader.iterator(), filter), RESTORE_ORIGINAL_QUALITIES));
                 CloserUtil.close(reader);
             }
-            for (final SAMReadGroupRecord r : readGroupToFormat.keySet()) {
-                logger.info("Detected quality format for " + r.getReadGroupId() + ": " + readGroupToFormat.get(r));
+            for (final Map.Entry<SAMReadGroupRecord, FastqQualityFormat> entry : readGroupToFormat.entrySet()) {
+                logger.info("Detected quality format for " + entry.getKey().getReadGroupId() + ": " + entry.getValue());
             }
             if (readGroupToFormat.values().contains(FastqQualityFormat.Solexa)) {
                 logger.error("No quality score encoding conversion implemented for " + FastqQualityFormat.Solexa);

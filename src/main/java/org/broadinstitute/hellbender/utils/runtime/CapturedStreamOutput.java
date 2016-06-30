@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.io.HardThresholdingOutputStream;
 
 import java.io.*;
 import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Stream output captured from a stream.
@@ -98,10 +99,10 @@ public final class CapturedStreamOutput extends StreamOutput {
                     outputStream.write(buf, 0, readCount);
                 }
         } finally {
-            for (StreamLocation location : this.outputStreams.keySet()) {
-                OutputStream outputStream = this.outputStreams.get(location);
+            for (Map.Entry<StreamLocation, OutputStream> entry : this.outputStreams.entrySet()) {
+                OutputStream outputStream = this.outputStreams.get(entry.getKey());
                 outputStream.flush();
-                if (location != StreamLocation.Standard)
+                if (entry.getKey() != StreamLocation.Standard)
                     IOUtils.closeQuietly(outputStream);
             }
         }
