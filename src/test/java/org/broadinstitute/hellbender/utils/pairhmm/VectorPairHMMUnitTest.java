@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -19,27 +20,23 @@ import java.io.FileNotFoundException;
 import java.util.*;
 
 public final class VectorPairHMMUnitTest extends BaseTest {
-    private final static boolean DEBUG = false;
 
-    private static final String publicTestDirRelative = "src/test/resources/";
-    public static final String publicTestDir = new File(gatkDirectory, publicTestDirRelative).getAbsolutePath() + "/";
-    public static final String pairHMMTestData = publicTestDir + "pairhmm-testdata.txt";
+    private static final String pairHMMTestData = publicTestDir + "pairhmm-testdata.txt";
 
    @BeforeClass
     public void initialize() {
-        if (!VectorLoglessPairHMM.isAVXSupported()) {
-          throw new SkipException("AVX is not supported on this system.");
-        } else {
-            try {
-               new VectorLoglessPairHMM();
-            } catch (final Exception e){
-                throw new SkipException("AVX library not available");
-            }
-        }
+       try {
+           new VectorLoglessPairHMM(null);
+       } catch (final Exception e) {
+           throw new SkipException("AVX PairHMM is not supported on this system or the library is not available");
+       }
     }
 
     private List<N2MemoryPairHMM> getHMMs() {
-        final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM();
+        final PairHMMNativeArguments args = new PairHMMNativeArguments();
+        args.useDoublePrecision = false;
+        args.maxNumberOfThreads = 1;
+        final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM(args);
         avxPairHMM.doNotUseTristateCorrection();
         return Collections.singletonList(avxPairHMM);
     }
@@ -78,9 +75,9 @@ public final class VectorPairHMMUnitTest extends BaseTest {
 
             final byte[] bases = tokens[1].getBytes();
             final byte[] baseQuals = normalize(tokens[2].getBytes(), 6);
-            final byte[] insertionQuals = normalize(tokens[3].getBytes(), 0);
-            final byte[] deletionQuals = normalize(tokens[4].getBytes(), 0);
-            final byte[] gcp = normalize(tokens[5].getBytes(), 0);
+            final byte[] insertionQuals = normalize(tokens[3].getBytes());
+            final byte[] deletionQuals = normalize(tokens[4].getBytes());
+            final byte[] gcp = normalize(tokens[5].getBytes());
             final double expectedResult = Double.parseDouble(tokens[6]);
 
             final int readLength = bases.length;
@@ -98,9 +95,15 @@ public final class VectorPairHMMUnitTest extends BaseTest {
 
             Assert.assertEquals(la[0], expectedResult, 1e-5, "Likelihood not in expected range.");
         }
+
+        hmm.close();
     }
 
-    static byte[] normalize(byte[] scores, int min) {
+    private static byte[] normalize(byte[] scores) {
+        return normalize(scores, 0);
+    }
+
+    private static byte[] normalize(byte[] scores, int min) {
         for (int i = 0; i < scores.length; i++) {
             scores[i] -= 33;
             scores[i] = scores[i] < min ? (byte)min : scores[i];
