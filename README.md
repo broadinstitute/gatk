@@ -215,6 +215,9 @@ If you are looking for the codebase of the current production version of GATK, p
       Look for the line that says `See the test report at`.
       If TestNG itself crashes there will be no report generated.
 
+* We use [Broad Jenkins](https://gatk-jenkins.broadinstitute.org/view/Performance/) for our long-running tests and performance tests.
+    * To add a performance test (requires Broad-ID), you need to make a "new item" in Jenkins and make it a "copy" instead of a blank project. You need to base it on either the "-spark-" jobs or the other kind of jobs and alter the commandline. 
+
 * To output stack traces for `UserException` set the environment variable `GATK_STACKTRACE_ON_USER_EXCEPTION=true`
 
 ##General guidelines for GATK4 developers
