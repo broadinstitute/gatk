@@ -239,7 +239,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
                     //Calculate BAD_CYCLES
                     metrics.BAD_CYCLES = 0;
 
-                    for (final Histogram<Integer>.Bin cycleBin : badCycleHistogram.values()) {
+                    for (final Histogram.Bin<Integer> cycleBin : badCycleHistogram.values()) {
                         final double badCyclePercentage = cycleBin.getValue() / metrics.TOTAL_READS;
                         if (badCyclePercentage >= .8) {
                             metrics.BAD_CYCLES++;

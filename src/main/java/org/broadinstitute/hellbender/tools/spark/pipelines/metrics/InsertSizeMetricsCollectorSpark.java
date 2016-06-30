@@ -378,8 +378,8 @@ public final class InsertSizeMetricsCollectorSpark
         int j = 0;                          // represent lowest and highest indices of bin_widths that needs to be updated
 
         while (i < 10) {                        // until all width values are computed
-            final Histogram<Integer>.Bin leftBin = hist.get(left);
-            final Histogram<Integer>.Bin rightBin = (left != right) ? hist.get(right) : null;
+            final Histogram.Bin<Integer> leftBin = hist.get(left);
+            final Histogram.Bin<Integer> rightBin = (left != right) ? hist.get(right) : null;
             if (null != leftBin) {// since left and right are incremented/decremented by 1, they may end up not in Histogram's bins.
                 sum += leftBin.getValue();
             }

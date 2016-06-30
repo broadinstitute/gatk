@@ -172,7 +172,7 @@ public final class GenotypeConcordanceCounts {
 
     @SuppressWarnings("unchecked")
     public int getCount(final TruthAndCallStates truthAndCallStates) {
-        final Histogram<TruthAndCallStates>.Bin bin = this.counter.get(truthAndCallStates);
+        final Histogram.Bin<TruthAndCallStates> bin = this.counter.get(truthAndCallStates);
         return (bin == null ? 0 : (int) bin.getValue());
     }
 
