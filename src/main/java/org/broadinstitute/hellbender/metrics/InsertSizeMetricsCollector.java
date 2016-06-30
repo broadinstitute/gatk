@@ -142,11 +142,11 @@ public final class InsertSizeMetricsCollector
                     double high = median;
 
                     while (low >= Histogram.getMin() || high <= Histogram.getMax()) {
-                        final Histogram<Integer>.Bin lowBin = Histogram.get((int) low);
+                        final Histogram.Bin<Integer> lowBin = Histogram.get((int) low);
                         if (lowBin != null) covered += lowBin.getValue();
 
                         if (low != high) {
-                            final Histogram<Integer>.Bin highBin = Histogram.get((int) high);
+                            final Histogram.Bin<Integer> highBin = Histogram.get((int) high);
                             if (highBin != null) covered += highBin.getValue();
                         }
 
