@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Example multi-level metrics collector for illustrating how to collect metrics on
@@ -32,11 +34,13 @@ public final class ExampleMultiMetricsCollector
 
     ExampleMultiMetricsArgumentCollection inputArgs = null;
 
+    public ExampleMultiMetricsCollector(){}
+
     /**
      * @param inputArgs ExampleMultiMetricsArgumentCollection populated with argument values. May not be null.
      * @param samHeader samHeader for the input to be processed. May not be null.
      */
-    public ExampleMultiMetricsCollector(
+    public void initialize(
             final ExampleMultiMetricsArgumentCollection inputArgs,
             final SAMFileHeader samHeader)
     {
@@ -51,12 +55,10 @@ public final class ExampleMultiMetricsCollector
 
     /**
      * Return the read filter for example metrics collector.
-     * @param samHeader SAMFileHeader for the input file. May not be null
-     * @return ReadFilter to be used to filter records
+     * @return List of read filters to be used to filter records
      */
-    public ReadFilter getReadFilter(final SAMFileHeader samHeader) {
-        Utils.nonNull(samHeader);
-        return ReadFilterLibrary.ALLOW_ALL_READS; // no filtering for this example
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(new ReadFilterLibrary.AllowAllReadsReadFilter());
     }
 
     /**

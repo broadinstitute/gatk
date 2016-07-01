@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -91,6 +93,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             throw new UserException.Require2BitReferenceForBroadcast();
         }
 
+        //TOOO: should this use getUnfilteredReads? getReads will apply default and command line filters
         final JavaRDD<GATKRead> initialReads = getReads();
 
         final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
@@ -99,7 +102,11 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
         // filtering performed, so we do that here.
-        final ReadFilter bqsrReadFilter = BaseRecalibrator.makeBQSRSpecificReadFilters();
+        //NOTE: this doesn't honor enabled/disabled commandline filters
+        final ReadFilter bqsrReadFilter = BaseRecalibrator.makeBQSRSpecificReadFilters().stream()
+                //.map(f -> f.getFilterInstance(getHeaderForReads(), null))
+                .reduce(ReadFilterLibrary.ALLOW_ALL_READS, (f1, f2) -> f1.and(f2));
+
         final JavaRDD<GATKRead> markedFilteredReadsForBQSR = markedReads.filter(read -> bqsrReadFilter.test(read));
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);

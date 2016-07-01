@@ -95,16 +95,16 @@ public final class ExampleCollectMultiMetricsSpark
     }
 
     /**
-     * Return the read filter required for this collector
+     * Return the read filters required for this collector
      */
     @Override
-    protected ReadFilter getReadFilter(final SAMFileHeader samHeader) {
-        return exampleMultiCollector.getReadFilter(samHeader);
+    public List<ReadFilter> getDefaultReadFilters() {
+        return exampleMultiCollector.getDefaultReadFilters();
     }
 
     /**
      * Execute the actual metrics collection.
-     * @param filteredReads Input reads, already filtered using the filter returned by {@link #getReadFilter(SAMFileHeader)}
+     * @param filteredReads Input reads, already filtered using the filter returned by {@link ##getDefaultReadFilters(SAMFileHeader)}
      * @param samHeader SAMFileHeader for the input
      */
     @Override

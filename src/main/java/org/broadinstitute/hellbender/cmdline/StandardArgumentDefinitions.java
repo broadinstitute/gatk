@@ -17,6 +17,8 @@ public final class StandardArgumentDefinitions {
     public static final String VERBOSITY_NAME = "verbosity";
     public static final String READ_VALIDATION_STRINGENCY_LONG_NAME = "readValidationStringency";
     public static final String ASSUME_SORTED_LONG_NAME = "assumeSorted";
+    public static final String READ_FILTER_LONG_NAME = "readFilter";
+    public static final String DISABLE_READ_FILTER_LONG_NAME = "disableReadFilter";
     public static final String CREATE_OUTPUT_BAM_INDEX_LONG_NAME = "createOutputBamIndex";
     public static final String CREATE_OUTPUT_BAM_MD5_LONG_NAME = "createOutputBamMD5";
     public static final String CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME = "createOutputVariantIndex";
@@ -43,6 +45,8 @@ public final class StandardArgumentDefinitions {
     public static final String MINIMUM_LOD_SHORT_NAME = "LOD";
     public static final String SORT_ORDER_SHORT_NAME = "SO";
     public static final String USE_ORIGINAL_QUALITIES_SHORT_NAME = "OQ";
+    public static final String READ_FILTER_SHORT_NAME = "RF";
+    public static final String DISABLE_READ_FILTER_SHORT_NAME = "DF";
     public static final String CREATE_OUTPUT_BAM_INDEX_SHORT_NAME = "OBI";
     public static final String CREATE_OUTPUT_BAM_MD5_SHORT_NAME = "OBM";
     public static final String CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME = "OVI";

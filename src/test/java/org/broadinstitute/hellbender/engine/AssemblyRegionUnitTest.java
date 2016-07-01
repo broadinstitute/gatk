@@ -459,14 +459,14 @@ public final class AssemblyRegionUnitTest extends BaseTest {
 
             // Set the shard's read filter to match the GATK 3/4 HaplotypeCaller settings when the expected output was generated:
             final LocalReadShard shard = new LocalReadShard(shardInterval, paddedShardInterval, readsSource);
-            shard.setReadFilter(new CountingReadFilter("MAPPING_QUALITY", new MappingQualityReadFilter(20))
-                    .and(new CountingReadFilter("MAPPING_QUALITY_AVAILABLE", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
-                    .and(new CountingReadFilter("MAPPED", ReadFilterLibrary.MAPPED))
-                    .and(new CountingReadFilter("PRIMARY_ALIGNMENT", ReadFilterLibrary.PRIMARY_ALIGNMENT))
-                    .and(new CountingReadFilter("NOT_DUPLICATE", ReadFilterLibrary.NOT_DUPLICATE))
-                    .and(new CountingReadFilter("PASSES_VENDOR_QUALITY_CHECK", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
-                    .and(new CountingReadFilter("GOOD_CIGAR", ReadFilterLibrary.GOOD_CIGAR))
-                    .and(new CountingReadFilter("WELLFORMED", new WellformedReadFilter(readsSource.getHeader()))));
+            shard.setReadFilter(new CountingReadFilter(new MappingQualityReadFilter(20))
+                    .and(new CountingReadFilter(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
+                    .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
+                    .and(new CountingReadFilter(ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                    .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
+                    .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
+                    .and(new CountingReadFilter(ReadFilterLibrary.GOOD_CIGAR))
+                    .and(new CountingReadFilter(new WellformedReadFilter(readsSource.getHeader()))));
 
             final Iterable<AssemblyRegion> assemblyRegions = AssemblyRegion.createFromReadShard(shard, readsSource.getHeader(), new ReferenceContext(refSource, paddedShardInterval), new FeatureContext(null, paddedShardInterval), mockEvaluator, minRegionSize, maxRegionSize, regionPadding, activeProbThreshold, maxProbPropagationDistance);
             int regionCount = 0;

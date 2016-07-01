@@ -20,6 +20,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Collects InsertSizeMetrics on the specified accumulationLevels
@@ -33,11 +35,13 @@ public final class InsertSizeMetricsCollector
 
     InsertSizeMetricsArgumentCollection inputArgs = null;
 
+    public InsertSizeMetricsCollector() {}
+
     /**
      * @param inputArgs InsertSizeMetricsArgumentCollection populated with argument values. May not be null.
      * @param samHeader samHeader for the input to be processed. May not be null.
      */
-    public InsertSizeMetricsCollector(
+    public void initialize(
             final InsertSizeMetricsArgumentCollection inputArgs,
             final SAMFileHeader samHeader)
     {
@@ -50,21 +54,63 @@ public final class InsertSizeMetricsCollector
 
     /**
      * Return the read filter for InsertSizeMetrics collector.
-     * @param samHeader SAMFileHeader for the input file. May not be null
      * @return ReadFilter to be used to filter records
      */
-    public ReadFilter getReadFilter(SAMFileHeader samHeader) {
-        Utils.nonNull(samHeader);
-        return new WellformedReadFilter(samHeader).and(
-                new InsertSizeMetricsReadFilter(
-                    inputArgs.useEnd,
-                    inputArgs.filterNonProperlyPairedReads,
-                    !inputArgs.useDuplicateReads,
-                    !inputArgs.useSecondaryAlignments,
-                    !inputArgs.useSupplementaryAlignments,
-                    inputArgs.MQPassingThreshold
-            )
-        );
+    public List<ReadFilter> getDefaultReadFilters() {
+        List<ReadFilter> readFilters = new ArrayList<>();
+
+        readFilters.add(new WellformedReadFilter());
+        readFilters.add(ReadFilterLibrary.MAPPED);
+
+        readFilters.add(new ReadFilter() {
+            static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read) { return read.isPaired(); }
+        });
+
+        readFilters.add(new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read) { return 0!=read.getFragmentLength(); }
+        });
+
+        readFilters.add(new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read) {
+                return inputArgs.useEnd == (read.isFirstOfPair() ?
+                    InsertSizeMetricsArgumentCollection.EndToUse.FIRST :
+                    InsertSizeMetricsArgumentCollection.EndToUse.SECOND);
+            }
+        });
+        readFilters.add(new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read) { return read.isProperlyPaired();}
+        });
+        readFilters.add(new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read){ return !read.isDuplicate(); }
+        });
+        readFilters.add(new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read){ return !read.isSecondaryAlignment(); }
+        });
+        readFilters.add(new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read) { return !read.isSupplementaryAlignment(); }
+        });
+
+        //TODO: These filters should be replaced with standard ReadFilters with arguments accessible
+        //to the command line.
+        //getDefaultReadFilters is called before the metrics collector has access to (the user-specified)
+        //command line argument values, so argument values can't be used to determine the filters (and
+        //if they could, those values wouldn't be controllable by the user via the command line).
+        //See https://github.com/broadinstitute/gatk/issues/2142
+        // if (0 != inputArgs.MQPassingThreshold) {
+        //     readFilters.add(new ReadFilter() {
+        //         private static final long serialVersionUID = 1L;
+        //         @Override public boolean test(final GATKRead read) {
+        //             return read.getMappingQuality() >= inputArgs.MQPassingThreshold;}
+        //     });
+        // };
+        return readFilters;
     }
 
     // We will pass insertSize and PairOrientation with the DefaultPerRecordCollectorArgs passed to
@@ -181,46 +227,6 @@ public final class InsertSizeMetricsCollector
             executor.addArgs(String.valueOf(inputArgs.histogramWidth));
         }
         executor.exec();
-    }
-
-    /**
-     * Custom read filter, paramaterized by InsertSizeMetricsArgumentCollection provided
-     */
-    private static final class InsertSizeMetricsReadFilter implements ReadFilter, Serializable {
-        private static final long serialVersionUID = 1L;
-
-        private final ReadFilter combinedReadFilter;
-
-        public InsertSizeMetricsReadFilter(final InsertSizeMetricsArgumentCollection.EndToUse whichEnd,
-                                           final boolean filterNonProperlyPairedReads,
-                                           final boolean filterDuplicatedReads,
-                                           final boolean filterSecondaryAlignments,
-                                           final boolean filterSupplementaryAlignments,
-                                           final int MQThreshold){
-
-            final InsertSizeMetricsArgumentCollection.EndToUse endVal = whichEnd;
-
-            ReadFilter tempFilter = ReadFilterLibrary.MAPPED;
-            tempFilter = tempFilter.and(GATKRead::isPaired);
-            tempFilter = tempFilter.and(read -> 0!=read.getFragmentLength());
-            tempFilter = tempFilter.and(read -> endVal == (read.isFirstOfPair() ?
-                    InsertSizeMetricsArgumentCollection.EndToUse.FIRST :
-                    InsertSizeMetricsArgumentCollection.EndToUse.SECOND));
-
-            if(filterNonProperlyPairedReads)  { tempFilter = tempFilter.and(GATKRead::isProperlyPaired); }
-            if(filterDuplicatedReads)         { tempFilter = tempFilter.and(read -> !read.isDuplicate()); }
-            if(filterSecondaryAlignments)     { tempFilter = tempFilter.and(read -> !read.isSecondaryAlignment()); }
-            if(filterSupplementaryAlignments) { tempFilter = tempFilter.and(read -> !read.isSupplementaryAlignment()); }
-
-            if(0!=MQThreshold)  { tempFilter = tempFilter.and(read -> read.getMappingQuality() >= MQThreshold);}
-
-            combinedReadFilter = tempFilter;
-        }
-
-        @Override
-        public boolean test(final GATKRead read){
-            return combinedReadFilter.test(read);
-        }
     }
 
 }

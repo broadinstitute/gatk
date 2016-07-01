@@ -41,17 +41,13 @@ public class TwoPassReadsWalkerUnitTest extends CommandLineProgramTest{
     @Test(dataProvider = "unsortedFiles")
     public void testDifferentFormatEquivalentBehavior(String file) throws IOException {
         final TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker tool = new TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker();
-        final CommandLineParser clp = new CommandLineParser(tool);
 
         final String[] args = {
                 "-I", getTestDataDir()+ file,
                 "-R", getTestDataDir()+ "/count_reads.fasta"
         };
 
-        clp.parseArguments(System.out, args);
-        tool.onStartup();
-        tool.doWork();
-        tool.onShutdown();
+        tool.instanceMain(args);
 
         Assert.assertEquals(tool.firstPass, 8);
         Assert.assertEquals(tool.secondPass, 8);
@@ -66,7 +62,6 @@ public class TwoPassReadsWalkerUnitTest extends CommandLineProgramTest{
     @Test(dataProvider = "sortedFiles")
     public void testIntervalFiltering(String file) {
         final TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker tool = new TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker();
-        final CommandLineParser clp = new CommandLineParser(tool);
 
         final String[] args = {
                 "-I", getTestDataDir()+ file,
@@ -74,10 +69,7 @@ public class TwoPassReadsWalkerUnitTest extends CommandLineProgramTest{
                 "-L", "chr7:10-40"
         };
 
-        clp.parseArguments(System.out, args);
-        tool.onStartup();
-        tool.doWork();
-        tool.onShutdown();
+        tool.instanceMain(args);
 
         Assert.assertEquals(tool.firstPass, 5);
         Assert.assertEquals(tool.secondPass, 5);

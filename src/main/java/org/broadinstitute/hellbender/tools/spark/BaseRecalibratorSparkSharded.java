@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.ContextShard;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.VariantsSource;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AddContextDataToReadSparkOptimized;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
@@ -91,7 +91,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         SAMFileHeader readsHeader = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency()).getHeader(bam, referenceURL, auth);
         final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
         final SAMSequenceDictionary refDictionary = rds.getReferenceSequenceDictionary(readsDictionary);
-        final CountingReadFilter readFilterToApply = BaseRecalibrator.getStandardBQSRReadFilter(readsHeader);
+        final ReadFilter readFilterToApply = BaseRecalibrator.getStandardBQSRReadFilter(readsHeader);
 
         SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
 

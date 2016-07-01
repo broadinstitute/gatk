@@ -6,16 +6,14 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.InsertSizeMetricsCollectorSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -81,7 +79,13 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
 
         InsertSizeMetricsCollectorSpark isSpark = new InsertSizeMetricsCollectorSpark();
         isSpark.initialize(isArgs, samHeader, null);
-        ReadFilter rf = isSpark.getReadFilter(samHeader);
+
+        //manually reconcile the read filters for this collector
+        List<ReadFilter> readFilters = isSpark.getDefaultReadFilters();
+        readFilters.forEach(f -> f.setHeader(samHeader));
+        ReadFilter rf = readFilters.stream().reduce(
+                ReadFilterLibrary.ALLOW_ALL_READS,
+                (rf1, rf2) -> rf1.and(rf2));
 
         // Force the input RDD to be split into two partitions to ensure that the
         // reduce/combiners run

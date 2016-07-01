@@ -25,12 +25,13 @@ public class ExampleMultiMetricsCollectorSpark
 {
     private static final long serialVersionUID = 1L;
 
-    // This example collector has no actual parameters that are controlled by inputArguments, but
-    // this field is retained to illustrate how they pass through a typical lifecycle.
+    // This example collector has no actual parameters that are controlled by inputArguments,
+    // but this field is retained to illustrate how input arguments flow through a typical
+    // collector lifecycle.
     private ExampleMultiMetricsArgumentCollection inputArgs = null;
 
     // Container for per-partition metrics
-    private ExampleMultiMetricsCollector collector = null;
+    private ExampleMultiMetricsCollector collector = new ExampleMultiMetricsCollector();
 
     // Container for final aggregate reduced/combined metrics
     private ExampleMultiMetricsCollector reducedResultMetrics = null;
@@ -47,7 +48,7 @@ public class ExampleMultiMetricsCollectorSpark
             final List<Header> defaultHeaders)
     {
         this.inputArgs = inputArgs;
-        collector = new ExampleMultiMetricsCollector(inputArgs, samHeader);
+        collector.initialize(inputArgs, samHeader);
         metricsFile = new MetricsFile<>();
         if (defaultHeaders != null) {
             defaultHeaders.stream().forEach(h -> metricsFile.addHeader(h));
@@ -55,14 +56,13 @@ public class ExampleMultiMetricsCollectorSpark
     }
 
     /**
-     * Return a read filter to be used for this collector.
+     * Return the read filters to be used for this collector.
      *
-     * @param samFileHeader
-     * @return ReadFilter
+     * @return List of read filters for this collector
      */
     @Override
-    public ReadFilter getReadFilter(final SAMFileHeader samFileHeader) {
-        return collector.getReadFilter(samFileHeader);
+    public List<ReadFilter> getDefaultReadFilters() {
+        return collector.getDefaultReadFilters();
     }
 
     /**

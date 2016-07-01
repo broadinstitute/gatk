@@ -2,13 +2,16 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-public final class MetricsReadFilter implements ReadFilter {
+public final class MetricsReadFilter extends ReadFilter {
   // TODO: Should this be something more unique, such as a timestamp, in order
   // to behave with Spark's serialization?
   static final long serialVersionUID = 1L;
 
   private final boolean pfReadOnly;
   private final boolean alignedReadsOnly;
+
+  // Command line parser requires a no-arg constructor
+  public MetricsReadFilter() {this(true, true);}
 
   /**
    * @param alignedReadsOnly If set to true calculate mean quality over aligned

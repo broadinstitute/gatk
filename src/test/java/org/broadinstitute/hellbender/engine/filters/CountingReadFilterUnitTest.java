@@ -17,8 +17,15 @@ public final class CountingReadFilterUnitTest {
     static final GATKRead endBad = ArtificialReadUtils.createArtificialRead(header, "Peter", 0, 1, 100);
     static final GATKRead startBad = ArtificialReadUtils.createArtificialRead(header, "Ray", 0, -1, 2);
     static final GATKRead bothBad = ArtificialReadUtils.createArtificialRead(header, "Egon", 0, -1, 100);
-    static final ReadFilter startOk = r -> r.getStart() >= 1;
-    static final ReadFilter endOk = r -> r.getEnd() <= 10;
+
+    static final ReadFilter startOk = new ReadFilter() {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read){return read.getStart() >= 1;}
+    };
+    static final ReadFilter endOk = new ReadFilter() {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read){return read.getEnd() <= 10;}
+    };
 
     // Helper to verify post-filtering filter state
     private void verifyFilterState(CountingReadFilter rf, boolean expected) {
@@ -47,22 +54,22 @@ public final class CountingReadFilterUnitTest {
     @Test(dataProvider = "readsStartEnd")
     public void testTest(GATKRead read, boolean start, boolean end) {
 
-        CountingReadFilter startOkCounting = new CountingReadFilter("StartOk", startOk);
+        CountingReadFilter startOkCounting = new CountingReadFilter(startOk);
         Assert.assertEquals(startOkCounting.test(read), start);
         verifyFilterState(startOkCounting, start);
 
-        CountingReadFilter endOkCounting = new CountingReadFilter("EndOk", endOk);
+        CountingReadFilter endOkCounting = new CountingReadFilter(endOk);
         Assert.assertEquals(endOkCounting.test(read), end);
         verifyFilterState(endOkCounting, end);
     }
 
     @Test(dataProvider = "readsStartEnd")
     public void testNegate(GATKRead read, boolean start, boolean end) {
-        CountingReadFilter notStartOkCounting = new CountingReadFilter("StartOk", startOk).negate();
+        CountingReadFilter notStartOkCounting = new CountingReadFilter(startOk).negate();
         Assert.assertEquals(notStartOkCounting.test(read), !start);
         verifyFilterState(notStartOkCounting, !start);
 
-        CountingReadFilter notEndOkCounting = new CountingReadFilter("EndOk", endOk).negate();
+        CountingReadFilter notEndOkCounting = new CountingReadFilter(endOk).negate();
         Assert.assertEquals(notEndOkCounting.test(read), !end);
         verifyFilterState(notEndOkCounting, !end);
     }
@@ -80,11 +87,11 @@ public final class CountingReadFilterUnitTest {
     @Test(dataProvider = "readsAnd")
     public void testAnd(GATKRead read, boolean expected) {
 
-        CountingReadFilter startAndEndOk = new CountingReadFilter("StartOk", startOk).and(new CountingReadFilter("EndOk", endOk));
+        CountingReadFilter startAndEndOk = new CountingReadFilter(startOk).and(new CountingReadFilter(endOk));
         Assert.assertEquals(startAndEndOk.test(read), expected);
         verifyFilterState(startAndEndOk, expected);
 
-        CountingReadFilter endAndStartOk = new CountingReadFilter("EndOk", endOk).and(new CountingReadFilter("StartOk", startOk));
+        CountingReadFilter endAndStartOk = new CountingReadFilter(endOk).and(new CountingReadFilter(startOk));
         Assert.assertEquals(endAndStartOk.test(read), expected);
         verifyFilterState(endAndStartOk, expected);
     }
@@ -102,11 +109,11 @@ public final class CountingReadFilterUnitTest {
     @Test(dataProvider = "readsOr")
     public void testOr(GATKRead read, boolean expected) {
 
-        CountingReadFilter startOrEndOk = new CountingReadFilter("StartOk", startOk).or(new CountingReadFilter("EndOk", endOk));
+        CountingReadFilter startOrEndOk = new CountingReadFilter(startOk).or(new CountingReadFilter(endOk));
         Assert.assertEquals(startOrEndOk.test(read), expected);
         verifyFilterState(startOrEndOk, expected);
 
-        CountingReadFilter endOrStartOk = new CountingReadFilter("EndOk", endOk).or(new CountingReadFilter("StartOk", startOk));
+        CountingReadFilter endOrStartOk = new CountingReadFilter(endOk).or(new CountingReadFilter(startOk));
         Assert.assertEquals(endOrStartOk.test(read), expected);
         verifyFilterState(endOrStartOk, expected);
     }
@@ -122,9 +129,12 @@ public final class CountingReadFilterUnitTest {
     }
 
     private CountingReadFilter readChecksOut() {
-        return new CountingReadFilter("StartOk", startOk)
-                .or(new CountingReadFilter("EndOk", endOk))
-                .and(new CountingReadFilter("notAMinionOfGozer", r -> !r.getName().equals("Zuul")));
+        return new CountingReadFilter(startOk)
+                .or(new CountingReadFilter(endOk))
+                .and(new CountingReadFilter(new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return !read.getName().equals("Zuul");}
+                }));
     }
 
     @Test(dataProvider = "deeper")
@@ -138,11 +148,19 @@ public final class CountingReadFilterUnitTest {
         Assert.assertEquals(readCheckOutCounting.test(read), expected);
         verifyFilterState(readCheckOutCounting, expected);
 
-        readCheckOutCounting = readChecksOut().and(new CountingReadFilter("false", r -> false));
+        readCheckOutCounting = readChecksOut().and(new CountingReadFilter(
+                new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return false;}
+                }));
         Assert.assertEquals(readCheckOutCounting.test(read), false);
         verifyFilterState(readCheckOutCounting, false);
 
-        readCheckOutCounting = readChecksOut().or(new CountingReadFilter("true", r -> true));
+        readCheckOutCounting = readChecksOut().or(new CountingReadFilter(
+                new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return true;}
+                }));
         Assert.assertEquals(readCheckOutCounting.test(read), true);
         verifyFilterState(readCheckOutCounting, true);
     }
@@ -165,7 +183,7 @@ public final class CountingReadFilterUnitTest {
     @Test(dataProvider = "multipleRejection")
     public void testRootFilterCounts(GATKRead[] reads, int expectedRejectionCount) {
 
-        CountingReadFilter startOkCounting = new CountingReadFilter("StartOk", startOk);
+        CountingReadFilter startOkCounting = new CountingReadFilter(startOk);
         Arrays.asList(reads).stream().filter(startOkCounting).count();  // force the stream to be consumed
         Assert.assertEquals(startOkCounting.getFilteredCount(), expectedRejectionCount);
         startOkCounting.resetFilteredCount();
@@ -190,21 +208,41 @@ public final class CountingReadFilterUnitTest {
     @Test(dataProvider = "subFilterCounts")
     public void testSubFilterCounts(GATKRead[] reads, long totalRejections, long startEndRejections, long nameRejections) {
 
-        CountingReadFilter badStart = new CountingReadFilter("StartBad", r -> r.getStart() < 1);
-        CountingReadFilter badEnd = new CountingReadFilter("EndBad", r -> r.getEnd() > 10);
+        CountingReadFilter badStart = new CountingReadFilter(
+                new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return read.getStart() < 1;}
+                }
+        );
+        CountingReadFilter badEnd = new CountingReadFilter(
+                new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return read.getEnd() > 10;}
+                }
+        );
         CountingReadFilter badStartAndEnd = badStart.and(badEnd);
 
-        CountingReadFilter isRay= new CountingReadFilter("isRay", r -> r.getName().equals("Ray"));
-        CountingReadFilter isEgon = new CountingReadFilter("isEgon", r -> r.getName().equals("Egon"));
+        CountingReadFilter isRay= new CountingReadFilter(
+                new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return read.getName().equals("Ray");}
+                }
+        );
+        CountingReadFilter isEgon = new CountingReadFilter(
+                new ReadFilter() {
+                    private static final long serialVersionUID = 1L;
+                    @Override public boolean test(final GATKRead read){return read.getName().equals("Egon");}
+                }
+        );
         CountingReadFilter isRayOrEgon = isRay.or(isEgon);
 
         CountingReadFilter compoundFilter = badStartAndEnd.or(isRayOrEgon);
 
         Arrays.asList(reads).stream().filter(compoundFilter).count(); // force the stream to be consumed
 
-        Assert.assertTrue(compoundFilter.getFilteredCount() == totalRejections);
-        Assert.assertTrue(badStartAndEnd.getFilteredCount() == startEndRejections);
-        Assert.assertTrue(isRayOrEgon.getFilteredCount() == nameRejections);
+        Assert.assertEquals(compoundFilter.getFilteredCount(), totalRejections);
+        Assert.assertEquals(badStartAndEnd.getFilteredCount(), startEndRejections);
+        Assert.assertEquals(isRayOrEgon.getFilteredCount(), nameRejections);
     }
 }
 
