@@ -58,7 +58,7 @@ public final class MeanQualityByCycle extends SinglePassSamProgram {
 
     private final Logger logger = LogManager.getLogger(this.getClass());
 
-    private static class HistogramGenerator {
+    private static final class HistogramGenerator {
         final boolean useOriginalQualities;
         int maxLengthSoFar = 0;
         double[] firstReadTotalsByCycle  = new double[maxLengthSoFar];

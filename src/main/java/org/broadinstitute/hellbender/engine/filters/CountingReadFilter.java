@@ -146,7 +146,7 @@ public class CountingReadFilter implements ReadFilter {
     /**
      * Private class for Counting AND filters
      */
-    private class CountingAndReadFilter extends CountingBinopReadFilter {
+    private final class CountingAndReadFilter extends CountingBinopReadFilter {
 
         private static final long serialVersionUID = 1L;
 
@@ -167,7 +167,7 @@ public class CountingReadFilter implements ReadFilter {
     /**
      * Private class for Counting OR filters
      */
-    private class CountingOrReadFilter extends CountingBinopReadFilter {
+    private final class CountingOrReadFilter extends CountingBinopReadFilter {
 
         private static final long serialVersionUID = 1L;
 
