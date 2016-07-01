@@ -18,7 +18,7 @@ import java.util.LinkedList;
 /**
  * Class with helper methods to convert objects (mostly matrices) to/from Spark (particularly, in MLLib)
  */
-public class SparkConverter {
+public final class SparkConverter {
     private static final Logger logger = LogManager.getLogger(SparkConverter.class);
 
     private SparkConverter() {

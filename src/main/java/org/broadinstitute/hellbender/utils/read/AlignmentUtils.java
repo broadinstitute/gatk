@@ -1157,7 +1157,7 @@ public final class AlignmentUtils {
      * so not present in 3).  We advance the cigar in 1 by 1 (as we've consumed one base in 1 for the I)
      * but we haven't yet found the base corresponding to the M of op23.  So we don't advance23.
      */
-    private static class CigarPairTransform {
+    private static final class CigarPairTransform {
         private final EnumSet<CigarOperator> op12, op23;
         private final CigarOperator op13;
         private final int advance12, advance23;
