@@ -1,13 +1,14 @@
 package org.broadinstitute.hellbender.cmdline;
 
+import com.intel.gkl.compression.IntelDeflaterFactory;
 import htsjdk.samtools.Defaults;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
-import htsjdk.samtools.util.zip.DeflaterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
@@ -55,6 +56,9 @@ public abstract class CommandLineProgram {
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
     private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
+
+    @Argument(fullName = "use_jdk_deflater", shortName = "jdk_deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
+    public boolean useJdkDeflater = false;
 
     /**
     * Initialized in parseArgs.  Subclasses may want to access this to do their
@@ -128,6 +132,11 @@ public abstract class CommandLineProgram {
             System.setProperty("java.io.tmpdir", f.getAbsolutePath()); // in loop so that last one takes effect
         }
 
+        //Set defaults (note: setting them here means they are not controllable by the user)
+        if (! useJdkDeflater) {
+            BlockCompressedOutputStream.setDefaultDeflaterFactory(new IntelDeflaterFactory());
+        }
+
         if (!QUIET) {
             System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
                                 "] " + commandLine);
@@ -145,8 +154,8 @@ public abstract class CommandLineProgram {
                 Defaults.allDefaults().entrySet().stream().forEach(e->
                         logger.info(Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
                 );
-// TODO: remove comment when this is working in HaplotypeCaller
-//                logger.info("Deflater " + (DeflaterFactory.usingIntelDeflater()? "IntelDeflater": "JdkDeflater"));
+                final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
+                logger.info("Deflater " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
             }
             catch (final Exception e) { /* Unpossible! */ }
         }

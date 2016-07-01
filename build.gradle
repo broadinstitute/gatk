@@ -26,7 +26,7 @@ import de.undercouch.gradle.tasks.download.Download
 mainClassName = "org.broadinstitute.hellbender.Main"
 
 //Note: the test suite must use the same defaults. If you change system properties in this list you must also update the one in the test task
-applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_samtools=true", "-Dsamjdk.use_async_io_tribble=false", "-Dsamjdk.intel_deflater_so_path=build/libIntelDeflater.so", "-Dsamjdk.compression_level=1"]
+applicationDefaultJvmArgs = ["-Dsamjdk.use_async_io_read_samtools=false","-Dsamjdk.use_async_io_write_samtools=true", "-Dsamjdk.use_async_io_write_tribble=false", "-Dsamjdk.compression_level=1"]
 
 //Delete the windows script - we never test on Windows so let's not pretend it works
 startScripts {
@@ -171,7 +171,7 @@ dependencies {
     // Dependency change for including MLLib
     compile('com.esotericsoftware:reflectasm:1.10.0:shaded')
 
-    compile('com.intel.gkl:gkl:0.1.0') {
+    compile('com.intel.gkl:gkl:0.1.1') {
         exclude module: 'htsjdk'
     }
     compile 'com.github.lindenb:jbwa:bd72b489f9697a857671533c86ad5906967f8672-20160521.042635-1'
@@ -235,9 +235,9 @@ test {
         }
     }
 
-    systemProperty "samjdk.use_async_io_samtools", "true"
-    systemProperty "samjdk.use_async_io_tribble", "false"
-    systemProperty "samjdk.intel_deflater_so_path", "build/libIntelDeflater.so"
+    systemProperty "samjdk.use_async_io_read_samtools", "false"
+    systemProperty "samjdk.use_async_io_write_samtools", "true"
+    systemProperty "samjdk.use_async_io_write_tribble", "false"
     systemProperty "samjdk.compression_level", "1"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
