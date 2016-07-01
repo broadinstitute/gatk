@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMTag;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -10,8 +11,8 @@ import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
-import java.util.Map.Entry;
 
 /**
  * Keep records not matching the read group tag and exact match string.
@@ -19,12 +20,18 @@ import java.util.Map.Entry;
  *   PU:1000G-mpimg-080821-1_1
  * would filter out a read with the read group PU:1000G-mpimg-080821-1_1
  */
-public final class ReadGroupBlackListReadFilter implements ReadFilter {
+public final class ReadGroupBlackListReadFilter implements ReadFilter, CommandLineFilter, Serializable {
     private static final long serialVersionUID = 1L;
     public static final String COMMENT_START = "#";
     public static final String FILTER_ENTRY_SEPARATOR = ":";
 
-    private final Set<Entry<String, Collection<String>>> blacklistEntries;
+    private final static String listArgName = "blackList";
+
+    @Argument(fullName=listArgName, doc="", shortName="bl",  optional=true)
+    public List<String> blackList = new ArrayList<>();
+
+    //most of the collection Entry classes are not serializable so just use a Map
+    private final Map<String, Collection<String>> blacklistEntries = new HashMap<>();
     private final SAMFileHeader header;
 
     /**
@@ -42,7 +49,8 @@ public final class ReadGroupBlackListReadFilter implements ReadFilter {
                 throw new UserException("Incorrect blacklist:" + blackList, e);
             }
         }
-        this.blacklistEntries = filters.entrySet();
+        //merge all the new entries in to the blacklist
+        filters.forEach((k, v) -> blacklistEntries.merge(k, v, (v1, v2) -> {v1.addAll(v2); return v1;}));
         this.header = header;
     }
 
@@ -99,21 +107,29 @@ public final class ReadGroupBlackListReadFilter implements ReadFilter {
             return true;
         }
 
-        for (final Entry<String, Collection<String>> blacklistEntry : blacklistEntries) {
-            final String attributeType = blacklistEntry.getKey();
-
+        for (final String attributeType : blacklistEntries.keySet()) {
             final String attribute;
             if (SAMReadGroupRecord.READ_GROUP_ID_TAG.equals(attributeType) || SAMTag.RG.name().equals(attributeType)) {
                 attribute = readGroup.getId();
             } else {
                 attribute = readGroup.getAttribute(attributeType);
             }
-            if (attribute != null && blacklistEntry.getValue().contains(attribute)) {
+            if (attribute != null && blacklistEntries.get(attributeType).contains(attribute)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    @Override
+    public String validate() {
+        String message = null;
+        if (blackList == null || blackList.size() < 1) {
+            message = "requires one or more values for \"" + listArgName + "\"";
+        }
+
+        return message;
     }
 
 }

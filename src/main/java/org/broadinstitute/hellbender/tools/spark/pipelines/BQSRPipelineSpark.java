@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -79,12 +80,16 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
             throw new UserException.Require2BitReferenceForBroadcast();
         }
+        //TOOO: should this get the getUnfilteredReads? getReads will apply default and command line filters
         final JavaRDD<GATKRead> initialReads = getReads();
 
         // The initial reads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that ApplyBQSR wants. BQSR itself wants additional filtering
         // performed, so we do that here.
-        final ReadFilter bqsrReadFilter = BaseRecalibrator.makeBQSRSpecificReadFilters();
+        //NOTE: this doesn't honor enabled/disabled commandline filters
+        final ReadFilter bqsrReadFilter = BaseRecalibrator.makeBQSRSpecificReadFilters().stream()
+                .map(f -> f.getFilterInstance(getHeaderForReads(), null))
+                .reduce(ReadFilterLibrary.ALLOW_ALL_READS, (f1, f2) -> f1.and(f2));
         final JavaRDD<GATKRead> filteredReadsForBQSR = initialReads.filter(read -> bqsrReadFilter.test(read));
 
         final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);

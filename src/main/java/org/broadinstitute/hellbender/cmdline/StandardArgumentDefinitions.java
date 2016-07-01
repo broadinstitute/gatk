@@ -17,6 +17,7 @@ public final class StandardArgumentDefinitions {
     public static final String VERBOSITY_NAME = "verbosity";
     public static final String READ_VALIDATION_STRINGENCY_LONG_NAME = "readValidationStringency";
     public static final String ASSUME_SORTED_LONG_NAME = "assumeSorted";
+    public static final String READ_FILTER_LONG_NAME = "readFilter";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
@@ -38,6 +39,7 @@ public final class StandardArgumentDefinitions {
     public static final String MINIMUM_LOD_SHORT_NAME = "LOD";
     public static final String SORT_ORDER_SHORT_NAME = "SO";
     public static final String USE_ORIGINAL_QUALITIES_SHORT_NAME = "OQ";
+    public static final String READ_FILTER_SHORT_NAME = "RF";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 

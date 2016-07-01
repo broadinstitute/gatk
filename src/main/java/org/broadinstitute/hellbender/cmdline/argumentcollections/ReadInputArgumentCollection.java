@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
@@ -26,6 +27,9 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
             optional=true)
     public ValidationStringency readValidationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
+    @ArgumentCollection
+    public ReadFilterArgumentCollection readFilterArgumentCollection = new ReadFilterArgumentCollection();
+
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */
@@ -41,4 +45,8 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
      * at the command line.
      */
     public ValidationStringency getReadValidationStringency() { return readValidationStringency; };
+
+    public ReadFilterArgumentCollection getReadFilterArgumentCollection() {
+        return readFilterArgumentCollection;
+    }
 }

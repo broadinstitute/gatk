@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReadFilterArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
@@ -27,9 +28,6 @@ import java.util.stream.StreamSupport;
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public abstract class LocusWalker extends GATKTool {
-
-    @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
-    public boolean disableAllReadFilters = false;
 
     /**
      * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
@@ -65,20 +63,44 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
-     * Returns the read filter (simple or composite) that will be applied to the reads in each window.
+     * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
+     * The default implementation combines the default read filters for this tool (returned by
+     * {@link org.broadinstitute.hellbender.engine.ReadWalker#getDefaultReadFilter} with any read filter command
+     * line arguments specified by the user; wraps each filter in the resulting list with a CountingReadFilter;
+     * and returns a single composite filter resulting from the list by and'ing them together.
      *
-     * The default implementation uses the {@link WellformedReadFilter} filter with all default options,
-     * as well as the {@link ReadFilterLibrary#MAPPED} filter.
+     * Default tool implementation of {@link #traverse()} calls this method once before iterating
+     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter
+     * objects is strongly discouraged.
      *
-     * Default implementation of {@link #traverse()} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
-     *
-     * Subclasses can override to provide their own filters
-     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
+     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
+     * composition methods.
      */
-    public CountingReadFilter makeReadFilter(){
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
-                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED));
+    public CountingReadFilter makeReadFilter() {
+        final ReadFilterArgumentCollection rfc = readArguments.getReadFilterArgumentCollection();
+        // Merge the default filters with the users's command line read filter requests, then wrap the
+        // resulting individual filters with CountingReadFilter.
+        return rfc.getMergedCommandLineFilters(getDefaultReadFilters()).stream()
+                .map(f -> new CountingReadFilter(
+                        f.name(),
+                        f.getFilterInstance(getHeaderForReads(), readArguments.getReadFilterArgumentCollection())))
+                .reduce(new CountingReadFilter(
+                                "ALLOW_ALL",
+                                ReadFilterArgumentCollection.CommandLineReadFilter.ALLOW_ALL.getFilterInstance(getHeaderForReads(), null)),
+                        (f1, f2) -> f1.and(f2));
+    }
+
+    /**
+     * Returns the default list of CommandLineReadFilters that are used for this tool. The filters returned
+     * by this method are subject to selective enabling/disabling by the user via the command line. The
+     * default implementation uses the {@link WellformedReadFilter} and {@link ReadFilterLibrary.MAPPED}filter
+     * with all default options. Subclasses can override to provide alternative filters.
+     * @return List of individual filters to be applied for this tool.
+     */
+    public List<ReadFilterArgumentCollection.CommandLineReadFilter> getDefaultReadFilters() {
+        final List<ReadFilterArgumentCollection.CommandLineReadFilter> defaultFilters = new ArrayList<>();
+        defaultFilters.add(ReadFilterArgumentCollection.CommandLineReadFilter.WELLFORMED);
+        return defaultFilters;
     }
 
     /**
@@ -118,9 +140,7 @@ public abstract class LocusWalker extends GATKTool {
         final Set<String> samples = header.getReadGroups().stream()
                                           .map(SAMReadGroupRecord::getSample)
                                           .collect(Collectors.toSet());
-        CountingReadFilter countedFilter = disableAllReadFilters ?
-                new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
-                makeReadFilter();
+        CountingReadFilter countedFilter = makeReadFilter();
         // get the LIBS
         LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header);
         // prepare the iterator

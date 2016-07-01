@@ -142,12 +142,15 @@ public final class CommandLineParser {
     public CommandLineParser(final Object callerArguments) {
         this.callerArguments = callerArguments;
 
-        createArgumentDefinitions(callerArguments);
+        createArgumentDefinitions(callerArguments, null, null);
 
         this.programProperties = this.callerArguments.getClass().getAnnotation(CommandLineProgramProperties.class);
     }
 
-    private List<ArgumentDefinition> createArgumentDefinitions(final Object callerArguments) {
+    private List<ArgumentDefinition> createArgumentDefinitions(
+            final Object callerArguments,
+            final String dependsOnArgument,
+            final String dependsOnValue) {
         for (final Field field : getAllFields(callerArguments.getClass())) {
             if (field.getAnnotation(Argument.class) != null && field.getAnnotation(ArgumentCollection.class) != null){
                 throw new GATKException.CommandLineParserInternalException("An Argument cannot be an argument collection: "
@@ -157,12 +160,13 @@ public final class CommandLineParser {
                 handlePositionalArgumentAnnotation(field, callerArguments);
             }
             if (field.getAnnotation(Argument.class) != null) {
-                handleArgumentAnnotation(field, callerArguments);
+                handleArgumentAnnotation(field, callerArguments, dependsOnArgument, dependsOnValue);
             }
-            if (field.getAnnotation(ArgumentCollection.class) != null) {
+            ArgumentCollection ac = field.getAnnotation(ArgumentCollection.class);
+            if (ac != null) {
                 try {
                     field.setAccessible(true);
-                    createArgumentDefinitions(field.get(callerArguments));
+                    createArgumentDefinitions(field.get(callerArguments), ac.dependsOnArgument(), ac.dependsOnValue());
                 } catch (final IllegalAccessException e) {
                     throw new GATKException.ShouldNeverReachHereException("should never reach here because we setAccessible(true)", e);
                 }
@@ -171,6 +175,32 @@ public final class CommandLineParser {
         return null;
     }
 
+    private void handleDependency(final ArgumentDefinition ad, final OptionSet parsedArguments) {
+        if (ad.dependsOnArgument != null && ad.dependsOnArgument.length() > 0) {
+            if (parsedArguments.has(ad.dependsOnArgument)) {
+                if (ad.dependsOnValue != null && ad.dependsOnValue.length() > 0) {
+                    for (OptionSpec<?> optSpec : parsedArguments.asMap().keySet()) {
+                        final List<?> list = parsedArguments.valuesOf(optSpec);
+                        if (list.contains(ad.dependsOnValue)) {
+                            return;
+                        }
+                    }
+                    final String message = "Command line argument: "
+                            + ad.fullName
+                            + " is only valid when used with argument: "
+                            + ad.dependsOnArgument + " with value: " + ad.dependsOnValue;
+                    throw new UserException.CommandLineException(message);
+                }
+            }
+            else {
+                final String message = "Command line argument: "
+                        + ad.fullName
+                        + " is only valid when used with argument: "
+                        + ad.dependsOnArgument;
+                throw new UserException.CommandLineException(message);
+            }
+        }
+    }
 
     private static List<Field> getAllFields(Class<?> clazz) {
         final List<Field> ret = new ArrayList<>();
@@ -284,7 +314,7 @@ public final class CommandLineParser {
             setPositionalArgument((String) arg);
         }
 
-        assertArgumentsAreValid();
+        assertArgumentsAreValid(parsedArguments);
 
         return true;
     }
@@ -308,7 +338,7 @@ public final class CommandLineParser {
      *
      * @throws UserException.CommandLineException if arguments requirements are not satisfied.
      */
-    private void assertArgumentsAreValid() {
+    private void assertArgumentsAreValid(OptionSet parsedArguments) {
         try {
             for (final ArgumentDefinition argumentDefinition : argumentDefinitions) {
                 final String fullName = argumentDefinition.getLongName();
@@ -334,6 +364,8 @@ public final class CommandLineParser {
                     throw new UserException.MissingArgument(fullName, "Argument '" + fullName + "' is required" +
                             (argumentDefinition.mutuallyExclusive.isEmpty() ? "." : " unless any of " + argumentDefinition.mutuallyExclusive +
                                     " are specified."));
+                } else if (argumentDefinition.hasBeenSet) {
+                    handleDependency(argumentDefinition, parsedArguments);
                 }
 
             }
@@ -603,7 +635,11 @@ public final class CommandLineParser {
         stream.print(sb);
     }
 
-    private void handleArgumentAnnotation(final Field field, final Object parent) {
+    private void handleArgumentAnnotation(
+            final Field field,
+            final Object parent,
+            final String dependsOnArgument,
+            final String dependsOnValue) {
         try {
             field.setAccessible(true);
             final Argument argumentAnnotation = field.getAnnotation(Argument.class);
@@ -619,7 +655,12 @@ public final class CommandLineParser {
                         "\" must have a String constructor or be an enum");
             }
 
-            final ArgumentDefinition argumentDefinition = new ArgumentDefinition(field, argumentAnnotation, parent);
+            final ArgumentDefinition argumentDefinition = new ArgumentDefinition(
+                    field,
+                    argumentAnnotation,
+                    parent,
+                    dependsOnArgument,
+                    dependsOnValue);
 
             for (final String argument : argumentAnnotation.mutex()) {
                 final ArgumentDefinition mutextArgumentDef = argumentMap.get(argument);
@@ -809,11 +850,17 @@ public final class CommandLineParser {
         final Object parent;
         final boolean isSpecial;
         final boolean isSensitive;
+        final String dependsOnArgument;
+        final String dependsOnValue;
 
-        public ArgumentDefinition(final Field field, final Argument annotation, final Object parent){
+        public ArgumentDefinition(
+                final Field field,
+                final Argument annotation, final Object parent, final String dependsOnArgument, final String dependsOnValue){
             this.field = field;
             this.fieldName = field.getName();
             this.parent = parent;
+            this.dependsOnArgument = dependsOnArgument;
+            this.dependsOnValue = dependsOnValue;
             this.fullName = annotation.fullName();
             this.shortName = annotation.shortName();
             this.doc = annotation.doc();
