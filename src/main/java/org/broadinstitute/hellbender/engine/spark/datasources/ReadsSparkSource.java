@@ -203,7 +203,7 @@ public final class ReadsSparkSource implements Serializable {
             }
             setHadoopBAMConfigurationProperties(filePath, referencePath);
             return SAMHeaderReader.readSAMHeaderFrom(path, ctx.hadoopConfiguration());
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
         }
     }

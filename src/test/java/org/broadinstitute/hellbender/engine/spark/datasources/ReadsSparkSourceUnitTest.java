@@ -74,6 +74,13 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         Assert.assertEquals(serialReads.size(), parallelReads.size());
     }
 
+    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*Failed to read bam header from hdfs://bogus/path.bam.*")
+    public void readsSparkSourceUnknownHostTest() {
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
+        readSource.getParallelReads("hdfs://bogus/path.bam", null);
+    }
+
     @Test(dataProvider = "loadReads", groups = "spark")
     public void readsSparkSourceTest(String bam, String referencePath) {
         doLoadReadsTest(bam, referencePath);
