@@ -26,6 +26,7 @@ import java.util.Map;
  */
 public final class ExcessHet extends InfoFieldAnnotation implements StandardAnnotation {
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
+    public static final double PHRED_SCALED_MIN_P_VALUE = -10.0 * Math.log10(MIN_NEEDED_VALUE);
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
@@ -58,8 +59,9 @@ public final class ExcessHet extends InfoFieldAnnotation implements StandardAnno
         final double pval = exactTest(hetCount, refCount, homCount);
 
         //If the actual phredPval would be infinity we will probably still filter out just a very large number
-        if (Math.abs(pval - 0.0) < 10e-60) {
-            return Pair.of(Integer.MAX_VALUE, Double.POSITIVE_INFINITY);
+        //Since the method does not guarantee precision for any p-value smaller than 1e-16, we can return the phred scaled version
+        if (pval < 10e-60) {
+            return Pair.of(sampleCount, PHRED_SCALED_MIN_P_VALUE);
         }
         final double phredPval = -10.0 * Math.log10(pval);
 
