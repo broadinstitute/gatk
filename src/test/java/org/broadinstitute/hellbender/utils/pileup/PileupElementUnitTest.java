@@ -391,7 +391,7 @@ public final class PileupElementUnitTest extends LocusIteratorByStateBaseTest {
         }
     }
 
-    @DataProvider(name = "elementData_badOffset")
+    @DataProvider(name = "elementData_badOffsetWithinBounds")
     private Object[][] elementData_badOffsetWithinBounds() {
         final GATKRead read = ArtificialReadUtils.createArtificialRead("10M" + "10D" + "10N" + "10P" + "10=" + "10X" + "10M" + "10S" + "10H");
         return new Object[][]{
