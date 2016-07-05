@@ -162,7 +162,7 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
             shortName = HET_CALLING_STRINGENCY_SHORT_NAME,
             optional = true
     )
-    protected double hetCallingStringency = 5;
+    protected double hetCallingStringency = 30;
 
     @Argument(
             doc = "Estimated minimum abnormal cell fraction (for building the allele fraction prior; to be used for " +
