@@ -115,7 +115,8 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
     private static boolean inversionBreakpointFilter(final Tuple2<String, AssembledBreakpoint> assembledBreakpoint) {
         final AlignmentRegion region1 = assembledBreakpoint._2.region1;
         final AlignmentRegion region2 = assembledBreakpoint._2.region2;
-        return region1.referenceInterval.getContig().equals(region2.referenceInterval.getContig()) && region1.forwardStrand && ! region2.forwardStrand || ! region1.forwardStrand && region2.forwardStrand;
+        return region1.referenceInterval.getContig().equals(region2.referenceInterval.getContig()) &&
+                (region1.forwardStrand && ! region2.forwardStrand || ! region1.forwardStrand && region2.forwardStrand);
     }
 
     private static Tuple2<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> keyByBreakpointAllele(final Tuple2<String, AssembledBreakpoint> breakpointIdAndAssembledBreakpoint) {
