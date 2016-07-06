@@ -91,7 +91,7 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
     @VisibleForTesting
     private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final BreakpointAllele breakpointAllele) throws IOException {
-        final Allele refAllele = Allele.create(refBase, true);
+        final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);
