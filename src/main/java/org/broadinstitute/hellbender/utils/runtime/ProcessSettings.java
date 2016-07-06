@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 
 public final class ProcessSettings {
@@ -85,11 +89,8 @@ public final class ProcessSettings {
     }
 
     protected String[] checkCommand(String[] command) {
-        if (command == null)
-            throw new IllegalArgumentException("Command is not allowed to be null");
-        for (String s: command)
-            if (s == null)
-                throw new IllegalArgumentException("Command is not allowed to contain nulls");
+        Utils.nonNull(command);
+        Utils.containsNoNull(Arrays.asList(command), "Command is not allowed to contain nulls");
         return command;
     }
 

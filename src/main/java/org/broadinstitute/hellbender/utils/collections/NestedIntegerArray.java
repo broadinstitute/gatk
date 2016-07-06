@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.collections;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -23,8 +24,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
 
     public NestedIntegerArray(final int... dimensions) {
         numDimensions = dimensions.length;
-        if ( numDimensions == 0 )
-            throw new IllegalArgumentException("There must be at least one dimension to an NestedIntegerArray");
+        Utils.validateArg(numDimensions > 0, "There must be at least one dimension to an NestedIntegerArray");
         this.dimensions = Arrays.copyOf(dimensions, dimensions.length);
 
         final int dimensionsToPreallocate = Math.min(dimensions.length, NUM_DIMENSIONS_TO_PREALLOCATE);
@@ -149,8 +149,7 @@ public final class NestedIntegerArray<T extends Serializable> implements Seriali
      * @param keys keys specifying the location of the value in the tree
      */
     public void put(final T value, final int... keys) { // WARNING! value comes before the keys!
-        if ( keys.length != numDimensions )
-            throw new IllegalArgumentException("Exactly " + numDimensions + " keys should be passed to this NestedIntegerArray but " + keys.length + " were provided");
+        Utils.validateArg( keys.length == numDimensions, () -> "Exactly " + numDimensions + " keys should be passed to this NestedIntegerArray but " + keys.length + " were provided");
 
         final int numNestedDimensions = numDimensions - 1;
         Object[] myData = data;

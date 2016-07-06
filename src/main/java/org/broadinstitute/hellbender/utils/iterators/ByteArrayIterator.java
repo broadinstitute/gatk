@@ -26,13 +26,8 @@ public final class ByteArrayIterator implements Iterator<Byte> {
             // special case: empty buffer, we can start at 0 even though it's technically outside.
             Utils.validIndex(firstIndex, byteArray.length);
         }
-        if (stopIndex>byteArray.length) {
-            throw new IllegalArgumentException("stopIndex is "+stopIndex+" yet we only have "+byteArray.length+" bytes.");
-        }
-        if (stopIndex < firstIndex) {
-            // we allow the == case, that's just an empty iterator.
-            throw new IllegalArgumentException("stopIndex<firstIndex ("+(stopIndex)+"<"+firstIndex+")");
-        }
+        Utils.validateArg(stopIndex <= byteArray.length, () -> "stopIndex is "+stopIndex+" yet we only have "+byteArray.length+" bytes.");
+        Utils.validateArg(stopIndex >= firstIndex, () -> "stopIndex<firstIndex ("+(stopIndex)+"<"+firstIndex+")");
         this.byteArray = byteArray;
         currentPosition = firstIndex;
         this.stopIndex = stopIndex;

@@ -15,6 +15,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
@@ -385,6 +386,19 @@ public final class UtilsUnitTest extends BaseTest {
         Utils.nonEmpty(collection, "some message");
     }
 
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCheckForDuplicatesWithDuplicates() {
+        final List<String> strings = Arrays.asList("A", "B", "B");
+        Utils.checkForDuplicatesAndReturnSet(strings, "Uh-oh");
+    }
+
+    @Test
+    public void testCheckForDuplicatesWithoutDuplicates() {
+        final List<String> strings = Arrays.asList("A", "B", "C", "E", "D");
+        final Set<String> set = Utils.checkForDuplicatesAndReturnSet(strings, "Uh-oh");
+        Assert.assertEquals(strings.stream().sorted().collect(Collectors.toList()), set.stream().sorted().collect(Collectors.toList()));
+    }
 
     @Test
     public void testSuccessfulRegularReadableFileCheck() {

@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.FastaProgramGroup;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -47,9 +48,7 @@ public final class NormalizeFasta extends CommandLineProgram {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
 
-        if (INPUT.getAbsoluteFile().equals(OUTPUT.getAbsoluteFile())) {
-            throw new IllegalArgumentException("Input and output cannot be the same file.");
-        }
+        Utils.validateArg(!INPUT.getAbsoluteFile().equals(OUTPUT.getAbsoluteFile()), "Input and output cannot be the same file.");
 
         try (final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(INPUT, TRUNCATE_SEQUENCE_NAMES_AT_WHITESPACE);
              final BufferedWriter out = IOUtil.openFileForBufferedWriting(OUTPUT)) {

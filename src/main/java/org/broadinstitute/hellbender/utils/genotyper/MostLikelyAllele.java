@@ -41,18 +41,13 @@ public final class MostLikelyAllele {
      */
     public MostLikelyAllele(final Allele mostLikely, final Allele secondMostLikely, final double log10LikelihoodOfMostLikely, final double log10LikelihoodOfSecondBest) {
         Utils.nonNull( mostLikely, "mostLikely allele cannot be null");
-        if ( mostLikely.equals(secondMostLikely)){
-            throw new IllegalArgumentException("most likely allele and second most likely allele should be different");
-        };
-        if ( log10LikelihoodOfMostLikely != Double.NEGATIVE_INFINITY && ! MathUtils.goodLog10Probability(log10LikelihoodOfMostLikely) ) {
-            throw new IllegalArgumentException("log10LikelihoodOfMostLikely must be either -Infinity or a good log10 prob but got " + log10LikelihoodOfMostLikely);
-        }
-        if ( log10LikelihoodOfSecondBest != Double.NEGATIVE_INFINITY && ! MathUtils.goodLog10Probability(log10LikelihoodOfSecondBest) ) {
-            throw new IllegalArgumentException("log10LikelihoodOfSecondBest must be either -Infinity or a good log10 prob but got " + log10LikelihoodOfSecondBest);
-        }
-        if ( log10LikelihoodOfMostLikely < log10LikelihoodOfSecondBest ) {
-            throw new IllegalArgumentException("log10LikelihoodOfMostLikely must be <= log10LikelihoodOfSecondBest but got " + log10LikelihoodOfMostLikely + " vs 2nd " + log10LikelihoodOfSecondBest);
-        }
+        Utils.validateArg( !mostLikely.equals(secondMostLikely), "most likely allele and second most likely allele should be different");
+        Utils.validateArg( log10LikelihoodOfMostLikely == Double.NEGATIVE_INFINITY || MathUtils.goodLog10Probability(log10LikelihoodOfMostLikely),
+                () -> "log10LikelihoodOfMostLikely must be either -Infinity or a good log10 prob but got " + log10LikelihoodOfMostLikely);
+
+        Utils.validateArg( log10LikelihoodOfSecondBest == Double.NEGATIVE_INFINITY || MathUtils.goodLog10Probability(log10LikelihoodOfSecondBest),
+                () -> "log10LikelihoodOfSecondBest must be either -Infinity or a good log10 prob but got " + log10LikelihoodOfSecondBest);
+        Utils.validateArg( log10LikelihoodOfMostLikely >= log10LikelihoodOfSecondBest, () -> "log10LikelihoodOfMostLikely must be <= log10LikelihoodOfSecondBest but got " + log10LikelihoodOfMostLikely + " vs 2nd " + log10LikelihoodOfSecondBest);
 
         this.mostLikely = mostLikely;
         this.secondMostLikely = secondMostLikely;

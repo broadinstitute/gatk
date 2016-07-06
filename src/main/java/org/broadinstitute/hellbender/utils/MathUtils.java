@@ -2,18 +2,14 @@ package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
-import org.apache.commons.math3.linear.EigenDecomposition;
-import org.apache.commons.math3.linear.LUDecomposition;
-import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.special.Gamma;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.function.*;
 
 /**
  * MathUtils is a static class (no instantiation allowed!) with some useful math methods.
@@ -34,6 +30,8 @@ public final class MathUtils {
 
     private static final double LOG1MEXP_THRESHOLD = Math.log(0.5);
 
+    public static final double INV_SQRT_2_PI = 1.0 / Math.sqrt(2.0 * Math.PI);
+
     /**
      * Log10 of the e constant.
      */
@@ -43,8 +41,7 @@ public final class MathUtils {
     /**
      * Private constructor.  No instantiating this class!
      */
-    private MathUtils() {
-    }
+    private MathUtils() { }
 
 
     /**
@@ -117,7 +114,7 @@ public final class MathUtils {
      * @return a random int >= min and <= max
      */
     public static int randomIntegerInRange( final int min, final int max ) {
-        Utils.validateArg(max > min - 1, "invalid arguments min:" + min + " max:" + max);
+        Utils.validateArg(max > min - 1, () -> "invalid arguments min:" + min + " max:" + max);
         return Utils.getRandomGenerator().nextInt(max - min + 1) + min;
     }
 
@@ -148,7 +145,7 @@ public final class MathUtils {
     }
 
     /**
-     * Calculates {@code log10(1-10^a)} without loosing precision.
+     * Calculates {@code log10(1-10^a)} without losing precision.
      *
      * <p>
      *     This is based on the approach described in:
@@ -170,7 +167,7 @@ public final class MathUtils {
     }
 
     /**
-     * Calculates {@code log(1-exp(a))} without loosing precision.
+     * Calculates {@code log(1-exp(a))} without losing precision.
      *
      * <p>
      *     This is based on the approach described in:
@@ -188,7 +185,6 @@ public final class MathUtils {
     public static double log1mexp(final double a) {
         if (a > 0) return Double.NaN;
         if (a == 0) return Double.NEGATIVE_INFINITY;
-
         return (a < LOG1MEXP_THRESHOLD) ? Math.log1p(-Math.exp(a)) : Math.log(-Math.expm1(a));
     }
 
@@ -202,17 +198,9 @@ public final class MathUtils {
      * @return true if vector is well-formed, false otherwise
      */
     public static boolean goodLog10ProbVector(final double[] vector, final int expectedSize, final boolean shouldSumToOne) {
-        if ( vector.length != expectedSize ) return false;
-
-        for ( final double pr : vector ) {
-            if ( ! goodLog10Probability(pr) )
-                return false;
-        }
-
-        if ( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 )
-            return false;
-
-        return true; // everything is good
+        return vector.length == expectedSize &&
+                allMatch(vector, MathUtils::goodLog10Probability) &&
+                !( shouldSumToOne && compareDoubles(sumLog10(vector), 1.0, 1e-4) != 0 );
     }
 
     /**
@@ -228,18 +216,11 @@ public final class MathUtils {
      * @param y                 Second vector
      * @return Vector of same length as x and y so that z[k] = x[k]-y[k]
      */
-    public static int[] vectorDiff(final int[]x, final int[] y) {
+    public static int[] vectorDiff(final int[] x, final int[] y) {
         Utils.nonNull(x, "x is null");
         Utils.nonNull(y, "y is null");
-        if (x.length != y.length)
-            throw new IllegalArgumentException("BUG: Lengths of x and y must be the same");
-
-        final int[] result = new int[x.length];
-        for (int k=0; k <x.length; k++) {
-            result[k] = x[k] - y[k];
-        }
-
-        return result;
+        Utils.validateArg(x.length == y.length, "Lengths of x and y must be the same");
+        return new IndexRange(0, x.length).mapToInteger(k -> x[k] - y[k]);
     }
 
 
@@ -252,21 +233,10 @@ public final class MathUtils {
      * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
      */
     public static double log10MultinomialCoefficient(final int n, final int[] k) {
-        if ( n < 0 )
-            throw new IllegalArgumentException("n: Must have non-negative number of trials");
-        double denominator = 0.0;
-        int sum = 0;
-        for (int x : k) {
-            if ( x < 0 )
-                throw new IllegalArgumentException("x element of k: Must have non-negative observations of group");
-            if ( x > n )
-                throw new IllegalArgumentException("x element of k, n: Group observations must be bounded by k");
-            denominator += log10Factorial(x);
-            sum += x;
-        }
-        if ( sum != n )
-            throw new IllegalArgumentException("k and n: Sum of observations in multinomial must sum to total number of trials");
-        return log10Factorial(n) - denominator;
+        Utils.validateArg(n >= 0, "n: Must have non-negative number of trials");
+        Utils.validateArg(allMatch(k, x -> x >= 0), "Elements of k must be non-negative");
+        Utils.validateArg(sum(k) == n, "Sum of observations k must sum to total number of trials n");
+        return log10Factorial(n) -  new IndexRange(0, k.length).sum(j -> log10Factorial(k[j]));
     }
 
     public static double log10(int i) {
@@ -282,29 +252,17 @@ public final class MathUtils {
     }
 
     public static double log10sumLog10(final double[] log10p, final int start, final int finish) {
-
         if (start >= finish) {
             return Double.NEGATIVE_INFINITY;
         }
-        final int maxElementIndex = MathUtils.maxElementIndex(log10p, start, finish);
+        final int maxElementIndex = maxElementIndex(log10p, start, finish);
         final double maxValue = log10p[maxElementIndex];
         if(maxValue == Double.NEGATIVE_INFINITY) {
             return maxValue;
         }
-        double sum = 1.0;
-        for (int i = start; i < finish; i++) {
-            final double curVal = log10p[i];
-            if (i == maxElementIndex || curVal == Double.NEGATIVE_INFINITY) {
-                continue;
-            } else {
-                final double scaled_val = curVal - maxValue;
-                sum += Math.pow(10.0, scaled_val);
-            }
-        }
-        if ( Double.isNaN(sum) || sum == Double.POSITIVE_INFINITY ) {
-            throw new IllegalArgumentException("log10p: Values must be non-infinite and non-NAN");
-        }
-        return maxValue + (sum != 1.0 ? Math.log10(sum) : 0.0);
+        final double sum = 1.0 + new IndexRange(start, finish).sum(i -> i == maxElementIndex ? 0 : Math.pow(10.0, log10p[i] - maxValue));
+        Utils.validateArg(!Double.isNaN(sum) && sum != Double.POSITIVE_INFINITY, "log10p values must be non-infinite and non-NAN");
+        return maxValue + Math.log10(sum);
     }
 
 
@@ -325,9 +283,7 @@ public final class MathUtils {
          * @return log10(n)
          */
         public static double get(final int i) {
-            if (i < 0) {
-                throw new IllegalArgumentException(String.format("Can't take the log of a negative number: %d", i));
-            }
+            Utils.validateArg(i >= 0, () -> String.format("Can't take the log of a negative number: %d", i));
             if (i >= cache.length) {
                 final int newCapacity = Math.max(i + 10, 2 * cache.length);
                 logger.debug("cache miss " + i + " > " + (cache.length-1) + " expanding to " + newCapacity);
@@ -372,35 +328,22 @@ public final class MathUtils {
      * Encapsulates the second term of Jacobian log identity for differences up to MAX_TOLERANCE
      */
     private static final class JacobianLogTable {
-
         // if log(a) - log(b) > MAX_TOLERANCE, b is effectively treated as zero in approximateLogSumLog
         // MAX_TOLERANCE = 8.0 introduces an error of at most one part in 10^8 in sums
         public static final double MAX_TOLERANCE = 8.0;
-
-        public static double get(final double difference) {
-            if (cache == null) {
-                initialize();
-            }
-            final int index = fastRound(difference * INV_STEP);
-            return cache[index];
-        }
-
-        private static void initialize() {
-            if (cache == null) {
-                final int tableSize = (int) (MAX_TOLERANCE / TABLE_STEP) + 1;
-                cache = new double[tableSize];
-                for (int k = 0; k < cache.length; k++) {
-                    cache[k] = Math.log10(1.0 + Math.pow(10.0, -((double) k) * TABLE_STEP));
-                }
-            }
-        }
 
         //  Phred scores Q and Q+1 differ by 0.1 in their corresponding log-10 probabilities, and by
         // 0.1 * log(10) in natural log probabilities.  Setting TABLE_STEP to an exact divisor of this
         // quantity ensures that approximateSumLog in fact caches exact values for integer phred scores
         private static final double TABLE_STEP = 0.0001;
         private static final double INV_STEP = 1.0 / TABLE_STEP;
-        private static double[] cache = null;
+        private static final double[] cache = new IndexRange(0, (int) (MAX_TOLERANCE / TABLE_STEP) + 1)
+                .mapToDouble(k -> Math.log10(1.0 + Math.pow(10.0, -k * TABLE_STEP)));
+
+        public static double get(final double difference) {
+            final int index = fastRound(difference * INV_STEP);
+            return cache[index];
+        }
     }
 
     // A fast implementation of the Math.round() method.  This method does not perform
@@ -424,7 +367,6 @@ public final class MathUtils {
     }
 
     public static double approximateLog10SumLog10(final double[] vals, final int endIndex) {
-
         final int maxElementIndex = MathUtils.maxElementIndex(vals, endIndex);
         double approxSum = vals[maxElementIndex];
 
@@ -433,11 +375,9 @@ public final class MathUtils {
                 continue;
             }
 
+            // if vals[i] isn't too tiny relative to the sum so far, add it; otherwise ignore it
             final double diff = approxSum - vals[i];
-            if (diff < JacobianLogTable.MAX_TOLERANCE) {
-                // See notes from the 2-inout implementation below
-                approxSum += JacobianLogTable.get(diff);
-            }
+            approxSum += diff < JacobianLogTable.MAX_TOLERANCE ? JacobianLogTable.get(diff) : 0.0;
         }
 
         return approxSum;
@@ -451,22 +391,15 @@ public final class MathUtils {
         // this code works only when a <= b so we flip them if the order is opposite
         if (a > b) {
             return approximateLog10SumLog10(b, a);
-        }
-
-        if (a == Double.NEGATIVE_INFINITY) {
+        } else if (a == Double.NEGATIVE_INFINITY) {
             return b;
         }
 
-        final double diff = b - a;
-        if (diff >= JacobianLogTable.MAX_TOLERANCE) {
-            return b;
-        }
-
-        // OK, so |b-a| < tol
-        // we need to compute log(e^a + e^b) = log(e^b(1 + e^(a-b))) = b + log(1 + e^(-(b-a)))
+        // if |b-a| < tol we need to compute log(e^a + e^b) = log(e^b(1 + e^(a-b))) = b + log(1 + e^(-(b-a)))
         // we compute the second term as a table lookup with integer quantization
         // we have pre-stored correction for 0,0.1,0.2,... 10.0
-        return b + JacobianLogTable.get(diff);
+        final double diff = b - a;
+        return b + (diff < JacobianLogTable.MAX_TOLERANCE ? JacobianLogTable.get(diff) : 0.0);
     }
 
     /**
@@ -531,9 +464,9 @@ public final class MathUtils {
     /** Returns the sum of the elements in the array starting with start and ending before stop. */
     public static double sum(final double[] arr, final int start, final int stop) {
         Utils.nonNull(arr);
-        Utils.validateArg(start <= stop, start + " > " + stop);
-        Utils.validateArg(start >= 0, start + " < " + 0);
-        Utils.validateArg(stop <= arr.length, stop + " >  " + arr.length);
+        Utils.validateArg(start <= stop, () -> start + " > " + stop);
+        Utils.validateArg(start >= 0, () -> start + " < " + 0);
+        Utils.validateArg(stop <= arr.length, () -> stop + " >  " + arr.length);
         return sum(Arrays.copyOfRange(arr, start, stop));
     }
 
@@ -584,13 +517,8 @@ public final class MathUtils {
     /**
      */
     public static double log10BinomialCoefficient(final int n, final int k) {
-        if ( n < 0 ) {
-            throw new IllegalArgumentException("n: Must have non-negative number of trials");
-        }
-        if ( k > n || k < 0 ) {
-            throw new IllegalArgumentException("k: Must have non-negative number of successes, and no more successes than number of trials");
-        }
-
+        Utils.validateArg(n >= 0, "Must have non-negative number of trials");
+        Utils.validateArg( k <= n && k >= 0, "k: Must have non-negative number of successes, and no more successes than number of trials");
         return log10Factorial(n) - log10Factorial(k) - log10Factorial(n - k);
     }
 
@@ -614,8 +542,7 @@ public final class MathUtils {
      * binomial Probability(int, int, double) with log applied to result
      */
     public static double log10BinomialProbability(final int n, final int k, final double log10p) {
-        if ( log10p > 1e-18 )
-            throw new IllegalArgumentException("log10p: Log10-probability must be 0 or less");
+        Utils.validateArg(log10p < 1.0e-18, "log10p: Log10-probability must be 0 or less");
         double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
         return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
     }
@@ -698,34 +625,19 @@ public final class MathUtils {
 
         // we may decide to just normalize in log space without converting to linear space
         if (keepInLogSpace) {
-            for (int i = 0; i < array.length; i++) {
-                array[i] -= maxValue;
-            }
-            return array;
+            return applyToArray(array, x -> x - maxValue);
         }
 
         // default case: go to linear space
-        double[] normalized = new double[array.length];
-
-        for (int i = 0; i < array.length; i++)
-            normalized[i] = Math.pow(10.0, array[i] - maxValue);
-
-        // normalize
-        double sum = 0.0;
-        for (int i = 0; i < array.length; i++)
-            sum += normalized[i];
-        for (int i = 0; i < array.length; i++) {
-            double x = normalized[i] / sum;
-            if (takeLog10OfOutput) {
-                x = Math.log10(x);
-                if ( x < LOG10_P_OF_ZERO || Double.isInfinite(x) )
-                    x = array[i] - maxValue;
-            }
-
-            normalized[i] = x;
+        final double[] normalized = applyToArray(array, x -> Math.pow(10.0, x - maxValue));
+        final double sum = sum(normalized);
+        if (!takeLog10OfOutput) {
+            return applyToArrayInPlace(normalized, x -> x/sum);
+        } else {
+            final double log10Sum = Math.log10(sum);
+            return applyToArray(array, x -> x - maxValue - log10Sum);
         }
 
-        return normalized;
     }
 
     /**
@@ -742,12 +654,8 @@ public final class MathUtils {
             return array;
 
         final double sum = sum(array);
-        final double[] normalized = new double[array.length];
-        if ( sum < 0.0 ) throw new IllegalArgumentException("Values in probability array sum to a negative number " + sum);
-        for ( int i = 0; i < array.length; i++ ) {
-            normalized[i] = array[i] / sum;
-        }
-        return normalized;
+        Utils.validateArg(sum >= 0.0, () -> "Values in probability array sum to a negative number " + sum);
+        return applyToArray(array, x -> x/sum);
     }
 
     public static int minElementIndex(final int[] array) {
@@ -772,12 +680,9 @@ public final class MathUtils {
     }
 
     public static int maxElementIndex(final double[] array, final int start, final int endIndex) {
-        if (array == null || array.length == 0)
-            throw new IllegalArgumentException("Array cannot be null!");
-
-        if (start > endIndex) {
-            throw new IllegalArgumentException("Start cannot be after end.");
-        }
+        Utils.nonNull(array, "array may not be null");
+        Utils.validateArg(array.length > 0, "array may not be empty");
+        Utils.validateArg(start <= endIndex, "Start cannot be after end.");
 
         int maxI = start;
         for (int i = (start+1); i < endIndex; i++) {
@@ -850,11 +755,8 @@ public final class MathUtils {
        return lnToLog10(Gamma.logGamma(x));
     }
 
-    public static double log10Factorial(final int x) {
-       if (x >= Log10FactorialCache.size() || x < 0)
-          return log10Gamma(x + 1);
-       else
-          return Log10FactorialCache.get(x);
+    public static double log10Factorial(final int n) {
+        return n >=0 && n < Log10FactorialCache.size() ? Log10FactorialCache.get(n) : log10Gamma(n+1);
     }
 
     /**
@@ -864,11 +766,7 @@ public final class MathUtils {
      * @return
      */
     public static double[] toLog10(final double[] prRealSpace) {
-        final double[] log10s = new double[prRealSpace.length];
-        for (int i = 0; i < prRealSpace.length; i++) {
-            log10s[i] = Math.log10(prRealSpace[i]);
-        }
-        return log10s;
+        return applyToArray(prRealSpace, Math::log10);
     }
 
     /**
@@ -894,7 +792,7 @@ public final class MathUtils {
 
         private static synchronized void initialize() {
             if (cache == null) {//this null check is here to prevent a race condition
-                                // when multiple threads want to initialize the cache
+                // when multiple threads want to initialize the cache
                 Log10Cache.expandCache(CACHE_SIZE);
                 cache = new double[CACHE_SIZE];
                 cache[0] = 0.0;
@@ -906,7 +804,7 @@ public final class MathUtils {
     }
 
     /**
-     * Compute in a numerical correct way the quantity log10(1-x)
+     * Compute in a numerically correct way the quantity log10(1-x)
      *
      * Uses the approximation log10(1-x) = log10(1/x - 1) + log10(x) to avoid very quick underflow
      * in 1-x when x is very small
@@ -925,161 +823,16 @@ public final class MathUtils {
         }
     }
 
-    /**
-     * Now for some matrix methods
-     */
-
-    /**
-     *
-     * @param m a real-valued matrix
-     * @return whether m is symmetric
-     */
-    public static boolean isSymmetric(RealMatrix m) {
-        return m.equals(m.transpose());
-    }
-
-    /**
-     *
-     * @param m a real-valued matrix
-     * @return whether m is positive semi-definite i.e. has no negative eigenvalues
-     */
-    public static boolean isPositiveSemiDefinite(RealMatrix m) {
-        EigenDecomposition ed = new EigenDecomposition(m);
-        for (final double eigval : ed.getRealEigenvalues()) {
-            if (eigval < 0) return false;
-        }
-        return true;
-    }
-
-    /**
-     * Compute the logarithm of a square matrix.  Unfortunately, Aoache Commons does not have this method.
-     *
-     * We compute the matrix logarithm by diagonalizing, taking logarithms of the diagonal entries, and
-     * reversing the diagonalizing change of basis
-     *
-     * @param M
-     * @return the matrix logarithm of M
-     */
-    public static RealMatrix matrixLog(RealMatrix M) {
-        EigenDecomposition ed = new EigenDecomposition(M);
-        RealMatrix D = ed.getD();   //D is diagonal
-        RealMatrix V = ed.getV();   //M = V*D*V^T; V is the diagonalizing change of basis
-
-        //replace D (in-place) by its logarithm
-        for (int i = 0; i < M.getColumnDimension(); i++) {
-            D.setEntry(i, i, Math.log(D.getEntry(i, i)));
-        }
-
-        return V.multiply(D).multiply(V.transpose());   //reverse the change of basis
-    }
-
-    /**
-     * Measure the difference between two covariance matrices in terms of the Kullback-Leibler
-     * divergence between associated Gaussians.
-     *
-     * If d is the dimension of these matrices, the KL divergence between zero-centered Gaussians
-     * with covariances A and B is (1/2){tr[A^(-1)B] + ln(det(A) - ln(det(B)) - d}.  Note: the KL
-     * divergence is not symmetric.  Switching A <--> B and averaging gives (1/2){tr[A^(-1)B] + tr[B^(-1)A] - d}
-     *
-     * @param cov1 a matrix covariance
-     * @param cov2 a matrix covariance
-     * @return the average of KL divergences, (KL(p|q) + KL(q|p))/2, where p and q are probability densities
-     * of zero-centered Gaussians with the give covariance
-     */
-    public static double covarianceKLDivergence(RealMatrix cov1, RealMatrix cov2) {
-        if (!isSymmetric(cov1) || !isSymmetric(cov2)) {
-            throw new GATKException("Covariance matrices must be symmetric.");
-        }
-
-        if (!isPositiveSemiDefinite(cov1) || !isPositiveSemiDefinite(cov2)) {
-            throw new GATKException("Covariance matrices must be positive semidefinite.");
-        }
-
-        int d = cov1.getRowDimension();
-
-        if (cov1.getRowDimension() != cov2.getRowDimension()) {
-            throw new GATKException("Can only compare covariance matrices of equal dimension.");
-        }
-
-        LUDecomposition LU1 = new LUDecomposition(cov1);
-        LUDecomposition LU2 = new LUDecomposition(cov2);
-
-        return (LU1.getSolver().solve(cov2).getTrace() + LU2.getSolver().solve(cov1).getTrace() - d)/2;
-    }
-
-    /**
-     * Measure the geodesic distance between the two covariances within the manifold of symmetric,
-     * positive-definite matrices.  This is also called the affine-invariant metric.
-     *
-     * The formula is ||log(A^(-1/2)*B*A^(-1/2)||_F, where ||    ||_F is the Frobenius norm.  This formula
-     * is symmetric despite its appearance.
-     *
-     * For positive semidefinite matrices with eigendecomposition M = V*D*V^(-1), where D is diagonal
-     * the matrix inverse square root is M^(-1/2) = V*D^(-1/2)*V^(-1)
-     *
-     * @param cov1 a covariance matrix
-     * @param cov2 a covariance matrix
-     * @return the geodesic distance between cov1 and cov2 in the manifold of positive semi-definite
-     * symmetric matrices, which is more natural than the Euclidean distance inherited from the embedding
-     * in R^(d^2)
-     */
-    public static double covarianceGeodesicDistance(RealMatrix cov1, RealMatrix cov2) {
-        if (!isSymmetric(cov1) || !isSymmetric(cov2)) {
-            throw new GATKException("Covariance matrices must be symmetric.");
-        }
-
-        if (!isPositiveSemiDefinite(cov1) || !isPositiveSemiDefinite(cov2)) {
-            throw new GATKException("Covariance matrices must be positive semidefinite.");
-        }
-
-        if (cov1.getRowDimension() != cov2.getRowDimension()) {
-            throw new GATKException("Can only compare covariance matrices of equal dimension.");
-        }
-
-        RealMatrix sqrt = (new EigenDecomposition(cov1)).getSquareRoot();
-        RealMatrix inverseSqrt = (new LUDecomposition(sqrt)).getSolver().getInverse();
-
-        //the thing inside the matrix logarithm
-        RealMatrix mat = inverseSqrt.multiply(cov2).multiply(inverseSqrt);
-        return matrixLog(mat).getFrobeniusNorm();
-
-    }
-
     /** Calculate the mean of an array of doubles. */
     public static double mean(final double[] in, final int start, final int stop) {
-        if ((stop - start) <= 0 ) return Double.NaN;
-
-        double total = 0;
-        for (int i = start; i < stop; ++i) {
-            total += in[i];
-        }
-
-        return total / (stop - start);
-    }
-
-    /** Calculate the (population) standard deviation of an array of doubles. */
-    public static double stddev(final double[] in, final int start, final int length) {
-        return stddev(in, start, length, mean(in, start, length));
-    }
-
-    /** Calculate the (population) standard deviation of an array of doubles. */
-    public static double stddev(final double[] in, final int start, final int stop, final double mean) {
-        if ((stop - start) <= 0) return Double.NaN;
-
-        double total = 0;
-        for (int i = start; i < stop; ++i) {
-            total += (in[i] * in[i]);
-        }
-
-        return Math.sqrt((total / (stop - start)) - (mean * mean));
+        return stop <= start ? Double.NaN : Arrays.stream(in, start, stop).average().getAsDouble();
     }
 
     /** "Promotes" an int[] into a double array with the same values (or as close as precision allows). */
     public static double[] promote(final int[] is) {
-        final double[] ds = new double[is.length];
-        for (int i = 0; i < is.length; ++i) ds[i] = is[i];
-        return ds;
+        return new IndexRange(0, is.length).mapToDouble(n -> (double) is[n]);
     }
+
 
     /**
      * Compute the median of a list of numbers
@@ -1092,9 +845,7 @@ public final class MathUtils {
      */
     public static <T extends Number & Comparable<T>> double median(final Collection<T> values) {
         Utils.nonEmpty(values, "cannot take the median of a collection with no values.");
-        DescriptiveStatistics stats = new DescriptiveStatistics();
-        values.stream().mapToDouble(Number::doubleValue).forEach(stats::addValue);
-        return stats.apply(new Median());
+        return new Median().evaluate(values.stream().mapToDouble(Number::doubleValue).toArray());
     }
 
     /**
@@ -1103,10 +854,7 @@ public final class MathUtils {
      * The requirement is that it works exactly as writing a number down with string.format and reading back in.
      */
     public static double roundToNDecimalPlaces(final double in, final int n) {
-        if (n < 1) {
-            throw new IllegalArgumentException("cannot round to " + n + " decimal places");
-        }
-
+         Utils.validateArg(n > 0, "must round to at least one decimal place");
          final double mult = Math.pow(10,n);
          return Math.round( (in+Math.ulp(in))*mult )/mult;
     }
@@ -1127,39 +875,86 @@ public final class MathUtils {
         Utils.validateArg(wellFormedDouble(mean) && wellFormedDouble(sd) && wellFormedDouble(x),
                           "mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
 
-        double a = 1.0 / (sd * Math.sqrt(2.0 * Math.PI));
-        double b = Math.exp(-1.0 * (Math.pow(x - mean, 2.0) / (2.0 * sd * sd)));
-        return a * b;
-    }
-
-    public static double dirichletMultinomial(double[] params, int[] counts) {
-        return dirichletMultinomial(params,sum(params),counts,(int) sum(counts));
+        return (INV_SQRT_2_PI / sd) *  Math.exp(-(x - mean)*(x-mean)/ (2.0 * sd * sd));
     }
 
     /**
      * Return the likelihood of observing the counts of categories having sampled a population
      * whose categorial frequencies are distributed according to a Dirichlet distribution
-     * @param dirichletParams - params of the prior dirichlet distribution
-     * @param dirichletSum - the sum of those parameters
+     * @param params - params of the prior dirichlet distribution
      * @param counts - the counts of observation in each category
-     * @param countSum - the sum of counts (number of trials)
      * @return - associated likelihood
      */
-    public static double dirichletMultinomial(final double[] dirichletParams,
-                                              final double dirichletSum,
-                                              final int[] counts,
-                                              final int countSum) {
-        if ( dirichletParams.length != counts.length ) {
-            throw new IllegalArgumentException("The number of dirichlet parameters must match the number of categories");
-        }
-        double likelihood = log10MultinomialCoefficient(countSum,counts);
-        likelihood += log10Gamma(dirichletSum);
-        likelihood -= log10Gamma(dirichletSum+countSum);
-        for ( int idx = 0; idx < counts.length; idx++ ) {
-            likelihood += log10Gamma(counts[idx] + dirichletParams[idx]);
-            likelihood -= log10Gamma(dirichletParams[idx]);
-        }
+    public static double dirichletMultinomial(double[] params, int[] counts) {
+        Utils.validateArg(params.length == counts.length, "The number of dirichlet parameters must match the number of categories");
+        final double dirichletSum = sum(params);
+        final int countSum = (int) sum(counts);
+        double prefactor = log10MultinomialCoefficient(countSum,counts) + log10Gamma(dirichletSum) - log10Gamma(dirichletSum+countSum);
+        return prefactor + new IndexRange(0, counts.length).sum(n -> log10Gamma(counts[n] + params[n]) - log10Gamma(params[n]));
+    }
 
-        return likelihood;
+    /**
+     * The following method implements Arrays.stream(array).map(func).toArray(), which is concise but performs poorly due
+     * to the overhead of creating a stream, especially with small arrays.  Thus we wrap the wordy but fast array code
+     * in the following method which permits concise Java 8 code.
+     *
+     * Returns a new array -- the original array in not modified.
+     *
+     * This method has been benchmarked and performs as well as array-only code.
+     */
+    public static double[] applyToArray(final double[] array, final DoubleUnaryOperator func) {
+        Utils.nonNull(func, "function may not be null");
+        Utils.nonNull(array, "array may not be null");
+        final double[] result = new double[array.length];
+        for (int m = 0; m < result.length; m++) {
+            result[m] = func.applyAsDouble(array[m]);
+        }
+        return result;
+    }
+
+    /**
+     * The following method implements Arrays.stream(array).map(func).toArray(), which is concise but performs poorly due
+     * to the overhead of creating a stream, especially with small arrays.  Thus we wrap the wordy but fast array code
+     * in the following method which permits concise Java 8 code.
+     *
+     * The original array is modified in place.
+     *
+     * This method has been benchmarked and performs as well as array-only code.
+     */
+    public static double[] applyToArrayInPlace(final double[] array, final DoubleUnaryOperator func) {
+        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(func, "function may not be null");
+        for (int m = 0; m < array.length; m++) {
+            array[m] = func.applyAsDouble(array[m]);
+        }
+        return array;
+    }
+
+    /**
+     * Test whether all elements of a double[] array satisfy a double -> boolean predicate
+     */
+    public static boolean allMatch(final double[] array, final DoublePredicate pred) {
+        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(pred, "predicate may not be null");
+        for (final double x : array) {
+            if (!pred.test(x)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Test whether all elements of an int[] array satisfy an int -> boolean predicate
+     */
+    public static boolean allMatch(final int[] array, final IntPredicate pred) {
+        Utils.nonNull(array, "array may not be null");
+        Utils.nonNull(pred, "predicate may not be null");
+        for (final int x : array) {
+            if (!pred.test(x)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

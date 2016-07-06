@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils;
 
-import java.util.function.IntConsumer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.*;
 
 /**
  * Represents 0-based integer index range.
@@ -57,12 +60,8 @@ public final class IndexRange {
      *                                  negative.
      */
     public IndexRange(final int fromIndex, final int toIndex) {
-        if (fromIndex > toIndex) {
-            throw new IllegalArgumentException("the range size cannot be negative");
-        }
-        if (fromIndex < 0) {
-            throw new IllegalArgumentException("the range cannot contain negative indices");
-        }
+        Utils.validateArg(fromIndex <= toIndex, "the range size cannot be negative");
+        Utils.validateArg(fromIndex >= 0, "the range cannot contain negative indices");
         from = fromIndex;
         to = toIndex;
     }
@@ -112,12 +111,65 @@ public final class IndexRange {
      * @throws Error if thrown by {@code lambda} for some index.
      */
     public void forEach(final IntConsumer lambda) {
-        if (lambda == null) {
-            throw new IllegalArgumentException("the lambda function cannot be null");
-        }
+        Utils.nonNull(lambda, "the lambda function cannot be null");
         for (int i = from; i < to; i++) {
             lambda.accept(i);
         }
+    }
+
+    /**
+     * Apply an int -> double function to this range, producing a double[]
+     *
+     * @param lambda the int -> double function
+     */
+    public double[] mapToDouble(final IntToDoubleFunction lambda) {
+        Utils.nonNull(lambda, "the lambda function cannot be null");
+        final double[] result = new double[size()];
+        for (int i = from; i < to; i++) {
+            result[i - from] = lambda.applyAsDouble(i);
+        }
+        return result;
+    }
+
+    /**
+     * Sums the values of an int -> double function applied to this range
+     *
+     * @param lambda the int -> double function
+     */
+    public double sum(final IntToDoubleFunction lambda) {
+        Utils.nonNull(lambda, "the lambda function cannot be null");
+        double result = 0;
+        for (int i = from; i < to; i++) {
+            result += lambda.applyAsDouble(i);
+        }
+        return result;
+    }
+
+    /**
+     * Apply an int -> int function to this range, producing an int[]
+     *
+     * @param lambda the int -> int function
+     */
+    public int[] mapToInteger(final IntUnaryOperator lambda) {
+        Utils.nonNull(lambda, "the lambda function cannot be null");
+        final int[] result = new int[size()];
+        for (int i = from; i < to; i++) {
+            result[i - from] = lambda.applyAsInt(i);
+        }
+        return result;
+    }
+
+    /**
+     * Find the elements of this range for which an int -> boolean predicate is true
+     *
+     * @param predicate the int -> boolean predicate
+     * @return
+     */
+    public List<Integer> filter(final IntPredicate predicate) {
+        Utils.nonNull(predicate, "predicate may not be null");
+        final List<Integer> result = new ArrayList<>();
+        forEach(i -> {if (predicate.test(i)) result.add(i); } );
+        return result;
     }
 
     @Override

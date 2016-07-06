@@ -1237,22 +1237,15 @@ public final class SelectVariants extends VariantWalker {
         final Object[] tokens;
         if (attribute.getClass().isArray()) {
             tokens = (Object[]) attribute;
-        }
-        else if (List.class.isAssignableFrom(attribute.getClass())) {
+        } else if (List.class.isAssignableFrom(attribute.getClass())) {
             tokens = ((List) attribute).toArray();
-        }
-        else {
+        } else {
             tokens = attribute.toString().split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
         }
 
-        final List<Object> result = new ArrayList<>();
-        for (final int index : oldToNewIndexOrdering ) {
-            if (index >= tokens.length) {
-                throw new IllegalArgumentException("the old attribute has an incorrect number of elements: " + attribute);
-            }
-            result.add(tokens[index]);
-        }
-        return result;
+        Utils.validateArg(Arrays.stream(oldToNewIndexOrdering).allMatch(index -> index < tokens.length), () ->
+                "the old attribute has an incorrect number of elements: " + attribute);
+        return Arrays.stream(oldToNewIndexOrdering).mapToObj(index -> tokens[index]).collect(Collectors.toList());
     }
 
     /**

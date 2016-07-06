@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.interval;
 
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
@@ -61,7 +62,7 @@ public final class IntervalListScatterer {
     }
 
     public List<IntervalList> scatter(final IntervalList sourceIntervalList, final int scatterCount, final boolean isUniqued) {
-        if (scatterCount < 1) throw new IllegalArgumentException("scatterCount < 1");
+        Utils.validateArg(scatterCount >= 1, "scatterCount < 1");
 
         final IntervalList uniquedList = isUniqued ? sourceIntervalList : sourceIntervalList.uniqued();
         final long idealSplitLength = deduceIdealSplitLength(uniquedList, scatterCount);

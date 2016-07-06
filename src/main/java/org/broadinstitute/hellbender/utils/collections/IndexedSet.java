@@ -56,15 +56,13 @@ public final class IndexedSet<E> extends AbstractSet<E> {
      */
     public IndexedSet(final Collection<E> values) {
         Utils.nonNull(values, "input values cannot be null");
+        Utils.containsNoNull(values, "values can't contain nulls");
 
         final int initialCapacity = values.size();
         elements = new ArrayList<>(initialCapacity);
         indexByElement = new LinkedHashMap<>(initialCapacity);
         int nextIndex = 0;
         for (final E value : values) {
-            if (value == null) {
-                throw new IllegalArgumentException("null element not allowed: index == " + nextIndex);
-            }
             if (indexByElement.containsKey(value)) {
                 continue;
             }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -233,12 +234,8 @@ public final class GenotypeLikelihoodCalculators {
      * @return never {@code null}, follows the specification above.
      */
     private static GenotypeAlleleCounts[] buildGenotypeAlleleCountsArray(final int ploidy, final int alleleCount, final int[][] genotypeOffsetTable) {
-        if (ploidy < 0) {
-            throw new IllegalArgumentException("the requested ploidy cannot be negative: " + ploidy);
-        }
-        if (alleleCount < 0) {
-            throw new IllegalArgumentException("the requested maximum allele cannot be negative: " + alleleCount);
-        }
+        Utils.validateArg(ploidy >= 0, () -> "the requested ploidy cannot be negative: " + ploidy);
+        Utils.validateArg(alleleCount >= 0, () -> "the requested maximum allele cannot be negative: " + alleleCount);
         final int length = genotypeOffsetTable[ploidy][alleleCount];
         final int strongRefLength = length == GENOTYPE_COUNT_OVERFLOW ? MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY : Math.min(length, MAXIMUM_STRONG_REF_GENOTYPE_PER_PLOIDY);
         final GenotypeAlleleCounts[] result = new GenotypeAlleleCounts[strongRefLength];
@@ -317,26 +314,16 @@ public final class GenotypeLikelihoodCalculators {
      * @throws IllegalArgumentException if either value is negative.
      */
     private static void checkPloidyAndMaximumAllele(final int ploidy, final int maximumAllele) {
-        if (ploidy < 0) {
-            throw new IllegalArgumentException("the ploidy provided cannot be negative: " + ploidy);
-        }
-        if (maximumAllele < 0) {
-            throw new IllegalArgumentException("the maximum allele index provided cannot be negative: " + maximumAllele);
-        }
+        Utils.validateArg(ploidy >= 0, () -> "the ploidy provided cannot be negative: " + ploidy);
+        Utils.validateArg(maximumAllele >= 0, () -> "the maximum allele index provided cannot be negative: " + maximumAllele);
     }
 
     private static void checkOffsetTableCapacity(final int[][] offsetTable, final int maximumPloidy, final int maximumAllele) {
-        if (offsetTable == null) {
-            throw new IllegalArgumentException("the allele first genotype offset table provided cannot be null");
-        }
-        if (offsetTable.length <= maximumPloidy ) {
-            throw new IllegalArgumentException("the allele first genotype offset table provided does not have enough " +
+        Utils.nonNull(offsetTable, "the allele first genotype offset table provided cannot be null");
+        Utils.validateArg(offsetTable.length > maximumPloidy, () -> "the allele first genotype offset table provided does not have enough " +
                     "capacity for requested maximum ploidy: " + maximumPloidy);
-        }
-        if (offsetTable[0].length < maximumAllele) {
-            throw new IllegalArgumentException("the allele first genotype offset table provided does not have enough " +
+        Utils.validateArg(offsetTable[0].length >= maximumAllele, () -> "the allele first genotype offset table provided does not have enough " +
                     "capacity for requested maximum allele index: " + maximumAllele);
-        }
     }
 
 

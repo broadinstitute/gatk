@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -146,17 +147,13 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      */
     public FeatureDataSource( final File featureFile, final FeatureCodec<T, ?> codec, final String name, final int queryLookaheadBases ) {
-        if ( featureFile == null || codec == null ) {
-            throw new IllegalArgumentException("FeatureDataSource cannot be created from null file/codec");
-        }
-        if ( queryLookaheadBases < 0 ) {
-            throw new IllegalArgumentException("Query lookahead bases must be >= 0");
-        }
+        this.featureFile = Utils.nonNull(featureFile, "FeatureDataSource cannot be created from null feature file");
+        this.codec = Utils.nonNull(codec, "FeatureDataSource cannot be created from null codec");
+        Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
+
         if ( ! featureFile.canRead() || featureFile.isDirectory() ) {
             throw new UserException.CouldNotReadInputFile("File " + featureFile.getAbsolutePath() + " does not exist, is unreadable, or is a directory");
         }
-
-        this.featureFile = featureFile;
 
         try {
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
@@ -171,7 +168,6 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         this.intervalsForTraversal = null;
         this.queryCache = new FeatureCache<>();
         this.queryLookaheadBases = queryLookaheadBases;
-        this.codec = codec;
         this.name = name;
         this.hasIndex = featureReader.hasIndex(); // Cache this result, as it's fairly expensive to determine
     }

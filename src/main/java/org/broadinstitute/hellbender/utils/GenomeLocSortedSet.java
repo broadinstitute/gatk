@@ -37,8 +37,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
      * @param parser a non-null the parser we use to create genome locs
      */
     public GenomeLocSortedSet(final GenomeLocParser parser) {
-        if ( parser == null ) throw new IllegalArgumentException("parser cannot be null");
-        this.genomeLocParser = parser;
+        this.genomeLocParser = Utils.nonNull(parser);
     }
 
     /**
@@ -379,7 +378,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
      * @param location the GenomeLoc to remove
      */
     public void remove(GenomeLoc location) {
-        if (!mArray.contains(location)) throw new IllegalArgumentException("Unable to remove location: " + location + ", not in the list");
+        Utils.validateArg(mArray.contains(location), () -> "Unable to remove location: " + location + ", not in the list");
         mArray.remove(location);
     }
 

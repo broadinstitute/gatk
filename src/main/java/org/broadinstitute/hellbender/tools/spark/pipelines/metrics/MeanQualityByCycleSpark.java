@@ -122,9 +122,9 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
          */
         public HistogramGenerator merge(final HistogramGenerator hg2) {
             Utils.nonNull(hg2);
-            if (this.useOriginalQualities != hg2.useOriginalQualities){
-                throw new IllegalArgumentException("unequal useOriginalQualities. This has " + this.useOriginalQualities);
-            }
+            Utils.validateArg(this.useOriginalQualities == hg2.useOriginalQualities,
+                    () -> "unequal useOriginalQualities. This has " + this.useOriginalQualities);
+
             ensureArraysBigEnough(hg2.maxLengthSoFar);
             for (int i = 0; i < hg2.firstReadTotalsByCycle.length; i++) {
                this.firstReadTotalsByCycle[i] += hg2.firstReadTotalsByCycle[i];

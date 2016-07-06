@@ -95,18 +95,9 @@ public final class ReferenceMemorySource implements ReferenceDataSource {
             // special case: no need to make a copy
             return new ReferenceSequence(contig, contigIndex, basesBytes);
         }
-        if (startIndex<0) {
-            throw new IllegalArgumentException("Asking for start "+start+" on contig "+contig+" but the ReferenceData only has data starting at "+bases.getInterval().getStart());
-        }
-        if (startIndex>=basesBytes.length) {
-            throw new IllegalArgumentException("Asking for start "+start+" on contig "+contig+" but the ReferenceData only has data until "+bases.getInterval().getEnd());
-        }
-        if (startIndex+length>basesBytes.length) {
-            throw new IllegalArgumentException("Asking for stop "+stop+" on contig "+contig+" but the ReferenceData only has data until "+bases.getInterval().getEnd());
-        }
-        if (length<0) {
-            throw new IllegalArgumentException("Asking for stop<start ("+stop+"<"+start+")");
-        }
+        Utils.validIndex(startIndex, basesBytes.length);
+        Utils.validateArg(startIndex+length <= basesBytes.length, () -> String.format("Asking for stop %d on contig %s but the ReferenceData only has data until %d.", stop, contig, bases.getInterval().getEnd()));
+        Utils.validateArg(length >= 0, () -> String.format("Asking for stop<start (%d < %d)", stop, start));
         return new ReferenceSequence(contig, contigIndex, Arrays.copyOfRange(basesBytes, startIndex, startIndex+length));
     }
 

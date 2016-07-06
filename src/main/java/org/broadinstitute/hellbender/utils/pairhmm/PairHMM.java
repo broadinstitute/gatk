@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -111,8 +112,8 @@ public abstract class PairHMM implements Closeable{
      * @throws IllegalArgumentException if readMaxLength or haplotypeMaxLength is less than or equal to zero
      */
     public void initialize( final int readMaxLength, final int haplotypeMaxLength ) throws IllegalArgumentException {
-        if ( readMaxLength <= 0 ) throw new IllegalArgumentException("readMaxLength must be > 0 but got " + readMaxLength);
-        if ( haplotypeMaxLength <= 0 ) throw new IllegalArgumentException("haplotypeMaxLength must be > 0 but got " + haplotypeMaxLength);
+        Utils.validateArg(readMaxLength > 0, () -> "readMaxLength must be > 0 but got " + readMaxLength);
+        Utils.validateArg(haplotypeMaxLength > 0, () -> "haplotypeMaxLength must be > 0 but got " + haplotypeMaxLength);
 
         maxHaplotypeLength = haplotypeMaxLength;
         maxReadLength = readMaxLength;
@@ -256,14 +257,14 @@ public abstract class PairHMM implements Closeable{
                                                                   final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
 
         if ( ! initialized ) throw new IllegalStateException("Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
-        if ( haplotypeBases == null ) throw new IllegalArgumentException("haplotypeBases cannot be null");
-        if ( haplotypeBases.length > maxHaplotypeLength ) throw new IllegalArgumentException("Haplotype bases is too long, got " + haplotypeBases.length + " but max is " + maxHaplotypeLength);
-        if ( readBases == null ) throw new IllegalArgumentException("readBases cannot be null");
-        if ( readBases.length > maxReadLength ) throw new IllegalArgumentException("readBases is too long, got " + readBases.length + " but max is " + maxReadLength);
-        if ( readQuals.length != readBases.length ) throw new IllegalArgumentException("Read bases and read quals aren't the same size: " + readBases.length + " vs " + readQuals.length);
-        if ( insertionGOP.length != readBases.length ) throw new IllegalArgumentException("Read bases and read insertion quals aren't the same size: " + readBases.length + " vs " + insertionGOP.length);
-        if ( deletionGOP.length != readBases.length ) throw new IllegalArgumentException("Read bases and read deletion quals aren't the same size: " + readBases.length + " vs " + deletionGOP.length);
-        if ( overallGCP.length != readBases.length ) throw new IllegalArgumentException("Read bases and overall GCP aren't the same size: " + readBases.length + " vs " + overallGCP.length);
+        Utils.nonNull(haplotypeBases, "haplotypeBases may not be null");
+        Utils.validateArg( haplotypeBases.length <= maxHaplotypeLength, () -> "Haplotype bases is too long, got " + haplotypeBases.length + " but max is " + maxHaplotypeLength);
+        Utils.nonNull(readBases);
+        Utils.validateArg( readBases.length <= maxReadLength, () -> "readBases is too long, got " + readBases.length + " but max is " + maxReadLength);
+        Utils.validateArg(readQuals.length == readBases.length, () -> "Read bases and read quals aren't the same size: " + readBases.length + " vs " + readQuals.length);
+        Utils.validateArg( insertionGOP.length == readBases.length, () -> "Read bases and read insertion quals aren't the same size: " + readBases.length + " vs " + insertionGOP.length);
+        Utils.validateArg( deletionGOP.length == readBases.length, () -> "Read bases and read deletion quals aren't the same size: " + readBases.length + " vs " + deletionGOP.length);
+        Utils.validateArg( overallGCP.length == readBases.length, () -> "Read bases and overall GCP aren't the same size: " + readBases.length + " vs " + overallGCP.length);
 
         paddedReadLength = readBases.length + 1;
         paddedHaplotypeLength = haplotypeBases.length + 1;

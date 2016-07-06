@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.ByteArrayIterator;
 
 import java.util.Iterator;
@@ -105,12 +106,9 @@ public final class ReferenceContext implements Iterable<Byte> {
         this.dataSource = dataSource;
         this.cachedSequence = null;
         this.interval = interval;
-        if ( interval == null && window != null ) {
-          throw new IllegalArgumentException("if interval is null then window must be null too but was " + window);
-        }
-        if ( interval != null && window != null && ! window.contains(interval) ) {
-            throw new IllegalArgumentException("window " + window + " does not contain the interval " + interval);
-        }
+        Utils.validateArg(interval != null || window == null, () -> "if interval is null then window must be null too but was " + window);
+        Utils.validateArg( interval == null || window == null || window.contains(interval), () ->
+                "window " + window + " does not contain the interval " + interval);
 
         // The "windowless" case
         if ( window == null ) {

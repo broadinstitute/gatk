@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -90,24 +91,21 @@ public final class IntervalListTools extends PicardCommandLineProgram {
         CONCAT("The concatenation of all the INPUTs, no sorting or merging of overlapping/abutting intervals implied. Will result in an unsorted list unless requested otherwise.") {
             @Override
             IntervalList act(final List<IntervalList> list, final List<IntervalList> unused) {
-                if (!unused.isEmpty())
-                    throw new IllegalArgumentException(String.format("Second List found when action was %s. Ignoring second list.", this.name()));
+                Utils.validateArg(unused.isEmpty(), () -> String.format("Second List found when action was %s. Ignoring second list.", name()));
                 return IntervalList.concatenate(list);
             }
         },
         UNION("Like CONCATENATE but with UNIQUE and SORT implied, the result being the set-wise union of all INPUTS.") {
             @Override
             IntervalList act(final List<IntervalList> list, final List<IntervalList> unused) {
-                if (!unused.isEmpty())
-                    throw new IllegalArgumentException(String.format("Second List found when action was %s. Ignoring second list.", this.name()));
+                Utils.validateArg(unused.isEmpty(), () -> String.format("Second List found when action was %s. Ignoring second list.", name()));
                 return IntervalList.union(list);
             }
         },
         INTERSECT("The sorted, uniqued set of all loci that are contained in all of the INPUTs.") {
             @Override
             IntervalList act(final List<IntervalList> list, final List<IntervalList> unused) {
-                if (!unused.isEmpty())
-                    throw new IllegalArgumentException(String.format("Second List found when action was %s. Ignoring second list.", this.name()));
+                Utils.validateArg(unused.isEmpty(), () -> String.format("Second List found when action was %s. Ignoring second list.", name()));
                 return IntervalList.intersection(list);
             }
         },

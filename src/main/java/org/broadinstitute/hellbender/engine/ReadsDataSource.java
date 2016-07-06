@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -109,9 +110,8 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      */
     public ReadsDataSource( final List<File> samFiles, SamReaderFactory customSamReaderFactory ) {
-        if ( samFiles == null || samFiles.isEmpty()) {
-            throw new IllegalArgumentException("ReadsDataSource cannot be created from empty file list");
-        }
+        Utils.nonNull(samFiles);
+        Utils.nonEmpty(samFiles, "ReadsDataSource cannot be created from empty file list");
 
         readers = new LinkedHashMap<>(samFiles.size() * 2);
         backingFiles = new LinkedHashMap<>(samFiles.size() * 2);

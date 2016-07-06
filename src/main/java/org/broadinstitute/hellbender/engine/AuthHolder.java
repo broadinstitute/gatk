@@ -8,6 +8,7 @@ import com.google.cloud.genomics.utils.GenomicsFactory;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,9 +31,7 @@ public class AuthHolder implements Serializable {
     private final byte[] serializedOfflineAuth;
 
     private AuthHolder(String appName, String apiKey, String secretsFile) throws IOException, GeneralSecurityException {
-        if (null==apiKey && null==secretsFile) {
-            throw new IllegalArgumentException("AuthHolder requires apiKey or secretsFile (neither was provided)");
-        }
+        Utils.validateArg(apiKey != null || secretsFile != null, "AuthHolder requires apiKey or secretsFile (neither was provided)");
         this.appName = appName;
         this.apiKey = apiKey;
         GCSOptions options = PipelineOptionsFactory.as(GCSOptions.class);

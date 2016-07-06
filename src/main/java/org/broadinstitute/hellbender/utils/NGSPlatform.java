@@ -69,9 +69,7 @@ public enum NGSPlatform {
      *         if there is no read group for read, or there's no PL field for the read group
      */
     public static NGSPlatform fromRead( final GATKRead read, final SAMFileHeader header ) {
-        if ( read == null ) {
-            throw new IllegalArgumentException("read cannot be null");
-        }
+        Utils.nonNull(read, "read cannot be null");
         return fromReadGroupPL(ReadUtils.getPlatform(read, header));
     }
 

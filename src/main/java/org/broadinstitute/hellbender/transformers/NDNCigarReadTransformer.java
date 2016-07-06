@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
@@ -28,8 +29,7 @@ public final class NDNCigarReadTransformer implements ReadTransformer {
     @Override
     public GATKRead apply(final GATKRead read) {
         final Cigar originalCigar = read.getCigar();
-        if (originalCigar.isValid(read.getName(),-1) != null)
-            throw new IllegalArgumentException("try to transform a read with non-valid cigar string: readName: "+read.getName()+" Cigar String: "+originalCigar);
+        Utils.validateArg(originalCigar.isValid(read.getName(), -1) == null, () -> "try to transform a read with non-valid cigar string: readName: "+read.getName()+" Cigar String: "+originalCigar);
         read.setCigar(refactorNDNtoN(originalCigar));
         return read;
     }

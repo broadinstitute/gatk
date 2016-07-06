@@ -552,13 +552,8 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
      * this and that GenomeLoc are both mapped.
      */
     public GenomeLoc endpointSpan(final GenomeLoc that) {
-        if(GenomeLoc.isUnmapped(this) || GenomeLoc.isUnmapped(that)) {
-            throw new IllegalArgumentException("Cannot get endpoint span for unmerged genome locs");
-        }
-
-        if ( ! this.getContig().equals(that.getContig()) ) {
-            throw new IllegalArgumentException("Cannot get endpoint span for genome locs on different contigs");
-        }
+        Utils.validateArg(!isUnmapped(this) && !isUnmapped(that), "Cannot get endpoint span for unmerged genome locs");
+        Utils.validateArg(this.getContig().equals(that.getContig()), "Cannot get endpoint span for genome locs on different contigs");
 
         return new GenomeLoc(getContig(),this.contigIndex,Math.min(getStart(),that.getStart()),Math.max(getStop(),that.getStop()));
     }

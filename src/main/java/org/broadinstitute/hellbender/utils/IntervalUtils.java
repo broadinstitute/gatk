@@ -107,9 +107,7 @@ public final class IntervalUtils {
             return null;
         }
         final List<String> contigs = locations.stream().map(l -> l.getContig()).distinct().collect(Collectors.toList());
-        if (contigs.size() != 1){
-            throw new IllegalArgumentException("found different contigs from inputs:" + contigs);
-        }
+        Utils.validateArg(contigs.size() == 1, () -> "found different contigs from inputs:" + contigs);
         final int minStart = locations.stream().mapToInt(l -> l.getStart()).min().getAsInt();
         final int maxEnd   = locations.stream().mapToInt(l -> l.getEnd()).max().getAsInt();
         return new SimpleInterval(contigs.get(0), minStart, maxEnd);
@@ -963,7 +961,7 @@ public final class IntervalUtils {
      */
     public static SimpleInterval trimIntervalToContig(final String contig, final int start, final int stop, final int contigLength) {
         Utils.nonNull(contig);
-        Utils.validateArg(contigLength >= 1, "contigLength should be at least 1 but was " + contigLength);
+        Utils.validateArg(contigLength >= 1, () -> "contigLength should be at least 1 but was " + contigLength);
         final int boundedStart = Math.max(1, start);
         final int boundedStop = Math.min(contigLength, stop);
 

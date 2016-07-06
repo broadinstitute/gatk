@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -171,13 +172,12 @@ public class FeatureContext {
      *         (will be null if this context has no interval)
      */
     private SimpleInterval getQueryInterval(final int windowLeadingBases, final int windowTrailingBases){
-        if(windowLeadingBases < 0) throw new IllegalArgumentException("Window starts after the current interval");
-        if(windowTrailingBases < 0) throw new IllegalArgumentException("Window ends before the current interval");
+        Utils.validateArg(windowLeadingBases >= 0, "Window starts after the current interval");
+        Utils.validateArg(windowTrailingBases >= 0, "Window ends before the current interval");
 
         if (interval == null) {
             return null;
-        }
-        if (windowLeadingBases == 0 && windowTrailingBases == 0){
+        } else if (windowLeadingBases == 0 && windowTrailingBases == 0){
             return interval;
         }
         return new SimpleInterval(interval.getContig(), windowStart(interval, windowLeadingBases), windowStop(interval, windowTrailingBases));

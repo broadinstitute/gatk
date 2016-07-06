@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.*;
@@ -45,13 +46,10 @@ public final class RenameSampleInVcf extends PicardCommandLineProgram {
         try (final VCFFileReader in = new VCFFileReader(INPUT)) {
             final VCFHeader header = in.getFileHeader();
 
-            if (header.getGenotypeSamples().size() > 1) {
-                throw new IllegalArgumentException("Input VCF must be single-sample.");
-            }
+            Utils.validateArg(header.getGenotypeSamples().size() == 1, "Input VCF must be single-sample.");
 
-            if (OLD_SAMPLE_NAME != null && !OLD_SAMPLE_NAME.equals(header.getGenotypeSamples().get(0))) {
-                throw new IllegalArgumentException("Input VCF did not contain expected sample. Contained: " + header.getGenotypeSamples().get(0));
-            }
+            Utils.validateArg(OLD_SAMPLE_NAME == null || OLD_SAMPLE_NAME.equals(header.getGenotypeSamples().get(0)),
+                    () -> "Input VCF did not contain expected sample. Contained: " + header.getGenotypeSamples().get(0));
 
             final EnumSet<Options> options = EnumSet.copyOf(VariantContextWriterBuilder.DEFAULT_OPTIONS);
             if (CREATE_INDEX) options.add(Options.INDEX_ON_THE_FLY);

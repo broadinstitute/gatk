@@ -292,9 +292,7 @@ public final class TargetCollectionUnitTest extends BaseTest {
 
         @Override
         public String name(final SimpleInterval target) {
-            if (target == null) {
-                throw new IllegalArgumentException("the input target cannot be null");
-            }
+            Utils.nonNull(target, "the input target cannot be null");
             return target.toString();
         }
 

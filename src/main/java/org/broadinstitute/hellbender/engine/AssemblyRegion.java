@@ -89,12 +89,8 @@ public final class AssemblyRegion implements Locatable {
     public AssemblyRegion( final SimpleInterval activeRegionLoc, final List<ActivityProfileState> supportingStates, final boolean isActive, final int extension , final SAMFileHeader header ) {
         Utils.nonNull(activeRegionLoc, "activeRegionLoc cannot be null");
         Utils.nonNull(header, "header cannot be null");
-        if ( activeRegionLoc.size() == 0 ) {
-            throw new IllegalArgumentException("Active region cannot be of zero size, but got " + activeRegionLoc);
-        }
-        if ( extension < 0 ) {
-            throw new IllegalArgumentException("extension cannot be < 0 but got " + extension);
-        }
+        Utils.validateArg( activeRegionLoc.size() > 0, () -> "Active region cannot be of zero size, but got " + activeRegionLoc);
+        Utils.validateArg( extension >= 0, () -> "extension cannot be < 0 but got " + extension);
 
         this.header = header;
         this.reads = new ArrayList<>();
@@ -127,9 +123,8 @@ public final class AssemblyRegion implements Locatable {
 
     private void checkStates(final SimpleInterval activeRegionLoc) {
         if ( ! this.supportingStates.isEmpty() ) {
-            if ( this.supportingStates.size() != activeRegionLoc.size() ) {
-                throw new IllegalArgumentException("Supporting states wasn't empty but it doesn't have exactly one state per bp in the active region: states " + this.supportingStates.size() + " vs. bp in region = " + activeRegionLoc.size());
-            }
+            Utils.validateArg( this.supportingStates.size() == activeRegionLoc.size(), () ->
+                    "Supporting states wasn't empty but it doesn't have exactly one state per bp in the active region: states " + this.supportingStates.size() + " vs. bp in region = " + activeRegionLoc.size());
             SimpleInterval lastStateLoc = null;
             for ( final ActivityProfileState state : this.supportingStates ) {
                 if ( lastStateLoc != null ) {
@@ -235,9 +230,7 @@ public final class AssemblyRegion implements Locatable {
      */
     public AssemblyRegion trim(final SimpleInterval span, final int extensionSize) {
         Utils.nonNull(span, "Active region extent cannot be null");
-        if ( extensionSize < 0) {
-            throw new IllegalArgumentException("the extensionSize size must be 0 or greater");
-        }
+        Utils.validateArg( extensionSize >= 0, "the extensionSize size must be 0 or greater");
         final int extendStart = Math.max(1,span.getStart() - extensionSize);
         final int maxStop = header.getSequence(span.getContig()).getSequenceLength();
         final int extendStop = Math.min(span.getEnd() + extensionSize, maxStop);
@@ -285,9 +278,7 @@ public final class AssemblyRegion implements Locatable {
     public AssemblyRegion trim(final SimpleInterval span, final SimpleInterval extendedSpan) {
         Utils.nonNull(span, "Active region extent cannot be null");
         Utils.nonNull(extendedSpan, "Active region extended span cannot be null");
-        if ( ! extendedSpan.contains(span)) {
-            throw new IllegalArgumentException("The requested extended span must fully contain the requested span");
-        }
+        Utils.validateArg(extendedSpan.contains(span), "The requested extended span must fully contain the requested span");
 
         final SimpleInterval subActive = getSpan().intersect(span);
         final int requiredOnRight = Math.max(extendedSpan.getEnd() - subActive.getEnd(), 0);
@@ -340,22 +331,18 @@ public final class AssemblyRegion implements Locatable {
      */
     public void add( final GATKRead read ) {
         Utils.nonNull(read, "Read cannot be null");
-
         final SimpleInterval readLoc = new SimpleInterval( read );
-        if ( ! readOverlapsRegion(read) ) {
-            throw new IllegalArgumentException("Read location " + readLoc + " doesn't overlap with active region extended span " + extendedLoc);
-        }
+        Utils.validateArg(readOverlapsRegion(read), () ->
+                "Read location " + readLoc + " doesn't overlap with active region extended span " + extendedLoc);
 
         spanIncludingReads = spanIncludingReads.mergeWithContiguous( readLoc );
 
         if ( ! reads.isEmpty() ) {
             final GATKRead lastRead = reads.get(size() - 1);
-            if ( ! Objects.equals(lastRead.getContig(), read.getContig()) ) {
-                throw new IllegalArgumentException("Attempting to add a read to ActiveRegion not on the same contig as other reads: lastRead " + lastRead + " attempting to add " + read);
-            }
-            if ( read.getStart() < lastRead.getStart() ) {
-                throw new IllegalArgumentException("Attempting to add a read to ActiveRegion out of order w.r.t. other reads: lastRead " + lastRead + " at " + lastRead.getStart() + " attempting to add " + read + " at " + read.getStart());
-            }
+            Utils.validateArg(Objects.equals(lastRead.getContig(), read.getContig()), () ->
+                    "Attempting to add a read to ActiveRegion not on the same contig as other reads: lastRead " + lastRead + " attempting to add " + read);
+            Utils.validateArg( read.getStart() >= lastRead.getStart(), () ->
+                    "Attempting to add a read to ActiveRegion out of order w.r.t. other reads: lastRead " + lastRead + " at " + lastRead.getStart() + " attempting to add " + read + " at " + read.getStart());
         }
 
         reads.add( read );
@@ -454,12 +441,8 @@ public final class AssemblyRegion implements Locatable {
     private static byte[] getReference(final IndexedFastaSequenceFile referenceReader, final int padding, final SimpleInterval genomeLoc) {
         Utils.nonNull(referenceReader, "referenceReader cannot be null");
         Utils.nonNull(genomeLoc, "genomeLoc cannot be null");
-        if ( padding < 0 ) {
-            throw new IllegalArgumentException("padding must be a positive integer but got " + padding);
-        }
-        if ( genomeLoc.size() == 0 ) {
-            throw new IllegalArgumentException("GenomeLoc must have size > 0 but got " + genomeLoc);
-        }
+        Utils.validateArg( padding >= 0, () -> "padding must be a positive integer but got " + padding);
+        Utils.validateArg( genomeLoc.size() > 0, () -> "GenomeLoc must have size > 0 but got " + genomeLoc);
 
         return referenceReader.getSubsequenceAt( genomeLoc.getContig(),
                 Math.max(1, genomeLoc.getStart() - padding),

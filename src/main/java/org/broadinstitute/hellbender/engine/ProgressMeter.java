@@ -144,10 +144,7 @@ public final class ProgressMeter {
     @VisibleForTesting
     ProgressMeter( final double secondsBetweenUpdates, final LongSupplier timeFunction ) {
         Utils.nonNull(timeFunction);
-        if ( secondsBetweenUpdates <= 0.0 ) {
-            throw new IllegalArgumentException("secondsBetweenUpdates must be > 0.0");
-        }
-
+        Utils.validateArg(secondsBetweenUpdates > 0, "secondsBetweenUpdates must be > 0.0");
         this.started = false;
         this.stopped = false;
         this.secondsBetweenUpdates = secondsBetweenUpdates;

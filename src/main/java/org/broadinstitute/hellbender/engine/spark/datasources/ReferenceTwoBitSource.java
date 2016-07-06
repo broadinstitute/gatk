@@ -10,6 +10,7 @@ import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.utils.io.ByteAccess;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.collection.JavaConversions;
@@ -36,9 +37,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
 
     public ReferenceTwoBitSource(PipelineOptions popts, String referenceURL) throws IOException {
         this.referenceURL = referenceURL;
-        if (!isTwoBit(this.referenceURL)) {
-            throw new IllegalArgumentException("ReferenceTwoBitSource can only take .2bit files");
-        }
+        Utils.validateArg(isTwoBit(this.referenceURL), "ReferenceTwoBitSource can only take .2bit files");
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL, popts));
         ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
@@ -85,10 +84,7 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
         // The 2bit query API does not support queries beyond the ends of contigs, so we need
         // to truncate our interval at the contig end if necessary.
         final TwoBitRecord contigRecord = twoBitSeqEntries.get(interval.getContig());
-        if ( contigRecord == null ) {
-            throw new IllegalArgumentException("Contig " + interval.getContig() + " not found in reference dictionary");
-        }
-
+        Utils.nonNull(contigRecord, () -> "Contig " + interval.getContig() + " not found in reference dictionary");
         return new SimpleInterval(interval.getContig(), interval.getStart(), Math.min(interval.getEnd(), contigRecord.dnaSize()));
     }
 

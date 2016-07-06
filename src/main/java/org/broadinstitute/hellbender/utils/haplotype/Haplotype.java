@@ -84,13 +84,8 @@ public final class Haplotype extends Allele {
      */
     public Haplotype trim(final Locatable loc) {
         Utils.nonNull( loc, "Loc cannot be null");
-
-        if ( genomeLocation == null ) {
-            throw new IllegalStateException("Cannot trim a Haplotype without containing GenomeLoc");
-        }
-        if ( ! new SimpleInterval(genomeLocation).contains(loc) ) {
-            throw new IllegalArgumentException("Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
-        }
+        Utils.nonNull(genomeLocation, "Cannot trim a Haplotype without containing GenomeLoc");
+        Utils.validateArg(new SimpleInterval(genomeLocation).contains(loc), () -> "Can only trim a Haplotype to a containing span.  My loc is " + genomeLocation + " but wanted trim to " + loc);
         Utils.nonNull( getCigar(), "Cannot trim haplotype without a cigar " + this);
 
         final int newStart = loc.getStart() - this.genomeLocation.getStart();
@@ -179,9 +174,7 @@ public final class Haplotype extends Allele {
      * @return a newly allocated Cigar that consolidate(getCigar + padSize + M)
      */
     public Cigar getConsolidatedPaddedCigar(final int padSize) {
-        if ( padSize < 0 ) {
-            throw new IllegalArgumentException("padSize must be >= 0 but got " + padSize);
-        }
+        Utils.validateArg( padSize >= 0, () -> "padSize must be >= 0 but got " + padSize);
         final Cigar extendedHaplotypeCigar = new Cigar(getCigar().getCigarElements());
         if ( padSize > 0 ) {
             extendedHaplotypeCigar.add(new CigarElement(padSize, CigarOperator.M));
@@ -198,9 +191,7 @@ public final class Haplotype extends Allele {
      */
     public void setCigar( final Cigar cigar ) {
         this.cigar = AlignmentUtils.consolidateCigar(cigar);
-        if ( this.cigar.getReadLength() != length() ) {
-            throw new IllegalArgumentException("Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
-        }
+        Utils.validateArg( this.cigar.getReadLength() == length(), () -> "Read length " + length() + " not equal to the read length of the cigar " + cigar.getReadLength() + " " + this.cigar);
     }
 
     public Haplotype insertAllele( final Allele refAllele, final Allele altAllele, final int refInsertLocation, final int genomicInsertLocation ) {

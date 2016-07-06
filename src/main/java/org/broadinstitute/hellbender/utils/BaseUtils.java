@@ -134,9 +134,8 @@ public final class BaseUtils {
      * @return 0, 1, 2, 3, or -1 if the base can't be understood
      */
     public static int simpleBaseToBaseIndex(final byte base) {
-        if ( base < 0 || base >= 256 ) {
-            throw new IllegalArgumentException("Non-standard bases were encountered in either the input reference or BAM file(s)");
-        }
+        Utils.validateArg( base >= 0 && base < 256,
+                "Non-standard bases were encountered in either the input reference or BAM file(s)");
         return baseIndexMap[base];
     }
 
@@ -240,22 +239,12 @@ public final class BaseUtils {
      */
     public static void fillWithRandomBases(final byte[] dest, final int fromIndex, final int toIndex) {
         final Random rnd = Utils.getRandomGenerator();
-        if (dest == null) {
-            throw new IllegalArgumentException("the dest array cannot be null");
-        }
-        if (fromIndex > toIndex) {
-            throw new IllegalArgumentException("fromIndex cannot be larger than toIndex");
-        }
-        if (fromIndex < 0) {
-            throw new IllegalArgumentException("both indexes must be positive");
-        }
-        if (toIndex > dest.length) {
-            throw new IllegalArgumentException("both indexes must be less or equal to the destination array length");
-        }
+        Utils.nonNull(dest, "the dest array cannot be null");
+        Utils.validateArg(fromIndex <= toIndex, "fromIndex cannot be larger than toIndex");
+        Utils.validateArg(fromIndex >= 0, "both indexes must be positive");
+        Utils.validateArg(toIndex <= dest.length, "both indexes must be less or equal to the destination array length");
 
-        for (int i = fromIndex; i < toIndex; i++) {
-            dest[i] = baseIndexToSimpleBase(rnd.nextInt(4));
-        }
+        new IndexRange(fromIndex, toIndex).forEach(i -> dest[i] = baseIndexToSimpleBase(rnd.nextInt(4)));
     }
 
     public static byte getComplement(final byte base) {
