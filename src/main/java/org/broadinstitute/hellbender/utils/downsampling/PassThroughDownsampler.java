@@ -22,7 +22,7 @@ public final class PassThroughDownsampler extends ReadsDownsampler {
 
     @Override
     public void submit(final GATKRead newRead ) {
-        Utils.nonNull(newRead);
+        Utils.nonNull(newRead, "newRead");
         // All reads pass-through, no reads get downsampled
         selectedReads.add(newRead);
     }

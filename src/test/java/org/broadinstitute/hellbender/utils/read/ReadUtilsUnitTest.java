@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import com.google.api.services.genomics.model.LinearAlignment;
+import com.google.api.services.genomics.model.Position;
+import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
@@ -390,6 +393,79 @@ public final class ReadUtilsUnitTest extends BaseTest {
     public void testGetReferenceIndex( final GATKRead read, final SAMFileHeader header, final int expectedReferenceIndex, final int expectedMateReferenceIndex ) {
         Assert.assertEquals(ReadUtils.getReferenceIndex(read, header), expectedReferenceIndex, "Wrong reference index for read");
         Assert.assertEquals(ReadUtils.getMateReferenceIndex(read, header), expectedMateReferenceIndex, "Wrong reference index for read's mate");
+    }
+
+    @Test
+    public void testGetAssignedReferenceIndex() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead mappedRead = ArtificialReadUtils.createArtificialRead(header, "foo", 0, 5, 10);
+        final GATKRead unmappedRead = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{'A'}, new byte[]{30});
+        final GATKRead unmappedReadWithAssignedPosition = ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, "2", 10, new byte[]{'A'}, new byte[]{30});
+
+        Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(mappedRead, header), 0);
+        Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(unmappedRead, header), -1);
+        Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(unmappedReadWithAssignedPosition, header), 1);
+    }
+
+    @DataProvider(name = "ReadHasNoAssignedPositionTestData")
+    public Object[][] readHasNoAssignedPositionTestData() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+
+        // To test the "null contig" cases, we need to use a Google Genomics Read, since SAMRecord doesn't allow it
+        final Read unmappedGoogleReadWithNullContigSetStart = new Read();
+        unmappedGoogleReadWithNullContigSetStart.setAlignment(new LinearAlignment());
+        unmappedGoogleReadWithNullContigSetStart.getAlignment().setPosition(new Position());
+        unmappedGoogleReadWithNullContigSetStart.getAlignment().getPosition().setReferenceName(null);
+        unmappedGoogleReadWithNullContigSetStart.getAlignment().getPosition().setPosition(10l);
+        final GATKRead unmappedReadWithNullContigSetStart = new GoogleGenomicsReadToGATKReadAdapter(unmappedGoogleReadWithNullContigSetStart);
+
+        final Read unmappedGoogleReadWithNullContigUnsetStart = new Read();
+        unmappedGoogleReadWithNullContigUnsetStart.setAlignment(new LinearAlignment());
+        unmappedGoogleReadWithNullContigUnsetStart.getAlignment().setPosition(new Position());
+        unmappedGoogleReadWithNullContigUnsetStart.getAlignment().getPosition().setReferenceName(null);
+        unmappedGoogleReadWithNullContigUnsetStart.getAlignment().getPosition().setPosition(Long.valueOf(ReadConstants.UNSET_POSITION));
+        final GATKRead unmappedReadWithNullContigUnsetStart = new GoogleGenomicsReadToGATKReadAdapter(unmappedGoogleReadWithNullContigUnsetStart);
+
+        // We'll also test the improbable case of a SAMRecord marked as mapped, but with an unset contig/start
+        final SAMRecord mappedSAMWithUnsetContigSetStart = new SAMRecord(header);
+        mappedSAMWithUnsetContigSetStart.setReferenceName(ReadConstants.UNSET_CONTIG);
+        mappedSAMWithUnsetContigSetStart.setAlignmentStart(10);
+        mappedSAMWithUnsetContigSetStart.setReadUnmappedFlag(false);
+        final GATKRead mappedReadWithUnsetContigSetStart = new SAMRecordToGATKReadAdapter(mappedSAMWithUnsetContigSetStart);
+
+        final SAMRecord mappedSAMWithSetContigUnsetStart = new SAMRecord(header);
+        mappedSAMWithSetContigUnsetStart.setReferenceName("1");
+        mappedSAMWithSetContigUnsetStart.setAlignmentStart(ReadConstants.UNSET_POSITION);
+        mappedSAMWithSetContigUnsetStart.setReadUnmappedFlag(false);
+        final GATKRead mappedReadWithSetContigUnsetStart = new SAMRecordToGATKReadAdapter(mappedSAMWithSetContigUnsetStart);
+
+        return new Object[][] {
+                // Mapped read with position
+                { ArtificialReadUtils.createArtificialRead(header, "foo", 0, 5, 10), false },
+                // Basic unmapped read with no position
+                { ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{'A'}, new byte[]{30}), true },
+                // Unmapped read with set position (contig and start)
+                { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, "1", 10, new byte[]{'A'}, new byte[]{30}), false },
+                // Unmapped read with null contig, set start
+                { unmappedReadWithNullContigSetStart, true },
+                // Unmapped read with "*" contig, set start
+                { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, ReadConstants.UNSET_CONTIG, 10, new byte[]{'A'}, new byte[]{30}), true },
+                // Unmapped read with set contig, unset start
+                { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, "1", ReadConstants.UNSET_POSITION, new byte[]{'A'}, new byte[]{30}), true },
+                // Unmapped read with null contig, unset start
+                { unmappedReadWithNullContigUnsetStart, true },
+                // Unmapped read with "*" contig, unset start
+                { ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, ReadConstants.UNSET_CONTIG, ReadConstants.UNSET_POSITION, new byte[]{'A'}, new byte[]{30}), true },
+                // "Mapped" read with unset contig, set start
+                { mappedReadWithUnsetContigSetStart, true },
+                // "Mapped" read with set contig, unset start
+                { mappedReadWithSetContigUnsetStart, true }
+        };
+    }
+
+    @Test(dataProvider = "ReadHasNoAssignedPositionTestData")
+    public void testReadHasNoAssignedPosition( final GATKRead read, final boolean expectedResult ) {
+        Assert.assertEquals(ReadUtils.readHasNoAssignedPosition(read), expectedResult);
     }
 
     @DataProvider(name="createSAMWriter")

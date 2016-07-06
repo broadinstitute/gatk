@@ -155,6 +155,43 @@ public final class ReadUtils {
     }
 
     /**
+     * Returns the reference index in the given header of the read's assigned contig.
+     *
+     * Unlike {@link #getReferenceIndex}, which returns {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX}
+     * for all unmapped reads, this method will return a reference index for unmapped
+     * reads that are assigned a nominal position (eg., the position of their mates),
+     * which is useful for sorting.
+     *
+     * @param read read whose reference index to look up
+     * @param header SAM header defining contig indices
+     * @return the reference index in the given header of the read's contig,
+     *         or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read's contig
+     *         is not found in the header
+     */
+    public static int getAssignedReferenceIndex( final GATKRead read, final SAMFileHeader header ) {
+        return header.getSequenceIndex(read.getAssignedContig());
+    }
+
+    /**
+     * Checks whether the provided read has an assigned position. This is different than checking
+     * unmapped status, since unmapped reads are often assigned a nominal position (eg., the position
+     * of their mapped mate). A read is considered to have no assigned position if its assigned contig
+     * is either {@code null} or {@link ReadConstants#UNSET_CONTIG}, or its assigned start position is
+     * {@link ReadConstants#UNSET_POSITION}, regardless of whether the read is actually marked as mapped
+     * or unmapped.
+     *
+     * @param read read to check
+     * @return true if the read has no assigned position, otherwise false
+     */
+    public static boolean readHasNoAssignedPosition( final GATKRead read ) {
+        // Check actual assigned positions rather than unmapped status, so that unmapped reads with
+        // assigned positions will be considered to have a position
+        return read.getAssignedContig() == null ||
+               read.getAssignedContig().equals(ReadConstants.UNSET_CONTIG) ||
+               read.getAssignedStart() == ReadConstants.UNSET_POSITION;
+    }
+
+    /**
      * Returns the reference index in the given header of the contig of the read's mate,
      * or {@link SAMRecord#NO_ALIGNMENT_REFERENCE_INDEX} if the read's mate is unmapped.
      *

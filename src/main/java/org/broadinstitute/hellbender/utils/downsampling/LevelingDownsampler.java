@@ -70,7 +70,7 @@ public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler
     }
 
     @Override
-    public void submit( final Collection<T> items ){
+    public void submit( final Collection<T> items ) {
         Utils.nonNull(items, "items");
         Utils.validateArg(!items.contains(null), "null item");
         groups.addAll(items);
@@ -191,7 +191,7 @@ public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler
 
                 if ( ! itemsToKeep.get(currentIndex) ) {
                     iter.remove();
-                    numDiscardedItems++;
+                    incrementNumberOfDiscardedItems(1);
                 }
 
                 currentIndex++;
@@ -208,7 +208,7 @@ public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler
                 }
                 currentIndex++;
             }
-            numDiscardedItems += group.size() - keptItems.size();
+            incrementNumberOfDiscardedItems(group.size() - keptItems.size());
             group.clear();
             group.addAll(keptItems);
         }

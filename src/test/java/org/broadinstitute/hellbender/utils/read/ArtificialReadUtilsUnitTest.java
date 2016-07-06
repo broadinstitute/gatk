@@ -95,5 +95,27 @@ public final class ArtificialReadUtilsUnitTest extends BaseTest {
         assertEquals(count, 1000);
     }
 
+    @Test
+    public void testCreateArtificialUnmappedRead() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead unmappedRead = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{'A'}, new byte[]{30});
 
+        Assert.assertTrue(unmappedRead.isUnmapped());
+        Assert.assertEquals(unmappedRead.getAssignedContig(), ReadConstants.UNSET_CONTIG);
+        Assert.assertEquals(unmappedRead.getAssignedStart(), ReadConstants.UNSET_POSITION);
+        Assert.assertEquals(unmappedRead.getBases(), new byte[]{'A'});
+        Assert.assertEquals(unmappedRead.getBaseQualities(), new byte[]{30});
+    }
+
+    @Test
+    public void testCreateArtificialUnmappedReadWithAssignedPosition() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead unmappedRead = ArtificialReadUtils.createArtificialUnmappedReadWithAssignedPosition(header, "1", 50, new byte[]{'A'}, new byte[]{30});
+
+        Assert.assertTrue(unmappedRead.isUnmapped());
+        Assert.assertEquals(unmappedRead.getAssignedContig(), "1");
+        Assert.assertEquals(unmappedRead.getAssignedStart(), 50);
+        Assert.assertEquals(unmappedRead.getBases(), new byte[]{'A'});
+        Assert.assertEquals(unmappedRead.getBaseQualities(), new byte[]{30});
+    }
 }

@@ -13,7 +13,7 @@ public abstract class Downsampler<T> {
     /**
      * Number of items discarded by this downsampler since the last call to resetStats()
      */
-    protected int numDiscardedItems = 0;
+    private int numDiscardedItems = 0;
 
     /**
      * Submit one item to the downsampler for consideration. Some downsamplers will be able to determine
@@ -31,7 +31,7 @@ public abstract class Downsampler<T> {
      * @param items the collection of items to submit to the downsampler for consideration
      */
     public void submit( final Collection<T> items ) {
-        Utils.nonNull( items, "submitted items must not be null");
+        Utils.nonNull(items, "submitted items must not be null");
 
         for ( final T item : items ) {
             submit(item);
@@ -98,6 +98,17 @@ public abstract class Downsampler<T> {
     }
 
     /**
+     * Increments the number of discarded items by the given value.
+     *
+     * Should only be called by Downsampler implementations, and so has protected access.
+     *
+     * @param newlyDiscardedItems amount by which to increase the number of discarded items
+     */
+    protected void incrementNumberOfDiscardedItems( final int newlyDiscardedItems ) {
+        numDiscardedItems += newlyDiscardedItems;
+    }
+
+    /**
      * Used to tell the downsampler that no more items will be submitted to it, and that it should
      * finalize any pending items.
      */
@@ -114,5 +125,4 @@ public abstract class Downsampler<T> {
     public void resetStats() {
         numDiscardedItems = 0;
     }
-
 }

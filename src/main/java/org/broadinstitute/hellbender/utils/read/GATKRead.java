@@ -24,6 +24,11 @@ import java.util.List;
  *
  * All GATKRead methods that return mutable reference types make defensive copies, with the exception
  * of the conversion methods {@link #convertToSAMRecord} and {@link #convertToGoogleGenomicsRead}.
+ *
+ * Note that {@link #getContig} and {@link #getStart} will not expose nominal positions assigned to unmapped
+ * reads for sorting purposes -- for unmapped reads, these methods will always return {@code null} or 0,
+ * respectively. To access positions assigned to unmapped reads for sorting purposes, use {@link #getAssignedContig}
+ * and {@link #getAssignedStart}.
  */
 public interface GATKRead extends Locatable {
 
@@ -71,6 +76,29 @@ public interface GATKRead extends Locatable {
      * @throws IllegalArgumentException if locatable is null, or its contig is null or "*", or its start position is less than 1
      */
     void setPosition( final Locatable locatable );
+
+    /**
+     * @return The actual contig assigned to the read, regardless of unmapped status. Unlike {@link #getContig},
+     *         which does not expose positions assigned to unmapped reads, this method will gladly return a contig
+     *         assigned to an unmapped read (typically, this will be the contig of its mapped mate). Will return either
+     *         {@link ReadConstants#UNSET_CONTIG} or {@code null} for reads with no contig, depending on
+     *         the underlying read implementation.
+     *
+     *         Useful for sorting reads in standard BAM/SAM file order, with unmapped reads interleaved with their mapped
+     *         mates -- for other uses, clients should use {@link #getContig}
+     */
+    String getAssignedContig();
+
+    /**
+     * @return The actual start position assigned to the read, regardless of unmapped status. Unlike {@link #getStart},
+     *         which does not expose positions assigned to unmapped reads, this method will gladly return a start position
+     *         assigned to an unmapped read (typically, this will be the start position of its mapped mate). Will return
+     *         {@link ReadConstants#UNSET_POSITION} for reads with no start position.
+     *
+     *         Useful for sorting reads in standard BAM/SAM file order, with unmapped reads interleaved with their mapped
+     *         mates -- for other uses, clients should use {@link #getStart}
+     */
+    int getAssignedStart();
 
     /**
      * Returns the alignment start (1-based, inclusive) adjusted for clipped bases.

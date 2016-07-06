@@ -104,6 +104,16 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public String getAssignedContig() {
+        return samRecord.getReferenceName();
+    }
+
+    @Override
+    public int getAssignedStart() {
+        return samRecord.getAlignmentStart();
+    }
+
+    @Override
     public int getUnclippedStart() {
         if ( isUnmapped() ) {
             return ReadConstants.UNSET_POSITION;

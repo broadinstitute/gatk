@@ -144,6 +144,23 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
     }
 
     @Override
+    public String getAssignedContig() {
+        if ( genomicsRead.getAlignment() != null && genomicsRead.getAlignment().getPosition() != null ) {
+            return genomicsRead.getAlignment().getPosition().getReferenceName();
+        }
+        return null;
+    }
+
+    @Override
+    public int getAssignedStart() {
+        if ( genomicsRead.getAlignment() != null && genomicsRead.getAlignment().getPosition() != null && genomicsRead.getAlignment().getPosition().getPosition() != null ) {
+            // Convert from 0-based to 1-based start position
+            return genomicsRead.getAlignment().getPosition().getPosition().intValue() + 1;
+        }
+        return ReadConstants.UNSET_POSITION;
+    }
+
+    @Override
     public int getUnclippedStart() {
         final int start = getStart();
         return start == ReadConstants.UNSET_POSITION ? ReadConstants.UNSET_POSITION :

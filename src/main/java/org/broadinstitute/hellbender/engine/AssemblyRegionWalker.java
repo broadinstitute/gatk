@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +58,9 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Argument(fullName = "assemblyRegionPadding", shortName = "assemblyRegionPadding", doc = "Amount of additional bases of context to include around each assembly region", optional = true)
     protected int assemblyRegionPadding = defaultAssemblyRegionPadding();
 
+    @Argument(fullName = "maxReadsPerAlignmentStart", shortName = "maxReadsPerAlignmentStart", doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    protected int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
+
     @Advanced
     @Argument(fullName = "activeProbabilityThreshold", shortName = "activeProbabilityThreshold", doc="Minimum probability for a locus to be considered active.", optional = true)
     protected double activeProbThreshold = defaultActiveProbThreshold();
@@ -92,6 +96,11 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * @return Default value for the {@link #assemblyRegionPadding} parameter, if none is provided on the command line
      */
     protected abstract int defaultAssemblyRegionPadding();
+
+    /**
+     * @return Default value for the {@link #maxReadsPerAlignmentStart} parameter, if none is provided on the command line
+     */
+    protected abstract int defaultMaxReadsPerAlignmentStart();
 
     /**
      * @return Default value for the {@link #activeProbThreshold} parameter, if none is provided on the command line
@@ -199,6 +208,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
             // Since reads in each shard are lazily fetched, we need to pass the filter to the window
             // instead of filtering the reads directly here
             readShard.setReadFilter(countedFilter);
+            readShard.setDownsampler(maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(maxReadsPerAlignmentStart, getHeaderForReads()) : null);
             currentReadShard = readShard;
 
             processReadShard(readShard,
