@@ -17,13 +17,13 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -67,6 +67,7 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
         variantContexts.saveAsTextFile(output);
 
         final List<VariantContext> variants = variantContexts.collect();
+        variants.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
         final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(localOutput, getReferenceSequenceDictionary(), true);
 
         vcfWriter.writeHeader(new VCFHeader());
