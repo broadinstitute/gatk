@@ -85,6 +85,8 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
         final List<Integer> mqs = new ArrayList<>(10);
         final List<Integer> alignLengths = new ArrayList<>(10);
         final BreakpointAllele breakpointAllele = assembledBreakpointsPerAllele._1;
+        final List<String> breakpointIds = new ArrayList<>(10);
+        final List<String> assembledContigIds = new ArrayList<>(10);
         final Iterable<Tuple2<String, AssembledBreakpoint>> assembledBreakpoints = assembledBreakpointsPerAllele._2;
         for (final Tuple2<String, AssembledBreakpoint> assembledBreakpointPair : assembledBreakpoints) {
             final AssembledBreakpoint assembledBreakpoint = assembledBreakpointPair._2;
@@ -101,13 +103,15 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
             final int assembledBreakpointAlignmentLength = Math.min(assembledBreakpoint.region1.referenceInterval.size(), assembledBreakpoint.region2.referenceInterval.size());
             alignLengths.add(assembledBreakpointAlignmentLength);
             maxAlignLength = Math.max(maxAlignLength, assembledBreakpointAlignmentLength);
+            breakpointIds.add(assembledBreakpointPair._1);
+            assembledContigIds.add(assembledBreakpoint.contigId);
         }
 
-        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele);
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds);
     }
 
     @VisibleForTesting
-    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength, final BreakpointAllele breakpointAllele) throws IOException {
+    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength, final BreakpointAllele breakpointAllele, final List<String> breakpointIds, final List<String> assembledContigIds) throws IOException {
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
@@ -115,16 +119,21 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
         vcAlleles.add(altAllele);
 
         final VariantContextBuilder vcBuilder = new VariantContextBuilder()
-            .chr(breakpointAllele.leftAlignedLeftBreakpoint.getContig())
-            .start(breakpointAllele.leftAlignedLeftBreakpoint.getStart())
-            .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
-            .alleles(vcAlleles)
-            .attribute("SVTYPE", "INV")
-            .attribute("TOTAL_MAPPINGS", numAssembledBreakpoints)
-            .attribute("HQMAPPINGS", highMqMappings)
-            .attribute("MQS", mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
-            .attribute("ALIGN_LENGTHS", alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
-                .attribute("MAX_ALIGN_LENGTH", maxAlignLength);
+                .chr(breakpointAllele.leftAlignedLeftBreakpoint.getContig())
+                .start(breakpointAllele.leftAlignedLeftBreakpoint.getStart())
+                .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
+                .id("NOID")
+                .alleles(vcAlleles)
+                .attribute("SVTYPE", "INV")
+                .attribute("SVLEN", breakpointAllele.leftAlignedRightBreakpoint.getStart() - breakpointAllele.leftAlignedLeftBreakpoint.getStart())
+                .attribute("TOTAL_MAPPINGS", numAssembledBreakpoints)
+                .attribute("HQMAPPINGS", highMqMappings)
+                .attribute("MQS", mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                .attribute("ALIGN_LENGTHS", alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                .attribute("MAX_ALIGN_LENGTH", maxAlignLength)
+                .attribute("BREAKPOINT_IDS", breakpointIds.stream().collect(Collectors.joining(",")))
+                .attribute("CONTIG_IDS", assembledContigIds.stream().collect(Collectors.joining(",")));
+
         return vcBuilder.make();
     }
 
