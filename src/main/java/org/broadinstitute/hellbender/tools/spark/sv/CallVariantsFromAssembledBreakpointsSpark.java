@@ -48,7 +48,7 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
                 inputAlignedBreakpoints
-                        .filter(CallVariantsFromAssembledBreakpointsSpark::inversion3To5BreakpointFilter)
+                        .filter(CallVariantsFromAssembledBreakpointsSpark::inversionBreakpointFilter)
                         .mapToPair(CallVariantsFromAssembledBreakpointsSpark::keyByBreakpointAllele);
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
@@ -104,7 +104,6 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
             .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
             .alleles(vcAlleles)
             .attribute("SVTYPE", "INV")
-            .attribute("GATKSVTYPE", "INV3")
             .attribute("TOTAL_MAPPINGS", numAssembledBreakpoints)
             .attribute("HQMAPPINGS", highMqMappings)
             .attribute("MQS", mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
@@ -113,10 +112,10 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
         return vcBuilder.make();
     }
 
-    private static boolean inversion3To5BreakpointFilter(final Tuple2<String, AssembledBreakpoint> assembledBreakpoint) {
+    private static boolean inversionBreakpointFilter(final Tuple2<String, AssembledBreakpoint> assembledBreakpoint) {
         final AlignmentRegion region1 = assembledBreakpoint._2.region1;
         final AlignmentRegion region2 = assembledBreakpoint._2.region2;
-        return region1.forwardStrand && ! region2.forwardStrand;
+        return region1.forwardStrand && ! region2.forwardStrand || ! region1.forwardStrand && region2.forwardStrand;
     }
 
     private static Tuple2<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> keyByBreakpointAllele(final Tuple2<String, AssembledBreakpoint> breakpointIdAndAssembledBreakpoint) {

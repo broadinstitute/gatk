@@ -221,18 +221,27 @@ public class ContigAligner implements Closeable {
 
         }
 
-        public SimpleInterval getLeftAlignedLeftBreakpoint() {
+        public SimpleInterval getLeftAlignedLeftBreakpointOnAssembledContig() {
             final int position = region1.referenceInterval.getEnd() - homology.length();
             return new SimpleInterval(region1.referenceInterval.getContig(), position, position);
         }
 
-        public SimpleInterval getLeftAlignedRightBreakpoint() {
+        public SimpleInterval getLeftAlignedRightBreakpointOnAssembledContig() {
             final int position = region2.referenceInterval.getStart();
             return new SimpleInterval(region2.referenceInterval.getContig(), position, position);
         }
 
         public BreakpointAllele getBreakpointAllele() {
-            return new BreakpointAllele(getLeftAlignedLeftBreakpoint(), getLeftAlignedRightBreakpoint(), insertedSequence);
+            final SimpleInterval leftAlignedLeftBreakpointOnAssembledContig = getLeftAlignedLeftBreakpointOnAssembledContig();
+            final SimpleInterval leftAlignedRightBreakpointOnAssembledContig = getLeftAlignedRightBreakpointOnAssembledContig();
+            if (! leftAlignedLeftBreakpointOnAssembledContig.getContig().equals(leftAlignedRightBreakpointOnAssembledContig.getContig())) {
+                //todo: put these in reference sequence order
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence);
+            } else if ( leftAlignedLeftBreakpointOnAssembledContig.getStart() < leftAlignedRightBreakpointOnAssembledContig.getStart()) {
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence);
+            } else {
+                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence);
+            }
         }
     }
 
