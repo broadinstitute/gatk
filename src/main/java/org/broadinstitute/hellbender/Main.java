@@ -33,20 +33,20 @@ public class Main {
     private static final String BOLDRED = "\u001B[1m\u001B[31m";
 
     /**
-     * exit value when an unrecoverable {@link UserException} occurs
-     */
-    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
-
-    /**
      * exit value when an issue with the commandline is detected, ie {@link UserException.CommandLineException}.
      * This is the same value as picard uses.
      */
     private static final int COMMANDLINE_EXCEPTION_EXIT_VALUE = 1;
 
     /**
+     * exit value when an unrecoverable {@link UserException} occurs
+     */
+    private static final int USER_EXCEPTION_EXIT_VALUE = 2;
+
+    /**
      * exit value when any unrecoverable exception other than {@link UserException} occurs
      */
-    private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 1;
+    private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 3;
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
     /**
@@ -94,17 +94,15 @@ public class Main {
               System.out.println("Tool returned:\n" + result);
             }
         } catch (final UserException.CommandLineException e){
-            //the usage has already been printed.
-            // Stack traces are useless for commandline exceptions so just exit with the right code.
+            //the usage has already been printed so don't print it here.
+            if(printStackTraceOnUserExceptions()) {
+                e.printStackTrace();
+            }
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
-            System.err.println("***********************************************************************");
-            System.err.println();
-            System.err.println(e.getMessage());
-            System.err.println();
-            System.err.println("***********************************************************************");
+            CommandLineProgram.printDecoratedUserExceptionMessage(System.err, e);
 
-            if( "true".equals(System.getenv(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY)) || Boolean.getBoolean(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY) ) {
+            if(printStackTraceOnUserExceptions()) {
                 e.printStackTrace();
             }
             System.exit(USER_EXCEPTION_EXIT_VALUE);
@@ -112,6 +110,10 @@ public class Main {
             e.printStackTrace();
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
+    }
+
+    private static boolean printStackTraceOnUserExceptions() {
+        return "true".equals(System.getenv(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY)) || Boolean.getBoolean(STACK_TRACE_ON_USER_EXCEPTION_PROPERTY);
     }
 
     /**
