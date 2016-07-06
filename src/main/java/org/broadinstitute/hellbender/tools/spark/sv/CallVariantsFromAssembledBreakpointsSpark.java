@@ -65,6 +65,7 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
         int highMqMappings = 0;
         int midMqMappings = 0;
         int lowMqMappings = 0;
+        int maxAlignLength = 0;
         final List<Integer> mqs = new ArrayList<>(10);
         final List<Integer> alignLengths = new ArrayList<>(10);
         final BreakpointAllele breakpointAllele = assembledBreakpointsPerAllele._1;
@@ -83,14 +84,14 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
             mqs.add(assembledBreakpointMapq);
             final int assembledBreakpointAlignmentLength = Math.min(assembledBreakpoint.region1.referenceInterval.size(), assembledBreakpoint.region2.referenceInterval.size());
             alignLengths.add(assembledBreakpointAlignmentLength);
-
+            maxAlignLength = Math.max(maxAlignLength, assembledBreakpointAlignmentLength);
         }
 
-        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, breakpointAllele);
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele);
     }
 
     @VisibleForTesting
-    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final BreakpointAllele breakpointAllele) throws IOException {
+    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength, final BreakpointAllele breakpointAllele) throws IOException {
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
@@ -107,7 +108,8 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
             .attribute("TOTAL_MAPPINGS", numAssembledBreakpoints)
             .attribute("HQMAPPINGS", highMqMappings)
             .attribute("MQS", mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
-            .attribute("ALIGN_LENGTHS", alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")));
+            .attribute("ALIGN_LENGTHS", alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                .attribute("MAX_ALIGN_LENGTH", maxAlignLength);
         return vcBuilder.make();
     }
 
