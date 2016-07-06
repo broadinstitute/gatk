@@ -97,7 +97,7 @@ public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
             log.info("No aligned breakpoints for line " + alignedAssemblyContigLine);
             return Collections.emptySet();
         }
-        return Collections.singleton(new Tuple2<>(split[0], AssembledBreakpoint.fromFields(Arrays.copyOfRange(split, 1, split.length))));
+        return Collections.singleton(new Tuple2<>(split[0], AssembledBreakpoint.fromFields(split[1].split("\t"))));
     }
 
 }
