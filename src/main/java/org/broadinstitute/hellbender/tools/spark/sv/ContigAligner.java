@@ -206,14 +206,19 @@ public class ContigAligner implements Closeable {
         }
 
         public static AssembledBreakpoint fromFields(final String[] fields) {
-            final String contigId = fields[0];
-            final String[] alignmentRegion1Fields = Arrays.copyOfRange(fields, 1, 8);
-            final AlignmentRegion alignmentRegion1 = AlignmentRegion.fromString(alignmentRegion1Fields);
-            final String[] alignmentRegion2Fields = Arrays.copyOfRange(fields, 9, 16);
-            final AlignmentRegion alignmentRegion2 = AlignmentRegion.fromString(alignmentRegion2Fields);
-            final String insertedSequence = fields[17].equals("NA") ? "" : fields[17];
-            final String homology = fields[18].equals("NA") ? "" : fields[17];
-            return new AssembledBreakpoint(contigId, alignmentRegion1, alignmentRegion2, insertedSequence, homology);
+            try {
+                final String contigId = fields[0];
+                final String[] alignmentRegion1Fields = Arrays.copyOfRange(fields, 1, 8);
+                final AlignmentRegion alignmentRegion1 = AlignmentRegion.fromString(alignmentRegion1Fields);
+                final String[] alignmentRegion2Fields = Arrays.copyOfRange(fields, 9, 16);
+                final AlignmentRegion alignmentRegion2 = AlignmentRegion.fromString(alignmentRegion2Fields);
+                final String insertedSequence = fields[17].equals("NA") ? "" : fields[17];
+                final String homology = fields[18].equals("NA") ? "" : fields[17];
+                return new AssembledBreakpoint(contigId, alignmentRegion1, alignmentRegion2, insertedSequence, homology);
+            } catch (final NumberFormatException nfe) {
+                throw new GATKException(Arrays.toString(fields), nfe);
+            }
+
         }
 
         public SimpleInterval getLeftAlignedLeftBreakpoint() {
