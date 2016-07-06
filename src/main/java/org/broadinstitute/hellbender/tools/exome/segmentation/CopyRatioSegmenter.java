@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
+import org.broadinstitute.hellbender.utils.OptimizationUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.util.*;
+import java.util.List;
 import java.util.function.Function;
 
 /**

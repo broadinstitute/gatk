@@ -1,6 +1,6 @@
 % THIS FILE IS FOR RECORD KEEPING ONLY
-%  THERE IS NO SUPPORT FOR THIS FILE AND IS MEANT FOR GATK DEV ONLY
-%  For usage of this data, see PoNIssueDetectorUnitTest.java
+%  THERE IS NO SUPPORT FOR THIS FILE AND IT IS MEANT FOR GATK DEV ONLY
+%  For usage of this data, see CoveragePoNQCUtilsUnitTest.java
 % LTL January 6, 2016
 %
 % Please excuse code duplication and other sloppiness.

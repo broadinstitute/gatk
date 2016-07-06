@@ -225,7 +225,7 @@ public final class ReadCountCollectionUtils {
                 throw new UserException.BadInput(String.format("duplicated target with name %s in file %s", target.getName(), file));
             }
         }
-        if (buffer.getTargets().size() == 0) {
+        if (buffer.getTargets().isEmpty()) {
             throw new UserException.BadInput("there is no counts (zero targets) in the input file " + file);
         }
         return new ReadCountCollection(buffer.getTargets(), columnNames, new Array2DRowRealMatrix(buffer.getCounts(),false));

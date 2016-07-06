@@ -94,7 +94,7 @@ final class CopyRatioSamplers {
             final List<Double> means = new ArrayList<>(dataCollection.getNumSegments());
             for (int segment = 0; segment < dataCollection.getNumSegments(); segment++) {
                 final List<CopyRatioData.IndexedCoverage> indexedCoveragesInSegment = dataCollection.getIndexedCoveragesInSegment(segment);
-                if (indexedCoveragesInSegment.size() == 0) {
+                if (indexedCoveragesInSegment.isEmpty()) {
                     means.add(Double.NaN);
                 } else {
                     final Function<Double, Double> logConditionalPDF = newMean ->

@@ -555,7 +555,7 @@ public final class ForwardBackwardAlgorithm {
             Utils.nonNull(states);
             if (states.size() != data.size()) {
                 throw new IllegalArgumentException("the input states sequence does not have the same length as the data sequence");
-            } else if (states.size() == 0) {
+            } else if (states.isEmpty()) {
                 return 0;
             } else {
                 return logProbability(0, states);
@@ -566,7 +566,7 @@ public final class ForwardBackwardAlgorithm {
         public double logProbability(final int startIndex, final List<S> states) {
             ParamUtils.inRange(positionIndexRange, startIndex, "position index");
             Utils.nonNull(states, "the input states sequence cannot be null");
-            if (states.size() == 0) {
+            if (states.isEmpty()) {
                 return 0;
             } else {
                 final int statesLength = states.size();
@@ -594,7 +594,7 @@ public final class ForwardBackwardAlgorithm {
         public double logConstrainedProbability(final int startIndex, final List<Set<S>> stateConstraints) {
             ParamUtils.inRange(positionIndexRange, startIndex, "position index");
             Utils.nonNull(stateConstraints, "the input state constraints sequence cannot be null");
-            if (stateConstraints.size() == 0) {
+            if (stateConstraints.isEmpty()) {
                 return 0;
             } else {
                 final int length = stateConstraints.size();

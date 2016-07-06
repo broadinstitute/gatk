@@ -19,7 +19,7 @@ public final class Pulldown extends AllelicCountCollection {
     private final SAMFileHeader header;
 
     public Pulldown(final SAMFileHeader header) {
-        this.header = Utils.nonNull(header, "SAMFileHeader must be supplied.");;
+        this.header = Utils.nonNull(header, "SAMFileHeader must be supplied.");
     }
 
     /**

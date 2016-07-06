@@ -8,8 +8,8 @@ import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 
 import java.io.File;
 import java.util.List;
@@ -62,7 +62,7 @@ public final class PerformAlleleFractionSegmentation extends CommandLineProgram 
     public Object doWork() {
         final String sampleName = FilenameUtils.getBaseName(snpCountsFile.getAbsolutePath());
         final AllelicPanelOfNormals allelicPoN =
-                allelicPoNFile != null ? new AllelicPanelOfNormals(allelicPoNFile) : AllelicPanelOfNormals.EMPTY_PON;
+                allelicPoNFile != null ? AllelicPanelOfNormals.read(allelicPoNFile) : AllelicPanelOfNormals.EMPTY_PON;
         final AllelicCountCollection acc = new AllelicCountCollection(snpCountsFile);
         final AlleleFractionSegmenter segmenter = new AlleleFractionSegmenter(initialNumStates, acc, allelicPoN);
         final List<ModeledSegment> segments = segmenter.findSegments();

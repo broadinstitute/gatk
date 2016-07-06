@@ -107,7 +107,7 @@ public class AnnotateTargets extends TargetWalker {
             logger.info(String.format("Omitting the %s annotation to the output; no repeat interval BED file was provided", TargetAnnotation.REPEAT_FRACTION));
         }
 
-        if (annotators.size() == 0) {
+        if (annotators.isEmpty()) {
             throw new UserException.BadInput(
                     String.format("no annotation annotation can be performed as we lack a reference (for %s) or a repeat region file (for %s)",
                             TargetAnnotation.GC_CONTENT, TargetAnnotation.REPEAT_FRACTION));
@@ -171,7 +171,7 @@ public class AnnotateTargets extends TargetWalker {
         @Override
         public Double apply(final Target target, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext) {
             final List<BEDFeature> repeatedIntervals = featureContext.getValues(repeatedRegions);
-            if (repeatedIntervals.size() == 0) {
+            if (repeatedIntervals.isEmpty()) {
                 return 0.0;
             } else {
                 final int start = target.getStart();

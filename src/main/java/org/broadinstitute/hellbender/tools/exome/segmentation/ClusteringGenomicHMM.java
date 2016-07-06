@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 
 import java.util.Arrays;
 import java.util.List;

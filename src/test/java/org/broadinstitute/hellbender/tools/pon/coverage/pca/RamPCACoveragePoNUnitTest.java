@@ -1,24 +1,24 @@
-package org.broadinstitute.hellbender.utils.hdf5;
+package org.broadinstitute.hellbender.tools.pon.coverage.pca;
 
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 
-public class RamPoNUnitTest extends BaseTest {
-
-    private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private final static File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
+public final class RamPCACoveragePoNUnitTest extends BaseTest {
+    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
+    private static final File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
 
     @Test
     public void testCopiesReturnedOfMatrices() {
-        final PoN filePoN = new HDF5PoN(new HDF5File(PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, 20), HDF5File.OpenMode.READ_ONLY));
+        final PCACoveragePoN filePoN = new HDF5PCACoveragePoN(new HDF5File(PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, 20), HDF5File.OpenMode.READ_ONLY));
 
-        final PoN ramPoN = new RamPoN(filePoN);
+        final PCACoveragePoN ramPoN = new RamPCACoveragePoN(filePoN);
 
         assertNormalizedCounts(filePoN, ramPoN);
         assertLogNormalizedCounts(filePoN, ramPoN);
@@ -30,7 +30,7 @@ public class RamPoNUnitTest extends BaseTest {
         PoNTestUtils.assertEquivalentPoN(ramPoN, filePoN);
     }
 
-    private void assertReducedPanelPInverseCounts(final PoN filePoN, final PoN ramPoN) {
+    private void assertReducedPanelPInverseCounts(final PCACoveragePoN filePoN, final PCACoveragePoN ramPoN) {
         final RealMatrix ramNormalizedCounts = ramPoN.getReducedPanelPInverseCounts();
         final RealMatrix fileNormalizedCounts = filePoN.getReducedPanelPInverseCounts();
 
@@ -45,7 +45,7 @@ public class RamPoNUnitTest extends BaseTest {
         Assert.assertFalse(ramNormalizedCounts.subtract(fileNormalizedCounts2).getNorm() < 1e-9);
     }
 
-    private void assertReducedPanelCounts(final PoN filePoN, final PoN ramPoN) {
+    private void assertReducedPanelCounts(final PCACoveragePoN filePoN, final PCACoveragePoN ramPoN) {
         final RealMatrix ramNormalizedCounts = ramPoN.getReducedPanelCounts();
         final RealMatrix fileNormalizedCounts = filePoN.getReducedPanelCounts();
 
@@ -60,7 +60,7 @@ public class RamPoNUnitTest extends BaseTest {
         Assert.assertFalse(ramNormalizedCounts.subtract(fileNormalizedCounts2).getNorm() < 1e-9);
     }
 
-    private void assertNormalizedCounts(final PoN filePoN, final PoN ramPoN) {
+    private void assertNormalizedCounts(final PCACoveragePoN filePoN, final PCACoveragePoN ramPoN) {
         final RealMatrix ramNormalizedCounts = ramPoN.getNormalizedCounts();
         final RealMatrix fileNormalizedCounts = filePoN.getNormalizedCounts();
 
@@ -75,7 +75,7 @@ public class RamPoNUnitTest extends BaseTest {
         Assert.assertFalse(ramNormalizedCounts.subtract(fileNormalizedCounts2).getNorm() < 1e-9);
     }
 
-    private void assertLogNormalizedCounts(final PoN filePoN, final PoN ramPoN) {
+    private void assertLogNormalizedCounts(final PCACoveragePoN filePoN, final PCACoveragePoN ramPoN) {
         final RealMatrix ramNormalizedCounts = ramPoN.getLogNormalizedCounts();
         final RealMatrix fileNormalizedCounts = filePoN.getLogNormalizedCounts();
 
@@ -90,7 +90,7 @@ public class RamPoNUnitTest extends BaseTest {
         Assert.assertFalse(ramNormalizedCounts.subtract(fileNormalizedCounts2).getNorm() < 1e-9);
     }
 
-    private void assertLogNormalizedPinvCounts(final PoN filePoN, final PoN ramPoN) {
+    private void assertLogNormalizedPinvCounts(final PCACoveragePoN filePoN, final PCACoveragePoN ramPoN) {
         final RealMatrix ramNormalizedCounts = ramPoN.getLogNormalizedPInverseCounts();
         final RealMatrix fileNormalizedCounts = filePoN.getLogNormalizedPInverseCounts();
 

@@ -18,8 +18,8 @@ import java.util.List;
 
 public class CNLOHCallerUnitTest extends BaseTest {
 
-    private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/cnlohcaller/";
-    private final static File ACNV_SEG_FILE = new File(TEST_DIR, "cell_line-sim-final.seg");
+    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/cnlohcaller/";
+    private static final File ACNV_SEG_FILE = new File(TEST_DIR, "cell_line-sim-final.seg");
 
     @Test
     public void testMakeCalls() {

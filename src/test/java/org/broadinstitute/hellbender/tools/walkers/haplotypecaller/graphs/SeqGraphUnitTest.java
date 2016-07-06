@@ -13,7 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public final class SeqGraphUnitTest extends BaseTest {
-    private final static boolean DEBUG = false;
+    private static final boolean DEBUG = false;
 
     private class MergeNodesWithNoVariationTestProvider extends TestDataProvider {
         public byte[] sequence;

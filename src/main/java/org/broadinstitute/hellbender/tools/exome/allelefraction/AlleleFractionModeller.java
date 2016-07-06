@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
 import java.util.*;
@@ -49,9 +50,9 @@ public final class AlleleFractionModeller {
     private final List<AlleleFractionState.MinorFractions> minorFractionsSamples = new ArrayList<>();
     private final int numSegments;
 
-    public AlleleFractionModeller(final SegmentedGenome segmentedGenome, final AllelicPanelOfNormals allelicPON) {
+    public AlleleFractionModeller(final SegmentedGenome segmentedGenome, final AllelicPanelOfNormals allelicPoN) {
         this.segmentedGenome = segmentedGenome;
-        final AlleleFractionData data = new AlleleFractionData(segmentedGenome, allelicPON);
+        final AlleleFractionData data = new AlleleFractionData(segmentedGenome, allelicPoN);
         numSegments = data.getNumSegments();
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
 
@@ -68,7 +69,7 @@ public final class AlleleFractionModeller {
                 AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewOutlierProbability(outlierProbability), initialMinorFractions, data), initialParameters.getOutlierProbability());
 
         final List<Double> minorFractionsInitialStepSizes = IntStream.range(0, numSegments).mapToDouble(segment ->
-                getStepSizeFromApproximatePosteriorWidthAtMode(f -> AlleleFractionLikelihoods.segmentLogLikelihood(initialParameters, f, data.getCountsInSegment(segment), allelicPON), initialMinorFractions.get(segment)))
+                getStepSizeFromApproximatePosteriorWidthAtMode(f -> AlleleFractionLikelihoods.segmentLogLikelihood(initialParameters, f, data.getCountsInSegment(segment), allelicPoN), initialMinorFractions.get(segment)))
                 .boxed().collect(Collectors.toList());
 
         final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> meanBiasSampler =

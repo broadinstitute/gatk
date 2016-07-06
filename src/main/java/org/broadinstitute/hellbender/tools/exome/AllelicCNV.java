@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
@@ -10,7 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionData;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionInitializer;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionState;
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -116,7 +117,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
             shortName = ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_SHORT_NAME,
             optional = true
     )
-    protected File allelicPONFile;
+    protected File allelicPoNFile;
 
     @Argument(
             doc = "Prefix for output files. Will also be used as the sample name in downstream plots." +
@@ -225,6 +226,11 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected void runPipeline(final JavaSparkContext ctx) {
         validateArguments();
 
+        if (!new HDF5Library().load(null)) {  //Note: passing null means using the default temp dir.
+            throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
+                    "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
+        }
+
         final String originalLogLevel =
                 (ctx.getLocalProperty("logLevel") != null) ? ctx.getLocalProperty("logLevel") : "INFO";
         ctx.setLogLevel("WARN");
@@ -239,8 +245,8 @@ public class AllelicCNV extends SparkCommandLineProgram {
         final Genome genome = new Genome(tangentNormalizedCoverageFile, snpCountsFile);
 
         //load allelic-bias panel of normals if provided
-        final AllelicPanelOfNormals allelicPON =
-                allelicPONFile != null ? new AllelicPanelOfNormals(allelicPONFile) : AllelicPanelOfNormals.EMPTY_PON;
+        final AllelicPanelOfNormals allelicPoN =
+                allelicPoNFile != null ? AllelicPanelOfNormals.read(allelicPoNFile) : AllelicPanelOfNormals.EMPTY_PON;
 
         //load target-coverage segments from input file
         final List<ModeledSegment> targetSegmentsWithCalls =
@@ -271,7 +277,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
         logger.info("Number of segments after small-segment merging: " + segmentedGenome.getSegments().size());
 
         //initial MCMC model fitting performed by ACNVModeller constructor
-        final ACNVModeller modeller = new ACNVModeller(segmentedGenome, allelicPON,
+        final ACNVModeller modeller = new ACNVModeller(segmentedGenome, allelicPoN,
                 numSamplesCopyRatio, numBurnInCopyRatio, numSamplesAlleleFraction, numBurnInAlleleFraction, ctx);
 
         //write initial segments and parameters to file

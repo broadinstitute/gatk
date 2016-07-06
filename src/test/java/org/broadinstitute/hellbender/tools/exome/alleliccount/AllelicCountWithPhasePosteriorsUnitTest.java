@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public class AllelicCountWithPhasePosteriorsUnitTest {
-    private final static double DELTA = 1E-10;
+    private static final double DELTA = 1E-10;
 
     @Test
     public void testNormalizationOfPosteriorProbabilities() {

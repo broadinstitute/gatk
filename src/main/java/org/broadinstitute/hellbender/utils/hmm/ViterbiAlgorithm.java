@@ -40,7 +40,7 @@ public final class ViterbiAlgorithm {
                                                           final HiddenMarkovModel<D, T, S> model) {
         checkApplyArguments(data, positions, model);
 
-        if (data.size() == 0) {
+        if (data.isEmpty()) {
             return new ArrayList<>(0);
         }
 

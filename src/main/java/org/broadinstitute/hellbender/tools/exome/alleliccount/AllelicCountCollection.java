@@ -75,8 +75,8 @@ public class AllelicCountCollection {
 
     /**
      * Writes out pulldown data to specified file at different verbosity levels.
-     * @param verbosity  verbosity level
-     * @param outputFile  file to write to (if it exists, it will be overwritten)
+     * @param verbosity     verbosity level
+     * @param outputFile    file to write to (if it exists, it will be overwritten)
      */
     public void write(final File outputFile, final AllelicCountTableColumn.AllelicCountTableVerbosity verbosity) {
         try (final AllelicCountWriter writer = new AllelicCountWriter(outputFile, verbosity)) {

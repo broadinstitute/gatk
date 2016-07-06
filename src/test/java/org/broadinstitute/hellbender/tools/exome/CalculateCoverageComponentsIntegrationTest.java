@@ -127,7 +127,7 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
     private void checkPCAOutputFile(final File outputFile) {
         Assert.assertTrue(outputFile.exists());
         try (final HDF5File outHdf5 = new HDF5File(outputFile, HDF5File.OpenMode.READ_ONLY)) {
-            final double[][] eigenVectors = outHdf5.readDoubleMatrix(PCA.EIGEN_VECTORS_FULL_PATH);
+            final double[][] eigenvectors = outHdf5.readDoubleMatrix(PCA.EIGENVECTORS_FULL_PATH);
             final double[] variances = outHdf5.readDoubleArray(PCA.VARIANCES_FULL_PATH);
             final String[] sampleNames = outHdf5.readStringArray(PCA.SAMPLES_FULL_PATH);
             final String[] targetNames = outHdf5.readStringArray(PCA.VARIABLES_FULL_PATH);
@@ -142,7 +142,7 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
             }
             PCAUnitTest.assertEquals(new ArrayRealVector(centers), new ArrayRealVector(PCAUnitTest.TEST_EXPECTED_CENTERS), PCAUnitTest.EPSILON);
             PCAUnitTest.assertEquals(new ArrayRealVector(variances), new ArrayRealVector(PCAUnitTest.TEST_EXPECTED_VARS), PCAUnitTest.EPSILON);
-            PCAUnitTest.assertEqualEigenVectors(new Array2DRowRealMatrix(eigenVectors),
+            PCAUnitTest.assertEqualEigenvectors(new Array2DRowRealMatrix(eigenvectors),
                     new Array2DRowRealMatrix(PCAUnitTest.TEST_EXPECTED_EIGENVECTORS),
                     new ArrayRealVector(variances), PCAUnitTest.EPSILON);
         }
@@ -160,7 +160,7 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
                 {-0.1688228, 0.10330921, -0.1375852}
         };
         try (final HDF5File outHdf5 = new HDF5File(outputFile, HDF5File.OpenMode.READ_ONLY)) {
-            final double[][] eigenVectors = outHdf5.readDoubleMatrix(PCA.EIGEN_VECTORS_FULL_PATH);
+            final double[][] eigenvectors = outHdf5.readDoubleMatrix(PCA.EIGENVECTORS_FULL_PATH);
             final double[] variances = outHdf5.readDoubleArray(PCA.VARIANCES_FULL_PATH);
             final String[] sampleNames = outHdf5.readStringArray(PCA.SAMPLES_FULL_PATH);
             final String[] targetNames = outHdf5.readStringArray(PCA.VARIABLES_FULL_PATH);
@@ -172,7 +172,7 @@ public class CalculateCoverageComponentsIntegrationTest extends CommandLineProgr
             for (int i = 0; i < targetNames.length; i++) {
                 Assert.assertEquals(targetNames[i], "TARGET_" + i);
             }
-            PCAUnitTest.assertEqualEigenVectors(new Array2DRowRealMatrix(eigenVectors),
+            PCAUnitTest.assertEqualEigenvectors(new Array2DRowRealMatrix(eigenvectors),
                     new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS),
                     new ArrayRealVector(variances), PCAUnitTest.EPSILON);
         }

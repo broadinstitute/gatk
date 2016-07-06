@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.acnvconversion;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -42,7 +43,7 @@ public final class ACNVModeledSegmentConversionUtils {
     static ModeledSegment convertACNVModeledSegmentToModeledSegment(final ACNVModeledSegment acnvModeledSegment, final TargetCollection<ReadCountRecord.SingleSampleRecord> targets) {
 
         // Make sure that we do not let segment mean become zero
-        final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().getCenter(), ParamUtils.log2(TangentNormalizer.EPSILON));
+        final double updatedCenter = Math.max(acnvModeledSegment.getSegmentMeanPosteriorSummary().getCenter(), ParamUtils.log2(PCATangentNormalizationUtils.EPSILON));
 
         return new ModeledSegment(acnvModeledSegment.getInterval(), ModeledSegment.NO_CALL,
                 targets.targetCount(acnvModeledSegment.getInterval()), updatedCenter);

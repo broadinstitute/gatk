@@ -12,7 +12,7 @@ Groups:
 - ``num_target_cols`` -- targets are encoded as an array, even though a table makes more sense.  This is the number of columns in any target field.  Stored as a single number (3.0) Size: \[1x1\]
 - ``raw_targets`` -- Unfiltered target list that was used as input to the CreatePanelOfNormals call.  These are stored as string array, in row major form.  See ``num_target_cols``.  Size \[initial_targets x 3 (num_target_cols)\]
 - ``version`` -- PoN version.  Stored as a single double (5.0) Size:  \[1 x 1\]
-- ``reduced_pon`` -- right eigenvectors of the SVD of ``log_normals`` with high variance components (columns) preserved.  The number of preserved columns (eigen_samples) depends on the mean of the eigenvalues.  Size:  \[targets x eigensamples\]  The corresponding targets are in ``log_normals_targets``.
+- ``reduced_pon`` -- right eigenvectors of the SVD of ``log_normals`` with high variance components (columns) preserved.  The number of preserved columns (eigensamples) depends on the mean of the eigenvalues.  Size:  \[targets x eigensamples\]  The corresponding targets are in ``log_normals_targets``.
 - ``reduced_pon_inverse`` -- pseudoinverse of the ``reduced_pon``.  Size is transpose of ``reduced_pon``.
 - ``target_variances`` -- variance for each target after tangent normalizing each normal (column in ``fnt_control_matrix``) into the ``reduced_pon``.  Same size as ``target_factors``.
 

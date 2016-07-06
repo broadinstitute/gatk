@@ -16,38 +16,38 @@ public final class PerformSegmentation extends CommandLineProgram {
     public static final String TARGET_WEIGHT_FILE_LONG_NAME= "targetWeights";
     public static final String TARGET_WEIGHT_FILE_SHORT_NAME = "tw";
 
-    public final static String ALPHA_LONG_NAME="alpha";
-    public final static String ALPHA_SHORT_NAME="alpha";
+    public static final String ALPHA_LONG_NAME="alpha";
+    public static final String ALPHA_SHORT_NAME="alpha";
 
-    public final static String NPERM_LONG_NAME="nperm";
-    public final static String NPERM_SHORT_NAME="nperm";
+    public static final String NPERM_LONG_NAME="nperm";
+    public static final String NPERM_SHORT_NAME="nperm";
 
-    public final static String PMETHOD_LONG_NAME="pmethod";
-    public final static String PMETHOD_SHORT_NAME="pmethod";
+    public static final String PMETHOD_LONG_NAME="pmethod";
+    public static final String PMETHOD_SHORT_NAME="pmethod";
 
-    public final static String MINWIDTH_LONG_NAME="minWidth";
-    public final static String MINWIDTH_SHORT_NAME="minWidth";
+    public static final String MINWIDTH_LONG_NAME="minWidth";
+    public static final String MINWIDTH_SHORT_NAME="minWidth";
 
-    public final static String KMAX_LONG_NAME="kmax";
-    public final static String KMAX_SHORT_NAME="kmax";
+    public static final String KMAX_LONG_NAME="kmax";
+    public static final String KMAX_SHORT_NAME="kmax";
 
-    public final static String NMIN_LONG_NAME="nmin";
-    public final static String NMIN_SHORT_NAME="nmin";
+    public static final String NMIN_LONG_NAME="nmin";
+    public static final String NMIN_SHORT_NAME="nmin";
 
-    public final static String ETA_LONG_NAME="eta";
-    public final static String ETA_SHORT_NAME="eta";
+    public static final String ETA_LONG_NAME="eta";
+    public static final String ETA_SHORT_NAME="eta";
 
-    public final static String TRIM_LONG_NAME="trim";
-    public final static String TRIM_SHORT_NAME="trim";
+    public static final String TRIM_LONG_NAME="trim";
+    public static final String TRIM_SHORT_NAME="trim";
 
-    public final static String UNDOSPLITS_LONG_NAME="undoSplits";
-    public final static String UNDOSPLITS_SHORT_NAME="undoSplits";
+    public static final String UNDOSPLITS_LONG_NAME="undoSplits";
+    public static final String UNDOSPLITS_SHORT_NAME="undoSplits";
 
-    public final static String UNDOPRUNE_LONG_NAME="undoPrune";
-    public final static String UNDOPRUNE_SHORT_NAME="undoPrune";
+    public static final String UNDOPRUNE_LONG_NAME="undoPrune";
+    public static final String UNDOPRUNE_SHORT_NAME="undoPrune";
 
-    public final static String UNDOSD_LONG_NAME="undoSD";
-    public final static String UNDOSD_SHORT_NAME="undoSD";
+    public static final String UNDOSD_LONG_NAME="undoSD";
+    public static final String UNDOSD_SHORT_NAME="undoSD";
 
     @Argument(
             doc = "Tangent normalized read counts file",

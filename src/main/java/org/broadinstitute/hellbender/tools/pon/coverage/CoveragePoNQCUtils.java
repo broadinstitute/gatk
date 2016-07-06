@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.pon.coverage;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
@@ -9,11 +9,10 @@ import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hdf5.HDF5File;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.utils.Utils;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,50 +23,38 @@ import java.util.stream.DoubleStream;
 /**
  * Class for doing QC on a PoN
  */
-public final class PoNIssueDetector {
+public final class CoveragePoNQCUtils {
+    private static final Logger logger = LogManager.getLogger(CoveragePoNQCUtils.class);
 
-    private static final Logger logger = LogManager.getLogger(PoNIssueDetector.class);
+    static final double AMP_THRESHOLD = 1.12;
+    static final double DEL_THRESHOLD = 0.88;
 
-    final static double AMP_THRESHOLD = 1.12;
-    final static double DEL_THRESHOLD = 0.88;
-
-    private PoNIssueDetector() {
-    }
+    private CoveragePoNQCUtils() {}
 
     /**
      * Return list of samples in the given PoN that likely contain arm level events.  Samples detected will have to be
      *  removed.
      *
-     * @param qcPonFilename -- PoN filename.  This is assumed to be a QC PoN, which typically has fewer eigensamples.
+     * @param qcPoN -- a QC PoN, which typically has fewer eigensamples.
      * @param ctx -- use null if not using Spark
      * @return never {@code null}
      */
-    public static List<String> retrieveSamplesWithArmLevelEvents(final File qcPonFilename, JavaSparkContext ctx) {
-        List<String> result;
-        try (final HDF5File ponReader = new HDF5File(qcPonFilename, HDF5File.OpenMode.READ_ONLY)) {
+    public static <T extends CoveragePoNNormalizationResult> List<String> retrieveSamplesWithArmLevelEvents(final CoveragePanelOfNormals<T> qcPoN, final JavaSparkContext ctx) {
+        Utils.nonNull(qcPoN, "QC PoN cannot be null.");
+        // For each sample in the PoN, tangent normalize against the qc reduced PoN.
+        logger.info("Tangent normalizing all normals in the PoN...");
+        final CoveragePoNNormalizationResult qcNormalization = qcPoN.normalizeNormalsInPoN(ctx);
 
-            logger.info("Loading existing PoN...");
-            final PoN qcPoN = new HDF5PoN(ponReader);
+        // Get the median target CR estimate per contig across all samples.
+        final Map<String, Double> contigToMedian = getContigToMedianCRMap(qcNormalization.getProfile());
 
-            // For each sample in the PoN, tangent normalize against the qc reduced PoN.
-            logger.info("Tangent Normalizing all normals in the PoN...");
-            final TangentNormalizationResult qcTangentNormalization = TangentNormalizer.tangentNormalizeNormalsInPoN(qcPoN, ctx);
-
-            // Get the median target CR estimate per contig across all samples.
-            final Map<String, Double> contigToMedian = getContigToMedianCRMap(qcTangentNormalization.getTangentNormalized());
-
-            // Segment the result
-            // For each tangent normalization result from the QC PoN
-            if (ctx == null) {
-                final List<ReadCountCollection> singleSampleTangentNormalizedReadCounts = createIndividualReadCountCollections(qcTangentNormalization.getTangentNormalized());
-                result = identifySamplesWithSuspiciousContigs(singleSampleTangentNormalizedReadCounts, contigToMedian);
-            } else {
-                final JavaRDD<ReadCountCollection> parallelSingleSampleTangentNormalizedReadCounts = createParallelIndividualReadCountCollections(qcTangentNormalization.getTangentNormalized(), ctx);
-                result = identifySamplesWithSuspiciousContigs(parallelSingleSampleTangentNormalizedReadCounts, ctx, contigToMedian);
-            }
+        // Segment the result for each tangent normalization result from the QC PoN
+        if (ctx == null) {
+            final List<ReadCountCollection> singleSampleTangentNormalizedReadCounts = createIndividualReadCountCollections(qcNormalization.getProfile());
+            return identifySamplesWithSuspiciousContigs(singleSampleTangentNormalizedReadCounts, contigToMedian);
         }
-
-        return result;
+        final JavaRDD<ReadCountCollection> parallelSingleSampleTangentNormalizedReadCounts = createParallelIndividualReadCountCollections(qcNormalization.getProfile(), ctx);
+        return identifySamplesWithSuspiciousContigs(parallelSingleSampleTangentNormalizedReadCounts, ctx, contigToMedian);
     }
 
     @VisibleForTesting
@@ -115,14 +102,13 @@ public final class PoNIssueDetector {
     @VisibleForTesting
     static List<String> identifySamplesWithSuspiciousContigs(final List<ReadCountCollection> singleSampleTangentNormalizedReadCounts, final Map<String, Double> contigToMedian) {
         logger.info("Checking for samples with suspicious contigs...");
-        return singleSampleTangentNormalizedReadCounts.stream().filter(r -> PoNIssueDetector.hasSuspiciousContigs(r, contigToMedian)).map(r -> r.columnNames().get(0)).collect(Collectors.toList());
+        return singleSampleTangentNormalizedReadCounts.stream().filter(rcc -> hasSuspiciousContigs(rcc, contigToMedian)).map(rcc -> rcc.columnNames().get(0)).collect(Collectors.toList());
     }
 
     @VisibleForTesting
     static List<String> identifySamplesWithSuspiciousContigs(final JavaRDD<ReadCountCollection> parallelReadCountCollections, final JavaSparkContext ctx, final Map<String, Double> contigToMedian) {
-
         Broadcast<Map<String, Double>> broadcastedContigToMedian = ctx.broadcast(contigToMedian);
-        return parallelReadCountCollections.filter(r -> PoNIssueDetector.hasSuspiciousContigs(r, broadcastedContigToMedian.value())).map(r -> r.columnNames().get(0)).collect();
+        return parallelReadCountCollections.filter(rcc -> hasSuspiciousContigs(rcc, broadcastedContigToMedian.value())).map(rcc -> rcc.columnNames().get(0)).collect();
     }
 
     /**
@@ -154,6 +140,6 @@ public final class PoNIssueDetector {
     }
 
     private static List<String> retrieveAllContigsPresent(final ReadCountCollection readCountCollection) {
-        return readCountCollection.targets().stream().map(Target :: getContig).distinct().collect(Collectors.toList());
+        return readCountCollection.targets().stream().map(Target::getContig).distinct().collect(Collectors.toList());
     }
 }

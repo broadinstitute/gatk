@@ -9,42 +9,24 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5LibException;
 import org.broadinstitute.hdf5.HDF5Library;
+import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
- * Unit test that cover {@link HDF5Library}, {@link HDF5File} and {@link HDF5PoN}.
+ * Unit tests that cover {@link HDF5Library} and {@link HDF5File}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public final class HDF5LibraryUnitTest {
-
-    private static File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/utils/hdf5");
-    private static File TEST_PON_TARGETS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-targets.txt");
-    private static File TEST_PON_SAMPLES = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-samples.txt");
-    private static File TEST_PON_TARGET_FACTORS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-target_factors.txt");
-    private static File TEST_PON_NORMALIZED_PCOV = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-normalized_pcov.txt");
-    private static File TEST_PON_LOG_NORMAL_SAMPLES = TEST_PON_SAMPLES;
-    private static File TEST_PON_LOG_NORMALS = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-log_normals.txt");
-    private static File TEST_PON_LOG_NORMALS_PINV = new File(TEST_RESOURCE_DIR,"test_creation_of_panel-log_normal_pinv.txt");
-    private static File TEST_PON_REDUCED_PON = TEST_PON_LOG_NORMALS;
-    private static File TEST_PON_REDUCED_PON_PINV = TEST_PON_LOG_NORMALS_PINV;
-    public static File TEST_PON = new File(TEST_RESOURCE_DIR,"test_creation_of_panel.pon");
-
-    @SuppressWarnings("FieldCanBeLocal")
-    private static double TEST_PON_VERSION = 1.3;
+    private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
+    private static final File TEST_PON = new File(TEST_RESOURCE_DIR, "test_creation_of_panel.pon");
 
     @BeforeClass
     public void testIsSupported() {
@@ -61,135 +43,6 @@ public final class HDF5LibraryUnitTest {
     public void testOpenReadOnlyOnBadFile() {
         final HDF5File reader = new HDF5File(new File("/tmp/no-file"));
         reader.close();
-    }
-
-    @Test
-    public void testTargetNameReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targetNames = pon.getTargetNames();
-        final List<String> expected = readLines(TEST_PON_TARGETS);
-        Assert.assertNotNull(targetNames);
-        Assert.assertEquals(targetNames,expected);
-        reader.close();
-    }
-
-    @Test
-    public void testSampleNameReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> sampleNames = pon.getSampleNames();
-        final List<String> expected = readLines(TEST_PON_SAMPLES);
-        Assert.assertNotNull(sampleNames);
-        Assert.assertEquals(sampleNames, expected);
-        reader.close();
-    }
-
-    @Test(dependsOnMethods = "testSampleNameReading")
-    public void testLogNormalSampleNameReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-
-        final List<String> expected = readLines(TEST_PON_LOG_NORMAL_SAMPLES);
-
-        final List<String> logNormalSampleNames = pon.getPanelSampleNames().stream().sorted().collect(Collectors.toList());
-        Assert.assertEquals(logNormalSampleNames, expected);
-    }
-
-    @Test(dependsOnMethods = "testTargetNameReading")
-    public void testTargetFactorsReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.getTargetNames();
-        final RealMatrix factors = pon.getTargetFactors();
-        Assert.assertEquals(factors.getRowDimension(),targets.size());
-        Assert.assertEquals(factors.getColumnDimension(),1);
-
-        final List<Double> expected = readDoubleLines(TEST_PON_TARGET_FACTORS);
-        Assert.assertNotNull(factors);
-        Assert.assertEquals(factors.getRowDimension(),expected.size());
-        for (int i = 0; i < expected.size(); i++) {
-            Assert.assertEquals(factors.getEntry(i,0),expected.get(i),Math.abs(expected.get(i)) * 0.0001);
-        }
-        reader.close();
-    }
-
-    @Test
-    public void testVersionReading() {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        Assert.assertEquals(pon.getVersion(),TEST_PON_VERSION);
-        reader.close();
-    }
-
-    @Test(dependsOnMethods = {"testTargetNameReading","testSampleNameReading"})
-    public void testNormalizedPcovReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.getTargetNames();
-        final List<String> samples = pon.getSampleNames();
-        final RealMatrix actual = pon.getNormalizedCounts();
-        Assert.assertNotNull(actual);
-        Assert.assertEquals(actual.getRowDimension(), targets.size());
-        Assert.assertEquals(actual.getColumnDimension(), samples.size());
-        final RealMatrix expected = readDoubleMatrix(TEST_PON_NORMALIZED_PCOV);
-        assertEqualMatrix(actual, expected);
-    }
-
-    @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
-    public void testLogNormalMatrixReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.getTargetNames();
-        final List<String> samples = pon.getPanelSampleNames();
-        final RealMatrix actual = pon.getLogNormalizedCounts();
-        Assert.assertNotNull(actual);
-        Assert.assertEquals(actual.getRowDimension(), targets.size());
-        Assert.assertEquals(actual.getColumnDimension(), samples.size());
-        final RealMatrix expected = readDoubleMatrix(TEST_PON_LOG_NORMALS);
-        assertEqualMatrix(actual, expected);
-    }
-
-    @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
-    public void testLogNormalPInvMatrixReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.getTargetNames();
-        final List<String> samples = pon.getPanelSampleNames();
-        final RealMatrix actual = pon.getLogNormalizedPInverseCounts();
-        Assert.assertNotNull(actual);
-        Assert.assertEquals(actual.getRowDimension(), samples.size());
-        Assert.assertEquals(actual.getColumnDimension(), targets.size());
-        final RealMatrix expected = readDoubleMatrix(TEST_PON_LOG_NORMALS_PINV);
-        assertEqualMatrix(actual, expected);
-    }
-
-    @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
-    public void testReducedPoNMatrixReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.getTargetNames();
-        final List<String> samples = pon.getPanelSampleNames();
-        final RealMatrix actual = pon.getReducedPanelCounts();
-        Assert.assertNotNull(actual);
-        Assert.assertEquals(actual.getRowDimension(), targets.size());
-        Assert.assertTrue(actual.getColumnDimension() <= samples.size());
-        final RealMatrix expected = readDoubleMatrix(TEST_PON_REDUCED_PON);
-        assertEqualMatrix(actual, expected);
-    }
-
-    @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalSampleNameReading"})
-    public void testReducedPoNPInvMatrixReading() throws IOException {
-        final HDF5File reader = new HDF5File(TEST_PON);
-        final PoN pon = new HDF5PoN(reader);
-        final List<String> targets = pon.getTargetNames();
-        final List<String> samples = pon.getPanelSampleNames();
-        final RealMatrix actual = pon.getReducedPanelPInverseCounts();
-        Assert.assertNotNull(actual);
-        Assert.assertTrue(actual.getRowDimension() <= samples.size());
-        Assert.assertEquals(actual.getColumnDimension(), targets.size());
-        final RealMatrix expected = readDoubleMatrix(TEST_PON_REDUCED_PON_PINV);
-        assertEqualMatrix(actual, expected);
     }
 
     @Test()
@@ -396,70 +249,5 @@ public final class HDF5LibraryUnitTest {
             }
         });
         return bigCounts;
-    }
-
-    private void assertEqualMatrix(RealMatrix actual, RealMatrix expected) {
-        Assert.assertEquals(actual.getRowDimension(), expected.getRowDimension());
-        Assert.assertEquals(actual.getColumnDimension(), expected.getColumnDimension());
-        for (int row = 0; row < expected.getRowDimension(); row++) {
-            for (int column = 0; column < expected.getColumnDimension(); column++) {
-                final double actualValue = actual.getEntry(row,column);
-                final double expectedValue = expected.getEntry(row,column);
-                final double epsilon = Math.min(Math.abs(actualValue),Math.abs(expectedValue)) * 0.0001;
-                Assert.assertEquals(actualValue,expectedValue,epsilon);
-            }
-        }
-    }
-
-    /**
-     * Reads the lines of a file into an string array.
-     * @param file the input file.
-     * @return never {@code null}, a list with as many elements as lines in {@code file}.
-     * @throws IOException if some IO exception occurred.
-     */
-    private List<String> readLines(final File file) throws IOException {
-
-        final BufferedReader  reader = new BufferedReader(new FileReader(file));
-        final ArrayList<String> result = new ArrayList<>(1000);
-        String line;
-        while ((line = reader.readLine()) != null) {
-            result.add(line);
-        }
-        return result;
-    }
-
-    /**
-     * Reads the lines of a file into a double list.
-     * @param file the input file.
-     * @return never {@code null}, a list with as many elements as lines in {@code file}.
-     * @throws IOException if some IO exception occurred.
-     * @throws NumberFormatException if some of the input lines in {@code file} cannot be converted into a {@code double}.
-     */
-    private List<Double> readDoubleLines(final File file) throws IOException {
-        return readLines(file).stream().map(Double::valueOf).collect(Collectors.toList());
-    }
-
-    /**
-     * Reads the lines of a file into a double 2-D matrix.
-     * <p>
-     *     Each line in the file correspond to a row in the result matrix and values are separated by blank
-     *     characters (such as spaces or tabs).
-     * </p>
-     * @param file the input file.
-     * @return never {@code null}, a matrix with as many rows as lines in the input file, and as many columns are
-     *   values per input file line.
-     * @throws IOException if there is some IO problem accessing {@code file}.
-     * @throws NullPointerException if some value in {@code file} could not be converted to a {@code double}.
-     * @throws org.apache.commons.math3.exception.NoDataException if {@code file} does not contain any data.
-     * @throws org.apache.commons.math3.exception.DimensionMismatchException if {@code file} lines don't have
-     *    the same length (number of columns.
-     */
-    private RealMatrix readDoubleMatrix(final File file) throws IOException {
-        final List<String> lines = readLines(file);
-        final double[][] values = lines.stream()
-                .map(line -> Stream.of(line.split("\\s+")).mapToDouble(Double::valueOf).toArray())
-                .collect(Collectors.toList())
-                .toArray(new double[lines.size()][]);
-        return new Array2DRowRealMatrix(values,false);
     }
 }

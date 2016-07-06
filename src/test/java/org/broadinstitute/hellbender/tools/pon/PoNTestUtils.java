@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.hdf5;
+package org.broadinstitute.hellbender.tools.pon;
 
 import au.com.bytecode.opencsv.CSVWriter;
 import com.opencsv.CSVReader;
@@ -6,7 +6,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hdf5.HDF5File;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.CreatePanelOfNormals;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
+import org.broadinstitute.hellbender.tools.exome.TargetCollection;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoNCreationUtils;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -15,61 +21,39 @@ import org.testng.Assert;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.OptionalInt;
 
 /**
  * Static class to help test PoN functionality
  */
-public class PoNTestUtils {
+public final class PoNTestUtils {
+    private static final double DOUBLE_ARRAY_TOLERANCE = 1E-8;
+    private static final double DOUBLE_MATRIX_TOLERANCE = 1E-8;
+
     private PoNTestUtils() {}
 
-    /** Creates a HDF5 PoN (using {@link org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator} ).  Parameters use the
+    /** Creates a HDF5 PoN (using {@link HDF5PCACoveragePoNCreationUtils} ).  Parameters use the
      * current {@link CreatePanelOfNormals} defaults.
      * @param inputPCovFile regular readable file that could be used to create a PoN.  Must be same format as output of
      *  {@link org.broadinstitute.hellbender.tools.exome.CombineReadCounts}
-     * @param numEigensamples number of desired eigen samples in the PoN reduction
+     * @param numEigensamples number of desired eigensamples in the PoN reduction
      * @return HDF5 File.  Never {@code null}
      */
     public static File createDummyHDF5FilePoN(final File inputPCovFile, final int numEigensamples) {
         Utils.regularReadableUserFile(inputPCovFile);
-        ParamUtils.isPositive(numEigensamples, "Num Eigensamples must be greater than zero.");
+        ParamUtils.isPositive(numEigensamples, "Number of eigensamples must be greater than zero.");
         final File outputFile = IOUtils.createTempFile("dummy-pon-", ".pon");
         final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(inputPCovFile);
-        HDF5PoNCreator.createPoN(null, inputPCovFile, OptionalInt.of(numEigensamples), new ArrayList<>(), outputFile, false, targets,
-                CreatePanelOfNormals.DEFAULT_TARGET_FACTOR_THRESHOLD_PERCENTILE,
-                CreatePanelOfNormals.DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE,
-                CreatePanelOfNormals.DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD,
-                CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET,
-                CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_COLUMN);
-        return outputFile;
-    }
-
-    /** Creates a HDF5 PoN (using {@link org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator} ).  Parameters use the
-     * current {@link CreatePanelOfNormals} defaults.
-     *
-     * This is the same as {@link PoNTestUtils#createDummyHDF5FilePoN}, except that you can use a ReadCountCollection.
-     *
-     * @param inputPCov ReadCountCollection with the proportional coverages.
-     * @param numEigensamples number of desired eigensamples in the PoN reduction
-     * @return HDF5 File.  Never {@code null}
-     */
-    public static File createDummyHDF5FilePoN(final ReadCountCollection inputPCov, final int numEigensamples) {
-        Utils.nonNull(inputPCov);
-        ParamUtils.isPositive(numEigensamples, "Num Eigensamples must be greater than zero.");
-        final File outputFile = IOUtils.createTempFile("dummy-pon-", ".pon");
-        final TargetCollection<Target> targets = new HashedListTargetCollection<>(inputPCov.targets());
-        HDF5PoNCreator.createPoNGivenReadCountCollection(null, inputPCov, OptionalInt.of(numEigensamples),
-                new ArrayList<>(), outputFile, false, targets,
-                CreatePanelOfNormals.DEFAULT_TARGET_FACTOR_THRESHOLD_PERCENTILE,
-                CreatePanelOfNormals.DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE,
-                CreatePanelOfNormals.DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD,
-                CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET,
-                CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_COLUMN);
+        HDF5PCACoveragePoNCreationUtils.create(null, outputFile, HDF5File.OpenMode.CREATE, inputPCovFile, targets, new ArrayList<>(), CreatePanelOfNormals.DEFAULT_TARGET_FACTOR_THRESHOLD_PERCENTILE, CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_COLUMN, CreatePanelOfNormals.DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET, CreatePanelOfNormals.DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE, CreatePanelOfNormals.DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD, OptionalInt.of(numEigensamples), false
+        );
         return outputFile;
     }
 
     /**
-     * Test whether two matrics are equal (within 1e-4)
+     * Test whether two matrices are equal (within 1e-4)
      * @param left never {@code null}
      * @param right never {@code null}
      * @param isAllowNegatedValues whether values that are just negated are still considered equal.  True is useful for
@@ -83,9 +67,9 @@ public class PoNTestUtils {
             final double[] rightRow = right.getRow(i);
             for (int j = 0; j < leftRow.length; j++) {
                 if (isAllowNegatedValues) {
-                    Assert.assertEquals(Math.abs(leftRow[j]), Math.abs(rightRow[j]), 0.0001);
+                    Assert.assertEquals(Math.abs(leftRow[j]), Math.abs(rightRow[j]), DOUBLE_MATRIX_TOLERANCE);
                 } else {
-                    Assert.assertEquals(leftRow[j], rightRow[j], 0.0001);
+                    Assert.assertEquals(leftRow[j], rightRow[j], DOUBLE_MATRIX_TOLERANCE);
                 }
             }
         }
@@ -97,15 +81,19 @@ public class PoNTestUtils {
      * @param actual never {@code null}
      * @param gt never {@code null}
      */
-    public static void assertEqualsDoubleArrays(final double[] actual, final double[] gt) {
+    public static void assertEqualsDoubleArrays(final double[] actual, final double[] gt, final double tolerance) {
         Assert.assertEquals(actual.length, gt.length);
         for (int i = 0; i < actual.length; i++) {
             if (Double.isNaN(gt[i])) {
                 Assert.assertTrue(Double.isNaN(actual[i]));
             } else {
-                Assert.assertEquals(actual[i], gt[i], 1e-8, "Arrays were not equal (within tolerance 1e-8) at index " + i);
+                Assert.assertEquals(actual[i], gt[i], tolerance, String.format("Arrays were not equal (within tolerance %s) at index %d.", Double.toString(tolerance), i));
             }
         }
+    }
+
+    public static void assertEqualsDoubleArrays(final double[] actual, final double[] gt) {
+        assertEqualsDoubleArrays(actual, gt, DOUBLE_ARRAY_TOLERANCE);
     }
 
     /**
@@ -119,8 +107,8 @@ public class PoNTestUtils {
         Utils.regularReadableUserFile(right);
         try (final HDF5File leftFile = new HDF5File(left);
              final HDF5File rightFile = new HDF5File(right)) {
-            final HDF5PoN leftPoN = new HDF5PoN(leftFile);
-            final HDF5PoN rightPoN = new HDF5PoN(rightFile);
+            final HDF5PCACoveragePoN leftPoN = new HDF5PCACoveragePoN(leftFile);
+            final HDF5PCACoveragePoN rightPoN = new HDF5PCACoveragePoN(rightFile);
             assertEquivalentPoN(leftPoN, rightPoN);
         }
     }
@@ -131,24 +119,29 @@ public class PoNTestUtils {
      * @param leftPoN never {@code null}
      * @param rightPoN never {@code null}
      */
-    public static void assertEquivalentPoN(final PoN leftPoN, final PoN rightPoN) {
+    public static void assertEquivalentPoN(final PCACoveragePoN leftPoN, final PCACoveragePoN rightPoN) {
         Utils.nonNull(leftPoN, "Left PoN is null.");
         Utils.nonNull(rightPoN, "Right PoN is null.");
-        Assert.assertEquals(leftPoN.getSampleNames(), rightPoN.getSampleNames());
-        Assert.assertEquals(new LinkedHashSet<>(leftPoN.getTargetNames()), new LinkedHashSet<>(rightPoN.getTargetNames()));
-        PoNTestUtils.assertEqualsMatrix(leftPoN.getTargetFactors(), rightPoN.getTargetFactors(), false);
+
+        Assert.assertEquals(leftPoN.getTargets(), rightPoN.getTargets());
+        Assert.assertEquals(leftPoN.getRawTargets(), rightPoN.getRawTargets());
+        Assert.assertEquals(leftPoN.getPanelTargets(), rightPoN.getPanelTargets());
+
+        PoNTestUtils.assertEqualsDoubleArrays(leftPoN.getTargetFactors(), rightPoN.getTargetFactors());
+        PoNTestUtils.assertEqualsDoubleArrays(leftPoN.getTargetVariances(), rightPoN.getTargetVariances());
+
+        PoNTestUtils.assertEqualsMatrix(leftPoN.getNormalizedCounts(), rightPoN.getNormalizedCounts(), false);
         PoNTestUtils.assertEqualsMatrix(leftPoN.getLogNormalizedCounts(), rightPoN.getLogNormalizedCounts(), false);
         PoNTestUtils.assertEqualsMatrix(leftPoN.getLogNormalizedPInverseCounts(), rightPoN.getLogNormalizedPInverseCounts(), false);
-        PoNTestUtils.assertEqualsMatrix(leftPoN.getNormalizedCounts(), rightPoN.getNormalizedCounts(), false);
         PoNTestUtils.assertEqualsMatrix(leftPoN.getReducedPanelCounts(), rightPoN.getReducedPanelCounts(), true);
         PoNTestUtils.assertEqualsMatrix(leftPoN.getReducedPanelPInverseCounts(), rightPoN.getReducedPanelPInverseCounts(), true);
-        Assert.assertEquals(leftPoN.getPanelSampleNames(), rightPoN.getPanelSampleNames());
-        Assert.assertEquals(leftPoN.getPanelTargetNames(), rightPoN.getPanelTargetNames());
-        Assert.assertEquals(leftPoN.getRawTargetNames(), rightPoN.getRawTargetNames());
+
         Assert.assertEquals(leftPoN.getTargetNames(), rightPoN.getTargetNames());
-        Assert.assertEquals(leftPoN.getRawTargets(), rightPoN.getRawTargets());
-        Assert.assertEquals(leftPoN.getTargets(), rightPoN.getTargets());
-        PoNTestUtils.assertEqualsMatrix(new Array2DRowRealMatrix(leftPoN.getTargetVariances()), new Array2DRowRealMatrix(rightPoN.getTargetVariances()), false);
+        Assert.assertEquals(leftPoN.getRawTargetNames(), rightPoN.getRawTargetNames());
+        Assert.assertEquals(leftPoN.getPanelTargetNames(), rightPoN.getPanelTargetNames());
+
+        Assert.assertEquals(leftPoN.getSampleNames(), rightPoN.getSampleNames());
+        Assert.assertEquals(leftPoN.getPanelSampleNames(), rightPoN.getPanelSampleNames());
     }
 
     /**

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -10,6 +11,7 @@ import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollec
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountWithPhasePosteriors;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountWithPhasePosteriorsCollection;
 import org.broadinstitute.hellbender.tools.exome.pulldown.Pulldown;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.ParameterReader;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -68,7 +70,7 @@ public class CalculatePulldownPhasePosteriors extends CommandLineProgram {
             shortName = ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_SHORT_NAME,
             optional = true
     )
-    protected File allelicPONFile;
+    protected File allelicPoNFile;
 
     @Argument(
             doc = "Output file.",
@@ -79,19 +81,24 @@ public class CalculatePulldownPhasePosteriors extends CommandLineProgram {
 
     @Override
     public Object doWork() {
+        if (!new HDF5Library().load(null)) {  //Note: passing null means using the default temp dir.
+            throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
+                    "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
+        }
+
         //read counts, segments, and parameters from files
         final AllelicCountCollection counts = new AllelicCountCollection(snpCountsFile);
         final List<ACNVModeledSegment> segments = SegmentUtils.readACNVModeledSegmentFile(segmentsFile);
         final AlleleFractionState state = reconstructState(segments, parametersFile);
 
         //load allelic-bias panel of normals if provided
-        final AllelicPanelOfNormals allelicPON =
-                allelicPONFile != null ? new AllelicPanelOfNormals(allelicPONFile) : AllelicPanelOfNormals.EMPTY_PON;
+        final AllelicPanelOfNormals allelicPoN =
+                allelicPoNFile != null ? AllelicPanelOfNormals.read(allelicPoNFile) : AllelicPanelOfNormals.EMPTY_PON;
 
         //calculate phase posteriors
         final List<SimpleInterval> unmodeledSegments = segments.stream().map(ACNVModeledSegment::getInterval).collect(Collectors.toList());
         final AllelicCountWithPhasePosteriorsCollection countsWithPhasePosteriors =
-                calculatePhasePosteriors(counts, unmodeledSegments, state, allelicPON);
+                calculatePhasePosteriors(counts, unmodeledSegments, state, allelicPoN);
 
         //write phase posteriors to file with same verbosity as input file
         countsWithPhasePosteriors.write(outputFile, counts.getVerbosity());
@@ -119,7 +126,7 @@ public class CalculatePulldownPhasePosteriors extends CommandLineProgram {
     protected static AllelicCountWithPhasePosteriorsCollection calculatePhasePosteriors(final AllelicCountCollection counts,
                                                                                         final List<SimpleInterval> segments,
                                                                                         final AlleleFractionState state,
-                                                                                        final AllelicPanelOfNormals allelicPON) {
+                                                                                        final AllelicPanelOfNormals allelicPoN) {
         final TargetCollection<SimpleInterval> segmentTargetCollection = new HashedListTargetCollection<>(segments);
         final AllelicCountWithPhasePosteriorsCollection countsWithPhasePosteriors = new AllelicCountWithPhasePosteriorsCollection();
         for (final AllelicCount count : counts.getCounts()) {
@@ -129,9 +136,9 @@ public class CalculatePulldownPhasePosteriors extends CommandLineProgram {
             }
             final AlleleFractionGlobalParameters parameters = state.globalParameters();
             final double minorFraction = state.segmentMinorFraction(segmentIndex);
-            final double refMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.REF_MINOR, allelicPON);
-            final double altMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.ALT_MINOR, allelicPON);
-            final double outlierLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.OUTLIER, allelicPON);
+            final double refMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.REF_MINOR, allelicPoN);
+            final double altMinorLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.ALT_MINOR, allelicPoN);
+            final double outlierLogProb = AlleleFractionLikelihoods.hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.OUTLIER, allelicPoN);
             final AllelicCountWithPhasePosteriors countWithPhasePosteriors = new AllelicCountWithPhasePosteriors(count, refMinorLogProb, altMinorLogProb, outlierLogProb);
             countsWithPhasePosteriors.add(countWithPhasePosteriors);
         }

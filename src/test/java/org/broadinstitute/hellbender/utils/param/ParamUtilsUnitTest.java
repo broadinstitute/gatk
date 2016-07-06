@@ -261,7 +261,7 @@ public class ParamUtilsUnitTest {
 
     @Test
     public void testWriteAndReadDoublesToFile() {
-        final double [] testData = {0.0, 1.234552345, Math.PI, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -3.91};
+        final double[] testData = new double[]{0.0, 1.234552345, Math.PI, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -3.91};
         final File outputFile = IOUtils.createTempFile("param-test-write-doubles-", ".txt");
         ParamUtils.writeValuesToFile(testData, outputFile);
 

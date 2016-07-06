@@ -1,9 +1,11 @@
-package org.broadinstitute.hellbender.tools.exome;
+package org.broadinstitute.hellbender.tools.pon.coverage;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 import java.util.Map;
@@ -15,7 +17,7 @@ import java.util.stream.IntStream;
  * Utility class use to map matrices rows between two different target lists.
  * <p>
  *     The "case" target list is provided by a {@link ReadCountCollection}, whereas the "pon" target list
- *     is provided by a {@link PoN}.
+ *     is provided by a coverage panel of normals.
  * </p>
  * <p>
  *     This class contains methods to re-organize matrix rows, based on one list, to match the order
@@ -24,11 +26,10 @@ import java.util.stream.IntStream;
  * <p>
  *     It also provides methods to create a PoN re-organized count matrix directly from a {@link ReadCountCollection}.
  *     object and the reverse operation, that is to create a new {@link ReadCountCollection} from a count matrix
- *     whose rows have been reorganized to satisfy the {@link PoN} target order.
+ *     whose rows have been reorganized to satisfy the coverage panel-of-normals target order.
  * </p>
  */
-public final class Case2PoNTargetMapper {
-
+public final class CaseToPoNTargetMapper {
     private final List<String> ponTargetNames;
     private final Map<String, Integer> caseTargetIndexes;
     private final List<Target> outputTargets;
@@ -38,8 +39,9 @@ public final class Case2PoNTargetMapper {
      * @param caseTargets the case sample targets as they appear in the input read counts.
      * @param ponTargetNames the PoN target names in the order they are present in the PoN.
      */
-    public Case2PoNTargetMapper(final List<Target> caseTargets, final List<String> ponTargetNames)  {
-
+    public CaseToPoNTargetMapper(final List<Target> caseTargets, final List<String> ponTargetNames)  {
+        Utils.nonNull(caseTargets, "Case-sample targets cannot be null.");
+        Utils.nonNull(ponTargetNames, "PoN target names cannot be null.");
         this.ponTargetNames = ponTargetNames;
         this.caseTargetIndexes = IntStream.range(0, caseTargets.size()).boxed()
                 .collect(Collectors.toMap(i -> caseTargets.get(i).getName(), Function.identity()));
@@ -57,6 +59,7 @@ public final class Case2PoNTargetMapper {
      * @return never {@code null}, a new matrix with row sorted according to the PoN target order.
      */
     public RealMatrix fromCaseToPoNCounts(final RealMatrix caseCounts) {
+        Utils.nonNull(caseCounts, "Case-sample counts cannot be null.");
         final RealMatrix result = new Array2DRowRealMatrix(ponTargetNames.size(), caseCounts.getColumnDimension());
         for (int i = 0; i < ponTargetNames.size(); i++) {
             final String targetName = ponTargetNames.get(i);
@@ -94,6 +97,8 @@ public final class Case2PoNTargetMapper {
      * @return never {@code null} a read-count collection with the row order according to the case read count target order.
      */
     public ReadCountCollection fromPoNtoCaseCountCollection(final RealMatrix counts, final List<String> countColumnNames) {
+        Utils.nonNull(counts, "Counts cannot be null.");
+        Utils.nonNull(countColumnNames, "Count column names cannot be null.");
         return new ReadCountCollection(outputTargets, countColumnNames, fromPoNToCaseCounts(counts));
     }
 }

@@ -1,23 +1,18 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationResult;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
-import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,19 +30,14 @@ import java.util.List;
 )
 public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
-    /**
-     * Name of the column that contains the I.D. of the PoN <i>"eigen sample"</i>.
-     */
-    public static final String PON_SAMPLE_BETA_HAT_COLUMN_NAME = "PON.SAMPLE";
-
     public static final String READ_COUNTS_FILE_FULL_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
     public static final String READ_COUNTS_FILE_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
 
-    public static final String FACTOR_NORMALIZED_COUNTS_LONG_NAME = "factorNormalizedOutput";
-    public static final String FACTOR_NORMALIZED_COUNTS_SHORT_NAME = "FNO";
-
     public static final String TANGENT_BETA_HATS_LONG_NAME = "betaHatsOutput";
     public static final String TANGENT_BETA_HATS_SHORT_NAME = "BHO";
+
+    public static final String FACTOR_NORMALIZED_COUNTS_LONG_NAME = "factorNormalizedOutput";
+    public static final String FACTOR_NORMALIZED_COUNTS_SHORT_NAME = "FNO";
 
     @Argument(
             doc = "read counts input file.  This can only contain one sample.",
@@ -74,20 +64,20 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     protected File ponFile;
 
     @Argument(
-            doc = "Factor normalized counts output",
-            shortName = FACTOR_NORMALIZED_COUNTS_SHORT_NAME,
-            fullName = FACTOR_NORMALIZED_COUNTS_LONG_NAME,
-            optional = true
-    )
-    protected File fntOutFile;
-
-    @Argument(
             doc = "Tangent normalized counts output",
             shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
             fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             optional = false
     )
-    protected File outFile;
+    protected File tangentNormalizationOutFile;
+
+    @Argument(
+            doc = "Pre-tangent normalization counts",
+            shortName = ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
+            fullName = ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
+            optional = true
+    )
+    protected File preTangentNormalizationOutFile;
 
     @Argument(
             doc = "Tangent normalization Beta Hats output file",
@@ -98,12 +88,12 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
     protected File betaHatsOutFile;
 
     @Argument(
-            doc = "Pre-tangent normalization counts",
-            shortName = ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
-            fullName = ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
+            doc = "Factor normalized counts output",
+            shortName = FACTOR_NORMALIZED_COUNTS_SHORT_NAME,
+            fullName = FACTOR_NORMALIZED_COUNTS_LONG_NAME,
             optional = true
     )
-    protected File preTangentNormalizationOutFile;
+    protected File fntOutFile;
 
     @Override
     protected Object doWork() {
@@ -112,77 +102,13 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
                     "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
         }
         Utils.regularReadableUserFile(ponFile);
-        try (final HDF5File ponReader = new HDF5File(ponFile)) {
-            final PoN pon = new HDF5PoN(ponReader);
-
-            // Test the version of the PoN
-            if (pon.getVersion() < HDF5PoNCreator.CURRENT_PON_VERSION) {
-                logger.warn("The version of the specified PoN (" + pon.getVersion() + ") is older than the latest version " +
-                        "(" + HDF5PoNCreator.CURRENT_PON_VERSION + ").");
-            }
-
+        try (final HDF5File hdf5PoNFile = new HDF5File(ponFile)) {
+            final PCACoveragePoN pon = new HDF5PCACoveragePoN(hdf5PoNFile, logger);
             final TargetCollection<Target> targetCollection = readTargetCollection(targetFile);
-            final ReadCountCollection readCountCollection = readInputReadCounts(readCountsFile, targetCollection);
-            final TangentNormalizationResult tangentNormalizationResult = TangentNormalizer.tangentNormalizePcov(pon, readCountCollection);
-            outputTangentNormalizationResult(tangentNormalizationResult);
+            final ReadCountCollection proportionalCoverageProfile = readInputReadCounts(readCountsFile, targetCollection);
+            final PCATangentNormalizationResult tangentNormalizationResult = pon.normalize(proportionalCoverageProfile);;
+            tangentNormalizationResult.write(getCommandLine(), tangentNormalizationOutFile, preTangentNormalizationOutFile, betaHatsOutFile, fntOutFile);
             return "SUCCESS";
-        }
-    }
-
-    private void outputTangentNormalizationResult(final TangentNormalizationResult tangentNormalizationResult){
-        writeTargetFactorNormalizedOutput(tangentNormalizationResult.getTargetFactorNormalizedCounts());
-        writePreTangentNormalizationOutput(tangentNormalizationResult.getPreTangentNormalized());
-        writeTangentBetaHats(tangentNormalizationResult.getTangentBetaHats(), tangentNormalizationResult.getTargetFactorNormalizedCounts().columnNames());
-        writeTangentNormalizedOutput(tangentNormalizationResult.getTangentNormalized());
-    }
-
-    /**
-     * Writes the pre-tangent-normalization read counts if a file was provided for it.
-     *
-     * This file is written in the target format originally used in recapseg.  In other words, it is
-     *  written as if it was target coverage. If the output file is null, we do not write a file.
-     *
-     * @param preTangentNormalized the read count collection to write.
-     */
-    private void writePreTangentNormalizationOutput(final ReadCountCollection preTangentNormalized) {
-        // If the output file is null, we do not write a file.
-        if (preTangentNormalizationOutFile == null) {
-            return;
-        }
-
-        try {
-            ReadCountCollectionUtils.write(preTangentNormalizationOutFile, preTangentNormalized, "fileFormat = tsv",
-                    "commandLine = " + getCommandLine(), "title = Pre tangent normalized coverage profile");
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(preTangentNormalizationOutFile, ex.getMessage());
-        }
-    }
-
-    /**
-     * Write the beta-hats if an output file was provided for it.
-     *
-     * @param tangentBetaHats the beta-hats to write.
-     * @param countColumnNames the input read count column names.
-     */
-    private void writeTangentBetaHats(final RealMatrix tangentBetaHats, final List<String> countColumnNames) {
-        if (betaHatsOutFile == null) {
-            return;
-        }
-
-        final List<String> columnNames = new ArrayList<>(countColumnNames.size() + 1);
-        columnNames.add(PON_SAMPLE_BETA_HAT_COLUMN_NAME);
-        columnNames.addAll(countColumnNames);
-        final TableColumnCollection columns = new TableColumnCollection(columnNames);
-        try (final TableWriter<Integer> writer = TableUtils.writer(betaHatsOutFile, columns,
-                (i, dataLine) -> dataLine.append(Integer.toString(i)).append(tangentBetaHats.getRow(i)) )) {
-            writer.writeComment("fileFormat  = tsv");
-            writer.writeComment("commandLine = " + getCommandLine());
-            writer.writeComment("title = Tangent normalization Beta Hats");
-            for (int i = 0; i < tangentBetaHats.getRowDimension(); i++) {
-                writer.writeRecord(i);
-            }
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(betaHatsOutFile,ex.getMessage());
         }
     }
 
@@ -219,7 +145,7 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
      *                                             or the input read counts contain more thanb one sample.
      */
     private ReadCountCollection readInputReadCounts(final File readCountsFile,
-                                                                           final TargetCollection<Target> targetCollection) {
+                                                    final TargetCollection<Target> targetCollection) {
         try {
             final ReadCountCollection result = ReadCountCollectionUtils.parse(readCountsFile, targetCollection, false);
             if (result.columnNames().size() > 1) {
@@ -228,47 +154,6 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
             return result;
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile(readCountsFile, ex.getMessage(), ex);
-        }
-    }
-
-    /**
-     * Writes the target-factor normalized outputs.
-     * @param targetFactorNormalized the read count collection to write.
-     */
-    private void writeTargetFactorNormalizedOutput(final ReadCountCollection targetFactorNormalized) {
-        writeOutput(fntOutFile, targetFactorNormalized, "Target factor normalized target counts");
-    }
-
-    /**
-     * Writes the tangent-factor normalized outputs.
-     *
-     * Please note that this file is written in the target format originally used in recapseg.  In other words, it is
-     *  written as if it was target coverage.
-     *
-     * @param tangentNormalized the read count collection to write.
-     */
-    private void writeTangentNormalizedOutput(final ReadCountCollection tangentNormalized) {
-        try {
-            ReadCountCollectionUtils.write(outFile, tangentNormalized, "fileFormat = tsv",
-                    "commandLine = " + getCommandLine(),
-                    "title = Tangent normalized coverage profile");
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(outFile, ex.getMessage());
-        }
-    }
-
-
-    private void writeOutput(final File file, final ReadCountCollection counts, final String title) {
-        if (file == null) {
-            return;
-        }
-        try {
-            ReadCountCollectionUtils.write(file, counts,
-                    "fileFormat = tsv",
-                    "commandLine = " + getCommandLine(),
-                    "title = " + title);
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(file, ex.getMessage());
         }
     }
 }

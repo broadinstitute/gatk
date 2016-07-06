@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.acnvconversion;
 
 import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -25,6 +26,6 @@ public class ACNVModeledSegmentConversionUtilsUnitTest extends BaseTest {
         final TargetCollection<ReadCountRecord.SingleSampleRecord> targetCollection = new HashedListTargetCollection<>(Collections.singletonList(new ReadCountRecord.SingleSampleRecord(targets.get(0), 0.0)));
         final ModeledSegment guess = ACNVModeledSegmentConversionUtils.convertACNVModeledSegmentToModeledSegment(acnvModeledSegment, targetCollection);
         Assert.assertTrue(guess.getSegmentMeanInCRSpace() > 0);
-        Assert.assertEquals(guess.getSegmentMean(), ParamUtils.log2(TangentNormalizer.EPSILON), 1e-10);
+        Assert.assertEquals(guess.getSegmentMean(), ParamUtils.log2(PCATangentNormalizationUtils.EPSILON), 1e-10);
     }
 }

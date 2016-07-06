@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * Created by lichtens on 6/16/16.
  */
 public class ACSModeledSegmentUtilsUnitTest extends BaseTest {
-    final static String TEST_FILE_PATH= "src/test/resources/org/broadinstitute/hellbender/tools/exome/cnlohcaller/cell_line_small-sim-final.seg";
+    static final String TEST_FILE_PATH= "src/test/resources/org/broadinstitute/hellbender/tools/exome/cnlohcaller/cell_line_small-sim-final.seg";
 
     @Test
     public void testConversion() {

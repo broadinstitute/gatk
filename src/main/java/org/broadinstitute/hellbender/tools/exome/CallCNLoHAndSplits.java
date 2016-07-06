@@ -38,18 +38,18 @@ public class CallCNLoHAndSplits extends SparkCommandLineProgram {
 
     static final long serialVersionUID = 42123132L;
 
-    protected final static String RHO_SHORT_NAME="r";
-    protected final static String RHO_LONG_NAME="rhoThreshold";
-    protected final static int DEFAULT_NUM_ITERATIONS = 10;
-    protected final static String NUM_ITERATIONS_SHORT_NAME="n";
-    protected final static String NUM_ITERATIONS_LONG_NAME="numIterations";
-    protected final static String OUTPUT_DIR_SHORT_NAME="od";
-    protected final static String OUTPUT_DIR_LONG_NAME="outputDir";
-    protected final static String GATK_SEG_FILE_TAG = "cnv";
-    protected final static String CGA_ACS_SEG_FILE_TAG = "acs";
-    protected final static String CNLOH_BALANCED_SEG_FILE_TAG = "cnb_called";
-    protected final static String TITAN_TN_FILE_TAG = "titan.tn";
-    protected final static String TITAN_HET_FILE_TAG = "titan.het";
+    protected static final String RHO_SHORT_NAME="r";
+    protected static final String RHO_LONG_NAME="rhoThreshold";
+    protected static final int DEFAULT_NUM_ITERATIONS = 10;
+    protected static final String NUM_ITERATIONS_SHORT_NAME="n";
+    protected static final String NUM_ITERATIONS_LONG_NAME="numIterations";
+    protected static final String OUTPUT_DIR_SHORT_NAME="od";
+    protected static final String OUTPUT_DIR_LONG_NAME="outputDir";
+    protected static final String GATK_SEG_FILE_TAG = "cnv";
+    protected static final String CGA_ACS_SEG_FILE_TAG = "acs";
+    protected static final String CNLOH_BALANCED_SEG_FILE_TAG = "cnb_called";
+    protected static final String TITAN_TN_FILE_TAG = "titan.tn";
+    protected static final String TITAN_HET_FILE_TAG = "titan.het";
 
 
     @Argument(

@@ -25,7 +25,7 @@ import java.util.stream.IntStream;
  */
 class GCCorrector {
     // GC bins are 0%, 1% . . . 100%
-    private final static int NUMBER_OF_GC_BINS = 101;
+    private static final int NUMBER_OF_GC_BINS = 101;
 
     // scale (in units of GCcontent from 0 to 1) over which gc bias correlation decays
     // i.e. the bias at GC content = 0.3 and at 0.2 are correlated ~exp(-0.1/correlationLength)

@@ -254,7 +254,7 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
         final File result = createTempFile("ccsi-input", ".tab");
         if (values.length == 0) {
             ReadCountCollectionUtils.writerWithIntervals(new FileWriter(result), sampleNames).close();
-        } else if (sampleNames.size() == 0) {
+        } else if (sampleNames.isEmpty()) {
             TargetWriter.writeTargetsToFile(result, targets);
         } else {
             final ReadCountCollection coverage = new ReadCountCollection(withIntervals ? new ArrayList<>(targets) :

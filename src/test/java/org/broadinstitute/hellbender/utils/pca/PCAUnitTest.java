@@ -30,7 +30,7 @@ import java.util.stream.IntStream;
 public final class PCAUnitTest extends BaseTest {
 
     /**
-     * Precision required when comparing eigen vector values.
+     * Precision required when comparing eigenvector values.
      */
     public static final double EPSILON = 0.0001;
 
@@ -98,11 +98,11 @@ public final class PCAUnitTest extends BaseTest {
         final PCA pca = PCA.createPCA(variables, sampleNames, dataMatrix, SVDFactory::createSVD);
         final RealVector centers = pca.getCenters();
         final RealVector variances = pca.getVariances();
-        final RealMatrix eigenVectors = pca.getEigenVectors();
-        Assert.assertNotNull(eigenVectors);
+        final RealMatrix eigenvectors = pca.getEigenvectors();
+        Assert.assertNotNull(eigenvectors);
         assertEquals(centers, new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
         assertEquals(variances, new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
-        assertEqualEigenVectors(eigenVectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
+        assertEqualEigenvectors(eigenvectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
     }
 
     @Test()
@@ -111,11 +111,11 @@ public final class PCAUnitTest extends BaseTest {
         final PCA pca = PCA.createPCA(dataMatrix, SVDFactory::createSVD);
         final RealVector centers = pca.getCenters();
         final RealVector variances = pca.getVariances();
-        final RealMatrix eigenVectors = pca.getEigenVectors();
-        Assert.assertNotNull(eigenVectors);
+        final RealMatrix eigenvectors = pca.getEigenvectors();
+        Assert.assertNotNull(eigenvectors);
         assertEquals(centers, new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
         assertEquals(variances, new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
-        assertEqualEigenVectors(eigenVectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
+        assertEqualEigenvectors(eigenvectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
     }
 
     private static List<String> createVariableNames(final int size) {
@@ -136,11 +136,11 @@ public final class PCAUnitTest extends BaseTest {
         final PCA pca = PCA.createPCA(variables, sampleNames, dataMatrix, dm -> SVDFactory.createSVD(dm, sparkContext));
         final RealVector centers = pca.getCenters();
         final RealVector variances = pca.getVariances();
-        final RealMatrix eigenVectors = pca.getEigenVectors();
-        Assert.assertNotNull(eigenVectors);
+        final RealMatrix eigenvectors = pca.getEigenvectors();
+        Assert.assertNotNull(eigenvectors);
         assertEquals(centers, new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
         assertEquals(variances, new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
-        assertEqualEigenVectors(eigenVectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
+        assertEqualEigenvectors(eigenvectors, new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), variances, EPSILON);
     }
 
     @Test(dependsOnMethods = "testResidentSVDOnTestMatrix")
@@ -162,7 +162,7 @@ public final class PCAUnitTest extends BaseTest {
             Assert.assertEquals(readPCA.getSamples(), sampleNames);
             assertEquals(readPCA.getCenters(), new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
             assertEquals(readPCA.getVariances(), new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
-            assertEqualEigenVectors(readPCA.getEigenVectors(), new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), readPCA.getVariances(), EPSILON);
+            assertEqualEigenvectors(readPCA.getEigenvectors(), new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), readPCA.getVariances(), EPSILON);
         }
     }
 
@@ -183,7 +183,7 @@ public final class PCAUnitTest extends BaseTest {
             Assert.assertNull(readPCA.getSamples());
             assertEquals(readPCA.getCenters(), new ArrayRealVector(TEST_EXPECTED_CENTERS), EPSILON);
             assertEquals(readPCA.getVariances(), new ArrayRealVector(TEST_EXPECTED_VARS), EPSILON);
-            assertEqualEigenVectors(readPCA.getEigenVectors(), new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), readPCA.getVariances(), EPSILON);
+            assertEqualEigenvectors(readPCA.getEigenvectors(), new Array2DRowRealMatrix(TEST_EXPECTED_EIGENVECTORS), readPCA.getVariances(), EPSILON);
         }
     }
 
@@ -198,7 +198,7 @@ public final class PCAUnitTest extends BaseTest {
         }
         // Read and compare
         try (final HDF5File outHdf5 = new HDF5File(outputFile, HDF5File.OpenMode.READ_ONLY)) {
-            final double[][] eigenVectors = outHdf5.readDoubleMatrix(PCA.EIGEN_VECTORS_FULL_PATH);
+            final double[][] eigenvectors = outHdf5.readDoubleMatrix(PCA.EIGENVECTORS_FULL_PATH);
             final double[] variances = outHdf5.readDoubleArray(PCA.VARIANCES_FULL_PATH);
             Assert.assertTrue(outHdf5.isPresent(PCA.SAMPLES_FULL_PATH));
             Assert.assertTrue(outHdf5.isPresent(PCA.VARIABLES_FULL_PATH));
@@ -215,7 +215,7 @@ public final class PCAUnitTest extends BaseTest {
             }
             PCAUnitTest.assertEquals(new ArrayRealVector(centers), new ArrayRealVector(PCAUnitTest.TEST_EXPECTED_CENTERS), PCAUnitTest.EPSILON);
             PCAUnitTest.assertEquals(new ArrayRealVector(variances), new ArrayRealVector(PCAUnitTest.TEST_EXPECTED_VARS), PCAUnitTest.EPSILON);
-            PCAUnitTest.assertEqualEigenVectors(new Array2DRowRealMatrix(eigenVectors),
+            PCAUnitTest.assertEqualEigenvectors(new Array2DRowRealMatrix(eigenvectors),
                     new Array2DRowRealMatrix(PCAUnitTest.TEST_EXPECTED_EIGENVECTORS),
                     new ArrayRealVector(variances), PCAUnitTest.EPSILON);
         }
@@ -232,14 +232,14 @@ public final class PCAUnitTest extends BaseTest {
         }
         // Read and compare
         try (final HDF5File outHdf5 = new HDF5File(outputFile, HDF5File.OpenMode.READ_ONLY)) {
-            final double[][] eigenVectors = outHdf5.readDoubleMatrix(PCA.EIGEN_VECTORS_FULL_PATH);
+            final double[][] eigenvectors = outHdf5.readDoubleMatrix(PCA.EIGENVECTORS_FULL_PATH);
             final double[] variances = outHdf5.readDoubleArray(PCA.VARIANCES_FULL_PATH);
             Assert.assertFalse(outHdf5.isPresent(PCA.SAMPLES_FULL_PATH));
             Assert.assertFalse(outHdf5.isPresent(PCA.VARIABLES_FULL_PATH));
             final double[] centers = outHdf5.readDoubleArray(PCA.CENTERS_FULL_PATH);
             PCAUnitTest.assertEquals(new ArrayRealVector(centers), new ArrayRealVector(PCAUnitTest.TEST_EXPECTED_CENTERS), PCAUnitTest.EPSILON);
             PCAUnitTest.assertEquals(new ArrayRealVector(variances), new ArrayRealVector(PCAUnitTest.TEST_EXPECTED_VARS), PCAUnitTest.EPSILON);
-            PCAUnitTest.assertEqualEigenVectors(new Array2DRowRealMatrix(eigenVectors),
+            PCAUnitTest.assertEqualEigenvectors(new Array2DRowRealMatrix(eigenvectors),
                     new Array2DRowRealMatrix(PCAUnitTest.TEST_EXPECTED_EIGENVECTORS),
                     new ArrayRealVector(variances), PCAUnitTest.EPSILON);
         }
@@ -273,12 +273,12 @@ public final class PCAUnitTest extends BaseTest {
         }
     }
 
-    public static void assertEqualEigenVectors(final RealMatrix m1, final RealMatrix m2, final RealVector variances, final double epsilon) {
+    public static void assertEqualEigenvectors(final RealMatrix m1, final RealMatrix m2, final RealVector variances, final double epsilon) {
         Assert.assertEquals(m1.getRowDimension(), m2.getRowDimension());
         Assert.assertEquals(m1.getColumnDimension(), m2.getColumnDimension());
         final boolean[] sameSign = new boolean[m1.getColumnDimension()];
 
-        // Find out whether the eigen-vector is the same or inverted (which is equivalent).
+        // Find out whether the eigenvector is the same or inverted (which is equivalent).
         for (int j = 0; j < sameSign.length; j++ ) {
             for (int i = 0; i < m1.getRowDimension(); i++) {
                 final double product = m1.getEntry(0, j) * m2.getEntry(0, j);

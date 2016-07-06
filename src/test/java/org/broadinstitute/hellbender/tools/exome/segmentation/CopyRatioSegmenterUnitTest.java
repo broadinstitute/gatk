@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import org.apache.commons.collections.ListUtils;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -10,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**

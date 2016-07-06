@@ -7,10 +7,10 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionIndicator;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionSimulatedData;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionState;
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountWithPhasePosteriors;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountWithPhasePosteriorsCollection;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -30,7 +30,7 @@ public class CalculatePulldownPhasePosteriorsIntegrationTest extends CommandLine
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-allelic-integration.tsv");
     private static final File ACNV_SEGMENT_FILE = new File(TEST_SUB_DIR, "acnv-segments-from-allelic-integration.seg");
     private static final File AF_PARAMS_FILE = new File(TEST_SUB_DIR, "af-params-from-allelic-integration.af.param");
-    private static final File ALLELIC_PON_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
+    private static final File ALLELIC_PON_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
     private static final String OUTPUT_FILE_NAME = "phase.tsv";
 
     private static final double FRACTION_OF_INDICATORS_CORRECT_THRESHOLD = 0.95;
@@ -104,7 +104,7 @@ public class CalculatePulldownPhasePosteriorsIntegrationTest extends CommandLine
                 "--" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME, ACNV_SEGMENT_FILE.getAbsolutePath(),
                 "--" + ExomeStandardArgumentDefinitions.AF_PARAMETER_FILE_LONG_NAME, AF_PARAMS_FILE.getAbsolutePath(),
-                "--" + ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_LONG_NAME, ALLELIC_PON_NORMAL_FILE.getAbsolutePath(),
+                "--" + ExomeStandardArgumentDefinitions.ALLELIC_PON_FILE_LONG_NAME, ALLELIC_PON_FILE.getAbsolutePath(),
                 "--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME, outputFileName,
                 "--verbosity", "INFO",
         };

@@ -61,7 +61,7 @@ public final class CopyNumberTriStateHiddenMarkovModel
     //average size in bases of CNVs
     private final double meanEventSize;
 
-    private final static int RANDOM_SEED = 1767;
+    private static final int RANDOM_SEED = 1767;
 
     /**
      * Creates a new model instance.

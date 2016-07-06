@@ -24,7 +24,7 @@ public class SampleNameFinder {
         Utils.nonNull(readCountsFile);
         Utils.regularReadableUserFile(readCountsFile);
         final List<String> result = ReadCountCollectionUtils.retrieveSampleNamesFromReadCountsFile(readCountsFile);
-        if (result.size() == 0) {
+        if (result.isEmpty()) {
             throw new UserException.BadInput("Input read counts file contains no sample columns");
         } else {
             return result;
