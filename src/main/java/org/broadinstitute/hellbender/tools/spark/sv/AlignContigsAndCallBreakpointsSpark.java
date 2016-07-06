@@ -87,12 +87,12 @@ public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
     }
 
     /**
-     * input format is tab separated BreakpointId, String representation of an AssembledBreakpoint
+     * input format is comma-separated BreakpointId, String representation of an AssembledBreakpoint, enclosed in parens
      * @param alignedAssemblyContigLine An input line with a breakpoint ID and string representation of an AssembledBreakpoint
-     * @return A tuple with the breakpoint ID and string representation of an AssembledBreakpoint, or an empty iterator if the line did not have two tab-separated values
+     * @return A tuple with the breakpoint ID and string representation of an AssembledBreakpoint, or an empty iterator if the line did not have two comma-separated values
      */
     static Iterable<Tuple2<String, AssembledBreakpoint>> parseAlignedAssembledContigLine(final String alignedAssemblyContigLine) {
-        final String[] split = alignedAssemblyContigLine.split("\t");
+        final String[] split = alignedAssemblyContigLine.replace("(","").replace(")","").split(",");
         if (split.length < 2) {
             log.info("No aligned breakpoints for line " + alignedAssemblyContigLine);
             return Collections.emptySet();
