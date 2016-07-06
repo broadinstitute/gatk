@@ -89,7 +89,7 @@ public class ContigAligner implements Closeable {
                             if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
                                 insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
                             }
-                            final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, homology, insertedSequence);
+                            final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, insertedSequence, homology);
                             assembledBreakpoints.add(assembledBreakpoint);
                         }
                     }
@@ -176,7 +176,7 @@ public class ContigAligner implements Closeable {
         String insertedSequence;
         String homology;
 
-        public AssembledBreakpoint(final String contigId, final AlignmentRegion region1, final AlignmentRegion region2, final String homology, final String insertedSequence) {
+        public AssembledBreakpoint(final String contigId, final AlignmentRegion region1, final AlignmentRegion region2, final String insertedSequence, final String homology) {
             this.contigId = contigId;
             this.region1 = region1;
             this.region2 = region2;
@@ -195,6 +195,66 @@ public class ContigAligner implements Closeable {
                     insertedSequence +
                     "\t" +
                     homology;
+        }
+
+        /**
+         *  Parses a tab-delimited assembled breakpoint line into an AssembledBreakpoint object
+         */
+        public static AssembledBreakpoint fromString(String assembledBreakpointLine) {
+            final String[] fields = assembledBreakpointLine.split("\t");
+            return fromFields(fields);
+        }
+
+        public static AssembledBreakpoint fromFields(final String[] fields) {
+            final String contigId = fields[0];
+            final String[] alignmentRegion1Fields = Arrays.copyOfRange(fields, 1, 8);
+            final AlignmentRegion alignmentRegion1 = AlignmentRegion.fromString(alignmentRegion1Fields);
+            final String[] alignmentRegion2Fields = Arrays.copyOfRange(fields, 9, 16);
+            final AlignmentRegion alignmentRegion2 = AlignmentRegion.fromString(alignmentRegion2Fields);
+            final String insertedSequence = fields[17].equals("NA") ? "" : fields[17];
+            final String homology = fields[18].equals("NA") ? "" : fields[17];
+            return new AssembledBreakpoint(contigId, alignmentRegion1, alignmentRegion2, insertedSequence, homology);
+        }
+
+        public SimpleInterval getLeftAlignedLeftBreakpoint() {
+            final int position = region1.referenceInterval.getEnd() - homology.length();
+            return new SimpleInterval(region1.referenceInterval.getContig(), position, position);
+        }
+
+        public SimpleInterval getLeftAlignedRightBreakpoint() {
+            final int position = region2.referenceInterval.getStart();
+            return new SimpleInterval(region2.referenceInterval.getContig(), position, position);
+        }
+
+        public BreakpointAllele getBreakpointAllele() {
+            return new BreakpointAllele(getLeftAlignedLeftBreakpoint(), getLeftAlignedRightBreakpoint(), insertedSequence);
+        }
+    }
+
+    static class BreakpointAllele {
+        SimpleInterval leftAlignedLeftBreakpoint;
+        SimpleInterval leftAlignedRightBreakpoint;
+        String insertedSequence;
+
+        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence) {
+            this.leftAlignedLeftBreakpoint = leftAlignedLeftBreakpoint;
+            this.leftAlignedRightBreakpoint = leftAlignedRightBreakpoint;
+            this.insertedSequence = insertedSequence;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            final BreakpointAllele that = (BreakpointAllele) o;
+            return Objects.equals(leftAlignedLeftBreakpoint, that.leftAlignedLeftBreakpoint) &&
+                    Objects.equals(leftAlignedRightBreakpoint, that.leftAlignedRightBreakpoint) &&
+                    Objects.equals(insertedSequence, that.insertedSequence);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence);
         }
     }
 
@@ -218,6 +278,15 @@ public class ContigAligner implements Closeable {
             this.assembledContigLength = cigar.getReadLength();
             this.startInAssembledContig = startOfAlignmentInContig(cigar);
             this.endInAssembledContig = endOfAlignmentInContig(assembledContigLength, cigar);
+        }
+
+        public AlignmentRegion(final Cigar cigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mqual, final int startInAssembledContig, final int endInAssembledContig) {
+            this.cigar = cigar;
+            this.forwardStrand = forwardStrand;
+            this.referenceInterval = referenceInterval;
+            this.mqual = mqual;
+            this.startInAssembledContig = startInAssembledContig;
+            this.endInAssembledContig = endInAssembledContig;
         }
 
         private static int startOfAlignmentInContig(final Cigar cigar) {
@@ -259,7 +328,19 @@ public class ContigAligner implements Closeable {
                     "\t" +
                     endInAssembledContig;
         }
-    }
+
+        public static AlignmentRegion fromString(final String[] fields) {
+            final String alignmentRegion1RefContig = fields[0];
+            final Integer alignmentRegion1RefStart = Integer.valueOf(fields[1]);
+            final Integer alignmentRegion1RefEnd = Integer.valueOf(fields[2]);
+            final SimpleInterval alignmentRegion1Interval = new SimpleInterval(alignmentRegion1RefContig, alignmentRegion1RefStart, alignmentRegion1RefEnd);
+            final boolean alignmentRegion1ForwardStrand = ("+".equals(fields[3]));
+            final Cigar alignmentRegion1Cigar = TextCigarCodec.decode(fields[4]);
+            final int alignmentRegion1MQual = Integer.valueOf(fields[5]);
+            final int alignmentRegion1ContigStart = Integer.valueOf(fields[6]);
+            final int alignmentRegion1ContigEnd = Integer.valueOf(fields[7]);
+            return new AlignmentRegion(alignmentRegion1Cigar, alignmentRegion1ForwardStrand, alignmentRegion1Interval, alignmentRegion1MQual, alignmentRegion1ContigStart, alignmentRegion1ContigEnd);
+        }
 
     private static class LocalizedReference {
         static File INSTANCE;

@@ -17,6 +17,8 @@ import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @CommandLineProgramProperties(summary="Align assembled contigs to the reference and call breakpoints from them.",
@@ -82,6 +84,20 @@ public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
 
         });
         assembledBreakpoints.saveAsTextFile(output);
+    }
+
+    /**
+     * input format is tab separated BreakpointId, String representation of an AssembledBreakpoint
+     * @param alignedAssemblyContigLine An input line with a breakpoint ID and string representation of an AssembledBreakpoint
+     * @return A tuple with the breakpoint ID and string representation of an AssembledBreakpoint, or an empty iterator if the line did not have two tab-separated values
+     */
+    static Iterable<Tuple2<String, AssembledBreakpoint>> parseAlignedAssembledContigLine(final String alignedAssemblyContigLine) {
+        final String[] split = alignedAssemblyContigLine.split("\t");
+        if (split.length < 2) {
+            log.info("No aligned breakpoints for line " + alignedAssemblyContigLine);
+            return Collections.emptySet();
+        }
+        return Collections.singleton(new Tuple2<>(split[0], AssembledBreakpoint.fromFields(Arrays.copyOfRange(split, 1, split.length))));
     }
 
 }
