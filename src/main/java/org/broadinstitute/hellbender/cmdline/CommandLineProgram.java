@@ -11,10 +11,12 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.io.PrintStream;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -202,7 +204,18 @@ public abstract class CommandLineProgram {
     protected boolean parseArgs(final String[] argv) {
 
         commandLineParser = new CommandLineParser(this);
-        final boolean ret = commandLineParser.parseArguments(System.err, argv);
+        final boolean ret;
+        try{
+            ret = commandLineParser.parseArguments(System.err, argv);
+        } catch (final UserException.CommandLineException e){
+            //The CommandLineException is treated specially - we display help and no blow up
+            commandLineParser.usage(System.err, true);
+            printDecoratedUserExceptionMessage(System.err, e);
+            //rethrow e - this will be caught upstream and the right exit code will be used.
+            //we don't exit here though - only Main.main is allowed to call System.exit.
+            throw e;
+        }
+
         commandLine = commandLineParser.getCommandLine();
         if (!ret) {
             return false;
@@ -216,6 +229,19 @@ public abstract class CommandLineProgram {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
+     */
+    public static void printDecoratedUserExceptionMessage(final PrintStream ps, final UserException e){
+        Utils.nonNull(ps, "stream");
+        Utils.nonNull(e, "exception");
+        ps.println("***********************************************************************");
+        ps.println();
+        ps.println(e.getMessage());
+        ps.println();
+        ps.println("***********************************************************************");
     }
 
     /** Gets a MetricsFile with default headers already written into it. */

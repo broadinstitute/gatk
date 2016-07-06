@@ -21,6 +21,10 @@ import java.util.Set;
 public class UserException extends RuntimeException {
     private static final long serialVersionUID = 0L;
 
+    public UserException() {
+        super();
+    }
+
     public UserException(final String msg) {
         super("A USER ERROR has occurred: " + msg);
     }
@@ -82,11 +86,18 @@ public class UserException extends RuntimeException {
         public MissingReference(String message) { super(message); }
     }
 
+    /**
+     * If this exception is thrown during commandline parsing, help will be displayed.
+     */
     public static class CommandLineException extends UserException {
         private static final long serialVersionUID = 0L;
 
+        public CommandLineException() {
+            super();
+        }
+
         public CommandLineException(String message) {
-            super(String.format("Invalid command line: %s\nUse ./gatk-launch <toolname> --help to see commandline arguments for the tool.", message));
+            super(String.format("Invalid command line: %s", message));
         }
     }
 

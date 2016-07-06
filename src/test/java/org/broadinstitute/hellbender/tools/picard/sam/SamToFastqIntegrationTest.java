@@ -148,6 +148,15 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test(expectedExceptions = UserException.CommandLineException.class)
+    public void testNoArgs() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream ps= new PrintStream(baos);
+        System.setErr(ps);
+        //making sure that this blows up in a very specific way (UserException.CommandLineException) if we give no arguments
+        //This exception is caught by Main.main
+        convertFile(new String[0]);
+    }
 
     @Test(dataProvider =  "okFiles")
     public void testOkInterleavedFile(final String samFilename) throws IOException {

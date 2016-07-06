@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -79,5 +80,20 @@ public final class CountReadsIntegrationTest extends CommandLineProgramTest {
 
         final Object res = this.runCommandLine(args.getArgsArray());
         Assert.assertEquals(res, count);
+    }
+
+    @Test(expectedExceptions = UserException.CommandLineException.class)
+    public void testNoArgs() throws Exception {
+        //making sure that this blows up in a very specific way (UserException.CommandLineException) if we give bogus arguments
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        this.runCommandLine(args.getArgsArray());
+    }
+
+    @Test(expectedExceptions = UserException.CommandLineException.class)
+    public void testBogusArgs() throws Exception {
+        //making sure that this blows up in a very specific way (UserException.CommandLineException) if we give bogus arguments
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--fred");
+        this.runCommandLine(args.getArgsArray());
     }
 }
