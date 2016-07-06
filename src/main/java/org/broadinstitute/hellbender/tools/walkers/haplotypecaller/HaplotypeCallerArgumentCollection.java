@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.Hidden;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -130,6 +132,12 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      */
     @Argument(fullName = "min_base_quality_score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
     public byte MIN_BASE_QUALTY_SCORE = 10;
+    
+    /**
+     * Bases with a quality below this threshold will reduced too the minimum usable qualiy score (6).
+     */
+    @Argument(fullName = "base_quality_score_threshold", shortName = "bqst", doc = "Base qualities below this threshold will be reduced to the minimum (" + QualityUtils.MIN_USABLE_Q_SCORE + ")", optional = true)
+    public byte BASE_QUALITY_SCORE_THRESHOLD = PairHMM.BASE_QUALITY_SCORE_THRESHOLD;
 
     /**
      * Reads with mapping qualities below this threshold will be filtered out

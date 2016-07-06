@@ -73,6 +73,8 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
     }
 
     private final PCRErrorModel pcrErrorModel;
+    
+    private final byte baseQualityScoreThreshold;
 
     /**
      * The expected rate of random sequencing errors for a read originating from its true haplotype.
@@ -80,7 +82,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
      * For example, if this is 0.01, then we'd expect 1 error per 100 bp.
      */
     private static final double EXPECTED_ERROR_RATE_PER_BASE = 0.02;
-
+    
     /**
      * Create a new PairHMMLikelihoodCalculationEngine using provided parameters and hmm to do its calculations
      *
@@ -100,6 +102,31 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                               final PairHMM.Implementation hmmType,
                                               final double log10globalReadMismappingRate,
                                               final PCRErrorModel pcrErrorModel) {
+        this( constantGCP, hmmType, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD );
+    }
+
+    /**
+     * Create a new PairHMMLikelihoodCalculationEngine using provided parameters and hmm to do its calculations
+     *
+     * @param constantGCP the gap continuation penalty to use with the PairHMM
+     * @param hmmType the type of the HMM to use
+     * @param log10globalReadMismappingRate the global mismapping probability, in log10(prob) units.  A value of
+     *                                      -3 means that the chance that a read doesn't actually belong at this
+     *                                      location in the genome is 1 in 1000.  The effect of this parameter is
+     *                                      to cap the maximum likelihood difference between the reference haplotype
+     *                                      and the best alternative haplotype by -3 log units.  So if the best
+     *                                      haplotype is at -10 and this parameter has a value of -3 then even if the
+     *                                      reference haplotype gets a score of -100 from the pairhmm it will be
+     *                                      assigned a likelihood of -13.
+     * @param pcrErrorModel model to correct for PCR indel artifacts
+     * @param baseQualityScoreThreshold Base qualities below this threshold will be reduced to the minimum usable base
+     *                                  quality.
+     */
+    public PairHMMLikelihoodCalculationEngine(final byte constantGCP,
+                                              final PairHMM.Implementation hmmType,
+                                              final double log10globalReadMismappingRate,
+                                              final PCRErrorModel pcrErrorModel,
+                                              final byte baseQualityScoreThreshold) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
         if (constantGCP < 0){
@@ -116,6 +143,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         initializePCRErrorModel();
 
         this.likelihoodsStream = makeLikelihoodStream();
+
+        if (baseQualityScoreThreshold < QualityUtils.MIN_USABLE_Q_SCORE) {
+            throw new IllegalArgumentException("baseQualityScoreThreshold must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
+        }
+        this.baseQualityScoreThreshold = baseQualityScoreThreshold;
     }
 
     private PrintStream makeLikelihoodStream() {
@@ -247,7 +279,7 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
             final byte[] readDelQuals = ReadUtils.getBaseDeletionQualities(read).clone();
 
             applyPCRErrorModel(readBases, readInsQuals, readDelQuals);
-            capMinimumReadQualities(read, readQuals, readInsQuals, readDelQuals);
+            capMinimumReadQualities(read, readQuals, readInsQuals, readDelQuals, baseQualityScoreThreshold);
 
             // Create a new copy of the read and sets its base qualities to the modified versions.
             result.add(createQualityModifiedRead(read, readBases, readQuals, readInsQuals, readDelQuals));
@@ -255,10 +287,10 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         return result;
     }
 
-    private static void capMinimumReadQualities(final GATKRead read, final byte[] readQuals, final byte[] readInsQuals, final byte[] readDelQuals) {
+    private static void capMinimumReadQualities(final GATKRead read, final byte[] readQuals, final byte[] readInsQuals, final byte[] readDelQuals, final byte baseQualityScoreThreshold) {
         for( int i = 0; i < readQuals.length; i++ ) {
             readQuals[i] = (byte) Math.min(0xff & readQuals[i], read.getMappingQuality()); // cap base quality by mapping quality, as in UG
-            readQuals[i] =    setToFixedValueIfTooLow( readQuals[i],    PairHMM.BASE_QUALITY_SCORE_THRESHOLD,  QualityUtils.MIN_USABLE_Q_SCORE );
+            readQuals[i] =    setToFixedValueIfTooLow( readQuals[i],    baseQualityScoreThreshold,             QualityUtils.MIN_USABLE_Q_SCORE );
             readInsQuals[i] = setToFixedValueIfTooLow( readInsQuals[i], QualityUtils.MIN_USABLE_Q_SCORE,       QualityUtils.MIN_USABLE_Q_SCORE );
             readDelQuals[i] = setToFixedValueIfTooLow( readDelQuals[i], QualityUtils.MIN_USABLE_Q_SCORE,       QualityUtils.MIN_USABLE_Q_SCORE );
         }
