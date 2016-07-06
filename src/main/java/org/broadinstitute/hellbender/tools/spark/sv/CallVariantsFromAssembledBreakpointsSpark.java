@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -61,6 +62,7 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
     }
 
+    @VisibleForTesting
     private static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> assembledBreakpointsPerAllele, final ReferenceMultiSource reference) throws IOException {
         int numAssembledBreakpoints = 0;
         int highMqMappings = 0;
@@ -87,7 +89,7 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
         }
 
-        final Allele refAllele = Allele.create(reference.getReferenceBases(null, breakpointAllele.leftAlignedLeftBreakpoint).toString(), true);
+        final Allele refAllele = Allele.create(reference.getReferenceBases(null, breakpointAllele.leftAlignedLeftBreakpoint).getBases()[0], true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);
