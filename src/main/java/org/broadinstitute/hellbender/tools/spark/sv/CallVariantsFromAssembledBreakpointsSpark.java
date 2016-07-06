@@ -4,6 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -15,10 +17,13 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import scala.Tuple2;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +36,10 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
     @Argument(doc = "Called variants output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
     private String output;
+
+    @Argument(doc = "Called variants local output file", shortName = "localOutput",
+            fullName = "localOutput", optional = false)
+    private File localOutput;
 
     @Argument(doc = "Input file of aligned assembled contigs", shortName = "inputFile",
             fullName = "inputFile", optional = false)
@@ -53,9 +62,16 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
-        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAssembledBreakpointsSpark::filterBreakpointsAndProduceVariants);
+        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAssembledBreakpointsSpark::filterBreakpointsAndProduceVariants).cache();
 
         variantContexts.saveAsTextFile(output);
+
+        final List<VariantContext> variants = variantContexts.collect();
+        final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(localOutput, getReferenceSequenceDictionary(), true);
+
+        vcfWriter.writeHeader(new VCFHeader());
+        variants.forEach(vcfWriter::add);
+        vcfWriter.close();
 
     }
 
