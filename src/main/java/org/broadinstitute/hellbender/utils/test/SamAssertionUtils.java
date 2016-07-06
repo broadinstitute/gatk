@@ -252,10 +252,12 @@ public final class SamAssertionUtils {
         msg = compareValues(actualRead.getMappingQuality(), expectedRead.getMappingQuality(), readNames + " getMappingQuality");
         if (msg != null){ return msg; }
 
-        msg = compareValues(actualRead.getMateReferenceIndex(), expectedRead.getMateReferenceIndex(), readNames + "getMateReferenceIndex");
-        if (msg != null){ return msg; }
+        msg = compareValues(actualRead.getMateReferenceIndex(), expectedRead.getMateReferenceIndex(), readNames + " getMateReferenceIndex");
+        if (msg != null){
+            return msg;
+        }
 
-        msg = compareValues(actualRead.getMateAlignmentStart(), expectedRead.getMateAlignmentStart(), readNames + "getMateAlignmentStart");
+        msg = compareValues(actualRead.getMateAlignmentStart(), expectedRead.getMateAlignmentStart(), readNames + " getMateAlignmentStart");
         if (msg != null){ return msg; }
 
         msg = compareValues(actualRead.getReferenceIndex(), expectedRead.getReferenceIndex(), readNames + " getReferenceIndex");

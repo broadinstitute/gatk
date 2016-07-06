@@ -7,6 +7,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.UnmodifiableIterator;
 import htsjdk.samtools.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
@@ -21,7 +22,6 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.BAMInputFormat;
-import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,28 +63,110 @@ public final class BwaSparkEngine implements Serializable{
         this.referenceFileName = referenceFileName;
     }
 
+    /**
+     * Aligns the reads using bwa. The resulting reads are the same as the input reads but with updated alignment information.
+     */
     public JavaRDD<GATKRead> alignWithBWA(final JavaSparkContext ctx, final JavaRDD<GATKRead> unalignedReads, final SAMFileHeader readsHeader) {
         //Note: SparkContext is not serializable so we don't store it in the engine and set this property here. Setting it multiple times is fine.
         // ensure reads in a pair fall in the same partition (input split), so they are processed together
         ctx.hadoopConfiguration().setBoolean(BAMInputFormat.KEEP_PAIRED_READS_TOGETHER_PROPERTY, true);
 
-        final JavaRDD<Tuple2<ShortRead, ShortRead>> shortReadPairs = convertToUnalignedReadPairs(unalignedReads);
-        final JavaRDD<String> samLines = align(shortReadPairs);
+        final JavaRDD<Pair<BwaHelperShortRead, BwaHelperShortRead>> shortReadPairs = convertToUnalignedReadPairs(unalignedReads);
+        final JavaRDD<Pair<String, GATKRead>> samLines = align(shortReadPairs);
         final Broadcast<SAMFileHeader>  readsHeaderBroadcast = ctx.broadcast(readsHeader);
-        return samLines.mapPartitions(lineIterator -> {
+        return samLines.mapPartitions(pairIterator -> {
             //Note: The parser is stateful and not thread safe.
             // So we reuse the parser over the whole partition and call it from one thread only.
             final SAMLineParser samLineParser = new SAMLineParser(new DefaultSAMRecordFactory(), ValidationStringency.SILENT, readsHeaderBroadcast.getValue(), null, null);
             final List<GATKRead> reads = new ArrayList<>();
-            while (lineIterator.hasNext()) {
-                final String samLine = lineIterator.next();
-                reads.add(new SAMRecordToGATKReadAdapter(samLineParser.parseLine(samLine)));
+            while (pairIterator.hasNext()) {
+                final Pair<String, GATKRead> p = pairIterator.next();
+		final GATKRead originalRead = p.getRight();
+		final GATKRead alignedRead = new SAMRecordToGATKReadAdapter(samLineParser.parseLine(p.getLeft()));
+
+		//we're going to just modify the original read
+		copyPositionalInfo(alignedRead, originalRead);
+		copyAlignmentRelatedTags(alignedRead, originalRead);
+		copyFlags(alignedRead, originalRead);
+
+		//we need to copy the bases and quals too because bwa may have reversed complemented them
+		originalRead.setBases(alignedRead.getBases());
+		originalRead.setBaseQualities(alignedRead.getBaseQualities());
+
+                reads.add(originalRead);
             }
             return reads;
         });
     }
 
-    private JavaRDD<Tuple2<ShortRead, ShortRead>> convertToUnalignedReadPairs(final JavaRDD<GATKRead> unalignedReads) {
+    private static void copyPositionalInfo(final GATKRead from, final GATKRead to) {
+        if (from.isUnmapped()) {
+            to.setIsUnmapped();
+        } else {
+            to.setPosition(from);
+        }
+        if (from.mateIsUnmapped()) {
+            to.setMateIsUnmapped();
+        } else {
+            to.setMatePosition(from.getMateContig(), from.getMateStart());
+        }
+        to.setCigar(from.getCigar());
+        to.setFragmentLength(from.getFragmentLength());
+        to.setMappingQuality(from.getMappingQuality());
+    }
+
+    private static void copyAlignmentRelatedTags(final GATKRead from, final GATKRead to) {
+        //Note: not all tags need to be copied, only those that pertain to the alignment itself
+
+        to.setAttribute(SAMTag.AS.name(), from.getAttributeAsInteger(SAMTag.AS.name()));
+        to.setAttribute(SAMTag.MD.name(), from.getAttributeAsString(SAMTag.MD.name()));
+        to.setAttribute(SAMTag.NM.name(), from.getAttributeAsInteger(SAMTag.NM.name()));
+        to.setAttribute(SAMTag.SA.name(), from.getAttributeAsString(SAMTag.SA.name()));
+        to.setAttribute(SAMTag.MC.name(), from.getAttributeAsString(SAMTag.MC.name()));
+        to.setAttribute(SAMTag.BC.name(), from.getAttributeAsString(SAMTag.BC.name()));
+
+        //copy all bwa tags, listed here http://bio-bwa.sourceforge.net/bwa.shtml
+        //note: the doc does not mention their types, so we just guess
+        to.setAttribute("X0", from.getAttributeAsInteger("X0"));  //Number of best hits
+        to.setAttribute("X1", from.getAttributeAsInteger("X1"));  //Number of suboptimal hits found by BWA
+        to.setAttribute("XN", from.getAttributeAsInteger("XN"));  //Number of ambiguous bases in the referenece
+        to.setAttribute("XM", from.getAttributeAsInteger("XM"));  //Number of mismatches in the alignment
+        to.setAttribute("XO", from.getAttributeAsInteger("XO"));  //Number of gap opens
+        to.setAttribute("XG", from.getAttributeAsInteger("XG"));  //Number of gap extentions
+        to.setAttribute("XT", from.getAttributeAsString("XT"));   //Type: Unique/Repeat/N/Mate-sw
+        to.setAttribute("XA", from.getAttributeAsString("XA"));   //Alternative hits; format: (chr,pos,CIGAR,NM;)*
+        to.setAttribute("XS", from.getAttributeAsInteger("XS"));  //Suboptimal alignment score
+        to.setAttribute("XF", from.getAttributeAsInteger("XF"));  //Support from forward/reverse alignment
+        to.setAttribute("XE", from.getAttributeAsInteger("XE"));  //Number of supporting seeds
+    }
+
+    private static void copyFlags(final GATKRead from, final GATKRead to) {
+        to.setIsPaired(from.isPaired());
+        to.setIsProperlyPaired(from.isProperlyPaired());
+        if (from.isUnmapped()) {
+            to.setIsUnmapped();
+        }
+
+        if (from.isPaired()) {
+            if (from.mateIsUnmapped()) {
+                to.setMateIsUnmapped();
+            }
+            to.setMateIsReverseStrand(from.mateIsReverseStrand());//this has to be caller regardless of whether mate is unmapped or not
+        }
+        to.setIsReverseStrand(from.isReverseStrand());
+        if ( from.isFirstOfPair() ) {
+            to.setIsFirstOfPair();
+        }
+        if ( from.isSecondOfPair() ) {
+            to.setIsSecondOfPair();
+        }
+        to.setIsSecondaryAlignment(from.isSecondaryAlignment());
+        to.setFailsVendorQualityCheck(from.failsVendorQualityCheck());
+        to.setIsDuplicate(from.isDuplicate());
+        to.setIsSupplementaryAlignment(from.isSupplementaryAlignment());
+    }
+
+    private JavaRDD<Pair<BwaHelperShortRead, BwaHelperShortRead>> convertToUnalignedReadPairs(final JavaRDD<GATKRead> unalignedReads) {
         final JavaRDD<List<GATKRead>> unalignedPairs = unalignedReads.mapPartitions(iter -> () -> Iterators.partition(iter, 2));
 
         return unalignedPairs.map(p -> {
@@ -94,13 +176,13 @@ public final class BwaSparkEngine implements Serializable{
             final String name2 = read2.getName();
             final byte[] baseQualities1 = SAMUtils.phredToFastq(read1.getBaseQualities()).getBytes();
             final byte[] baseQualities2 = SAMUtils.phredToFastq(read2.getBaseQualities()).getBytes();
-            return new Tuple2<>(
-                    new ShortRead(name1, read1.getBases(), baseQualities1),
-                    new ShortRead(name2, read2.getBases(), baseQualities2));
+            return Pair.of(
+                    new BwaHelperShortRead(name1, read1.getBases(), baseQualities1, read1),
+                    new BwaHelperShortRead(name2, read2.getBases(), baseQualities2, read2));
         });
     }
 
-    private JavaRDD<String> align(final JavaRDD<Tuple2<ShortRead, ShortRead>> shortReadPairs) {
+    private JavaRDD<Pair<String, GATKRead>> align(final JavaRDD<Pair<BwaHelperShortRead, BwaHelperShortRead>> shortReadPairs) {
         return shortReadPairs.mapPartitions(iter -> () -> {
             BWANativeLibrary.load();
 
@@ -141,17 +223,32 @@ public final class BwaSparkEngine implements Serializable{
      * @param iter the read pairs in the collection ("chunk")
      * @return an {@link Iterator} of chunks of alignment strings (in SAM format)
      */
-    private Iterator<List<String>> alignChunks(final BwaMem bwaMem, final Iterator<Tuple2<ShortRead, ShortRead>> iter) {
+    private Iterator<List<Pair<String, GATKRead>>> alignChunks(final BwaMem bwaMem, final Iterator<Pair<BwaHelperShortRead, BwaHelperShortRead>> iter) {
         return Utils.transformParallel(chunk(iter), input -> {
-            final List<ShortRead> reads1 = new ArrayList<>();
-            final List<ShortRead> reads2 = new ArrayList<>();
-            for (final Tuple2<ShortRead, ShortRead> p : input) {
-                reads1.add(p._1);
-                reads2.add(p._2);
+            final List<ShortRead> reads1 = new ArrayList<>(input.size());
+            final List<ShortRead> reads2 = new ArrayList<>(input.size());
+            for (final Pair<BwaHelperShortRead, BwaHelperShortRead> p : input) {
+                reads1.add(p.getLeft());
+                reads2.add(p.getRight());
             }
             try {
                 final String[] alignments = bwaMem.align(reads1, reads2);
-                return Arrays.asList(alignments);
+
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                final Pair<String, GATKRead>[] pairedAlignments = (Pair<String, GATKRead>[])new Pair[alignments.length];
+                for (int i = 0; i < alignments.length; i++) {
+                    //even ones are from read1, odd ones are from read2
+                    //The nasty downcasts are a workaround for jBWA interface that only allows List<ShortRead> and not List<? extends ShortRead>
+                    if (i % 2 == 0) {
+                        pairedAlignments[i] = Pair.of(alignments[i], ((BwaHelperShortRead)reads1.get(i/2)).getRead());
+                    } else {
+                        //note: the same i/2 works for both odd and even numbers:
+                        //i  = 0 1 2 3 4 5 6 7
+                        //i/2= 0 0 1 1 2 2 3 3
+                        pairedAlignments[i] = Pair.of(alignments[i], ((BwaHelperShortRead)reads2.get(i/2)).getRead());
+                    }
+                }
+                return Arrays.asList(pairedAlignments);
             } catch (final IOException e) {
                 throw new GATKException(e.toString());
             }
@@ -164,24 +261,24 @@ public final class BwaSparkEngine implements Serializable{
      * @param iterator the read pairs
      * @return an {@link Iterator} of chunks of read pairs
      */
-    private Iterator<List<Tuple2<ShortRead, ShortRead>>> chunk(final Iterator<Tuple2<ShortRead, ShortRead>> iterator) {
-        return new UnmodifiableIterator<List<Tuple2<ShortRead, ShortRead>>>() {
+    private Iterator<List<Pair<BwaHelperShortRead, BwaHelperShortRead>>> chunk(final Iterator<Pair<BwaHelperShortRead, BwaHelperShortRead>> iterator) {
+        return new UnmodifiableIterator<List<Pair<BwaHelperShortRead, BwaHelperShortRead>>>() {
             @Override
             public boolean hasNext() {
                 return iterator.hasNext();
             }
             @Override
-            public List<Tuple2<ShortRead, ShortRead>> next() {
+            public List<Pair<BwaHelperShortRead, BwaHelperShortRead>> next() {
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
                 int size = 0;
-                final List<Tuple2<ShortRead, ShortRead>> list = new ArrayList<>();
+                final List<Pair<BwaHelperShortRead, BwaHelperShortRead>> list = new ArrayList<>();
                 while (iterator.hasNext() && size < fixedChunkSize) {
-                    final Tuple2<ShortRead, ShortRead> pair = iterator.next();
+                    final Pair<BwaHelperShortRead, BwaHelperShortRead> pair = iterator.next();
                     list.add(pair);
-                    size += pair._1.getBases().length;
-                    size += pair._2.getBases().length;
+                    size += pair.getLeft().getBases().length;
+                    size += pair.getRight().getBases().length;
                 }
                 return list;
             }

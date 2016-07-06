@@ -105,10 +105,10 @@ public final class ArgumentsBuilder {
     /**
      * add an argument with a given value to this builder
      */
-    public ArgumentsBuilder addArgument(final String argumentName, final String argumentValue) {
-        Utils.nonNull(argumentValue);
-        Utils.nonNull(argumentName);
-        add("--" + argumentName);
+    public ArgumentsBuilder addArgument(final String argumentFullName, final String argumentValue) {
+        Utils.nonNull(argumentValue, "value");
+        Utils.nonNull(argumentFullName, "name");
+        add("--" + argumentFullName);
         add(argumentValue);
         return this;
     }

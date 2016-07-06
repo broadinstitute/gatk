@@ -26,7 +26,7 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
             Assert.fail();
         }
 
-        ArgumentsBuilder args = new ArgumentsBuilder();
+        final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addFileArgument("reference", ref);
         args.addFileArgument("input", input);
         args.add("disableSequenceDictionaryValidation=true"); // disable since input does not have a sequence dictionary
