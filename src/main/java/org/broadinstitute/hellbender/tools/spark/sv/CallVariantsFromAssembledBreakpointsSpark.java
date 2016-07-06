@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
@@ -45,8 +44,6 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final ReferenceMultiSource reference = getReference();
-
         final JavaPairRDD<String, AssembledBreakpoint> inputAlignedBreakpoints = ctx.textFile(input).flatMapToPair(AlignContigsAndCallBreakpointsSpark::parseAlignedAssembledContigLine).cache();
 
         final JavaPairRDD<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
@@ -56,14 +53,14 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
-        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(v -> filterBreakpointsAndProduceVariants(v, reference));
+        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAssembledBreakpointsSpark::filterBreakpointsAndProduceVariants);
 
         variantContexts.saveAsTextFile(output);
 
     }
 
     @VisibleForTesting
-    private static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> assembledBreakpointsPerAllele, final ReferenceMultiSource reference) throws IOException {
+    private static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> assembledBreakpointsPerAllele) throws IOException {
         int numAssembledBreakpoints = 0;
         int highMqMappings = 0;
         int midMqMappings = 0;
@@ -89,7 +86,12 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
         }
 
-        final Allele refAllele = Allele.create(reference.getReferenceBases(null, breakpointAllele.leftAlignedLeftBreakpoint).getBases()[0], true);
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, breakpointAllele);
+    }
+
+    @VisibleForTesting
+    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final BreakpointAllele breakpointAllele) throws IOException {
+        final Allele refAllele = Allele.create(refBase, true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);

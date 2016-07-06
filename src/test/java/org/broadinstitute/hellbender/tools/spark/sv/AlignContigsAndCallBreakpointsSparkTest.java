@@ -56,6 +56,5 @@ public class AlignContigsAndCallBreakpointsSparkTest extends BaseTest {
         Assert.assertEquals(region2.endInAssembledContig, 2498);
         Assert.assertEquals(assembledBreakpoint.insertedSequence, "AGTGGATAGGTGGATAGAGGGTTGGGTGGGTGGATGGATGAGTAGGTGGATGGGTGGATAGGTGGATGGATGAATGGATGATGGGTGGATGGATGGGTGGATAGATGGATGGGTGGGTAGATGGATGGGTAGGTGGATGTGTGGATAGATGGATGGATGAATGGATGGTTGGGTGGATGGATGGGTTGGATGAGTGAACCGAT");
         Assert.assertEquals(assembledBreakpoint.homology, "");
-
     }
 }
