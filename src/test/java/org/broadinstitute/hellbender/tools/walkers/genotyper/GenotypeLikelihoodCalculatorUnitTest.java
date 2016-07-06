@@ -89,14 +89,15 @@ public final class GenotypeLikelihoodCalculatorUnitTest {
             if (reverseMap.get(alleleMap[i]) == null) reverseMap.put(alleleMap[i],new LinkedHashSet<>(6));
             reverseMap.get(alleleMap[i]).add(i);
         }
-        final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, maxAlleleCount);
+        final GenotypeLikelihoodCalculators calculators = new GenotypeLikelihoodCalculators();
+        final GenotypeLikelihoodCalculator calculator = calculators.getInstance(ploidy, maxAlleleCount);
 
-        final int[] genotypeIndexMap = calculator.genotypeIndexMap(alleleMap);
+        final int[] genotypeIndexMap = calculator.genotypeIndexMap(alleleMap, calculators);
         Assert.assertNotNull(genotypeIndexMap);
-        Assert.assertEquals(genotypeIndexMap.length, new GenotypeLikelihoodCalculators().genotypeCount(ploidy, newAlleleCount));
+        Assert.assertEquals(genotypeIndexMap.length, calculators.genotypeCount(ploidy, newAlleleCount));
 
-        final GenotypeLikelihoodCalculator oldCalculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, oldAlleleCount);
-        final GenotypeLikelihoodCalculator newCalculator = new GenotypeLikelihoodCalculators().getInstance(ploidy, newAlleleCount);
+        final GenotypeLikelihoodCalculator oldCalculator = calculators.getInstance(ploidy, oldAlleleCount);
+        final GenotypeLikelihoodCalculator newCalculator = calculators.getInstance(ploidy, newAlleleCount);
 
         for (int i = 0; i < genotypeIndexMap.length; i++) {
             final GenotypeAlleleCounts oldCounts = oldCalculator.genotypeAlleleCountsAt(genotypeIndexMap[i]);

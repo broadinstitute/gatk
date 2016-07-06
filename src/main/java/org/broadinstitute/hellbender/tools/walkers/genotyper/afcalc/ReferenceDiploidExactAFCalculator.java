@@ -126,18 +126,20 @@ public final class ReferenceDiploidExactAFCalculator extends DiploidExactAFCalcu
 
     private static void computeLofK(final ExactACset set,
                                     final List<double[]> genotypeLikelihoods,
-                                    final double[] log10AlleleFrequencyPriors, final StateTracker stateTracker) {
+                                    final double[] log10AlleleFrequencyPriors,
+                                    final StateTracker stateTracker) {
 
-        set.getLog10Likelihoods()[0] = 0.0; // the zero case
+        final double[] setLog10Likelihoods = set.getLog10Likelihoods();
+        setLog10Likelihoods[0] = 0.0; // the zero case
         final int totalK = set.getACsum();
 
         // special case for k = 0 over all k
         if ( totalK == 0 ) {
-            for ( int j = 1; j < set.getLog10Likelihoods().length; j++ ) {
-                set.getLog10Likelihoods()[j] = set.getLog10Likelihoods()[j - 1] + genotypeLikelihoods.get(j)[HOM_REF_INDEX];
+            for (int j = 1, n = setLog10Likelihoods.length; j < n; j++ ) {
+                setLog10Likelihoods[j] = setLog10Likelihoods[j - 1] + genotypeLikelihoods.get(j)[HOM_REF_INDEX];
             }
 
-            final double log10Lof0 = set.getLog10Likelihoods()[set.getLog10Likelihoods().length-1];
+            final double log10Lof0 = setLog10Likelihoods[setLog10Likelihoods.length-1];
             stateTracker.setLog10LikelihoodOfAFzero(log10Lof0);
             stateTracker.setLog10PosteriorOfAFzero(log10Lof0 + log10AlleleFrequencyPriors[0]);
             return;
@@ -146,18 +148,18 @@ public final class ReferenceDiploidExactAFCalculator extends DiploidExactAFCalcu
         // if we got here, then k > 0 for at least one k.
         // the non-AA possible conformations were already dealt with by pushes from dependent sets;
         // now deal with the AA case (which depends on previous cells in this column) and then update the L(j,k) value
-        for ( int j = 1; j < set.getLog10Likelihoods().length; j++ ) {
+        for (int j = 1, n = setLog10Likelihoods.length; j < n; j++ ) {
             if ( totalK < 2*j-1 ) {
                 final double[] gl = genotypeLikelihoods.get(j);
-                final double conformationValue = MathUtils.log10(2*j-totalK) + MathUtils.log10(2*j-totalK-1) + set.getLog10Likelihoods()[j-1] + gl[HOM_REF_INDEX];
-                set.getLog10Likelihoods()[j] = MathUtils.approximateLog10SumLog10(set.getLog10Likelihoods()[j], conformationValue);
+                final double conformationValue = MathUtils.log10(2*j-totalK) + MathUtils.log10(2*j-totalK-1) + setLog10Likelihoods[j-1] + gl[HOM_REF_INDEX];
+                setLog10Likelihoods[j] = MathUtils.approximateLog10SumLog10(setLog10Likelihoods[j], conformationValue);
             }
 
             final double logDenominator = MathUtils.log10(2*j) + MathUtils.log10(2*j-1);
-            set.getLog10Likelihoods()[j] = set.getLog10Likelihoods()[j] - logDenominator;
+            setLog10Likelihoods[j] = setLog10Likelihoods[j] - logDenominator;
         }
 
-        double log10LofK = set.getLog10Likelihoods()[set.getLog10Likelihoods().length-1];
+        double log10LofK = setLog10Likelihoods[setLog10Likelihoods.length-1];
 
         // update the MLE if necessary
         stateTracker.updateMLEifNeeded(log10LofK, set.getACcounts().getCounts());
@@ -209,12 +211,16 @@ public final class ReferenceDiploidExactAFCalculator extends DiploidExactAFCalcu
                                  final List<double[]> genotypeLikelihoods) {
         final int totalK = targetSet.getACsum();
 
-        for ( int j = 1; j < targetSet.getLog10Likelihoods().length; j++ ) {
-            if ( totalK <= 2*j ) { // skip impossible conformations
+        final double[] targetSetLog10Likelihoods = targetSet.getLog10Likelihoods();
+        final double[] dependentSetLog10Likelihoods = dependentSet.getLog10Likelihoods();
+        final int[] counts = targetSet.getACcounts().getCounts();
+
+        for ( int j = 1, n = targetSetLog10Likelihoods.length; j < n; j++ ) {
+            if (2 * j >= totalK) { // skip impossible conformations
                 final double[] gl = genotypeLikelihoods.get(j);
                 final double conformationValue =
-                        determineCoefficient(PLsetIndex, j, targetSet.getACcounts().getCounts(), totalK) + dependentSet.getLog10Likelihoods()[j-1] + gl[PLsetIndex];
-                targetSet.getLog10Likelihoods()[j] = MathUtils.approximateLog10SumLog10(targetSet.getLog10Likelihoods()[j], conformationValue);
+                        determineCoefficient(PLsetIndex, j, counts, totalK) + dependentSetLog10Likelihoods[j-1] + gl[PLsetIndex];
+                targetSetLog10Likelihoods[j] = MathUtils.approximateLog10SumLog10(targetSetLog10Likelihoods[j], conformationValue);
             }
         }
     }

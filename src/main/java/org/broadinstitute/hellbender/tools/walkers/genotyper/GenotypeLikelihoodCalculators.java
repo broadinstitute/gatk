@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Arrays;
 
@@ -14,6 +16,8 @@ import java.util.Arrays;
  * </p>
  */
 public final class GenotypeLikelihoodCalculators {
+
+    private static final Logger logger = LogManager.getLogger(GenotypeLikelihoodCalculators.class);
 
     /**
      * The current maximum ploidy supported by the tables.
@@ -61,6 +65,10 @@ public final class GenotypeLikelihoodCalculators {
      */
     private GenotypeAlleleCounts[][] genotypeTableByPloidy =
             buildGenotypeAlleleCountsTable(maximumPloidy,maximumAllele,alleleFirstGenotypeOffsetByPloidy);
+
+    public GenotypeLikelihoodCalculators(){
+
+    }
 
     /**
      * Build the table with the genotype offsets based on ploidy and the maximum allele index with representation
@@ -282,6 +290,8 @@ public final class GenotypeLikelihoodCalculators {
 
         final int newMaximumPloidy = Math.max(maximumPloidy, requestedMaximumPloidy);
         final int newMaximumAllele = Math.max(maximumAllele, requestedMaximumAllele);
+
+        logger.debug("Expanding capacity ploidy:" + maximumPloidy + "->" + newMaximumPloidy + " allele:" +  maximumAllele +"->" + newMaximumAllele );
 
         // Update tables first.
         alleleFirstGenotypeOffsetByPloidy = buildAlleleFirstGenotypeOffsetTable(newMaximumPloidy,newMaximumAllele);

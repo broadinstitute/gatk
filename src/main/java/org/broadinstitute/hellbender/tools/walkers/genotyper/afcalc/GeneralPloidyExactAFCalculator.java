@@ -17,6 +17,7 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
     static final int MAX_LENGTH_FOR_POOL_PL_LOGGING = 100; // if PL vectors longer than this # of elements, don't log them
 
     private static final boolean VERBOSE = false;
+    private final GenotypeLikelihoodCalculators calculators = new GenotypeLikelihoodCalculators();
 
     @Override
     protected GenotypesContext reduceScopeGenotypes(final VariantContext vc, final int defaultPloidy, final List<Allele> allelesToUse) {
@@ -462,7 +463,7 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
      * @param allelesToUse         the list of alleles to choose from (corresponding to the PLs)
      * @param numChromosomes        Number of chromosomes per pool
      */
-    private static void assignGenotype(final GenotypeBuilder gb,
+    private void assignGenotype(final GenotypeBuilder gb,
                                        final double[] newLikelihoods,
                                        final List<Allele> allelesToUse,
                                        final int numChromosomes) {
@@ -470,7 +471,7 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
 
         // find the genotype with maximum likelihoods
         final int PLindex = numNewAltAlleles == 0 ? 0 : MathUtils.maxElementIndex(newLikelihoods);
-        final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(numChromosomes, allelesToUse.size());
+        final GenotypeLikelihoodCalculator calculator = calculators.getInstance(numChromosomes, allelesToUse.size());
         final GenotypeAlleleCounts alleleCounts = calculator.genotypeAlleleCountsAt(PLindex);
 
         gb.alleles(alleleCounts.asAlleleList(allelesToUse));
@@ -706,9 +707,8 @@ public final class GeneralPloidyExactAFCalculator extends ExactAFCalculator {
      * @param PLindex                     Index to query
      * @return                            Allele count conformation, according to iteration order from SumIterator
      */
-    private static int[] getAlleleCountFromPLIndex(final int nAlleles, final int numChromosomes, final int PLindex) {
-
-        final GenotypeLikelihoodCalculator calculator = new GenotypeLikelihoodCalculators().getInstance(numChromosomes, nAlleles);
+    private int[] getAlleleCountFromPLIndex(final int nAlleles, final int numChromosomes, final int PLindex) {
+        final GenotypeLikelihoodCalculator calculator = calculators.getInstance(numChromosomes, nAlleles);
         final GenotypeAlleleCounts alleleCounts = calculator.genotypeAlleleCountsAt(PLindex);
         return alleleCounts.alleleCountsByIndex(nAlleles - 1);
     }
