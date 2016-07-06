@@ -4,7 +4,8 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.ContentSummary;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -16,14 +17,15 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import scala.Tuple2;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -87,21 +89,6 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     // for developer performance debugging use
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private static final Logger logger = LogManager.getLogger(RunSGAViaProcessBuilderOnSpark.class);
-
-    /**
-     * input format is tab separated BreakpointId, PackedFastaFile
-     * @param assemblyLine An input line with a breakpoint ID and packed FASTA line
-     * @return A tuple with the breakpoint ID and packed FASTA line, or an empty iterator if the line did not have two tab-separated values
-     */
-    static Iterable<Tuple2<String, String>> splitAssemblyLine(final String assemblyLine) {
-
-        final String[] split = assemblyLine.split("\t");
-        if (split.length < 2) {
-            logger.info("No assembled contigs for breakpoint " + split[0]);
-            return Collections.emptySet();
-        }
-        return Collections.singleton(new Tuple2<>(split[0], split[1]));
-    }
 
     @Override
     public void runTool(final JavaSparkContext ctx){
@@ -411,109 +398,4 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         }
     }
 
-    /**
-     * Represents a collection of assembled contigs (not including the variants) produced by "sga assemble".
-     */
-    @VisibleForTesting
-    static final class ContigsCollection implements Serializable{
-        private static final long serialVersionUID = 1L;
-
-
-        @VisibleForTesting
-        static final class ContigSequence implements Serializable{
-            private static final long serialVersionUID = 1L;
-
-            private final String sequence;
-            public ContigSequence(final String sequence){ this.sequence = sequence; }
-
-            @Override
-            public String toString(){
-                return sequence;
-            }
-        }
-
-        @VisibleForTesting
-        static final class ContigID implements Serializable{
-            private static final long serialVersionUID = 1L;
-
-            private final String id;
-            public ContigID(final String idString) { this.id = idString; }
-
-            @Override
-            public String toString(){
-                return id;
-            }
-
-            @Override
-            public boolean equals(final Object o) {
-                if (this == o) return true;
-                if (o == null || getClass() != o.getClass()) return false;
-                final ContigID contigID = (ContigID) o;
-                return Objects.equals(id, contigID.id);
-            }
-
-            @Override
-            public int hashCode() {
-                return Objects.hash(id);
-            }
-        }
-
-        private final List<Tuple2<ContigID, ContigSequence>> contents;
-
-        public List<Tuple2<ContigID, ContigSequence>> getContents(){
-            return contents;
-        }
-
-        @Override
-        public String toString(){
-            return StringUtils.join(toListOfStrings(),"\n");
-        }
-
-        /**
-         * Pack the entire fasta record on one line so that it's easy for downstream
-         * Spark tools to parse without worrying about partitioning. If the ContigCollection
-         * is empty this returns null.
-         */
-        public String toPackedFasta(){
-            return StringUtils.join(toListOfStrings(),"|");
-        }
-
-        /**
-         * To ease file format difficulties
-         * @param packedFastaLine
-         */
-        @VisibleForTesting
-        protected static ContigsCollection fromPackedFasta(final String packedFastaLine) {
-            final List<String> fileContents = Arrays.asList(packedFastaLine.split("\\|"));
-            if (fileContents.size() % 2 != 0) {
-                throw new GATKException("Odd number of lines in breakpoint fasta" + packedFastaLine);
-            }
-            return new ContigsCollection(fileContents);
-        }
-
-        public List<String> toListOfStrings(){
-            if(null==contents){
-                return null;
-            }
-            final List<String> res = new ArrayList<>();
-            for(final Tuple2<ContigID, ContigSequence> contig : contents){
-                res.add(contig._1().toString());
-                res.add(contig._2().toString());
-            }
-            return res;
-        }
-
-        public ContigsCollection(final List<String> fileContents){
-
-            if(null==fileContents){
-                contents = null;
-            }else{
-                contents = new ArrayList<>();
-                for(int i=0; i<fileContents.size(); i+=2){
-                    contents.add(new Tuple2<>(new ContigID(fileContents.get(i)), new ContigSequence(fileContents.get(i+1))));
-                }
-            }
-        }
-
-    }
 }
