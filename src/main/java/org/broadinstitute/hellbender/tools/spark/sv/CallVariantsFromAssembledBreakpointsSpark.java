@@ -67,11 +67,12 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
         variantContexts.saveAsTextFile(output);
 
         final List<VariantContext> variants = variantContexts.collect();
-        variants.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
+        final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
+        variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
         final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(localOutput, getReferenceSequenceDictionary(), true);
 
         vcfWriter.writeHeader(new VCFHeader());
-        variants.forEach(vcfWriter::add);
+        variantsArrayList.forEach(vcfWriter::add);
         vcfWriter.close();
 
     }
