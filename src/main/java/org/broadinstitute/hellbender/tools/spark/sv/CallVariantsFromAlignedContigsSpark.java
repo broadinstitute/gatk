@@ -126,6 +126,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
                 .id("NOID")
                 .alleles(vcAlleles)
+                .attribute("END", breakpointAllele.leftAlignedRightBreakpoint.getStart())
                 .attribute("SVTYPE", "INV")
                 .attribute("SVLEN", breakpointAllele.leftAlignedRightBreakpoint.getStart() - breakpointAllele.leftAlignedLeftBreakpoint.getStart())
                 .attribute("TOTAL_MAPPINGS", numAssembledBreakpoints)
