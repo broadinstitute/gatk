@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @CommandLineProgramProperties(summary="Filter breakpoint alignments and call variants.",
         oneLineSummary="Filter breakpoint alignments and call variants",
         programGroup = SparkProgramGroup.class)
-public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
+public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "Called variants output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -57,12 +57,12 @@ public class CallVariantsFromAssembledBreakpointsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
                 inputAlignedBreakpoints
-                        .filter(CallVariantsFromAssembledBreakpointsSpark::inversionBreakpointFilter)
-                        .mapToPair(CallVariantsFromAssembledBreakpointsSpark::keyByBreakpointAllele);
+                        .filter(CallVariantsFromAlignedContigsSpark::inversionBreakpointFilter)
+                        .mapToPair(CallVariantsFromAlignedContigsSpark::keyByBreakpointAllele);
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<String, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
-        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAssembledBreakpointsSpark::filterBreakpointsAndProduceVariants).cache();
+        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAlignedContigsSpark::filterBreakpointsAndProduceVariants).cache();
 
         variantContexts.saveAsTextFile(output);
 

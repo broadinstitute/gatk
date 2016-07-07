@@ -4,7 +4,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 
 
-public class CallVariantsFromAssembledBreakpointsSparkTest extends BaseTest {
+public class CallVariantsFromAlignedContigsSparkTest extends BaseTest {
 
     @Test
     public void testCreateVariant() throws Exception {
