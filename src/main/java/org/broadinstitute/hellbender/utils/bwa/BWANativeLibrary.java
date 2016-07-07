@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.utils.NativeUtils;
 public class BWANativeLibrary {
     public static void load() {
         // Load native library in each task VM
-        final String libraryPath = NativeUtils.runningOnLinux() ? "/lib/libbwajni.so" : "/lib/libbwajni_mac.jnilib";
+        final String libraryPath = NativeUtils.runningOnLinux() ? "/libbwajni.so" : "/libbwajni.jnilib";
         if (! NativeUtils.loadLibraryFromClasspath(libraryPath)){
             throw new UserException( "jbwa library was not loaded. This could be due to a configuration error, or your system might not support it.");
         }
