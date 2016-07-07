@@ -1,43 +1,30 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.Defaults;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.stream.StreamSupport;
+import java.util.LinkedList;
+import java.util.List;
 
 import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
 
@@ -48,6 +35,8 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
  * Identifies all N cigar elements and creates k+1 new reads (where k is the number of N cigar elements).
  * The first read includes the bases that are to the left of the first N element, while the part of the read that is to the right of the N
  * (including the Ns) is hard clipped and so on for the rest of the new reads.
+ *
+ * Requires input BAM file to be in name-sorted order
  */
 @CommandLineProgramProperties(
         summary = "Splits reads that contain Ns in their cigar string (e.g. spanning splicing events).",
@@ -92,10 +81,16 @@ public final class SplitNCigarReads extends ReadWalker {
     @Argument(fullName="doNotFixOverhangs", shortName="doNotFixOverhangs", doc="do not have the walker hard-clip overhanging sections of the reads", optional=true)
     protected boolean doNotFixOverhangs = false;
 
+    @Argument(fullName="sortOutputByIndex", shortName="indexSorted", doc="have the tool output bam file return an index sorted file (name sorted otherwise)", optional = true)
+    protected boolean sortOrder = false;
+
+    @Argument()
+
     private SAMFileGATKReadWriter outputWriter;
     private OverhangFixingManager overhangManager;
     ReadTransformer rnaReadTransform;
     private IndexedFastaSequenceFile referenceReader;
+    private List<GATKRead> pairStorage;
 
     @Override
     public CountingReadFilter makeReadFilter() {
@@ -105,6 +100,12 @@ public final class SplitNCigarReads extends ReadWalker {
     @Override
     public void onTraversalStart() {
         SAMFileHeader header = getHeaderForSAMWriter();
+        //header.setSortOrder(); SAMRecordQueryNameComparator
+        if (header.getSortOrder() != SAMFileHeader.SortOrder.queryname) {
+            throw new UserException.BadInput("SplitNCigarReads tool requires input file to be in queryname sorted order");
+        }
+
+        pairStorage = new LinkedList<GATKRead>();
         rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceFile());
@@ -119,11 +120,32 @@ public final class SplitNCigarReads extends ReadWalker {
 
     @Override
     public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        splitNCigarRead(rnaReadTransform.apply(read),overhangManager);
+        if (read.isPaired()) {
+            if (pairStorage.isEmpty()) {
+                pairStorage.add(rnaReadTransform.apply(read));
+
+            // Checking if the mate is part of the same template
+            } else if (pairStorage.get(0).getName().equals(read.getName())){
+                pairStorage.add(rnaReadTransform.apply(read));
+
+            // If not, then split the template in the buffer and then store this read
+            } else {
+                splitNCigarPair(pairStorage,overhangManager);
+                pairStorage.clear();
+                pairStorage.add(rnaReadTransform.apply(read));
+            }
+
+        } else {
+
+            splitNCigarRead(rnaReadTransform.apply(read),overhangManager, outList);
+        }
     }
+
 
     @Override
     public void closeTool() {
+        // Clear the last template from the buffer on tool close
+        splitNCigarPair(pairStorage,overhangManager);
         if (overhangManager != null) { overhangManager.close(); }
         if (outputWriter != null ) { outputWriter.close(); }
         try {if (referenceReader != null) { referenceReader.close(); } }
@@ -133,34 +155,147 @@ public final class SplitNCigarReads extends ReadWalker {
     }
 
 
+    private void splitNCigarPair(List<GATKRead> pairStorage, OverhangFixingManager overhangManager) {
+        if(pairStorage.isEmpty()) {
+            return;
+        }
+        orderList(pairStorage);
+        List<GATKRead> outList = new LinkedList<GATKRead>();
+        for (GATKRead read :pairStorage) {
+            splitNCigarRead(read, overhangManager, outList);
+        }
+        repairAttributes(outList);
+
+        for (GATKRead read : outList) {
+            overhangManager.addRead(read);
+        }
+    }
+
+    private void repairAttributes(List<GATKRead> orderedReads) {
+
+        orderedReads.get(0).setIsFirstOfPair();
+        //TODO add the below functionality
+
+
+        GATKRead currentRead;
+        GATKRead nextRead = null;
+        for (int i = 0; i < orderedReads.size() - 1; i++) {
+            currentRead = orderedReads.get(i);
+            nextRead = orderedReads.get(i+1);
+
+            if (nextRead.isUnmapped()) {currentRead.setMateIsUnmapped();}
+            else {currentRead.setMatePosition(nextRead);}
+            currentRead.setIsMiddleOfPair(true);
+            currentRead.setMateIsReverseStrand(nextRead.isReverseStrand());
+            //TODO ask in need to set 'nc' tag
+            currentRead.setMateIsUnmapped();
+
+        }
+        currentRead = nextRead;
+        nextRead = orderedReads.get(0);
+        nextRead.setIsFirstOfPair();
+        currentRead.setIsSecondOfPair();
+        if (nextRead.isUnmapped()) {currentRead.setMateIsUnmapped();}
+        else {currentRead.setMatePosition(nextRead);}
+        currentRead.setMateIsReverseStrand(nextRead.isReverseStrand());
+        currentRead.setMateIsUnmapped();
+        //TODO repair the thing here
+    }
+
+
+
+    // helper method that ensures that the order of the list corresponds to the sequential order of the reads
+    // Operates on the assumption that there can be at most 2 reads if all reads are unmapped otherwise at most one
+    // read.
+    private void orderList(List<GATKRead> list) {
+        if (list.isEmpty()) {
+            return;
+        }
+        // Finding the first one in the list
+        GATKRead curRead = null;
+        for (GATKRead read : list) {
+            if (read.isFirstOfPair() && !read.isSecondOfPair()) {
+                curRead = read;
+                break;
+            }
+        }
+        if (curRead == null) {
+            throw new UserException.MalformedRead(pairStorage.get(0),"no start read for read template found");
+        }
+
+        for (int i = 0; i < list.size() - 1; i++) {
+            list.remove(curRead);
+            list.add(i, curRead);
+
+            for (int j = i; j < list.size(); j++) {
+                if(curRead.mateIsUnmapped() && list.get(j).isUnmapped()) {
+                    curRead = list.get(j);
+                    break;
+
+                } else if (curRead.getMateStart() == list.get(j).getStart()) {
+                    curRead = list.get(j);
+                    break;
+
+                // error checking for not finding the mate at all
+                } else if (j + 1 == list.size()) {
+                    throw new UserException.MalformedRead(list.get(0), "unreadable read template order");
+                }
+            }
+        }
+    }
+
+
     /**
      * Goes through the cigar string of the read and create new reads for each consecutive non-N elements (while hard clipping the rest of the read).
      * For example: for a read with cigar '1H2M2D1M2N1M2I1N1M2S' 3 new reads will be created with cigar strings: 1H2M2D1M, 1M2I and 1M2S
      *
      * @param read     the read to split
+     * @param outList
      */
-    public static GATKRead splitNCigarRead(final GATKRead read, OverhangFixingManager manager) {
+    public static GATKRead splitNCigarRead(final GATKRead read, OverhangFixingManager manager, List<GATKRead> outList) {
         final int numCigarElements = read.numCigarElements();
 
         int firstCigarIndex = 0;
-        for ( int i = 0; i < numCigarElements; i++ ) {
-            final CigarElement cigarElement = read.getCigar().getCigarElement(i);
-            if (cigarElement.getOperator() == CigarOperator.N) {
-                manager.addRead(splitReadBasedOnCigar(read, firstCigarIndex, i, manager));
-                firstCigarIndex = i+1;
+        if (read.isReverseStrand()) {
+            for ( int i = numCigarElements-1; i >= 0; i-- ) {
+                final CigarElement cigarElement = read.getCigar().getCigarElement(i);
+                if (cigarElement.getOperator() == CigarOperator.N) {
+                    outList.add(splitReadBasedOnCigar(read, i, numCigarElements, manager));
+                    firstCigarIndex = i-1;
+                }
             }
-        }
 
-        // if there are no N's in the read
-        if (firstCigarIndex == 0) {
-            manager.addRead(read);
+            // if there are no N's in the read
+            if (firstCigarIndex == 0) {
+                outList.add(read);
+            }
+
+            //add the first section: from the first N to the the begining of the read
+            // (it will be done for all the usual cigar string that does not begin with N)
+            else if (firstCigarIndex > 0) {
+                outList.add(splitReadBasedOnCigar(read, 0, firstCigarIndex, null));
+            }
+
+        } else {
+            for ( int i = 0; i < numCigarElements; i++ ) {
+                final CigarElement cigarElement = read.getCigar().getCigarElement(i);
+                if (cigarElement.getOperator() == CigarOperator.N) {
+                    outList.add(splitReadBasedOnCigar(read, firstCigarIndex, i, manager));
+                    firstCigarIndex = i+1;
+                }
+            }
+
+            // if there are no N's in the read
+            if (firstCigarIndex == 0) {
+                outList.add(read);
+            }
+            //add the last section of the read: from the last N to the the end of the read
+            // (it will be done for all the usual cigar string that does not end with N)
+            else if (firstCigarIndex < numCigarElements) {
+                outList.add(splitReadBasedOnCigar(read, firstCigarIndex, numCigarElements, null));
+            }
+            return read;
         }
-        //add the last section of the read: from the last N to the the end of the read
-        // (it will be done for all the usual cigar string that does not end with N)
-        else if (firstCigarIndex < numCigarElements) {
-            manager.addRead(splitReadBasedOnCigar(read, firstCigarIndex, numCigarElements, null));
-        }
-        return read;
     }
 
     /**
@@ -200,7 +335,19 @@ public final class SplitNCigarReads extends ReadWalker {
             forSplitPositions.addSplicePosition(contig, splitStart, splitEnd);
         }
 
-        return ReadClipper.hardClipToRegionIncludingClippedBases(read, startRefIndex, stopRefIndex);
+        GATKRead output = ReadClipper.hardClipToRegionIncludingClippedBases(read, startRefIndex, stopRefIndex);
+        //read.setMatePosition(output);
+        return output;
     }
 
+    @Override
+    protected SAMFileHeader getHeaderForSAMWriter() {
+        SAMFileHeader out = super.getHeaderForSAMWriter();
+        if (sortOrder) {
+            out.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        } else {
+            out.setSortOrder(SAMFileHeader.SortOrder.queryname);
+        }
+        return out;
+    }
 }

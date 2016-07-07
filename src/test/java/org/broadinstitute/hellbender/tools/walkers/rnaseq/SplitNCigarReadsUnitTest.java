@@ -60,7 +60,7 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
                 final TestManager manager = new TestManager(header);
 
                 GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
-                SplitNCigarReads.splitNCigarRead(read, manager);
+                SplitNCigarReads.splitNCigarRead(read, manager, outList);
                 List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
                 final int expectedReads = numOfSplits+1;
                 Assert.assertEquals(splitReads.size(), expectedReads, "wrong number of reads after split read with cigar: " + cigar + " at Ns [expected]: " + expectedReads + " [actual value]: " + splitReads.size());

@@ -459,6 +459,22 @@ public interface GATKRead extends Locatable {
     boolean isSecondOfPair();
 
     /**
+     * Mark the read as being part of a template at neither the first or second position
+     *
+     * Calling this method has the additional effects of marking the read as paired, as if {@link #setIsPaired}
+     * were invoked with true, and also marks the read as NOT being the second of a pair.
+     *
+     * @param hasIndex True if the index position for this read in the template is known, usually the case unless data is lost.
+     */
+    void setIsMiddleOfPair(boolean hasIndex);
+
+    /**
+     * @return True if this read is paired and is neither the first or last read in the pair, otherwise false.
+     * @throws GATKException.MissingReadField if this information is not available
+     */
+    boolean isMiddleOfPair();
+
+    /**
      * Mark the read as the second read of a pair.
      *
      * Calling this method has the additional effects of marking the read as paired, as if {@link #setIsPaired}
