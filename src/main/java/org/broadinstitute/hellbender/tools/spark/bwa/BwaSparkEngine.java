@@ -107,7 +107,7 @@ public final class BwaSparkEngine implements Serializable{
     }
 
 
-    private File localizeReferenceAndBwaIndexFiles(final String referenceFilename) throws IOException {
+    public static File localizeReferenceAndBwaIndexFiles(final String referenceFilename) throws IOException {
         final Stopwatch downloadRefStopwatch = Stopwatch.createStarted();
         final File localRef = File.createTempFile("referenceFileName", ".fa");
         if (!localRef.delete()) {

@@ -20,12 +20,10 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 @CommandLineProgramProperties(
         summary        = "Program to call SGA to perform local assembly and return assembled contigs if successful, " +
@@ -80,6 +78,21 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private static final Logger logger = LogManager.getLogger(RunSGAViaProcessBuilderOnSpark.class);
 
+    /**
+     * input format is tab separated BreakpointId, PackedFastaFile
+     * @param assemblyLine An input line with a breakpoint ID and packed FASTA line
+     * @return A tuple with the breakpoint ID and packed FASTA line, or an empty iterator if the line did not have two tab-separated values
+     */
+    static Iterable<Tuple2<String, String>> splitAssemblyLine(final String assemblyLine) {
+
+        final String[] split = assemblyLine.split("\t");
+        if (split.length < 2) {
+            logger.info("No assembled contigs for breakpoint " + split[0]);
+            return Collections.emptySet();
+        }
+        return Collections.singleton(new Tuple2<>(split[0], split[1]));
+    }
+
     @Override
     public void runTool(final JavaSparkContext ctx){
 
@@ -130,7 +143,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null);
 
         if(!success.isEmpty()){
-            success.map(entry -> entry._1().toString() + "\n" + entry._2().assembledContigs.toString())
+            success.map(entry -> entry._1().toString() + "\t" + entry._2().assembledContigs.toPackedFasta())
                     .saveAsTextFile(outputDir+"_0");
         }
 
@@ -487,6 +500,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     static final class ContigsCollection implements Serializable{
         private static final long serialVersionUID = 1L;
 
+
         @VisibleForTesting
         static final class ContigSequence implements Serializable{
             private static final long serialVersionUID = 1L;
@@ -511,6 +525,19 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             public String toString(){
                 return id;
             }
+
+            @Override
+            public boolean equals(final Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                final ContigID contigID = (ContigID) o;
+                return Objects.equals(id, contigID.id);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(id);
+            }
         }
 
         private final List<Tuple2<ContigID, ContigSequence>> contents;
@@ -522,6 +549,28 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         @Override
         public String toString(){
             return StringUtils.join(toListOfStrings(),"\n");
+        }
+
+        /**
+         * Pack the entire fasta record on one line so that it's easy for downstream
+         * Spark tools to parse without worrying about partitioning. If the ContigCollection
+         * is empty this returns null.
+         */
+        public String toPackedFasta(){
+            return StringUtils.join(toListOfStrings(),"|");
+        }
+
+        /**
+         * To ease file format difficulties
+         * @param packedFastaLine
+         */
+        @VisibleForTesting
+        protected static ContigsCollection fromPackedFasta(final String packedFastaLine) {
+            final List<String> fileContents = Arrays.asList(packedFastaLine.split("\\|"));
+            if (fileContents.size() % 2 != 0) {
+                throw new GATKException("Odd number of lines in breakpoint fasta" + packedFastaLine);
+            }
+            return new ContigsCollection(fileContents);
         }
 
         public List<String> toListOfStrings(){
@@ -547,5 +596,6 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
                 }
             }
         }
+
     }
 }
