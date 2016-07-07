@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import htsjdk.samtools.util.BlockCompressedInputStream;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -8,9 +7,9 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.PrintStream;
 
 public final class CountVariantsSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -64,9 +63,6 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
 
     @Test(dataProvider = "intervals", groups = "spark")
     public void testCountVariantsWithIntervals(final File fileIn, final String intervalArgs, final long expected) throws Exception {
-
-        File f = new File(largeFileTestDir, "dbsnp_138.b37.20.21.vcf.blockgz.gz");
-        System.out.println("tw: " + BlockCompressedInputStream.isValidFile(new BufferedInputStream(new FileInputStream(f))));
         final File outputTxt = createTempFile("count_variants", ".txt");
         ArgumentsBuilder args = new ArgumentsBuilder();
         args.addVCF(fileIn);
@@ -75,8 +71,20 @@ public final class CountVariantsSparkIntegrationTest extends CommandLineProgramT
         args.addOutput(outputTxt);
         this.runCommandLine(args.getArgsArray());
 
-        final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
-        Assert.assertEquals((int)Integer.valueOf(readIn), expected);
+        final ByteArrayOutputStream baosErr = new ByteArrayOutputStream();
+        final PrintStream err = System.err;
+        try {
+            System.setErr(new PrintStream(baosErr));
+
+            this.runCommandLine(args.getArgsArray());
+
+            final String readIn = FileUtils.readFileToString(outputTxt.getAbsoluteFile());
+            Assert.assertEquals((int)Integer.valueOf(readIn), expected);
+            String errString = baosErr.toString();
+            Assert.assertFalse(errString.contains("Warning: using GzipCodec, which is not splittable,"), errString);
+        } finally {
+            System.setErr(err); //put this back in
+        }
     }
 
     @Test(groups = "spark")

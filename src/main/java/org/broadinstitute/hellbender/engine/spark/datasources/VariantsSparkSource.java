@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 import org.seqdoop.hadoop_bam.VCFInputFormat;
 import org.seqdoop.hadoop_bam.VariantContextWritable;
 import org.seqdoop.hadoop_bam.util.BGZFCodec;
+import org.seqdoop.hadoop_bam.util.BGZFEnhancedGzipCodec;
 
 import java.util.List;
 
@@ -61,7 +62,8 @@ public final class VariantsSparkSource {
      */
     public JavaRDD<VariantContext> getParallelVariantContexts(final String vcf, final List<SimpleInterval> intervals) {
         Configuration conf = new Configuration();
-        conf.set("io.compression.codecs", BGZFCodec.class.getCanonicalName());
+        conf.setStrings("io.compression.codecs", BGZFEnhancedGzipCodec.class.getCanonicalName(),
+                BGZFCodec.class.getCanonicalName());
         if (intervals != null && !intervals.isEmpty()) {
             VCFInputFormat.setIntervals(conf, intervals);
         }
