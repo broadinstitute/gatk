@@ -49,6 +49,7 @@ repositories {
     maven {
         url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
     }
+
 }
 
 configurations.all {
@@ -174,7 +175,7 @@ dependencies {
     compile('com.intel.gkl:gkl:0.1.1') {
         exclude module: 'htsjdk'
     }
-    compile 'com.github.lindenb:jbwa:bd72b489f9697a857671533c86ad5906967f8672-20160521.042635-1'
+    compile 'com.github.lindenb:jbwa:1.0.0'
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'
