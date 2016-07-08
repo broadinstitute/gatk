@@ -154,6 +154,26 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(leftAlignedRightBreakpointOnAssembledContig, new SimpleInterval("8", 108569364, 108569364));
     }
 
+    @Test
+    public void testGetAssembledBreakpointsFromAlignmentRegions() throws Exception {
+        final byte[] contigSequence = "GACGAACGATTTGACTTTAATATGAAATGTTTTATGTGGGCTATAAAATTATCCAAACTCGACACAGGACATTTTGAGCTTATTTCCAAATCATCTGGCCTTCATCTACCCACTGGAACTATTACTCTGCTGGGTCCTCATGGAAACATATCTTTCAGCCCTAACAATGAGACTACAGACATCTACGTCCCCAACACAACAGCTAAAAAGCAGTAGAATGTCAGAAAGGCTATCCACTTAGCCCTTGGCTGACAGGCCCCACTGAGCATCCTTTGCGAAGTCCATTTACTAGCTAATTCATAATTTACACAAGGCATTCAGACATAGCAGCTAAGATATAAAACATTTATCAACACAGGGACTAGTTTGTCATTTTAAAATAATTATGTTTAAGTAAGCCAATAAAGTCTATCTTCTCCAATTTACTTATTGAGCTTTATGAGGCAATTTAAGTCCCGATTTTGGGGGGTATGTATGAAAGGAGAGCATGGAAATGCCATTTGCTCCCTGAAGTTTTTATCTTTTTTTTTTTGAGATAGAGTCTTGTGTTTTCTGTGGAGTACATGAGTATGCATCAAAGCTAACAACGCCCACTGCCCTGTTAGTCAAATACCTTTGA".getBytes();
+        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("532M87S"), true, new SimpleInterval("8", 118873207, 118873739), 60, 1, 532);
+        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("518S29M72S"), false, new SimpleInterval("1", 175705642, 175705671), 3, 519, 547);
+        final AlignmentRegion region3 = new AlignmentRegion(TextCigarCodec.decode("543S76M"), false, new SimpleInterval("1", 118875262, 118875338), 60, 544, 619);
+        final ArrayList<AlignmentRegion> alignmentRegionList = new ArrayList<>();
+        alignmentRegionList.add(region1);
+        alignmentRegionList.add(region2);
+        alignmentRegionList.add(region3);
+        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions("contig-0", contigSequence, alignmentRegionList);
+        Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
+        final AssembledBreakpoint assembledBreakpoint = assembledBreakpointsFromAlignmentRegions.get(0);
+        Assert.assertEquals(assembledBreakpoint.contigId, "contig-0");
+        Assert.assertEquals(assembledBreakpoint.region1, region1);
+        Assert.assertEquals(assembledBreakpoint.region2, region3);
+        Assert.assertEquals(assembledBreakpoint.homology, "NA");
+        Assert.assertEquals(assembledBreakpoint.insertedSequence, "GAGATAGAGTCT");
+    }
+
     @AfterClass
     public void tearDown() throws Exception {
         contigAligner.close();

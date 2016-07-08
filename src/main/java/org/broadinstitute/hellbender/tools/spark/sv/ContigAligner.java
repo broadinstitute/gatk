@@ -4,6 +4,7 @@ import com.github.lindenb.jbwa.jni.AlnRgn;
 import com.github.lindenb.jbwa.jni.BwaIndex;
 import com.github.lindenb.jbwa.jni.BwaMem;
 import com.github.lindenb.jbwa.jni.ShortRead;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.TextCigarCodec;
@@ -73,26 +74,7 @@ public class ContigAligner implements Closeable {
                             .sorted(Comparator.comparing(a -> a.startInAssembledContig))
                             .collect(arrayListCollector(alnRgns.length));
 
-
-                    final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
-                    if ( iterator.hasNext() ) {
-                        AlignmentRegion current = iterator.next();
-                        while ( iterator.hasNext() ) {
-                            final AlignmentRegion previous = current;
-                            current = iterator.next();
-                            String homology = "NA";
-                            if (previous.endInAssembledContig >= current.startInAssembledContig) {
-                                homology = new String(Arrays.copyOfRange(sequence, current.startInAssembledContig - 1, previous.endInAssembledContig));
-                            }
-
-                            String insertedSequence = "NA";
-                            if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
-                                insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
-                            }
-                            final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, insertedSequence, homology);
-                            assembledBreakpoints.add(assembledBreakpoint);
-                        }
-                    }
+                    assembledBreakpoints.addAll(getAssembledBreakpointsFromAlignmentRegions(contigId, sequence, alignmentRegionList));
                 }
             }
         } catch (final IOException e) {
@@ -100,6 +82,37 @@ public class ContigAligner implements Closeable {
         }
 
         return assembledBreakpoints;
+    }
+
+    @VisibleForTesting
+    public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final String contigId, final byte[] sequence, final List<AlignmentRegion> alignmentRegionList) {
+        final List<AssembledBreakpoint> results = new ArrayList<>(alignmentRegionList.size() / 2);
+        final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
+        if ( iterator.hasNext() ) {
+            AlignmentRegion current = iterator.next();
+            while ( iterator.hasNext() ) {
+                final AlignmentRegion next = iterator.next();
+                if (next.mqual < 60 && iterator.hasNext()) {
+                    continue;
+                }
+
+                final AlignmentRegion previous = current;
+                current = next;
+
+                String homology = "NA";
+                if (previous.endInAssembledContig >= current.startInAssembledContig) {
+                    homology = new String(Arrays.copyOfRange(sequence, current.startInAssembledContig - 1, previous.endInAssembledContig));
+                }
+
+                String insertedSequence = "NA";
+                if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
+                    insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
+                }
+                final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, insertedSequence, homology);
+                results.add(assembledBreakpoint);
+            }
+        }
+        return results;
     }
 
     private Collector<AlignmentRegion, ?, ArrayList<AlignmentRegion>> arrayListCollector(final int size) {
