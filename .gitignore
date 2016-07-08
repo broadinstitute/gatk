@@ -45,3 +45,6 @@ foo.patch
 /docs/PoN/.~lock.TangentNormalizationInSparkNotes.odt#
 
 gatk-launch
+
+#Temp files
+*.*~
