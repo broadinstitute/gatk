@@ -222,12 +222,13 @@ public class ContigAligner implements Closeable {
         }
 
         public SimpleInterval getLeftAlignedLeftBreakpointOnAssembledContig() {
-            final int position = region1.referenceInterval.getEnd() - homology.length();
+            final int alignmentEnd = region1.forwardStrand ? region1.referenceInterval.getEnd() : region1.referenceInterval.getStart();
+            final int position = region1.forwardStrand ? alignmentEnd - homology.length() : alignmentEnd + homology.length();
             return new SimpleInterval(region1.referenceInterval.getContig(), position, position);
         }
 
         public SimpleInterval getLeftAlignedRightBreakpointOnAssembledContig() {
-            final int position = region2.referenceInterval.getStart();
+            final int position = region2.forwardStrand ? region2.referenceInterval.getStart() : region2.referenceInterval.getEnd();
             return new SimpleInterval(region2.referenceInterval.getContig(), position, position);
         }
 
@@ -301,6 +302,7 @@ public class ContigAligner implements Closeable {
             this.mqual = mqual;
             this.startInAssembledContig = startInAssembledContig;
             this.endInAssembledContig = endInAssembledContig;
+            this.assembledContigLength = cigar.getReadLength();
         }
 
         private static int startOfAlignmentInContig(final Cigar cigar) {
@@ -316,7 +318,7 @@ public class ContigAligner implements Closeable {
             int j = fromStart ? 0 : cigar.getCigarElements().size() - 1;
             final int offset = fromStart ? 1 : -1;
             CigarElement ce = cigar.getCigarElement(j);
-            while(ce.getOperator().isClipping()){
+            while (ce.getOperator().isClipping()) {
                 posInContig += ce.getLength();
                 j += offset;
                 ce = cigar.getCigarElement(j);
@@ -355,6 +357,7 @@ public class ContigAligner implements Closeable {
             final int alignmentRegion1ContigEnd = Integer.valueOf(fields[7]);
             return new AlignmentRegion(alignmentRegion1Cigar, alignmentRegion1ForwardStrand, alignmentRegion1Interval, alignmentRegion1MQual, alignmentRegion1ContigStart, alignmentRegion1ContigEnd);
         }
+    }
 
     private static class LocalizedReference {
         static File INSTANCE;
