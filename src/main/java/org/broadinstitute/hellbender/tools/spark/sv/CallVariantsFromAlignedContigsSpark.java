@@ -135,7 +135,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .attribute("ALIGN_LENGTHS", alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
                 .attribute("MAX_ALIGN_LENGTH", maxAlignLength)
                 .attribute("BREAKPOINT_IDS", breakpointIds.stream().collect(Collectors.joining(",")))
-                .attribute("CONTIG_IDS", assembledContigIds.stream().collect(Collectors.joining(",")))
+                .attribute("CONTIG_IDS", assembledContigIds.stream().map(s -> s.replace(" ", "_")).collect(Collectors.joining(",")))
                 .attribute("INSERTION", breakpointAllele.insertedSequence);
 
         return vcBuilder.make();
