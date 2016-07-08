@@ -1,0 +1,82 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=LowQual,Description="Low quality">
+##FILTER=<ID=VQSRTrancheINDEL99.90to100.00+,Description="Truth sensitivity tranche level for INDEL model at VQS Lod < -1572.024">
+##FILTER=<ID=VQSRTrancheINDEL99.90to100.00,Description="Truth sensitivity tranche level for INDEL model at VQS Lod: -1572.024 <= x < -12.6079">
+##FILTER=<ID=VQSRTrancheSNP99.90to100.00+,Description="Truth sensitivity tranche level for SNP model at VQS Lod < -27463.2896">
+##FILTER=<ID=VQSRTrancheSNP99.90to100.00,Description="Truth sensitivity tranche level for SNP model at VQS Lod: -27463.2896 <= x < -4.4825">
+##FORMAT=<ID=AB,Number=1,Type=Float,Description="Allele balance for each het genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=JL,Number=1,Type=Integer,Description="Phred-scaled joint likelihood of the genotype combination (before applying family priors)">
+##FORMAT=<ID=JP,Number=1,Type=Integer,Description="Phred-scaled joint posterior probability of the genotype combination (after applying family priors)">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PP,Number=G,Type=Integer,Description="Phred-scaled Posterior Genotype Probabilities">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GATKCommandLine=<ID=ApplyRecalibration,Version=3.3-0-g37228af,Date="Tue Dec 09 04:49:22 EST 2014",Epoch=1418118562506,CommandLineOptions="analysis_type=ApplyRecalibration input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/isilon/sequencing/GATK_resource_bundle/1.5/b37/human_g1k_v37_decoy.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 logging_level=INFO log_to_file=null help=false version=false input=[(RodBinding name=input source=/isilon/sequencing/Seq_Proj//M_Valle_MendelianDisorders_SeqWholeExome_120511_GATK_3_3-0/MULTI_SAMPLE/M_Valle_MendelianDisorders_SeqWholeExome_120511_GATK_3_3-0.767samples.raw.HC.INDEL.vcf)] recal_file=(RodBinding name=recal_file source=/isilon/sequencing/Seq_Proj//M_Valle_MendelianDisorders_SeqWholeExome_120511_GATK_3_3-0/MULTI_SAMPLE/M_Valle_MendelianDisorders_SeqWholeExome_120511_GATK_3_3-0.767samples.HC.INDEL.recal) tranches_file=/isilon/sequencing/Seq_Proj/M_Valle_MendelianDisorders_SeqWholeExome_120511_GATK_3_3-0/MULTI_SAMPLE/M_Valle_MendelianDisorders_SeqWholeExome_120511_GATK_3_3-0.767samples.HC.INDEL.tranches out=org.broadinstitute.gatk.engine.io.stubs.VariantContextWriterStub ts_filter_level=99.9 lodCutoff=null ignore_filter=null ignore_all_filters=false excludeFiltered=false mode=INDEL filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##GVCFBlock=minGQ=0(inclusive),maxGQ=1(exclusive)
+##INFO=<ID=ABHet,Number=1,Type=Float,Description="Allele Balance for heterozygous calls (ref/(ref+alt))">
+##INFO=<ID=ABHom,Number=1,Type=Float,Description="Allele Balance for homozygous calls (A/(A+O)) where A is the allele (ref or alt) and O is anything other">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=CCC,Number=1,Type=Integer,Description="Number of called chromosomes">
+##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
+##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=GC,Number=1,Type=Integer,Description="GC content around the variant (see docs for window size details)">
+##INFO=<ID=GQ_MEAN,Number=1,Type=Float,Description="Mean of all GQ values">
+##INFO=<ID=GQ_STDDEV,Number=1,Type=Float,Description="Standard deviation of all GQ values">
+##INFO=<ID=HWP,Number=1,Type=Float,Description="P value from test of Hardy Weinberg Equilibrium">
+##INFO=<ID=HaplotypeScore,Number=1,Type=Float,Description="Consistency of the site with at most two segregating haplotypes">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MLEAC,Number=A,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##INFO=<ID=MLEAF,Number=A,Type=Float,Description="Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=NCC,Number=1,Type=Integer,Description="Number of no-called samples">
+##INFO=<ID=NDA,Number=1,Type=Integer,Description="Number of alternate alleles discovered (but not necessarily genotyped) at this site">
+##INFO=<ID=NEGATIVE_TRAIN_SITE,Number=0,Type=Flag,Description="This variant was used to build the negative training set of bad variants">
+##INFO=<ID=OND,Number=1,Type=Float,Description="Overall non-diploid ratio (alleles/(alleles+non-alleles))">
+##INFO=<ID=PG,Number=G,Type=Integer,Description="Genotype Likelihood Prior">
+##INFO=<ID=POSITIVE_TRAIN_SITE,Number=0,Type=Flag,Description="This variant was used to build the positive training set of good variants">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=Samples,Number=.,Type=String,Description="List of polymorphic samples">
+##INFO=<ID=TestDescription,Number=1,Type=String,Description="Test case evaluated at this locus.">
+##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds ratio of being a true variant versus being false under the trained gaussian mixture model">
+##INFO=<ID=VariantType,Number=1,Type=String,Description="Variant type description">
+##INFO=<ID=culprit,Number=1,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
+##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##reference=human_g1k_v37.fasta
+##source=CalculateGenotypePosteriors
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	PAIR_CHILD	PAIR_FATHER	TRIO_CHILD	TRIO_FATHER	TRIO_MOTHER	UNRELATED_INDIVIDUAL_CONTROL
+1	10109	.	A	T	99	PASS	AC=0;AF=0.00;AN=12;TestDescription=HomRef/HomRef/HomRef	GT:GQ:JL:JP:PL:PP	0/0:50:.:.:0,50,200	0/0:50:.:.:0,50,200	0/0:97:45:46:0,50,200:0,97,299	0/0:50:45:46:0,50,200:0,50,250	0/0:50:45:46:0,50,200:0,50,250	0/0:50:.:.:0,50,200
+1	10147	.	C	A	99	PASS	AC=1;AF=0.083;AN=12;TestDescription=HomRef/Het/HomRef	GT:GQ:JL:JP:PL:PP	0/0:50:.:.:0,50,200	0/0:50:.:.:0,50,200	0/0:50:45:45:0,50,200:0,50,250	0/1:50:45:45:50,0,200:50,0,250	0/0:50:45:45:0,50,200:0,50,250	0/0:50:.:.:0,50,200
+1	10150	.	C	T	99	PASS	AC=3;AF=0.250;AN=12;TestDescription=HomRef/Het/Het	GT:AD:GQ:JL:JP:PL:PP	0/1:30,20:50:.:.:50,0,200	0/0:50,0:50:.:.:0,50,200	0/1:30,20:50:45:46:50,0,200:50,0,250	0/1:30,20:97:45:46:50,0,200:97,0,200	0/0:50,0:50:45:46:0,50,200:0,50,200	0/0:50,0:50:.:.:0,50,200
+1	10177	.	A	C	99	PASS	AC=4;AF=0.333;AN=12;TestDescription=HomRef/HomAlt/Het	GT:GQ:JL:JP:PL:PP	0/1:50:.:.:50,0,200	0/0:50:.:.:0,50,200	0/1:99:45:46:50,0,200:100,0,250	1/1:50:45:46:200,50,0:247,50,0	0/0:50:45:46:0,50,200:0,50,250	0/0:50:.:.:0,50,200
+1	10180	.	T	C	99	PASS	AC=3;AF=0.250;AN=12;TestDescription=Het/HomRef/HomRef	GT:GQ:JL:JP:PL:PP	0/0:50:.:.:0,50,200	0/1:50:.:.:50,0,200	0/0:50:45:45:0,50,200:0,50,250	0/0:50:45:45:0,50,200:0,50,250	0/1:50:45:45:50,0,200:50,0,250	0/1:50:.:.:50,0,200
+1	10234	.	C	T	99	PASS	AC=5;AF=0.417;AN=12;TestDescription=Het/HomRef/Het	GT:GQ:JL:JP:PL:PP	0/1:50:.:.:50,0,200	0/1:50:.:.:50,0,200	0/1:50:45:46:50,0,200:50,0,250	0/0:50:45:46:0,50,200:0,50,200	0/1:97:45:46:50,0,200:97,0,200	0/1:50:.:.:50,0,200
+1	10235	.	T	A	99	PASS	AC=4;AF=0.333;AN=12;TestDescription=Het/Het/HomRef	GT:GQ:JL:JP:PL:PP	0/0:50:.:.:0,50,200	0/1:50:.:.:50,0,200	0/0:50:45:45:0,50,200:0,50,200	0/1:50:45:45:50,0,200:50,0,250	0/1:50:45:45:50,0,200:50,0,250	0/1:50:.:.:50,0,200
+1	10236	.	A	G	99	PASS	AC=6;AF=0.500;AN=12;TestDescription=Het/Het/Het	GT:GQ:JL:JP:PL:PP	0/1:50:.:.:50,0,200	0/1:50:.:.:50,0,200	0/1:50:45:45:50,0,200:50,0,200	0/1:50:45:45:50,0,200:50,0,200	0/1:50:45:45:50,0,200:50,0,200	0/1:50:.:.:50,0,200
+1	10250	.	A	C	99	PASS	AC=8;AF=0.667;AN=12;TestDescription=Het/Het/HomVar	GT:GQ:JL:JP:PL:PP	1/1:50:.:.:200,50,0	0/1:50:.:.:50,0,200	1/1:50:45:49:200,50,0:200,50,0	0/1:99:45:49:50,0,200:100,0,200	0/1:99:45:49:50,0,200:100,0,200	0/1:50:.:.:50,0,200
+1	10257	.	A	C	99	PASS	AC=7;AF=0.583;AN=12;TestDescription=Het/HomVar/Het	GT:GQ:JL:JP:PL:PP	0/1:50:.:.:200,0,50	0/1:50:.:.:50,0,200	0/1:50:45:45:200,0,50:250,0,50	1/1:50:45:45:200,50,0:200,50,0	0/1:50:45:45:50,0,200:50,0,247	0/1:50:.:.:50,0,200
+1	10285	.	T	C	99	PASS	AC=9;AF=0.750;AN=12;TestDescription=Het/HomVar/HomVar	GT:GQ:JL:JP:PL:PP	1/1:50:.:.:200,50,0	0/1:50:.:.:50,0,200	1/1:50:45:46:200,50,0:250,50,0	1/1:50:45:46:200,50,0:250,50,0	0/1:99:45:46:50,0,200:100,0,200	0/1:50:.:.:50,0,200
+1	10297	.	C	T	99	PASS	AC=8;AF=0.667;AN=12;TestDescription=HomVar/HomRef/Het	GT:GQ:JL:JP:PL:PP	0/1:50:.:.:200,0,50	1/1:50:.:.:200,50,0	0/1:99:45:46:50,0,200:100,0,250	0/0:50:45:46:0,50,200:0,50,250	1/1:50:45:46:200,50,0:247,50,0	1/1:50:.:.:200,50,0
+1	10304	.	A	C	99	PASS	AC=9;AF=0.750;AN=12;TestDescription=HomVar/Het/Het	GT:GQ:JL:JP:PL:PP	0/1:50:.:.:200,0,50	1/1:50:.:.:200,50,0	0/1:99:45:46:50,0,200:100,0,200	0/1:50:45:46:50,0,200:50,0,250	1/1:50:45:46:200,50,0:200,50,0	1/1:50:.:.:200,50,0
+1	10310	.	A	C	99	PASS	AC=11;AF=0.917;AN=12;TestDescription=HomVar/Het/HomVar	GT:GQ:JL:JP:PL:PP	1/1:50:.:.:200,50,0	1/1:50:.:.:200,50,0	1/1:50:45:46:200,50,0:250,50,0	0/1:99:45:46:50,0,200:100,0,200	1/1:50:45:46:200,50,0:250,50,0	1/1:50:.:.:200,50,0
+1	10315	.	C	T	99	PASS	AC=12;AF=1.00;AN=12;TestDescription=HomVar/HomVar/HomVar	GT:GQ:JL:JP:PL:PP	1/1:50:.:.:200,50,0	1/1:50:.:.:200,50,0	1/1:97:45:46:200,50,0:299,97,0	1/1:50:45:46:200,50,0:250,50,0	1/1:50:45:46:200,50,0:250,50,0	1/1:50:.:.:200,50,0
