@@ -58,10 +58,8 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
         rawFASTQFiles = new ArrayList<>();
         expectedAssembledFASTAFiles = new HashMap<>();
 
-        final File original_test_data_dir = new File(getTestDataDir(), "spark/sv/RunSGAViaProcessBuilderOnSpark/");
-        TEST_DATA_DIR = Files.createTempDirectory( "whatever" ).toAbsolutePath().toFile();
-        TEST_DATA_DIR.deleteOnExit();
-        FileUtils.copyDirectory(original_test_data_dir, TEST_DATA_DIR);
+        TEST_DATA_DIR = new File(getTestDataDir(), "spark/sv/RunSGAViaProcessBuilderOnSpark/");
+        final File tempWorkingDir = BaseTest.createTempDir("whatever");
 
         Long i = 0L;
 
@@ -73,9 +71,11 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
         while(it.hasNext()){
 
             final File fastqFile = it.next();
-            rawFASTQFiles.add(new Tuple2<>(i, fastqFile));
+            FileUtils.copyFileToDirectory(fastqFile, tempWorkingDir);
+            final File tempFASTQFile = new File(tempWorkingDir, fastqFile.getName());
+            rawFASTQFiles.add(new Tuple2<>(i, tempFASTQFile));
 
-            final File contigFile = new File(fastqFile.getParentFile(), fastqFile.getName().replace("fastq", "pp.ec.filter.pass.merged.rmdup-contigs.fa"));
+            final File contigFile = new File(TEST_DATA_DIR, fastqFile.getName().replace("fastq", "pp.ec.filter.pass.merged.rmdup-contigs.fa"));
             expectedAssembledFASTAFiles.put(i++, contigFile);
         }
     }
@@ -101,7 +101,6 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
     public void stdioCaptureTest() throws IOException{
 
         final File dir = BaseTest.createTempDir("xyz");
-        dir.deleteOnExit();
 
         FileUtils.copyFileToDirectory(rawFASTQFiles.get(0)._2(), dir);
 
@@ -111,12 +110,17 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
 
         final List<SGAModule.RuntimeInfo> runtimeInfo = new ArrayList<>();
 
-        final ArrayList<String> indexerArgs = new ArrayList<>();
+        final ArrayList<String> indexerArgs = new ArrayList<>(4);
         indexerArgs.add("--algorithm"); indexerArgs.add("ropebwt");
         indexerArgs.add("--check");
         indexerArgs.add(fileName);
 
-        RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, dir, indexer, indexerArgs, runtimeInfo, false);
+        final ArrayList<String> moduleArgs = new ArrayList<>(6);
+        moduleArgs.add("--pe-mode");    moduleArgs.add("2");
+        moduleArgs.add("--out");        moduleArgs.add(FilenameUtils.getBaseName(rawFASTQFile.getName()) + ".pp.fa");
+        moduleArgs.add("--permute-ambiguous");
+
+        RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "preprocess", ".pp.fa", rawFASTQFile, dir, indexer, indexerArgs, moduleArgs, runtimeInfo, false);
 
         for(final SGAModule.RuntimeInfo info : runtimeInfo){
             Assert.assertTrue(info.stdoutMsg.isEmpty() && info.stderrMsg.isEmpty());
@@ -128,12 +132,26 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
         // sga preprocess produces runtime metrics to stderr, and
         // sga index is provided with wrong arguments this time, so it should also fill stderr with message
         indexerArgs.set(1, "wrongAlgo");
-        RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, dir, indexer, indexerArgs, runtimeInfo, true);
+        RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "preprocess", ".pp.fa", rawFASTQFile, dir, indexer, indexerArgs, moduleArgs, runtimeInfo, true);
         for(final SGAModule.RuntimeInfo info : runtimeInfo){
             Assert.assertFalse(info.stderrMsg.isEmpty());
         }
 
         FileUtils.cleanDirectory(dir);
+    }
+
+    @Test(groups = "sv")
+    public void mapToListTest(){
+        Map<String, String> indexerArgsMap = new LinkedHashMap<>();
+
+        List<String> convertedList = RunSGAViaProcessBuilderOnSpark.turnCmdLineArgsKeyValuePairIntoList(indexerArgsMap);
+        Assert.assertTrue(convertedList.isEmpty());
+
+        indexerArgsMap.put("--algorithm", "ropebwt");
+        indexerArgsMap.put("--check", "");
+
+        convertedList = RunSGAViaProcessBuilderOnSpark.turnCmdLineArgsKeyValuePairIntoList(indexerArgsMap);
+        Assert.assertEquals(Arrays.asList("--algorithm", "ropebwt", "--check"), convertedList);
     }
 
     @Test(groups = "sv")
@@ -176,44 +194,74 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
         indexerArgs.add("--check");
         indexerArgs.add("");
 
-        final String filenamePrefix = FilenameUtils.getBaseName(rawFASTQFile.getName());
+        final List<String> moduleArgs = new ArrayList<>(20);
 
-        final File actualPreppedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAPreprocess(sgaPath, rawFASTQFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
-        final File expectedPreppedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.fa");
+        final String filenamePrefix = FilenameUtils.getBaseName(rawFASTQFile.getName());
+        moduleArgs.clear();
+        moduleArgs.add("--pe-mode");    moduleArgs.add("2");
+        moduleArgs.add("--out");        moduleArgs.add(FilenameUtils.getBaseName(rawFASTQFile.getName()) + ".pp.fa");
+
+        final File actualPreppedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "preprocess", ".pp.fa", rawFASTQFile, workingDir, indexer, indexerArgs, moduleArgs, runtimeInfo, false));
+        final File expectedPreppedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.fq");
         final String preppedFileName = compareNamesAndComputeSeqEditDist(actualPreppedFile, expectedPreppedFile, true, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
+        moduleArgs.clear();
         final File preppedFile = new File(workingDir, preppedFileName);
-        final File actualCorrectedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGACorrect(sgaPath, preppedFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
+        final File actualCorrectedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "correct", ".ec.fa", preppedFile, workingDir, indexer, indexerArgs, moduleArgs, runtimeInfo, false));
         final File expectedCorrectedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.fa");
         final String correctedFileName = compareNamesAndComputeSeqEditDist(actualCorrectedFile, expectedCorrectedFile, true, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
+        moduleArgs.clear();
+        moduleArgs.add("--kmer-threshold");         moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.FILTER_STEP_KMER_FREQUENCY_THREASHOLD));
+        moduleArgs.add("--homopolymer-check");
+        moduleArgs.add("--low-complexity-check");
         final File correctedFile = new File(workingDir, correctedFileName);
-        final File actualFilterPassingFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFilter(sgaPath, correctedFile, workingDir, runtimeInfo, false));
+        final File actualFilterPassingFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "filter", ".filter.pass.fa", correctedFile, workingDir, null, null, moduleArgs, runtimeInfo, false));
         final File expectedFilterPassingFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.fa");
         final String filterPassingFileName = compareNamesAndComputeSeqEditDist(actualFilterPassingFile, expectedFilterPassingFile, true, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
+        moduleArgs.clear();
+        moduleArgs.add("--min-overlap");     moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
         final File filterPassingFile = new File(workingDir, filterPassingFileName);
-        final File actualMergedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAFMMerge(sgaPath, filterPassingFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
+        final File actualMergedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "fm-merge", ".merged.fa", filterPassingFile, workingDir, indexer, indexerArgs, moduleArgs, runtimeInfo, false));
         final File expectedMergedFile = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.merged.fa");
         final String mergedFileName = compareNamesAndComputeSeqEditDist(actualMergedFile, expectedMergedFile, false, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
         editDistancesBetweenSeq = new ArrayList<>();
+        moduleArgs.clear();
         final File mergedFile = new File(workingDir, mergedFileName);
-        final File actualDeduplicatedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGARmDuplicate(sgaPath, mergedFile, workingDir, indexer, indexerArgs, runtimeInfo, false));
+        final File actualDeduplicatedFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "rmdup", ".rmdup.fa", mergedFile, workingDir, indexer, indexerArgs, moduleArgs, runtimeInfo, false));
         final File expectedDeduplicatedFilie = new File(TEST_DATA_DIR, filenamePrefix + ".pp.ec.filter.pass.merged.rmdup.fa");
-        final String readyForAssemblyFileName = compareNamesAndComputeSeqEditDist(actualDeduplicatedFile, expectedDeduplicatedFilie, false, editDistancesBetweenSeq);
+        final String readyForOverlappingFileName = compareNamesAndComputeSeqEditDist(actualDeduplicatedFile, expectedDeduplicatedFilie, false, editDistancesBetweenSeq);
         for(final Integer d : editDistancesBetweenSeq){ Assert.assertEquals(d, zero); }
 
+        // do overlapping but don't test output
+        moduleArgs.clear();
+        moduleArgs.add("--min-overlap");   moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
+        moduleArgs.add("--error-rate");    moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.OVERLAP_STEP_ERROR_RATE));
+        final File readyForOverlappingFile = new File(workingDir, readyForOverlappingFileName);
+        final File readyForAssemblyFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "overlap", ".asqg.gz", readyForOverlappingFile, workingDir, null, null, moduleArgs, runtimeInfo, false));
+
+        moduleArgs.clear();
+        moduleArgs.add("--cut-terminal");         moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS));
+        moduleArgs.add("--max-gap-divergence");   moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.ASSEMBLE_STEP_MAX_GAP_DIVERGENCE));
+        moduleArgs.add("--min-overlap");          moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
+        moduleArgs.add("--min-branch-length");    moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH));
+        moduleArgs.add("--out-prefix");           moduleArgs.add(FilenameUtils.getBaseName(readyForAssemblyFile.getName()).replace(".asqg", ""));
+        if(RunSGAViaProcessBuilderOnSpark.TURN_ON_TRANSITIVE_REDUCTION){
+            moduleArgs.add("--transitive-reduction");
+        }
+
         // final assembled contig test
-        final File readyForAssemblyFile = new File(workingDir, readyForAssemblyFileName);
-        final File actualAssembledContigsFile = new File(workingDir, RunSGAViaProcessBuilderOnSpark.runSGAOverlapAndAssemble(sgaPath, readyForAssemblyFile, workingDir, runtimeInfo, false));
+        final String assembledFileNameTobeTreated = RunSGAViaProcessBuilderOnSpark.runSGAModule(sgaPath, "assemble", "-contigs.fa", readyForAssemblyFile, workingDir, null, null, moduleArgs, runtimeInfo, false);
+        final File actualAssembledContigsFile = new File(workingDir, assembledFileNameTobeTreated.replace(".asqg", ""));
         final List<String> actualAssembledContigs   = (null==actualAssembledContigsFile  ) ? null : Files.readAllLines(Paths.get(actualAssembledContigsFile.getAbsolutePath()));
         final List<String> expectedAssembledContigs = (null==expectedAssembledContigsFile) ? null : Files.readAllLines(Paths.get(expectedAssembledContigsFile.getAbsolutePath()));
 

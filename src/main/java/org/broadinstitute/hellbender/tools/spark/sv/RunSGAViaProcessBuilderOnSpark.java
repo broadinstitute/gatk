@@ -24,6 +24,8 @@ import java.util.*;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @CommandLineProgramProperties(
         summary        = "Program to call SGA to perform local assembly and return assembled contigs if successful, " +
@@ -71,7 +73,15 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = true)
     public boolean enableSTDIOCapture = false;
 
-
+    // a few hard-coded parameters for use in various SGA modules based on some tuning experiences.
+    // subject to future changes as we see more test cases
+    @VisibleForTesting static final int MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE = 55;
+    @VisibleForTesting static final int FILTER_STEP_KMER_FREQUENCY_THREASHOLD = 1;
+    @VisibleForTesting static final double OVERLAP_STEP_ERROR_RATE = 0.05;
+    @VisibleForTesting static final double ASSEMBLE_STEP_MAX_GAP_DIVERGENCE = 0.0;
+    @VisibleForTesting static final int ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH = 50;
+    @VisibleForTesting static final int CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS = 0;
+    @VisibleForTesting static final boolean TURN_ON_TRANSITIVE_REDUCTION = false;
 
 
     // for developer performance debugging use
@@ -130,7 +140,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     /**
      * Validates the returned result from running the local assembly pipeline:
      *   if all steps executed successfully, the contig file is nonnull so we save the contig file and discard the runtime information
-     *   if any sga step returns non-zero code, the contig file is null so we save the runtime information for that break point
+     *   if any SGA step returns non-zero code, the contig file is null so we save the runtime information for that break point
      * @param results       the local assembly result and its associated breakpoint ID
      * @param outputDir     output directory to save the contigs (if assembly succeeded) or runtime info (if erred)
      */
@@ -204,7 +214,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     /**
      * Linear pipeline for running the SGA local assembly process on a particular FASTQ file for its associated putative breakpoint.
      *
-     * @param sgaPath           full path to the SGA program
+     * @param sgaPathString     full path to the SGA program
      * @param rawFASTQFile      local FASTQ file living in a temp local working dir
      * @param runCorrections    to run SGA correction steps--correct, filter, rmdup, merge--or not
      * @param enableSTDIOCapture to enable capture of stderr & stdout of SGA processes or not
@@ -212,7 +222,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      * @throws IOException      if fails to parse the final contigs file
      */
     @VisibleForTesting
-    static SGAAssemblyResult runSGAModulesInSerial(final String sgaPath,
+    static SGAAssemblyResult runSGAModulesInSerial(final String sgaPathString,
                                                    final File rawFASTQFile,
                                                    final boolean runCorrections,
                                                    final boolean enableSTDIOCapture)
@@ -220,9 +230,9 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
 
         logger.debug("SGAOnSpark_debug: start actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
-        final Path sga = Paths.get(sgaPath);
+        final Path sgaPath = Paths.get(sgaPathString);
 
-        final File tempWorkingDir = rawFASTQFile.getParentFile();
+        final File workingDir = rawFASTQFile.getParentFile();
 
         // the index module is used frequently, so make single instance and pass around
         final SGAModule indexer = new SGAModule("index");
@@ -234,48 +244,79 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         // collect runtime information along the way, if user requests
         final List<SGAModule.RuntimeInfo> runtimeInfo = new ArrayList<>();
 
-        String preppedFileName = runAndStopEarly("preprocess", rawFASTQFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-        if( null == preppedFileName ){
-            return new SGAAssemblyResult(null, runtimeInfo);
+        final Map<String, String> moduleArgsAndValues = new LinkedHashMap<>(10); // none of the SGA modules used in the following have more than 10 sensibly tunable parameters that affects assembly results
+
+        String nameOfFileToFeedToNextStep = null;
+        {//preprocess
+            moduleArgsAndValues.clear();
+            moduleArgsAndValues.put("--pe-mode", "2");
+            moduleArgsAndValues.put("--out", FilenameUtils.getBaseName(rawFASTQFile.getName()) + ".pp.fa");
+
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "preprocess", ".pp.fa", rawFASTQFile, workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
         }
 
-        if(runCorrections){
-            preppedFileName = runAndStopEarly("correct", new File(tempWorkingDir, preppedFileName), sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-            if( null == preppedFileName ){
+        if(runCorrections){//optional kmer based error correction
+            moduleArgsAndValues.clear();
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "correct", ".ec.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+        }
+
+        {//filter
+            moduleArgsAndValues.clear();
+            moduleArgsAndValues.put("--kmer-threshold", String.valueOf(FILTER_STEP_KMER_FREQUENCY_THREASHOLD));
+            moduleArgsAndValues.put("--homopolymer-check", "");
+            moduleArgsAndValues.put("--low-complexity-check", "");
+
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "filter", ".filter.pass.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, null, null, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+        }
+
+        {//merge
+            moduleArgsAndValues.clear();
+            moduleArgsAndValues.put("--min-overlap", String.valueOf(MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
+
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "fm-merge", ".merged.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+        }
+
+        {//deduplicate
+            moduleArgsAndValues.clear();
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "rmdup", ".rmdup.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+        }
+
+        {//overlap
+            moduleArgsAndValues.clear();
+            moduleArgsAndValues.put("--min-overlap", String.valueOf(MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
+            moduleArgsAndValues.put("--error-rate", String.valueOf(OVERLAP_STEP_ERROR_RATE));
+
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "overlap", ".asqg.gz", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, null, null, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+        }
+
+        {//assembly
+            moduleArgsAndValues.clear();
+            moduleArgsAndValues.put("--cut-terminal",          String.valueOf(CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS));
+            moduleArgsAndValues.put("--max-gap-divergence",    String.valueOf(ASSEMBLE_STEP_MAX_GAP_DIVERGENCE));
+            moduleArgsAndValues.put("--min-overlap",           String.valueOf(MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
+            moduleArgsAndValues.put("--min-branch-length",     String.valueOf(ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH));
+            moduleArgsAndValues.put("--out-prefix",            nameOfFileToFeedToNextStep.replace(".asqg.gz", ""));
+
+            nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "assemble", "-contigs.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, null, null, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
+            if( null == nameOfFileToFeedToNextStep ){
                 return new SGAAssemblyResult(null, runtimeInfo);
+            }else{
+                nameOfFileToFeedToNextStep = nameOfFileToFeedToNextStep.replace(".asqg", ""); // strip out substring ".asqg"
             }
-        }
-
-        final File preppedFile = new File(tempWorkingDir, preppedFileName);
-        final String filteredFileName = runAndStopEarly("filter", preppedFile, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-        if(null == filteredFileName){
-            return new SGAAssemblyResult(null, runtimeInfo);
-        }
-
-        final File fileToMerge = new File(tempWorkingDir, filteredFileName);
-        final String fileNameToDedup = runAndStopEarly("fm-merge", fileToMerge, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-        if(null == fileNameToDedup){
-            return new SGAAssemblyResult(null, runtimeInfo);
-        }
-
-        final File fileToDeduplicate = new File(tempWorkingDir, fileNameToDedup);
-        final String fileNameToAssemble = runAndStopEarly("rmdup", fileToDeduplicate, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-        if(null == fileNameToAssemble){
-            return new SGAAssemblyResult(null, runtimeInfo);
-        }
-
-        final File fileToAssemble   = new File(tempWorkingDir, fileNameToAssemble);
-        final String contigsFileName = runAndStopEarly("assemble", fileToAssemble, sga, tempWorkingDir, indexer, indexerArgs, runtimeInfo, enableSTDIOCapture);
-        if(null == contigsFileName){
-            return new SGAAssemblyResult(null, runtimeInfo);
         }
 
         logger.debug("SGAOnSpark_debug: finished actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
         // if code reaches here, all steps in the SGA pipeline went smoothly,
         // but the following conversion from File to ContigsCollection may still err
-        final File assembledContigsFile = new File(tempWorkingDir, contigsFileName);
-        final List<String> contigsFASTAContents = (null==assembledContigsFile) ? null : Files.readAllLines(Paths.get(assembledContigsFile.getAbsolutePath()));
+        final File assembledContigsFile = new File(workingDir, nameOfFileToFeedToNextStep);
+        final List<String> contigsFASTAContents = !assembledContigsFile.exists() ? null : Files.readAllLines(Paths.get(assembledContigsFile.getAbsolutePath()));
         if(null==contigsFASTAContents){
             return new SGAAssemblyResult(null, runtimeInfo);
         }else{
@@ -284,184 +325,61 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     }
 
     /**
-     * Call the right sga module, log runtime information, and return the output file name if succeed.
+     * Call the right SGA module, log runtime information, and return the output file name if succeed.
      * If process erred, the string returned is null.
      * @param moduleName            SGA module name to be run
-     * @param inputFASTQFile        FASTQ file tobe fed to SGA module
+     * @param inputFile             file to be fed to SGA module
      * @param sgaPath               full path to the SGA program
      * @param workingDir            directory the SGA pipeline is working in
      * @param indexer               module representing SGA index
      * @param indexerArgs           arguments used by SGA index
      * @param collectedRuntimeInfo  runtime information collected along the process
-     * @param enableSTDIOCapture    to enable capture of stdout & stderr of sag processes or not
-     * @return                      the name of file produced by running this SGA module
+     * @param enableSTDIOCapture    to enable capture of stdout & stderr of SGA processes or not
+     * @return                      the name of the file produced by running this SGA module, {@code null} if module failed to run
      */
-    private static String runAndStopEarly(final String moduleName,
-                                          final File inputFASTQFile,
-                                          final Path sgaPath,
-                                          final File workingDir,
-                                          final SGAModule indexer,
-                                          final List<String> indexerArgs,
-                                          final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                          final boolean enableSTDIOCapture){
-
-        String filenameToReturn = null;
-        if(moduleName.equalsIgnoreCase("preprocess")){
-            filenameToReturn = runSGAPreprocess(sgaPath, inputFASTQFile, workingDir, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-        }else if(moduleName.equalsIgnoreCase("correct")){
-            filenameToReturn = runSGACorrect(sgaPath, inputFASTQFile, workingDir, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-        }else if(moduleName.equalsIgnoreCase("filter")){
-            filenameToReturn = runSGAFilter(sgaPath, inputFASTQFile, workingDir, collectedRuntimeInfo, enableSTDIOCapture);
-        }else if(moduleName.equalsIgnoreCase("rmdup")){
-            filenameToReturn = runSGARmDuplicate(sgaPath, inputFASTQFile, workingDir, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-        }else if(moduleName.equalsIgnoreCase("fm-merge")){
-            filenameToReturn = runSGAFMMerge(sgaPath, inputFASTQFile, workingDir, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-        }else if(moduleName.equalsIgnoreCase("assemble")){
-            filenameToReturn = runSGAOverlapAndAssemble(sgaPath, inputFASTQFile, workingDir, collectedRuntimeInfo, enableSTDIOCapture);
-        }else{
-            throw new GATKException("Wrong module called"); // should never occur, implementation mistake
-        }
-
-        final SGAModule.RuntimeInfo.ReturnStatus returnStatus = collectedRuntimeInfo.get(collectedRuntimeInfo.size()-1).returnStatus;
-
-        if(!(returnStatus.equals( SGAModule.RuntimeInfo.ReturnStatus.SUCCESS))){
-            return null;
-        }else{
-            return filenameToReturn;
-        }
-    }
-
     @VisibleForTesting
-    static String runSGAPreprocess(final Path sgaPath,
-                                   final File inputFASTQFile,
-                                   final File outputDirectory,
-                                   final SGAModule indexer,
-                                   final List<String> indexerArgs,
-                                   final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                   final boolean enableSTDIOCapture){
-
-        final String prefix = FilenameUtils.getBaseName(inputFASTQFile.getName());
-        final String preprocessedFASTAFileName = prefix+".pp.fa";
-
-        final SGAModule preprocess = new SGAModule("preprocess");
-        final List<String> ppArgs = new ArrayList<>();
-        ppArgs.add("--pe-mode");    ppArgs.add("2");
-        ppArgs.add("--pe-orphans"); ppArgs.add(prefix+".pp.orphan.fa");
-        ppArgs.add("--out");        ppArgs.add(preprocessedFASTAFileName);
-        ppArgs.add(inputFASTQFile.getName());
-
-        final SGAModule.RuntimeInfo ppInfo = preprocess.run(sgaPath, outputDirectory, ppArgs, enableSTDIOCapture);
-        collectedRuntimeInfo.add(ppInfo);
-
-        indexerArgs.set(indexerArgs.size()-1, preprocessedFASTAFileName);
-        final SGAModule.RuntimeInfo indexerInfo = indexer.run(sgaPath, outputDirectory, indexerArgs, enableSTDIOCapture);
-        collectedRuntimeInfo.add(indexerInfo);
-
-        return preprocessedFASTAFileName;
-    }
-
-    @VisibleForTesting
-    static String runSGACorrect(final Path sgaPath,
-                                final File inputFASTAFile,
-                                final File outputDirectory,
-                                final SGAModule indexer,
-                                final List<String> indexerArgs,
-                                final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                final boolean enableSTDIOCapture){
-        return runSimpleModuleFollowedByIndexing(sgaPath, "correct", ".ec.fa", inputFASTAFile, outputDirectory, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-    }
-
-    @VisibleForTesting
-    static String runSGAFilter(final Path sgaPath,
-                               final File inputFASTAFile,
-                               final File outputDirectory,
+    static String runSGAModule(final Path sgaPath,
+                               final String moduleName,
+                               final String extensionToAppend,
+                               final File inputFile,
+                               final File workingDir,
+                               final SGAModule indexer,
+                               final List<String> indexerArgs,
+                               final List<String> moduleArgs,
                                final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
                                final boolean enableSTDIOCapture){
 
-        final String prefix = FilenameUtils.getBaseName(inputFASTAFile.getName());
-        final SGAModule filter = new SGAModule("filter");
-        final List<String> filterArgs = new ArrayList<>();
-        filterArgs.add(prefix+".fa");
-        final SGAModule.RuntimeInfo filterInfo = filter.run(sgaPath, outputDirectory, filterArgs, enableSTDIOCapture);
-        collectedRuntimeInfo.add(filterInfo);
-
-        return prefix+".filter.pass.fa";
-    }
-
-    @VisibleForTesting
-    static String runSGARmDuplicate(final Path sgaPath,
-                                    final File inputFASTAFile,
-                                    final File outputDirectory,
-                                    final SGAModule indexer,
-                                    final List<String> indexerArgs,
-                                    final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                    final boolean enableSTDIOCapture){
-        return runSimpleModuleFollowedByIndexing(sgaPath, "rmdup", ".rmdup.fa", inputFASTAFile, outputDirectory, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-    }
-
-    @VisibleForTesting
-    static String runSGAFMMerge(final Path sgaPath,
-                                final File inputFASTAFile,
-                                final File outputDirectory,
-                                final SGAModule indexer,
-                                final List<String> indexerArgs,
-                                final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                final boolean enableSTDIOCapture){
-        return runSimpleModuleFollowedByIndexing(sgaPath, "fm-merge", ".merged.fa", inputFASTAFile, outputDirectory, indexer, indexerArgs, collectedRuntimeInfo, enableSTDIOCapture);
-    }
-
-    @VisibleForTesting
-    static String runSGAOverlapAndAssemble(final Path sgaPath,
-                                           final File inputFASTAFile,
-                                           final File outputDirectory,
-                                           final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                           final boolean enableSTDIOCapture){
-
-        final SGAModule overlap = new SGAModule("overlap");
-        final List<String> overlapArgs = new ArrayList<>();
-        overlapArgs.add(inputFASTAFile.getName());
-
-        final SGAModule.RuntimeInfo overlapInfo = overlap.run(sgaPath, outputDirectory, overlapArgs, enableSTDIOCapture);
-        collectedRuntimeInfo.add(overlapInfo);
-
-        final String prefix = FilenameUtils.getBaseName(inputFASTAFile.getName());
-
-        final SGAModule assemble = new SGAModule("assemble");
-        final List<String> assembleArgs = new ArrayList<>();
-        assembleArgs.add("--out-prefix"); assembleArgs.add(prefix);
-        assembleArgs.add(prefix+".asqg.gz");
-        final SGAModule.RuntimeInfo assembleInfo = assemble.run(sgaPath, outputDirectory, assembleArgs, enableSTDIOCapture);
-        collectedRuntimeInfo.add(assembleInfo);
-
-        return prefix+"-contigs.fa";
-    }
-
-    // boiler plate code for running simple sga modules (simple in the sense that no options needs to be specified to make it work)
-    // that perform a task followed by indexing its output
-    private static String runSimpleModuleFollowedByIndexing(final Path sgaPath,
-                                                            final String moduleName,
-                                                            final String extensionToAppend,
-                                                            final File inputFASTAFile,
-                                                            final File outputDirectory,
-                                                            final SGAModule indexer,
-                                                            final List<String> indexerArgs,
-                                                            final List<SGAModule.RuntimeInfo> collectedRuntimeInfo,
-                                                            final boolean enableSTDIOCapture){
-
         final SGAModule module = new SGAModule(moduleName);
-        final List<String> args = new ArrayList<>();
-        args.add(inputFASTAFile.getName());
 
-        final SGAModule.RuntimeInfo moduleInfo = module.run(sgaPath, outputDirectory, args, enableSTDIOCapture);
+        moduleArgs.add(inputFile.getName());
+
+        final SGAModule.RuntimeInfo moduleInfo = module.run(sgaPath, workingDir, moduleArgs, enableSTDIOCapture);
         collectedRuntimeInfo.add(moduleInfo);
 
-        final String outputFileName = FilenameUtils.getBaseName(inputFASTAFile.getName()) + extensionToAppend;
+        final String outputFileName = FilenameUtils.getBaseName(inputFile.getName()) + extensionToAppend;
 
-        indexerArgs.set(indexerArgs.size()-1, outputFileName);
-        final SGAModule.RuntimeInfo indexerInfo = indexer.run(sgaPath, outputDirectory, indexerArgs, enableSTDIOCapture);
-        collectedRuntimeInfo.add(indexerInfo);
+        if(null!=indexer){
+            indexerArgs.set(indexerArgs.size()-1, outputFileName);
+            final SGAModule.RuntimeInfo indexerInfo = indexer.run(sgaPath, workingDir, indexerArgs, enableSTDIOCapture);
+            collectedRuntimeInfo.add(indexerInfo);
+        }
 
-        return outputFileName;
+        // check module return status
+        final SGAModule.RuntimeInfo.ReturnStatus returnStatus = collectedRuntimeInfo.get(collectedRuntimeInfo.size()-1).returnStatus;
+        if(!(returnStatus.equals(SGAModule.RuntimeInfo.ReturnStatus.SUCCESS))){
+            return null;
+        }else{
+            return outputFileName;
+        }
+    }
+
+    @VisibleForTesting
+    static List<String> turnCmdLineArgsKeyValuePairIntoList(final Map<String, String> keyValuePairs){
+
+        return keyValuePairs.entrySet().stream().flatMap(p -> {final String val = p.getValue();
+                                                               return val.isEmpty() ? Stream.of(p.getKey()) : Stream.of(p.getKey(), val);
+                                                               })
+                                                .collect(Collectors.toList());
     }
 
     /**
