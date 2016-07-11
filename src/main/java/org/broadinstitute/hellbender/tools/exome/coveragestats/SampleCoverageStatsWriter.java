@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.coveragestats;
 
-import org.broadinstitute.hellbender.tools.exome.coveragestats.SampleCoverageStats;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;

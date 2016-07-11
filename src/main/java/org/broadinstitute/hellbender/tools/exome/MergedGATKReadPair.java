@@ -593,8 +593,18 @@ final class MergedGATKReadPair implements GATKRead {
     }
 
     @Override
+    public String getAssignedContig() {
+        return getContig();
+    }
+
+    @Override
     public int getStart() {
         return interval.getStart();
+    }
+
+    @Override
+    public int getAssignedStart() {
+        return getStart();
     }
 
     @Override
