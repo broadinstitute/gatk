@@ -162,7 +162,7 @@ public abstract class GATKTool extends CommandLineProgram {
         if ( intervalArgumentCollection.intervalsSpecified() ) {
             final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
             if ( sequenceDictionary == null ) {
-                throw new UserException("We currently require a sequence dictionary (from a reference or source of reads) " +
+                throw new UserException("We currently require a sequence dictionary (from a reference, source of reads, or variants) " +
                                         "to process intervals. This restriction may be removed in the future.");
             }
 
@@ -260,7 +260,16 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return best available sequence dictionary given our inputs
      */
     public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
-        return reference != null ? reference.getSequenceDictionary() : (reads != null ? reads.getSequenceDictionary() : null);
+        if (reference != null) {
+            return reference.getSequenceDictionary();
+        }
+        if (reads != null) {
+            return reads.getSequenceDictionary();
+        }
+        if (features != null) {
+            return features.getDrivingSequenceDictionary();
+        }
+        return null;
     }
 
     /**
@@ -307,9 +316,9 @@ public abstract class GATKTool extends CommandLineProgram {
 
         initializeReads(); // Must be initialized after reference, in case we are dealing with CRAM and a reference is required
 
-        initializeIntervals(); // Must be initialized after reference and reads, since intervals currently require a sequence dictionary from another data source
-
         initializeFeatures();
+
+        initializeIntervals(); // Must be initialized after reference, reads and features, since intervals currently require a sequence dictionary from another data source
 
         if ( ! disableSequenceDictionaryValidation ) {
             validateSequenceDictionaries();

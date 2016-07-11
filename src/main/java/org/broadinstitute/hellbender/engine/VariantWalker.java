@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -10,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.io.File;
 import java.util.Collections;
@@ -52,11 +52,12 @@ public abstract class VariantWalker extends GATKTool {
     }
 
     @Override
-    void initializeFeatures() {
+    final void initializeFeatures() {
         //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
         //This is because we have at least 1 source of features (namely the driving dataset).
         features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD);
         initializeDrivingVariants();
+        features.setDrivingInput(drivingVariantsFeatureInput);
     }
 
     @SuppressWarnings("unchecked")
@@ -72,7 +73,11 @@ public abstract class VariantWalker extends GATKTool {
         //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
         drivingVariantsFeatureInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingVariantFile);
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class);
+    }
 
+    @Override
+    final void initializeIntervals() {
+        super.initializeIntervals();
         if ( hasIntervals() ) {
             drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
         }

@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -86,6 +87,8 @@ public final class FeatureManager implements AutoCloseable {
      * Mapping from FeatureInput argument to query-able FeatureDataSource for that source of Features
      */
     private final Map<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> featureSources;
+
+    private FeatureInput<? extends Feature> drivingInput;
 
     /**
      * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
@@ -228,6 +231,29 @@ public final class FeatureManager implements AutoCloseable {
             }
         }
         return headers;
+    }
+
+    /**
+     * Returns the sequence dictionary associated with the given feature input or null if there is none.
+     */
+    public SAMSequenceDictionary getSequenceDictionary(final FeatureInput<? extends Feature> featureInput){
+        Utils.nonNull(featureInput);
+        return featureSources.get(featureInput).getSequenceDictionary();
+    }
+
+    /**
+     * Returns the sequence dictionary associated with the driving input or null if there is none.
+     */
+    public SAMSequenceDictionary getDrivingSequenceDictionary(){
+        return getSequenceDictionary(drivingInput);
+    }
+
+    /**
+     * Set the driving input in the manager.
+     */
+    public void setDrivingInput(final FeatureInput<? extends Feature> drivingInput){
+        Utils.nonNull(drivingInput);
+        this.drivingInput = drivingInput;
     }
 
     /**
