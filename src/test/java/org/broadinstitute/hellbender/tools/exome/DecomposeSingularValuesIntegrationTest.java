@@ -3,13 +3,13 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.DiagonalMatrix;
 import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.QRDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.hdf5.PoNTestUtils;
 import org.broadinstitute.hellbender.utils.svd.SVD;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
-import org.broadinstitute.hellbender.utils.svd.SVDTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -86,12 +86,27 @@ public class DecomposeSingularValuesIntegrationTest extends CommandLineProgramTe
             assertOutputFileValues(outputFileU, svd.getU());
             assertOutputFileValues(outputFileS, sDiag);
             assertOutputFileValues(outputFileV, svd.getV());
-            SVDTestUtils.assertUnitaryMatrix(svd.getV());
-            SVDTestUtils.assertUnitaryMatrix(svd.getU());
+            assertUnitaryMatrix(svd.getV());
+            assertUnitaryMatrix(svd.getU());
             Assert.assertTrue(MatrixUtils.isSymmetric(sDiag, 1e-32));
 
         } catch (final IOException ioe) {
             Assert.fail("Could not open test file: " + CONTROL_PCOV_FULL_FILE, ioe);
+        }
+    }
+
+    /**
+     * Assert that the given matrix is unitary.
+     * @param m
+     */
+    public static void assertUnitaryMatrix(final RealMatrix m){
+        final RealMatrix mInv = new QRDecomposition(m).getSolver().getInverse();
+        final RealMatrix mT = m.transpose();
+
+        for (int i = 0; i < mInv.getRowDimension(); i ++) {
+            for (int j = 0; j < mInv.getColumnDimension(); j ++) {
+                Assert.assertEquals(mInv.getEntry(i, j), mT.getEntry(i, j), 1e-7);
+            }
         }
     }
 

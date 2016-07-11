@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 /**
  * Entry point for creating an instance of SVD.  When the object is created, all of the calculation will be done as well.
  */
-public class SVDFactory {
+public final class SVDFactory {
 
     /**
      * Create a SVD instance using Apache Commons Math.
@@ -30,8 +30,8 @@ public class SVDFactory {
     public static SVD createSVD(final RealMatrix m, final JavaSparkContext ctx){
         Utils.nonNull(m, "Cannot create SVD from a null matrix.");
         if (ctx == null) {
-            return OjAlgoSingularValueDecomposer.createSVD(m);
+            return new OjAlgoSingularValueDecomposer().createSVD(m);
         }
-        return SparkSingularValueDecomposer.createSVD(ctx, m);
+        return new SparkSingularValueDecomposer(ctx).createSVD(m);
     }
 }
