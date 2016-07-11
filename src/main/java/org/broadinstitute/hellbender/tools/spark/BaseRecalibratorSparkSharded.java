@@ -78,10 +78,10 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
 
     @Override
     protected void runPipeline( JavaSparkContext ctx ) {
-        if ( readArguments.getReadFilesNames().size() != 1 ) {
+        if ( readArguments.getReadFileNames().size() != 1 ) {
             throw new UserException("Sorry, we only support a single reads input for now.");
         }
-        final String bam = readArguments.getReadFilesNames().get(0);
+        final String bam = readArguments.getReadFileNames().get(0);
         final String referenceURL = referenceArguments.getReferenceFileName();
 
         auth = getAuthHolder();

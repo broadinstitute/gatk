@@ -7,23 +7,21 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 import java.util.Arrays;
 
-public final class ExampleVariantWalkerIntegrationTest extends CommandLineProgramTest {
+public final class ExampleReadWalkerWithVariantsIntegrationTest extends CommandLineProgramTest {
 
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
 
     @Test
-    public void testExampleVariantWalker() throws IOException {
+    public void testExampleReadWalkerWithVariants() throws IOException {
         IntegrationTestSpec testSpec = new IntegrationTestSpec(
                 " -L 1:100-200" +
                 " -R " + hg19MiniReference +
-                " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
-                " -V " + TEST_DATA_DIRECTORY + "example_variants.vcf" +
-                " -auxiliaryVariants " + TEST_DATA_DIRECTORY + "feature_data_source_test.vcf" +
+                " -I tumor:" + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
+                " -V " + TEST_DATA_DIRECTORY + "feature_data_source_test.vcf" +
                 " -O %s",
-                Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleVariantWalkerIntegrationTest_output.txt")
+                Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleReadWalkerWithVariantsIntegrationTest_output.txt")
         );
-        testSpec.executeTest("testExampleIntervalWalker", this);
+        testSpec.executeTest("testExampleReadWalkerWithVariants", this);
     }
-
 }

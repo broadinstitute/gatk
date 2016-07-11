@@ -36,8 +36,7 @@ public final class ExampleVariantWalker extends VariantWalker {
     public void onTraversalStart() {
         try {
             outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
-        }
-        catch ( final FileNotFoundException e ) {
+        } catch ( final FileNotFoundException e ) {
             throw new UserException.CouldNotReadInputFile(outputFile, e);
         }
     }
