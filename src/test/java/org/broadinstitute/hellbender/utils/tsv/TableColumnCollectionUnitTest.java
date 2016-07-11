@@ -13,7 +13,7 @@ import java.util.Arrays;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class TableColumnUnitTest extends BaseTest {
+public class TableColumnCollectionUnitTest extends BaseTest {
 
     private static int[] COUNT_TEST = new int[]{1, 3, 10, 101};
 
