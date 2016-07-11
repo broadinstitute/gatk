@@ -44,7 +44,6 @@ task downloadGsaLibFile(type: Download) {
 
 repositories {
     mavenCentral()
-    mavenLocal()
     jcenter()
 
     maven {
@@ -118,7 +117,6 @@ dependencies {
     compile 'it.unimi.dsi:fastutil:7.0.6'
     compile 'com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
-
 
    compile 'org.ojalgo:ojalgo:39.0'
     compile ('org.apache.spark:spark-mllib_2.10:1.6.1') {
