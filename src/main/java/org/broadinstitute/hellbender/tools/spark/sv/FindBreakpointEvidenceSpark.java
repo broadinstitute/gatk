@@ -40,8 +40,25 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     //--------- parameters ----------
     @VisibleForTesting static final Params defaultParams =
-            new Params(SVConstants.KMER_SIZE, SVConstants.MIN_ENTROPY,
-                        20, 45, 1000, 15, 20000000, 2, 250000, 200, 3, 3, 125, 600000, 7, 100000000);
+            new Params(
+                    SVConstants.KMER_SIZE,   // kmer size
+                    SVConstants.MIN_ENTROPY, // minimum kmer entropy
+                    20,                      // minimum map quality for evidential reads
+                    45,                      // minimum match length
+                    1000,                    // maximum coverage on breakpoint interval
+                    15,                      // minimum number of evidentiary reads in called cluster
+                    20000000,                // guess for total kmers in BAM partition
+                    2,                       // minimum kmer count within partition of high frequency kmer
+                    250000,                  // guess for number of unique error-free kmers in one partition
+                    200,                     // high frequency kmer count
+                    3,                       // maximum number of intervals a localizing kmer can appear in
+                    3,                       // KmerCleaner min kmer count
+                    125,                     // KmerCleaner max kmer count
+                    600000,                  // KmerCleaner guess for number of unique error-free kmers per partition
+                    7,                       // guess for ratio of total reads in assembly to evidentiary reads in interval
+                    100000000,               // maximum FASTQ size
+                    0                        // exclusion interval extra padding
+            );
 
     @Argument(doc = "Kmer size.", fullName = "kSize")
     private int kSize = defaultParams.kSize;
@@ -99,6 +116,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Argument(doc = "Maximum FASTQ file size.", fullName = "maxFASTQSize")
     private int maxFASTQSize = defaultParams.maxFASTQSize;
 
+    @Argument(doc = "Exclusion interval padding.", fullName = "exclusionIntervalPadding")
+    private int exclusionIntervalPadding = defaultParams.exclusionIntervalPadding;
+
     @Argument(doc = "Include read mapping location in FASTQ files.", fullName = "includeMappingLocation")
     private boolean includeMappingLocation = true;
 
@@ -127,13 +147,22 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private String qNamesAssemblyFile;
 
     /**
+     * This is a file that calls out the coordinates of intervals in the reference assembly to exclude from
+     * consideration when calling putative breakpoints.
+     * Each line is a tab-delimited interval with 1-based inclusive coordinates like this:
+     *  chr1	124535434	142535434
+     */
+    @Argument(doc = "file of reference intervals to exclude", fullName = "exclusionIntervals", optional = true)
+    private String exclusionIntervalsFile;
+
+    /**
      * This is a path to a file of kmers that appear too frequently in the reference to be usable as probes to localize
      * reads.  We don't calculate it here, because it depends only on the reference.
      * The program FindBadGenomicKmersSpark can produce such a list for you.
      */
     @Argument(doc = "file containing ubiquitous kmer list. see FindBadGenomicKmersSpark to generate it.",
             fullName = "kmersToIgnore")
-    private String kmersToIgnoreFilename;
+    private String kmersToIgnoreFile;
 
     @Override
     public boolean requiresReads()
@@ -150,13 +179,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         final Locations locations =
                 new Locations(evidenceDir, intervalFile, qNamesMappedFile,
-                                highFrequencyKmersFile, kmerFile, qNamesAssemblyFile);
+                                highFrequencyKmersFile, kmerFile, qNamesAssemblyFile, exclusionIntervalsFile);
         final Params params =
                 new Params(kSize, minEntropy, minEvidenceMapQ, minEvidenceMatchLength, maxIntervalCoverage,
                             minEvidenceCount, totalKmersPerPartitionGuess, minKmerCountWithinPartition,
                             uniqueErrorFreeKmersPerPartitionGuess, minHighFrequencyKmerCount,
                             cleanerMaxIntervals, cleanerMinKmerCount, cleanerMaxKmerCount, cleanerKmersPerPartitionGuess,
-                            assemblyToMappedSizeRatioGuess, maxFASTQSize);
+                            assemblyToMappedSizeRatioGuess, maxFASTQSize, exclusionIntervalPadding);
 
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
         final JavaRDD<GATKRead> unfilteredReads = getUnfilteredReads();
@@ -164,15 +193,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 unfilteredReads.filter(read -> !read.isSecondaryAlignment() && !read.isSupplementaryAlignment());
 
         // develop evidence, intervals, and, finally, a set of template names for each interval
-        final Tuple2<List<Interval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> intervalsAndQNameMap =
+        final Tuple2<List<SVInterval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> intervalsAndQNameMap =
                 getMappedQNamesSet(params, ctx, header, unfilteredReads, locations, pipelineOptions);
-        final List<Interval> intervals = intervalsAndQNameMap._1;
+        final List<SVInterval> intervals = intervalsAndQNameMap._1;
         if ( intervals.isEmpty() ) return;
 
         final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap = intervalsAndQNameMap._2;
 
         // supplement the template names with other reads that share kmers
-        addAssemblyQNames(params, ctx, kmersToIgnoreFilename, qNamesMultiMap, allPrimaryLines, locations, pipelineOptions);
+        addAssemblyQNames(params, ctx, kmersToIgnoreFile, qNamesMultiMap, allPrimaryLines, locations, pipelineOptions);
 
         // write a FASTQ file for each interval
         final String outDir = outputDir;
@@ -184,26 +213,43 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         // record the intervals
         if ( locations.intervalFile != null ) {
-
-            intervalDispositions.sort((t1, t2) -> t1._1().compareTo(t2._1()));
-
-            try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                    BucketUtils.createFile(locations.intervalFile, pipelineOptions)))) {
-                final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
-                for (final Tuple2<Integer, String> tuple : intervalDispositions) {
-                    final int intervalId = tuple._1();
-                    final Interval interval = intervals.get(intervalId);
-                    final String seqName = contigs.get(interval.getContig()).getSequenceName();
-                    writer.write(intervalId + "\t" +
-                            seqName + ":" + interval.getStart() + "-" + interval.getEnd() + "\t" +
-                            tuple._2() + "\n");
-                }
-            } catch (final IOException ioe) {
-                throw new GATKException("Can't write intervals file " + locations.intervalFile, ioe);
-            }
+            writeIntervalFile(locations.intervalFile, pipelineOptions, header, intervals, intervalDispositions);
         }
 
         log("Wrote FASTQs for assembly.");
+    }
+
+    /** write a file describing each interval */
+    private static void writeIntervalFile( final String intervalFile,
+                                           final PipelineOptions pipelineOptions,
+                                           final SAMFileHeader header,
+                                           final List<SVInterval> intervals,
+                                           final List<Tuple2<Integer, String>> intervalDispositions ) {
+        final int nIntervals = intervals.size();
+        final String[] dispositions = new String[nIntervals];
+        for ( final Tuple2<Integer, String> tuple : intervalDispositions ) {
+            final int intervalId = tuple._1();
+            if ( intervalId < 0 || intervalId >= nIntervals ) {
+                throw new GATKException("Unexpected intervalId among dispositions: "+intervalId);
+            }
+            dispositions[tuple._1()] = tuple._2();
+        }
+
+        try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
+                BucketUtils.createFile(intervalFile, pipelineOptions)))) {
+            final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
+            for ( int intervalId = 0; intervalId != nIntervals; ++intervalId ) {
+                final SVInterval interval = intervals.get(intervalId);
+                final String seqName = contigs.get(interval.getContig()).getSequenceName();
+                String disposition = dispositions[intervalId];
+                if ( disposition == null ) disposition = "unknown";
+                writer.write(intervalId + "\t" +
+                        seqName + ":" + interval.getStart() + "-" + interval.getEnd() + "\t" +
+                        disposition + "\n");
+            }
+        } catch (final IOException ioe) {
+            throw new GATKException("Can't write intervals file " + intervalFile, ioe);
+        }
     }
 
     /**
@@ -214,7 +260,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * clean up by removing some intervals that are bogus as evidenced by ubiquitous kmers,
      * and return a set of template names and the intervals to which they belong.
      */
-    private Tuple2<List<Interval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> getMappedQNamesSet(
+    private Tuple2<List<SVInterval>, HopscotchUniqueMultiMap<String, Integer, QNameAndInterval>> getMappedQNamesSet(
             final Params params,
             final JavaSparkContext ctx,
             final SAMFileHeader header,
@@ -228,21 +274,21 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final ReadMetadata readMetadata = getMetadata(header);
         log("Metadata retrieved.");
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
-        final List<Interval> intervals = getIntervals(params, broadcastMetadata, header, mappedReads, locations);
+        List<SVInterval> intervals = getIntervals(params, broadcastMetadata, header, mappedReads, locations);
 
         final int nIntervals = intervals.size();
         log("Discovered " + nIntervals + " intervals.");
 
         if ( nIntervals == 0 ) return null;
 
-        final List<Interval> goodIntervals =
-                removeHighCoverageIntervals(params, ctx, broadcastMetadata, intervals, mappedReads);
-
-        final int nKilledIntervals = nIntervals - goodIntervals.size();
-        log("Killed " + nKilledIntervals + " intervals that had >" + params.maxIntervalCoverage + "x coverage.");
+        if ( locations.exclusionIntervalsFile != null ) {
+            intervals = removeIntervalsNearGapsAndLog(intervals, params.exclusionIntervalPadding, readMetadata,
+                    locations.exclusionIntervalsFile, pipelineOptions);
+        }
+        intervals = removeHighCoverageIntervalsAndLog(params, ctx, broadcastMetadata, intervals, mappedReads);
 
         final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap =
-                getQNames(params, ctx, broadcastMetadata, goodIntervals, mappedReads);
+                getQNames(params, ctx, broadcastMetadata, intervals, mappedReads);
         broadcastMetadata.destroy();
 
         if ( locations.qNamesMappedFile != null ) {
@@ -261,7 +307,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private void addAssemblyQNames(
             final Params params,
             final JavaSparkContext ctx,
-            final String kmersToIgnoreFilename,
+            final String kmersToIgnoreFile,
             final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
             final JavaRDD<GATKRead> allPrimaryLines,
             final Locations locations,
@@ -274,7 +320,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 getAssemblyQNames(
                         params,
                         ctx,
-                        getKmerAndIntervalsSet(params, ctx, kmersToIgnoreFilename, qNamesMultiMap,
+                        getKmerAndIntervalsSet(params, ctx, kmersToIgnoreFile, qNamesMultiMap,
                                                 goodPrimaryLines, locations, pipelineOptions),
                         goodPrimaryLines));
 
@@ -293,13 +339,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> getKmerAndIntervalsSet(
             final Params params,
             final JavaSparkContext ctx,
-            final String kmersToIgnoreFilename,
+            final String kmersToIgnoreFile,
             final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNamesMultiMap,
             final JavaRDD<GATKRead> goodPrimaryLines,
             final Locations locations,
             final PipelineOptions pipelineOptions )
     {
-        final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFilename, pipelineOptions);
+        final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFile, pipelineOptions);
         log("Ignoring " + kmerKillSet.size() + " genomically common kmers.");
         final List<SVKmer> kmerKillList = getHighCountKmers(params, goodPrimaryLines, locations, pipelineOptions);
         log("Ignoring " + kmerKillList.size() + " common kmers in the reads.");
@@ -477,14 +523,63 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         return kmers;
     }
 
+    private List<SVInterval> removeIntervalsNearGapsAndLog( final List<SVInterval> intervals,
+                                                            final int minDistanceToGap,
+                                                            final ReadMetadata readMetadata,
+                                                            final String exclusionIntervalsFile,
+                                                            final PipelineOptions pipelineOptions ) {
+        final List<SVInterval> result = removeIntervalsNearGaps(intervals, minDistanceToGap,
+                readMetadata.getContigNameMap(), exclusionIntervalsFile, pipelineOptions);
+        final int nKilledIntervals = intervals.size() - result.size();
+        log("Killed " + nKilledIntervals + " intervals that were near reference gaps.");
+        return result;
+    }
+
+    /** remove intervals that are near gaps */
+    @VisibleForTesting static List<SVInterval> removeIntervalsNearGaps( final List<SVInterval> intervals,
+                                                                        final int minDistanceToGap,
+                                                                        final Map<String, Short> contigNameMap,
+                                                                        final String exclusionIntervalsFile,
+                                                                        final PipelineOptions pipelineOptions ) {
+        if ( exclusionIntervalsFile == null ) return intervals;
+        final SortedSet<SVInterval> gaps =
+                new TreeSet<>(SVUtils.readIntervalsFile(exclusionIntervalsFile, pipelineOptions, contigNameMap));
+        return intervals.stream()
+                .filter(interval -> {
+                    final SortedSet<SVInterval> headSet = gaps.headSet(interval);
+                    if ( !headSet.isEmpty() ) {
+                        final SVInterval gapInterval = headSet.last();
+                        if ( gapInterval.gapLen(interval) < minDistanceToGap ) return false;
+                    }
+                    final SortedSet<SVInterval> tailSet = gaps.tailSet(interval);
+                    if ( !tailSet.isEmpty() ) {
+                        final SVInterval gapInterval = tailSet.first();
+                        if ( interval.gapLen(gapInterval) < minDistanceToGap ) return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toCollection(() -> new ArrayList<>(intervals.size())));
+    }
+
+    private List<SVInterval> removeHighCoverageIntervalsAndLog( final Params params,
+                                                                final JavaSparkContext ctx,
+                                                                final Broadcast<ReadMetadata> broadcastMetadata,
+                                                                final List<SVInterval> intervals,
+                                                                final JavaRDD<GATKRead> mappedReads ) {
+        final List<SVInterval> result = removeHighCoverageIntervals(params, ctx, broadcastMetadata, intervals, mappedReads);
+        final int nKilledIntervals = intervals.size() - result.size();
+        log("Killed " + nKilledIntervals + " intervals that had >" + params.maxIntervalCoverage + "x coverage.");
+        return result;
+    }
+
     /** figure out the coverage for each interval and filter out those with ridiculously high coverage */
-    @VisibleForTesting static List<Interval> removeHighCoverageIntervals(
+    @VisibleForTesting static List<SVInterval> removeHighCoverageIntervals(
             final Params params,
             final JavaSparkContext ctx,
             final Broadcast<ReadMetadata> broadcastMetadata,
-            final List<Interval> intervals,
+            final List<SVInterval> intervals,
             final JavaRDD<GATKRead> reads) {
-        final Broadcast<List<Interval>> broadcastIntervals = ctx.broadcast(intervals);
+        final Broadcast<List<SVInterval>> broadcastIntervals = ctx.broadcast(intervals);
         final Map<Integer, Integer> intervalCoverage =
                 reads
                     .mapPartitionsToPair(readItr ->
@@ -492,7 +587,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                     .reduceByKey(Integer::sum)
                     .collectAsMap();
         final int maxCoverage = params.maxIntervalCoverage;
-        final List<Interval> result =
+        final List<SVInterval> result =
                 IntStream.range(0, intervals.size())
                 .filter(idx -> intervalCoverage.getOrDefault(idx, 0) <= maxCoverage*intervals.get(idx).getLength())
                 .mapToObj(intervals::get)
@@ -506,9 +601,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final Params params,
             final JavaSparkContext ctx,
             final Broadcast<ReadMetadata> broadcastMetadata,
-            final List<Interval> intervals,
+            final List<SVInterval> intervals,
             final JavaRDD<GATKRead> reads ) {
-        final Broadcast<List<Interval>> broadcastIntervals = ctx.broadcast(intervals);
+        final Broadcast<List<SVInterval>> broadcastIntervals = ctx.broadcast(intervals);
         final List<QNameAndInterval> qNameAndIntervalList =
                 reads
                         .mapPartitions(readItr ->
@@ -542,7 +637,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * Identify funky reads that support a hypothesis of a breakpoint in the vicinity, group the reads,
      * and declare a breakpoint interval where there is sufficient density of evidence.
      */
-    @VisibleForTesting static List<Interval> getIntervals(
+    @VisibleForTesting static List<SVInterval> getIntervals(
             final Params params,
             final Broadcast<ReadMetadata> broadcastMetadata,
             final SAMFileHeader header,
@@ -581,7 +676,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
 
         // find discrete intervals that contain the breakpoint evidence
-        final Iterator<Interval> intervalItr =
+        final Iterator<SVInterval> intervalItr =
                 evidenceRDD
                         .mapPartitions(evidenceItr ->
                                 new MapPartitioner<>(evidenceItr,
@@ -591,11 +686,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         .iterator();
 
         // coalesce overlapping intervals (can happen at partition boundaries)
-        final List<Interval> intervals = new ArrayList<>();
+        final List<SVInterval> intervals = new ArrayList<>();
         if ( intervalItr.hasNext() ) {
-            Interval prev = intervalItr.next();
+            SVInterval prev = intervalItr.next();
             while ( intervalItr.hasNext() ) {
-                final Interval next = intervalItr.next();
+                final SVInterval next = intervalItr.next();
                 if ( prev.isDisjointFrom(next) ) {
                     intervals.add(prev);
                     prev = next;
@@ -636,16 +731,19 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public final String highFrequencyKmersFile;
         public final String kmerFile;
         public final String qNamesAssemblyFile;
+        public final String exclusionIntervalsFile;
 
         public Locations( final String evidenceDir, final String intervalFile,
                           final String qNamesMappedFile, final String highFrequencyKmersFile,
-                          final String kmerFile, final String qNamesAssemblyFile ) {
+                          final String kmerFile, final String qNamesAssemblyFile,
+                          final String exclusionIntervalsFile) {
             this.evidenceDir = evidenceDir;
             this.intervalFile = intervalFile;
             this.qNamesMappedFile = qNamesMappedFile;
             this.highFrequencyKmersFile = highFrequencyKmersFile;
             this.kmerFile = kmerFile;
             this.qNamesAssemblyFile = qNamesAssemblyFile;
+            this.exclusionIntervalsFile = exclusionIntervalsFile;
         }
     }
 
@@ -666,6 +764,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public final int cleanerKmersPerPartitionGuess;
         public final int assemblyToMappedSizeRatioGuess;
         public final int maxFASTQSize;
+        public final int exclusionIntervalPadding;
 
         public Params( final int kSize, final double minEntropy, final int minEvidenceMapQ,
                        final int minEvidenceMatchLength, final int maxIntervalCoverage, final int minEvidenceCount,
@@ -673,7 +772,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                        final int uniqueErrorFreeKmersPerPartitionGuess, final int minHighFrequencyKmerCount,
                        final int cleanerMaxIntervals, final int cleanerMinKmerCount,
                        final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
-                       final int assemblyToMappedSizeRatioGuess, final int maxFASTQSize ) {
+                       final int assemblyToMappedSizeRatioGuess, final int maxFASTQSize,
+                       final int exclusionIntervalPadding ) {
             this.kSize = kSize;
             this.minEntropy = minEntropy;
             this.minEvidenceMapQ = minEvidenceMapQ;
@@ -690,6 +790,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.cleanerKmersPerPartitionGuess = cleanerKmersPerPartitionGuess;
             this.assemblyToMappedSizeRatioGuess = assemblyToMappedSizeRatioGuess;
             this.maxFASTQSize = maxFASTQSize;
+            this.exclusionIntervalPadding = exclusionIntervalPadding;
         }
     }
 
@@ -783,81 +884,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     }
 
     /**
-     * Minimalistic simple interval.
-     */
-    @DefaultSerializer(Interval.Serializer.class)
-    @VisibleForTesting static final class Interval {
-        private final int contig;
-        private final int start;
-        private final int end;
-
-        Interval( final int contig, final int start, final int end ) {
-            this.contig = contig;
-            this.start = start;
-            this.end = end;
-        }
-
-        private Interval( final Kryo kryo, final Input input ) {
-            contig = input.readInt();
-            start = input.readInt();
-            end = input.readInt();
-        }
-
-        private void serialize( final Kryo kryo, final Output output ) {
-            output.writeInt(contig);
-            output.writeInt(start);
-            output.writeInt(end);
-        }
-
-        public int getContig() { return contig; }
-        public int getStart() { return start; }
-        public int getEnd() { return end; }
-        public int getLength() { return end-start; }
-
-        public boolean isDisjointFrom( final Interval that ) {
-            return this.contig != that.contig || this.end < that.start || that.end < this.start;
-        }
-
-        public int overlapLen( final Interval that ) {
-            if ( this.contig != that.contig ) return 0;
-            return Math.max(0, Math.min(this.end, that.end) - Math.max(this.start, that.start));
-        }
-
-        public Interval join( final Interval that ) {
-            if ( this.contig != that.contig ) throw new GATKException("Joining across contigs.");
-            return new Interval(contig, Math.min(this.start, that.start), Math.max(this.end, that.end));
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            if ( !(obj instanceof Interval) ) return false;
-            final Interval that = (Interval)obj;
-            return this.contig == that.contig && this.start == that.start && this.end == that.end;
-        }
-
-        @Override
-        public int hashCode() {
-            return 47*(47*(47*(47*contig)+start)+end);
-        }
-
-        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<Interval> {
-            @Override
-            public void write( final Kryo kryo, final Output output, final Interval interval ) {
-                interval.serialize(kryo, output);
-            }
-
-            @Override
-            public Interval read( final Kryo kryo, final Input input, final Class<Interval> klass ) {
-                return new Interval(kryo, input);
-            }
-        }
-    }
-
-    /**
      * A class to examine a stream of BreakpointEvidence, and group it into Intervals.
      */
-    private static final class EvidenceToIntervalMapper implements Function<BreakpointEvidence, Iterator<Interval>> {
-        private final Iterator<Interval> noInterval = Collections.emptyIterator();
+    private static final class EvidenceToIntervalMapper implements Function<BreakpointEvidence, Iterator<SVInterval>> {
+        private final Iterator<SVInterval> noInterval = Collections.emptyIterator();
         private final int gapSize;
         private int contig = -1;
         private int start;
@@ -867,17 +897,17 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.gapSize = gapSize;
         }
 
-        public Iterator<Interval> apply( final BreakpointEvidence evidence ) {
-            Iterator<Interval> result = noInterval;
+        public Iterator<SVInterval> apply(final BreakpointEvidence evidence ) {
+            Iterator<SVInterval> result = noInterval;
             if ( evidence.getContigIndex() != contig ) {
                 if ( contig != -1 ) {
-                    result = new SingletonIterator<>(new Interval(contig, start, end));
+                    result = new SingletonIterator<>(new SVInterval(contig, start, end));
                 }
                 contig = evidence.getContigIndex();
                 start = evidence.getEventStartPosition();
                 end = evidence.getContigEnd();
             } else if ( evidence.getEventStartPosition() >= end+gapSize ) {
-                result = new SingletonIterator<>(new Interval(contig, start, end));
+                result = new SingletonIterator<>(new SVInterval(contig, start, end));
                 start = evidence.getEventStartPosition();
                 end = evidence.getContigEnd();
             } else {
@@ -894,7 +924,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         private final int[] basesInInterval;
 
         IntervalCoverageFinder( final ReadMetadata metadata,
-                                final List<Interval> intervals,
+                                final List<SVInterval> intervals,
                                 final Iterator<GATKRead> readItr ) {
             basesInInterval = new int[intervals.size()];
             int intervalsIndex = 0;
@@ -904,14 +934,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 final int readStart = read.getUnclippedStart();
                 final int intervalsSize = intervals.size();
                 while (intervalsIndex < intervalsSize) {
-                    final Interval interval = intervals.get(intervalsIndex);
+                    final SVInterval interval = intervals.get(intervalsIndex);
                     if (interval.getContig() > readContigId) break;
                     if (interval.getContig() == readContigId && interval.getEnd() > read.getStart()) break;
                     intervalsIndex += 1;
                 }
                 if (intervalsIndex >= intervalsSize) break;
-                final Interval indexedInterval = intervals.get(intervalsIndex);
-                final Interval readInterval = new Interval(readContigId, readStart, read.getUnclippedEnd());
+                final SVInterval indexedInterval = intervals.get(intervalsIndex);
+                final SVInterval readInterval = new SVInterval(readContigId, readStart, read.getUnclippedEnd());
                 basesInInterval[intervalsIndex] += indexedInterval.overlapLen(readInterval);
             }
         }
@@ -998,12 +1028,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      */
     private static final class QNameFinder implements Function<GATKRead, Iterator<QNameAndInterval>> {
         private final ReadMetadata metadata;
-        private final List<Interval> intervals;
+        private final List<SVInterval> intervals;
         private final Iterator<QNameAndInterval> noName = Collections.emptyIterator();
         private int intervalsIndex = 0;
 
         QNameFinder( final ReadMetadata metadata,
-                     final List<Interval> intervals ) {
+                     final List<SVInterval> intervals ) {
             this.metadata = metadata;
             this.intervals = intervals;
         }
@@ -1014,14 +1044,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final int readStart = read.getUnclippedStart();
             final int intervalsSize = intervals.size();
             while ( intervalsIndex < intervalsSize ) {
-                final Interval interval = intervals.get(intervalsIndex);
+                final SVInterval interval = intervals.get(intervalsIndex);
                 if ( interval.getContig() > readContigId ) break;
                 if ( interval.getContig() == readContigId && interval.getEnd() > read.getStart() ) break;
                 intervalsIndex += 1;
             }
             if ( intervalsIndex >= intervalsSize ) return noName;
-            final Interval indexedInterval = intervals.get(intervalsIndex);
-            final Interval readInterval = new Interval(readContigId, readStart, read.getUnclippedEnd());
+            final SVInterval indexedInterval = intervals.get(intervalsIndex);
+            final SVInterval readInterval = new SVInterval(readContigId, readStart, read.getUnclippedEnd());
             if ( indexedInterval.isDisjointFrom(readInterval) ) return noName;
             return new SingletonIterator<>(new QNameAndInterval(read.getName(), intervalsIndex));
         }
@@ -1296,7 +1326,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             if (intervalIdSet.isEmpty()) return emptyIterator;
             qNameAndIntervalList.clear();
             final String qName = read.getName();
-            intervalIdSet.stream().forEach(intervalId ->
+            intervalIdSet.forEach(intervalId ->
                     qNameAndIntervalList.add(new QNameAndInterval(qName, intervalId)));
             return qNameAndIntervalList.iterator();
         }
