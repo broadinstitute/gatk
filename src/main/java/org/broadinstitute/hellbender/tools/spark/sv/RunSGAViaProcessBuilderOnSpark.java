@@ -79,7 +79,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     // subject to future changes as we see more test cases
     @VisibleForTesting static final int MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE = 55;
     @VisibleForTesting static final int FILTER_STEP_KMER_FREQUENCY_THREASHOLD = 1;
-    @VisibleForTesting static final double OVERLAP_STEP_ERROR_RATE = 0.05;
+    @VisibleForTesting static final double OVERLAP_STEP_ERROR_RATE = 0.02;
     @VisibleForTesting static final double ASSEMBLE_STEP_MAX_GAP_DIVERGENCE = 0.0;
     @VisibleForTesting static final int ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH = 50;
     @VisibleForTesting static final int CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS = 0;
@@ -136,8 +136,8 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final JavaPairRDD<Long, SGAAssemblyResult> cachedResults = results.cache(); // cache because Spark doesn't have an efficient RDD.split(predicate) yet
 
         // save fasta file contents or failure message
-        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null);
-        final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null);
+        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null).cache();
+        final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null).cache();
 
         if(!success.isEmpty()){
             success.map(entry -> entry._1().toString() + "\t" + entry._2().assembledContigs.toPackedFasta())
@@ -145,8 +145,10 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         }
 
         if(!failure.isEmpty()){
+            final long failCnt = failure.count();
             failure.map(entry ->  entry._1().toString() + "\n" + entry._2().collectiveRuntimeInfo.toString())
-                    .saveAsTextFile(outputDir+"_1");
+                    .coalesce((int)failCnt).saveAsTextFile(outputDir+"_1");
+            throw new GATKException(failCnt + " jobs failed. Please look at the logging files produced in directory " + outputDir + "_1 for detail.");
         }
     }
 
@@ -342,6 +344,10 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
 
         final SGAModule.RuntimeInfo moduleInfo = module.run(sgaPath, workingDir, moduleArgs, enableSTDIOCapture);
         collectedRuntimeInfo.add(moduleInfo);
+
+        if(!collectedRuntimeInfo.get(collectedRuntimeInfo.size()-1).returnStatus.equals(SGAModule.RuntimeInfo.ReturnStatus.SUCCESS)){
+            return null;
+        }
 
         final String outputFileName = FilenameUtils.getBaseName(inputFile.getName()) + extensionToAppend;
 
