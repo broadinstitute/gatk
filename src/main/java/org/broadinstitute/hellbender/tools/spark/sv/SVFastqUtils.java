@@ -17,10 +17,15 @@ import java.util.List;
 public class SVFastqUtils {
 
     /** Convert a read into a FASTQ record, represented as a byte[]. */
-    public static byte[] readToFastqRecord( final GATKRead read ) {
+    public static byte[] readToFastqRecord( final GATKRead read, final boolean includeMappingLocation ) {
         final String nameSuffix = read.isPaired() ? (read.isFirstOfPair() ? "/1" : "/2") : "";
+        String mapLoc = "";
+        if ( includeMappingLocation ) {
+            if ( read.isUnmapped() ) mapLoc = " mapping=unmapped";
+            else mapLoc = " mapping=" + read.getContig() + ":" + read.getStart();
+        }
         final String rec =
-                "@" + read.getName() + nameSuffix + "\n" +
+                "@" + read.getName() + nameSuffix + mapLoc + "\n" +
                 read.getBasesString() + "\n" +
                 "+\n" +
                 ReadUtils.getBaseQualityString(read)+"\n";

@@ -14,8 +14,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
+import org.broadinstitute.hellbender.utils.*;
 import scala.Tuple2;
 
 import java.io.*;
@@ -42,6 +42,13 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     @Argument(doc = "kmer size.", fullName = "kSize", optional = true)
     private int kSize = SVConstants.KMER_SIZE;
 
+    @Argument(doc = "minimum kmer entropy", fullName = "kmerEntropy")
+    private double minEntropy = SVConstants.MIN_ENTROPY;
+
+    @Argument(doc = "high copy genomic intervals (mitochondrion, e.g.)",
+            fullName = "highCopyIntervals", optional = true)
+    private List<String> highCopyIntervals;
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -54,20 +61,27 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
         SAMSequenceDictionary dict = null;
         if ( hdr != null ) dict = hdr.getSequenceDictionary();
         final PipelineOptions options = getAuthenticatedGCSOptions();
-        final List<SVKmer> killList = findBadGenomicKmers(ctx, getReference(), options, dict);
+        final ReferenceMultiSource referenceMultiSource = getReference();
+        Collection<SVKmer> killList = findBadGenomicKmers(ctx, kSize, minEntropy, referenceMultiSource, options, dict);
+        if ( highCopyIntervals != null && !highCopyIntervals.isEmpty() ) {
+            killList = uniquify(killList,
+                                processIntervals(kSize, minEntropy, highCopyIntervals, referenceMultiSource, options));
+        }
         SVUtils.writeKmersFile(kSize, outputFile, options, killList);
     }
 
     /** Find high copy number kmers in the reference sequence */
     public static List<SVKmer> findBadGenomicKmers( final JavaSparkContext ctx,
+                                                    final int kSize,
+                                                    final double minEntropy,
                                                     final ReferenceMultiSource ref,
                                                     final PipelineOptions options,
                                                     final SAMSequenceDictionary readsDict ) {
         // Generate reference sequence RDD.
-        final JavaRDD<byte[]> refRDD = getRefRDD(ctx, ref, options, readsDict);
+        final JavaRDD<byte[]> refRDD = getRefRDD(ctx, kSize, ref, options, readsDict);
 
         // Find the high copy number kmers
-        return processRefRDD(refRDD);
+        return processRefRDD(kSize, minEntropy, refRDD);
     }
 
     /**
@@ -75,11 +89,13 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
      * Kmerize, mapping to a pair <kmer,1>, reduce by summing values by key, filter out <kmer,N> where
      * N <= MAX_KMER_FREQ, and collect the high frequency kmers back in the driver.
      */
-    @VisibleForTesting static List<SVKmer> processRefRDD( final JavaRDD<byte[]> refRDD ) {
+    @VisibleForTesting static List<SVKmer> processRefRDD( final int kSize,
+                                                          final double minEntropy,
+                                                          final JavaRDD<byte[]> refRDD ) {
         return refRDD
                 .flatMapToPair(seq ->
-                        SVKmerizer.stream(seq, SVConstants.KMER_SIZE)
-                                .map(kmer -> new Tuple2<>(kmer.canonical(SVConstants.KMER_SIZE),1))
+                        SVKmerizerWithLowComplexityFilter.stream(seq, kSize, minEntropy)
+                                .map(kmer -> new Tuple2<>(kmer.canonical(kSize), 1))
                                 .collect(Collectors.toCollection(() -> new ArrayList<>(seq.length))))
                 .reduceByKey(Integer::sum)
                 .filter(kv -> kv._2 > MAX_KMER_FREQ)
@@ -97,13 +113,14 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
      * independently.
      */
     private static JavaRDD<byte[]> getRefRDD( final JavaSparkContext ctx,
+                                              final int kSize,
                                               final ReferenceMultiSource ref,
                                               final PipelineOptions options,
                                               final SAMSequenceDictionary readsDict ) {
         final SAMSequenceDictionary dict = ref.getReferenceSequenceDictionary(readsDict);
-        if ( dict == null ) throw new GATKException("No reference dictionary available.");
+        if ( dict == null ) throw new GATKException("No reference dictionary available");
 
-        final int effectiveRecLen = REF_RECORD_LEN - SVConstants.KMER_SIZE + 1;
+        final int effectiveRecLen = REF_RECORD_LEN - kSize + 1;
         final List<byte[]> sequenceChunks = new ArrayList<>();
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final String seqName = rec.getSequenceName();
@@ -121,5 +138,41 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
         }
 
         return ctx.parallelize(sequenceChunks, sequenceChunks.size()/REF_RECORDS_PER_PARTITION+1);
+    }
+
+    @VisibleForTesting static List<SVKmer> processIntervals( final int kSize,
+                                                             final double minEntropy,
+                                                             final List<String> highCopyIntervals,
+                                                             final ReferenceMultiSource ref,
+                                                             final PipelineOptions options ) {
+        final List<SimpleInterval> intervals =
+                IntervalUtils.convertGenomeLocsToSimpleIntervals(
+                    IntervalUtils.loadIntervals(highCopyIntervals, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0,
+                        new GenomeLocParser(ref.getReferenceSequenceDictionary(null))).toList());
+        final int nKmers =
+                intervals
+                        .stream()
+                        .mapToInt(interval -> interval.size()-kSize+1)
+                        .sum();
+        final List<SVKmer> kmers = new ArrayList<>(nKmers);
+        for ( final SimpleInterval interval : intervals ) {
+            try {
+                final byte[] bases = ref.getReferenceBases(options, interval).getBases();
+                SVKmerizerWithLowComplexityFilter.stream(bases, kSize, minEntropy)
+                        .map(kmer -> kmer.canonical(kSize))
+                        .forEach(kmers::add);
+            }
+            catch ( final IOException ioe ) {
+                throw new GATKException("Can't get reference sequence bases for " + interval, ioe);
+            }
+        }
+        return kmers;
+    }
+
+    private static Collection<SVKmer> uniquify(final Collection<SVKmer> coll1, final Collection<SVKmer> coll2 ) {
+        final HopscotchSet<SVKmer> kmers = new HopscotchSet<>(coll1.size() + coll2.size());
+        kmers.addAll(coll1);
+        kmers.addAll(coll2);
+        return kmers;
     }
 }

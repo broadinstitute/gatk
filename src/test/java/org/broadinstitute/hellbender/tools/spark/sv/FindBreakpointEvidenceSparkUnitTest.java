@@ -71,11 +71,11 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void getKmerIntervalsTest() {
-        final HopscotchSet<SVKmer> killSet = new HopscotchSet<>(2);
-        killSet.add(SVKmerizer.toKmer("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"));
-        killSet.add(SVKmerizer.toKmer("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"));
         final List<SVKmer> highCountKmers = FindBreakpointEvidenceSpark.getHighCountKmers(params, reads, locations, null);
         Assert.assertEquals(highCountKmers.size(), 2);
+        final Set<SVKmer> killSet = new HashSet<>();
+        killSet.add(SVKmerizer.toKmer("ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACG"));
+        killSet.add(SVKmerizer.toKmer("TACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTAC"));
         killSet.addAll(highCountKmers);
         Assert.assertEquals(killSet.size(), 2);
 
@@ -86,7 +86,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .forEach(qNameMultiMap::add);
         final HopscotchUniqueMultiMap<SVKmer, Integer, FindBreakpointEvidenceSpark.KmerAndInterval> actualKmerAndIntervalSet =
                 new HopscotchUniqueMultiMap<>(
-                        FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, killSet, reads, locations, null));
+                        FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, new HopscotchSet<>(0),
+                                reads, locations, null));
         final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null);
         Assert.assertEquals(actualKmerAndIntervalSet.size(), expectedKmers.size());
         for ( final FindBreakpointEvidenceSpark.KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
@@ -118,13 +119,13 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .map(qName -> new FindBreakpointEvidenceSpark.QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);
         final String expectedFile = fastqFile;
-        FindBreakpointEvidenceSpark.generateFastqs(ctx, qNameMultiMap, 1, reads,
+        FindBreakpointEvidenceSpark.generateFastqs(ctx, qNameMultiMap, reads, 1, false,
                 intervalAndFastqBytes -> compareFastqs(intervalAndFastqBytes, expectedFile));
     }
 
-    private static void compareFastqs(
+    private static Tuple2<Integer, String> compareFastqs(
             final Tuple2<Integer, List<byte[]>> intervalAndFastqBytes,
-            final String fastqFile ) throws IOException {
+            final String fastqFile ) {
         final List<byte[]> fastqList = intervalAndFastqBytes._2;
         SVFastqUtils.sortFastqRecords(fastqList);
         final byte[] concatenatedFastqs = new byte[fastqList.stream().mapToInt(fastq -> fastq.length).sum()];
@@ -140,6 +141,10 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 Assert.assertEquals(actualStream.read(), val);
             Assert.assertEquals(actualStream.read(), -1);
         }
+        catch ( final IOException ioe ) {
+            throw new GATKException("can't read expected values", ioe);
+        }
+        return new Tuple2<>(intervalAndFastqBytes._1(), "hello");
     }
 
     private Set<String> loadExpectedQNames( final String fileName ) {
