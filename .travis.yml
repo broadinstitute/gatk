@@ -1,6 +1,8 @@
 language: java
 sudo: required
 dist: trusty
+git:
+  depth: 9999999
 jdk:
 - oraclejdk8
 env:
