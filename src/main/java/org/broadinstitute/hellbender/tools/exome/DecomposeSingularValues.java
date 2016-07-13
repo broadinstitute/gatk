@@ -81,10 +81,10 @@ public final class DecomposeSingularValues extends SparkToggleCommandLineProgram
         }
     }
 
-    private void writeMatrix(final RealMatrix v, final File outputFilename) throws IOException {
+    private void writeMatrix(final RealMatrix m, final File outputFilename) throws IOException {
         final List<String []> textTable = new ArrayList<>();
-        for (int i = 0; i < v.getRowDimension(); i ++){
-            textTable.add(Arrays.stream(v.getRow(i)).mapToObj(Double :: toString).toArray(String[]::new));
+        for (int i = 0; i < m.getRowDimension(); i ++){
+            textTable.add(Arrays.stream(m.getRow(i)).mapToObj(Double::toString).toArray(String[]::new));
         }
         final FileWriter fw = new FileWriter(outputFilename);
         CSVWriter csvWriter = new CSVWriter(fw, '\t', CSVWriter.NO_QUOTE_CHARACTER);
