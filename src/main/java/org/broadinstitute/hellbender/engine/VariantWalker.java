@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
@@ -44,13 +45,6 @@ public abstract class VariantWalker extends GATKTool {
     @Override
     public boolean requiresFeatures() { return true; }
 
-    /**
-     * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalStart} instead.
-     */
-    protected final void onStartup() {
-        super.onStartup();
-    }
-
     @Override
     void initializeFeatures() {
         //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
@@ -58,6 +52,31 @@ public abstract class VariantWalker extends GATKTool {
         features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD);
         initializeDrivingVariants();
     }
+
+    /**
+     * Overriding the superclass method to preferentially
+     * choose the sequence dictionary from the driving source of variants.
+     */
+    @Override
+    public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+        final SAMSequenceDictionary dictFromDrivingVariants = drivingVariants.getSequenceDictionary();
+        if (dictFromDrivingVariants != null){
+            return dictFromDrivingVariants;
+        }
+        return super.getBestAvailableSequenceDictionary();
+    }
+
+    /**
+     * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalStart} instead.
+     */
+    @Override
+    protected final void onStartup() {
+        super.onStartup();
+        if ( hasIntervals() ) {
+            drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
+        }
+    }
+
 
     @SuppressWarnings("unchecked")
     private void initializeDrivingVariants() {
@@ -73,9 +92,7 @@ public abstract class VariantWalker extends GATKTool {
         drivingVariantsFeatureInput = new FeatureInput<>("drivingVariantFile", Collections.emptyMap(), drivingVariantFile);
         features.addToFeatureSources(0, drivingVariantsFeatureInput, VariantContext.class);
 
-        if ( hasIntervals() ) {
-            drivingVariants.setIntervalsForTraversal(intervalsForTraversal);
-        }
+        //Note: the intervals for the driving variants are set in onStartup
     }
 
     /**

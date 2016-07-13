@@ -24,10 +24,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Spliterators;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -203,6 +200,47 @@ public final class FeatureManagerUnitTest extends BaseTest {
         final List<SAMSequenceDictionary> dictionaries = manager.getAllSequenceDictionaries();
         Assert.assertEquals(dictionaries.size(), 2);
         Assert.assertEquals(dictionaries.stream().map(dict -> dict.size()).collect(Collectors.toSet()), Sets.newHashSet(1, 4));
+    }
+
+    @Test
+    public void testSequenceDictionary() {
+        final ValidFeatureArgumentSource toolInstance = new ValidFeatureArgumentSource();
+
+        // Initialize the FeatureInput field as it would be initialized by the argument-parsing
+        // system.
+        toolInstance.variantContextFeatureInput = new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test_withSequenceDict.vcf");
+
+        final FeatureManager manager = new FeatureManager(toolInstance);
+        final List<SAMSequenceDictionary> dicts = manager.getVariantSequenceDictionaries();
+        Assert.assertEquals(dicts.size(), 1);
+        Assert.assertEquals(dicts.get(0).getSequences().size(), 84);
+    }
+
+    @Test
+    public void testTwoSequenceDictionaries() {
+        final ValidFeatureArgumentSource toolInstance = new ValidFeatureArgumentSource();
+
+        // Initialize two of the FeatureInput fields as they would be initialized by the argument-parsing
+        // system to simulate a run of the tool with two FeatureInputs.
+        toolInstance.variantContextFeatureInput = new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test_withSequenceDict.vcf");
+        toolInstance.variantContextListFeatureInput.add(new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test_with_bigHeader.vcf"));
+
+        final FeatureManager manager = new FeatureManager(toolInstance);
+        final List<SAMSequenceDictionary> dicts = manager.getVariantSequenceDictionaries();
+        Assert.assertEquals(dicts.size(), 2);
+    }
+
+    @Test
+    public void testEmptySequenceDictionary() {
+        final ValidFeatureArgumentSource toolInstance = new ValidFeatureArgumentSource();
+
+        // Initialize the FeatureInput field as it would be initialized by the argument-parsing
+        // system.
+        toolInstance.variantContextFeatureInput = new FeatureInput<>(FEATURE_MANAGER_TEST_DIRECTORY + "feature_data_source_test.vcf");
+
+        final FeatureManager manager = new FeatureManager(toolInstance);
+        final List<SAMSequenceDictionary> dicts = manager.getVariantSequenceDictionaries();
+        Assert.assertTrue(dicts.isEmpty(), Objects.toString(dicts));
     }
 
     @Test

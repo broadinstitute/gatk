@@ -220,14 +220,22 @@ public final class FeatureManager implements AutoCloseable {
      * @return A list of all variant headers for features.
      */
     public List<VCFHeader> getAllVariantHeaders() {
-        List<VCFHeader> headers = new ArrayList<>();
-        for (Map.Entry<FeatureInput<? extends Feature>, FeatureDataSource<? extends Feature>> entry : featureSources.entrySet()) {
-            final Object header = entry.getValue().getHeader();
-            if ( header != null && header instanceof VCFHeader ) {
-                headers.add((VCFHeader)header);
-            }
-        }
-        return headers;
+        return featureSources.values().stream()
+                .map(feature -> feature.getHeader())
+                .filter(header -> header instanceof VCFHeader)
+                .map(header -> (VCFHeader)header).collect(Collectors.toList());
+    }
+
+    /**
+     * Returns the list of sequence dictionaries retrieved from the VCF headers of variant Feature inputs.
+     * Note: this method returns an empty list if the variant inputs
+     * happen not to have sequence dictionaries (since they are optional in the VCF format).
+     */
+    public List<SAMSequenceDictionary> getVariantSequenceDictionaries() {
+        return getAllVariantHeaders()
+                .stream().map(h -> h.getSequenceDictionary())
+                .filter(dict -> dict != null)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -438,4 +446,5 @@ public final class FeatureManager implements AutoCloseable {
     public void close() {
         featureSources.values().forEach(ds -> ds.close());
     }
+
 }
