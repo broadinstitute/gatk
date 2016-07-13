@@ -23,4 +23,5 @@
   "case_gatk_acnv_workflow.PadTargets.pd": "250",
   "case_gatk_acnv_workflow.is_disable_reference_validation": "true",
   "case_gatk_acnv_workflow.jni_lib": "FILL_ME_IN" /* Broad internal: /broad/software/free/Linux/redhat_6_x86_64/pkgs/hdfview_2.9/HDFView/lib/linux/  (assumes ``use .hdfview-2.9``) */
+  "case_gatk_acnv_workflow.plots_dir": "FILL_ME_IN" /* path to store produced plots for CopyRatio and ACNV */
 }

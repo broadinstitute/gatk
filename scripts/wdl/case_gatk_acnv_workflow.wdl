@@ -33,7 +33,8 @@ workflow case_gatk_acnv_workflow {
     File jar_file
     File PoN
     String is_disable_reference_validation
-    File jni_lib    
+    String jni_lib    
+    String plots_dir
 
   call PadTargets {
     input:
@@ -149,6 +150,26 @@ workflow case_gatk_acnv_workflow {
         tn_file=TumorNormalizeSomaticReadCounts.tn_file,
         mem=4
   }
+
+  call PlotSegmentedCopyRatio {
+    input:
+        jar_file=jar_file,
+        tn_file=TumorNormalizeSomaticReadCounts.tn_file,
+        pre_tn_file=TumorNormalizeSomaticReadCounts.pre_tn_file,
+        called_file=TumorCaller.called_file,
+        output_dir="${plots_dir}CopyRatio_Plots",
+        mem=4
+  }
+
+  call PlotACNVResults {
+    input:
+        jar_file=jar_file,
+        tumor_hets=HetPulldown.tumor_hets,
+        acnv_seg=AllelicCNV.acnv_final_segs,
+        tn_file=TumorNormalizeSomaticReadCounts.tn_file,
+        output_dir="${plots_dir}ACNV_plots",
+        mem=4
+  }
 }
 
 # Pad the target file.  This was found to help sensitivity and specificity.  This step should only be altered
@@ -213,7 +234,7 @@ task NormalizeSomaticReadCounts {
     File padded_target_bed
     File pon
     File jar_file
-    File jni_lib
+    String jni_lib
     Int mem
 
     command {
@@ -262,7 +283,7 @@ task Caller {
 
     command {
         java -Xmx${mem}g -jar ${jar_file} CallSegments  --targets ${tn_file} \
-         --segments ${seg_file} --output ${entity_id}.called --threshold 2.0  --legacy false --experimental false \
+         --segments ${seg_file} --output ${entity_id}.called  --legacy false \
           --help false --version false --verbosity INFO --QUIET false
     }
 
@@ -319,7 +340,48 @@ task AllelicCNV {
 
     output {
         File acnv_final_segs="${entity_id}-sim-final.seg"
-        File acnv_final_segs_gatk_compatible="${entity_id}-sim-final.cnv.seg"
-        File acnv_final_segs_acs_compatible="${entity_id}-sim-final.acs.seg"
+    }
+}
+
+
+#Create plots of copy number variant data
+task PlotSegmentedCopyRatio { 
+    File jar_file
+    File tn_file
+    File pre_tn_file
+    File called_file
+    String output_dir
+    Int mem
+
+    command {
+        mkdir -p ${output_dir} && \
+	java -Xmx${mem}g -jar ${jar_file} PlotSegmentedCopyRatio --tangentNormalized ${tn_file} \
+	 --preTangentNormalized ${pre_tn_file} --segments ${called_file} \
+	 --output ${output_dir}
+    }
+
+    output {
+        #corresponding output images
+    }
+}
+
+#Create plots of allele fraction data
+task PlotACNVResults {
+    File jar_file
+    File tumor_hets
+    File tn_file
+    File acnv_seg
+    String output_dir
+    Int mem
+
+    command {
+        mkdir -p ${output_dir} && \
+	java -Xmx${mem}g -jar ${jar_file} PlotACNVResults --hets ${tumor_hets} \
+         --tangentNormalized ${tn_file} --segments ${acnv_seg} \
+         --output ${output_dir}
+    }
+
+    output {
+        #corresponding output images
     }
 }
