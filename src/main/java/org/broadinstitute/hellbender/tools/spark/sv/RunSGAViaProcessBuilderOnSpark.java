@@ -75,15 +75,46 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = true)
     public boolean enableSTDIOCapture = false;
 
-    // a few hard-coded parameters for use in various SGA modules based on some tuning experiences.
-    // subject to future changes as we see more test cases
-    @VisibleForTesting static final int MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE = 55;
-    @VisibleForTesting static final int FILTER_STEP_KMER_FREQUENCY_THREASHOLD = 1;
-    @VisibleForTesting static final double OVERLAP_STEP_ERROR_RATE = 0.02;
-    @VisibleForTesting static final double ASSEMBLE_STEP_MAX_GAP_DIVERGENCE = 0.0;
-    @VisibleForTesting static final int ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH = 50;
-    @VisibleForTesting static final int CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS = 0;
-    @VisibleForTesting static final boolean TURN_ON_TRANSITIVE_REDUCTION = false;
+    //----------------------------------------------------------------------------------------------------------------//
+    // Result-affecting parameters for use in various SGA modules with default values.
+    // Long names are the same as those in SGA documentation, except using camel case in place of dashes.
+    //----------------------------------------------------------------------------------------------------------------//
+
+    @Argument(doc       = "Minimum overlap parameter value for steps: fm-merge, overlap, and assemble.",
+              shortName = "mol",
+              fullName  = "minOverlap",
+              optional  = true)
+    public static final int MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE = 55;
+    @Argument(doc       = "Require at least this number of coverage for each kmer in a read in order to pass filter.",
+              shortName = "kfreq",
+              fullName  = "kmerThreshold",
+              optional  = true)
+    public static final int FILTER_STEP_KMER_FREQUENCY_THRESHOLD = 1;
+    @Argument(doc       = "The maximum error rate allowed to consider two sequences aligned in the overlap step.",
+              shortName = "err",
+              fullName  = "errorRate",
+              optional  = true)
+    public static final double OVERLAP_STEP_ERROR_RATE = 0.02;
+    @Argument(doc       = "Remove variation only if the divergence between sequences when only counting indels is less than this value.",
+              shortName = "maxGapDiv",
+              fullName  = "maxGapDivergence",
+              optional  = true)
+    public static final double ASSEMBLE_STEP_MAX_GAP_DIVERGENCE = 0.0;
+    @Argument(doc       = "Remove terminal branches only if they are less than this number of bases long. Ineffective when terminal branch removal is turned off.",
+              shortName = "minTailLen",
+              fullName  = "minBranchLength",
+              optional  = true)
+    public static final int ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH = 50;
+    @Argument(doc       = "Cut off terminal branches in this number of rounds. When set to zero, removal is turned off.",
+              shortName = "cutTail",
+              fullName  = "cutTerminal",
+              optional  = true)
+    public static final int CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS = 0;
+    @Argument(doc       = "Remove transitive edges from the graph.",
+              shortName = "rmTransEdges",
+              fullName  = "transitiveReduction",
+              optional  = true)
+    public static final boolean TURN_ON_TRANSITIVE_REDUCTION = false;
 
 
     // for developer performance debugging use
@@ -147,7 +178,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         if(!failure.isEmpty()){
             final long failCnt = failure.count();
             failure.map(entry ->  entry._1().toString() + "\n" + entry._2().collectiveRuntimeInfo.toString())
-                    .coalesce((int)failCnt).saveAsTextFile(outputDir+"_1");
+                    .coalesce((int)failCnt).saveAsTextFile(outputDir+"_1"); // coalesce to produce one file for each failed job
             throw new GATKException(failCnt + " jobs failed. Please look at the logging files produced in directory " + outputDir + "_1 for detail.");
         }
     }
@@ -253,7 +284,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
 
         {//filter
             moduleArgsAndValues.clear();
-            moduleArgsAndValues.put("--kmer-threshold", String.valueOf(FILTER_STEP_KMER_FREQUENCY_THREASHOLD));
+            moduleArgsAndValues.put("--kmer-threshold", String.valueOf(FILTER_STEP_KMER_FREQUENCY_THRESHOLD));
             moduleArgsAndValues.put("--homopolymer-check", "");
             moduleArgsAndValues.put("--low-complexity-check", "");
 
