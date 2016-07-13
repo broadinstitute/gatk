@@ -19,11 +19,6 @@ env:
   - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
   - CLOUDSDK_PYTHON_SITEPACKAGES=1 
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
-  #directories for building Apache2-BWA
-  - OLD_DIR=$(pwd)
-  - BWA_DIR=$HOME/bwaApache2
-  - BWA_REPO=https://github.com/lh3/bwa.git
-  - PATHTOBWA=$BWA_DIR/bwa
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
   - HELLBENDER_TEST_STAGING=gs://hellbender/test/staging/
@@ -65,11 +60,6 @@ before_install:
 #install gcc
 - sudo apt-get install -y --force-yes  gcc
 - gcc --version
-#install Apache-2 BWA
-- sudo mkdir $BWA_DIR
-- sudo git clone $BWA_REPO -b Apache2 --single-branch $BWA_DIR
-- cd $BWA_DIR && sudo make
-- cd $OLD_DIR
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
