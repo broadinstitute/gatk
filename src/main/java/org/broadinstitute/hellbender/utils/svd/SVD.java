@@ -8,12 +8,16 @@ import org.apache.commons.math3.linear.RealMatrix;
 public interface SVD {
 
     /**
-     * Get the V matrix of a Singular Value Decomposition
+     * Get the V matrix of a Singular Value Decomposition.
+     * V has the property that V.transpose * V = I
+     * Note that V need not be square.
      */
     RealMatrix getV();
 
     /**
      * Get the U matrix of a Singular Value Decomposition
+     * U has the property that V.transpose * V = I
+     * Note that U need not be square.
      */
     RealMatrix getU();
 
@@ -25,5 +29,5 @@ public interface SVD {
     /**
      * Get the singular values as an array.
      */
-    double [] getSingularValues();
+    double[] getSingularValues();
 }
