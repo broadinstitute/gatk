@@ -86,6 +86,7 @@ def main(args):
             print("     LOCAL:   run using the in-memory spark runner")
             print("     SPARK:   run using spark-submit on an existing cluster ")
             print("              --sparkMaster must be specified")
+            print("              --sparkSubmitCommand may be specified to control the Spark submit command")
             print("              arguments to spark-submit may optionally be specified after -- ")
             print("     GCS:     run using Google cloud dataproc")
             print("              commands after the -- will be passed to dataproc")
@@ -109,6 +110,12 @@ def main(args):
             del args[i] #remove spark target
             del args[i] #and its parameter
 
+        sparkSubmitCommand = getValueForArgument(args, "--sparkSubmitCommand")
+        if sparkSubmitCommand is not None:
+            i = args.index("--sparkSubmitCommand")
+            del args[i] #remove sparkSubmitCommand target
+            del args[i] #and its parameter
+
         (gatkArgs, sparkArgs) = getSplitArgs(args)
 
         sparkMaster = getValueForArgument(sparkArgs, "--sparkMaster")
@@ -118,19 +125,22 @@ def main(args):
             del sparkArgs[i] #and its parameter
             gatkArgs += ["--sparkMaster", sparkMaster]
 
-        runGATK(sparkRunner, dryRun, gatkArgs, sparkArgs)
+        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs)
     except GATKLaunchException as e:
         sys.stderr.write(str(e)+"\n")
         sys.exit(3)
     except CalledProcessError as e:
         sys.exit(e.returncode)
 
-def getSparkSubmit():
-    sparkhome = os.environ.get("SPARK_HOME")
-    if sparkhome is not None:
-        return sparkhome +"/bin/spark-submit"
+def getSparkSubmitCommand(sparkSubmitCommand):
+    if sparkSubmitCommand is None:
+        sparkhome = os.environ.get("SPARK_HOME")
+        if sparkhome is not None:
+            return sparkhome +"/bin/spark-submit"
+        else:
+            return "spark-submit"
     else:
-        return "spark-submit"
+        return sparkSubmitCommand
 
 def getLocalGatkRunCommand():
     localJarFromEnv = getJarFromEnv(GATK_LOCAL_JAR_ENV_VARIABLE)
@@ -251,12 +261,13 @@ def cacheJarOnGCS(jar, dryRun):
             return jar
 
 
-def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
+def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs):
     if sparkRunner is None or sparkRunner == "LOCAL":
         cmd = getLocalGatkRunCommand() + gatkArgs + sparkArgs
         runCommand(cmd, dryrun)
     elif sparkRunner == "SPARK":
-        cmd = [ getSparkSubmit(),
+        sparkSubmitCmd = getSparkSubmitCommand(suppliedSparkSubmitCommand)
+        cmd = [ sparkSubmitCmd,
           "--master", getSparkMasterSpecified(gatkArgs)] \
               + DEFAULT_SPARK_ARGS \
               + sparkArgs \
@@ -265,7 +276,7 @@ def runGATK(sparkRunner, dryrun, gatkArgs, sparkArgs):
         try:
             runCommand(cmd, dryrun)
         except OSError:
-            raise GATKLaunchException("Tried to run spark-submit but failed.\nMake sure spark-submit is available in your path")
+            raise GATKLaunchException("Tried to run %s but failed.\nMake sure %s is available in your path" % (sparkSubmitCmd, sparkSubmitCmd))
     elif sparkRunner == "GCS":
         jarPath = cacheJarOnGCS(getSparkJar(), dryrun)
         dataprocargs = convertSparkSubmitToDataprocArgs(DEFAULT_SPARK_ARGS + sparkArgs)

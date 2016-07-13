@@ -67,7 +67,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
         }
     }
 
-    public Iterable<RecalibrationTables> apply(Iterator<ContextShard> shards) throws Exception {
+    public Iterator<RecalibrationTables> apply(Iterator<ContextShard> shards) throws Exception {
         this.header = headerBcast.value();
         this.referenceSequenceDictionary = referenceSequenceDictionaryBcast.value();
         recalibrationEngine = new BaseRecalibrationEngine(recalArgs, header);
@@ -87,7 +87,7 @@ public final class BaseRecalibratorEngineSparkWrapper implements Serializable {
         }
         ArrayList<RecalibrationTables> ret = new ArrayList<>();
         ret.add(recalibrationEngine.getRecalibrationTables());
-        return ret;
+        return ret.iterator();
     }
 
 }

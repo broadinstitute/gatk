@@ -87,7 +87,7 @@ public final class ShuffleJoinReadsWithRefBases {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(r));
                 out.add(new Tuple2<>(r, subset));
             }
-            return out;
+            return out.iterator();
         });
     }
 
@@ -124,7 +124,7 @@ public final class ShuffleJoinReadsWithRefBases {
                 final ReferenceBases subset = bases.getSubset(windowFunction.apply(p._1()));
                 out.add(new Tuple2<>(p._1(), new Tuple2<>(p._2(), subset)));
             }
-            return out;
+            return out.iterator();
         });
     }
 }

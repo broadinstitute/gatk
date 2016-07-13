@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import org.apache.spark.Partition;
+import org.apache.spark.rdd.PartitionCoalescer;
 import org.apache.spark.rdd.PartitionGroup;
 import org.apache.spark.rdd.RDD;
 import scala.collection.JavaConversions;
@@ -44,7 +45,7 @@ class RangePartitionCoalescer implements PartitionCoalescer, Serializable {
             PartitionGroup group = new PartitionGroup(preferredLocation);
             List<Partition> partitionsInGroup =
                     partitions.subList(i, maxEndPartitionIndexes.get(i) + 1);
-            group.arr().append(JavaConversions.asScalaBuffer(partitionsInGroup));
+            group.partitions().append(JavaConversions.asScalaBuffer(partitionsInGroup));
             groups[i] = group;
         }
         return groups;

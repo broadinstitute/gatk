@@ -38,9 +38,9 @@ public class RangePartitionCoalescerUnitTest extends BaseTest {
         RangePartitionCoalescer coalescer = new RangePartitionCoalescer(maxEndPartitionIndexes);
         PartitionGroup[] groups = coalescer.coalesce(rdd.getNumPartitions(), rdd.rdd());
         assertEquals(groups.length, 3);
-        assertEquals(groups[0].arr(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[0])));
-        assertEquals(groups[1].arr(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[1])));
-        assertEquals(groups[2].arr(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[2])));
+        assertEquals(groups[0].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[0])));
+        assertEquals(groups[1].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[1])));
+        assertEquals(groups[2].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[2])));
     }
 
     @Test
@@ -49,8 +49,8 @@ public class RangePartitionCoalescerUnitTest extends BaseTest {
         RangePartitionCoalescer coalescer = new RangePartitionCoalescer(maxEndPartitionIndexes);
         PartitionGroup[] groups = coalescer.coalesce(rdd.getNumPartitions(), rdd.rdd());
         assertEquals(groups.length, 3);
-        assertEquals(groups[0].arr(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[0], partitions[1])));
-        assertEquals(groups[1].arr(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[1], partitions[2])));
-        assertEquals(groups[2].arr(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[2])));
+        assertEquals(groups[0].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[0], partitions[1])));
+        assertEquals(groups[1].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[1], partitions[2])));
+        assertEquals(groups[2].partitions(), JavaConversions.asScalaBuffer(ImmutableList.of(partitions[2])));
     }
 }

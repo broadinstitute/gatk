@@ -32,7 +32,7 @@ public class ReadMetadata {
 
         final int nReadGroups = header.getReadGroups().size();
         final List<PartitionStatistics> perPartitionStatistics =
-                reads.mapPartitions(readItr -> Collections.singletonList(new PartitionStatistics(readItr, nReadGroups)))
+                reads.mapPartitions(readItr -> Collections.singletonList(new PartitionStatistics(readItr, nReadGroups)).iterator())
                         .collect();
         nPartitions = perPartitionStatistics.size();
         nReads = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNReads).sum();

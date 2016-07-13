@@ -99,7 +99,7 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                 .flatMapToPair(seq ->
                         SVKmerizerWithLowComplexityFilter.stream(seq, kSize, minEntropy)
                                 .map(kmer -> new Tuple2<>(kmer.canonical(kSize), 1))
-                                .collect(Collectors.toCollection(() -> new ArrayList<>(seq.length))))
+                                .collect(Collectors.toCollection(() -> new ArrayList<>(seq.length))).iterator())
                 .reduceByKey(Integer::sum)
                 .filter(kv -> kv._2 > MAX_KMER_FREQ)
                 .map(kv -> kv._1)

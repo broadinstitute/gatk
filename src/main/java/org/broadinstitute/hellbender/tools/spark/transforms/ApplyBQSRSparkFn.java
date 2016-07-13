@@ -18,7 +18,7 @@ public class ApplyBQSRSparkFn {
             final RecalibrationReport report = reportBroadcast.getValue();
             final BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, args);//reuse this for all reads in the partition
             final Iterable<GATKRead> readsIterable = () -> readsIterator;
-            return StreamSupport.stream(readsIterable.spliterator(), false).map(read -> transformer.apply(read)).collect(Collectors.toList());
+            return StreamSupport.stream(readsIterable.spliterator(), false).map(read -> transformer.apply(read)).collect(Collectors.toList()).iterator();
         });
     }
 }

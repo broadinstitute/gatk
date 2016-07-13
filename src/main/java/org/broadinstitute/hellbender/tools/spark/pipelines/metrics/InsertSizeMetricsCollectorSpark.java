@@ -72,7 +72,7 @@ public class InsertSizeMetricsCollectorSpark
                 .mapPartitions(
                     it -> {
                         it.forEachRemaining(r -> collector.acceptRecord(r.convertToSAMRecord(samHeader), null));
-                        return Arrays.asList(collector);
+                        return Arrays.asList(collector).iterator();
                     })
                 .reduce(collector::combine);
     }

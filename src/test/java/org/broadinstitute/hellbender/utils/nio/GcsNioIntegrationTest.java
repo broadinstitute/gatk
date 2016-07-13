@@ -50,8 +50,14 @@ public final class GcsNioIntegrationTest extends BaseTest {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFile = getGCPTestInputPath() + privateFilePath;
 
-        Path path = Paths.get(URI.create((privateFile)));
-        int firstByte = Files.newInputStream(path).read();
+        try {
+            Path path = Paths.get(URI.create((privateFile)));
+            int firstByte = Files.newInputStream(path).read();
+        } catch (Exception x) {
+            System.err.println("Unable to open " + privateFile);
+            helpDebugAuthError();
+            throw x;
+        }
     }
 
     /**
@@ -65,9 +71,15 @@ public final class GcsNioIntegrationTest extends BaseTest {
         final String BUCKET = BucketUtils.getBucket(privateFile);
         final String pathWithoutBucket = BucketUtils.getPathWithoutBucket(privateFile);
 
-        FileSystem fs = getAuthenticatedGcs(BUCKET);
-        Path path = fs.getPath(pathWithoutBucket);
-        int firstByte = Files.newInputStream(path).read();
+        try {
+            FileSystem fs = getAuthenticatedGcs(BUCKET);
+            Path path = fs.getPath(pathWithoutBucket);
+            int firstByte = Files.newInputStream(path).read();
+        } catch (Exception x) {
+            System.err.println("Unable to open " + privateFile);
+            helpDebugAuthError();
+            throw x;
+        }
     }
 
     /**
@@ -100,4 +112,34 @@ public final class GcsNioIntegrationTest extends BaseTest {
     }
 
 
+    private void helpDebugAuthError() {
+        final String key = "GOOGLE_APPLICATION_CREDENTIALS";
+        String credsFile = System.getenv(key);
+        if (null == credsFile) {
+            System.err.println("$"+key+" is not defined.");
+            return;
+        }
+        System.err.println("$"+key+" = " + credsFile);
+        Path credsPath = Paths.get(credsFile);
+        boolean exists = Files.exists(credsPath);
+        System.err.println("File exists: " + exists);
+        if (exists) {
+            try {
+                System.err.println("Key lines from file:");
+                printKeyLines(credsPath, "\"type\"", "\"project_id\"", "\"client_email\"");
+            } catch (IOException x2) {
+                System.err.println("Unable to read: " + x2.getMessage());
+            }
+        }
+    }
+
+    private void printKeyLines(Path path, String... keywords) throws IOException {
+        for (String line : Files.readAllLines(path)) {
+            for (String keyword : keywords) {
+                if (line.contains(keyword)) {
+                    System.err.println(line);
+                }
+            }
+        }
+    }
 }

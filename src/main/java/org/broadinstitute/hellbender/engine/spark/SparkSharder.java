@@ -14,12 +14,14 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.broadcast.Broadcast;
+import org.apache.spark.rdd.PartitionCoalescer;
 import org.apache.spark.rdd.RDD;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
@@ -89,7 +91,7 @@ public class SparkSharder {
             Broadcast<OverlapDetector<ShardBoundary>> overlapDetectorBroadcast = ctx.broadcast(overlapDetector);
             JavaPairRDD<ShardBoundary, L> intervalsToLocatables = locatables.flatMapToPair(locatable -> {
                 Set<ShardBoundary> overlaps = overlapDetectorBroadcast.getValue().getOverlaps(locatable);
-                return overlaps.stream().map(key -> new Tuple2<>(key, locatable)).collect(Collectors.toList());
+                return overlaps.stream().map(key -> new Tuple2<>(key, locatable)).collect(Collectors.toList()).iterator();
             });
             JavaPairRDD<ShardBoundary, Iterable<L>> grouped = intervalsToLocatables.groupByKey();
             return grouped.map((org.apache.spark.api.java.function.Function<Tuple2<ShardBoundary, Iterable<L>>, Shard<L>>) value -> new ShardBoundaryShard<>(value._1(), value._2()));
@@ -122,7 +124,7 @@ public class SparkSharder {
                                                                                             SAMSequenceDictionary sequenceDictionary, List<I> intervals,
                                                                                             int maxLocatableLength, MapFunction<Tuple2<I, Iterable<L>>, T> f) {
         return joinOverlapping(ctx, locatables, locatableClass, sequenceDictionary, intervals, maxLocatableLength,
-                (FlatMapFunction2<Iterator<L>, Iterator<I>, T>) (locatablesIterator, shardsIterator) -> () -> Iterators.transform(locatablesPerShard(locatablesIterator, shardsIterator, sequenceDictionary, maxLocatableLength), new Function<Tuple2<I,Iterable<L>>, T>() {
+                (FlatMapFunction2<Iterator<L>, Iterator<I>, T>) (locatablesIterator, shardsIterator) -> Iterators.transform(locatablesPerShard(locatablesIterator, shardsIterator, sequenceDictionary, maxLocatableLength), new Function<Tuple2<I,Iterable<L>>, T>() {
                     @Nullable
                     @Override
                     public T apply(@Nullable Tuple2<I, Iterable<L>> input) {
@@ -266,7 +268,7 @@ public class SparkSharder {
         // Find the first locatable in each partition. This is very efficient since only the first record in each partition is read.
         // If a partition is empty then set the locatable to null
         List<PartitionLocatable<L>> allSplitPoints = locatables.mapPartitions(
-                (FlatMapFunction<Iterator<L>, PartitionLocatable<L>>) it -> ImmutableList.of(new PartitionLocatable<>(-1, it.hasNext() ? it.next() : null))
+                (FlatMapFunction<Iterator<L>, PartitionLocatable<L>>) it -> ImmutableList.of(new PartitionLocatable<>(-1, it.hasNext() ? it.next() : null)).iterator()
         ).collect();
         List<PartitionLocatable<L>> splitPoints = new ArrayList<>(); // fill in index and remove nulls (empty partitions)
         for (int i = 0; i < allSplitPoints.size(); i++) {
@@ -316,7 +318,7 @@ public class SparkSharder {
     }
 
     private static <T> JavaRDD<T> coalesce(JavaRDD<T> rdd, Class<T> cls, PartitionCoalescer partitionCoalescer) {
-        RDD<T> coalescedRdd = new CoalescedRDD<>(rdd.rdd(), rdd.getNumPartitions(), partitionCoalescer, cls);
+        RDD<T> coalescedRdd = rdd.rdd().coalesce(rdd.getNumPartitions(), false, Option.apply(partitionCoalescer), null);
         ClassTag<T> tag = ClassTag$.MODULE$.apply(cls);
         return new JavaRDD<>(coalescedRdd, tag);
     }

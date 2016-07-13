@@ -89,7 +89,7 @@ public class NioBam implements Serializable {
         // Ideally we'd get exactly the number of chunks the user is asking for, but until then...
         System.out.println("We got: " + chunks.size() + " chunks.");
 
-        return ctx.parallelize(chunks, chunks.size()).flatMap(qi -> new ReadsIterable(bam, index, qi));
+        return ctx.parallelize(chunks, chunks.size()).flatMap(qi -> new ReadsIterable(bam, index, qi).iterator());
     }
 
     private synchronized byte[] getIndex() throws IOException {

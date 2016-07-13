@@ -146,14 +146,14 @@ final class ContigsCollection implements Serializable {
      * @param assemblyLine An input line with a breakpoint ID and packed FASTA line
      * @return A tuple with the breakpoint ID and packed FASTA line, or an empty iterator if the line did not have two tab-separated values
      */
-    static Iterable<Tuple2<String, String>> splitAssemblyLine(final String assemblyLine) {
+    static Iterator<Tuple2<String, String>> splitAssemblyLine(final String assemblyLine) {
 
         final String[] split = assemblyLine.split("\t");
         if (split.length < 2) {
             logger.info("No assembled contigs for breakpoint " + split[0]);
-            return Collections.emptySet();
+            return Collections.emptyIterator();
         }
-        return Collections.singleton(new Tuple2<>(split[0], split[1]));
+        return Collections.singleton(new Tuple2<>(split[0], split[1])).iterator();
     }
 
 }

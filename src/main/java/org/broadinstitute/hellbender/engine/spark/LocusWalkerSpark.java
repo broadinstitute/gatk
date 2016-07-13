@@ -130,7 +130,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
                     return new Tuple3<>(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(fm, alignmentInterval));
                 }
             });
-            return () -> transform;
+            return transform;
         };
     }
 }

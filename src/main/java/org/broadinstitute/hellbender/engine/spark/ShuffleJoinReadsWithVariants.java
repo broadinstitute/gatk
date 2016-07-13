@@ -88,7 +88,7 @@ public class ShuffleJoinReadsWithVariants {
             for (VariantShard shard : shards) {
                 out.add(new Tuple2<>(shard, gatkRead));
             }
-            return out;
+            return out.iterator();
         });
     }
 
@@ -99,7 +99,7 @@ public class ShuffleJoinReadsWithVariants {
             for (VariantShard shard : shards) {
                 out.add(new Tuple2<>(shard, variant));
             }
-            return out;
+            return out.iterator();
         });
     }
     private static JavaPairRDD<GATKRead, GATKVariant> pairReadsWithVariants(final JavaPairRDD<VariantShard, GATKRead> readsWShards,
@@ -126,7 +126,7 @@ public class ShuffleJoinReadsWithVariants {
                     out.add(new Tuple2<>(r, null));
                 }
             }
-            return out;
+            return out.iterator();
         });
     }
 }
