@@ -1,42 +1,33 @@
 package org.broadinstitute.hellbender.utils.svd;
 
-import htsjdk.samtools.util.Log;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.QRDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.stream.IntStream;
 
 
 public final class SingularValueDecomposerUnitTest extends BaseTest {
 
     @DataProvider(name="makeSVDers")
     private Object[][] makeSVDers(){
+        final RealMatrix m1  = new Array2DRowRealMatrix(new double[][]{{ 2.0, 0.0 }, { 0.0, -3.0 }, { 0.0, 0.0 }});
         return new Object[][]{
-                {new ApacheSingularValueDecomposer()},
-                {new OjAlgoSingularValueDecomposer()},
-                {new SparkSingularValueDecomposer(SparkContextFactory.getTestSparkContext())}
+                {new ApacheSingularValueDecomposer(), m1},
+                {new OjAlgoSingularValueDecomposer(), m1},
+                {new SparkSingularValueDecomposer(SparkContextFactory.getTestSparkContext()), m1},
         };
     }
     @Test(dataProvider = "makeSVDers")
-    public void testBasicFunction(final SingularValueDecomposer svder){
-        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
-        final Array2DRowRealMatrix m = new Array2DRowRealMatrix(new double[][]{{ 2.0, 0.0 }, { 0.0, -3.0 }, { 0.0, 0.0 }});
-
-        final double[] expectedSingularValues = {3.0, 2.0};
-
+    public void testBasicFunction(final SingularValueDecomposer svder, final RealMatrix m){
         final SVD svd = svder.createSVD(m);
-        Assert.assertEquals(svd.getU().multiply(MatrixUtils.createRealDiagonalMatrix(svd.getSingularValues())).multiply(svd.getV().transpose()), m);
-        Assert.assertTrue(isUnitaryMatrix(svd.getV()), "V is unitary");
-        Assert.assertTrue(isUnitaryMatrix(svd.getU()), "U is unitary");
-        Assert.assertEquals(svd.getV().transpose().multiply(svd.getV()), MatrixUtils.createRealIdentityMatrix(2), "V is unitary");
-        Assert.assertEquals(svd.getU().transpose().multiply(svd.getU()), MatrixUtils.createRealIdentityMatrix(2), "U is unitary");
-        Assert.assertEquals(svd.getSingularValues(), expectedSingularValues, "singular value");
+        assertSVD(svd, m);
     }
 
     /**
@@ -55,6 +46,35 @@ public final class SingularValueDecomposerUnitTest extends BaseTest {
             }
         }
         return true;
+    }
+
+    public void assertSVD(final SVD svd, final RealMatrix m) {
+        final RealMatrix U = svd.getU();
+        final RealMatrix V = svd.getV();
+        final double[] s = svd.getSingularValues();
+
+        final RealMatrix S = new Array2DRowRealMatrix(U.getColumnDimension(), V.getColumnDimension());
+        IntStream.range(0, s.length).forEach(n -> S.setEntry(n, n, s[n]));
+
+        final RealMatrix SPrime = new Array2DRowRealMatrix(V.getColumnDimension(), U.getColumnDimension());
+        IntStream.range(0, s.length).forEach(n -> SPrime.setEntry(n, n, 1/s[n]));
+
+        Assert.assertEquals(U.multiply(S).multiply(V.transpose()), m);
+        Assert.assertEquals(V.transpose().multiply(V), MatrixUtils.createRealIdentityMatrix(2), "V is unitary");
+        Assert.assertEquals(U.transpose().multiply(U), MatrixUtils.createRealIdentityMatrix(2), "U is unitary");
+
+        Assert.assertTrue(isUnitaryMatrix(U), "matrix U");
+        Assert.assertTrue(isUnitaryMatrix(V), "matrix V");
+        Assert.assertEquals(U.multiply(S).multiply(V.transpose()), m);
+        Assert.assertEquals(V.multiply(SPrime).multiply(U.transpose()), svd.getPinv());
+        assertPseudoinverse(m, svd.getPinv());
+    }
+
+    private void assertPseudoinverse(final RealMatrix m, final RealMatrix p) {
+        Assert.assertEquals(m.multiply(p).multiply(m), m);
+        Assert.assertEquals(p.multiply(m).multiply(p), p);
+        Assert.assertEquals(m.multiply(p).transpose(), m.multiply(p));
+        Assert.assertEquals(p.multiply(m).transpose(), p.multiply(m));
     }
 }
 
