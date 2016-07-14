@@ -176,9 +176,8 @@ public class ActivityProfile {
             regionStopLoc = loc;
             contigLength = samHeader.getSequence(regionStartLoc.getContig()).getSequenceLength();
         } else {
-            if ( regionStopLoc.getStart() != loc.getStart() - 1 ) {
-                throw new IllegalArgumentException("Bad add call to ActivityProfile: loc " + loc + " not immediately after last loc " + regionStopLoc);
-            }
+            Utils.validateArg( regionStopLoc.getStart() == loc.getStart() - 1, () ->
+                    "Bad add call to ActivityProfile: loc " + loc + " not immediately after last loc " + regionStopLoc);
             regionStopLoc = loc;
         }
 
@@ -200,22 +199,16 @@ public class ActivityProfile {
      */
     private void incorporateSingleState(final ActivityProfileState stateToAdd) {
         Utils.nonNull(stateToAdd);
-
         final int position = stateToAdd.getOffset(regionStartLoc);
-
-        if ( position > size() ) {
-            // should we allow this?  probably not
-            throw new IllegalArgumentException("Must add state contiguous to existing states: adding " + stateToAdd);
-        }
+        // should we allow this?  probably not
+        Utils.validateArg(position <= size(), () -> "Must add state contiguous to existing states: adding " + stateToAdd);
 
         if ( position >= 0 ) {
             // ignore states starting before this region's start
             if ( position < size() ) {
                 stateList.get(position).setIsActiveProb(stateList.get(position).isActiveProb() + stateToAdd.isActiveProb());
             } else {
-                if ( position != size() ) {
-                    throw new IllegalStateException("position == size but it wasn't");
-                }
+                Utils.validateArg(position == size(), "position == size but it wasn't");
                 stateList.add(stateToAdd);
             }
         }
@@ -286,9 +279,9 @@ public class ActivityProfile {
      * @return a non-null list of active regions
      */
     public List<AssemblyRegion> popReadyAssemblyRegions( final int assemblyRegionExtension, final int minRegionSize, final int maxRegionSize, final boolean forceConversion ) {
-        if ( assemblyRegionExtension < 0 ) throw new IllegalArgumentException("assemblyRegionExtension must be >= 0 but got " + assemblyRegionExtension);
-        if ( minRegionSize < 1 ) throw new IllegalArgumentException("minRegionSize must be >= 1 but got " + minRegionSize);
-        if ( maxRegionSize < 1 ) throw new IllegalArgumentException("maxRegionSize must be >= 1 but got " + maxRegionSize);
+        Utils.validateArg(assemblyRegionExtension >= 0, () -> "assemblyRegionExtension must be >= 0 but got " + assemblyRegionExtension);
+        Utils.validateArg( minRegionSize > 0, () -> "minRegionSize must be >= 1 but got " + minRegionSize);
+        Utils.validateArg( maxRegionSize > 0, () -> "maxRegionSize must be >= 1 but got " + maxRegionSize);
 
         final List<AssemblyRegion> regions = new ArrayList<>();
 

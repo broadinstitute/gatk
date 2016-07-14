@@ -57,9 +57,7 @@ public final class SimpleInterval implements Locatable, Serializable {
      * @throws IllegalArgumentException if it is invalid
      */
     private static void validatePositions(final String contig, final int start, final int end) {
-        if (! isValid(contig, start, end)){
-            throw new IllegalArgumentException("Invalid interval. Contig:" + contig + " start:"+start + " end:" + end);
-        }
+        Utils.validateArg(isValid(contig, start, end), () -> "Invalid interval. Contig:" + contig + " start:"+start + " end:" + end);
     }
 
      /**
@@ -255,9 +253,8 @@ public final class SimpleInterval implements Locatable, Serializable {
       * Returns the intersection of the two intervals. The intervals must overlap or IllegalArgumentException will be thrown.
       */
      public SimpleInterval intersect( final Locatable that ) {
-         if (!this.overlaps(that)) {
-             throw new IllegalArgumentException("SimpleInterval::intersect(): The two intervals need to overlap " + this + " " + that);
-         }
+         Utils.validateArg(this.overlaps(that), () ->
+                 "SimpleInterval::intersect(): The two intervals need to overlap " + this + " " + that);
 
          return new SimpleInterval(getContig(),
                  Math.max(getStart(), that.getStart()),
@@ -289,10 +286,7 @@ public final class SimpleInterval implements Locatable, Serializable {
       */
      public SimpleInterval spanWith( final Locatable other ) {
          Utils.nonNull(other);
-         if ( ! this.getContig().equals(other.getContig()) ) {
-             throw new IllegalArgumentException("Cannot get span for intervals on different contigs");
-         }
-
+         Utils.validateArg(this.getContig().equals(other.getContig()), "Cannot get span for intervals on different contigs");
          return new SimpleInterval(contig, Math.min(start, other.getStart()), Math.max(end, other.getEnd()));
      }
 
@@ -326,11 +320,8 @@ public final class SimpleInterval implements Locatable, Serializable {
       */
      public SimpleInterval expandWithinContig( final int padding, final SAMSequenceDictionary sequenceDictionary ) {
          Utils.nonNull(sequenceDictionary);
-
          final SAMSequenceRecord contigRecord = sequenceDictionary.getSequence(contig);
-         if ( contigRecord == null ) {
-             throw new IllegalArgumentException("Contig " + contig + " not found in provided dictionary");
-         }
+         Utils.nonNull( contigRecord, () -> "Contig " + contig + " not found in provided dictionary");
 
          return expandWithinContig(padding, contigRecord.getSequenceLength());
      }

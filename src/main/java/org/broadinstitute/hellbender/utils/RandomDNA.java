@@ -80,7 +80,7 @@ public final class RandomDNA {
      * @return never {@code null}.
      */
     public byte[] nextBases(final int size) {
-        if (size < 0) throw new IllegalArgumentException("the size cannot be negative");
+        Utils.validateArg(size >= 0, "the size cannot be negative");
         final byte[] result = new byte[size];
         nextBases(result);
         return result;

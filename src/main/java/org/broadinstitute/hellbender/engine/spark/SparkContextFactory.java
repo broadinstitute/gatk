@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.serializer.KryoSerializer;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collections;
 import java.util.Map;
@@ -74,11 +75,8 @@ public final class SparkContextFactory {
     public static synchronized JavaSparkContext getSparkContext(final String appName, final Map<String, String> overridingProperties, final String master) {
         if (testContextEnabled) {
             final JavaSparkContext context = getTestSparkContext(overridingProperties);
-            if (!master.equals(context.master())) {
-                throw new IllegalArgumentException(String.format("Cannot reuse spark context " +
-                                "with different spark master URL. Existing: %s, requested: %s.",
-                        context.master(), master));
-            }
+            Utils.validateArg(master.equals(context.master()), () -> String.format("Cannot reuse spark context " +
+                            "with different spark master URL. Existing: %s, requested: %s.", context.master(), master));
             return context;
         }
         return createSparkContext(appName, overridingProperties, master);

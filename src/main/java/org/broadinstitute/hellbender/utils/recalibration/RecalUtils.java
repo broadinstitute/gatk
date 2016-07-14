@@ -142,12 +142,8 @@ public final class RecalUtils {
      *
      * @return never <code>null</code>
      */
-    protected static CsvPrinter csvPrinter(final File out, final StandardCovariateList covs)
-        throws FileNotFoundException
-    {
-        if (covs == null) {
-            throw new IllegalArgumentException("the input covariate array cannot be null");
-        }
+    protected static CsvPrinter csvPrinter(final File out, final StandardCovariateList covs) throws FileNotFoundException {
+        Utils.nonNull(covs, "the input covariate array cannot be null");
         return new CsvPrinter(out,covs);
     }
 
@@ -559,15 +555,13 @@ public final class RecalUtils {
      * @param table2 the source table to merge into table1
      */
     public static void combineTables(final NestedIntegerArray<RecalDatum> table1, final NestedIntegerArray<RecalDatum> table2) {
-        if ( table1 == null ) { throw new IllegalArgumentException("table1 cannot be null"); }
-        if ( table2 == null ) { throw new IllegalArgumentException("table2 cannot be null"); }
-        if ( ! Arrays.equals(table1.getDimensions(), table2.getDimensions())) {
-            throw new IllegalArgumentException("Table1 " + Utils.join(",", table1.getDimensions()) + " not equal to " + Utils.join(",", table2.getDimensions()));
-        }
+        Utils.nonNull(table1, "table1 cannot be null");
+        Utils.nonNull(table2, "table2 cannot be null");
+        Utils.validateArg(Arrays.equals(table1.getDimensions(), table2.getDimensions()),
+                "Table1 " + Utils.join(",", table1.getDimensions()) + " not equal to " + Utils.join(",", table2.getDimensions()));
 
         for (final NestedIntegerArray.Leaf<RecalDatum> row : table2.getAllLeaves()) {
             final RecalDatum myDatum = table1.get(row.keys);
-
             if (myDatum == null) {
                 table1.put(row.value, row.keys);
             } else {

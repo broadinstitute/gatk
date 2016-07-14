@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -35,10 +36,9 @@ public final class GenotypingGivenAllelesUtils {
                                                                           final boolean snpsOnly,
                                                                           final Logger logger,
                                                                           final FeatureInput<VariantContext> allelesBinding) {
-        if ( tracker == null ) throw new IllegalArgumentException("the tracker cannot be null");
-        if ( loc == null ) throw new IllegalArgumentException("the location cannot be null");
-        if ( allelesBinding == null ) throw new IllegalArgumentException("the alleles binding cannot be null");
-
+        Utils.nonNull(tracker, "tracker may not be null");
+        Utils.nonNull(loc, "location may not be null");
+        Utils.nonNull(allelesBinding, "alleles binding may not be null");
         VariantContext vc = null;
 
         // search for usable record
@@ -68,18 +68,17 @@ public final class GenotypingGivenAllelesUtils {
      * @return a non-null list of haplotypes
      */
     public static List<Haplotype> composeGivenHaplotypes(final Haplotype refHaplotype, final List<VariantContext> givenHaplotypes, final GenomeLoc activeRegionWindow) {
-        if (refHaplotype == null) throw new IllegalArgumentException("the reference haplotype cannot be null");
-        if (givenHaplotypes == null) throw new IllegalArgumentException("given haplotypes cannot be null");
-        if (activeRegionWindow == null) throw new IllegalArgumentException("active region window cannot be null");
-        if (activeRegionWindow.size() != refHaplotype.length()) throw new IllegalArgumentException("inconsistent reference haplotype and active region window");
+        Utils.nonNull(refHaplotype, "reference haplotype may not be null");
+        Utils.nonNull(givenHaplotypes, "given haplotypes may not be null");
+        Utils.nonNull(activeRegionWindow, "active region window may not be null");
+        Utils.validateArg(activeRegionWindow.size() == refHaplotype.length(), "inconsistent reference haplotype and active region window");
 
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
 
         for( final VariantContext compVC : givenHaplotypes ) {
-            if (!GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow)) {
-                throw new IllegalArgumentException(" some variant provided does not overlap with active region window");
-            }
+            Utils.validateArg(GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow),
+                    " some variant provided does not overlap with active region window");
             for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
                 final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
                 if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype

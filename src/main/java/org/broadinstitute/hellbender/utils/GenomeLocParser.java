@@ -64,8 +64,7 @@ public final class GenomeLocParser {
      * @param validationLevel how much validation should we do of the genome locs at runtime? Purely for testing purposes
      */
     protected GenomeLocParser(SAMSequenceDictionary seqDict, final ValidationLevel validationLevel) {
-        if (validationLevel == null)
-            throw new IllegalArgumentException("validation level cannot be null");
+        Utils.nonNull(validationLevel, "validation level cannot be null");
         if (seqDict == null) { // we couldn't load the reference dictionary
             //logger.info("Failed to load reference dictionary, falling back to lexicographic order for contigs");
             throw new UserException.CommandLineException("Failed to load reference dictionary");
@@ -360,9 +359,7 @@ public final class GenomeLocParser {
      * @return never {@code null}.
      */
     public GenomeLoc createGenomeLoc(final Locatable locatable) {
-        if (locatable == null) {
-            throw new IllegalArgumentException("the input locatable cannot be null");
-        }
+        Utils.nonNull(locatable, "the input locatable cannot be null");
         return createGenomeLoc(locatable.getContig(), locatable.getStart(), locatable.getEnd());
     }
 

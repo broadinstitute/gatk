@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 /**
  * An immutable SVKmer.
@@ -43,7 +44,7 @@ public class SVKmer implements Comparable<SVKmer> {
      *  Makes an empty SVKmer.  If you call toString on it, it'll look like poly-A.
      */
     public SVKmer( final int kSize ) {
-        if ( kSize < 1 || kSize > 63 ) throw new IllegalArgumentException("K must be between 1 and 63.");
+        Utils.validateArg(kSize >= 1 && kSize < 64, "K must be between 1 and 63.");
         valHigh = valLow = 0;
     }
 
@@ -121,8 +122,8 @@ public class SVKmer implements Comparable<SVKmer> {
      * The reverse-complement of a non-canonical SVKmer is a canonical SVKmer, and vice versa.  (Think about it.)
      * Canonical form is not defined for even-K Kmers (too expensive to compute routinely).
      */
-    public final SVKmer canonical( final int kSize ) {
-        if ( (kSize & 1) == 0 ) throw new IllegalArgumentException("K must be odd to canonicalize.");
+    public SVKmer canonical( final int kSize ) {
+        Utils.validateArg( (kSize & 1) != 0, "K must be odd to canonicalize.");
         // for odd-size kmers, the high bit of the middle base is in least significant position in valHigh.
         // test its value by ANDing with 1.  if it's zero the middle base is A or C and we're good to go.
         if ( (valHigh & 1L) == 0 ) return this;

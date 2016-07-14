@@ -215,7 +215,7 @@ public final class HaplotypeUnitTest extends BaseTest {
         hap.trim(new UnvalidatingGenomeLoc("20", 0, 1, 20));
     }
 
-    @Test(expectedExceptions = IllegalStateException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadTrimNoLoc() {
         final Haplotype hap = new Haplotype("ACGTAACCGGT".getBytes());
         hap.trim(new UnvalidatingGenomeLoc("20", 0, 1, 20));

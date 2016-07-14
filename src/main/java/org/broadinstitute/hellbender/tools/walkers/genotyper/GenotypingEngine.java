@@ -150,10 +150,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @throws IllegalArgumentException if {@code logger} is {@code null}.
      */
     public void setLogger(final Logger logger) {
-        if (logger == null) {
-            throw new IllegalArgumentException("the logger cannot be null");
-        }
-        this.logger = logger;
+        this.logger = Utils.nonNull(logger, "the logger cannot be null");
     }
 
     public Set<VCFInfoHeaderLine> getAppropriateVCFInfoHeaders() {
@@ -544,9 +541,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return a valid log10 probability between 0 and {@link Double#NEGATIVE_INFINITY}.
      */
     protected final double getRefBinomialProbLog10(final int depth) {
-        if (depth < 0) {
-            throw new IllegalArgumentException("depth cannot be less than 0");
-        }
+        Utils.validateArg(depth >= 0, "depth cannot be less than 0");
         return MathUtils.log10BinomialProbability(depth, 0);
     }
 
@@ -603,46 +598,44 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      * @return log10 probability from 0 to -Infinity.
      */
     public double calculateSingleSampleRefVsAnyActiveStateProfileValue(final double[] log10GenotypeLikelihoods) {
-        if (log10GenotypeLikelihoods == null) {
-            throw new IllegalArgumentException("the input likelihoods cannot be null");
-        } else if (log10GenotypeLikelihoods.length != this.configuration.genotypeArgs.samplePloidy + 1) {
-            throw new IllegalArgumentException("wrong likelihoods dimensions");
-        } else {
-            final double[] log10Priors = log10AlleleFrequencyPriorsSNPs.forTotalPloidy(this.configuration.genotypeArgs.samplePloidy);
-            final double log10ACeq0Likelihood = log10GenotypeLikelihoods[0];
-            final double log10ACeq0Prior = log10Priors[0];
-            final double log10ACeq0Posterior = log10ACeq0Likelihood + log10ACeq0Prior;
+        Utils.nonNull(log10GenotypeLikelihoods, "the input likelihoods cannot be null");
+        Utils.validateArg(log10GenotypeLikelihoods.length == configuration.genotypeArgs.samplePloidy + 1,
+                () -> String.format("wrong likelihoods dimensions.  Expected %d, found %d.", configuration.genotypeArgs.samplePloidy + 1, log10GenotypeLikelihoods.length));
 
-            // If the Maximum a-posteriori AC is 0 then the profile value must be 0.0 as per existing code; it does
-            // not matter whether a AC > 0 is at all plausible.
-            boolean mapACeq0 = true;
-            for (int AC = 1; AC < log10Priors.length; AC++) {
-                if (log10Priors[AC] + log10GenotypeLikelihoods[AC] > log10ACeq0Posterior) {
-                    mapACeq0 = false;
-                    break;
-                }
+        final double[] log10Priors = log10AlleleFrequencyPriorsSNPs.forTotalPloidy(this.configuration.genotypeArgs.samplePloidy);
+        final double log10ACeq0Likelihood = log10GenotypeLikelihoods[0];
+        final double log10ACeq0Prior = log10Priors[0];
+        final double log10ACeq0Posterior = log10ACeq0Likelihood + log10ACeq0Prior;
+
+        // If the Maximum a-posteriori AC is 0 then the profile value must be 0.0 as per existing code; it does
+        // not matter whether a AC > 0 is at all plausible.
+        boolean mapACeq0 = true;
+        for (int AC = 1; AC < log10Priors.length; AC++) {
+            if (log10Priors[AC] + log10GenotypeLikelihoods[AC] > log10ACeq0Posterior) {
+                mapACeq0 = false;
+                break;
             }
-            if (mapACeq0) {
-                return 0.0;
-            }
-
-            //TODO bad way to calculate AC > 0 posterior that follows the current behaviour of ExactAFCalculator (StateTracker)
-            //TODO this is the lousy part... this code just adds up lks and priors of AC != 0 before as if
-            //TODO Sum(a_i * b_i) is equivalent to Sum(a_i) * Sum(b_i)
-            //TODO This has to be changed not just here but also in the AFCalculators (StateTracker).
-            final double log10ACgt0Likelihood = MathUtils.approximateLog10SumLog10(log10GenotypeLikelihoods, 1, log10GenotypeLikelihoods.length);
-            final double log10ACgt0Prior = MathUtils.approximateLog10SumLog10(log10Priors, 1, log10Priors.length);
-            final double log10ACgt0Posterior = log10ACgt0Likelihood + log10ACgt0Prior;
-            final double log10PosteriorNormalizationConstant = MathUtils.approximateLog10SumLog10(log10ACeq0Posterior, log10ACgt0Posterior);
-            //TODO End of lousy part.
-
-            final double normalizedLog10ACeq0Posterior = log10ACeq0Posterior - log10PosteriorNormalizationConstant;
-            // This is another condition to return a 0.0 also present in AFCalculator code as well.
-            if (normalizedLog10ACeq0Posterior >= QualityUtils.qualToErrorProbLog10(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING)) {
-                return 0.0;
-            }
-
-            return 1.0 - Math.pow(10.0, normalizedLog10ACeq0Posterior);
         }
+        if (mapACeq0) {
+            return 0.0;
+        }
+
+        //TODO bad way to calculate AC > 0 posterior that follows the current behaviour of ExactAFCalculator (StateTracker)
+        //TODO this is the lousy part... this code just adds up lks and priors of AC != 0 before as if
+        //TODO Sum(a_i * b_i) is equivalent to Sum(a_i) * Sum(b_i)
+        //TODO This has to be changed not just here but also in the AFCalculators (StateTracker).
+        final double log10ACgt0Likelihood = MathUtils.approximateLog10SumLog10(log10GenotypeLikelihoods, 1, log10GenotypeLikelihoods.length);
+        final double log10ACgt0Prior = MathUtils.approximateLog10SumLog10(log10Priors, 1, log10Priors.length);
+        final double log10ACgt0Posterior = log10ACgt0Likelihood + log10ACgt0Prior;
+        final double log10PosteriorNormalizationConstant = MathUtils.approximateLog10SumLog10(log10ACeq0Posterior, log10ACgt0Posterior);
+        //TODO End of lousy part.
+
+        final double normalizedLog10ACeq0Posterior = log10ACeq0Posterior - log10PosteriorNormalizationConstant;
+        // This is another condition to return a 0.0 also present in AFCalculator code as well.
+        if (normalizedLog10ACeq0Posterior >= QualityUtils.qualToErrorProbLog10(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING)) {
+            return 0.0;
+        }
+
+        return 1.0 - Math.pow(10.0, normalizedLog10ACeq0Posterior);
     }
 }

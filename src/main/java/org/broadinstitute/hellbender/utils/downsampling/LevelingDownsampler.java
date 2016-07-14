@@ -54,8 +54,8 @@ public final class LevelingDownsampler<T extends List<E>, E> extends Downsampler
      *                            we'll not reduce this stack below 3.
      */
     public LevelingDownsampler(final int targetSize, final int minElementsPerStack ) {
-        if ( targetSize < 0 ) throw new IllegalArgumentException("targetSize must be >= 0 but got " + targetSize);
-        if ( minElementsPerStack < 0 ) throw new IllegalArgumentException("minElementsPerStack must be >= 0 but got " + minElementsPerStack);
+        Utils.validateArg( targetSize >= 0, "targetSize must be >= 0 but got " + targetSize);
+        Utils.validateArg( minElementsPerStack >= 0, "minElementsPerStack must be >= 0 but got " + minElementsPerStack);
 
         this.targetSize = targetSize;
         this.minElementsPerStack = minElementsPerStack;

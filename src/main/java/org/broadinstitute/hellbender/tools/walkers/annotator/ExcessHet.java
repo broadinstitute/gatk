@@ -10,6 +10,7 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -82,9 +83,9 @@ public final class ExcessHet extends InfoFieldAnnotation implements StandardAnno
      */
     @VisibleForTesting
     static double exactTest(final int hetCount, final int refCount, final int homCount) {
-        if (hetCount < 0 || refCount < 0 || homCount < 0) {
-            throw new IllegalArgumentException("Genotype counts cannot be less than 0");
-        }
+        Utils.validateArg(hetCount >= 0, "Het count cannot be less than 0");
+        Utils.validateArg(refCount >= 0, "Ref count cannot be less than 0");
+        Utils.validateArg(homCount >= 0, "Hom count cannot be less than 0");
 
         //Split into observed common allele and rare allele
         final int obsHomR;

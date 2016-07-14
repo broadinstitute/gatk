@@ -71,14 +71,13 @@ public final class GVCFWriter implements VariantContextWriter {
     @VisibleForTesting
     static RangeMap<Integer,Range<Integer>> parsePartitions(final List<Integer> gqPartitions) {
         Utils.nonEmpty(gqPartitions);
+        Utils.containsNoNull(gqPartitions, "gqPartitions contains a null Integer");
         final RangeMap<Integer, Range<Integer>> result = TreeRangeMap.create();
         int lastThreshold = 0;
         for (final Integer value : gqPartitions) {
-            Utils.nonNull(value, "gqPartitions contains a null Integer");
             if (value < lastThreshold) {
                 throw new IllegalArgumentException("gqPartitions is out of order.  Last is " + lastThreshold + " but next is " + value);
-            }
-            if (value == lastThreshold) {
+            } else if (value == lastThreshold) {
                 throw new IllegalArgumentException("gqPartitions is equal elements: Last is " + lastThreshold + " but next is " + value);
             }
             result.put(Range.closedOpen(lastThreshold, value), Range.closedOpen(lastThreshold, value));
@@ -215,35 +214,32 @@ public final class GVCFWriter implements VariantContextWriter {
     @Override
     public void add(VariantContext vc) {
         Utils.nonNull(vc);
+        Utils.validateArg(vc.hasGenotypes(), "GVCF assumes that the VariantContext has genotypes");
+        Utils.validateArg(vc.getGenotypes().size() == 1, () -> "GVCF assumes that the VariantContext has exactly one genotype but saw " + vc.getGenotypes().size());
 
         if (sampleName == null) {
             sampleName = vc.getGenotype(0).getSampleName();
         }
 
-        if (!vc.hasGenotypes()) {
-            throw new IllegalArgumentException("GVCF assumes that the VariantContext has genotypes");
-        } else if (vc.getGenotypes().size() != 1) {
-            throw new IllegalArgumentException("GVCF assumes that the VariantContext has exactly one genotype but saw " + vc.getGenotypes().size());
-        } else {
-            if (currentBlock != null && !currentBlock.isContiguous(vc)) {
-                // we've made a non-contiguous step (across interval, onto another chr), so finalize
-                emitCurrentBlock();
-            }
-
-            final Genotype g = vc.getGenotype(0);
-            if (g.isHomRef() && vc.hasAlternateAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) && vc.isBiallelic()) {
-                // create bands
-                final VariantContext maybeCompletedBand = addHomRefSite(vc, g);
-                if (maybeCompletedBand != null) {
-                    underlyingWriter.add(maybeCompletedBand);
-                }
-            } else {
-                // g is variant, so flush the bands and emit vc
-                emitCurrentBlock();
-                nextAvailableStart = vc.getEnd();
-                contigOfNextAvailableStart = vc.getContig();
-                underlyingWriter.add(vc);
-            }
+        if (currentBlock != null && !currentBlock.isContiguous(vc)) {
+            // we've made a non-contiguous step (across interval, onto another chr), so finalize
+            emitCurrentBlock();
         }
+
+        final Genotype g = vc.getGenotype(0);
+        if (g.isHomRef() && vc.hasAlternateAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) && vc.isBiallelic()) {
+            // create bands
+            final VariantContext maybeCompletedBand = addHomRefSite(vc, g);
+            if (maybeCompletedBand != null) {
+                underlyingWriter.add(maybeCompletedBand);
+            }
+        } else {
+            // g is variant, so flush the bands and emit vc
+            emitCurrentBlock();
+            nextAvailableStart = vc.getEnd();
+            contigOfNextAvailableStart = vc.getContig();
+            underlyingWriter.add(vc);
+        }
+
     }
 }

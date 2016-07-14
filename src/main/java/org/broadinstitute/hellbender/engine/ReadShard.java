@@ -45,10 +45,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
         Utils.nonNull(interval);
         Utils.nonNull(paddedInterval);
         Utils.nonNull(readsSource);
-
-        if ( ! paddedInterval.contains(interval) ) {
-            throw new IllegalArgumentException("The padded interval must contain the un-padded interval");
-        }
+        Utils.validateArg(paddedInterval.contains(interval), "The padded interval must contain the un-padded interval");
 
         this.interval = interval;
         this.paddedInterval = paddedInterval;
@@ -224,9 +221,8 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
         Utils.validateArg(shardStep >= 1, "shardStep must be >= 1");
         Utils.validateArg(shardPadding >= 0, "shardPadding must be >= 0");
 
-        if ( ! IntervalUtils.intervalIsOnDictionaryContig(interval, dictionary) ) {
-            throw new IllegalArgumentException("Interval " + interval + " not within the bounds of a contig in the provided dictionary");
-        }
+        Utils.validateArg(IntervalUtils.intervalIsOnDictionaryContig(interval, dictionary), () ->
+                "Interval " + interval + " not within the bounds of a contig in the provided dictionary");
 
         final List<ReadShard> shards = new ArrayList<>();
         int start = interval.getStart();

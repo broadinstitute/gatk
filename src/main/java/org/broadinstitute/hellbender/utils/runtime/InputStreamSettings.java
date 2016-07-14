@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.io.File;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -25,8 +27,7 @@ public final class InputStreamSettings {
     }
 
     public void setInputBuffer(String inputBuffer) {
-        if (inputBuffer == null)
-            throw new IllegalArgumentException("inputBuffer cannot be null");
+        Utils.nonNull(inputBuffer,"inputBuffer cannot be null");
         this.streamLocations.add(StreamLocation.Buffer);
         this.inputBuffer = inputBuffer.getBytes();
     }
@@ -36,8 +37,7 @@ public final class InputStreamSettings {
     }
 
     public void setInputFile(File inputFile) {
-        if (inputFile == null)
-            throw new IllegalArgumentException("inputFile cannot be null");
+        Utils.nonNull(inputFile, "inputFile cannot be null");
         this.streamLocations.add(StreamLocation.File);
         this.inputFile = inputFile;
     }

@@ -12,6 +12,7 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.metrics.PerUnitMetricCollector;
@@ -296,7 +297,7 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
                 final double mean = MathUtils.mean(coverage, 0, coverage.length);
 
                 // Calculate the CV of coverage for this tx
-                final double stdev = MathUtils.stddev(coverage, 0, coverage.length, mean);
+                final double stdev = new StandardDeviation().evaluate(coverage, mean);
                 final double cv    = stdev / mean;
                 cvs.increment(cv);
 

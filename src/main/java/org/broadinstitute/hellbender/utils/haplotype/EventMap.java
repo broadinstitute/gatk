@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 
 import java.io.Serializable;
@@ -167,8 +168,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * @param merge should we attempt to merge it with an already existing element, or should we throw an error in that case?
      */
     public void addVC(final VariantContext vc, final boolean merge) {
-        if ( vc == null ) throw new IllegalArgumentException("vc cannot be null");
-
+        Utils.nonNull(vc);
         if ( containsKey(vc.getStart()) ) {
             if ( merge ) {
                 final VariantContext prev = get(vc.getStart());
@@ -191,13 +191,13 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
      * @return a block substitution that represents the composite substitution implied by vc1 and vc2
      */
     protected VariantContext makeBlock(final VariantContext vc1, final VariantContext vc2) {
-        if ( vc1.getStart() != vc2.getStart() )  throw new IllegalArgumentException("vc1 and 2 must have the same start but got " + vc1 + " and " + vc2);
-        if ( ! vc1.isBiallelic() ) throw new IllegalArgumentException("vc1 must be biallelic");
+        Utils.validateArg( vc1.getStart() == vc2.getStart(), () -> "vc1 and 2 must have the same start but got " + vc1 + " and " + vc2);
+        Utils.validateArg( vc1.isBiallelic(), "vc1 must be biallelic");
         if ( ! vc1.isSNP() ) {
-            if ( ! ((vc1.isSimpleDeletion() && vc2.isSimpleInsertion()) || (vc1.isSimpleInsertion() && vc2.isSimpleDeletion())))
-                throw new IllegalArgumentException("Can only merge single insertion with deletion (or vice versa) but got " + vc1 + " merging with " + vc2);
-        } else if ( vc2.isSNP() ) {
-            throw new IllegalArgumentException("vc1 is " + vc1 + " but vc2 is a SNP, which implies there's been some terrible bug in the cigar " + vc2);
+            Utils.validateArg ( (vc1.isSimpleDeletion() && vc2.isSimpleInsertion()) || (vc1.isSimpleInsertion() && vc2.isSimpleDeletion()),
+                    () -> "Can only merge single insertion with deletion (or vice versa) but got " + vc1 + " merging with " + vc2);
+        } else {
+            Utils.validateArg(!vc2.isSNP(), () -> "vc1 is " + vc1 + " but vc2 is a SNP, which implies there's been some terrible bug in the cigar " + vc2);
         }
 
         final Allele ref, alt;

@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public final class Utils {
 
@@ -548,6 +549,21 @@ public final class Utils {
     }
 
     /**
+     * Checks that an {@link Object} is not {@code null} and returns the same object or throws an {@link IllegalArgumentException}
+     * @param object any Object
+     * @param message the text message that would be passed to the exception thrown when {@code o == null}.
+     * @return the same object
+     * @throws IllegalArgumentException if a {@code o == null}
+     */
+    public static <T> T nonNull(final T object, final Supplier<String> message) {
+        if (object == null) {
+            throw new IllegalArgumentException(message.get());
+        }
+        return object;
+    }
+
+
+    /**
      * Checks that a {@link Collection} is not {@code null} and that it is not empty.
      * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
      * @param collection any Collection
@@ -589,6 +605,25 @@ public final class Utils {
     }
 
     /**
+     * Checks that the collection does not contain a duplicate value (throws an {@link IllegalArgumentException} if it does).
+     * The implementation creates a {@link Set} as an intermediate step or detecting duplicates and returns this Set because
+     * it is sometimes useful to do so.
+     *
+     * @param c collection
+     * @param message A message to emit in case of error, in addition to reporting the first duplicate value found.
+     * @throws IllegalArgumentException if a {@code o == null}
+     */
+    public static <E> Set<E> checkForDuplicatesAndReturnSet(final Collection<E> c, final String message) {
+        final Set<E> set = new LinkedHashSet<>();
+        for (final E element : c) {
+            if (!set.add(element)) {
+                throw new IllegalArgumentException(String.format(message + "  Value %s appears more than once.", element.toString()));
+            }
+        }
+        return set;
+    }
+
+    /**
      * Checks whether an index is within bounds considering a collection or array of a particular size
      * whose first position index is 0
      * @param index the query index.
@@ -609,6 +644,13 @@ public final class Utils {
             throw new IllegalArgumentException(msg);
         }
     }
+
+    public static void validateArg(final boolean condition, final Supplier<String> msg){
+        if (!condition){
+            throw new IllegalArgumentException(msg.get());
+        }
+    }
+
 
     /**
      * Checks that a user provided file is in fact a regular (i.e. not a directory or a special device) readable file.

@@ -106,8 +106,8 @@ public final class GATKVariantContextUtils {
                                                  final GenotypeAssignmentMethod assignGenotypes) {
         Utils.nonNull(vc);
         Utils.nonNull(allelesToUse, "allelesToUse is null");
-        if ( allelesToUse.get(0).isNonReference() ) throw new IllegalArgumentException("First allele must be the reference allele");
-        if ( allelesToUse.size() == 1 ) throw new IllegalArgumentException("Cannot subset to only 1 alt allele");
+        Utils.validateArg(allelesToUse.get(0).isReference(), "First allele must be the reference allele");
+        Utils.validateArg(allelesToUse.size() != 1, "Cannot subset to only 1 alt allele");
 
         // optimization: if no input genotypes, just exit
         if (vc.getGenotypes().isEmpty()) return GenotypesContext.create();

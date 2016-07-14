@@ -68,9 +68,7 @@ public enum DiploidGenotype {
      */
     public static DiploidGenotype createHomGenotype(final byte hom) {
         final int index = BaseUtils.simpleBaseToBaseIndex(hom);
-        if ( index == -1 ) {
-            throw new IllegalArgumentException(hom + " is not a valid base character");
-        }
+        Utils.validateArg( index != -1, () -> hom + " is not a valid base character");
         return conversionMatrix[index][index];
     }
 
@@ -82,13 +80,9 @@ public enum DiploidGenotype {
      */
     public static DiploidGenotype createDiploidGenotype(final byte base1, final byte base2) {
         final int index1 = BaseUtils.simpleBaseToBaseIndex(base1);
-        if ( index1 == -1 ) {
-            throw new IllegalArgumentException(base1 + " is not a valid base character");
-        }
+        Utils.validateArg( index1 != -1, () -> base1 + " is not a valid base character");
         final int index2 = BaseUtils.simpleBaseToBaseIndex(base2);
-        if ( index2 == -1 ) {
-            throw new IllegalArgumentException(base2 + " is not a valid base character");
-        }
+        Utils.validateArg( index2 != -1, () -> base2 + " is not a valid base character");
         return conversionMatrix[index1][index2];
     }
 

@@ -9,6 +9,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 import java.util.*;
@@ -136,10 +137,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
     @Override
     public void setPosition( final Locatable locatable ) {
-        if ( locatable == null ) {
-            throw new IllegalArgumentException("Cannot set read position to null");
-        }
-
+        Utils.nonNull(locatable == null, "Cannot set read position to null");
         setPosition(locatable.getContig(), locatable.getStart());
     }
 
@@ -216,10 +214,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
     @Override
     public void setMatePosition( final Locatable locatable ) {
-        if ( locatable == null ) {
-            throw new IllegalArgumentException("Cannot set mate position to null");
-        }
-
+        Utils.nonNull(locatable, "Cannot set mate position to null");
         setMatePosition(locatable.getContig(), locatable.getStart());
     }
 
@@ -245,10 +240,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
     @Override
     public void setMappingQuality( final int mappingQuality ) {
-        if ( mappingQuality < 0 || mappingQuality > 255 ) {
-            throw new IllegalArgumentException("mapping quality must be >= 0 and <= 255");
-        }
-
+        Utils.validateArg( mappingQuality >= 0 && mappingQuality <= 255, "mapping quality must be >= 0 and <= 255");
         makeAlignmentIfNecessary();
         genomicsRead.getAlignment().setMappingQuality(mappingQuality);
     }
@@ -305,10 +297,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
         final List<Integer> convertedBaseQualities = new ArrayList<>(baseQualities.length);
         for ( byte b : baseQualities ) {
-            if ( b < 0 ) {
-                throw new IllegalArgumentException("Base quality score " + b + " is invalid");
-            }
-
+            Utils.validateArg( b >= 0, () -> "Base quality score " + b + " is invalid");
             convertedBaseQualities.add((int)b);
         }
 

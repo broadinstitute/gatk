@@ -55,7 +55,7 @@ public final class TableFeature implements Feature {
     }
 
     public String getValue(int columnPosition) {
-        if (columnPosition >= columnCount()) throw new IllegalArgumentException("We only have " + columnCount() + " columns, the requested column = " + columnPosition);
+        Utils.validateArg(columnPosition < columnCount(), () -> "We only have " + columnCount() + " columns, the requested column = " + columnPosition);
         return values.get(columnPosition);
     }
 
@@ -65,7 +65,7 @@ public final class TableFeature implements Feature {
 
     public String get(String columnName) {
         int position = keys.indexOf(columnName);
-        if (position < 0) throw new IllegalArgumentException("We don't have a column named " + columnName);
+        Utils.validateArg(position >= 0, () -> "We don't have a column named " + columnName);
         return values.get(position);
     }
 

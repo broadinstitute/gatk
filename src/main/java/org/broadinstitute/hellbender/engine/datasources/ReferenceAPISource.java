@@ -141,7 +141,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
     }
 
     public static String getReferenceSetID(String url) {
-        if (!isApiSourceUrl(url)) throw new IllegalArgumentException("Not a reference API source URL: "+url);
+        Utils.validateArg(isApiSourceUrl(url), () -> "Not a reference API source URL: "+url);
         return url.substring(URL_PREFIX.length());
     }
 

@@ -7,6 +7,11 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntPredicate;
+import java.util.function.IntToDoubleFunction;
+import java.util.function.IntUnaryOperator;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Unit tests for {@link IndexRange}.
@@ -47,6 +52,35 @@ public final class IndexRangeUnitTest extends BaseTest {
         for (int i = 0; i < indexes.size(); i++) {
             Assert.assertEquals(indexes.get(i).intValue(),from + i);
         }
+    }
+
+
+    @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
+    public void testMapToDouble(final int from, final int to) {
+        final IndexRange range = new IndexRange(from,to);
+        final IntToDoubleFunction func = Math::exp;
+        Assert.assertEquals(range.mapToDouble(func), IntStream.range(from, to).mapToDouble(func).toArray());
+    }
+
+    @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
+    public void testMapToInteger(final int from, final int to) {
+        final IndexRange range = new IndexRange(from,to);
+        final IntUnaryOperator func = n -> n*n - 5;
+        Assert.assertEquals(range.mapToInteger(func), IntStream.range(from, to).map(func).toArray());
+    }
+
+    @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
+    public void testSum(final int from, final int to) {
+        final IndexRange range = new IndexRange(from,to);
+        final IntToDoubleFunction func = Math::exp;
+        Assert.assertEquals(range.sum(func), IntStream.range(from, to).mapToDouble(func).sum(), 1.0e-8);
+    }
+
+    @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction")
+    public void testFilter(final int from, final int to) {
+        final IndexRange range = new IndexRange(from,to);
+        final IntPredicate pred = n -> Math.sin(n) < 0.4;
+        Assert.assertEquals(range.filter(pred), IntStream.range(from, to).filter(pred).boxed().collect(Collectors.toList()));
     }
 
     @Test(dataProvider = "correctFromToData", dependsOnMethods = "testCorrectConstruction",

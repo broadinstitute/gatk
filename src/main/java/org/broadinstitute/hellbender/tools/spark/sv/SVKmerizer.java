@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -46,7 +48,7 @@ public class SVKmerizer implements Iterator<SVKmer> {
 
     public static SVKmer toKmer( final CharSequence seq ) {
         final SVKmerizer sk = new SVKmerizer(seq, seq.length());
-        if ( !sk.hasNext() ) throw new IllegalArgumentException("Can't make a SVKmer from '"+seq+"'");
+        Utils.validateArg(sk.hasNext(), () -> "Can't make a SVKmer from '"+seq+"'");
         return sk.next();
     }
 

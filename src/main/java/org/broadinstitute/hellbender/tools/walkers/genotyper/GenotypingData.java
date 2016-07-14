@@ -31,9 +31,8 @@ public final class GenotypingData<A extends Allele> implements SampleList, Allel
         Utils.nonNull(likelihoods, "the likelihood object cannot be null");
         this.ploidyModel = ploidyModel;
         this.likelihoods = likelihoods;
-        if (!ploidyModel.asListOfSamples().equals(likelihoods.asListOfSamples())) {
-            throw new IllegalArgumentException("sample list are different between ploidy-model and read-likelihood collection, perhaps just the order");
-        }
+        Utils.validateArg(ploidyModel.asListOfSamples().equals(likelihoods.asListOfSamples()),
+                "sample list are different between ploidy-model and read-likelihood collection, perhaps just the order");
     }
 
     /**

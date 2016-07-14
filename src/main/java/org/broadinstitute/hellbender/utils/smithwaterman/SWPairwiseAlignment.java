@@ -43,9 +43,9 @@ public final class SWPairwiseAlignment {
 
          */
         public Parameters(final int w_match, final int w_mismatch, final int w_open, final int w_extend) {
-            if ( w_mismatch > 0 ) throw new IllegalArgumentException("w_mismatch must be <= 0 but got " + w_mismatch);
-            if ( w_open> 0 ) throw new IllegalArgumentException("w_open must be <= 0 but got " + w_open);
-            if ( w_extend> 0 ) throw new IllegalArgumentException("w_extend must be <= 0 but got " + w_extend);
+            Utils.validateArg( w_mismatch <= 0, () -> "w_mismatch must be <= 0 but got " + w_mismatch);
+            Utils.validateArg( w_open <= 0, () -> "w_open must be <= 0 but got " + w_open);
+            Utils.validateArg(w_extend <= 0, () -> "w_extend must be <= 0 but got " + w_extend);
 
             this.w_match = w_match;
             this.w_mismatch = w_mismatch;

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.*;
 
@@ -153,9 +154,7 @@ public class OverhangFixingManager {
      * @param read  the read to add
      */
     public void addRead(final GATKRead read) {
-        if ( read == null ) {
-            throw new IllegalArgumentException("read added to manager is null, which is not allowed");
-        }
+        Utils.nonNull(read, "read added to manager is null, which is not allowed");
 
         // if the new read is on a different contig or we have too many reads, then we need to flush the queue and clear the map
         final boolean tooManyReads = getNReadsInQueue() >= MAX_RECORDS_IN_MEMORY;

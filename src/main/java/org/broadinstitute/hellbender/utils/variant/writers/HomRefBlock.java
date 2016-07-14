@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;

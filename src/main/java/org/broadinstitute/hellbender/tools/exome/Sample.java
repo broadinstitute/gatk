@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.*;
 
 /**
@@ -29,25 +31,11 @@ public final class Sample {
      *    it contains any {@code null} or some repeated read-group ids.
      */
     public Sample(final String id, final Collection<String> readGroups) {
-
-        if (id == null) {
-            throw new IllegalArgumentException("the id cannot be null");
-        } else if (readGroups == null) {
-            throw new IllegalArgumentException("the readGroups collection cannot be null");
-        }
-        this.id = id;
-        final Set<String> readGroupSet = new LinkedHashSet<>(readGroups.size());
-        for (final String readGroupId : readGroups) {
-            if (readGroupId == null) {
-                throw new IllegalArgumentException("the input read-groups collection contains null values");
-            } else if (!readGroupSet.add(readGroupId)) {
-                throw new IllegalArgumentException(
-                        String.format("the same read-groups '%s' is found multiple times in the read-groups collection",
-                                readGroupId));
-
-            }
-        }
-        this.readGroups = Collections.unmodifiableCollection(readGroupSet);
+        this.id = Utils.nonNull(id, "ID is null");
+        Utils.nonNull(readGroups, "readGroups is null");
+        Utils.containsNoNull(readGroups, "the input read-groups collection contains null values");
+        Utils.checkForDuplicatesAndReturnSet(readGroups, "readGroups contains duplicates.");
+        this.readGroups = Collections.unmodifiableCollection(readGroups);
     }
 
     /**

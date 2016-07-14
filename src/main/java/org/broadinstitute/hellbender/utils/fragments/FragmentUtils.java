@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.fragments;
 
 import htsjdk.samtools.util.QualityUtil;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -33,7 +32,8 @@ public final class FragmentUtils {
     public static void adjustQualsOfOverlappingPairedFragments(final GATKRead clippedFirstRead, final GATKRead clippedSecondRead) {
         Utils.nonNull(clippedFirstRead);
         Utils.nonNull(clippedSecondRead);
-        if ( ! clippedFirstRead.getName().equals(clippedSecondRead.getName()) ) { throw new IllegalArgumentException("attempting to merge two reads with different names " + clippedFirstRead + " and " + clippedSecondRead); }
+        Utils.validateArg(clippedFirstRead.getName().equals(clippedSecondRead.getName()), () ->
+                "attempting to merge two reads with different names " + clippedFirstRead + " and " + clippedSecondRead);
 
         // don't adjust fragments that do not overlap
         if ( clippedFirstRead.getEnd() < clippedSecondRead.getStart() || !clippedFirstRead.getContig().equals(clippedSecondRead.getContig()) ) {
@@ -69,9 +69,7 @@ public final class FragmentUtils {
     }
 
     public static void adjustQualsOfOverlappingPairedFragments( final List<GATKRead> overlappingPair ) {
-        if( overlappingPair.size() != 2 ) {
-            throw new IllegalArgumentException("Found overlapping pair with " + overlappingPair.size() + " reads, but expecting exactly 2.");
-        }
+        Utils.validateArg( overlappingPair.size() == 2, () -> "Found overlapping pair with " + overlappingPair.size() + " reads, but expecting exactly 2.");
 
         final GATKRead firstRead = overlappingPair.get(0);
         final GATKRead secondRead = overlappingPair.get(1);

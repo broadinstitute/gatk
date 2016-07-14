@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.text.parsers;
 import htsjdk.samtools.util.BufferedLineReader;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.io.InputStream;
@@ -29,9 +30,7 @@ public class BasicInputParser extends AbstractInputParser {
      * @param inputStreams  the file(s) to parse, in order
      */
     public BasicInputParser(final boolean treatGroupedDelimitersAsOne, final InputStream... inputStreams) {
-        if (inputStreams.length == 0) {
-            throw new IllegalArgumentException("At least one input must be specified.");
-        }
+        Utils.validateArg(inputStreams.length > 0, "At least one input must be specified.");
         this.inputs.addAll(Arrays.asList(inputStreams));
         reader = new BufferedLineReader(this.inputs.remove(0));
         this.setTreatGroupedDelimitersAsOne(treatGroupedDelimitersAsOne);

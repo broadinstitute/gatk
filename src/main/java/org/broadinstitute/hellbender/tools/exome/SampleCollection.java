@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
@@ -81,9 +82,7 @@ public final class SampleCollection {
      *  is reserved for internal use.
      */
     public SampleCollection(final SAMFileHeader header) {
-        if (header == null) {
-            throw new IllegalArgumentException("the header provided cannot be null.");
-        }
+        Utils.nonNull(header);
 
         // Build map Sample-id -> List(ReadGroup)
         final Map<String,List<SAMReadGroupRecord>> readGroupsBySampleId = header.getReadGroups().stream()
@@ -166,9 +165,7 @@ public final class SampleCollection {
      * @return {@code -1} if there is not such a read group.
      */
     public int sampleIndexByGroupId(final String readGroupId) {
-        if (readGroupId == null) {
-            throw new IllegalArgumentException("the read-group id cannot be null");
-        }
+        Utils.nonNull(readGroupId);
         return sampleIndexByGroupId.getOrDefault(readGroupId,-1);
     }
 
@@ -179,9 +176,7 @@ public final class SampleCollection {
      * @return {@code -1} if there is not such a read-group.
      */
     public int readGroupIndexById(final String readGroupId) {
-        if (readGroupId == null) {
-            throw new IllegalArgumentException("the input read-group id cannot be null");
-        }
+        Utils.nonNull(readGroupId);
         return readGroupIndexById.getOrDefault(readGroupId,-1);
     }
 
@@ -253,12 +248,8 @@ public final class SampleCollection {
             return -1;
         } else {
             final Integer result = sampleIndexByGroupId.get(groupId);
-            if (result != null) {
-                return result;
-            } else {
-                throw new IllegalArgumentException(
-                        String.format("the input read has a read-group '%s' unknown to this collection: ", groupId));
-            }
+            Utils.nonNull(result, () -> String.format("the input read has a read-group '%s' unknown to this collection: ", groupId));
+            return result;
         }
     }
 
@@ -279,12 +270,8 @@ public final class SampleCollection {
             return -1;
         } else {
             final Integer result = readGroupIndexById.get(groupId);
-            if (result != null) {
-                return result;
-            } else {
-                throw new IllegalArgumentException(
-                        String.format("the input read has a read-group '%s' unknown to this collection: ", groupId));
-            }
+            Utils.nonNull(result, () -> String.format("the input read has a read-group '%s' unknown to this collection: ", groupId));
+            return result;
         }
     }
 }

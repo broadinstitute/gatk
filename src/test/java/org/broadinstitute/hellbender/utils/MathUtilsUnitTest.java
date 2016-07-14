@@ -10,6 +10,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.function.DoublePredicate;
+import java.util.function.DoubleUnaryOperator;
+import java.util.function.Function;
+import java.util.function.IntPredicate;
 
 import static java.lang.Math.exp;
 import static java.lang.Math.log10;
@@ -342,25 +346,6 @@ public final class MathUtilsUnitTest extends BaseTest {
     }
 
     @Test
-    public void testCovarianceDivergences() {
-        logger.warn("Executing testCovarianceDivergences");
-        //two symmetric positive-definite matrices
-        double[][] cov1 = { {5, 2, 3},
-                            {2, 7, 5},
-                            {3, 5, 6}};
-
-        double[][] cov2 = { {11, 3, 3},
-                            {3, 7, 5},
-                            {3, 5, 13}};
-
-        RealMatrix mat1 = new Array2DRowRealMatrix(cov1);
-        RealMatrix mat2 = new Array2DRowRealMatrix(cov2);
-
-        Assert.assertEquals(MathUtils.covarianceKLDivergence(mat1, mat2), 3.65393, 1e-4);   //from Mathematica
-        Assert.assertEquals(MathUtils.covarianceGeodesicDistance(mat1, mat2), 1.86205,1e-4);    //from Mathematica
-    }
-
-    @Test
     public void testSum() {
         double[] doubleTest = {-1,0,1,2,3};
         long[] longTest = {-1,0,1,2,3};
@@ -392,14 +377,6 @@ public final class MathUtilsUnitTest extends BaseTest {
         Assert.assertEquals(MathUtils.mean(test, 0, 0), Double.NaN);
         Assert.assertEquals(MathUtils.mean(test, 0, 1), 0.0);
         Assert.assertEquals(MathUtils.mean(test, 0, 3), 34.0);
-    }
-
-    @Test
-    public void testStddev() {
-        double[] test = {0, -1, 1, -2, 2, -3};
-        Assert.assertEquals(MathUtils.stddev(test, 0, 0), Double.NaN);
-        Assert.assertEquals(MathUtils.stddev(test, 0, 1), 0.0);
-        Assert.assertEquals(MathUtils.stddev(test, 0, 6), 1.707825127659933, 1e-14);
     }
 
     @Test
@@ -979,6 +956,56 @@ public final class MathUtilsUnitTest extends BaseTest {
                         String.format("Counts %d and alleles %d have nLikelihoods %d. \n Counts: %s",
                                 count,alleles.length,likelihoods.size(), "NODEBUG"/*,countLog*/));
             }
+        }
+    }
+
+
+    private static final List<double[]> testArrays = Arrays.asList(
+            new double[] {1,2,3,4,5},
+            new double[] {0.0},
+            new double[] {3, 2, 5, 6},
+            new double[] {19,-5, 22, 55, -1000, 2,2,2},
+            new double[] {-1,-1,-1,-1,-1},
+            new double[] {-1,-2,-3,-10,-1}
+    );
+
+    @Test
+    public void testApplyToArray() {
+        for (final double[] array : testArrays) {
+            final double[] copy = Arrays.copyOf(array, array.length);
+            final DoubleUnaryOperator func = Math::exp;
+            Assert.assertEquals(MathUtils.applyToArray(copy, func), Arrays.stream(copy).map(func).toArray());
+            Assert.assertEquals(array, copy);   //make sure original array was not affected
+        }
+    }
+
+    @Test
+    public void testApplyToArrayInPlace() {
+        for (final double[] array : testArrays) {
+            final double[] copy = Arrays.copyOf(array, array.length);
+            final DoubleUnaryOperator func = Math::exp;
+            final double[] result = MathUtils.applyToArrayInPlace(copy, func);
+            Assert.assertTrue(result == copy);
+            Assert.assertEquals(copy, Arrays.stream(array).map(func).toArray());   //make sure original array WAS affected
+        }
+    }
+
+    @Test
+    public void testAllMatchDouble() {
+        for (final double[] array : testArrays) {
+            final double[] copy = Arrays.copyOf(array, array.length);
+            final DoublePredicate pred = x -> x > -0.5;
+            Assert.assertEquals(MathUtils.allMatch(copy, pred), Arrays.stream(copy).allMatch(pred));
+            Assert.assertEquals(array, copy);   //make sure original array was not affected
+        }
+    }
+
+    @Test
+    public void testAllMatchInt() {
+        for (final double[] doubleArray : testArrays) {
+            final int[] array = Arrays.stream(doubleArray).mapToInt(x -> (int) Math.round(x)).toArray();
+            final IntPredicate pred = x -> x > -1;
+            Assert.assertEquals(MathUtils.allMatch(array, pred), Arrays.stream(array).allMatch(pred));
         }
     }
 }

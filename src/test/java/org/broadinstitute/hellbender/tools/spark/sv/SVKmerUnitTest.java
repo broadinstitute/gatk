@@ -15,6 +15,16 @@ public class SVKmerUnitTest extends BaseTest {
         Assert.assertEquals(new SVKmer(11).toString(11), "AAAAAAAAAAA");
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testDefaultConstructionWithTooLargeK() {
+        final SVKmer tooBigK = new SVKmer(64);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testDefaultConstructionWithTooSmallK() {
+        final SVKmer tooSmallK = new SVKmer(0);
+    }
+
     @DataProvider(name = "sequenceStrings")
     public Object[][] getSequenceStrings() {
         return new Object[][] {

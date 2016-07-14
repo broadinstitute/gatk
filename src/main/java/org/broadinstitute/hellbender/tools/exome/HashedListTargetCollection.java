@@ -53,12 +53,8 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
      * @throws IllegalArgumentException if {@code intervals} is {@code null}.
      */
     public HashedListTargetCollection(final List<T> intervals) {
-        if (intervals == null) {
-            throw new IllegalArgumentException("the input intervals cannot be null");
-        }
-        if (intervals.contains(null)) {
-            throw new IllegalArgumentException("the input cannot contain null");
-        }
+        Utils.nonNull(intervals);
+        Utils.containsNoNull(intervals, "intervals may not be null");
         sortedIntervals = intervals.stream().sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR).collect(Collectors.toList());
         checkForOverlaps(sortedIntervals);
         this.intervalsByName = composeIntervalsByName(sortedIntervals);
