@@ -141,6 +141,15 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             vcBuilder = vcBuilder.attribute("INSERTION", breakpointAllele.insertedSequence);
         }
 
+        if (breakpointAllele.left5Prime && ! breakpointAllele.right5Prime) {
+            vcBuilder = vcBuilder.attribute("INV5", "");
+        }
+
+        if (! breakpointAllele.left5Prime && breakpointAllele.right5Prime) {
+            vcBuilder = vcBuilder.attribute("INV3", breakpointAllele.insertedSequence);
+        }
+
+
         return vcBuilder.make();
     }
 

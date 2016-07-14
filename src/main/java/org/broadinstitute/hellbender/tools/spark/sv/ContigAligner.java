@@ -249,12 +249,11 @@ public class ContigAligner implements Closeable {
             final SimpleInterval leftAlignedLeftBreakpointOnAssembledContig = getLeftAlignedLeftBreakpointOnAssembledContig();
             final SimpleInterval leftAlignedRightBreakpointOnAssembledContig = getLeftAlignedRightBreakpointOnAssembledContig();
             if (! leftAlignedLeftBreakpointOnAssembledContig.getContig().equals(leftAlignedRightBreakpointOnAssembledContig.getContig())) {
-                //todo: put these in reference sequence order
-                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence);
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, region1.forwardStrand, region2.forwardStrand);
             } else if ( leftAlignedLeftBreakpointOnAssembledContig.getStart() < leftAlignedRightBreakpointOnAssembledContig.getStart()) {
-                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence);
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, region1.forwardStrand, region2.forwardStrand);
             } else {
-                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence);
+                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, region1.forwardStrand, region2.forwardStrand);
             }
         }
     }
@@ -263,11 +262,15 @@ public class ContigAligner implements Closeable {
         SimpleInterval leftAlignedLeftBreakpoint;
         SimpleInterval leftAlignedRightBreakpoint;
         String insertedSequence;
+        boolean left5Prime;
+        boolean right5Prime;
 
-        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence) {
+        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence, final boolean left5Prime, final boolean right5Prime) {
             this.leftAlignedLeftBreakpoint = leftAlignedLeftBreakpoint;
             this.leftAlignedRightBreakpoint = leftAlignedRightBreakpoint;
             this.insertedSequence = insertedSequence;
+            this.left5Prime = left5Prime;
+            this.right5Prime = right5Prime;
         }
 
         @Override
@@ -275,14 +278,16 @@ public class ContigAligner implements Closeable {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             final BreakpointAllele that = (BreakpointAllele) o;
-            return Objects.equals(leftAlignedLeftBreakpoint, that.leftAlignedLeftBreakpoint) &&
+            return left5Prime == that.left5Prime &&
+                    right5Prime == that.right5Prime &&
+                    Objects.equals(leftAlignedLeftBreakpoint, that.leftAlignedLeftBreakpoint) &&
                     Objects.equals(leftAlignedRightBreakpoint, that.leftAlignedRightBreakpoint) &&
                     Objects.equals(insertedSequence, that.insertedSequence);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence);
+            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence, left5Prime, right5Prime);
         }
     }
 
