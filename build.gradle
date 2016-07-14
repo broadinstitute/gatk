@@ -123,8 +123,7 @@ check.dependsOn installDist
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
-    compile 'org.broadinstitute:gatk:4.alpha.1-151-g76f78d2-20160624.165758-3'
-    compile 'com.opencsv:opencsv:3.4'
+    compile 'org.broadinstitute:gatk:4.alpha.1-199-g8377acb-20160713.142718-1'
 
     // HDF5 and HDF-Java jar files
     if (isMacOsX) {

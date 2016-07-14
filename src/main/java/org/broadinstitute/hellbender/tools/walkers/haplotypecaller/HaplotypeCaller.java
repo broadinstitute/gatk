@@ -180,6 +180,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     protected int defaultAssemblyRegionPadding() { return 100; }
 
     @Override
+    protected int defaultMaxReadsPerAlignmentStart() { return 50; }
+
+    @Override
     protected double defaultActiveProbThreshold() { return 0.002; }
 
     @Override

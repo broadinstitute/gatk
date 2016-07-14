@@ -13,13 +13,15 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.SampleCollection;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.tools.exome.TargetWriter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -100,7 +102,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     }
 
     private void collectReads() {
-        if ( readArguments.getReadFilesNames().size() != 1 ) {
+        if ( readArguments.getReadFileNames().size() != 1 ) {
             throw new UserException("This tool only accepts a single bam/sam/cram as input");
         }
 
@@ -120,9 +122,15 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
         final long coverageCollectionStartTime = System.currentTimeMillis();
         final JavaRDD<GATKRead> rawReads = getReads();
         final JavaRDD<GATKRead> reads = rawReads.filter(read -> filter.test(read));
+
+        //Note: using a field inside a closure will pull in the whole enclosing object to serialization
+        // (which leads to bad performance and can blow up if some objects in the fields are not
+        // Serializable - closures always use java Serializable and not Kryo)
+        //Solution here is to use a temp variable for binsize because it's just an int.
+        final int binsize_tmp = binsize;
         final JavaRDD<SimpleInterval> readIntervals = reads
                 .filter(read -> sequenceDictionary.getSequence(read.getContig()) != null)
-                .map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary, binsize));
+                .map(read -> SparkGenomeReadCounts.createKey(read, sequenceDictionary, binsize_tmp));
         final Map<SimpleInterval, Long> byKey = readIntervals.countByValue();
         final Set<SimpleInterval> readIntervalKeySet = byKey.keySet();
         final long totalReads = byKey.values().stream().mapToLong(v -> v).sum();
