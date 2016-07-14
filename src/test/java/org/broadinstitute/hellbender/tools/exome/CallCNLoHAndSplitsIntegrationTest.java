@@ -1,14 +1,17 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,15 +22,24 @@ public class CallCNLoHAndSplitsIntegrationTest extends CommandLineProgramTest {
 
     // Typically, this next file would be the output of a tangent normalization run.
     private static final File COVERAGES_FILE = new File(ACNV_TEST_SUB_DIR, "coverages-for-allelic-integration.tsv");
-    private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(ACNV_TEST_SUB_DIR, "snps-full.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_BASIC_VERBOSITY_FILE = new File(ACNV_TEST_SUB_DIR, "snps-basic.tsv");
+    private static final File TUMOR_ALLELIC_COUNTS_FULL_VERBOSITY_FILE = new File(ACNV_TEST_SUB_DIR, "snps-full.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "cell_line_small-sim-final.seg");
 
-    @Test
-    public void testBasicRun() {
+    @DataProvider(name = "dataCallCNLoHAndSplits")
+    public Object[][] dataCallCNLoHAndSplits() {
+        return new Object[][]{
+                {TUMOR_ALLELIC_COUNTS_BASIC_VERBOSITY_FILE},
+                {TUMOR_ALLELIC_COUNTS_FULL_VERBOSITY_FILE}
+        };
+    }
+
+    @Test(dataProvider = "dataCallCNLoHAndSplits")
+    public void testRun(final File tumorAllelicCountsFile) {
         final File outputDir = createTempDir("cnLoH_OutputDir_");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME);
-        arguments.add(TUMOR_ALLELIC_COUNTS_FILE.toString());
+        arguments.add(tumorAllelicCountsFile.toString());
         arguments.add("-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME);
         arguments.add(COVERAGES_FILE.toString());
         arguments.add("-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME);
@@ -70,6 +82,17 @@ public class CallCNLoHAndSplitsIntegrationTest extends CommandLineProgramTest {
 
         final List<ACNVModeledSegment> acnvModeledSegments = SegmentUtils.readACNVModeledSegmentFile(SEGMENT_FILE);
         Assert.assertEquals(acnvModeledSegments.size(), acsModeledSegments.size());
+
+        //TITAN het file cannot be written if original pulldown only has basic verbosity (i.e., is missing ref/alt nucleotide information)
+        //in this case, check that a blank file is output
+        if (tumorAllelicCountsFile.equals(TUMOR_ALLELIC_COUNTS_BASIC_VERBOSITY_FILE)) {
+            try {
+                final List<String> titanHetOutputLines = FileUtils.readLines(new File(titanHetFilename));
+                Assert.assertEquals(titanHetOutputLines.size(), 0);
+            } catch (final IOException e) {
+                Assert.fail("Could not read file " + titanHetFilename);
+            }
+        }
     }
 
     private String createFilename(final File outputDir, final String extension, final File baseFile) {

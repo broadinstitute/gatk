@@ -2,7 +2,10 @@ package org.broadinstitute.hellbender.tools.genome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

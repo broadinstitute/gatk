@@ -5,7 +5,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -14,8 +13,8 @@ import java.util.List;
  * Input and output target files are both in the format described in {@link TargetWriter}.
  */
 @CommandLineProgramProperties(
-        summary = "Creates a new target file with targets extended on both sides by the specified number of bases.  IMPORTANT:  This tool will only preserve contig, start, stop, and name columns.",
-        oneLineSummary = "Create a new target file with padded targets.",
+        summary = "Creates a new target file with targets extended on both sides by the specified number of bases.  IMPORTANT:  This tool will only preserve contig, start, end, and name columns.",
+        oneLineSummary = "Create a new target file with padded targets",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class PadTargets extends CommandLineProgram {

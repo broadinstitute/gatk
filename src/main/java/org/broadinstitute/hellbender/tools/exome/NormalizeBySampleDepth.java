@@ -23,8 +23,8 @@ import java.io.IOException;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Normalizes read counts by samples' average coverage.",
-        oneLineSummary = "Normalizes read counts by samples' average coverage.",
+        summary = "Normalize read counts by samples' average coverage.",
+        oneLineSummary = "Normalize read counts by samples' average coverage",
         programGroup = CopyNumberProgramGroup.class
 )
 public class NormalizeBySampleDepth extends CommandLineProgram {

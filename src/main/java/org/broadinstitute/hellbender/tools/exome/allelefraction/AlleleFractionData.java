@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.DataCollection;
 

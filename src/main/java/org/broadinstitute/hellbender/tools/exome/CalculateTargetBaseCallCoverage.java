@@ -110,8 +110,8 @@ import java.util.stream.*;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        oneLineSummary = "Calculate Target Coverage",
-        summary = "Calculate Target Coverage",
+        oneLineSummary = "Calculate target coverage",
+        summary = "Calculate target coverage",
         programGroup = CopyNumberProgramGroup.class
 )
 public class CalculateTargetBaseCallCoverage extends TargetWalker {

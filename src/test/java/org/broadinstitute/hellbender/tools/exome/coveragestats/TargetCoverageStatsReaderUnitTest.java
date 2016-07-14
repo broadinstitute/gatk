@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.exome.coveragestats;
 
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetTableColumn;
-import org.broadinstitute.hellbender.tools.exome.coveragestats.TargetCoverageStats;
-import org.broadinstitute.hellbender.tools.exome.coveragestats.TargetCoverageStatsReader;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;

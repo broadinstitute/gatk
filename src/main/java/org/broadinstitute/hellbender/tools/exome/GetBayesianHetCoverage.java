@@ -47,7 +47,7 @@ import java.io.File;
                 " Het sites are inferred from the normal reads and the counts on the same sites will be collected from the" +
                 " tumor reads. The output for the normal reads will be detailed. The outout for the tumor reads will not" +
                 " include the log odds of heterozygosity since the inference is made from the normal reads.",
-        oneLineSummary = "Calls heterozygous sites and outputs information about the called sites.",
+        oneLineSummary = "Call heterozygous sites and output information about the called sites",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class GetBayesianHetCoverage extends CommandLineProgram {

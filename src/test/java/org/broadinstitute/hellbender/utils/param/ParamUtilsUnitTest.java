@@ -7,7 +7,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.Arrays;
 
 /**
  * Created by lichtens on 8/25/15.

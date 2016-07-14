@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        oneLineSummary = "Correct for per-sample GC bias effects.",
+        oneLineSummary = "Correct for per-sample GC bias effects",
         summary = "Correct coverage in a read counts files by estimating per-sample bias as a function of target GC" +
                 " content and dividing input coverage by these derived bias curves.",
         programGroup = CopyNumberProgramGroup.class

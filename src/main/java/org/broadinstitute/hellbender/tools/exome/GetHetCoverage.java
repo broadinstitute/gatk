@@ -22,7 +22,7 @@ import java.io.File;
  */
 @CommandLineProgramProperties(
         summary = "Output ref/alt counts at heterozygous SNPs in normal sample (and at same sites in tumor sample, if specified).",
-        oneLineSummary = "Output ref/alt counts at heterozygous SNPs in normal sample (and at same sites in tumor sample, if specified).",
+        oneLineSummary = "Output ref/alt counts at heterozygous SNPs in normal sample (and at same sites in tumor sample, if specified)",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class GetHetCoverage extends CommandLineProgram {

@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;

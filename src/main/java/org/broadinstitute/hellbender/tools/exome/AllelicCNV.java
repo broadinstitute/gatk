@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
                 "circular binary segmentation; the result is combined with the target coverages " +
                 "and called segments found by the GATK CNV tool. Bayesian parameter estimation of models for the " +
                 "copy ratios and minor allele fractions in each segment is performed using Markov chain Monte Carlo.",
-        oneLineSummary = "Detect copy-number events using allelic-count data and GATK CNV output.",
+        oneLineSummary = "Detect copy-number events using allelic-count data and GATK CNV output",
         programGroup = CopyNumberProgramGroup.class
 )
 public class AllelicCNV extends SparkCommandLineProgram {
@@ -87,7 +87,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected static final String NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_PER_FIT_SHORT_NAME = "numIterSimPerFit";
 
     @Argument(
-            doc = "Input file for tumor-sample ref/alt read counts at normal-sample heterozygous-SNP sites (output of GetHetCoverage tool).",
+            doc = "Input file for tumor-sample ref/alt read counts at normal-sample heterozygous-SNP sites (output of GetHetCoverage or GetBayesianHetCoverage tools).",
             fullName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_SHORT_NAME,
             optional = false

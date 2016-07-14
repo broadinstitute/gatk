@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.alleliccount;
 
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountTableColumn.AllelicCountTableVerbosity;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
@@ -14,16 +15,33 @@ import java.io.IOException;
  */
 public class AllelicCountWriter extends TableWriter<AllelicCount> {
 
+    private static final String PROB_FORMAT = "%.4f";
+
     private final AllelicCountTableVerbosity verbosity;
+
+    AllelicCountWriter(final File file, final AllelicCountTableVerbosity verbosity, final TableColumnCollection columns) throws IOException {
+        super(file, columns);
+        this.verbosity = verbosity;
+    }
 
     public AllelicCountWriter(final File file, final AllelicCountTableVerbosity verbosity)
             throws IOException {
-        super(file, AllelicCountTableColumn.getColumns(verbosity));
-        this.verbosity = verbosity;
+        this(file, verbosity, AllelicCountTableColumn.getColumns(verbosity));
     }
 
     @Override
     protected void composeLine(final AllelicCount record, final DataLine dataLine) {
+        composeLine(record, dataLine, verbosity);
+    }
+
+    /**
+     * Compose the record with given verbosity.
+     *
+     * @param record the {@link AllelicCount} record
+     * @param dataLine the {@link DataLine} to the composed
+     * @param verbosity the desired {@link AllelicCountTableVerbosity} of the record
+     */
+    static void composeLine(final AllelicCount record, final DataLine dataLine, final AllelicCountTableVerbosity verbosity) {
         switch (verbosity) {
             case BASIC:
                 composeLineBasic(record, dataLine);
@@ -82,6 +100,10 @@ public class AllelicCountWriter extends TableWriter<AllelicCount> {
                 .append(record.getRefNucleotide().name())
                 .append(record.getAltNucleotide().name())
                 .append(record.getReadDepth())
-                .append(String.format("%.4f", record.getHetLogOdds()));
+                .append(formatProb(record.getHetLogOdds()));
+    }
+
+    static String formatProb(final double value) {
+        return String.format(PROB_FORMAT, value);
     }
 }

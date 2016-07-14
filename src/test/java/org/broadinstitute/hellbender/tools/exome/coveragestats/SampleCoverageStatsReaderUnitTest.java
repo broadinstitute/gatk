@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.coveragestats;
 
-import org.broadinstitute.hellbender.tools.exome.coveragestats.SampleCoverageStats;
-import org.broadinstitute.hellbender.tools.exome.coveragestats.SampleCoverageStatsReader;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;

@@ -85,9 +85,11 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
      * Tests Bayesian inference of the copy-ratio model via MCMC.
      * <p>
      *     Recovery of input values for the variance and outlier-probability global parameters is checked.
-     *     In particular, the true input value of the variance must fall within MULTIPLES_OF_SD_THRESHOLD
+     *     In particular, the true input value of the variance must fall within
+     *     {@link CopyRatioModellerUnitTest#MULTIPLES_OF_SD_THRESHOLD}
      *     standard deviations of the posterior mean and the standard deviation of the posterior must agree
-     *     with the analytic value to within a relative error of RELATIVE_ERROR_THRESHOLD for 250 samples
+     *     with the analytic value to within a relative error of
+     *     {@link CopyRatioModellerUnitTest#RELATIVE_ERROR_THRESHOLD} for 250 samples
      *     (after 250 burn-in samples have been discarded).  Similar criteria are applied
      *     to the recovery of the true input value for the outlier probability.
      * </p>
@@ -95,15 +97,18 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
      *     Furthermore, the number of truth values for the segment-level means falling outside confidence intervals of
      *     1-sigma, 2-sigma, and 3-sigma given by the posteriors in each segment should be roughly consistent with
      *     a normal distribution (i.e., ~32, ~5, and ~0, respectively; we allow for errors of
-     *     DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_N_SIGMA for N = 1, 2, and 3, respectively).
+     *     {@link CopyRatioModellerUnitTest#DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_1_SIGMA},
+     *     {@link CopyRatioModellerUnitTest#DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_2_SIGMA}, and
+     *     {@link CopyRatioModellerUnitTest#DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_3_SIGMA}, respectively).
      *     The mean of the standard deviations of the posteriors for the segment-level means should also be
-     *     recovered to within a relative error of RELATIVE_ERROR_THRESHOLD.
+     *     recovered to within a relative error of {@link CopyRatioModellerUnitTest#RELATIVE_ERROR_THRESHOLD}.
      * </p>
      * <p>
      *     Finally, the recovered values for the latent outlier-indicator parameters should agree with those used to
      *     generate the data.  For each indicator, the recovered value (i.e., outlier or non-outlier) is taken to be
      *     that given by the majority of posterior samples.  We require that at least
-     *     FRACTION_OF_OUTLIER_INDICATORS_CORRECT_THRESHOLD of the 10000 indicators are recovered correctly.
+     *     {@link CopyRatioModellerUnitTest#FRACTION_OF_OUTLIER_INDICATORS_CORRECT_THRESHOLD}
+     *     of the 10000 indicators are recovered correctly.
      * </p>
      * <p>
      *     With these specifications, this unit test is not overly brittle (i.e., it should pass for a large majority
@@ -151,7 +156,8 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
         int numMeansOutsideTwoSigma = 0;
         int numMeansOutsideThreeSigma = 0;
         final int numSegments = meansTruth.size();
-        //segment-mean posteriors are expected to be Gaussian, so PosteriorSummary for CREDIBLE_INTERVAL_ALPHA=0.32 is
+        //segment-mean posteriors are expected to be Gaussian, so PosteriorSummary for
+        // {@link CopyRatioModellerUnitTest#CREDIBLE_INTERVAL_ALPHA}=0.32 is
         //(posterior mean, posterior mean - posterior standard devation, posterior mean + posterior standard deviation)
         final List<PosteriorSummary> meanPosteriorSummaries =
                 modeller.getSegmentMeansPosteriorSummaries(CREDIBLE_INTERVAL_ALPHA, ctx);
