@@ -2,8 +2,9 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.TaggedInputFileArgument;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -12,13 +13,20 @@ import java.util.List;
  */
 public final class RequiredReadInputArgumentCollection extends ReadInputArgumentCollection {
     private static final long serialVersionUID = 1L;
-
-    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
-              shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-              doc = "BAM/SAM/CRAM file containing reads",
-              optional = false)
-    private List<TaggedInputFileArgument> readInputs;
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = false)
+    public List<String> readFilesNames;
 
     @Override
-    public List<TaggedInputFileArgument> getReadInputs() { return readInputs; }
+    public List<File> getReadFiles() {
+        ArrayList<File> ret = new ArrayList<>();
+        for (String fn : readFilesNames) {
+            ret.add(new File(fn));
+        }
+        return ret;
+    }
+
+    @Override
+    public List<String> getReadFilesNames() {
+        return new ArrayList<>(readFilesNames);
+    }
 }

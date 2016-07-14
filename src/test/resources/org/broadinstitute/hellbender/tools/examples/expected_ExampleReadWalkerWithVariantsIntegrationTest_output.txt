@@ -1,9 +1,0 @@
-reads inputs:
-  tumor:reads_data_source_test1.bam
-
-Read at 1:200-275:
-ACCCTAACCCTAACCCTAACCCTAACCATAACCCTAAGACTAACCCTAAACCTAACCCTCATAATCGAAATACAAC
-Overlapping variant at 1:199-200: Ref: GG* Alt(s): [G]
-Overlapping variant at 1:200-200: Ref: G* Alt(s): [A]
-Overlapping variant at 1:203-206: Ref: GGGG* Alt(s): [G]
-
