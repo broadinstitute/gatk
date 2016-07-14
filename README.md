@@ -28,7 +28,6 @@ If you are looking for the codebase of the current production version of GATK, p
 * Optional, but recommended:
     * Gradle 2.12 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
       download and use an appropriate gradle version automatically), see examples below.
-    * gcc 4.8 or greater (needed for building the native AVX PairHMM shared library)
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
@@ -65,8 +64,6 @@ If you are looking for the codebase of the current production version of GATK, p
   This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.
 
 * Gradle keeps a cache of dependencies used to build GATK.  By default this goes in `~/.gradle`.  If there is insufficient free space in your home directory, you can change the location of the cache by setting the `GRADLE_USER_HOME` environment variable.
-
-* To skip building the native AVX PairHMM shared library, define the environment variable `GATK_SKIP_NATIVE_BUILD=true`
 
 ##Running GATK4
 
