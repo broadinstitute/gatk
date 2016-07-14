@@ -5,7 +5,10 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.ReadWalker;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -13,7 +16,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Example/toy program that prints reads from the provided file or files along with overlapping variants
@@ -41,16 +43,9 @@ public final class ExampleReadWalkerWithVariants extends ReadWalker {
     public void onTraversalStart() {
         try {
             outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
-        } catch ( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(outputFile, e);
         }
-        if (readArguments.getReadInputs().stream().anyMatch(TaggedInputFileArgument::hasSymbolicName)) {
-            final Map<String, TaggedInputFileArgument> map = readArguments.getInputsBySymbolicName();
-            outputStream.println("reads inputs:");
-            for (final Map.Entry<String, TaggedInputFileArgument> kv : map.entrySet()){
-                outputStream.println("  " + kv.getKey() + ":" + kv.getValue().getFile().getName());
-            }
-            outputStream.println();
+        catch ( FileNotFoundException e ) {
+            throw new UserException.CouldNotReadInputFile(outputFile, e);
         }
     }
 

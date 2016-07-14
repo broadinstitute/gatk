@@ -51,7 +51,7 @@ public final class CompareDuplicatesSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        JavaRDD<GATKRead> firstReads = filteredReads(getReads(), readArguments.getReadFileNames().get(0));
+        JavaRDD<GATKRead> firstReads = filteredReads(getReads(), readArguments.getReadFilesNames().get(0));
 
         ReadsSparkSource readsSource2 = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
         JavaRDD<GATKRead> secondReads =  filteredReads(readsSource2.getParallelReads(input2, null, getIntervals(), bamPartitionSplitSize), input2);
