@@ -6,13 +6,14 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.GATKReadWriter;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.ReadClipperTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -30,12 +31,72 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
             new CigarElement(1, CigarOperator.MATCH_OR_MISMATCH),
             new CigarElement(1, CigarOperator.SKIPPED_REGION)
     };
+    private SAMFileHeader header = new SAMFileHeader();;
 
     private final class TestManager extends OverhangFixingManager {
-        public TestManager( final SAMFileHeader header ) {
-            super(header, null, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false);
+        public TestManager( final SAMFileHeader header , DummyTestWriter writer) {
+            super(header, writer, hg19GenomeLocParser, hg19ReferenceReader, 10000, 1, 40, false, true);
         }
     }
+
+    @Test
+    public void testBogusNSplits() {
+        DummyTestWriter writer = new DummyTestWriter();
+        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        TestManager manager = new TestManager(header, writer);
+        manager.activateWriting();
+
+        //Testing that bogus splits make it through unaffected
+        GATKRead read1 = ReadClipperTestUtils.makeReadFromCigar("1S4N2S3N4H");
+        SplitNCigarReads.splitNCigarRead(read1, manager, true, header, true);
+        manager.flush();
+        Assert.assertEquals(1, writer.writtenReads.size());
+        Assert.assertEquals("1S4N2S3N4H", writer.writtenReads.get(0).getCigar().toString());
+    }
+
+    @Test
+    public void testBogusMidNSection() {
+        //Testing that bogus subsections dont end up clipped
+        DummyTestWriter writer = new DummyTestWriter();
+        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        TestManager manager = new TestManager(header, writer);
+        manager.activateWriting();
+
+        manager = new TestManager(header, writer);
+        manager.activateWriting();
+        GATKRead read2 = ReadClipperTestUtils.makeReadFromCigar("1S3N2M10N1M4H");
+        SplitNCigarReads.splitNCigarRead(read2, manager, true, header, true);
+        manager.flush();
+        Assert.assertEquals(2, writer.writtenReads.size());
+        Assert.assertEquals("1S2M1S4H", writer.writtenReads.get(0).getCigar().toString());
+        Assert.assertEquals("3S1M4H", writer.writtenReads.get(1).getCigar().toString());
+    }
+
+    @Test
+    public void testSplitNComplexCase() {
+        //Complex Case involving insertions & deletions
+        DummyTestWriter writer = new DummyTestWriter();
+        header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
+        TestManager manager = new TestManager(header, writer);
+
+        manager.activateWriting();
+        writer = new DummyTestWriter();
+        manager = new TestManager(header, writer);
+        manager.activateWriting();
+        GATKRead read3 = ReadClipperTestUtils.makeReadFromCigar("1H2M2D1M2N1M2I1N1M2S1N2S1N2S");
+        read3.setAttribute("MC", "11M4N11M");
+        SplitNCigarReads.splitNCigarRead(read3, manager,true, header, true);
+        manager.flush();
+        Assert.assertEquals(3, writer.writtenReads.size());
+        Assert.assertEquals("1H2M2D1M10S", writer.writtenReads.get(0).getCigar().toString());
+        Assert.assertEquals("1H3S1M2I7S", writer.writtenReads.get(1).getCigar().toString());
+        Assert.assertEquals("1H6S1M6S", writer.writtenReads.get(2).getCigar().toString());
+        // Testing that the mate cigar string setting is correct
+        Assert.assertEquals("11M11S", writer.writtenReads.get(0).getAttributeAsString("MC"));
+        Assert.assertEquals("11M11S", writer.writtenReads.get(1).getAttributeAsString("MC"));
+        Assert.assertEquals("11M11S", writer.writtenReads.get(2).getAttributeAsString("MC"));
+    }
+
 
     @Test
     public void splitReadAtN() {
@@ -57,26 +118,24 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
             if(numOfSplits != 0 && isCigarDoesNotHaveEmptyRegionsBetweenNs(cigar)){
                 final SAMFileHeader header = new SAMFileHeader();
                 header.setSequenceDictionary(hg19GenomeLocParser.getSequenceDictionary());
-                final TestManager manager = new TestManager(header);
+                final TestManager manager = new TestManager(header, new DummyTestWriter());
+                manager.activateWriting();
 
                 GATKRead read = ReadClipperTestUtils.makeReadFromCigar(cigar);
-                SplitNCigarReads.splitNCigarRead(read, manager);
-                List<OverhangFixingManager.SplitRead> splitReads = manager.getReadsInQueueForTesting();
+                SplitNCigarReads.splitNCigarRead(read, manager, true, header, true);
+                List<List<OverhangFixingManager.SplitRead>> splitReadGroups = manager.getReadsInQueueForTesting();
                 final int expectedReads = numOfSplits+1;
-                Assert.assertEquals(splitReads.size(), expectedReads, "wrong number of reads after split read with cigar: " + cigar + " at Ns [expected]: " + expectedReads + " [actual value]: " + splitReads.size());
-                final List<Integer> readLengths = consecutiveNonNElements(read.getCigar().getCigarElements());
+                Assert.assertEquals(manager.getNReadsInQueue(), expectedReads, "wrong number of reads after split read with cigar: " + cigar + " at Ns [expected]: " + expectedReads + " [actual value]: " + manager.getNReadsInQueue());
+                final int readLengths = consecutiveNonNElements(read.getCigar().getCigarElements());
                 int index = 0;
-                int offsetFromStart = 0;
-                for(final OverhangFixingManager.SplitRead splitRead: splitReads){
-                    int expectedLength = readLengths.get(index);
-                    Assert.assertTrue(splitRead.read.getLength() == expectedLength,
+                for(final OverhangFixingManager.SplitRead splitRead: splitReadGroups.get(0)){
+                    Assert.assertTrue(splitRead.read.getLength() == readLengths,
                             "the " + index + " (starting with 0) split read has a wrong length.\n" +
                                     "cigar of original read: " + cigar + "\n" +
-                                    "expected length: " + expectedLength + "\n" +
+                                    "expected length: " + readLengths + "\n" +
                                     "actual length: " + splitRead.read.getLength() + "\n");
-                    assertBases(splitRead.read.getBases(), read.getBases(), offsetFromStart);
+                    assertBases(splitRead.read.getBases(), read.getBases());
                     index++;
-                    offsetFromStart += expectedLength;
                 }
             }
         }
@@ -90,49 +149,43 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
 
     private static boolean isCigarDoesNotHaveEmptyRegionsBetweenNs(final Cigar cigar) {
         boolean sawM = false;
-        boolean sawS = false;
 
         for (CigarElement cigarElement : cigar.getCigarElements()) {
             if (cigarElement.getOperator().equals(CigarOperator.SKIPPED_REGION)) {
-                if(!sawM && !sawS)
+                if(!sawM)
                     return false;
                 sawM = false;
-                sawS = false;
             }
             if (cigarElement.getOperator().equals(CigarOperator.MATCH_OR_MISMATCH))
                 sawM = true;
-            if (cigarElement.getOperator().equals(CigarOperator.SOFT_CLIP))
-                sawS = true;
 
         }
-        return sawS || sawM;
+        return sawM;
     }
 
-    private List<Integer> consecutiveNonNElements(final List<CigarElement> cigarElements){
-        final LinkedList<Integer> results = new LinkedList<>();
+    private int consecutiveNonNElements(final List<CigarElement> cigarElements){
         int consecutiveLength = 0;
         for(CigarElement element: cigarElements){
             final CigarOperator op = element.getOperator();
             if(op.equals(CigarOperator.MATCH_OR_MISMATCH) || op.equals(CigarOperator.SOFT_CLIP) || op.equals(CigarOperator.INSERTION)){
                 consecutiveLength += element.getLength();
             }
-            else if(op.equals(CigarOperator.SKIPPED_REGION))
-            {
-                if(consecutiveLength != 0){
-                    results.addLast(consecutiveLength);
-                    consecutiveLength = 0;
-                }
-            }
         }
-        if(consecutiveLength != 0)
-            results.addLast(consecutiveLength);
-        return results;
+        return consecutiveLength;
     }
 
-    private void assertBases(final byte[] actualBase, final byte[] expectedBase, final int startIndex) {
+    private void assertBases(final byte[] actualBase, final byte[] expectedBase) {
         for (int i = 0; i < actualBase.length; i++) {
-            Assert.assertEquals(actualBase[i], expectedBase[startIndex + i], "unmatched bases between: " + Arrays.toString(actualBase) + "\nand:\n" + Arrays.toString(expectedBase) + "\nat position: " + i);
+            Assert.assertEquals(actualBase[i], expectedBase[i], "unmatched bases between: " + Arrays.toString(actualBase) + "\nand:\n" + Arrays.toString(expectedBase) + "\nat position: " + i);
         }
     }
 
+    private static class DummyTestWriter implements GATKReadWriter {
+        public List<GATKRead> writtenReads = new ArrayList<>();
+        public void close() {}
+        @Override
+        public void addRead(GATKRead read) {
+            writtenReads.add(read);
+        }
+    }
 }

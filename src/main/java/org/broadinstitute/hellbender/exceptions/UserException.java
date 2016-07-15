@@ -197,11 +197,11 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public MalformedGenomeLoc(String message) {
-            super(String.format("Badly formed genome loc: %s", message));
+            super(String.format("Badly formed genome unclippedLoc: %s", message));
         }
 
         public MalformedGenomeLoc(String message, Exception e) {
-            super(String.format("Badly formed genome loc: %s", message), e);
+            super(String.format("Badly formed genome unclippedLoc: %s", message), e);
         }
     }
 
