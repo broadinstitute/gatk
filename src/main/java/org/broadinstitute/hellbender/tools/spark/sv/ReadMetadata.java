@@ -9,6 +9,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +73,8 @@ public class ReadMetadata {
             kryo.writeObject(output, entry.getValue());
         }
     }
+
+    public Map<String, Short> getContigNameMap() { return Collections.unmodifiableMap(contigNameToID); }
 
     public short getContigID( final String contigName ) {
         final Short result = contigNameToID.get(contigName);

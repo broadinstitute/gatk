@@ -21,8 +21,7 @@ import java.util.*;
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final ReadMetadata.ReadGroupFragmentStatistics testStats =
             new ReadMetadata.ReadGroupFragmentStatistics(400.f, 75.f);
-    private static final FindBreakpointEvidenceSpark.Interval testInterval =
-            new FindBreakpointEvidenceSpark.Interval(1, 33143134, 33143478);
+    private static final SVInterval testInterval = new SVInterval(1, 33143134, 33143478);
 
     private final String toolDir = getToolTestDataDir();
     private final String readsFile = toolDir+"SVBreakpointsTest.bam";
@@ -41,10 +40,10 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
             new ReadMetadata(header, Arrays.asList(testStats, testStats, testStats), testStats);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
     private final FindBreakpointEvidenceSpark.Locations locations =
-        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null);
+        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null);
     private final Set<String> expectedQNames = loadExpectedQNames(qNamesFile);
     private final Set<String> expectedAssemblyQNames = loadExpectedQNames(asmQNamesFile);
-    private final List<FindBreakpointEvidenceSpark.Interval> expectedIntervalList = Collections.singletonList(testInterval);
+    private final List<SVInterval> expectedIntervalList = Collections.singletonList(testInterval);
 
     @Test(groups = "spark")
     public void getMetadataTest() {
@@ -54,7 +53,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void getIntervalsTest() {
-        final List<FindBreakpointEvidenceSpark.Interval> actualIntervals =
+        final List<SVInterval> actualIntervals =
                 FindBreakpointEvidenceSpark.getIntervals(params, broadcastMetadata, header, mappedReads, locations);
         Assert.assertEquals(actualIntervals, expectedIntervalList);
     }
