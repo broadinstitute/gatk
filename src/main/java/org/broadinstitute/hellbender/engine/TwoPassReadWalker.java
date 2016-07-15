@@ -50,11 +50,6 @@ public abstract class TwoPassReadWalker extends ReadWalker {
     abstract protected void secondPassApply(GATKRead read, ReferenceContext bytes, FeatureContext featureContext);
 
     protected void afterFirstPass() {
-        initializeReads();
-
-        if ( hasIntervals() ) {
-            reads.setTraversalBounds(intervalArgumentCollection.getTraversalParameters(getHeaderForReads().getSequenceDictionary()));
-        }
     }
 
 

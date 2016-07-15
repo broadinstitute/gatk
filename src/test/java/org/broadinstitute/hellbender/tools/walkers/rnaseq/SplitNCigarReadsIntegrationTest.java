@@ -19,8 +19,8 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     @Test (enabled = true)
     public void testSplitsWithOverhangs()  throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s ", //--processSecondaryAlignments",
-                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.bam"));    //results created using gatk3.46
+                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s --processSecondaryAlignments",
+                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.bam"));
         spec.executeTest("test splits with overhangs", this);
     }
 
@@ -28,7 +28,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     public void testSplitsWithOverhangsNotClipping() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 "--doNotFixOverhangs -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s --processSecondaryAlignments",
-                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.doNotFixOverhangs.bam"));   //results created using gatk3.46
+                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.doNotFixOverhangs.bam"));
         spec.executeTest("test splits with overhangs not clipping", this);
     }
 
@@ -36,7 +36,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     public void testSplitsWithOverhangs0Mismatches() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 "--maxMismatchesInOverhang 0 -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s --processSecondaryAlignments",
-                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.maxMismatchesInOverhang0.bam"));   //results created using gatk3.46
+                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.maxMismatchesInOverhang0.bam"));
         spec.executeTest("test splits with overhangs 0 mismatches", this);
     }
 
@@ -44,7 +44,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     public void testSplitsWithOverhangs5BasesInOverhang()  throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 "--maxBasesInOverhang 5 -R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s --processSecondaryAlignments",
-                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.maxBasesInOverhang5.bam"));    //results created using gatk3.46
+                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.maxBasesInOverhang5.bam"));
         spec.executeTest("test splits with overhangs 5 bases in overhang", this);
     }
 
@@ -60,7 +60,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     public void testSplitsOfUnpairedAndUnmappedReads() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-R" + b37_reference_20_21 + " -I " + largeFileTestDir + "K-562.duplicateMarked.chr20.bam -O %s --processSecondaryAlignments",
-                Arrays.asList(largeFileTestDir + "expected.K-562.splitNCigarReads.chr20.bam")); //results created using gatk3.5
+                Arrays.asList(largeFileTestDir + "expected.K-562.splitNCigarReads.chr20.bam"));
         spec.executeTest("regression test for unmapped and unpaired reads", this);
     }
 
@@ -68,7 +68,7 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
     public void testSplitsTargetRegionFunctionality() throws Exception {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                 "-R" + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s -L 20:2444518-2454410 --processSecondaryAlignments",
-                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.subSequenceTest.bam")); //results created using gatk3.5
+                Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.subSequenceTest.bam"));
         spec.executeTest("regression test for unmapped and unpaired reads", this);
     }
 
