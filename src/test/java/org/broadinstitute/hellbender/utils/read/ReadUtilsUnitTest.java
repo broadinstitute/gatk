@@ -12,6 +12,7 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -405,6 +406,38 @@ public final class ReadUtilsUnitTest extends BaseTest {
         Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(mappedRead, header), 0);
         Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(unmappedRead, header), -1);
         Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(unmappedReadWithAssignedPosition, header), 1);
+    }
+
+    @Test
+    public void testSetReadsAsSupplemental() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        GATKRead primarySup = ArtificialReadUtils.createArtificialRead(header, "read1", 1, 10000, new byte[] {}, new byte[] {}, "4M");
+        primarySup.setMappingQuality(100);
+        primarySup.setAttribute("NM",20);
+        GATKRead secondarySup = ArtificialReadUtils.createArtificialRead(header, "read2", 2, 10001, new byte[] {}, new byte[] {}, "4S");
+        secondarySup.setMappingQuality(200);
+        List<GATKRead> sups = new ArrayList<>();
+        sups.add(secondarySup);
+        ReadUtils.setReadsAsSupplemental(primarySup,sups);
+        Assert.assertEquals(primarySup.getAttributeAsString("SA"), "read2,10001,3,4S,200,;");
+        Assert.assertEquals(primarySup.isSupplementaryAlignment(), false);
+        Assert.assertEquals(secondarySup.getAttributeAsString("SA"), "read1,10000,2,4M,100,20;");
+        Assert.assertEquals(secondarySup.isSupplementaryAlignment(), true);
+        GATKRead tertiarySup = ArtificialReadUtils.createArtificialRead(header, "read3", 3, 10003, new byte[] {}, new byte[] {}, "4D");
+        tertiarySup.setMappingQuality(200);
+        sups.add(tertiarySup);
+        ReadUtils.setReadsAsSupplemental(primarySup,sups);
+        Assert.assertEquals(sups.size(), 2);
+        Assert.assertEquals(sups.get(0).getAttributeAsString("SA"), "read1,10000,2,4M,100,20;read3,10003,4,4D,200,;");
+        Assert.assertTrue(sups.get(1).getAttributeAsString("SA").startsWith("read1,10000,2,4M,100,20;"));
+        Assert.assertTrue(primarySup.getAttributeAsString("SA").contains("read3,10003,4,4D,200,;"));
+        Assert.assertTrue(primarySup.getAttributeAsString("SA").contains("read2,10001,3,4S,200,;"));
+        GATKRead unmappedSup = ArtificialReadUtils.createArtificialUnmappedRead(header,new byte[] {}, new byte[] {});
+        sups.clear();
+        sups.add(unmappedSup);
+        ReadUtils.setReadsAsSupplemental(primarySup,sups);
+        Assert.assertEquals(primarySup.getAttributeAsString("SA"), "*,0,*,*,0,;");
+        Assert.assertEquals(sups.get(0).getAttributeAsString("SA"), "read1,10000,2,4M,100,20;");
     }
 
     @DataProvider(name = "ReadHasNoAssignedPositionTestData")

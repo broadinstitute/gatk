@@ -122,6 +122,10 @@ public class ReadClipper {
      * @return the read with the clipping applied.
      */
     public GATKRead clipRead(final ClippingRepresentation algorithm) {
+        return clipRead(algorithm, true);
+    }
+
+    private GATKRead clipRead(final ClippingRepresentation algorithm, boolean runAsserts) {
         Utils.nonNull(algorithm);
         if (ops == null) {
             return getRead();
@@ -137,7 +141,7 @@ public class ReadClipper {
                     fixedOperation = new ClippingOp(op.start, readLength - 1);
                 }
 
-                clippedRead = fixedOperation.apply(algorithm, clippedRead);
+                clippedRead = fixedOperation.apply(algorithm, clippedRead, runAsserts);
             }
         }
         wasClipped = true;
@@ -488,10 +492,146 @@ public class ReadClipper {
         if ( start > 0 && stop < read.getLength() - 1) {
             throw new GATKException(String.format("Trying to clip the middle of the read: start %d, stop %d, cigar: %s", start, stop, read.getCigar().toString()));
         }
-
         this.addOp(new ClippingOp(start, stop));
         final GATKRead clippedRead = clipRead(ClippingRepresentation.HARDCLIP_BASES);
         this.ops = null;
         return clippedRead;
+    }
+
+
+
+    /**
+     * Soft clip the read to the variable region (from refStart to refStop) processing also the clipped bases
+     *
+     * @param read     the read to be clipped
+     * @param refStart the beginning of the variant region (inclusive)
+     * @param refStop  the end of the variant region (inclusive)
+     * @return the read soft clipped to the variant region
+     */
+    public static GATKRead softClipToRegionIncludingClippedBases( final GATKRead read, final int refStart, final int refStop ) {
+        final int start = read.getUnclippedStart();
+        final int stop = start + CigarUtils.countRefBasesBasedOnCigar(read, 0, read.numCigarElements()) - 1;
+
+        if (start <= refStop && stop >= refStart) {
+            if (start < refStart && stop > refStop) {
+                return (new ReadClipper(read)).softClipBothEndsByReferenceCoordinates(refStart - 1, refStop + 1);
+            } else if (start < refStart) {
+                return (new ReadClipper(read)).softClipByReferenceCoordinates(-1, refStart - 1);
+            } else if (stop > refStop) {
+                return (new ReadClipper(read)).softClipByReferenceCoordinates(refStop + 1, -1);
+            }
+            return read;
+        } else {
+            return ReadUtils.emptyRead(read);
+        }
+    }
+
+
+    /**
+     * Soft clips both tails of a read.
+     *   Left tail goes from the beginning to the 'left' coordinate (inclusive)
+     *   Right tail goes from the 'right' coordinate (inclusive) until the end of the read
+     *
+     * @param left the coordinate of the last base to be clipped in the left tail (inclusive)
+     * @param right the coordinate of the first base to be clipped in the right tail (inclusive)
+     * @return a new read, without the clipped bases
+     */
+    private GATKRead softClipBothEndsByReferenceCoordinates(final int left, final int right) {
+        if (read.isEmpty() || left == right) {
+            return ReadUtils.emptyRead(read);
+        }
+        final GATKRead leftTailRead = softClipByReferenceCoordinates(right, -1);
+
+        // after clipping one tail, it is possible that the consequent hard clipping of adjacent deletions
+        // make the left cut index no longer part of the read. In that case, clip the read entirely.
+        if (left > leftTailRead.getEnd()) {
+            return ReadUtils.emptyRead(read);
+        }
+
+        final ReadClipper clipper = new ReadClipper(leftTailRead);
+        return clipper.softClipByReferenceCoordinates(-1, left);
+    }
+
+    public static GATKRead softClipBothEndsByReferenceCoordinates(final GATKRead read, final int left, final int right) {
+        return (new ReadClipper(read)).softClipBothEndsByReferenceCoordinates(left, right);
+    }
+
+    /**
+     * Generic functionality to soft clip a read (is analogous to hardClipByReferenceCoordinates())
+     *
+     * Note, it REQUIRES you to give the directionality of your soft clip (i.e. whether you're clipping the
+     * left of right tail) by specifying either refStart < 0 or refStop < 0.
+     *
+     * @param refStart  first base to clip (inclusive)
+     * @param refStop last base to clip (inclusive)
+     * @return a new read, with the soft clipped bases
+     */
+    protected GATKRead softClipByReferenceCoordinates(final int refStart, final int refStop) {
+        return softClipByReferenceCoordinates(refStart, refStop, true);
+    }
+
+    protected GATKRead softClipByReferenceCoordinates(final int refStart, final int refStop, boolean runAsserts) {
+        if (read.isEmpty()) {
+            return read;
+        }
+        if (read.isUnmapped()) {
+            throw new GATKException("Cannot softclip read "+read.commonToString()+" by reference coordinates because it is unmapped");
+        }
+
+        final int start;
+        final int stop;
+
+        // Determine the read coordinate to start and stop soft clipping
+        if (refStart < 0) {
+            if (refStop < 0) {
+                throw new GATKException("Only one of refStart or refStop must be < 0, not both (" + refStart + ", " + refStop + ")");
+            }
+            start = 0;
+            stop = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStop, ReadUtils.ClippingTail.LEFT_TAIL);
+        }
+        else {
+            if (refStop >= 0) {
+                throw new GATKException("Either refStart or refStop must be < 0 (" + refStart + ", " + refStop + ")");
+            }
+            start = ReadUtils.getReadCoordinateForReferenceCoordinate(read, refStart, ReadUtils.ClippingTail.RIGHT_TAIL);
+            stop = read.getLength() - 1;
+        }
+
+        if (start < 0 || stop > read.getLength() - 1) {
+            throw new GATKException("Trying to clip before the start or after the end of a read");
+        }
+
+        if ( start > stop ) {
+            throw new GATKException(String.format("START (%d) > (%d) STOP -- this should never happen, please check read: %s (CIGAR: %s)", start, stop, read, read.getCigar().toString()));
+        }
+
+        if ( start > 0 && stop < read.getLength() - 1) {
+            throw new GATKException(String.format("Trying to clip the middle of the read: start %d, stop %d, cigar: %s", start, stop, read.getCigar().toString()));
+        }
+        this.addOp(new ClippingOp(start, stop));
+        final GATKRead clippedRead = clipRead(ClippingRepresentation.SOFTCLIP_BASES, runAsserts);
+        this.ops = null;
+        return clippedRead;
+    }
+
+
+    /**
+     * Soft clips a read using read coordinates.
+     *
+     * @param start the first base to clip (inclusive)
+     * @param stop the last base to clip (inclusive)
+     * @return a new read, without the clipped bases
+     */
+    private GATKRead softClipByReadCoordinates(final int start, final int stop) {
+        if (read.isEmpty() || (start == 0 && stop == read.getLength() - 1)) {
+            return ReadUtils.emptyRead(read);
+        }
+
+        this.addOp(new ClippingOp(start, stop));
+        return clipRead(ClippingRepresentation.SOFTCLIP_BASES);
+    }
+
+    public static GATKRead softClipByReadCoordinates(final GATKRead read, final int start, final int stop) {
+        return (new ReadClipper(read)).softClipByReadCoordinates(start, stop);
     }
 }

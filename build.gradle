@@ -257,7 +257,7 @@ test {
 
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
-    maxHeapSize = "2G"
+    maxHeapSize = "4G"
 
 
     if (CI == "true" && CLOUD == "false" ) {

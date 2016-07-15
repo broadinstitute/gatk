@@ -1,45 +1,33 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.Defaults;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-import htsjdk.samtools.util.CloserUtil;
-import htsjdk.samtools.util.IOUtil;
+import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.TwoPassReadWalker;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.rnaseq.OverhangFixingManager;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import org.broadinstitute.hellbender.utils.read.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.stream.StreamSupport;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.*;
+import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.OUTPUT_LONG_NAME;
+import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
 
 /**
  *
@@ -54,7 +42,7 @@ import static org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions.
         oneLineSummary = "Split Reads with N in Cigar",
         programGroup = ReadProgramGroup.class
 )
-public final class SplitNCigarReads extends ReadWalker {
+public final class SplitNCigarReads extends TwoPassReadWalker {
 
     @Argument(fullName = OUTPUT_LONG_NAME, shortName = OUTPUT_SHORT_NAME, doc="Write output to this BAM filename instead of STDOUT")
     protected File OUTPUT;
@@ -89,13 +77,22 @@ public final class SplitNCigarReads extends ReadWalker {
     @Argument(fullName="maxBasesInOverhang", shortName="maxOverhang", doc="max number of bases allowed in the overhang", optional=true)
     protected int MAX_BASES_TO_CLIP = 40;
 
-    @Argument(fullName="doNotFixOverhangs", shortName="doNotFixOverhangs", doc="do not have the walker hard-clip overhanging sections of the reads", optional=true)
+    @Argument(fullName="doNotFixOverhangs", shortName="doNotFixOverhangs", doc="do not have the walker soft-clip overhanging sections of the reads", optional=true)
     protected boolean doNotFixOverhangs = false;
+
+    @Argument(fullName="processSecondaryAlignments", shortName="processSecondaryAlignments", doc="have the walker split secondary alignments (will still repair MC tag without it)", optional=true)
+    protected boolean processSecondaryAlignments = false;
+
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
 
     private SAMFileGATKReadWriter outputWriter;
     private OverhangFixingManager overhangManager;
     ReadTransformer rnaReadTransform;
     private IndexedFastaSequenceFile referenceReader;
+    SAMFileHeader header;
 
     @Override
     public CountingReadFilter makeReadFilter() {
@@ -104,13 +101,13 @@ public final class SplitNCigarReads extends ReadWalker {
     
     @Override
     public void onTraversalStart() {
-        SAMFileHeader header = getHeaderForSAMWriter();
+        header = getHeaderForSAMWriter();
         rnaReadTransform = REFACTOR_NDN_CIGAR_READS ? new NDNCigarReadTransformer() : ReadTransformer.identity();
         try {
             referenceReader = new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceFile());
             GenomeLocParser genomeLocParser = new GenomeLocParser(getBestAvailableSequenceDictionary());
             outputWriter = createSAMWriter(OUTPUT, false);
-            overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs);
+            overhangManager = new OverhangFixingManager(header, outputWriter, genomeLocParser, referenceReader, MAX_RECORDS_IN_MEMORY, MAX_MISMATCHES_IN_OVERHANG, MAX_BASES_TO_CLIP, doNotFixOverhangs, processSecondaryAlignments);
 
         } catch (FileNotFoundException ex) {
             throw new UserException.CouldNotReadInputFile(referenceArguments.getReferenceFile(), ex);
@@ -118,8 +115,20 @@ public final class SplitNCigarReads extends ReadWalker {
     }
 
     @Override
-    public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
-        splitNCigarRead(rnaReadTransform.apply(read),overhangManager);
+    protected void firstPassApply(GATKRead read, ReferenceContext bytes, FeatureContext featureContext) {
+        splitNCigarRead(rnaReadTransform.apply(read),overhangManager, true, header, processSecondaryAlignments);
+    }
+
+    @Override
+    protected void secondPassApply(GATKRead read, ReferenceContext bytes, FeatureContext featureContext) {
+        splitNCigarRead(rnaReadTransform.apply(read),overhangManager, true, header, processSecondaryAlignments);
+    }
+
+    // Activates writing in the manager, which destinguishes each pass
+    @Override
+    protected void afterFirstPass() {
+        super.afterFirstPass();
+        overhangManager.activateWriting();
     }
 
     @Override
@@ -134,33 +143,76 @@ public final class SplitNCigarReads extends ReadWalker {
 
 
     /**
-     * Goes through the cigar string of the read and create new reads for each consecutive non-N elements (while hard clipping the rest of the read).
-     * For example: for a read with cigar '1H2M2D1M2N1M2I1N1M2S' 3 new reads will be created with cigar strings: 1H2M2D1M, 1M2I and 1M2S
+     * Goes through the cigar string of the read and create new reads for each consecutive non-N elements (while soft clipping the rest of the read) that are supplemental to eachother.
+     * For example: for a read with cigar '1H2M2D1M2N1M2I1N1M2S' 3 new reads will be created with cigar strings: 1H2M2D1M6S, 1H3S1M2I2S and 1H6S1M1S
+     * If the read has an MC tag it will be adjusted according to the clipping of that mate based on its cigar
      *
-     * @param read     the read to split
+     * @param read     the read to split (can be null)
+     * @param emitReads   a parameter used to mock behavior for repairing mate cigar string information
      */
-    public static GATKRead splitNCigarRead(final GATKRead read, OverhangFixingManager manager) {
+    public static GATKRead splitNCigarRead(final GATKRead read, OverhangFixingManager manager, boolean emitReads, SAMFileHeader header, boolean secondaryAlignments) {
         final int numCigarElements = read.numCigarElements();
+        List<GATKRead> splitReads = new ArrayList<>(2);
+        boolean sectionHasMatch = false;
+
+        // Run the tool on dummy mate read to determine what the mate cigar will be upon completion, if manager has a prediction then dont repair
+        if (emitReads && read.hasAttribute("MC")) {
+            read.setAttribute("MC", splitNCigarRead(ArtificialReadUtils.createArtificialRead(header ,TextCigarCodec.decode(read.getAttributeAsString("MC"))), manager, false, header, secondaryAlignments).getCigar().toString());
+        }
+        manager.setPredictedMateInformation(read);
+
+        // If it is a secondary alignment, repair its mate-information (assuming its mate was primary) and pass
+        if ( !secondaryAlignments &&  read.isSecondaryAlignment()){
+            manager.addReadGroup(Collections.singletonList(read));
+            return read;
+        }
 
         int firstCigarIndex = 0;
         for ( int i = 0; i < numCigarElements; i++ ) {
             final CigarElement cigarElement = read.getCigar().getCigarElement(i);
-            if (cigarElement.getOperator() == CigarOperator.N) {
-                manager.addRead(splitReadBasedOnCigar(read, firstCigarIndex, i, manager));
+            CigarOperator op = cigarElement.getOperator();
+
+            // One of the "Real" operators
+            if (op == CigarOperator.M || op == CigarOperator.EQ || op == CigarOperator.X ||
+                    op == CigarOperator.I || op == CigarOperator.D) {
+                sectionHasMatch = true;
+            }
+
+            if (op == CigarOperator.N) {
+                if (sectionHasMatch) {
+                    if (emitReads == false) {
+                        // not passing the manager ensures that no splices get added to the manager for fake reads
+                        splitReads.add(splitReadBasedOnCigar(read, firstCigarIndex, i, null));
+                    } else {
+                        splitReads.add(splitReadBasedOnCigar(read, firstCigarIndex, i, manager));
+                    }
+                }
                 firstCigarIndex = i+1;
+                sectionHasMatch = false;
             }
         }
 
         // if there are no N's in the read
-        if (firstCigarIndex == 0) {
-            manager.addRead(read);
+        if (splitReads.size() < 1) {
+            if (emitReads) {
+                manager.addReadGroup(Collections.singletonList(read));
+            }
+            return read;
         }
         //add the last section of the read: from the last N to the the end of the read
         // (it will be done for all the usual cigar string that does not end with N)
-        else if (firstCigarIndex < numCigarElements) {
-            manager.addRead(splitReadBasedOnCigar(read, firstCigarIndex, numCigarElements, null));
+        else if ((firstCigarIndex < numCigarElements) && sectionHasMatch) {
+            splitReads.add(splitReadBasedOnCigar(read, firstCigarIndex, numCigarElements, null));
         }
-        return read;
+
+        if (emitReads) {
+            manager.addReadGroup(splitReads);
+            return read;
+
+        // If emitReads is false then we want the mate of the read
+        } else {
+            return splitReads.get(0);
+        }
     }
 
     /**
@@ -200,7 +252,26 @@ public final class SplitNCigarReads extends ReadWalker {
             forSplitPositions.addSplicePosition(contig, splitStart, splitEnd);
         }
 
-        return ReadClipper.hardClipToRegionIncludingClippedBases(read, startRefIndex, stopRefIndex);
+        return ReadClipper.softClipToRegionIncludingClippedBases(read,startRefIndex,stopRefIndex);
     }
 
+    /**
+     * A method that repairs the NH and NM tags for a group of reads
+     *
+     * @param readFamily         the a list of reads where the first item is the read to be marked as primary
+     * @param header             the file header to associate with the given reads
+     * @return a non-null read representing the section of the original read being split out
+     */
+    public static void repairSuplementaryTags(List<GATKRead> readFamily, SAMFileHeader header) {
+        for (GATKRead read : readFamily) {
+            if (readFamily.size()>1) {
+                read.clearAttribute("NH");
+            }
+            read.setAttribute("NM", SequenceUtil.calculateSamNmTagFromCigar(read.convertToSAMRecord(header)));
+        }
+        if (readFamily.size() > 1) {
+            GATKRead primary = readFamily.remove(0);
+            ReadUtils.setReadsAsSupplemental(primary,readFamily);
+        }
+    }
 }
