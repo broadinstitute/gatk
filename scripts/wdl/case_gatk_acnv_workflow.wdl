@@ -35,6 +35,7 @@ workflow case_gatk_acnv_workflow {
     String is_disable_reference_validation
     String jni_lib    
     String plots_dir
+    Boolean enable_gc_correction
 
   call PadTargets {
     input:
@@ -56,10 +57,32 @@ workflow case_gatk_acnv_workflow {
         mem=2
   }
 
+  call AnnotateTargets {
+    input:
+        entity_id=wf_entity_id_tumor,
+        jar_file=jar_file,
+        padded_target_bed=PadTargets.padded_target_bed,
+        ref_fasta=ref_fasta,
+        ref_fasta_fai=ref_fasta_fai,
+        ref_fasta_dict=ref_fasta_dict,
+        enable_gc_correction=enable_gc_correction,
+        mem=4
+  }
+
+  call CorrectGCBias as TumorCorrectGCBias {
+    input:
+        entity_id=wf_entity_id_tumor,
+        jar_file=jar_file,
+        coverage_file=TumorCalculateTargetCoverage.gatk_cnv_coverage_file,
+        annotated_targets=AnnotateTargets.annotated_targets,
+        enable_gc_correction=enable_gc_correction,
+        mem=4
+  }
+
   call NormalizeSomaticReadCounts as TumorNormalizeSomaticReadCounts {
     input:
         entity_id=wf_entity_id_tumor,
-        coverage_file=TumorCalculateTargetCoverage.gatk_cnv_coverage_file,
+        coverage_file=TumorCorrectGCBias.gatk_cnv_coverage_file_gcbias,
         padded_target_bed=PadTargets.padded_target_bed,
         pon=PoN,
         jar_file=jar_file,
@@ -97,10 +120,20 @@ workflow case_gatk_acnv_workflow {
         mem=2
   }
 
+  call CorrectGCBias as NormalCorrectGCBias {
+    input:
+        entity_id=wf_entity_id_normal,
+        jar_file=jar_file,
+        coverage_file=NormalCalculateTargetCoverage.gatk_cnv_coverage_file,
+        annotated_targets=AnnotateTargets.annotated_targets,
+        enable_gc_correction=enable_gc_correction,
+        mem=4
+  }
+
   call NormalizeSomaticReadCounts as NormalNormalizeSomaticReadCounts {
     input:
         entity_id=wf_entity_id_normal,
-        coverage_file=NormalCalculateTargetCoverage.gatk_cnv_coverage_file,
+        coverage_file=NormalCorrectGCBias.gatk_cnv_coverage_file_gcbias,
         padded_target_bed=PadTargets.padded_target_bed,
         pon=PoN,
         jar_file=jar_file,
@@ -181,12 +214,12 @@ task PadTargets {
     Int mem
 
     command {
-        java -Xmx${mem}g -jar ${jar_file} PadTargets  --targets ${target_bed} --output targets.padded.bed \
+        java -Xmx${mem}g -jar ${jar_file} PadTargets  --targets ${target_bed} --output targets.padded.tsv \
          --padding ${padding}  --help false --version false --verbosity INFO --QUIET false
     }
 
     output {
-        File padded_target_bed = "targets.padded.bed"
+        File padded_target_bed = "targets.padded.tsv"
     }
     #runtime {
     #    docker: "gatk-protected/a1"
@@ -225,6 +258,51 @@ task CalculateTargetCoverage {
     #runtime {
     #    docker: "gatk-protected/a1"
     #}
+}
+
+# Add new columns to an existing target table with various targets
+task AnnotateTargets {
+    String entity_id
+    File padded_target_bed
+    File jar_file
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    Boolean enable_gc_correction
+    Int mem
+
+    command {
+        if [ ${enable_gc_correction} = true ]; \
+          then java -Xmx${mem}g -jar ${jar_file} AnnotateTargets --targets ${padded_target_bed} --reference ${ref_fasta} --output ${entity_id}.annotated.tsv; \
+          else touch ${entity_id}.annotated.tsv; \
+        fi
+    }
+
+    output {
+        File annotated_targets = "${entity_id}.annotated.tsv"
+    }
+}
+
+# Correct coverage for sample-specific GC bias effects
+task CorrectGCBias {
+    String entity_id
+    File coverage_file
+    File annotated_targets
+    File jar_file
+    Boolean enable_gc_correction
+    Int mem
+
+    command {
+        if [ ${enable_gc_correction} = true ]; \
+          then java -Xmx${mem}g -jar ${jar_file} CorrectGCBias --input ${coverage_file} \
+           --output ${entity_id}.gc_corrected_coverage.tsv --targets ${annotated_targets}; \
+          else ln -s ${coverage_file} ${entity_id}.gc_corrected_coverage.tsv; \
+        fi
+    }
+
+    output {
+        File gatk_cnv_coverage_file_gcbias = "${entity_id}.gc_corrected_coverage.tsv"
+    }
 }
 
 # Perform tangent normalization (noise reduction) on the proportional coverage file.
