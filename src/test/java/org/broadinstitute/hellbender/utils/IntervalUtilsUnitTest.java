@@ -857,7 +857,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     }
 
     @Test(expectedExceptions=UserException.MalformedFile.class, dataProvider="invalidIntervalTestData")
-    public void testInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
+    public void testLoadIntervalsInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
                                                   String contig, int intervalStart, int intervalEnd ) throws Exception {
 
         SAMFileHeader picardFileHeader = new SAMFileHeader();
@@ -869,7 +869,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         IntervalList picardIntervals = new IntervalList(picardFileHeader);
         picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname"));
 
-        File picardIntervalFile = createTempFile("testInvalidPicardIntervalHandling", ".intervals");
+        File picardIntervalFile = createTempFile("testLoadIntervalsInvalidPicardIntervalHandling", ".intervals");
         picardIntervals.write(picardIntervalFile);
 
         List<String> intervalArgs = new ArrayList<>(1);
@@ -878,6 +878,44 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         // loadIntervals() will validate all intervals against the sequence dictionary in our genomeLocParser,
         // and should throw for all intervals in our invalidIntervalTestData set
         IntervalUtils.loadIntervals(intervalArgs, IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, genomeLocParser);
+    }
+
+    // TODO - remove once a corrected version of the exome interval list is released.
+    @Test(dataProvider="negativeOneLengthIntervalTestData")
+    public void testIntervalFileToListNegativeOneLength(GenomeLocParser genomeLocParser,
+                                                  String contig, int intervalStart, int intervalEnd ) throws Exception {
+
+        final SAMFileHeader picardFileHeader = new SAMFileHeader();
+        picardFileHeader.addSequence(genomeLocParser.getContigInfo("1"));
+
+        final IntervalList picardIntervals = new IntervalList(picardFileHeader);
+        // Need one good interval or else a UserException.MalformedFile( is thrown if no intervals
+        picardIntervals.add(new Interval(contig, 1, 2, true, "dummyname0"));
+        picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname1"));
+
+        final File picardIntervalFile = createTempFile("testIntervalFileToListNegativeOneLength", ".intervals");
+        picardIntervals.write(picardIntervalFile);
+
+        IntervalUtils.intervalFileToList(genomeLocParser, picardIntervalFile.getAbsolutePath());
+    }
+
+    @Test(expectedExceptions=UserException.CouldNotReadInputFile.class, dataProvider="invalidIntervalTestData")
+    public void testIntervalFileToListInvalidPicardIntervalHandling(GenomeLocParser genomeLocParser,
+                                       String contig, int intervalStart, int intervalEnd ) throws Exception {
+
+        final SAMFileHeader picardFileHeader = new SAMFileHeader();
+        picardFileHeader.addSequence(genomeLocParser.getContigInfo("1"));
+        picardFileHeader.addSequence(new SAMSequenceRecord("2", 100000));
+
+        final IntervalList picardIntervals = new IntervalList(picardFileHeader);
+        picardIntervals.add(new Interval(contig, intervalStart, intervalEnd, true, "dummyname"));
+
+        final File picardIntervalFile = createTempFile("testIntervalFileToListInvalidPicardIntervalHandling", ".intervals");
+        picardIntervals.write(picardIntervalFile);
+
+        // loadIntervals() will validate all intervals against the sequence dictionary in our genomeLocParser,
+        // and should throw for all intervals in our invalidIntervalTestData set
+        IntervalUtils.intervalFileToList(genomeLocParser, picardIntervalFile.getAbsolutePath());
     }
 
     @DataProvider(name="invalidIntervalTestData")
@@ -889,6 +927,19 @@ public final class IntervalUtilsUnitTest extends BaseTest {
                 new Object[] {genomeLocParser, "1", 10000000, 20000000},
                 new Object[] {genomeLocParser, "2", 1, 2},
                 new Object[] {genomeLocParser, "1", -1, 50}
+        };
+    }
+
+    // TODO - remove once a corrected version of the exome interval list is released.
+    @DataProvider(name="negativeOneLengthIntervalTestData")
+    public Object[][] negativeOneLengthIntervalDataProvider() throws Exception {
+        File fastaFile = new File(publicTestDir + "exampleFASTA.fasta");
+        GenomeLocParser genomeLocParser = new GenomeLocParser(new IndexedFastaSequenceFile(fastaFile));
+
+        return new Object[][] {
+                new Object[] {genomeLocParser, "1", 2, 1},
+                new Object[] {genomeLocParser, "1", 500, 499},
+                new Object[] {genomeLocParser, "1", 1000, 999}
         };
     }
 
