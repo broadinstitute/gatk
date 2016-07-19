@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -121,8 +122,7 @@ public final class FamilyLikelihoods {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype);
 
         //update genotype types based on posteriors
-        GATKVariantContextUtils.updateGenotypeAfterSubsetting(vc.getAlleles(), genotype.getPloidy(), builder,
-                GATKVariantContextUtils.GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, log10Posteriors, vc.getAlleles());
+        GATKVariantContextUtils.makeGenotypeCall(vc.getNAlleles(), builder, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, log10Posteriors, vc.getAlleles());
 
         builder.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY,
                 Utils.listFromPrimitives(GenotypeLikelihoods.fromLog10Likelihoods(log10Posteriors).getAsPLs()));

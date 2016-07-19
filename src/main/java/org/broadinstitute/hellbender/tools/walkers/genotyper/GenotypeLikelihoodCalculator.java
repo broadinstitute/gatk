@@ -255,7 +255,6 @@ public final class GenotypeLikelihoodCalculator {
         Utils.nonNull(likelihoods);
         Utils.validateArg(likelihoods.numberOfAlleles() == alleleCount, "mismatch between allele list and alleleCount");
         final int readCount = likelihoods.numberOfReads();
-
         ensureReadCapacity(readCount);
 
         /// [x][y][z] = z * LnLk(Read_x | Allele_y)
@@ -465,8 +464,7 @@ public final class GenotypeLikelihoodCalculator {
      * @return 0 or greater but less than {@link #genotypeCount}.
      */
     public int alleleCountsToIndex(final int ... alleleCountArray) {
-        Utils.nonNull(alleleCountArray);
-
+        Utils.nonNull(alleleCountArray, "the allele counts cannot be null");
         Utils.validateArg((alleleCountArray.length & 1) == 0, "the allele counts array cannot have odd length");
         alleleHeap.clear();
         for (int i = 0; i < alleleCountArray.length; i += 2) {

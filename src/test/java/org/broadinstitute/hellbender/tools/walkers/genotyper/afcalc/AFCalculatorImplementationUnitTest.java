@@ -63,6 +63,6 @@ public final class AFCalculatorImplementationUnitTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testFromCalcClassAbstract() throws Exception {
-        fromCalculatorClass(DiploidExactAFCalculator.class);
+        fromCalculatorClass(ExactAFCalculator.class);
     }
 }

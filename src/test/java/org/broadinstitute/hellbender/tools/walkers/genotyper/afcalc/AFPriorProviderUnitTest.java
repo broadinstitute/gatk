@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.genotyper;
+package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;

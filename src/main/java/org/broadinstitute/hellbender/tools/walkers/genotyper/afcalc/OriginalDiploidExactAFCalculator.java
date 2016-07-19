@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Original bi-allelic ~O(N) implementation.  Kept here for posterity and reference
  */
-final class OriginalDiploidExactAFCalculator extends DiploidExactAFCalculator {
+final class OriginalDiploidExactAFCalculator extends ExactAFCalculator {
 
     @Override
     protected AFCalculationResult computeLog10PNonRef(final VariantContext vc,

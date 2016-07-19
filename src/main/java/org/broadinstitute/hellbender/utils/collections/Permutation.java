@@ -13,7 +13,7 @@ public interface Permutation<E> {
      * Checks whether this permutation is a partial one of the original list.
      *
      * <p>
-     *     A partial permutation is one in that no all original elements take part of.
+     *     A partial permutation is one in that not all original elements take part in.
      * </p>
      *
      * @return {@code true} iff this is a partial permutation.
@@ -48,6 +48,15 @@ public interface Permutation<E> {
      * @return a value between 0 and {@link #fromSize()} - 1.
      */
     public int fromIndex(final int toIndex);
+
+    /**
+     * Given an index of the original list, return whether this index is found at any position of the permuted list.
+     * This is trivial if the permutation is not partial.
+     *
+     * @param fromIndex
+     * @return
+     */
+    public boolean isKept(final int fromIndex);
 
     /**
      * Length of the original element list.
