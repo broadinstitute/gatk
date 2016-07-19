@@ -114,7 +114,7 @@ dependencies {
     compile 'net.sf.jopt-simple:jopt-simple:5.0-beta-1'
     compile 'com.google.cloud.dataflow:google-cloud-dataflow-java-sdk-all:0.4.150727'
     compile 'it.unimi.dsi:fastutil:7.0.6'
-    compile 'com.google.apis:google-api-services-genomics:v1beta2-rev56-1.20.0'
+    compile 'com.google.apis:google-api-services-genomics:v1-rev90-1.22.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
 
    compile 'org.ojalgo:ojalgo:39.0'

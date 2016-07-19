@@ -500,6 +500,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         return genomicsRead.getInfo() != null && genomicsRead.getInfo().containsKey(attributeName);
     }
 
+    @SuppressWarnings("unchecked")
     private String getRawAttributeValue( final String attributeName, final String targetType ) {
         ReadUtils.assertAttributeNameIsLegal(attributeName);
 
@@ -507,7 +508,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return null;
         }
 
-        final List<String> rawValue = genomicsRead.getInfo().get(attributeName);
+        final List<Object> rawValue = genomicsRead.getInfo().get(attributeName);
         if ( rawValue == null || rawValue.isEmpty() || rawValue.get(0) == null ) {
             return null;
         }
@@ -517,7 +518,11 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             throw new GATKException.ReadAttributeTypeMismatch(attributeName, targetType);
         }
 
-        return rawValue.get(0);
+        /*
+         * This cast is necessary since the API requires storing a map of String -> Object, but requires that those objects be Strings
+         * See: https://developers.google.com/resources/api-libraries/documentation/genomics/v1/java/latest/com/google/api/services/genomics/model/Read.html#setInfo(java.util.Map)
+         */
+        return (String)rawValue.get(0);
     }
 
     @Override
@@ -561,7 +566,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return;
         }
 
-        final List<String> encodedValue = Arrays.asList(attributeValue.toString());
+        final List<Object> encodedValue = Collections.singletonList(attributeValue.toString());
         genomicsRead.getInfo().put(attributeName, encodedValue);
     }
 
@@ -574,7 +579,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return;
         }
 
-        final List<String> encodedValue = Arrays.asList(attributeValue);
+        final List<Object> encodedValue = Collections.singletonList(attributeValue);
         genomicsRead.getInfo().put(attributeName, encodedValue);
     }
 
@@ -587,7 +592,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return;
         }
 
-        final List<String> encodedValue = Arrays.asList(new String(attributeValue));
+        final List<Object> encodedValue = Collections.singletonList(new String(attributeValue));
         genomicsRead.getInfo().put(attributeName, encodedValue);
     }
 
@@ -729,8 +734,8 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             genomicsRead.setAlignedQuality(new ArrayList<>(alignedQuality));
         }
         if (null!=genomicsRead.getInfo()) {
-            Map<String, List<String>> infoCopy = new LinkedHashMap<>();
-            for (Map.Entry<String, List<String>> entry : genomicsRead.getInfo().entrySet()) {
+            Map<String, List<Object>> infoCopy = new LinkedHashMap<>();
+            for (Map.Entry<String, List<Object>> entry : genomicsRead.getInfo().entrySet()) {
                 infoCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
             }
             genomicsRead.setInfo(infoCopy);
