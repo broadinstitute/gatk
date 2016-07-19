@@ -197,7 +197,7 @@ public class ReferenceAPISource implements ReferenceSource, Serializable {
               if (received.length < interval.size()) {
                   final List<byte[]> blobs = new ArrayList<>();
                   blobs.add(received);
-                  while (! result.getNextPageToken().isEmpty()) {
+                  while (result.getNextPageToken() != null  && !result.getNextPageToken().isEmpty()) {
                       listRequest.setPageToken(result.getNextPageToken());
                       result = listRequest.execute();
                       blobs.add(result.getSequence().getBytes());

@@ -518,6 +518,10 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             throw new GATKException.ReadAttributeTypeMismatch(attributeName, targetType);
         }
 
+        /*
+         * This cast is necessary since the API requires storing a map of String -> Object, but requires that those objects be Strings
+         * See: https://developers.google.com/resources/api-libraries/documentation/genomics/v1/java/latest/com/google/api/services/genomics/model/Read.html#setInfo(java.util.Map)
+         */
         return (String)rawValue.get(0);
     }
 
@@ -562,7 +566,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return;
         }
 
-        final List<Object> encodedValue = Arrays.asList(attributeValue.toString());
+        final List<Object> encodedValue = Collections.singletonList(attributeValue.toString());
         genomicsRead.getInfo().put(attributeName, encodedValue);
     }
 
@@ -575,7 +579,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return;
         }
 
-        final List<Object> encodedValue = Arrays.asList(attributeValue);
+        final List<Object> encodedValue = Collections.singletonList(attributeValue);
         genomicsRead.getInfo().put(attributeName, encodedValue);
     }
 
@@ -588,7 +592,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
             return;
         }
 
-        final List<Object> encodedValue = Arrays.asList(new String(attributeValue));
+        final List<Object> encodedValue = Collections.singletonList(new String(attributeValue));
         genomicsRead.getInfo().put(attributeName, encodedValue);
     }
 
