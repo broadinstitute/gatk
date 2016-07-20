@@ -35,5 +35,14 @@ public class CallVariantsFromAlignedContigsSparkTest extends BaseTest {
         final Tuple2<String, AssembledBreakpoint> breakpointTuple2 = new Tuple2<>("14880", breakpoint2);
 
         Assert.assertFalse(CallVariantsFromAlignedContigsSpark.inversionBreakpointFilter(breakpointTuple2));
+
+        final AlignmentRegion region5 = new AlignmentRegion(TextCigarCodec.decode("137M141S"), true, new SimpleInterval("19", 38343346, 38343483), 60, 1, 137);
+        final AlignmentRegion region6 = new AlignmentRegion(TextCigarCodec.decode("137S141M"), false, new SimpleInterval("19", 38342908, 38343049), 60, 138, 278);
+        final AssembledBreakpoint breakpoint3 = new AssembledBreakpoint("contig-7", region5, region6, "", "");
+
+        final Tuple2<String, AssembledBreakpoint> breakpointTuple3 = new Tuple2<>("14399", breakpoint3);
+
+        Assert.assertTrue(CallVariantsFromAlignedContigsSpark.inversionBreakpointFilter(breakpointTuple3));
+
     }
 }

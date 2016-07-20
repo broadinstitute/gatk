@@ -159,7 +159,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final AlignmentRegion region2 = assembledBreakpoint._2.region2;
         return region1.referenceInterval.getContig().equals(region2.referenceInterval.getContig()) &&
                 (region1.forwardStrand && ! region2.forwardStrand || ! region1.forwardStrand && region2.forwardStrand) &&
-                region1.referenceInterval.getEnd() <= region2.referenceInterval.getStart();
+                ! region1.referenceInterval.overlaps(region2.referenceInterval);
     }
 
     private static Tuple2<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> keyByBreakpointAllele(final Tuple2<String, AssembledBreakpoint> breakpointIdAndAssembledBreakpoint) {
