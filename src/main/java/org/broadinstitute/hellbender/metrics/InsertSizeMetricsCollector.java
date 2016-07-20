@@ -1,187 +1,226 @@
 package org.broadinstitute.hellbender.metrics;
 
-import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SamPairUtil;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
-import htsjdk.samtools.util.Histogram;
-import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.metrics.MultiLevelCollector;
-import org.broadinstitute.hellbender.metrics.PerUnitMetricCollector;
+import htsjdk.samtools.util.IOUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.AuthHolder;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
+import org.broadinstitute.hellbender.utils.R.RScriptExecutorException;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.Resource;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.File;
 import java.io.Serializable;
-import java.util.*;
 
 /**
- * Collects InsertSizeMetrics on the specified accumulationLevels using
+ * Collects InsertSizeMetrics on the specified accumulationLevels
  */
 public final class InsertSizeMetricsCollector
-        extends MultiLevelCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs>
-        implements Serializable {
-
+        extends MultiLevelReducibleCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs, PerUnitInsertSizeMetricsCollector>
+        implements Serializable
+{
     private static final long serialVersionUID = 1L;
+    private static final Logger log = LogManager.getLogger(InsertSizeMetricsCollector.class);
 
-    // When generating the Histogram, discard any data categories (out of FR, TANDEM, RF) that have fewer than this
-    // percentage of overall reads. (Range: 0 to 1)
-    private final double minimumPct;
+    InsertSizeMetricsArgumentCollection inputArgs = null;
 
-    // Generate mean, sd and plots by trimming the data down to MEDIAN + DEVIATIONS*MEDIAN_ABSOLUTE_DEVIATION.
-    // This is done because insert size data typically includes enough anomolous values from chimeras and other
-    // artifacts to make the mean and sd grossly misleading regarding the real distribution.
-    private final double deviations;
+    /**
+     * @param inputArgs InsertSizeMetricsArgumentCollection populated with argument values. May not be null.
+     * @param samHeader samHeader for the input to be processed. May not be null.
+     */
+    public InsertSizeMetricsCollector(
+            final InsertSizeMetricsArgumentCollection inputArgs,
+            final SAMFileHeader samHeader)
+    {
+        Utils.nonNull(inputArgs);
+        Utils.nonNull(samHeader);
 
-    //Explicitly sets the Histogram width, overriding automatic truncation of Histogram tail.
-    //Also, when calculating mean and stdev, only bins <= HISTOGRAM_WIDTH will be included.
-    private Integer HistogramWidth;
-
-    public InsertSizeMetricsCollector(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords,
-                                      final double minimumPct, final Integer HistogramWidth, final double deviations) {
-        this.minimumPct = minimumPct;
-        this.HistogramWidth = HistogramWidth;
-        this.deviations = deviations;
-        setup(accumulationLevels, samRgRecords);
+        this.inputArgs = inputArgs;
+        setup(inputArgs.metricAccumulationLevel, samHeader.getReadGroups());
     }
 
-    // We will pass insertSize and PairOrientation with the DefaultPerRecordCollectorArgs passed to the record collectors
-    // This method is called once Per samRecord
+    /**
+     * Return the read filter for InsertSizeMetrics collector.
+     * @param samHeader SAMFileHeader for the input file. May not be null
+     * @return ReadFilter to be used to filter records
+     */
+    public ReadFilter getReadFilter(SAMFileHeader samHeader) {
+        Utils.nonNull(samHeader);
+        return new WellformedReadFilter(samHeader).and(
+                new InsertSizeMetricsReadFilter(
+                    inputArgs.useEnd,
+                    inputArgs.filterNonProperlyPairedReads,
+                    !inputArgs.useDuplicateReads,
+                    !inputArgs.useSecondaryAlignments,
+                    !inputArgs.useSupplementaryAlignments,
+                    inputArgs.MQPassingThreshold
+            )
+        );
+    }
+
+    // We will pass insertSize and PairOrientation with the DefaultPerRecordCollectorArgs passed to
+    // the record collectors. This method is called once per samRecord
     @Override
     protected InsertSizeMetricsCollectorArgs makeArg(SAMRecord samRecord, ReferenceSequence refSeq) {
+        // inferred insert size is negative if the mate maps to lower position than the read, so use abs
         final int insertSize = Math.abs(samRecord.getInferredInsertSize());
         final SamPairUtil.PairOrientation orientation = SamPairUtil.getPairOrientation(samRecord);
 
         return new InsertSizeMetricsCollectorArgs(insertSize, orientation);
     }
 
-    /** Make an InsertSizeCollector with the given arguments */
+    // Make an PerUnitInsertSizeMetricsCollector with the given arguments
     @Override
-    protected PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs> makeChildCollector(final String sample, final String library, final String readGroup) {
-        return new PerUnitInsertSizeMetricsCollector(sample, library, readGroup);
+    protected PerUnitInsertSizeMetricsCollector makeChildCollector(
+            final String sample,
+            final String library,
+            final String readGroup) {
+        return new PerUnitInsertSizeMetricsCollector(
+                sample,
+                library,
+                readGroup,
+                inputArgs.minimumPct,
+                inputArgs.maxMADTolerance,
+                inputArgs.histogramWidth);
     }
 
-    @Override
-    public void acceptRecord(final SAMRecord record, final ReferenceSequence refSeq) {
-        if (!record.getReadPairedFlag() ||
-                record.getReadUnmappedFlag() ||
-                record.getMateUnmappedFlag() ||
-                record.getFirstOfPairFlag() ||
-                record.isSecondaryOrSupplementary() ||
-                record.getDuplicateReadFlag() ||
-                record.getInferredInsertSize() == 0) {
-            return;
+    /**
+     * Combine two InsertSizeMetricsCollector objects and return a single InsertSizeMetricsCollector
+     * object representing the combined results. NOTE: this implementation is destructive in that it
+     * merges the source into the target and returns the target as the combined object.
+     * @param target target destination of combined metrics. May not be null.
+     * @param source source of metrics to be combined into target. May not be null.
+     * @return single object representing the combined source and target objects
+     */
+    public InsertSizeMetricsCollector combine(InsertSizeMetricsCollector target, InsertSizeMetricsCollector source) {
+        Utils.nonNull(target);
+        Utils.nonNull(source);
+        target.combine(source);
+        return target;
+    }
+
+    /**
+     * Combine two PerUnitInsertSizeMetricsCollector objects and return a single PerUnitInsertSizeMetricsCollector
+     * object representing the combined results.
+     * @param collector1 source PerUnitInsertSizeMetricsCollector. May not be null.
+     * @param collector2 target PerUnitInsertSizeMetricsCollector. May not be null.
+     * @return single PerUnitInsertSizeMetricsCollector object representing the combined source and target objects
+     */
+    public PerUnitInsertSizeMetricsCollector combineUnit(
+            PerUnitInsertSizeMetricsCollector collector1,
+            PerUnitInsertSizeMetricsCollector collector2) {
+        Utils.nonNull(collector1);
+        Utils.nonNull(collector2);
+        return collector1.combine(collector2);
+    }
+
+    /**
+     * Finish the metrics collection by saving any results to a metrics file.
+     * @param metricsFile a metricsFile where the collected metrics should be stored. May not be null.
+     * @param inputName the name of the input, for optional inclusion in the metrics file. May not be null.
+     * @param authHolder Authentication info for this context.
+     */
+    public void finish(
+            final MetricsFile<InsertSizeMetrics, Integer> metricsFile,
+            final String inputName,
+            final AuthHolder authHolder)
+    {
+        Utils.nonNull(metricsFile);
+
+        finish();
+        addAllLevelsToFile(metricsFile);
+
+        if (metricsFile.getNumHistograms() == 0) { // can happen if user sets MINIMUM_PCT = 0.5, etc.
+            log.warn("All data categories were discarded because they contained < " + inputArgs.minimumPct +
+                     " of the total aligned paired data.");
+            final PerUnitInsertSizeMetricsCollector allReadsCollector = getAllReadsCollector();
+            log.warn("Total mapped pairs in all categories: " + (allReadsCollector == null ?
+                    allReadsCollector :
+                    allReadsCollector.getTotalInserts()));
         }
-
-        super.acceptRecord(record, refSeq);
-    }
-
-    /** A Collector for individual InsertSizeMetrics for a given SAMPLE or SAMPLE/LIBRARY or SAMPLE/LIBRARY/READ_GROUP (depending on aggregation levels) */
-    public final class PerUnitInsertSizeMetricsCollector implements PerUnitMetricCollector<InsertSizeMetrics, Integer, InsertSizeMetricsCollectorArgs> {
-        final EnumMap<SamPairUtil.PairOrientation, Histogram<Integer>> Histograms = new EnumMap<>(SamPairUtil.PairOrientation.class);
-        final String sample;
-        final String library;
-        final String readGroup;
-        private double totalInserts = 0;
-
-        public PerUnitInsertSizeMetricsCollector(final String sample, final String library, final String readGroup) {
-            this.sample = sample;
-            this.library = library;
-            this.readGroup = readGroup;
-            String prefix = null;
-            if (this.readGroup != null) {
-                prefix = this.readGroup + ".";
-            }
-            else if (this.library != null) {
-                prefix = this.library + ".";
-            }
-            else if (this.sample != null) {
-                prefix = this.sample + ".";
+        else {
+            if (null != authHolder) {
+                MetricsUtils.saveMetrics(metricsFile, inputArgs.output, authHolder);
             }
             else {
-                prefix = "All_Reads.";
+                metricsFile.write(new File(inputArgs.output));
             }
-            Histograms.put(SamPairUtil.PairOrientation.FR,     new Histogram<>("insert_size", prefix + "fr_count"));
-            Histograms.put(SamPairUtil.PairOrientation.TANDEM, new Histogram<>("insert_size", prefix + "tandem_count"));
-            Histograms.put(SamPairUtil.PairOrientation.RF,     new Histogram<>("insert_size", prefix + "rf_count"));
-        }
-
-        public void acceptRecord(final InsertSizeMetricsCollectorArgs args) {
-            Histograms.get(args.getPairOrientation()).increment(args.getInsertSize());
-        }
-
-        public void finish() { }
-
-        public double getTotalInserts() {
-            return totalInserts;
-        }
-
-        @SuppressWarnings("unchecked")
-        public void addMetricsToFile(final MetricsFile<InsertSizeMetrics,Integer> file) {
-            for (final Histogram<Integer> h : this.Histograms.values()) totalInserts += h.getCount();
-
-            for(final Map.Entry<SamPairUtil.PairOrientation, Histogram<Integer>> entry : Histograms.entrySet()) {
-                final SamPairUtil.PairOrientation pairOrientation = entry.getKey();
-                final Histogram<Integer> Histogram = entry.getValue();
-                final double total = Histogram.getCount();
-
-                // Only include a category if it has a sufficient percentage of the data in it
-                if( total > totalInserts * minimumPct ) {
-                    final InsertSizeMetrics metrics = new InsertSizeMetrics();
-                    metrics.SAMPLE             = this.sample;
-                    metrics.LIBRARY            = this.library;
-                    metrics.READ_GROUP         = this.readGroup;
-                    metrics.PAIR_ORIENTATION   = pairOrientation;
-                    metrics.READ_PAIRS         = (long) total;
-                    metrics.MAX_INSERT_SIZE    = (int) Histogram.getMax();
-                    metrics.MIN_INSERT_SIZE    = (int) Histogram.getMin();
-                    metrics.MEDIAN_INSERT_SIZE = Histogram.getMedian();
-                    metrics.MEDIAN_ABSOLUTE_DEVIATION = Histogram.getMedianAbsoluteDeviation();
-
-                    final double median  = Histogram.getMedian();
-                    double covered = 0;
-                    double low  = median;
-                    double high = median;
-
-                    while (low >= Histogram.getMin() || high <= Histogram.getMax()) {
-                        final Histogram.Bin<Integer> lowBin = Histogram.get((int) low);
-                        if (lowBin != null) covered += lowBin.getValue();
-
-                        if (low != high) {
-                            final Histogram.Bin<Integer> highBin = Histogram.get((int) high);
-                            if (highBin != null) covered += highBin.getValue();
-                        }
-
-                        final double percentCovered = covered / total;
-                        final int distance = (int) (high - low) + 1;
-                        if (percentCovered >= 0.1  && metrics.WIDTH_OF_10_PERCENT == 0) metrics.WIDTH_OF_10_PERCENT = distance;
-                        if (percentCovered >= 0.2  && metrics.WIDTH_OF_20_PERCENT == 0) metrics.WIDTH_OF_20_PERCENT = distance;
-                        if (percentCovered >= 0.3  && metrics.WIDTH_OF_30_PERCENT == 0) metrics.WIDTH_OF_30_PERCENT = distance;
-                        if (percentCovered >= 0.4  && metrics.WIDTH_OF_40_PERCENT == 0) metrics.WIDTH_OF_40_PERCENT = distance;
-                        if (percentCovered >= 0.5  && metrics.WIDTH_OF_50_PERCENT == 0) metrics.WIDTH_OF_50_PERCENT = distance;
-                        if (percentCovered >= 0.6  && metrics.WIDTH_OF_60_PERCENT == 0) metrics.WIDTH_OF_60_PERCENT = distance;
-                        if (percentCovered >= 0.7  && metrics.WIDTH_OF_70_PERCENT == 0) metrics.WIDTH_OF_70_PERCENT = distance;
-                        if (percentCovered >= 0.8  && metrics.WIDTH_OF_80_PERCENT == 0) metrics.WIDTH_OF_80_PERCENT = distance;
-                        if (percentCovered >= 0.9  && metrics.WIDTH_OF_90_PERCENT == 0) metrics.WIDTH_OF_90_PERCENT = distance;
-                        if (percentCovered >= 0.99 && metrics.WIDTH_OF_99_PERCENT == 0) metrics.WIDTH_OF_99_PERCENT = distance;
-
-                        --low;
-                        ++high;
-                    }
-
-                    // Trim the Histogram down to get rid of outliers that would make the chart useless.
-                    final Histogram<Integer> trimmedHisto = Histogram; //alias it
-                    if (HistogramWidth == null) {
-                        HistogramWidth = (int) (metrics.MEDIAN_INSERT_SIZE + (deviations * metrics.MEDIAN_ABSOLUTE_DEVIATION));
-                    }
-
-                    trimmedHisto.trimByWidth(HistogramWidth);
-
-                    metrics.MEAN_INSERT_SIZE = trimmedHisto.getMean();
-                    metrics.STANDARD_DEVIATION = trimmedHisto.getStandardDeviation();
-
-                    file.addHistogram(trimmedHisto);
-                    file.addMetric(metrics);
-                }
+            if (inputArgs.producePlot) {
+                writeHistogramPDF(inputName);
             }
         }
     }
+
+    /**
+     * Calls R script to plot histogram(s) in PDF.
+     */
+    private void writeHistogramPDF(final String inputName) throws RScriptExecutorException {
+        // path to Picard R script for producing histograms in PDF files.
+        final String R_SCRIPT = "insertSizeHistogram.R";
+
+        File histFile = new File(inputArgs.histogramPlotFile);
+        IOUtil.assertFileIsWritable(histFile);
+
+        final RScriptExecutor executor = new RScriptExecutor();
+        executor.addScript(new Resource(R_SCRIPT, InsertSizeMetricsCollector.class));
+        executor.addArgs(
+                inputArgs.output,           // text-based metrics file
+                histFile.getAbsolutePath(), // PDF graphics file
+                inputName                   // input bam file
+        );
+        if (inputArgs.histogramWidth != null) {
+            executor.addArgs(String.valueOf(inputArgs.histogramWidth));
+        }
+        executor.exec();
+    }
+
+    /**
+     * Custom read filter, paramaterized by InsertSizeMetricsArgumentCollection provided
+     */
+    private static final class InsertSizeMetricsReadFilter implements ReadFilter, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private final ReadFilter combinedReadFilter;
+
+        public InsertSizeMetricsReadFilter(final InsertSizeMetricsArgumentCollection.EndToUse whichEnd,
+                                           final boolean filterNonProperlyPairedReads,
+                                           final boolean filterDuplicatedReads,
+                                           final boolean filterSecondaryAlignments,
+                                           final boolean filterSupplementaryAlignments,
+                                           final int MQThreshold){
+
+            final InsertSizeMetricsArgumentCollection.EndToUse endVal = whichEnd;
+
+            ReadFilter tempFilter = ReadFilterLibrary.MAPPED;
+            tempFilter = tempFilter.and(GATKRead::isPaired);
+            tempFilter = tempFilter.and(read -> 0!=read.getFragmentLength());
+            tempFilter = tempFilter.and(read -> endVal == (read.isFirstOfPair() ?
+                    InsertSizeMetricsArgumentCollection.EndToUse.FIRST :
+                    InsertSizeMetricsArgumentCollection.EndToUse.SECOND));
+
+            if(filterNonProperlyPairedReads)  { tempFilter = tempFilter.and(GATKRead::isProperlyPaired); }
+            if(filterDuplicatedReads)         { tempFilter = tempFilter.and(read -> !read.isDuplicate()); }
+            if(filterSecondaryAlignments)     { tempFilter = tempFilter.and(read -> !read.isSecondaryAlignment()); }
+            if(filterSupplementaryAlignments) { tempFilter = tempFilter.and(read -> !read.isSupplementaryAlignment()); }
+
+            if(0!=MQThreshold)  { tempFilter = tempFilter.and(read -> read.getMappingQuality() >= MQThreshold);}
+
+            combinedReadFilter = tempFilter;
+        }
+
+        @Override
+        public boolean test(final GATKRead read){
+            return combinedReadFilter.test(read);
+        }
+    }
+
 }

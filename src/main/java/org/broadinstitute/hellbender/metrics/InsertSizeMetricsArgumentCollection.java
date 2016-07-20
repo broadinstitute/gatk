@@ -1,9 +1,9 @@
-package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
+package org.broadinstitute.hellbender.metrics;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 
+import java.io.File;
+import java.io.Serializable;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -16,23 +16,35 @@ import java.util.Set;
 // TODO: user argument validation (eg. maxMADTolerance)
 
 /**
- * MetricsArgumentCollection argument collection for InsertSize metrics. All members should be
- * instantiable as command line arguments.
+ * ArgumentCollection for InsertSizeMetrics collectors.
  */
-public class InsertSizeMetricsArgumentCollection extends MetricsArgumentCollection {
-    @Argument(doc = "A local path to PDF file where histogram plot will be saved in.",
-            shortName = "HIST",
-            fullName = "HistogramPlotPDF",
-            optional = false)
-    public String histogramPlotFile = null;
+public class InsertSizeMetricsArgumentCollection extends MetricsArgumentCollection implements Serializable {
 
-    @Argument(doc = "Generate mean, sd and plots by trimming the data down to MEDIAN + maxMADTolerance*MEDIAN_ABSOLUTE_DEVIATION. " +
+    private static final long serialVersionUID = 1L;
+
+    @Argument(fullName = "histogramPlotFile",
+            shortName="H",
+            doc="File to write insert size Histogram chart to.")
+    public String histogramPlotFile;
+
+    @Argument(doc="Generate mean, sd and plots by trimming the data down to MEDIAN + maxMADTolerance*MEDIAN_ABSOLUTE_DEVIATION. " +
             "This is done because insert size data typically includes enough anomalous values from chimeras and other " +
             "artifacts to make the mean and sd grossly misleading regarding the real distribution.",
             shortName = "TOL",
             fullName = "HistogramPlotDeviationsTolerance",
             optional = true)
     public double maxMADTolerance = 10.0;
+
+    @Argument(shortName="W", doc="Explicitly sets the Histogram width, overriding automatic truncation of Histogram tail. " +
+            "Also, when calculating mean and standard deviation, only bins <= HISTOGRAM_WIDTH will be included.", optional=true)
+    public Integer histogramWidth = null;
+
+    @Argument(shortName="M", doc="When generating the Histogram, discard any data categories (out of FR, TANDEM, RF) that have fewer than this " +
+            "percentage of overall reads. (Range: 0 to 1).")
+    public float minimumPct = 0.05f;
+
+    @Argument(doc = "Should an output plot be created")
+    public boolean producePlot = false;
 
     // read filtering criteria
     @Argument(doc = "If set to true, filter pairs of reads that are not properly--as judged by aligner--oriented.",

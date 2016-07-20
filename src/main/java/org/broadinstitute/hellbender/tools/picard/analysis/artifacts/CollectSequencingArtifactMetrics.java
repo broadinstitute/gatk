@@ -13,6 +13,7 @@ import htsjdk.samtools.util.IntervalListReferenceSequenceMask;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.picard.analysis.SinglePassSamProgram;
@@ -50,6 +51,10 @@ import static htsjdk.samtools.util.CodeUtil.getOrElse;
 )
 public final class CollectSequencingArtifactMetrics extends SinglePassSamProgram {
     static final String USAGE = "Produces metrics to quantify single-base sequencing artifacts from a SAM/BAM file";
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to write the output to.")
+    public File OUTPUT;
 
     @Argument(doc = "An optional list of intervals to restrict analysis to.", optional = true)
     public File INTERVALS;

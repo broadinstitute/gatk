@@ -10,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.illumina.IlluminaAdapterPair;
@@ -47,6 +48,10 @@ public final class CollectAlignmentSummaryMetrics extends SinglePassSamProgram {
     static final String USAGE = "Produces from a SAM/BAM/CRAM file containing summary alignment metrics";
     
     private static final Logger log = LogManager.getLogger();
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to write the output to.")
+    public File OUTPUT;
 
     // Usage and parameters
 

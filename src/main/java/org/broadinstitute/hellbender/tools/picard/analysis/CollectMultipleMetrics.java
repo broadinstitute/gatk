@@ -6,6 +6,8 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
+import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
 
 import java.io.File;
 import java.util.*;
@@ -18,10 +20,10 @@ import java.util.*;
  * @author Tim Fennell
  */
 @CommandLineProgramProperties(
-        summary = "Takes an input SAM/BAM file and reference sequence and runs one or more Picard " +
+        summary = "Takes an input SAM/BAM/CRAM file and reference sequence and runs one or more " +
                 "metrics modules at the same time to cut down on I/O. Currently all programs are run with " +
-                "default options and fixed output extesions, but this may become more flexible in future.",
-        oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM file",
+                "default options and fixed output extensions, but this may become more flexible in future.",
+        oneLineSummary = "A \"meta-metrics\" calculating program that produces multiple metrics for the provided SAM/BAM/CRAM file",
         programGroup = QCProgramGroup.class
 )
 public final class CollectMultipleMetrics extends PicardCommandLineProgram {
@@ -46,8 +48,8 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
             @Override
             public SinglePassSamProgram makeInstance(final String outbase) {
                 final CollectInsertSizeMetrics program = new CollectInsertSizeMetrics();
-                program.OUTPUT = new File(outbase + ".insert_size_metrics");
-                program.HISTOGRAM_FILE = new File(outbase + ".insert_size_histogram.pdf");
+                program.insertSizeArgs.output = outbase + "." + InsertSizeMetrics.getUniqueNameSuffix() + ".txt";
+                program.insertSizeArgs.histogramPlotFile = outbase + "." + InsertSizeMetrics.getUniqueNameSuffix() + ".pdf";
                 return program;
             }
         },
@@ -101,11 +103,11 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
      * developer can invoke this class programmatically and provide alternative Programs to run by calling
      * setProgramsToRun().
      */
-    private List<ProgramInterface> programsToRun;
+    private List<ProgramInterface> programsToRun = null;
 
     @Override
     protected String[] customCommandLineValidation() {
-        programsToRun = new ArrayList<>(PROGRAM);
+        programsToRun = programsToRun == null ? new ArrayList<>(PROGRAM) : programsToRun;
         return super.customCommandLineValidation();
     }
 

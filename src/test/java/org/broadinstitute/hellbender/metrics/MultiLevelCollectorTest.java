@@ -50,6 +50,7 @@ public final class MultiLevelCollectorTest {
     }
 
     class RecordCountMultiLevelCollector extends MultiLevelCollector<TotalNumberMetric, Integer, TestArg> {
+        private static final long serialVersionUID = 1L;
 
         public RecordCountMultiLevelCollector(final Set<MetricAccumulationLevel> accumulationLevels, final List<SAMReadGroupRecord> samRgRecords) {
             setup(accumulationLevels, samRgRecords);
@@ -81,6 +82,7 @@ public final class MultiLevelCollectorTest {
         }
 
         private class RecordCountPerUnitCollector implements PerUnitMetricCollector<TotalNumberMetric, Integer, TestArg>{
+            private static final long serialVersionUID = 1L;
             private final TotalNumberMetric metric;
 
             public RecordCountPerUnitCollector(final String sample, final String library, final String readGroup) {

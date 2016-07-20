@@ -36,6 +36,7 @@ public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelC
 	}
 
 	private class PerUnitRrbsMetricsCollector implements PerUnitMetricCollector<RrbsMetrics, Long, SAMRecordAndReference> {
+		private static final long serialVersionUID = 1L;
 		final String sample;
 		final String library;
 		final String readGroup;

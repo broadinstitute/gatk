@@ -1,222 +1,100 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
-import htsjdk.samtools.SamPairUtil;
-import htsjdk.samtools.util.Histogram;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.ValidationStringency;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
-import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
 import org.broadinstitute.hellbender.tools.spark.pipelines.metrics.InsertSizeMetricsCollectorSpark;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
-import com.google.common.collect.Sets;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import scala.Tuple2;
 
-import java.util.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
 
 /**
- * Testing several of the utility functions defined and used in InsertSizeMetricsCollectorSpark.
+ * This test uses the same input and output as CollectInsertSizeMetricsSparkIntegrationTest,
+ * except that it bypasses CollectInsertSizeMetricsSpark and uses InsertSizeMetricsCollectorSpark
+ * directly in order to force the input RDD to be split across two partitions. This ensures that
+ * the MultiLevelCollector combine and combineUnit methods are executed during the test.
  */
-public final class InsertSizeMetricsCollectorSparkUnitTest {
+public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramTest {
+    private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
-    /**
-     * Testing "long[] InsertSizeMetricsCollectorSpark::computeRanges(final Map<Integer, Long>, final int, final double)",
-     *     using actual valid reads (13 of them) information from "insert_size_metrics_test.bam", where inferred length are
-     *     {36 36 36 38 38 40 41 41 41 41 44 44 45} with median == 40.
-     */
-    @Test(groups = {"sv", "spark"})
-    public void testRanges() throws Exception {
+    public String getTestedClassName() {
+        return InsertSizeMetricsCollectorSpark.class.getSimpleName();
+    }
 
-        final Map<Integer, Long> map = new TreeMap<>();
-        map.put(36, 3L);
-        map.put(38, 2L);
-        map.put(40, 1L);
-        map.put(41, 4L);
-        map.put(44, 2L);
-        map.put(45, 1L);
+    @DataProvider(name="metricsfiles")
+    public Object[][] insertSizeMetricsFiles() {
+        return new Object[][] {
+                {"insert_size_metrics_test.sam", null, false, "expectedInsertSizeMetricsL1.txt"},
+                {"insert_size_metrics_test.bam", null, false, "expectedInsertSizeMetricsL1.txt"},
+                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference, false, "expectedInsertSizeMetricsL1.txt"},
 
-        Histogram<Integer> hist = new Histogram<>("dummy", "test");
-        for(final int size: map.keySet()){
-            hist.prefillBins(size);
-            hist.increment(size, map.get(size));
+                {"insert_size_metrics_test.sam", null, true, "expectedInsertSizeMetricsL3.txt"},
+                {"insert_size_metrics_test.bam", null, true, "expectedInsertSizeMetricsL3.txt"},
+                {"insert_size_metrics_test.cram", hg19_chr1_1M_Reference, true, "expectedInsertSizeMetricsL3.txt"}
+        };
+    }
+
+    @Test(dataProvider="metricsfiles", groups="spark")
+    public void test(
+            final String fileName,
+            final String referenceName,
+            final boolean allLevels,
+            final String expectedResultsFile) throws IOException {
+
+        final String inputPath = new File(TEST_DATA_DIR, fileName).getAbsolutePath();
+        final String referencePath = referenceName != null ? new File(referenceName).getAbsolutePath() : null;
+
+        final File outfile = BaseTest.createTempFile("test", ".insert_size_metrics");
+
+        JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+        ReadsSparkSource readSource = new ReadsSparkSource(ctx, ValidationStringency.DEFAULT_STRINGENCY);
+
+        SAMFileHeader samHeader = readSource.getHeader(inputPath, referencePath, null);
+        JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputPath, referencePath);
+
+        InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();
+        isArgs.output = outfile.getAbsolutePath();
+        isArgs.useEnd = InsertSizeMetricsArgumentCollection.EndToUse.SECOND;
+        if (allLevels) {
+            isArgs.metricAccumulationLevel = new HashSet<>();
+            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.ALL_READS);
+            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.SAMPLE);
+            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.LIBRARY);
+            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.READ_GROUP);
         }
 
-        long[] calculatedBinWidths = InsertSizeMetricsCollectorSpark.computeRanges(hist, 41, 13);
-        long[] expectedBinWidths = {1L, 1L, 1L, 7L, 7L, 7L, 9L, 11L, 11L, 11L};
-        Assert.assertEquals(calculatedBinWidths, expectedBinWidths);
+        InsertSizeMetricsCollectorSpark isSpark = new InsertSizeMetricsCollectorSpark();
+        isSpark.initialize(isArgs, samHeader, null);
+        ReadFilter rf = isSpark.getReadFilter(samHeader);
+
+        // Force the input RDD to be split into two partitions to ensure that the
+        // reduce/combiners run
+        rddParallelReads = rddParallelReads.repartition(2);
+        isSpark.collectMetrics(rddParallelReads.filter(r -> rf.test(r)), samHeader);
+
+        isSpark.saveMetrics(fileName, null);
+
+        IntegrationTestSpec.assertEqualTextFiles(
+                outfile,
+                new File(TEST_DATA_DIR, expectedResultsFile),
+                "#"
+        );
     }
 
-    /**
-     * Tests "ArrayList<Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>> aggregateHistograms(final Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>,
-                                                                                                                            final Set<MetricAccumulationLevel>))
-     * Test case: 1 sample, 2 libraries
-     *            3 read groups, 2 belonging to 1 library, 1 belonging to the other
-     * @throws Exception
-     */
-    @Test(groups = {"sv", "spark"})
-    public void testAggregator() throws Exception{
-
-
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo readGroup1A = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("testSample",
-                                                                                                                            "testLibrary1",
-                                                                                                                            "testReadGroup1A",
-                                                                                                                            MetricAccumulationLevel.READ_GROUP);
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo readGroup1B = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("testSample",
-                                                                                                                            "testLibrary1",
-                                                                                                                            "testReadGroup1B",
-                                                                                                                            MetricAccumulationLevel.READ_GROUP);
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo readGroup2 = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("testSample",
-                                                                                                                            "testLibrary2",
-                                                                                                                            "testReadGroup2",
-                                                                                                                            MetricAccumulationLevel.READ_GROUP);
-
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo library1 = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("testSample",
-                                                                                                                         "testLibrary1",
-                                                                                                                         null,
-                                                                                                                         MetricAccumulationLevel.LIBRARY);
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo library2 = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("testSample",
-                                                                                                                        "testLibrary2",
-                                                                                                                        null,
-                                                                                                                        MetricAccumulationLevel.LIBRARY);
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo sample1 = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("testSample",
-                                                                                                                        null,
-                                                                                                                        null,
-                                                                                                                        MetricAccumulationLevel.SAMPLE);
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo allReads = new InsertSizeMetricsCollectorSpark.GroupMetaInfo(null,
-                                                                                                                         null,
-                                                                                                                         null,
-                                                                                                                         MetricAccumulationLevel.ALL_READS);
-
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup1A = new LinkedHashMap<>();
-        final SortedMap<Integer, Long> testHist1A = new TreeMap<>();
-        testHist1A.put(1,2L);
-        testHist1A.put(3,4L);
-        histogramsOfReadGroup1A.put(SamPairUtil.PairOrientation.FR, testHist1A);
-
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup1B = new LinkedHashMap<>();
-        final SortedMap<Integer, Long> testHist1B = new TreeMap<>();
-        testHist1B.put(50,60L);
-        histogramsOfReadGroup1B.put(SamPairUtil.PairOrientation.FR, testHist1B);
-
-        final Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> histogramsOfReadGroup2 = new LinkedHashMap<>();
-        final SortedMap<Integer, Long> testHist2 = new TreeMap<>();
-        testHist2.put(100,200L);
-        testHist2.put(1,  500L);
-        histogramsOfReadGroup2.put(SamPairUtil.PairOrientation.FR, testHist2);
-
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> histogramsOfAllTestReadGroups = new LinkedHashMap<>();
-        histogramsOfAllTestReadGroups.put(readGroup1A, histogramsOfReadGroup1A);
-        histogramsOfAllTestReadGroups.put(readGroup1B, histogramsOfReadGroup1B);
-        histogramsOfAllTestReadGroups.put(readGroup2 , histogramsOfReadGroup2 );
-
-        final Set<MetricAccumulationLevel> accumLevels = Sets.newLinkedHashSet(Sets.newHashSet(MetricAccumulationLevel.READ_GROUP, MetricAccumulationLevel.LIBRARY, MetricAccumulationLevel.SAMPLE, MetricAccumulationLevel.ALL_READS));
-        final ArrayList<Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>> listOfResults = InsertSizeMetricsCollectorSpark.aggregateHistograms(histogramsOfAllTestReadGroups, accumLevels);
-
-        int sz = 0;
-        for(final Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> entry : listOfResults) { sz += entry.size(); }
-        Assert.assertEquals(sz, 7);
-
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> histogramsOfLibraries = listOfResults.get(1);
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> histogramsOfSamples   = listOfResults.get(2);
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> histogramsOfAllReads  = listOfResults.get(3);
-
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(1), Long.valueOf(502L));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(3), Long.valueOf(4L));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(50), Long.valueOf(60L));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(100), Long.valueOf(200L));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(123), null);
-
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(1),
-                            histogramsOfSamples.get(sample1).get(SamPairUtil.PairOrientation.FR).get(1));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(3),
-                            histogramsOfSamples.get(sample1).get(SamPairUtil.PairOrientation.FR).get(3));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(50),
-                            histogramsOfSamples.get(sample1).get(SamPairUtil.PairOrientation.FR).get(50));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(100),
-                            histogramsOfSamples.get(sample1).get(SamPairUtil.PairOrientation.FR).get(100));
-        Assert.assertEquals(histogramsOfAllReads.get(allReads).get(SamPairUtil.PairOrientation.FR).get(123),
-                            histogramsOfSamples.get(sample1).get(SamPairUtil.PairOrientation.FR).get(123));
-
-        Assert.assertEquals(histogramsOfLibraries.get(library1).get(SamPairUtil.PairOrientation.FR).get(1), Long.valueOf(2L));
-        Assert.assertEquals(histogramsOfLibraries.get(library1).get(SamPairUtil.PairOrientation.FR).get(3), Long.valueOf(4L));
-        Assert.assertEquals(histogramsOfLibraries.get(library1).get(SamPairUtil.PairOrientation.FR).get(50), Long.valueOf(60L));
-        Assert.assertEquals(histogramsOfLibraries.get(library1).get(SamPairUtil.PairOrientation.FR).get(100), null);
-
-        Assert.assertEquals(histogramsOfLibraries.get(library2).get(SamPairUtil.PairOrientation.FR).get(1), Long.valueOf(500L));
-        Assert.assertEquals(histogramsOfLibraries.get(library2).get(SamPairUtil.PairOrientation.FR).get(3), null);
-        Assert.assertEquals(histogramsOfLibraries.get(library2).get(SamPairUtil.PairOrientation.FR).get(50), null);
-        Assert.assertEquals(histogramsOfLibraries.get(library2).get(SamPairUtil.PairOrientation.FR).get(100), Long.valueOf(200L));
-    }
-
-    /**
-     * Tests void convertSortedMapToHTSHistogram(Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>>,
-                                                 final Map<GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>>,
-                                                 final double)
-     * @throws Exception
-     */
-    @Test(groups = {"sv", "spark"})
-    public void testSortedMapToHTSJDKHistogramConverter() throws Exception{
-
-        final InsertSizeMetricsCollectorSpark.GroupMetaInfo testGroup = new InsertSizeMetricsCollectorSpark.GroupMetaInfo("sample", "library", "readGroup", MetricAccumulationLevel.READ_GROUP);
-        final SortedMap<Integer, Long> hist = new TreeMap<>();
-        hist.put(36, 3L);
-        hist.put(38, 2L);
-        hist.put(40, 1L);
-        hist.put(41, 4L);
-        hist.put(44, 2L);
-        hist.put(45, 1L);
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>>> testHist = new LinkedHashMap<>();
-        Map<SamPairUtil.PairOrientation, SortedMap<Integer, Long>> FRMap = new LinkedHashMap<>();
-        FRMap.put(SamPairUtil.PairOrientation.FR, hist);
-        testHist.put(testGroup, FRMap);
-
-        Map<InsertSizeMetricsCollectorSpark.GroupMetaInfo, Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>>> testHTSJDKHistogram = new LinkedHashMap<>();
-        Histogram<Integer> htsjdkHistogram = new Histogram<>("dummy", "test");
-        InsertSizeMetrics metrics = new InsertSizeMetrics();
-        Map<SamPairUtil.PairOrientation, Tuple2<Histogram<Integer>, InsertSizeMetrics>> FRHist = new LinkedHashMap<>();
-        FRHist.put(SamPairUtil.PairOrientation.FR, new Tuple2<>(htsjdkHistogram, metrics));
-
-        testHTSJDKHistogram.put(testGroup, FRHist);
-
-        InsertSizeMetricsCollectorSpark.convertSortedMapToHTSHistogram(testHTSJDKHistogram, testHist, 10.0);
-
-        final Histogram<Integer> filledHistogram = testHTSJDKHistogram.get(testGroup).get(SamPairUtil.PairOrientation.FR)._1();
-        final InsertSizeMetrics filledMetrics = testHTSJDKHistogram.get(testGroup).get(SamPairUtil.PairOrientation.FR)._2();
-
-        Assert.assertEquals(filledHistogram.getMax(), 45.0);
-        Assert.assertEquals(filledHistogram.getMin(), 36.0);
-        Assert.assertEquals(filledHistogram.getCount(), 13.0);
-        Assert.assertEquals(filledHistogram.getMean(), 40.1, 0.05);
-        Assert.assertEquals(filledHistogram.getMeanBinSize(), 2.17, 0.05);
-        Assert.assertEquals(filledHistogram.getStandardDeviation(), 3.1, 0.05);
-        Assert.assertEquals(filledHistogram.getMedian(), 41.0);
-        Assert.assertEquals(filledHistogram.getMedianBinSize(), 2.0);
-        Assert.assertEquals(filledHistogram.getMedianAbsoluteDeviation(), 3.0);
-        Assert.assertEquals(filledHistogram.getSum(), 521.0);
-        Assert.assertEquals(filledHistogram.getMode(), 41.0);
-        Assert.assertEquals(filledHistogram.getPercentile(0.10), 36.0);
-        Assert.assertEquals(filledHistogram.getPercentile(0.50), 41.0);
-        Assert.assertEquals(filledHistogram.getPercentile(0.90), 44.0);
-
-        Assert.assertEquals(filledMetrics.READ_GROUP, "readGroup");
-        Assert.assertEquals(filledMetrics.LIBRARY, "library");
-        Assert.assertEquals(filledMetrics.SAMPLE, "sample");
-
-        Assert.assertEquals(filledMetrics.READ_PAIRS, 13);
-        Assert.assertEquals(filledMetrics.MIN_INSERT_SIZE, 36);
-        Assert.assertEquals(filledMetrics.MAX_INSERT_SIZE, 45);
-        Assert.assertEquals(filledMetrics.MEAN_INSERT_SIZE, 40.1, 0.05);
-        Assert.assertEquals(filledMetrics.STANDARD_DEVIATION, 3.1, 0.05);
-        Assert.assertEquals(filledMetrics.MEDIAN_INSERT_SIZE, 41.0);
-        Assert.assertEquals(filledMetrics.MEDIAN_ABSOLUTE_DEVIATION, 3.0);
-
-        Assert.assertEquals(filledMetrics.WIDTH_OF_10_PERCENT, 1);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_20_PERCENT, 1);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_30_PERCENT, 1);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_40_PERCENT, 7);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_50_PERCENT, 7);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_60_PERCENT, 7);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_70_PERCENT, 9);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_80_PERCENT, 11);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_90_PERCENT, 11);
-        Assert.assertEquals(filledMetrics.WIDTH_OF_99_PERCENT, 11);
-    }
 }

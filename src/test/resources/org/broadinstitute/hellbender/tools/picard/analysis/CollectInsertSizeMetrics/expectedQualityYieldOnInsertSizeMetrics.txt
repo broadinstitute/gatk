@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# picard.analysis.CollectQualityYieldMetrics INPUT=/Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/picard/analysis/CollectInsertSizeMetrics/insert_size_metrics_test.sam OUTPUT=/var/folders/3g/0dh8mspj3pz8qpmm4qqqzblr0000gn/T/test1164885494778037450.quality_yield_metrics    USE_ORIGINAL_QUALITIES=true INCLUDE_SECONDARY_ALIGNMENTS=false INCLUDE_SUPPLEMENTAL_ALIGNMENTS=false ASSUME_SORTED=true STOP_AFTER=0 VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false GA4GH_CLIENT_SECRETS=client_secrets.json
+## htsjdk.samtools.metrics.StringHeader
+# Started on: Wed Jul 06 10:22:48 EDT 2016
+
+## METRICS CLASS	picard.analysis.CollectQualityYieldMetrics$QualityYieldMetrics
+TOTAL_READS	PF_READS	READ_LENGTH	TOTAL_BASES	PF_BASES	Q20_BASES	PF_Q20_BASES	Q30_BASES	PF_Q30_BASES	Q20_EQUIVALENT_YIELD	PF_Q20_EQUIVALENT_YIELD
+52	52	101	5252	5252	3532	3532	3145	3145	6497	6497
+
+

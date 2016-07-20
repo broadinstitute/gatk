@@ -41,7 +41,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
     //The collector that will accept all records (allReads is NULL if !calculateAll)
     private PerUnitMetricCollector<METRIC_TYPE, HISTOGRAM_KEY, ARGTYPE> allReadCollector;
 
-    //A list of Distributor that is at most length 3, 1 for each (SAMPLE, LIBRARY, READ_GROUP) accumulation levels
+    //A list of Distributor that is at most length 4, 1 for each (ALL_READS, SAMPLE, LIBRARY, READ_GROUP) accumulation levels
     //these will be listed in the order in which their children would be added to a metric file
     private List<Distributor> outputOrderedDistributors;
 

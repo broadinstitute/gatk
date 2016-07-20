@@ -47,25 +47,24 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     }
 
     @Override
-    public void initialize(final QualityYieldMetricsArgumentCollection inputArgs, final List<Header> defaultHeaders) {
-        qualityYieldCollector.initialize(inputArgs, defaultHeaders);
+    public void initialize(
+            final QualityYieldMetricsArgumentCollection inputArgs,
+            final SAMFileHeader samHeader,
+            final List<Header> defaultHeaders) {
+        qualityYieldCollector.initialize(inputArgs, samHeader, defaultHeaders);
     }
 
     @Override
     public void collectMetrics(
             final JavaRDD<GATKRead> filteredReads,
-            final SAMFileHeader samHeader,
-            final String inputBaseName,
-            final AuthHolder authHolder)
+            final SAMFileHeader samHeader)
     {
-        qualityYieldCollector.collectMetrics(
-                filteredReads,
-                samHeader,
-                inputBaseName,
-                authHolder
-        );
+        qualityYieldCollector.collectMetrics(filteredReads, samHeader);
     }
 
-    void finishCollection() {}
+    @Override
+    public void finish(final String inputName, final AuthHolder authHolder) {
+        qualityYieldCollector.saveMetrics(inputName, authHolder);
+    }
 
 }

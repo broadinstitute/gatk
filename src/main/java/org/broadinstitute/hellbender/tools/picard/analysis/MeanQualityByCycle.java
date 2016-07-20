@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -35,6 +36,10 @@ import java.util.*;
 )
 public final class MeanQualityByCycle extends SinglePassSamProgram {
     public static final String R_SCRIPT = "meanQualityByCycle.R";
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to write the output to.")
+    public File OUTPUT;
 
     @Argument(shortName="CHART", doc="A file (with .pdf extension) to write the chart to.", optional = true)
     public File CHART_OUTPUT;

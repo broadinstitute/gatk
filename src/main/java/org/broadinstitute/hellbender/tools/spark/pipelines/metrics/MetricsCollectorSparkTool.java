@@ -18,12 +18,12 @@ import java.util.List;
  * Base class for standalone Spark metrics collector tools. Subclasses should
  * adhere to the following pattern:
  *
- * - Declare an instance of a collector that implements the MetricsCollectorSpark interface
+ * - Declare an instance of a collector that implements the {@link MetricsCollectorSpark} interface
  * - Declare an instance of the input argument collection (of type T) for the collector
- * - Implement or override the getReadFilter, initialize, collectMetrics and finishCollection
+ * - Implement or override the {@link #getReadFilter}, {@link #initialize}, {@link #collectMetrics} and {@link #finish}
  *   methods by forwarding to the collector object
  *
- * The runTool method for this class will automatically put the collector through the
+ * The {link #runTool} method for this class will automatically put the collector through the
  * collection lifecycle.
  */
 public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollection>
@@ -32,17 +32,14 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
     private static final long serialVersionUID = 1l;
 
     /**
-     * The following MetricsCollectorSpark methods must be implemented by subclasses
+     * The following {@link MetricsCollectorSpark} methods must be implemented by subclasses
      * and should be forwarded to embedded collector.
      */
     abstract public ReadFilter getReadFilter(SAMFileHeader samHeader);
     abstract SortOrder getExpectedSortOrder();
-    abstract void initialize(T inputArgs, List<Header> defaultHeaders);
-    abstract void collectMetrics(JavaRDD<GATKRead> filteredReads,
-                                    SAMFileHeader samHeader,
-                                    String inputBaseName,
-                                    AuthHolder authHolder);
-    abstract void finishCollection();
+    abstract void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
+    abstract void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
+    abstract void finish(String inputBaseName, AuthHolder authHolder);
 
     /**
      * To be implemented by subclasses; return the fully initialized and populated
@@ -85,15 +82,10 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
             throw new IllegalStateException("A Spark metrics collector must return a non-a null argument object");
         }
 
-        initialize(collectorArgs, getDefaultHeaders());
+        initialize(collectorArgs, getHeaderForReads(), getDefaultHeaders());
         final JavaRDD<GATKRead> filteredReads = getReads();
-        collectMetrics(
-                filteredReads,
-                getHeaderForReads(),
-                getReadSourceName(),
-                getAuthHolder()
-        );
-        finishCollection();
+        collectMetrics(filteredReads, getHeaderForReads());
+        finish(getReadSourceName(), getAuthHolder());
     }
 
 }
