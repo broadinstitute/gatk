@@ -330,11 +330,11 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
                         continue;
                     }
 
-                    if (!dontIncludeReadInPileup(read, location.getStart())) {
-                        if ( ! includeReadsWithDeletionAtLoci && op == CigarOperator.D ) {
-                            continue;
-                        }
+                    if ( ! includeReadsWithDeletionAtLoci && op == CigarOperator.D ) {
+                        continue;
+                    }
 
+                    if (!dontIncludeReadInPileup(read, location.getStart())) {
                         pile.add(state.makePileupElement());
                     }
                 }

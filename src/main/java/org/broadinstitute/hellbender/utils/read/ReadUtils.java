@@ -469,13 +469,14 @@ public final class ReadUtils {
         {
             return false;
 	    }
-        if ( read.isReverseStrand() == read.mateIsReverseStrand() )
+        final boolean reverseStrand = read.isReverseStrand();
+        if ( reverseStrand == read.mateIsReverseStrand() )
         // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
         {
             return false;
         }
 
-        if ( read.isReverseStrand() ) {
+        if (reverseStrand) {
             // we're on the negative strand, so our read runs right to left
             return read.getEnd(false) > read.getMateStart(false);
         } else {
