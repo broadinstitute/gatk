@@ -1,14 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterator;
-import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -19,47 +17,23 @@ import java.util.stream.StreamSupport;
  * A class to represent a shard of reads data, optionally expanded by a configurable amount of padded data.
  *
  * The reads are lazily loaded by default (when accessing the reads via {@link #iterator}. Loading all the
- * reads in the shard at once is possible via {@link #loadAllReads}.
+ * reads in the shard at once is possible via {@link #loadAllReads} or {@link #loadAllData()}
  *
  * The reads returned will overlap the expanded padded interval. It's possible to query whether they are within
  * the main part of the shard via {@link #contains} and {@link #containsStartPosition}.
  *
  * The reads in the shard can be filtered via {@link #setReadFilter} (no filtering is performed by default).
  */
-public final class ReadShard implements Iterable<GATKRead>, Locatable {
+public final class ReadShard extends SourceShard<GATKRead> {
 
-    private final SimpleInterval interval;
-    private final SimpleInterval paddedInterval;
-    private final ReadsDataSource readsSource;
-    private ReadFilter readFilter;
     private ReadsDownsampler downsampler;
 
-    /**
-     * Create a new ReadShard spanning the specified interval, with the specified amount of padding.
-     *
-     * @param interval the genomic span covered by this shard
-     * @param paddedInterval the span covered by this shard, plus any additional padding on each side (must contain the un-padded interval)
-     * @param readsSource source of reads from which to populate this shard
-     */
-    public ReadShard( final SimpleInterval interval, final SimpleInterval paddedInterval, final ReadsDataSource readsSource ) {
-        Utils.nonNull(interval);
-        Utils.nonNull(paddedInterval);
-        Utils.nonNull(readsSource);
-        Utils.validateArg(paddedInterval.contains(interval), "The padded interval must contain the un-padded interval");
-
-        this.interval = interval;
-        this.paddedInterval = paddedInterval;
-        this.readsSource = readsSource;
+    public ReadShard(SimpleInterval interval, SimpleInterval paddedInterval, ReadsDataSource readsSource) {
+        super(interval, paddedInterval, readsSource);
     }
 
-    /**
-     * Create a new ReadShard spanning the specified interval, with no additional padding
-     *
-     * @param interval the genomic span covered by this shard
-     * @param readsSource source of reads from which to populate this shard
-     */
-    public ReadShard( final SimpleInterval interval, final ReadsDataSource readsSource ) {
-        this(interval, interval, readsSource);
+    public ReadShard(SimpleInterval interval, ReadsDataSource readsSource) {
+        super(interval, interval, readsSource);
     }
 
     /**
@@ -69,7 +43,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      * @param filter filter to use (may be null, which signifies that no filtering is to be performed)
      */
     public void setReadFilter( final ReadFilter filter ) {
-        this.readFilter = filter;
+        setFilter(filter);;
     }
 
     /**
@@ -83,76 +57,6 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     }
 
     /**
-     * @return Contig this shard belongs to
-     */
-    @Override
-    public String getContig() {
-        return interval.getContig();
-    }
-
-    /**
-     * @return Start position of this shard
-     */
-    @Override
-    public int getStart() {
-        return interval.getStart();
-    }
-
-    /**
-     * @return End position of this shard
-     */
-    @Override
-    public int getEnd() {
-        return interval.getEnd();
-    }
-
-    /**
-     * @return the interval this shard spans
-     */
-    public SimpleInterval getInterval() {
-        return interval;
-    }
-
-    /**
-     * @return the interval this shard spans, potentially with additional padding on each side
-     */
-    public SimpleInterval getPaddedInterval() {
-        return paddedInterval;
-    }
-
-    /**
-     * @return number of bases of padding to the left of our interval
-     */
-    public int numLeftPaddingBases() {
-        return interval.getStart() - paddedInterval.getStart();
-    }
-
-    /**
-     * @return number of bases of padding to the right of our interval
-     */
-    public int numRightPaddingBases() {
-        return paddedInterval.getEnd() - interval.getEnd();
-    }
-
-    /**
-     * @param loc Locatable to test
-     * @return true if loc is completely contained within this shard's interval, otherwise false
-     */
-    public boolean contains( final Locatable loc ) {
-        Utils.nonNull(loc);
-        return interval.contains(loc);
-    }
-
-    /**
-     * @param loc Locatable to test
-     * @return true if loc starts within this shard's interval, otherwise false
-     */
-    public boolean containsStartPosition( final Locatable loc ) {
-        Utils.nonNull(loc);
-        return interval.contains(new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart()));
-    }
-
-    /**
      * @return an iterator over reads in this shard, as filtered using the configured read filter
      *         and downsampled using the configured downsampler; reads are lazily loaded rather than pre-loaded
      *
@@ -160,17 +64,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      */
     @Override
     public Iterator<GATKRead> iterator() {
-        Iterator<GATKRead> readsIterator = readsSource.query(paddedInterval);
-
-        if ( readFilter != null ) {
-            readsIterator = new ReadFilteringIterator(readsIterator, readFilter);
-        }
-
-        if ( downsampler != null ) {
-            readsIterator = new ReadsDownsamplingIterator(readsIterator, downsampler);
-        }
-
-        return readsIterator;
+        return ( downsampler == null ) ? super.iterator() : new ReadsDownsamplingIterator(super.iterator(), downsampler);
     }
 
     /**
