@@ -119,7 +119,7 @@ public class SourceShardUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "ShardIterationTestData")
-    public void testShardLoadReads( final SourceShard<GATKRead> shard, final List<String> expectedReadNames ) {
+    public void testShardLoadData( final SourceShard<GATKRead> shard, final List<String> expectedReadNames ) {
         final List<String> actualReadNames = new ArrayList<>();
 
         for ( final GATKRead read : shard.loadAllData() ) {

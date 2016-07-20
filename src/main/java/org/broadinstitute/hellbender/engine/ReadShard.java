@@ -76,7 +76,7 @@ public final class ReadShard extends SourceShard<GATKRead> {
      * Note that any read filtering is always performed before any downsampling.
      */
     public List<GATKRead> loadAllReads() {
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED), false).collect(Collectors.toList());
+        return loadAllData();
     }
 
     /**
