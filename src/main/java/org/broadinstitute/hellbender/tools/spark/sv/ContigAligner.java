@@ -92,7 +92,7 @@ public class ContigAligner implements Closeable {
             AlignmentRegion current = iterator.next();
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
-                if (next.mqual < 60 && iterator.hasNext()) {
+                if (treatAlignmentRegionAsInsertion(current, next) && iterator.hasNext()) {
                     continue;
                 }
 
@@ -113,6 +113,10 @@ public class ContigAligner implements Closeable {
             }
         }
         return results;
+    }
+
+    private static boolean treatAlignmentRegionAsInsertion(AlignmentRegion current, AlignmentRegion next) {
+        return next.mqual < 60 || current.referenceInterval.contains(next.referenceInterval);
     }
 
     private Collector<AlignmentRegion, ?, ArrayList<AlignmentRegion>> arrayListCollector(final int size) {
@@ -374,6 +378,25 @@ public class ContigAligner implements Closeable {
             final int alignmentRegion1ContigStart = Integer.valueOf(fields[6]);
             final int alignmentRegion1ContigEnd = Integer.valueOf(fields[7]);
             return new AlignmentRegion(alignmentRegion1Cigar, alignmentRegion1ForwardStrand, alignmentRegion1Interval, alignmentRegion1MQual, alignmentRegion1ContigStart, alignmentRegion1ContigEnd);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            AlignmentRegion that = (AlignmentRegion) o;
+            return forwardStrand == that.forwardStrand &&
+                    mqual == that.mqual &&
+                    startInAssembledContig == that.startInAssembledContig &&
+                    endInAssembledContig == that.endInAssembledContig &&
+                    assembledContigLength == that.assembledContigLength &&
+                    Objects.equals(cigar, that.cigar) &&
+                    Objects.equals(referenceInterval, that.referenceInterval);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(cigar, forwardStrand, referenceInterval, mqual, startInAssembledContig, endInAssembledContig, assembledContigLength);
         }
     }
 
