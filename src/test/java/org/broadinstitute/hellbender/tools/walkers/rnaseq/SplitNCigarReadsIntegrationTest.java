@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.Arrays;
 
 /**
@@ -68,5 +70,15 @@ public final class SplitNCigarReadsIntegrationTest extends CommandLineProgramTes
                 "-R" + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -O %s -L 20:2444518-2454410",
                 Arrays.asList(largeFileTestDir + "expected.NA12878.RNAseq.splitNcigarReads.subSequenceTest.bam")); //results created using gatk3.5
         spec.executeTest("regression test for unmapped and unpaired reads", this);
+    }
+
+    @Test //regression test for https://github.com/broadinstitute/gatk/issues/2026
+    public void testLargeFileThatForcesSnappyUsage(){
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(new File(b37_reference_20_21))
+                .addInput(new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam"))
+                .addOutput(createTempFile("largeSplitNCigarReadsTest",".bam"));
+        //Just make sure this doesn't fail with NoClassDefFoundError
+        runCommandLine(args);
     }
 }
