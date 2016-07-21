@@ -8,11 +8,11 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
+import static org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 
 public class ContigAlignerTest extends BaseTest {
 
@@ -145,9 +145,9 @@ public class ContigAlignerTest extends BaseTest {
 
     @Test
     public void testAlignedBreakpointBreakpointAlelle() throws Exception {
-        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("146M51S"), true, new SimpleInterval("8", 108569148, 108569294), 60, 1, 146);
-        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("147S50M"), false, new SimpleInterval("8", 108569314, 108569364), 60, 148, 197);
-        final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint("contig-1", region1, region2, "TC", "");
+        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("146M51S"), true, new SimpleInterval("8", 108569148, 108569294), 60, 1, 146, 0);
+        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("147S50M"), false, new SimpleInterval("8", 108569314, 108569364), 60, 148, 197, 0);
+        final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint("contig-1", region1, region2, "TC", "", new ArrayList<>());
         final SimpleInterval leftAlignedLeftBreakpointOnAssembledContig = assembledBreakpoint.getLeftAlignedLeftBreakpointOnAssembledContig();
         Assert.assertEquals(leftAlignedLeftBreakpointOnAssembledContig, new SimpleInterval("8", 108569294, 108569294));
         final SimpleInterval leftAlignedRightBreakpointOnAssembledContig = assembledBreakpoint.getLeftAlignedRightBreakpointOnAssembledContig();
@@ -157,9 +157,9 @@ public class ContigAlignerTest extends BaseTest {
     @Test
     public void testGetAssembledBreakpointsFromAlignmentRegions() throws Exception {
         final byte[] contigSequence = "GACGAACGATTTGACTTTAATATGAAATGTTTTATGTGGGCTATAAAATTATCCAAACTCGACACAGGACATTTTGAGCTTATTTCCAAATCATCTGGCCTTCATCTACCCACTGGAACTATTACTCTGCTGGGTCCTCATGGAAACATATCTTTCAGCCCTAACAATGAGACTACAGACATCTACGTCCCCAACACAACAGCTAAAAAGCAGTAGAATGTCAGAAAGGCTATCCACTTAGCCCTTGGCTGACAGGCCCCACTGAGCATCCTTTGCGAAGTCCATTTACTAGCTAATTCATAATTTACACAAGGCATTCAGACATAGCAGCTAAGATATAAAACATTTATCAACACAGGGACTAGTTTGTCATTTTAAAATAATTATGTTTAAGTAAGCCAATAAAGTCTATCTTCTCCAATTTACTTATTGAGCTTTATGAGGCAATTTAAGTCCCGATTTTGGGGGGTATGTATGAAAGGAGAGCATGGAAATGCCATTTGCTCCCTGAAGTTTTTATCTTTTTTTTTTTGAGATAGAGTCTTGTGTTTTCTGTGGAGTACATGAGTATGCATCAAAGCTAACAACGCCCACTGCCCTGTTAGTCAAATACCTTTGA".getBytes();
-        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("532M87S"), true, new SimpleInterval("8", 118873207, 118873739), 60, 1, 532);
-        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("518S29M72S"), false, new SimpleInterval("1", 175705642, 175705671), 3, 519, 547);
-        final AlignmentRegion region3 = new AlignmentRegion(TextCigarCodec.decode("543S76M"), false, new SimpleInterval("1", 118875262, 118875338), 60, 544, 619);
+        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("532M87S"), true, new SimpleInterval("8", 118873207, 118873739), 60, 1, 532, 0);
+        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("518S29M72S"), false, new SimpleInterval("1", 175705642, 175705671), 3, 519, 547, 0);
+        final AlignmentRegion region3 = new AlignmentRegion(TextCigarCodec.decode("543S76M"), false, new SimpleInterval("1", 118875262, 118875338), 60, 544, 619, 0);
         final ArrayList<AlignmentRegion> alignmentRegionList = new ArrayList<>();
         alignmentRegionList.add(region1);
         alignmentRegionList.add(region2);
@@ -177,9 +177,9 @@ public class ContigAlignerTest extends BaseTest {
     @Test
     public void testGetAssembledBreakpointsFromAlignmentRegionsWithOverlappingAlignmentRegion() throws Exception {
         final byte[] contigSequence = "ACTAGAGCATCTACGTGTTCCTGTGGTTTTGGAGCAAGAGTGATTTGAGTTTCAGAGATTTTTACTAATTCTTCTTCCCCTACCAGAAAAAAAGATCTTACCATTTGAGAGTGAGATGTAAACCCAGCCCTGTCTGACCTGAGTCTGTGCCCTAAGCCTATGCTAAGCCAAGCAGTGCCTGGAGCCACCACAGGTCCACACAATTCGTTAACATGATGAAGCAAGGATGGAAATTGGACAAAATAGTGTGCCTACTGAATCTAAGAATGAAAAATGATTGCACTCCTACTCTGAGTGCTTTGGAGCACTGCCCAGTTGGGCAAAGGGTCAGCGCCTGGGCAGAGGTCCCCACAACCTGGCAGGAGTGTGGTCGGCCACCCTATGGGCCTCCATCATGTGCAGTGACAGCGGGGCTGTCATGTCACCGTGTGGGAGGGCTTGCAGGTGAAGTGGTCTGGGAGGGGTCCCCCAGACAAAGCCAAGGTTCTGAGAGTTGGCCCGAACACTGCTGGATTCCACTTCACCTGCAAGCCCTCCCACACGGTGACATGACAGCCTATAATACAGTTCCGCATGGCCACGTCATACAACCCTGTCATATTGGTGAGCAATTGCTGTGTAGCCAAAGACCCCAAAACTCAAACAGCATTTATTATTATTGCCCCCATGTCTGAGAGTCAGATGTGCATTTGCTGATCTCAGCTTGTTTGAGCTGCTGCAGGGTTGGGGCTCTGCTCCAGGCAGGCTTAGCTGTCACCACATGCACACATACATTCTGGGCCTCTGCTGCGCGCGTCACGTTCACTGAAGATCTTGGGATTGGGAGTTAGGGCGGTGGGAGGGCCCAGCAAAGTCACCTGGCGATGGCAGGGACACAGGGAGGAATGTAGAATGGGGCCGATGATGGGACCCACACGTCTGCAAAGCTGCGGTCTCCTTGAGGGGTGGAGACAGCAACAACTCACCGCACGCGGTGCTTCAGTTCACCATCTCCCTGGGACATTAGGGGGCCCCGTGTTATCTCATTTTGCTCTGGTTTGCATTAGTTTTTTATCACTTCGTAGATGAAGCCACTGACACCCAGAGAGGGAAAGTGGCCTGACCAAGGGCCACAGCAGGGGAGCGAAGGAGCCCCACAGTTCGGCAGGAACACAGCCTCTCCCTGGCTTTCAGGTTCACTGACATCTTCTCATGGCCTCTGTAACTCACCAGGCATCAGGGTGTAGTCCTTAGACCAGTGTCCCACAGCTGCCACAGAGTGGGAGCTCACCATCAGTTATAAGTCACTAGAAAGGCTTTTGGACATTATAAGCTACAATGGAAAATAAGTCATCTGTGGATTTTTGTGACAGATTCCAAAAATTTGAATATTTTGTCTACTTAGGTTTTTGGTTAATTTTATCCTCAAAACTGTTCTGCAGTGATTAAGCTGTACAAACTGCATCATGGGCGAATTGGCATATTCAGAAATGACTGATATTCTTGATTTCAGTTTTTTACTTTGTATGTAGCTCCTCAAGGAAAC".getBytes();
-        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("487M1006S"), true, new SimpleInterval("20", 23102817, 23103304), 60, 1, 487);
-        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("483S42M968S"), false, new SimpleInterval("20", 23103196, 23103238), 60, 484, 525);
-        final AlignmentRegion region3 = new AlignmentRegion(TextCigarCodec.decode("523S970M"), true, new SimpleInterval("20", 23103633, 23104603), 60, 524, 1493);
+        final AlignmentRegion region1 = new AlignmentRegion(TextCigarCodec.decode("487M1006S"), true, new SimpleInterval("20", 23102817, 23103304), 60, 1, 487, 1);
+        final AlignmentRegion region2 = new AlignmentRegion(TextCigarCodec.decode("483S42M968S"), false, new SimpleInterval("20", 23103196, 23103238), 60, 484, 525, 2);
+        final AlignmentRegion region3 = new AlignmentRegion(TextCigarCodec.decode("523S970M"), true, new SimpleInterval("20", 23103633, 23104603), 60, 524, 1493, 3);
         final ArrayList<AlignmentRegion> alignmentRegionList = new ArrayList<>();
         alignmentRegionList.add(region1);
         alignmentRegionList.add(region2);
@@ -192,6 +192,8 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(assembledBreakpoint.region2, region3);
         Assert.assertEquals(assembledBreakpoint.homology, "NA");
         Assert.assertEquals(assembledBreakpoint.insertedSequence, "TGAGAGTTGGCCCGAACACTGCTGGATTCCACTTCAC");
+        Assert.assertEquals(assembledBreakpoint.insertionMappings.size(), 1);
+        Assert.assertEquals(assembledBreakpoint.insertionMappings.get(0), "484-525:20,23103196,-,483S42M968S,60,2");
     }
 
 

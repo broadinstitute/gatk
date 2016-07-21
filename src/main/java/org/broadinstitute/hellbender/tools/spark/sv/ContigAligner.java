@@ -88,27 +88,31 @@ public class ContigAligner implements Closeable {
     public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final String contigId, final byte[] sequence, final List<AlignmentRegion> alignmentRegionList) {
         final List<AssembledBreakpoint> results = new ArrayList<>(alignmentRegionList.size() / 2);
         final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
+        final List<String> insertionAlignmentRegions = new ArrayList<>();
         if ( iterator.hasNext() ) {
             AlignmentRegion current = iterator.next();
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
                 if (treatAlignmentRegionAsInsertion(current, next) && iterator.hasNext()) {
+                    insertionAlignmentRegions.add(next.toPackedString());
+                    // todo: track alignments of skipped regions for classification as duplications, mei's etc.
                     continue;
                 }
 
                 final AlignmentRegion previous = current;
                 current = next;
 
-                String homology = "NA";
+                String homology = "";
                 if (previous.endInAssembledContig >= current.startInAssembledContig) {
                     homology = new String(Arrays.copyOfRange(sequence, current.startInAssembledContig - 1, previous.endInAssembledContig));
                 }
 
-                String insertedSequence = "NA";
+                String insertedSequence = "";
                 if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
                     insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
                 }
-                final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, insertedSequence, homology);
+                final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, insertedSequence, homology, insertionAlignmentRegions);
+
                 results.add(assembledBreakpoint);
             }
         }
@@ -192,13 +196,15 @@ public class ContigAligner implements Closeable {
         AlignmentRegion region2;
         String insertedSequence;
         String homology;
+        List<String> insertionMappings;
 
-        public AssembledBreakpoint(final String contigId, final AlignmentRegion region1, final AlignmentRegion region2, final String insertedSequence, final String homology) {
+        public AssembledBreakpoint(final String contigId, final AlignmentRegion region1, final AlignmentRegion region2, final String insertedSequence, final String homology, final List<String> insertionMappings) {
             this.contigId = contigId;
             this.region1 = region1;
             this.region2 = region2;
             this.insertedSequence = insertedSequence;
             this.homology = homology;
+            this.insertionMappings = insertionMappings;
         }
 
         @Override
@@ -209,9 +215,9 @@ public class ContigAligner implements Closeable {
                     "\t" +
                     region2.toString() +
                     "\t" +
-                    insertedSequence +
+                    ("".equals(insertedSequence) ? "NA" : insertedSequence) +
                     "\t" +
-                    homology;
+                    ("".equals(homology) ? "NA" : homology);
         }
 
         /**
@@ -225,13 +231,14 @@ public class ContigAligner implements Closeable {
         public static AssembledBreakpoint fromFields(final String[] fields) {
             try {
                 final String contigId = fields[0].replaceFirst("^>","");
-                final String[] alignmentRegion1Fields = Arrays.copyOfRange(fields, 1, 9);
+                final String[] alignmentRegion1Fields = Arrays.copyOfRange(fields, 1, 10);
                 final AlignmentRegion alignmentRegion1 = AlignmentRegion.fromString(alignmentRegion1Fields);
-                final String[] alignmentRegion2Fields = Arrays.copyOfRange(fields, 9, 17);
+                final String[] alignmentRegion2Fields = Arrays.copyOfRange(fields, 10, 19);
                 final AlignmentRegion alignmentRegion2 = AlignmentRegion.fromString(alignmentRegion2Fields);
-                final String insertedSequence = fields[17].equals("NA") ? "" : fields[17];
-                final String homology = fields[18].equals("NA") ? "" : fields[18];
-                return new AssembledBreakpoint(contigId, alignmentRegion1, alignmentRegion2, insertedSequence, homology);
+                final String insertedSequence = fields[19].equals("NA") ? "" : fields[19];
+                final String homology = fields[20].equals("NA") ? "" : fields[20];
+                final List<String> insertionMappings = Arrays.asList(fields[21].split(";"));
+                return new AssembledBreakpoint(contigId, alignmentRegion1, alignmentRegion2, insertedSequence, homology, insertionMappings);
             } catch (final NumberFormatException nfe) {
                 throw new GATKException(Arrays.toString(fields), nfe);
             }
@@ -304,6 +311,7 @@ public class ContigAligner implements Closeable {
         final int startInAssembledContig;
         final int endInAssembledContig;
         final int assembledContigLength;
+        final int mismatches;
 
 
         public AlignmentRegion(final AlnRgn alnRgn) {
@@ -315,9 +323,10 @@ public class ContigAligner implements Closeable {
             this.assembledContigLength = cigar.getReadLength();
             this.startInAssembledContig = startOfAlignmentInContig(cigar);
             this.endInAssembledContig = endOfAlignmentInContig(assembledContigLength, cigar);
+            this.mismatches = alnRgn.getNm();
         }
 
-        public AlignmentRegion(final Cigar cigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mqual, final int startInAssembledContig, final int endInAssembledContig) {
+        public AlignmentRegion(final Cigar cigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mqual, final int startInAssembledContig, final int endInAssembledContig, final int mismatches) {
             this.cigar = cigar;
             this.forwardStrand = forwardStrand;
             this.referenceInterval = referenceInterval;
@@ -325,6 +334,7 @@ public class ContigAligner implements Closeable {
             this.startInAssembledContig = startInAssembledContig;
             this.endInAssembledContig = endInAssembledContig;
             this.assembledContigLength = cigar.getReadLength();
+            this.mismatches = mismatches;
         }
 
         private static int startOfAlignmentInContig(final Cigar cigar) {
@@ -364,20 +374,23 @@ public class ContigAligner implements Closeable {
                     "\t" +
                     startInAssembledContig +
                     "\t" +
-                    endInAssembledContig;
+                    endInAssembledContig +
+                    "\t" +
+                    mismatches;
         }
 
         public static AlignmentRegion fromString(final String[] fields) {
-            final String alignmentRegion1RefContig = fields[0];
-            final Integer alignmentRegion1RefStart = Integer.valueOf(fields[1]);
-            final Integer alignmentRegion1RefEnd = Integer.valueOf(fields[2]);
-            final SimpleInterval alignmentRegion1Interval = new SimpleInterval(alignmentRegion1RefContig, alignmentRegion1RefStart, alignmentRegion1RefEnd);
-            final boolean alignmentRegion1ForwardStrand = ("+".equals(fields[3]));
-            final Cigar alignmentRegion1Cigar = TextCigarCodec.decode(fields[4]);
-            final int alignmentRegion1MQual = Integer.valueOf(fields[5]);
-            final int alignmentRegion1ContigStart = Integer.valueOf(fields[6]);
-            final int alignmentRegion1ContigEnd = Integer.valueOf(fields[7]);
-            return new AlignmentRegion(alignmentRegion1Cigar, alignmentRegion1ForwardStrand, alignmentRegion1Interval, alignmentRegion1MQual, alignmentRegion1ContigStart, alignmentRegion1ContigEnd);
+            final String refContig = fields[0];
+            final Integer refStart = Integer.valueOf(fields[1]);
+            final Integer refEnd = Integer.valueOf(fields[2]);
+            final SimpleInterval refInterval = new SimpleInterval(refContig, refStart, refEnd);
+            final boolean refStrand = ("+".equals(fields[3]));
+            final Cigar cigar = TextCigarCodec.decode(fields[4]);
+            final int mqual = Integer.valueOf(fields[5]);
+            final int contigStart = Integer.valueOf(fields[6]);
+            final int contigEnd = Integer.valueOf(fields[7]);
+            final int mismatches = Integer.valueOf(fields[8]);
+            return new AlignmentRegion(cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
         }
 
         @Override
@@ -390,13 +403,18 @@ public class ContigAligner implements Closeable {
                     startInAssembledContig == that.startInAssembledContig &&
                     endInAssembledContig == that.endInAssembledContig &&
                     assembledContigLength == that.assembledContigLength &&
+                    mismatches == that.mismatches &&
                     Objects.equals(cigar, that.cigar) &&
                     Objects.equals(referenceInterval, that.referenceInterval);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(cigar, forwardStrand, referenceInterval, mqual, startInAssembledContig, endInAssembledContig, assembledContigLength);
+            return Objects.hash(cigar, forwardStrand, referenceInterval, mqual, startInAssembledContig, endInAssembledContig, assembledContigLength, mismatches);
+        }
+
+        public String toPackedString() {
+            return "" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(cigar) + ',' + mqual + ',' + mismatches;
         }
     }
 
