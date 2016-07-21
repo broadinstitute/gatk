@@ -11,20 +11,20 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
 import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 @CommandLineProgramProperties(summary="Align assembled contigs to the reference and call breakpoints from them.",
         oneLineSummary="Align contigs and call breakpoints",
         programGroup = SparkProgramGroup.class)
-public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
+public class AlignAssembledContigsSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;
 
@@ -34,7 +34,7 @@ public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
      * memory once per partition.
      */
     public static final int NUM_ASSEMBLIES_PER_PARTITION = 400;
-    public static final int EXPECTED_BREAKPOINTS_PER_ASSEMBLY = 10;
+    public static final int EXPECTED_CONTIGS_PER_ASSEMBLY = 15;
 
     @Argument(doc = "file for assembled breakpoint output", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
@@ -44,7 +44,7 @@ public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
             fullName = "inputFile", optional = false)
     private String input;
 
-    private static final Logger log = LogManager.getLogger(AlignContigsAndCallBreakpointsSpark.class);
+    private static final Logger log = LogManager.getLogger(AlignAssembledContigsSpark.class);
 
     @Override
     public boolean requiresReference() {
@@ -68,13 +68,14 @@ public class AlignContigsAndCallBreakpointsSpark extends GATKSparkTool {
                 contigCollectionByBreakpointId.mapValues(ContigsCollection::fromPackedFasta);
         final String referenceFileName = referenceArguments.getReferenceFileName();
 
-        final JavaPairRDD<String, AssembledBreakpoint> assembledBreakpoints = breakpointIdsToContigsCollection.mapPartitionsToPair(iter -> {
+        final JavaPairRDD<String, AlignmentRegion> assembledBreakpoints = breakpointIdsToContigsCollection.mapPartitionsToPair(iter -> {
             try {
                 try (final ContigAligner contigAligner = new ContigAligner(referenceFileName)) {
-                    final List<Tuple2<String, AssembledBreakpoint>> results = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION * EXPECTED_BREAKPOINTS_PER_ASSEMBLY);
+                    final List<Tuple2<String, AlignmentRegion>> results = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION * EXPECTED_CONTIGS_PER_ASSEMBLY);
                     iter.forEachRemaining(cc -> {
-                        final List<AssembledBreakpoint> breakpointAssemblies = contigAligner.alignContigs(cc._2);
-                        breakpointAssemblies.forEach(b -> results.add(new Tuple2<>(cc._1, b)));
+                        String breakpointId = cc._1;
+                        final List<AlignmentRegion> breakpointAssemblies = contigAligner.alignContigs(breakpointId, cc._2);
+                        breakpointAssemblies.forEach(b -> results.add(new Tuple2<>(breakpointId, b)));
                     });
                     return results;
                 }

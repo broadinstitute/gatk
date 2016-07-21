@@ -53,7 +53,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaPairRDD<String, AssembledBreakpoint> inputAlignedBreakpoints = ctx.textFile(input).flatMapToPair(AlignContigsAndCallBreakpointsSpark::parseAlignedAssembledContigLine).cache();
+        final JavaPairRDD<String, AssembledBreakpoint> inputAlignedBreakpoints = ctx.textFile(input).flatMapToPair(AlignAssembledContigsSpark::parseAlignedAssembledContigLine).cache();
 
         final JavaPairRDD<BreakpointAllele, Tuple2<String, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
                 inputAlignedBreakpoints

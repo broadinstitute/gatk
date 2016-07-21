@@ -55,8 +55,8 @@ public class ContigAligner implements Closeable {
         log.info("Created BWA MEM");
     }
 
-    public List<AssembledBreakpoint> alignContigs (final ContigsCollection contigsCollection) {
-        final List<AssembledBreakpoint> assembledBreakpoints = new ArrayList<>();
+    public List<AlignmentRegion> alignContigs(String breakpointId, final ContigsCollection contigsCollection) {
+        final List<AlignmentRegion> alignedContigs = new ArrayList<>();
         try {
             for(final Tuple2<ContigID, ContigSequence> contigInfo : contigsCollection.getContents()) {
                 final String contigId = contigInfo._1.toString();
@@ -64,24 +64,19 @@ public class ContigAligner implements Closeable {
                 final AlnRgn[] alnRgns = bwaAlignSequence(bwaMem, contigId, sequence);
 
                 log.info("alnRgns : " + (alnRgns == null ? "null" : alnRgns.length));
-                // todo: parse cigar for internal indels
-                if (alnRgns.length > 1) {
-
-                    // filter out secondary alignments, convert to AlignmentRegion objects and sort by alignment start pos
-                    final List<AlignmentRegion> alignmentRegionList = Arrays.stream(alnRgns)
-                            .filter(a -> a.getSecondary() < 0)
-                            .map(AlignmentRegion::new)
-                            .sorted(Comparator.comparing(a -> a.startInAssembledContig))
-                            .collect(arrayListCollector(alnRgns.length));
-
-                    assembledBreakpoints.addAll(getAssembledBreakpointsFromAlignmentRegions(contigId, sequence, alignmentRegionList));
-                }
+                // filter out secondary alignments, convert to AlignmentRegion objects and sort by alignment start pos
+                final List<AlignmentRegion> alignmentRegionList = Arrays.stream(alnRgns)
+                        .filter(a -> a.getSecondary() < 0)
+                        .map(a -> new AlignmentRegion(breakpointId, contigId, a))
+                        .sorted(Comparator.comparing(a -> a.startInAssembledContig))
+                        .collect(arrayListCollector(alnRgns.length));
+                 alignedContigs.addAll(alignedContigs);
             }
         } catch (final IOException e) {
             throw new GATKException("could not execute BWA");
         }
 
-        return assembledBreakpoints;
+        return alignedContigs;
     }
 
     @VisibleForTesting
@@ -304,6 +299,8 @@ public class ContigAligner implements Closeable {
 
     static class AlignmentRegion {
 
+        final String contigId;
+        final String breakpointId;
         final Cigar cigar;
         final boolean forwardStrand;
         final SimpleInterval referenceInterval;
@@ -314,7 +311,9 @@ public class ContigAligner implements Closeable {
         final int mismatches;
 
 
-        public AlignmentRegion(final AlnRgn alnRgn) {
+        public AlignmentRegion(final String breakpointId, final String contigId, final AlnRgn alnRgn) {
+            this.contigId = contigId;
+            this.breakpointId = breakpointId;
             this.forwardStrand = alnRgn.getStrand() == '+';
             final Cigar alignmentCigar = TextCigarCodec.decode(alnRgn.getCigar());
             this.cigar = forwardStrand ? alignmentCigar : CigarUtils.invertCigar(alignmentCigar);
@@ -326,7 +325,9 @@ public class ContigAligner implements Closeable {
             this.mismatches = alnRgn.getNm();
         }
 
-        public AlignmentRegion(final Cigar cigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mqual, final int startInAssembledContig, final int endInAssembledContig, final int mismatches) {
+        public AlignmentRegion(final String breakpointId, final String contigId, final Cigar cigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mqual, final int startInAssembledContig, final int endInAssembledContig, final int mismatches) {
+            this.contigId = contigId;
+            this.breakpointId = breakpointId;
             this.cigar = cigar;
             this.forwardStrand = forwardStrand;
             this.referenceInterval = referenceInterval;
@@ -360,7 +361,11 @@ public class ContigAligner implements Closeable {
 
         @Override
         public String toString() {
-            return referenceInterval.getContig() +
+            return breakpointId +
+                    "\t" +
+                    contigId +
+                    "+" +
+                    referenceInterval.getContig() +
                     "\t" +
                     referenceInterval.getStart() +
                     "\t" +
@@ -380,17 +385,19 @@ public class ContigAligner implements Closeable {
         }
 
         public static AlignmentRegion fromString(final String[] fields) {
-            final String refContig = fields[0];
-            final Integer refStart = Integer.valueOf(fields[1]);
-            final Integer refEnd = Integer.valueOf(fields[2]);
+            final String breakpointId = fields[0];
+            final String contigId = fields[1];
+            final String refContig = fields[2];
+            final Integer refStart = Integer.valueOf(fields[3]);
+            final Integer refEnd = Integer.valueOf(fields[4]);
             final SimpleInterval refInterval = new SimpleInterval(refContig, refStart, refEnd);
-            final boolean refStrand = ("+".equals(fields[3]));
-            final Cigar cigar = TextCigarCodec.decode(fields[4]);
-            final int mqual = Integer.valueOf(fields[5]);
-            final int contigStart = Integer.valueOf(fields[6]);
-            final int contigEnd = Integer.valueOf(fields[7]);
-            final int mismatches = Integer.valueOf(fields[8]);
-            return new AlignmentRegion(cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
+            final boolean refStrand = ("+".equals(fields[5]));
+            final Cigar cigar = TextCigarCodec.decode(fields[6]);
+            final int mqual = Integer.valueOf(fields[7]);
+            final int contigStart = Integer.valueOf(fields[8]);
+            final int contigEnd = Integer.valueOf(fields[9]);
+            final int mismatches = Integer.valueOf(fields[10]);
+            return new AlignmentRegion(breakpointId, contigId, cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
         }
 
         @Override
@@ -404,13 +411,15 @@ public class ContigAligner implements Closeable {
                     endInAssembledContig == that.endInAssembledContig &&
                     assembledContigLength == that.assembledContigLength &&
                     mismatches == that.mismatches &&
+                    Objects.equals(contigId, that.contigId) &&
+                    Objects.equals(breakpointId, that.breakpointId) &&
                     Objects.equals(cigar, that.cigar) &&
                     Objects.equals(referenceInterval, that.referenceInterval);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(cigar, forwardStrand, referenceInterval, mqual, startInAssembledContig, endInAssembledContig, assembledContigLength, mismatches);
+            return Objects.hash(contigId, breakpointId, cigar, forwardStrand, referenceInterval, mqual, startInAssembledContig, endInAssembledContig, assembledContigLength, mismatches);
         }
 
         public String toPackedString() {
