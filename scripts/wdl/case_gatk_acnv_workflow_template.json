@@ -1,21 +1,16 @@
 /* User needs to populate 'FILL_ME_IN' and save with new filename. */
 {
-  "case_gatk_acnv_workflow.normal_bam_idx": "FILL_ME_IN", /* Usually, the same as normal_bam with ".bai" appended or instead of ".bam" */
+  "case_gatk_acnv_workflow.input_bam_list": "FILL_ME_IN",  /* tsv file consisting of corresponding bam files and entity names as described in case_gatk_acnv_workflow.wdl  */
   "case_gatk_acnv_workflow.CalculateTargetCoverage.grouping": "SAMPLE",
   "case_gatk_acnv_workflow.common_snp_list": "FILL_ME_IN", /* SNP list to use in het pulldown */
   "case_gatk_acnv_workflow.ref_fasta_fai": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta.fai */
   "case_gatk_acnv_workflow.target_bed": "FILL_ME_IN", /* same file as was used for the PoN */
-  "case_gatk_acnv_workflow.wf_entity_id_normal": "FILL_ME_IN", /* sample ID for your normal.  Normal and tumor cannot be the same. */
-  "case_gatk_acnv_workflow.wf_entity_id_tumor": "FILL_ME_IN", /* sample ID for your tumor.  Normal and tumor cannot be the same.  */
-  "case_gatk_acnv_workflow.jar_file": "FILL_ME_IN", /* absolute path to gatk-protected.jar */
+  "case_gatk_acnv_workflow.gatk_jar": "FILL_ME_IN", /* absolute path to gatk-protected.jar */
   "case_gatk_acnv_workflow.PadTargets.mem": "1",
   "case_gatk_acnv_workflow.CalculateTargetCoverage.disable_all_read_filters": "false",
   "case_gatk_acnv_workflow.CalculateTargetCoverage.mem": "4",
-  "case_gatk_acnv_workflow.tumor_bam": "FILL_ME_IN", /* bam file path */
   "case_gatk_acnv_workflow.ref_fasta_dict": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta.fai */
-  "case_gatk_acnv_workflow.tumor_bam_idx": "FILL_ME_IN",  /* Usually, the same as normal_bam with ".bai" appended or instead of ".bam" */
   "case_gatk_acnv_workflow.CalculateTargetCoverage.keepduplicatereads": "true",
-  "case_gatk_acnv_workflow.normal_bam": "FILL_ME_IN", /* bam file path */
   "case_gatk_acnv_workflow.PoN": "FILL_ME_IN", /* Path to GATK PoN file */
   "case_gatk_acnv_workflow.CalculateTargetCoverage.transform": "PCOV",
   "case_gatk_acnv_workflow.ref_fasta": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta */
@@ -24,5 +19,16 @@
   "case_gatk_acnv_workflow.is_disable_reference_validation": "true",
   "case_gatk_acnv_workflow.jni_lib": "FILL_ME_IN", /* Broad internal: /broad/software/free/Linux/redhat_6_x86_64/pkgs/hdfview_2.9/HDFView/lib/linux/  (assumes ``use .hdfview-2.9``) */
   "case_gatk_acnv_workflow.plots_dir": "FILL_ME_IN", /* path to store produced plots for CopyRatio and ACNV */
-  "case_gatk_acnv_workflow.enable_gc_correction": "true" /* true/false option change to false to bypass gc bias correction step */
+  "case_gatk_acnv_workflow.enable_gc_correction": "true", /* true/false option change to false to bypass gc bias correction step */
+  "case_gatk_acnv_workflow.seg_param_alpha": "FILL_ME_IN", /* Segmenter parameter, default=0.01 */
+  "case_gatk_acnv_workflow.seg_param_nperm": "FILL_ME_IN", /* Segmenter parameter, default=10000 */
+  "case_gatk_acnv_workflow.seg_param_pmethod": "FILL_ME_IN", /* Segmenter parameter, default=HYBRID */
+  "case_gatk_acnv_workflow.seg_param_minWidth": "FILL_ME_IN", /* Segmenter parameter, default=2 */
+  "case_gatk_acnv_workflow.seg_param_kmax": "FILL_ME_IN", /* Segmenter parameter, default=25 */
+  "case_gatk_acnv_workflow.seg_param_nmin": "FILL_ME_IN", /* Segmenter parameter, default=200 */
+  "case_gatk_acnv_workflow.seg_param_eta": "FILL_ME_IN", /* Segmenter parameter, default=0.05 */
+  "case_gatk_acnv_workflow.seg_param_trim": "FILL_ME_IN", /* Segmenter parameter, default=0.025 */
+  "case_gatk_acnv_workflow.seg_param_undoSplits": "FILL_ME_IN", /* Segmenter parameter, default=NONE */
+  "case_gatk_acnv_workflow.seg_param_undoPrune": "FILL_ME_IN", /* Segmenter parameter, default=0.05 */
+  "case_gatk_acnv_workflow.seg_param_undoSD": "FILL_ME_IN" /* Segmenter parameter, default=3 */
 }
