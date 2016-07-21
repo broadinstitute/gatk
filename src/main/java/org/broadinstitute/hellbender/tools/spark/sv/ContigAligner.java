@@ -364,7 +364,7 @@ public class ContigAligner implements Closeable {
             return breakpointId +
                     "\t" +
                     contigId +
-                    "+" +
+                    "\t" +
                     referenceInterval.getContig() +
                     "\t" +
                     referenceInterval.getStart() +
