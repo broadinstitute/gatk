@@ -56,11 +56,9 @@ public class AlignAssembledContigsSpark extends GATKSparkTool {
         final long numInputPartitions = breakpointIdsToContigsCollection.count();
         final int numPartitions = Math.max(ctx.defaultParallelism(), (int) Math.ceil((double) numInputPartitions / (double) NUM_ASSEMBLIES_PER_PARTITION));
 
-        breakpointIdsToContigsCollection.coalesce(numPartitions);
-
         final String referenceFileName = referenceArguments.getReferenceFileName();
 
-        final JavaRDD<AlignmentRegion> assembledBreakpoints = breakpointIdsToContigsCollection.mapPartitions(iter -> {
+        final JavaRDD<AlignmentRegion> assembledBreakpoints = breakpointIdsToContigsCollection.coalesce(numPartitions).mapPartitions(iter -> {
             try {
                 try (final ContigAligner contigAligner = new ContigAligner(referenceFileName)) {
                     final List<AlignmentRegion> results = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION * EXPECTED_CONTIGS_PER_ASSEMBLY);
