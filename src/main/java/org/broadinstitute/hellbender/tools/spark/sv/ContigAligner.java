@@ -80,7 +80,7 @@ public class ContigAligner implements Closeable {
     }
 
     @VisibleForTesting
-    public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final String contigId, final byte[] sequence, final List<AlignmentRegion> alignmentRegionList) {
+    public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final byte[] sequence, final List<AlignmentRegion> alignmentRegionList) {
         final List<AssembledBreakpoint> results = new ArrayList<>(alignmentRegionList.size() / 2);
         final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
         final List<String> insertionAlignmentRegions = new ArrayList<>();
@@ -106,7 +106,7 @@ public class ContigAligner implements Closeable {
                 if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
                     insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
                 }
-                final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, insertedSequence, homology, insertionAlignmentRegions);
+                final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(current.contigId, previous, current, insertedSequence, homology, insertionAlignmentRegions);
 
                 results.add(assembledBreakpoint);
             }

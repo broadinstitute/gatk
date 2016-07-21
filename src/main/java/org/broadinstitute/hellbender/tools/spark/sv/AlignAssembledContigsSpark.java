@@ -12,13 +12,10 @@ import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
-import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
-import scala.Tuple2;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @CommandLineProgramProperties(summary="Align assembled contigs to the reference and call breakpoints from them.",
@@ -54,18 +51,13 @@ public class AlignAssembledContigsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaRDD<String> inputAssemblies = ctx.textFile(input).cache();
+        final JavaPairRDD<String, ContigsCollection> breakpointIdsToContigsCollection = getContigsCollectionKeyedByBreakpointId(ctx, input).cache();
 
-        final long numInputPartitions = inputAssemblies.count();
+        final long numInputPartitions = breakpointIdsToContigsCollection.count();
+        final int numPartitions = Math.max(ctx.defaultParallelism(), (int) Math.ceil((double) numInputPartitions / (double) NUM_ASSEMBLIES_PER_PARTITION));
 
-        final int numPartitions = Math.max(ctx.defaultParallelism (), (int) Math.ceil((double) numInputPartitions / (double) NUM_ASSEMBLIES_PER_PARTITION));
-        final JavaPairRDD<String, String> contigCollectionByBreakpointId =
-                inputAssemblies
-                        .flatMapToPair(RunSGAViaProcessBuilderOnSpark::splitAssemblyLine)
-                        .coalesce(numPartitions);
+        breakpointIdsToContigsCollection.coalesce(numPartitions);
 
-        final JavaPairRDD<String, ContigsCollection> breakpointIdsToContigsCollection =
-                contigCollectionByBreakpointId.mapValues(ContigsCollection::fromPackedFasta);
         final String referenceFileName = referenceArguments.getReferenceFileName();
 
         final JavaRDD<AlignmentRegion> assembledBreakpoints = breakpointIdsToContigsCollection.mapPartitions(iter -> {
@@ -87,18 +79,24 @@ public class AlignAssembledContigsSpark extends GATKSparkTool {
         assembledBreakpoints.saveAsTextFile(output);
     }
 
+    static JavaPairRDD<String, ContigsCollection> getContigsCollectionKeyedByBreakpointId(final JavaSparkContext ctx, final String inputPath) {
+        final JavaRDD<String> inputAssemblies = ctx.textFile(inputPath).cache();
+
+        final JavaPairRDD<String, String> contigCollectionByBreakpointId =
+                inputAssemblies
+                        .flatMapToPair(RunSGAViaProcessBuilderOnSpark::splitAssemblyLine);
+
+        return contigCollectionByBreakpointId.mapValues(ContigsCollection::fromPackedFasta);
+    }
+
     /**
-     * input format is comma-separated BreakpointId, String representation of an AssembledBreakpoint, enclosed in parens
-     * @param alignedAssemblyContigLine An input line with a breakpoint ID and string representation of an AssembledBreakpoint
+     * input format is the text representation of an alignment region
+     * @param alignedAssemblyContigLine An input line with the tab-separated fields of an alignment region
      * @return A tuple with the breakpoint ID and string representation of an AssembledBreakpoint, or an empty iterator if the line did not have two comma-separated values
      */
-    static Iterable<Tuple2<String, AssembledBreakpoint>> parseAlignedAssembledContigLine(final String alignedAssemblyContigLine) {
-        final String[] split = alignedAssemblyContigLine.replace("(","").replace(")","").split(",");
-        if (split.length < 2) {
-            log.info("No aligned breakpoints for line " + alignedAssemblyContigLine);
-            return Collections.emptySet();
-        }
-        return Collections.singleton(new Tuple2<>(split[0], AssembledBreakpoint.fromFields(split[1].split("\t", -1))));
+    static AlignmentRegion parseAlignedAssembledContigLine(final String alignedAssemblyContigLine) {
+        final String[] split = alignedAssemblyContigLine.split("\t", -1);
+        return AlignmentRegion.fromString(split);
     }
 
 }
