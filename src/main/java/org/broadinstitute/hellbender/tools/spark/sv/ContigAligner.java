@@ -70,7 +70,7 @@ public class ContigAligner implements Closeable {
                         .map(a -> new AlignmentRegion(breakpointId, contigId, a))
                         .sorted(Comparator.comparing(a -> a.startInAssembledContig))
                         .collect(arrayListCollector(alnRgns.length));
-                 alignedContigs.addAll(alignedContigs);
+                 alignedContigs.addAll(alignmentRegionList);
             }
         } catch (final IOException e) {
             throw new GATKException("could not execute BWA");
