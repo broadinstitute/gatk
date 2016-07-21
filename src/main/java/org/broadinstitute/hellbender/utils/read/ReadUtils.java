@@ -1059,16 +1059,7 @@ public final class ReadUtils {
 
         //Note: this method is very heavily hit during LocusWalker iterations
         // so it's important to keep it optimized and exit as soon as possible
-        final boolean isUnmapped = read.isUnmapped();
-        if (isUnmapped){
-            return false;
-        }
-        final boolean isUnpaired = ! read.isPaired();
-        if (isUnpaired){
-            return false;
-        }
-        final boolean mateIsUnmapped = read.mateIsUnmapped();
-        if (mateIsUnmapped){
+        if (! read.isPaired() || read.isUnmapped() || read.mateIsUnmapped(true)){
             return false;
         }
         final int fragmentLength = read.getFragmentLength();
@@ -1077,7 +1068,7 @@ public final class ReadUtils {
             return false;
         }
         final boolean reverseStrand = read.isReverseStrand();
-        if ( reverseStrand == read.mateIsReverseStrand() ) {
+        if ( reverseStrand == read.mateIsReverseStrand(true) ) {
             // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
             return false;
         }

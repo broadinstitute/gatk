@@ -454,6 +454,16 @@ public interface GATKRead extends Locatable {
     boolean mateIsUnmapped();
 
     /**
+     * @param isPaired is the read paired
+     * @return True if this read's mate is unmapped (this includes mates that have a position but are explicitly marked as unmapped,
+     *         as well as mates that lack a fully-defined position but are not explicitly marked as unmapped). Otherwise false.
+     * @throws IllegalStateException if the read is not paired (has no mate)
+     */
+    default boolean mateIsUnmapped(boolean isPaired){
+        return mateIsUnmapped();
+    }
+
+    /**
      * Mark the read's mate as unmapped (lacking a defined position on the genome).
      *
      * To mark the read's mate as mapped, use {@link #setMatePosition}
@@ -482,6 +492,16 @@ public interface GATKRead extends Locatable {
      * @throws GATKException.MissingReadField if this information is not available
      */
     boolean mateIsReverseStrand();
+
+    /**
+     * @param isPaired is the read paired
+     * @return True if this read's mate is on the reverse strand as opposed to the forward strand, otherwise false.
+     * @throws IllegalStateException if the read is not paired (has no mate)
+     * @throws GATKException.MissingReadField if this information is not available
+     */
+    default boolean mateIsReverseStrand(final boolean isPaired){
+        return mateIsReverseStrand();
+    }
 
     /**
      * Mark the read's mate as being on the reverse (or forward) strand.
