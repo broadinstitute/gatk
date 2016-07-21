@@ -68,14 +68,14 @@ public class AlignAssembledContigsSpark extends GATKSparkTool {
                 contigCollectionByBreakpointId.mapValues(ContigsCollection::fromPackedFasta);
         final String referenceFileName = referenceArguments.getReferenceFileName();
 
-        final JavaPairRDD<String, AlignmentRegion> assembledBreakpoints = breakpointIdsToContigsCollection.mapPartitionsToPair(iter -> {
+        final JavaRDD<AlignmentRegion> assembledBreakpoints = breakpointIdsToContigsCollection.mapPartitions(iter -> {
             try {
                 try (final ContigAligner contigAligner = new ContigAligner(referenceFileName)) {
-                    final List<Tuple2<String, AlignmentRegion>> results = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION * EXPECTED_CONTIGS_PER_ASSEMBLY);
+                    final List<AlignmentRegion> results = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION * EXPECTED_CONTIGS_PER_ASSEMBLY);
                     iter.forEachRemaining(cc -> {
                         String breakpointId = cc._1;
                         final List<AlignmentRegion> breakpointAssemblies = contigAligner.alignContigs(breakpointId, cc._2);
-                        breakpointAssemblies.forEach(b -> results.add(new Tuple2<>(breakpointId, b)));
+                        breakpointAssemblies.forEach(results::add);
                     });
                     return results;
                 }
