@@ -30,22 +30,22 @@ public class GATKSVVCFHeaderLines {
     public static final String INV_5_TO_3 = "INV_5_TO_3";
 
     static {
-        vcfHeaderLines.put(SVTYPE, new VCFInfoHeaderLine(SVTYPE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Type of structural variant"));
-        vcfHeaderLines.put(SVLEN, new VCFInfoHeaderLine(SVLEN, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.Integer, "Difference in length between REF and ALT alleles"));
+        vcfHeaderLines.put(SVTYPE, new VCFInfoHeaderLine(SVTYPE, 1, VCFHeaderLineType.String, "Type of structural variant"));
+        vcfHeaderLines.put(SVLEN, new VCFInfoHeaderLine(SVLEN, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Difference in length between REF and ALT alleles"));
 
-        vcfHeaderLines.put(TOTAL_MAPPINGS, new VCFInfoHeaderLine(TOTAL_MAPPINGS, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.Integer, "Number of contig alignments that support the variant"));
-        vcfHeaderLines.put(HQ_MAPPINGS, new VCFInfoHeaderLine(HQ_MAPPINGS, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.Integer, "Number of high-quality contig alignments that support the variant"));
+        vcfHeaderLines.put(TOTAL_MAPPINGS, new VCFInfoHeaderLine(TOTAL_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of contig alignments that support the variant"));
+        vcfHeaderLines.put(HQ_MAPPINGS, new VCFInfoHeaderLine(HQ_MAPPINGS, 1, VCFHeaderLineType.Integer, "Number of high-quality contig alignments that support the variant"));
         vcfHeaderLines.put(MAPPING_QUALITIES, new VCFInfoHeaderLine(MAPPING_QUALITIES, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Mapping qualities of the contig alignments that support the variant"));
         vcfHeaderLines.put(ALIGN_LENGTHS, new VCFInfoHeaderLine(ALIGN_LENGTHS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Minimum lengths of the flanking aligned region from each contig alignment"));
-        vcfHeaderLines.put(MAX_ALIGN_LENGTH, new VCFInfoHeaderLine(MAX_ALIGN_LENGTH, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.Integer, "Maximum of the minimum aligned lengths of flanking regions from each contig alignment"));
+        vcfHeaderLines.put(MAX_ALIGN_LENGTH, new VCFInfoHeaderLine(MAX_ALIGN_LENGTH, 1, VCFHeaderLineType.Integer, "Maximum of the minimum aligned lengths of flanking regions from each contig alignment"));
 
         // todo: create an alternate assembly file and link to it with breakpoint IDs according to the VCF spec
         vcfHeaderLines.put(BREAKPOINT_IDS, new VCFInfoHeaderLine(BREAKPOINT_IDS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "IDs of the breakpoint intervals that produced each contig alignment"));
         vcfHeaderLines.put(CONTIG_IDS, new VCFInfoHeaderLine(CONTIG_IDS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "IDs of the contigs that produced each alignment"));
 
-        vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
-        vcfHeaderLines.put(INV_3_TO_5, new VCFInfoHeaderLine(INV_3_TO_5, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
-        vcfHeaderLines.put(INV_5_TO_3, new VCFInfoHeaderLine(INV_5_TO_3, VCFHeaderLineCount.INTEGER, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
+        vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
+        vcfHeaderLines.put(INV_3_TO_5, new VCFInfoHeaderLine(INV_3_TO_5, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
+        vcfHeaderLines.put(INV_5_TO_3, new VCFInfoHeaderLine(INV_5_TO_3, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
     }
 
     enum SVTYPES {
