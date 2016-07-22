@@ -50,6 +50,14 @@ repositories {
         url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
     }
 
+    maven {
+        url "https://oss.sonatype.org/service/local/repositories/orgbroadinstitute-1012/content/"
+        credentials {
+            username project.findProperty("sonatypeUsername")
+            password project.findProperty("sonatypePassword")
+        }
+    }
+
 }
 
 configurations.all {
@@ -116,6 +124,7 @@ dependencies {
     compile 'it.unimi.dsi:fastutil:7.0.6'
     compile 'com.google.apis:google-api-services-genomics:v1-rev90-1.22.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
+    compile 'org.broadinstitute:hdf5-java-bindings:1.0.0-hdf5_2.11.0'
 
    compile 'org.ojalgo:ojalgo:39.0'
     compile ('org.apache.spark:spark-mllib_2.10:1.6.1') {
