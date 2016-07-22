@@ -66,8 +66,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-
-        //Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
+        Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
 
         final JavaRDD<AlignmentRegion> inputAlignedBreakpoints = ctx.textFile(inputAlignments).map(AlignAssembledContigsSpark::parseAlignedAssembledContigLine);
 
@@ -93,8 +92,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
-        //final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, broadcastReference)).cache();
-        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, null)).cache();
+        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, broadcastReference)).cache();
 
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
@@ -135,14 +133,14 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     }
 
     private VariantContextWriter getVariantContextWriter(final OutputStream outputStream) {
-        final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
+//        final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
                                                             .clearOptions()
                                                             .setOutputStream(outputStream);
 
-        if (null != referenceDictionary) {
-            vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceDictionary);
-        }
+//        if (null != referenceDictionary) {
+//            vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceDictionary);
+//        }
         // todo: remove this when things are solid?
         vcWriterBuilder = vcWriterBuilder.setOption(Options.ALLOW_MISSING_FIELDS_IN_HEADER);
         for (Options opt : new Options[]{}) {
@@ -190,8 +188,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             assembledContigIds.add(assembledBreakpoint.contigId);
         }
 
-        //return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue());
-        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, null);
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue());
     }
 
     @VisibleForTesting
@@ -200,8 +197,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final int start = breakpointAllele.leftAlignedLeftBreakpoint.getStart();
         final int end = breakpointAllele.leftAlignedRightBreakpoint.getStart();
 
-        //final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start)).getBases()), true);
-        final Allele refAllele = Allele.create("A", true);
+        final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start)).getBases()), true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);
