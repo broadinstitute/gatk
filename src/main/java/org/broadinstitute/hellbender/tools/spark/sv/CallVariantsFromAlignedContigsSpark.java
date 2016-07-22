@@ -18,7 +18,6 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -28,9 +27,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreak
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
 
 import java.io.BufferedOutputStream;
@@ -72,7 +69,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        //Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
+        Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
 
         final JavaRDD<AlignmentRegion> inputAlignedBreakpoints = ctx.textFile(inputAlignments).map(AlignAssembledContigsSpark::parseAlignedAssembledContigLine);
 
@@ -98,8 +95,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
-        //final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, broadcastReference)).cache();
-        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, null)).cache();
+        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, broadcastReference)).cache();
 
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
@@ -110,34 +106,35 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         logger.info(sortedVariantsList.get(0));
 
         final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        final SAMSequenceDictionary referenceSequenceDictionary = referenceMultiSource.getReferenceSequenceDictionary(null);
 
-        sortedVariantsList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, referenceMultiSource.getReferenceSequenceDictionary(null)));
+        sortedVariantsList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary));
         logger.info(sortedVariantsList.get(0));
 
         logger.info("Called " + variants.size() + " candidate inversions");
-        final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
+        final VCFHeader header = getVcfHeader(referenceSequenceDictionary);
 
-        writeVariants(sortedVariantsList, pipelineOptions, "inversions.vcf", header);
+        writeVariants(sortedVariantsList, pipelineOptions, "inversions.vcf", header, referenceSequenceDictionary);
 
         final List<VariantContext> hqmappingVariants = sortedVariantsList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
         logger.info("Called " + hqmappingVariants.size() + " high-quality inversions");
-        writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header);
+        writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header, referenceSequenceDictionary);
 
     }
 
     private VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
         final VCFHeader header = new VCFHeader();
-        //header.setSequenceDictionary(referenceSequenceDictionary);
+        header.setSequenceDictionary(referenceSequenceDictionary);
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
         GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
         return header;
     }
 
-    private void writeVariants(final List<VariantContext> variantsArrayList, final PipelineOptions pipelineOptions, final String fileName, final VCFHeader header) {
+    private void writeVariants(final List<VariantContext> variantsArrayList, final PipelineOptions pipelineOptions, final String fileName, final VCFHeader header, final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream = new BufferedOutputStream(
                 BucketUtils.createFile(outputPath  + "/" + fileName, pipelineOptions))) {
 
-            final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream);
+            final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 
             vcfWriter.writeHeader(header);
             variantsArrayList.forEach(vcfWriter::add);
@@ -148,15 +145,14 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         }
     }
 
-    private VariantContextWriter getVariantContextWriter(final OutputStream outputStream) {
-//        final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
+    private VariantContextWriter getVariantContextWriter(final OutputStream outputStream, final SAMSequenceDictionary referenceSequenceDictionary) {
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
                                                             .clearOptions()
                                                             .setOutputStream(outputStream);
 
-//        if (null != referenceDictionary) {
-//            vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceDictionary);
-//        }
+        if (null != referenceSequenceDictionary) {
+            vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceSequenceDictionary);
+        }
         // todo: remove this when things are solid?
         vcWriterBuilder = vcWriterBuilder.setOption(Options.ALLOW_MISSING_FIELDS_IN_HEADER);
         for (Options opt : new Options[]{}) {
