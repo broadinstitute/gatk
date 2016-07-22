@@ -14,9 +14,11 @@ import org.apache.commons.collections4.IterableUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
@@ -65,6 +67,8 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
+        Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
+
         final JavaRDD<AlignmentRegion> inputAlignedBreakpoints = ctx.textFile(inputAlignments).map(AlignAssembledContigsSpark::parseAlignedAssembledContigLine);
 
         final JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> alignmentRegionsKeyedByBreakpointAndContig = inputAlignedBreakpoints.mapToPair(alignmentRegion -> new Tuple2<>(new Tuple2<>(alignmentRegion.breakpointId, alignmentRegion.contigId), alignmentRegion)).groupByKey();
@@ -97,24 +101,24 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
         variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
 
-        List<VariantContext> variantsWithRefBases = variantsArrayList.stream().map(v -> {
-            final String contig = v.getContig();
-            final int pos = v.getStart();
-            final SimpleInterval refBaseInterval = new SimpleInterval(contig, pos, pos + 1);
-            final ReferenceBases referenceBases;
-            try {
-                referenceBases = getReference().getReferenceBases(pipelineOptions, refBaseInterval);
-            } catch (IOException e) {
-                throw new GATKException("Unable to get reference bases for interval " + refBaseInterval, e);
-            }
-            return new VariantContextBuilder(v).alleles(new String(referenceBases.getBases()), v.getAlternateAllele(0).toString()).make();
-        }).collect(Collectors.toList());
+//        List<VariantContext> variantsWithRefBases = variantsArrayList.stream().map(v -> {
+//            final String contig = v.getContig();
+//            final int pos = v.getStart();
+//            final SimpleInterval refBaseInterval = new SimpleInterval(contig, pos, pos + 1);
+//            final ReferenceBases referenceBases;
+//            try {
+//                referenceBases = getReference().getReferenceBases(pipelineOptions, refBaseInterval);
+//            } catch (IOException e) {
+//                throw new GATKException("Unable to get reference bases for interval " + refBaseInterval, e);
+//            }
+//            return new VariantContextBuilder(v).alleles(new String(referenceBases.getBases()), v.getAlternateAllele(0).toString()).make();
+//        }).collect(Collectors.toList());
 
         final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
 
-        writeVariants(variantsWithRefBases, pipelineOptions, "inversions.vcf", header);
+        writeVariants(variantsArrayList, pipelineOptions, "inversions.vcf", header);
 
-        final List<VariantContext> hqmappingVariants = variantsWithRefBases.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
+        final List<VariantContext> hqmappingVariants = variantsArrayList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
         writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header);
 
     }
@@ -167,7 +171,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     }
 
     @VisibleForTesting
-    private static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> assembledBreakpointsPerAllele) throws IOException {
+    private static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> assembledBreakpointsPerAllele, final Broadcast<ReferenceMultiSource> broadcastReference) throws IOException {
         int numAssembledBreakpoints = 0;
         int highMqMappings = 0;
         int midMqMappings = 0;
@@ -198,26 +202,30 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             assembledContigIds.add(assembledBreakpoint.contigId);
         }
 
-        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds);
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue());
     }
 
     @VisibleForTesting
-    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength, final BreakpointAllele breakpointAllele, final List<String> breakpointIds, final List<String> assembledContigIds) throws IOException {
-        final Allele refAllele = Allele.create("A", true);
+    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength, final BreakpointAllele breakpointAllele, final List<String> breakpointIds, final List<String> assembledContigIds, final ReferenceMultiSource reference) throws IOException {
+        final String contig = breakpointAllele.leftAlignedLeftBreakpoint.getContig();
+        final int start = breakpointAllele.leftAlignedLeftBreakpoint.getStart();
+        final int end = breakpointAllele.leftAlignedRightBreakpoint.getStart();
+
+        final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start + 1)).getBases()), true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);
         vcAlleles.add(altAllele);
 
-        VariantContextBuilder vcBuilder = new VariantContextBuilder()
-                .chr(breakpointAllele.leftAlignedLeftBreakpoint.getContig())
-                .start(breakpointAllele.leftAlignedLeftBreakpoint.getStart())
-                .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
+        final VariantContextBuilder vcBuilder = new VariantContextBuilder()
+                .chr(contig)
+                .start(start)
+                .stop(end)
                 .id(getInversionId(breakpointAllele))
                 .alleles(vcAlleles)
-                .attribute(VCFConstants.END_KEY, breakpointAllele.leftAlignedRightBreakpoint.getStart())
+                .attribute(VCFConstants.END_KEY, end)
                 .attribute(GATKSVVCFHeaderLines.SVTYPE, GATKSVVCFHeaderLines.SVTYPES.INV.toString())
-                .attribute(GATKSVVCFHeaderLines.SVLEN, breakpointAllele.leftAlignedRightBreakpoint.getStart() - breakpointAllele.leftAlignedLeftBreakpoint.getStart())
+                .attribute(GATKSVVCFHeaderLines.SVLEN, end - start)
                 .attribute(GATKSVVCFHeaderLines.TOTAL_MAPPINGS, numAssembledBreakpoints)
                 .attribute(GATKSVVCFHeaderLines.HQ_MAPPINGS, highMqMappings)
                 .attribute(GATKSVVCFHeaderLines.MAPPING_QUALITIES, mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
