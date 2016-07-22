@@ -107,7 +107,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             } catch (IOException e) {
                 throw new GATKException("Unable to get reference bases for interval " + refBaseInterval, e);
             }
-            return new VariantContextBuilder(v).alleles(v.getReference().getBaseString(), String.valueOf(referenceBases.getBases()[0])).make();
+            return new VariantContextBuilder(v).alleles(new String(referenceBases.getBases()), v.getAlternateAllele(0).toString()).make();
         }).collect(Collectors.toList());
 
         final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
