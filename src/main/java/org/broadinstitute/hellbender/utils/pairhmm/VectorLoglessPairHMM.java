@@ -42,7 +42,7 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
         }
 
         // instantiate and initialize IntelPairHmm
-        pairHmm = new IntelPairHmm();
+        pairHmm = new PseudoNativePairHMM();//new IntelPairHmm();
         pairHmm.initialize(args);
     }
 
