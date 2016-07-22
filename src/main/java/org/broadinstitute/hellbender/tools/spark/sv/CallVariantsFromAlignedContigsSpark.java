@@ -130,12 +130,12 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
                                                             .clearOptions()
-                                                            .setOutputStream(outputStream)
-                                                            .setOutputFileType(VariantContextWriterBuilder.OutputType.VCF);
+                                                            .setOutputStream(outputStream);
 
         if (null != referenceDictionary) {
             vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceDictionary);
         }
+        // todo: remove this when things are solid?
         vcWriterBuilder = vcWriterBuilder.setOption(Options.ALLOW_MISSING_FIELDS_IN_HEADER);
         for (Options opt : new Options[]{}) {
             vcWriterBuilder = vcWriterBuilder.setOption(opt);
