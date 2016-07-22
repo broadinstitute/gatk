@@ -97,14 +97,19 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
         final List<VariantContext> variants = variantContexts.collect();
-        final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
-        variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReference().getReferenceSequenceDictionary(null)));
+        final List<VariantContext> sortedVariantsList = new ArrayList<>(variants);
+        logger.info(getReference().getReferenceSequenceDictionary(null).getSequence(0));
+        logger.info(sortedVariantsList.get(0));
+        sortedVariantsList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReference().getReferenceSequenceDictionary(null)));
+        logger.info(sortedVariantsList.get(0));
 
+        logger.info("Called " + variants.size() + " candidate inversions");
         final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
 
-        writeVariants(variantsArrayList, pipelineOptions, "inversions.vcf", header);
+        writeVariants(sortedVariantsList, pipelineOptions, "inversions.vcf", header);
 
-        final List<VariantContext> hqmappingVariants = variantsArrayList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
+        final List<VariantContext> hqmappingVariants = sortedVariantsList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
+        logger.info("Called " + hqmappingVariants.size() + " high-quality inversions");
         writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header);
 
     }
