@@ -111,7 +111,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
     private VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
         final VCFHeader header = new VCFHeader();
-        header.setSequenceDictionary(referenceSequenceDictionary);
+        //header.setSequenceDictionary(referenceSequenceDictionary);
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
         GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
         return header;
