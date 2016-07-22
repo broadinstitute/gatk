@@ -99,7 +99,8 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final List<VariantContext> variants = variantContexts.collect();
         final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
-        variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
+
+        variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReference().getReferenceSequenceDictionary(null)));
 
         final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
 
