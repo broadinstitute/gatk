@@ -101,19 +101,6 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
         variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
 
-//        List<VariantContext> variantsWithRefBases = variantsArrayList.stream().map(v -> {
-//            final String contig = v.getContig();
-//            final int pos = v.getStart();
-//            final SimpleInterval refBaseInterval = new SimpleInterval(contig, pos, pos + 1);
-//            final ReferenceBases referenceBases;
-//            try {
-//                referenceBases = getReference().getReferenceBases(pipelineOptions, refBaseInterval);
-//            } catch (IOException e) {
-//                throw new GATKException("Unable to get reference bases for interval " + refBaseInterval, e);
-//            }
-//            return new VariantContextBuilder(v).alleles(new String(referenceBases.getBases()), v.getAlternateAllele(0).toString()).make();
-//        }).collect(Collectors.toList());
-
         final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
 
         writeVariants(variantsArrayList, pipelineOptions, "inversions.vcf", header);
@@ -211,7 +198,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final int start = breakpointAllele.leftAlignedLeftBreakpoint.getStart();
         final int end = breakpointAllele.leftAlignedRightBreakpoint.getStart();
 
-        final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start + 1)).getBases()), true);
+        final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start)).getBases()), true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);
