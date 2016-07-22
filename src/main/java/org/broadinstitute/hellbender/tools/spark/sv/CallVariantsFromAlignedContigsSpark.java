@@ -217,7 +217,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         vcAlleles.add(refAllele);
         vcAlleles.add(altAllele);
 
-        final VariantContextBuilder vcBuilder = new VariantContextBuilder()
+        VariantContextBuilder vcBuilder = new VariantContextBuilder()
                 .chr(contig)
                 .start(start)
                 .stop(end)
