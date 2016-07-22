@@ -18,7 +18,9 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceFileSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
@@ -58,6 +60,10 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     @Argument(doc = "Input file of assembled contigs", shortName = "inputAssemblies",
             fullName = "inputAssemblies", optional = false)
     private String inputAssemblies;
+
+    @Argument(doc = "FASTA formatted reference", shortName = "fastaReference",
+            fullName = "fastaReference", optional = false)
+    private String fastaReference;
 
     @Override
     public boolean requiresReference() {
@@ -99,9 +105,13 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final List<VariantContext> variants = variantContexts.collect();
         final List<VariantContext> sortedVariantsList = new ArrayList<>(variants);
+        logger.info(getReadSourceName());
         logger.info(getReference().getReferenceSequenceDictionary(null).getSequence(0));
         logger.info(sortedVariantsList.get(0));
-        sortedVariantsList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReference().getReferenceSequenceDictionary(null)));
+
+        final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION);
+
+        sortedVariantsList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, referenceMultiSource.getReferenceSequenceDictionary(null)));
         logger.info(sortedVariantsList.get(0));
 
         logger.info("Called " + variants.size() + " candidate inversions");
