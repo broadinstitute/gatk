@@ -24,7 +24,9 @@ import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreak
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
 
 import java.io.BufferedOutputStream;
@@ -89,23 +91,37 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAlignedContigsSpark::filterBreakpointsAndProduceVariants).cache();
 
+        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+
         final List<VariantContext> variants = variantContexts.collect();
         final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
         variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
 
-        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+        List<VariantContext> variantsWithRefBases = variantsArrayList.stream().map(v -> {
+            final String contig = v.getContig();
+            final int pos = v.getStart();
+            final SimpleInterval refBaseInterval = new SimpleInterval(contig, pos, pos + 1);
+            final ReferenceBases referenceBases;
+            try {
+                referenceBases = getReference().getReferenceBases(pipelineOptions, refBaseInterval);
+            } catch (IOException e) {
+                throw new GATKException("Unable to get reference bases for interval " + refBaseInterval, e);
+            }
+            return new VariantContextBuilder(v).alleles(v.getReference().getBaseString(), String.valueOf(referenceBases.getBases()[0])).make();
+        }).collect(Collectors.toList());
 
-        final VCFHeader header = getVcfHeader();
+        final VCFHeader header = getVcfHeader(getReferenceSequenceDictionary());
 
-        writeVariants(variantsArrayList, pipelineOptions, "inversions.vcf", header);
+        writeVariants(variantsWithRefBases, pipelineOptions, "inversions.vcf", header);
 
-        final List<VariantContext> hqmappingVariants = variantsArrayList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
+        final List<VariantContext> hqmappingVariants = variantsWithRefBases.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
         writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header);
 
     }
 
-    private VCFHeader getVcfHeader() {
+    private VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
         final VCFHeader header = new VCFHeader();
+        header.setSequenceDictionary(referenceSequenceDictionary);
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
         GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
         return header;
