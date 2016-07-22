@@ -93,7 +93,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
-        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAlignedContigsSpark::filterBreakpointsAndProduceVariants).cache();
+        final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, broadcastReference)).cache();
 
         final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
