@@ -9,7 +9,9 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -59,6 +61,9 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             fullName = "inputAssemblies", optional = false)
     private String inputAssemblies;
 
+    // This class requires a reference parameter in 2bit format (to broadcast) and a reference in FASTA format
+    // (to get a good sequence dictionary).
+    // todo: document this better
     @Argument(doc = "FASTA formatted reference", shortName = "fastaReference",
             fullName = "fastaReference", optional = false)
     private String fastaReference;
@@ -172,13 +177,17 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         int midMqMappings = 0;
         int lowMqMappings = 0;
         int maxAlignLength = 0;
-        final List<Integer> mqs = new ArrayList<>(10);
-        final List<Integer> alignLengths = new ArrayList<>(10);
-        final BreakpointAllele breakpointAllele = assembledBreakpointsPerAllele._1;
-        final List<String> breakpointIds = new ArrayList<>(10);
-        final List<String> assembledContigIds = new ArrayList<>(10);
+
         final Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>> assembledBreakpoints = assembledBreakpointsPerAllele._2;
-        for (final Tuple2<Tuple2<String,String>, AssembledBreakpoint> assembledBreakpointPair : assembledBreakpoints) {
+        final List<Tuple2<Tuple2<String, String>, AssembledBreakpoint>> assembledBreakpointsList = IterableUtils.toList(assembledBreakpoints);
+        final int numBreakpoints = assembledBreakpointsList.size();
+        final List<Integer> mqs = new ArrayList<>(numBreakpoints);
+        final List<Integer> alignLengths = new ArrayList<>(numBreakpoints);
+        final BreakpointAllele breakpointAllele = assembledBreakpointsPerAllele._1;
+        final List<String> breakpointIds = new ArrayList<>(numBreakpoints);
+        final List<String> assembledContigIds = new ArrayList<>(numBreakpoints);
+
+        for (final Tuple2<Tuple2<String,String>, AssembledBreakpoint> assembledBreakpointPair : assembledBreakpointsList) {
             final AssembledBreakpoint assembledBreakpoint = assembledBreakpointPair._2;
             numAssembledBreakpoints = numAssembledBreakpoints + 1;
             final int assembledBreakpointMapq = Math.min(assembledBreakpoint.region1.mqual, assembledBreakpoint.region2.mqual);
