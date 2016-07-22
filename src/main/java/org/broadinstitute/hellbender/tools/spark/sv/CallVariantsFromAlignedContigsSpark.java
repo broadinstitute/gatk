@@ -154,7 +154,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .chr(breakpointAllele.leftAlignedLeftBreakpoint.getContig())
                 .start(breakpointAllele.leftAlignedLeftBreakpoint.getStart())
                 .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
-                .id("NOID")
+                .id(getInversionId(breakpointAllele))
                 .alleles(vcAlleles)
                 .attribute("END", breakpointAllele.leftAlignedRightBreakpoint.getStart())
                 .attribute("SVTYPE", "INV")
@@ -171,16 +171,38 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             vcBuilder = vcBuilder.attribute("INSERTION", breakpointAllele.insertedSequence);
         }
 
-        if (breakpointAllele.left5Prime && ! breakpointAllele.right5Prime) {
-            vcBuilder = vcBuilder.attribute("INV5", "");
+        if (is5To3Inversion(breakpointAllele)) {
+            vcBuilder = vcBuilder.attribute("INV5TO3", "");
         }
 
-        if (! breakpointAllele.left5Prime && breakpointAllele.right5Prime) {
-            vcBuilder = vcBuilder.attribute("INV3", "");
+        if (is3To5Inversion(breakpointAllele)) {
+            vcBuilder = vcBuilder.attribute("INV3TO5", "");
         }
 
 
         return vcBuilder.make();
+    }
+
+    private static boolean is3To5Inversion(final BreakpointAllele breakpointAllele) {
+        return ! breakpointAllele.left5Prime && breakpointAllele.right5Prime;
+    }
+
+    private static boolean is5To3Inversion(final BreakpointAllele breakpointAllele) {
+        return breakpointAllele.left5Prime && ! breakpointAllele.right5Prime;
+    }
+
+    private static String getInversionId(final BreakpointAllele breakpointAllele) {
+        final String invType;
+        if (is5To3Inversion(breakpointAllele)) {
+            invType = "INV_5_TO_3";
+        } else if (is3To5Inversion(breakpointAllele)) {
+            invType = "INV_3_TO_5";
+        } else {
+            // I don't think this should happen
+            invType = "INV_UNKNOWN";
+        }
+
+        return invType + "_" + breakpointAllele.leftAlignedLeftBreakpoint.getContig() + "_" + breakpointAllele.leftAlignedLeftBreakpoint.getStart() + "_" + breakpointAllele.leftAlignedRightBreakpoint.getStart();
     }
 
     @VisibleForTesting
