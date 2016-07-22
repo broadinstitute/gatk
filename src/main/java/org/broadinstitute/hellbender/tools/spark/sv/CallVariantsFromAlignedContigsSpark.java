@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreak
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import scala.Tuple2;
 
@@ -101,15 +102,11 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final List<VariantContext> variants = variantContexts.collect();
         final List<VariantContext> sortedVariantsList = new ArrayList<>(variants);
-        logger.info(getReadSourceName());
-        logger.info(getReference().getReferenceSequenceDictionary(null).getSequence(0));
-        logger.info(sortedVariantsList.get(0));
 
         final ReferenceMultiSource referenceMultiSource = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION);
         final SAMSequenceDictionary referenceSequenceDictionary = referenceMultiSource.getReferenceSequenceDictionary(null);
 
         sortedVariantsList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary));
-        logger.info(sortedVariantsList.get(0));
 
         logger.info("Called " + variants.size() + " candidate inversions");
         final VCFHeader header = getVcfHeader(referenceSequenceDictionary);
@@ -200,8 +197,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             assembledContigIds.add(assembledBreakpoint.contigId);
         }
 
-        //return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue());
-        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, null);
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue());
     }
 
     @VisibleForTesting
@@ -210,8 +206,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final int start = breakpointAllele.leftAlignedLeftBreakpoint.getStart();
         final int end = breakpointAllele.leftAlignedRightBreakpoint.getStart();
 
-        //final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start)).getBases()), true);
-        final Allele refAllele = Allele.create("A", true);
+        final Allele refAllele = Allele.create(new String(reference.getReferenceBases(null, new SimpleInterval(contig, start, start)).getBases()), true);
         final Allele altAllele = Allele.create("<INV>");
         final List<Allele> vcAlleles = new ArrayList<>(2);
         vcAlleles.add(refAllele);
