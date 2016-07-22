@@ -1,30 +1,35 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
+import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import scala.Tuple2;
 
-import java.io.File;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -38,13 +43,9 @@ import static org.broadinstitute.hellbender.tools.spark.sv.AlignAssembledContigs
 public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(doc = "Called variants output file", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
-    private String output;
-
-    @Argument(doc = "Called variants local output file", shortName = "localOutput",
-            fullName = "localOutput", optional = false)
-    private File localOutput;
+    @Argument(doc = "URL of the output path", shortName = "outputPath",
+            fullName = "outputPath", optional = false)
+    private String outputPath;
 
     @Argument(doc = "Input file of contig alignments", shortName = "inputAlignments",
             fullName = "inputAlignments", optional = false)
@@ -88,17 +89,59 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(CallVariantsFromAlignedContigsSpark::filterBreakpointsAndProduceVariants).cache();
 
-        variantContexts.saveAsTextFile(output);
-
         final List<VariantContext> variants = variantContexts.collect();
         final List<VariantContext> variantsArrayList = new ArrayList<>(variants);
         variantsArrayList.sort((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, getReferenceSequenceDictionary()));
-        final VariantContextWriter vcfWriter = GATKVariantContextUtils.createVCFWriter(localOutput, getReferenceSequenceDictionary(), true);
 
-        vcfWriter.writeHeader(new VCFHeader());
-        variantsArrayList.forEach(vcfWriter::add);
-        vcfWriter.close();
+        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
 
+        final VCFHeader header = getVcfHeader();
+
+        writeVariants(variantsArrayList, pipelineOptions, "inversions.vcf", header);
+
+        final List<VariantContext> hqmappingVariants = variantsArrayList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
+        writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header);
+
+    }
+
+    private VCFHeader getVcfHeader() {
+        final VCFHeader header = new VCFHeader();
+        header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
+        GATKSVVCFHeaderLines.vcfHeaderLines.values().forEach(header::addMetaDataLine);
+        return header;
+    }
+
+    private void writeVariants(final List<VariantContext> variantsArrayList, final PipelineOptions pipelineOptions, final String fileName, final VCFHeader header) {
+        try (final OutputStream outputStream = new BufferedOutputStream(
+                BucketUtils.createFile(outputPath  + "/" + fileName, pipelineOptions))) {
+
+            final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream);
+
+            vcfWriter.writeHeader(header);
+            variantsArrayList.forEach(vcfWriter::add);
+            vcfWriter.close();
+
+        } catch (IOException e) {
+            throw new GATKException("Could not create output file", e);
+        }
+    }
+
+    private VariantContextWriter getVariantContextWriter(final OutputStream outputStream) {
+        final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
+        VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
+                                                            .clearOptions()
+                                                            .setOutputStream(outputStream)
+                                                            .setOutputFileType(VariantContextWriterBuilder.OutputType.VCF);
+
+        if (null != referenceDictionary) {
+            vcWriterBuilder = vcWriterBuilder.setReferenceDictionary(referenceDictionary);
+        }
+        vcWriterBuilder = vcWriterBuilder.setOption(Options.ALLOW_MISSING_FIELDS_IN_HEADER);
+        for (Options opt : new Options[]{}) {
+            vcWriterBuilder = vcWriterBuilder.setOption(opt);
+        }
+
+        return vcWriterBuilder.build();
     }
 
     private static Iterable<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions(final byte[] contigSequence, final Iterable<AlignmentRegion> alignmentRegionsIterable) {
@@ -156,27 +199,27 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .stop(breakpointAllele.leftAlignedRightBreakpoint.getStart())
                 .id(getInversionId(breakpointAllele))
                 .alleles(vcAlleles)
-                .attribute("END", breakpointAllele.leftAlignedRightBreakpoint.getStart())
-                .attribute("SVTYPE", "INV")
-                .attribute("SVLEN", breakpointAllele.leftAlignedRightBreakpoint.getStart() - breakpointAllele.leftAlignedLeftBreakpoint.getStart())
-                .attribute("TOTAL_MAPPINGS", numAssembledBreakpoints)
-                .attribute("HQMAPPINGS", highMqMappings)
-                .attribute("MQS", mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
-                .attribute("ALIGN_LENGTHS", alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
-                .attribute("MAX_ALIGN_LENGTH", maxAlignLength)
-                .attribute("BREAKPOINT_IDS", breakpointIds.stream().collect(Collectors.joining(",")))
-                .attribute("CONTIG_IDS", assembledContigIds.stream().map(s -> s.replace(" ", "_")).collect(Collectors.joining(",")));
+                .attribute(VCFConstants.END_KEY, breakpointAllele.leftAlignedRightBreakpoint.getStart())
+                .attribute(GATKSVVCFHeaderLines.SVTYPE, GATKSVVCFHeaderLines.SVTYPES.INV.toString())
+                .attribute(GATKSVVCFHeaderLines.SVLEN, breakpointAllele.leftAlignedRightBreakpoint.getStart() - breakpointAllele.leftAlignedLeftBreakpoint.getStart())
+                .attribute(GATKSVVCFHeaderLines.TOTAL_MAPPINGS, numAssembledBreakpoints)
+                .attribute(GATKSVVCFHeaderLines.HQ_MAPPINGS, highMqMappings)
+                .attribute(GATKSVVCFHeaderLines.MAPPING_QUALITIES, mqs.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                .attribute(GATKSVVCFHeaderLines.ALIGN_LENGTHS, alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
+                .attribute(GATKSVVCFHeaderLines.MAX_ALIGN_LENGTH, maxAlignLength)
+                .attribute(GATKSVVCFHeaderLines.BREAKPOINT_IDS, breakpointIds.stream().collect(Collectors.joining(",")))
+                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, assembledContigIds.stream().map(s -> s.replace(" ", "_")).collect(Collectors.joining(",")));
 
         if (breakpointAllele.insertedSequence.length() > 0) {
-            vcBuilder = vcBuilder.attribute("INSERTION", breakpointAllele.insertedSequence);
+            vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, breakpointAllele.insertedSequence);
         }
 
         if (is5To3Inversion(breakpointAllele)) {
-            vcBuilder = vcBuilder.attribute("INV5TO3", "");
+            vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INV_5_TO_3, "");
         }
 
         if (is3To5Inversion(breakpointAllele)) {
-            vcBuilder = vcBuilder.attribute("INV3TO5", "");
+            vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INV_3_TO_5, "");
         }
 
 
