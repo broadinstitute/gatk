@@ -13,6 +13,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.collections4.IterableUtils;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -103,7 +104,11 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaRDD<VariantContext> variantContexts = groupedBreakpoints.map(breakpoints -> filterBreakpointsAndProduceVariants(breakpoints, broadcastReference)).cache();
 
-        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+        writeVariants(fastaReference, logger, variantContexts, getAuthenticatedGCSOptions(), outputPath);
+
+    }
+
+    public static void writeVariants(final String fastaReference, final Logger logger, final JavaRDD<VariantContext> variantContexts, final PipelineOptions pipelineOptions, final String outputPath) {
 
         final List<VariantContext> variants = variantContexts.collect();
         final List<VariantContext> sortedVariantsList = new ArrayList<>(variants);
@@ -116,15 +121,14 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         logger.info("Called " + variants.size() + " candidate inversions");
         final VCFHeader header = getVcfHeader(referenceSequenceDictionary);
 
-        writeVariants(sortedVariantsList, pipelineOptions, "inversions.vcf", header, referenceSequenceDictionary);
+        writeVariants(outputPath, sortedVariantsList, pipelineOptions, "inversions.vcf", header, referenceSequenceDictionary);
 
         final List<VariantContext> hqmappingVariants = sortedVariantsList.stream().filter(v -> v.getAttributeAsInt(GATKSVVCFHeaderLines.HQ_MAPPINGS, 0) > 0).collect(Collectors.toList());
         logger.info("Called " + hqmappingVariants.size() + " high-quality inversions");
-        writeVariants(hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header, referenceSequenceDictionary);
-
+        writeVariants(outputPath, hqmappingVariants, pipelineOptions, "hq_inversions.vcf", header, referenceSequenceDictionary);
     }
 
-    private VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
+    private static VCFHeader getVcfHeader(final SAMSequenceDictionary referenceSequenceDictionary) {
         final VCFHeader header = new VCFHeader();
         header.setSequenceDictionary(referenceSequenceDictionary);
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
@@ -132,9 +136,9 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         return header;
     }
 
-    private void writeVariants(final List<VariantContext> variantsArrayList, final PipelineOptions pipelineOptions, final String fileName, final VCFHeader header, final SAMSequenceDictionary referenceSequenceDictionary) {
+    private static void writeVariants(final String outputPath, final List<VariantContext> variantsArrayList, final PipelineOptions pipelineOptions, final String fileName, final VCFHeader header, final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream = new BufferedOutputStream(
-                BucketUtils.createFile(outputPath  + "/" + fileName, pipelineOptions))) {
+                BucketUtils.createFile(outputPath + "/" + fileName, pipelineOptions))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 
@@ -147,7 +151,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         }
     }
 
-    private VariantContextWriter getVariantContextWriter(final OutputStream outputStream, final SAMSequenceDictionary referenceSequenceDictionary) {
+    private static VariantContextWriter getVariantContextWriter(final OutputStream outputStream, final SAMSequenceDictionary referenceSequenceDictionary) {
         VariantContextWriterBuilder vcWriterBuilder = new VariantContextWriterBuilder()
                                                             .clearOptions()
                                                             .setOutputStream(outputStream);
@@ -164,14 +168,14 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         return vcWriterBuilder.build();
     }
 
-    private static Iterable<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions(final byte[] contigSequence, final Iterable<AlignmentRegion> alignmentRegionsIterable) {
+    public static Iterable<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions(final byte[] contigSequence, final Iterable<AlignmentRegion> alignmentRegionsIterable) {
         final List<AlignmentRegion> alignmentRegions = IterableUtils.toList(alignmentRegionsIterable);
         alignmentRegions.sort(Comparator.comparing(a -> a.startInAssembledContig));
         return ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegions);
     }
 
     @VisibleForTesting
-    private static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> assembledBreakpointsPerAllele, final Broadcast<ReferenceMultiSource> broadcastReference) throws IOException {
+    public static VariantContext filterBreakpointsAndProduceVariants(final Tuple2<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> assembledBreakpointsPerAllele, final Broadcast<ReferenceMultiSource> broadcastReference) throws IOException {
         int numAssembledBreakpoints = 0;
         int highMqMappings = 0;
         int midMqMappings = 0;
@@ -285,7 +289,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 ! region1.referenceInterval.overlaps(region2.referenceInterval);
     }
 
-    private static Tuple2<BreakpointAllele, Tuple2<Tuple2<String,String>, AssembledBreakpoint>> keyByBreakpointAllele(final Tuple2<Tuple2<String,String>, AssembledBreakpoint> breakpointIdAndAssembledBreakpoint) {
+    public static Tuple2<BreakpointAllele, Tuple2<Tuple2<String,String>, AssembledBreakpoint>> keyByBreakpointAllele(final Tuple2<Tuple2<String,String>, AssembledBreakpoint> breakpointIdAndAssembledBreakpoint) {
         final BreakpointAllele breakpointAllele = breakpointIdAndAssembledBreakpoint._2.getBreakpointAllele();
         return new Tuple2<>(breakpointAllele, new Tuple2<>(breakpointIdAndAssembledBreakpoint._1, breakpointIdAndAssembledBreakpoint._2));
     }

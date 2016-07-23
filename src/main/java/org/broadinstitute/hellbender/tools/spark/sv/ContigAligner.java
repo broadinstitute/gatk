@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BWANativeLibrary;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.Closeable;
@@ -336,6 +337,19 @@ public class ContigAligner implements Closeable {
             this.endInAssembledContig = endInAssembledContig;
             this.assembledContigLength = cigar.getReadLength();
             this.mismatches = mismatches;
+        }
+
+        public AlignmentRegion(final GATKRead read) {
+            this.breakpointId = null;
+            this.contigId = read.getName();
+            this.forwardStrand = ! read.isReverseStrand();
+            this.cigar = forwardStrand ? read.getCigar() : CigarUtils.invertCigar(read.getCigar());
+            this.referenceInterval = new SimpleInterval(read);
+            this.assembledContigLength = cigar.getReadLength();
+            this.startInAssembledContig = startOfAlignmentInContig(cigar);
+            this.endInAssembledContig = endOfAlignmentInContig(assembledContigLength, cigar);
+            this.mqual = read.getMappingQuality();
+            this.mismatches = read.getAttributeAsInteger("NM");
         }
 
         private static int startOfAlignmentInContig(final Cigar cigar) {
