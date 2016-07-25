@@ -32,7 +32,8 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends BaseTest {
     @Test(dataProvider = "referenceConfidenceMergeData")
     public void testReferenceConfidenceMerge(final String testID, final List<VariantContext> toMerge, final Locatable loc,
                                              final boolean returnSiteEvenIfMonomorphic, final boolean uniquifySamples, final VariantContext expectedResult) {
-        final VariantContext result = ReferenceConfidenceVariantContextMerger.merge(toMerge, loc, returnSiteEvenIfMonomorphic ? (byte) 'A' : null, true, uniquifySamples);
+        ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger();
+        final VariantContext result = merger.merge(toMerge, loc, returnSiteEvenIfMonomorphic ? (byte) 'A' : null, true, uniquifySamples);
         if ( result == null ) {
             Assert.assertTrue(expectedResult == null);
             return;
