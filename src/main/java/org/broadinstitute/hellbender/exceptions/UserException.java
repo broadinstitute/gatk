@@ -243,6 +243,12 @@ public class UserException extends RuntimeException {
                     dictFile.getAbsolutePath(), fastaFile.getAbsolutePath(),
                     HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
         }
+
+        public MissingReferenceDictFile( final String fastaFile ) {
+            String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
+                    fastaFile,
+                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference"));
+        }
     }
 
     public static class IncompatibleRecalibrationTableParameters extends UserException {
