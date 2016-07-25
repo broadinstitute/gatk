@@ -2,11 +2,12 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.logging.log4j.Level;
+import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
 import org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator;
 import org.broadinstitute.hellbender.utils.hdf5.PoN;
@@ -106,6 +107,10 @@ public final class NormalizeSomaticReadCounts extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        if (! new HDF5Library().load(null)){ //Note: passing null means using the default temp dir.
+            throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
+                    "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
+        }
         Utils.regularReadableUserFile(ponFile);
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
             final PoN pon = new HDF5PoN(ponReader);

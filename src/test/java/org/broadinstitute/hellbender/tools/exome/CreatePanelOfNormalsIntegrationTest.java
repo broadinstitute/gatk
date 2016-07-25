@@ -2,10 +2,14 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.math.IntRange;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.hdf5.*;
+import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
+import org.broadinstitute.hellbender.utils.hdf5.PoN;
+import org.broadinstitute.hellbender.utils.hdf5.PoNTestUtils;
+import org.broadinstitute.hellbender.utils.hdf5.RamPoN;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
