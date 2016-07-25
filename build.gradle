@@ -145,13 +145,6 @@ dependencies {
     compile('org.apache.hadoop:hadoop-client:2.7.2') // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.2')
 
-    compile('org.apache.spark:spark-core_2.10:1.6.1') {
-        // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
-        exclude module: 'jul-to-slf4j'
-        exclude module: 'javax.servlet'
-        exclude module: 'servlet-api'
-    }
-
     compile('de.javakaffee:kryo-serializers:0.37') {
         exclude module: 'kryo' // use Spark's version
     }
