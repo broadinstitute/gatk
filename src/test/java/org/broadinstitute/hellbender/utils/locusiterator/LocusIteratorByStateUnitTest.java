@@ -776,4 +776,33 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         final int nExpectedPileups = nReadContainingPileups;
         Assert.assertEquals(nPileups, nExpectedPileups, "Wrong number of pileups seen");
     }
+
+
+    @DataProvider(name = "FixPairOverlappingQualitiesTest")
+    public Object[][] overlappingElementsToFix() {
+        final byte highQual = 60;
+        final byte lowQual = 10;
+        final byte qualitySum = 70;
+        final byte reducedQuality = 48; // 80% of 60
+        final byte zeroQuality = 0;
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead("4M");
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead("4M");
+        read1.setBases(new byte[]{'A', 'A', 'A', 'A'});
+        read1.setBaseQualities(new byte[]{highQual, highQual, highQual, lowQual});
+        read2.setBases(new byte[]{'A', 'T', 'T', 'T'});
+        read2.setBaseQualities(new byte[]{lowQual, highQual, lowQual, highQual});
+        return new Object[][]{
+                {PileupElement.createPileupForReadAndOffset(read1, 0), PileupElement.createPileupForReadAndOffset(read2, 0), qualitySum,     zeroQuality},
+                {PileupElement.createPileupForReadAndOffset(read1, 1), PileupElement.createPileupForReadAndOffset(read2, 1), reducedQuality, zeroQuality},
+                {PileupElement.createPileupForReadAndOffset(read1, 2), PileupElement.createPileupForReadAndOffset(read2, 2), reducedQuality, zeroQuality},
+                {PileupElement.createPileupForReadAndOffset(read1, 3), PileupElement.createPileupForReadAndOffset(read2, 3), zeroQuality,    reducedQuality}
+        };
+    }
+
+    @Test(enabled = true, dataProvider = "FixPairOverlappingQualitiesTest")
+    public void testFixPairOverlappingQualities(final PileupElement first, final PileupElement second, final byte expectedQualFirst, final byte expectedQualSecond) {
+        LocusIteratorByState.fixPairOverlappingQualities(first, second);
+        Assert.assertEquals(first.getQual(), expectedQualFirst);
+        Assert.assertEquals(second.getQual(), expectedQualSecond);
+    }
 }

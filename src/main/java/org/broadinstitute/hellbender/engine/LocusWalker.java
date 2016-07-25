@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
+import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
 import java.util.*;
@@ -30,6 +31,9 @@ public abstract class LocusWalker extends GATKTool {
 
     @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
     public boolean disableAllReadFilters = false;
+
+    @Argument(fullName = "ignore_overlaps", shortName = "x", doc = "Disable read-pair overlap detection", common = false, optional = true)
+    public boolean ignoreOverlpas = false;
 
     /**
      * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
@@ -122,7 +126,7 @@ public abstract class LocusWalker extends GATKTool {
                 new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
                 makeReadFilter();
         // get the LIBS
-        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header);
+        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header, ignoreOverlpas);
         // prepare the iterator
         Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function

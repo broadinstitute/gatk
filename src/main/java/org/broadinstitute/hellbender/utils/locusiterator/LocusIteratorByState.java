@@ -7,6 +7,7 @@ import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
@@ -77,6 +78,11 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
      * Should we include reads in the pileup which are aligned with a deletion operator to the reference?
      */
     private final boolean includeReadsWithNsAtLoci;
+
+    /**
+     * Should we ignore read-pair overlaps?
+     */
+    private final boolean ignorePairOverlaps;
 
     /**
      * The next alignment context.  A non-null value means that a
@@ -156,6 +162,40 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
      *
      * @param samIterator the iterator of reads to process into pileups.  Reads must be ordered
      *                    according to standard coordinate-sorted BAM conventions
+     * @param downsamplingMethod information about how to downsample the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
+     * @param includeReadsWithNsAtLoci Include reads with Ns at loci (usually it is not needed)
+     * @param keepUniqueReadListInLIBS Keep unique read list in LIBS
+     * @param samples a complete list of samples present in the read groups for the reads coming from samIterator.
+     *                This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                list of samples may contain a null element, and all reads without read groups will
+     *                be mapped to this null sample
+     * @param header header from the reads
+     * @param ignorePairOverlaps if true, overlapping read qualities won't be combined
+     */
+    public LocusIteratorByState(final Iterator<GATKRead> samIterator,
+                                final DownsamplingMethod downsamplingMethod,
+                                final boolean includeReadsWithDeletionAtLoci,
+                                final boolean includeReadsWithNsAtLoci,
+                                final boolean keepUniqueReadListInLIBS,
+                                final Collection<String> samples,
+                                final SAMFileHeader header,
+                                final boolean ignorePairOverlaps) {
+        this(samIterator,
+                LIBSDownsamplingInfo.toDownsamplingInfo(downsamplingMethod),
+                includeReadsWithDeletionAtLoci,
+                includeReadsWithNsAtLoci,
+                samples,
+                keepUniqueReadListInLIBS,
+                header,
+                ignorePairOverlaps);
+    }
+
+    /**
+     * Create a new LocusIteratorByState
+     *
+     * @param samIterator the iterator of reads to process into pileups.  Reads must be ordered
+     *                    according to standard coordinate-sorted BAM conventions
      * @param downsamplingInfo meta-information about how to downsampling the reads
      * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
      * @param samples a complete list of samples present in the read groups for the reads coming from samIterator.
@@ -198,12 +238,47 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
      * @param header header from the reads
      */
     public LocusIteratorByState(final Iterator<GATKRead> samIterator,
+                                final LIBSDownsamplingInfo downsamplingInfo,
+                                final boolean includeReadsWithDeletionAtLoci,
+                                final boolean includeReadsWithNsAtLoci,
+                                final Collection<String> samples,
+                                final boolean keepUniqueReadListInLIBS,
+                                final SAMFileHeader header) {
+        this(samIterator,
+                downsamplingInfo,
+                includeReadsWithDeletionAtLoci,
+                includeReadsWithNsAtLoci,
+                samples,
+                keepUniqueReadListInLIBS,
+                header,
+                true); // TODO: set to true to maintain backwards compatibility, but it makes more sense to take them into account
+    }
+
+    /**
+     * Create a new LocusIteratorByState
+     *
+     * @param samIterator the iterator of reads to process into pileups.  Reads must be ordered
+     *                    according to standard coordinate-sorted BAM conventions
+     * @param downsamplingInfo meta-information about how to downsampling the reads
+     * @param includeReadsWithDeletionAtLoci Include reads with deletion at loci
+     * @param includeReadsWithNsAtLoci Include reads with Ns at loci (usually it is not needed)
+     * @param samples a complete list of samples present in the read groups for the reads coming from samIterator.
+     *                This is generally just the set of read group sample fields in the SAMFileHeader.  This
+     *                list of samples may contain a null element, and all reads without read groups will
+     *                be mapped to this null sample
+     * @param keepUniqueReadListInLIBS if true, we will keep the unique reads from off the samIterator and make them
+     *                                available via the transferReadsFromAllPreviousPileups interface
+     * @param header header from the reads
+     * @param ignorePairOverlaps if true, overlapping read qualities won't be combined
+     */
+    public LocusIteratorByState(final Iterator<GATKRead> samIterator,
         final LIBSDownsamplingInfo downsamplingInfo,
         final boolean includeReadsWithDeletionAtLoci,
         final boolean includeReadsWithNsAtLoci,
         final Collection<String> samples,
         final boolean keepUniqueReadListInLIBS,
-        final SAMFileHeader header) {
+        final SAMFileHeader header,
+        final boolean ignorePairOverlaps) {
         Utils.nonNull(samIterator, "samIterator cannot be null");
         Utils.nonNull(downsamplingInfo, "downsamplingInfo cannot be null");
         Utils.nonNull(samples, "Samples cannot be null");
@@ -218,6 +293,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
         this.includeReadsWithDeletionAtLoci = includeReadsWithDeletionAtLoci;
         this.includeReadsWithNsAtLoci = includeReadsWithNsAtLoci;
         this.samples = new ArrayList<>(samples);
+        this.ignorePairOverlaps = ignorePairOverlaps;
         this.readStates = new ReadStateManager(samIterator, this.samples, downsamplingInfo, keepUniqueReadListInLIBS, header);
     }
 
@@ -320,6 +396,9 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
                 final Iterator<AlignmentStateMachine> iterator = readState.iterator();
                 final List<PileupElement> pile = new ArrayList<>(readState.size());
 
+                // this is for fixing the qualities of overlapping reads as in SAMTOOLS
+                final Map<String, PileupElement> overlappingRead = new HashMap<>();
+
                 while (iterator.hasNext()) {
                     // state object with the read/offset information
                     final AlignmentStateMachine state = iterator.next();
@@ -335,7 +414,18 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
                             continue;
                         }
 
-                        pile.add(state.makePileupElement());
+                        final PileupElement current = state.makePileupElement();
+                        pile.add(current);
+                        if(!ignorePairOverlaps) {
+                            if (overlappingRead.containsKey(read.getName())) {
+                                fixPairOverlappingQualities(overlappingRead.remove(read.getName()), current);
+                            } else if (ReadUtils.readHasMappedMate(read) &&
+                                    read.getMateContig().equals(location.getContig()) &&
+                                    read.getMateStart() < read.getEnd()
+                                    ) {
+                                overlappingRead.put(read.getName(), current);
+                            }
+                        }
                     }
                 }
 
@@ -348,6 +438,37 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
             if (!fullPileupPerSample.isEmpty()){ // if we got reads with non-D/N over the current position, we are done
                 nextAlignmentContext = new AlignmentContext(location, new ReadPileup(location, fullPileupPerSample));
             }
+        }
+    }
+
+    /**
+     * Fix the quality of two elements that comes from an overlaping pair
+     */
+    @VisibleForTesting
+    static void fixPairOverlappingQualities(final PileupElement firstElement, final PileupElement secondElement) {
+        if (!secondElement.isDeletion() || !firstElement.isDeletion()) {
+            final byte[] firstQuals = firstElement.getRead().getBaseQualities();
+            final byte[] secondQuals = secondElement.getRead().getBaseQualities();
+            if (firstElement.getBase() == secondElement.getBase()) {
+                // if both have the same base, extra confidence in the firts of them
+                firstQuals[firstElement.getOffset()] = (byte) (firstQuals[firstElement.getOffset()] + secondQuals[secondElement.getOffset()]);
+                // cap to 200
+                if(firstQuals[firstElement.getOffset()] > 200) {
+                    firstQuals[firstElement.getOffset()] = (byte) 200;
+                }
+                secondQuals[secondElement.getOffset()] = 0;
+            } else {
+                // if not, we lost confidence in the one with higher quality
+                if (firstElement.getQual() >= secondElement.getQual()) {
+                    firstQuals[firstElement.getOffset()] = (byte) (0.8 * firstQuals[firstElement.getOffset()]);
+                    secondQuals[secondElement.getOffset()] = 0;
+                } else {
+                    secondQuals[secondElement.getOffset()] = (byte) (0.8 * secondQuals[secondElement.getOffset()]);
+                    firstQuals[firstElement.getOffset()] = 0;
+                }
+            }
+            firstElement.getRead().setBaseQualities(firstQuals);
+            secondElement.getRead().setBaseQualities(secondQuals);
         }
     }
 
