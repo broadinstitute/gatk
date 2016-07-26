@@ -1,0 +1,42 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=LowQual,Description="Low quality">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=JL,Number=1,Type=Integer,Description="Phred-scaled joint likelihood of the genotype combination (before applying family priors)">
+##FORMAT=<ID=JP,Number=1,Type=Integer,Description="Phred-scaled joint posterior probability of the genotype combination (after applying family priors)">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PP,Number=G,Type=Integer,Description="Phred-scaled Posterior Genotype Probabilities">
+##GATKCommandLine=<ID=CombineVariants,Version=3.1-85-g9417835,Date="Thu Apr 17 20:24:32 EDT 2014",Epoch=1397780672255,CommandLineOptions="analysis_type=CombineVariants input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] intervals=[/humgen/gsa-hpprojects/dev/gauthier/.queue/scatterGather/Qscript_combineVariants-1-sg/temp_001_of_100/scatter.intervals] excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/humgen/1kg/reference/human_g1k_v37_decoy.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 logging_level=INFO log_to_file=null help=false version=false variant=[(RodBindingCollection [(RodBinding name=variant source=/humgen/gsa-hpprojects/dev/gauthier/NA12891_newTruth_allSNPs_WG_DP20.hc.vcf)]), (RodBindingCollection [(RodBinding name=variant2 source=/humgen/gsa-hpprojects/dev/gauthier/NA12892_newTruth_allSNPs_WG_DP20.hc.vcf)]), (RodBindingCollection [(RodBinding name=variant3 source=/humgen/gsa-hpprojects/dev/gauthier/NA12878_newTruth_allSNPs_WG_DP20.hc.vcf)])] out=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub no_cmdline_in_header=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub bcf=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub genotypemergeoption=UNSORTED filteredrecordsmergetype=KEEP_IF_ANY_UNFILTERED multipleallelesmergetype=BY_TYPE rod_priority_list=null printComplexMerges=false filteredAreUncalled=false minimalVCF=false excludeNonVariants=false setKey=set assumeIdenticalSamples=false minimumN=1 suppressCommandLineHeader=false mergeInfoWithMaxAC=false filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HaplotypeScore,Number=1,Type=Float,Description="Consistency of the site with at most two segregating haplotypes">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MLEAC,Number=A,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##INFO=<ID=MLEAF,Number=A,Type=Float,Description="Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQ0,Number=1,Type=Integer,Description="Total Mapping Quality Zero Reads">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=PG,Number=G,Type=Integer,Description="Genotype Likelihood Prior">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=set,Number=1,Type=String,Description="Source VCF for the merged record in CombineVariants">
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##reference=human_b37_both.fasta
+##source=CalculateGenotypePosteriors
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	NA12878	NA12891	NA12892
+1	564477	.	A	G	0	.	AC=0;AF=0.00;AN=6;DP=32;FS=0.000;MLEAC=0;MLEAF=0.00;MQ0=0;PG=0,0,0;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/0:19,0:19:66:9:9:0,57,632:0,66,672	0/0:3,0:3:9:9:9:0,9,109:0,9,164	0/0:10,0:10:30:9:9:0,30,356:0,30,411
+1	1172907	.	C	T	0	.	AC=2;AF=0.333;AN=6;DP=18;FS=0.000;MQ=60.00;MQ0=0;PG=0,0,0;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/1:2,6:8:62:18:19:150,0,38:150,0,62	0/0:8,0:8:24:18:19:0,24,225:0,24,225	0/1:1,1:2:21:18:19:28,0,21:52,0,21
+1	187712339	.	C	T	89.28	.	AC=1;AF=0.167;AN=6;DP=17;FS=0.000;MQ=60.00;MQ0=0;PG=3,0,3;QD=29.76;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/0:10,0:10:17:0:11:0,30,356:0,17,359	0/1:0,3:3:24:0:11:117,9,0:111,0,24	0/0:4,0:4:9:0:11:0,12,139:0,9,169
+1	187992537	.	G	A	109.03	.	AC=1;AF=0.167;AN=6;DP=18;FS=0.000;MQ=60.00;MQ0=0;PG=5,0,2;QD=27.26;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/0:7,0:7:4:0:6:0,21,244:0,4,250	0/1:0,4:4:11:0:6:137,12,0:130,0,11	0/0:7,0:7:16:0:6:0,21,249:0,16,268
+1	244397794	.	G	C	198.77	.	AC=3;AF=0.500;AN=6;DP=26;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;PG=6,0,0;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/1:2,4:6:50:49:49:123,0,50:129,0,50	0/1:3,8:11:72:49:49:227,0,72:233,0,72	0/1:6,3:9:85:49:49:79,0,175:85,0,175
+1	245706160	.	T	C	0	.	AC=2;AF=0.333;AN=6;DP=32;FS=0.000;MQ=60.00;MQ0=0;PG=1,0,5;set=Intersection	GT:AD:DP:GQ:JL:JP:PL:PP	0/1:2,6:8:59:20:32:178,0,21:179,0,59	0/0:11,0:11:32:20:32:0,33,388:0,32,391	0/1:9,3:12:78:20:32:44,0,279:78,0,284
