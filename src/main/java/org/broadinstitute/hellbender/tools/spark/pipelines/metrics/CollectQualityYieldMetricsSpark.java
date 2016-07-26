@@ -34,20 +34,20 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     private QualityYieldMetricsCollectorSpark qualityYieldCollector = new QualityYieldMetricsCollectorSpark();
 
     @Override
-    public SortOrder getExpectedSortOrder() { return qualityYieldCollector.getExpectedSortOrder(); }
+    protected SortOrder getExpectedSortOrder() { return qualityYieldCollector.getExpectedSortOrder(); }
 
     @Override
-    public QualityYieldMetricsArgumentCollection getInputArguments() {
+    protected QualityYieldMetricsArgumentCollection getInputArguments() {
         return qualityYieldArgs;
     }
 
     @Override
-    public ReadFilter getReadFilter(SAMFileHeader samHeader) {
+    protected ReadFilter getReadFilter(SAMFileHeader samHeader) {
         return ReadFilterLibrary.ALLOW_ALL_READS;
     }
 
     @Override
-    public void initialize(
+    protected void initialize(
             final QualityYieldMetricsArgumentCollection inputArgs,
             final SAMFileHeader samHeader,
             final List<Header> defaultHeaders) {
@@ -55,7 +55,7 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     }
 
     @Override
-    public void collectMetrics(
+    protected void collectMetrics(
             final JavaRDD<GATKRead> filteredReads,
             final SAMFileHeader samHeader)
     {
@@ -63,7 +63,7 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     }
 
     @Override
-    public void finish(final String inputName, final AuthHolder authHolder) {
+    protected void finish(final String inputName, final AuthHolder authHolder) {
         qualityYieldCollector.saveMetrics(inputName, authHolder);
     }
 

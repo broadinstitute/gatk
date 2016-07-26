@@ -2,12 +2,17 @@ package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 
+import java.io.Serializable;
+
 /**
  * High level metrics about the alignment of reads within a SAM file, produced by
  * the CollectAlignmentSummaryMetrics program and usually stored in a file with
  * the extension ".alignment_summary_metrics".
  */
-public final class AlignmentSummaryMetrics extends MultiLevelMetrics {
+public final class AlignmentSummaryMetrics extends MultiLevelMetrics implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     public enum Category { UNPAIRED, FIRST_OF_PAIR, SECOND_OF_PAIR, PAIR }
 
     /**

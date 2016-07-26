@@ -2,11 +2,16 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 
+import java.io.Serializable;
+
 /**
  * Metrics about the alignment of RNA-seq reads within a SAM file to genes, produced by the CollectRnaSeqMetrics
  * program and usually stored in a file with the extension ".rna_metrics".
  */
-public final class RnaSeqMetrics extends MultiLevelMetrics {
+public final class RnaSeqMetrics extends MultiLevelMetrics implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     /** The total number of PF bases including non-aligned reads. */
     public long PF_BASES;
 

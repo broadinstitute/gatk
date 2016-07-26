@@ -27,22 +27,21 @@ public final class CollectInsertSizeMetricsSpark
     private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
-    InsertSizeMetricsArgumentCollection insertSizeArgs = new InsertSizeMetricsArgumentCollection();
+    private InsertSizeMetricsArgumentCollection insertSizeArgs = new InsertSizeMetricsArgumentCollection();
 
-    InsertSizeMetricsCollectorSpark insertSizeCollector = null;
+    private InsertSizeMetricsCollectorSpark insertSizeCollector = new InsertSizeMetricsCollectorSpark();
 
     public InsertSizeMetricsArgumentCollection getInputArguments() {
         return insertSizeArgs;
     }
 
-    public SortOrder getExpectedSortOrder() { return SortOrder.unsorted; }
+    protected SortOrder getExpectedSortOrder() { return insertSizeCollector.getExpectedSortOrder(); }
 
-    public void initialize(
+    protected void initialize(
             final InsertSizeMetricsArgumentCollection inputArgs,
             final SAMFileHeader samHeader,
             final List<Header> defaultHeaders)
     {
-        insertSizeCollector = new InsertSizeMetricsCollectorSpark();
         insertSizeCollector.initialize(inputArgs, samHeader, defaultHeaders);
     }
 
@@ -50,12 +49,12 @@ public final class CollectInsertSizeMetricsSpark
      * Return the read filter required for this collector
      */
     @Override
-    public ReadFilter getReadFilter(final SAMFileHeader samHeader) {
+    protected ReadFilter getReadFilter(final SAMFileHeader samHeader) {
         return insertSizeCollector.getReadFilter(samHeader);
     }
 
     @Override
-    public void collectMetrics(
+    protected void collectMetrics(
             final JavaRDD<GATKRead> filteredReads,
             final SAMFileHeader samHeader)
     {
@@ -63,7 +62,7 @@ public final class CollectInsertSizeMetricsSpark
     }
 
     @Override
-    public void finish(final String inputName, final AuthHolder authHolder) {
+    protected void finish(final String inputName, final AuthHolder authHolder) {
         insertSizeCollector.saveMetrics(inputName, authHolder);
     }
 }

@@ -33,19 +33,19 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
 
     /**
      * The following {@link MetricsCollectorSpark} methods must be implemented by subclasses
-     * and should be forwarded to embedded collector.
+     * and should be forwarded to the embedded collector.
      */
-    abstract public ReadFilter getReadFilter(SAMFileHeader samHeader);
-    abstract SortOrder getExpectedSortOrder();
-    abstract void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
-    abstract void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
-    abstract void finish(String inputBaseName, AuthHolder authHolder);
+    abstract protected ReadFilter getReadFilter(SAMFileHeader samHeader);
+    abstract protected SortOrder getExpectedSortOrder();
+    abstract protected void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
+    abstract protected void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
+    abstract protected void finish(String inputBaseName, AuthHolder authHolder);
 
     /**
      * To be implemented by subclasses; return the fully initialized and populated
      * argument collection that will be passed to the collector
      */
-    abstract T getInputArguments();
+    abstract protected T getInputArguments();
 
     @Override
     public final boolean requiresReads(){ return true; }
