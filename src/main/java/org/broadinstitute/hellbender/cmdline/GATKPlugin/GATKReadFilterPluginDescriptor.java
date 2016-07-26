@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -23,7 +24,13 @@ import java.util.stream.Collectors;
  */
 public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescriptor<ReadFilter> {
 
-    protected final Logger logger = LogManager.getLogger(this.getClass());
+    protected transient Logger logger = LogManager.getLogger(this.getClass());
+
+    private void readObject(java.io.ObjectInputStream in)
+            throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        logger = LogManager.getLogger(this.getClass()); // Logger is not serializable (even by Kryo)
+    }
 
     private static final String pluginPackageName = "org.broadinstitute.hellbender.engine.filters";
     private static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.engine.filters.ReadFilter.class;

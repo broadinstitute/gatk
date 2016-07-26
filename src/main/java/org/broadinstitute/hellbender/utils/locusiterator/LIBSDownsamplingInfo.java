@@ -4,10 +4,14 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.DownsampleType;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 
+import java.io.Serializable;
+
 /**
  * Simple wrapper about the information LIBS needs about downsampling
  */
-public final class LIBSDownsamplingInfo {
+public final class LIBSDownsamplingInfo implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private final boolean performDownsampling;
     private final int toCoverage;
 

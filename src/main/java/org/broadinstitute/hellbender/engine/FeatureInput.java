@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -35,7 +36,9 @@ import java.util.Map;
  *
  * @param <T> the type of Feature that this FeatureInput file contains (eg., VariantContext, BEDFeature, etc.)
  */
-public final class FeatureInput<T extends Feature> {
+public final class FeatureInput<T extends Feature> implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     /**
      * Logical name for this source of Features optionally provided by the user on the command line

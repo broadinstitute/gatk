@@ -64,6 +64,12 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
     @ArgumentCollection(doc = "all the command line arguments for BQSR and its covariates")
     private final RecalibrationArgumentCollection bqsrArgs = new RecalibrationArgumentCollection();
 
+    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
+    public int readShardSize = 10000;
+
+    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Only applies when using the OVERLAPS_PARTITIONER join strategy.", optional = true)
+    public int readShardPadding = 1000;
+
     /**
      * command-line arguments to fine tune the apply BQSR step.
      */
@@ -98,7 +104,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
 
-        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(filteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
+        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, filteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy, getReferenceSequenceDictionary(), readShardSize, readShardPadding);
         //note: we use the reference dictionary from the reads themselves.
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getHeaderForReads().getSequenceDictionary(), bqsrArgs);
 
