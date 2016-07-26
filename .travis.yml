@@ -7,37 +7,11 @@ env:
   matrix:
   - TERM=dumb
   global:
-  - JAVA_LIBRARY_PATH=/usr/lib/jni
-
-  #needed to avoid a bug in the hdf5 installer
-  - PS1=">"
-
   #limit gradle jvm memory usage
   - GRADLE_OPTS=-Xmx512m
 
-  # If this changes, you will need to update the gradle build
-  - HDF5_DIR=/hdf/
-
   - secure: Da9Brv5WKCE3z0bp5u52X1Rqul5C/r7idGj/yLhHnlEvHXPDQHaGXEQw4fNhRkB586lx6xilO8sra2FHoLDMKsqwE0h2+NKsrHQepTSFOR/fp/otoA/kiBue23ZfhsAEFn/uliVU36xLkt+LsyVqSKa+9JKDA5z1hXSemXGGVGw=
 before_install:
-# Grab the HDF5 2.9 (64-bit) binary and install it.
-#  shared libs are in /hdf5/HDFView/lib/linux/
-#  jars are in /hdf5/HDFView/lib/
-# symlinks are made to the JAVA_LIBRARY_PATH
-- sudo mkdir -p ${HDF5_DIR}
-- echo HDF5 being downloaded and installed in ${HDF5_DIR}
-- sudo wget "https://www.hdfgroup.org/ftp/HDF5/releases/HDF-JAVA/hdf-java-2.9/hdfview/hdfview_install_linux64.bin" -O ${HDF5_DIR}/hdfview_install_linux64.bin
-- sudo chmod +x ${HDF5_DIR}/hdfview_install_linux64.bin
-- sudo ${HDF5_DIR}/hdfview_install_linux64.bin
-- sudo mkdir -p ${JAVA_LIBRARY_PATH}
-- sudo ln -s ${HDF5_DIR}/HDFView/lib/linux/libjhdf5.so ${JAVA_LIBRARY_PATH}/libjhdf5.so
-- sudo ln -s ${HDF5_DIR}/HDFView/lib/linux/libjhdf5.settings ${JAVA_LIBRARY_PATH}/libjhdf5.settings
-- sudo chmod -R a+rx ${JAVA_LIBRARY_PATH}
-- sudo chmod -R a+rx ${HDF5_DIR}
-- ls -la ${HDF5_DIR}/HDFView/lib
-- ls -la ${HDF5_DIR}/HDFView/lib/linux
-- ls -la ${JAVA_LIBRARY_PATH}
-
 # Added from hellbender public
 - sudo mkdir -p /usr/local/lib/R/
 - sudo mkdir -p site-library

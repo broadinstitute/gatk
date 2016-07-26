@@ -39,39 +39,6 @@ repositories {
         url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
     }
 
-    // Locations for finding HDF and HDFJava jar files
-    //  Please note that this is only for the jar files, not the jni shared native libraries (.so files --
-    //   E.g. libjhdf5.so).  Instructions for those are found in README.md.
-    //
-    // If this falls out of date for Ubuntu:
-    //  Locations for both the JNI and the jar files can be located at: http://packages.ubuntu.com/
-    //
-    //  Search for libjhdf5-java
-    //  Select the desired Ubuntu build (e.g. vivid)
-    //  Click "list of files" for the appropriate architecture
-    //  Find the dir for the HDF jar files (listed in dependencies) and add it to the list below
-    // If you would like the location of libjhdf5.so, you can search for "libjhdf5-jni" and look at the file listing.
-
-    flatDir {
-        // Ubuntu 12.04 through 15.04.  ``sudo apt-get install hdfview``  (aside:  shared libraries are in /usr/lib/jni/)
-        // May not work in versions 15.10 and above
-        dirs '/usr/share/java/'
-    }
-
-    flatDir {
-        // Mac following dmg install instructions in README.
-        dirs '/Applications/HDFView.app/Contents/Java/'
-    }
-
-    flatDir {
-        // Travis
-        dirs "$System.env.HDF5_DIR/HDFView/lib/"
-    }
-
-    flatDir {
-        dirs '/broad/software/free/Linux/redhat_6_x86_64/pkgs/hdfview_2.9/HDFView/lib/'
-    }
-
     if (customJarPath) {
         flatDir {
             // Specified by user
@@ -112,14 +79,7 @@ check.dependsOn installDist
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
     compile 'org.broadinstitute:gatk:4.alpha.1-199-g8377acb-20160713.142718-1'
-
-    // HDF5 and HDF-Java jar files
-    if (isMacOsX) {
-        compile name: 'jarhdf5-2.11.0'
-    }
-    else {
-        compile name: 'jhdf5'
-    }
+    compile 'org.broadinstitute:hdf5-java-bindings:1.0.0-hdf5_2.11.0'
 
     testCompile 'org.testng:testng:6.8.8'
 }
@@ -224,12 +184,6 @@ tasks.withType(Jar) {
     }
 }
 
-// testJavaLibraryPath: Where to find jni libraries (e.g. HDF5's) to be used during testing.
-// The environment variable JAVA_LIBRARY_PATH takes preference if present,
-// Otherwise we used Gradle's 'testJavaLibraryPath' if present (use ~/.gradle.properties to addapt it to your dev. setup)
-// or is left to the default otherwise. This default typically points to the usual system */lib directories.
-def testJavaLibraryPath = System.env['JAVA_LIBRARY_PATH'] ?: hasProperty("testJavaLibraryPath") ? property("testJavaLibraryPath") : null;
-
 test {
 
     systemProperty "samjdk.use_async_io_read_samtools", "false"
@@ -238,9 +192,6 @@ test {
     systemProperty "samjdk.compression_level", "1"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
-    if (testJavaLibraryPath) {
-      systemProperties['java.library.path'] = testJavaLibraryPath
-    }
     // enable TestNG support (default is JUnit)
     useTestNG{
         excludeGroups 'cloud', 'bucket'
@@ -282,7 +233,7 @@ test {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.12'
+    gradleVersion = '2.13'
 }
 
 tasks.withType(ShadowJar) {

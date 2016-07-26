@@ -6,10 +6,13 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomDataGenerator;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5LibException;
+import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
@@ -43,32 +46,24 @@ public final class HDF5LibraryUnitTest {
     @SuppressWarnings("FieldCanBeLocal")
     private static double TEST_PON_VERSION = 1.3;
 
-    @Test(groups = "supported")
+    @BeforeClass
     public void testIsSupported() {
-        Assert.assertTrue(HDF5Library.isSupported());
+        Assert.assertTrue(new HDF5Library().load(null));
     }
 
-
-    @Test(dependsOnGroups = "supported")
-    public void testGetLibrary() {
-        final HDF5Library library = HDF5Library.getLibrary();
-        Assert.assertNotNull(library);
-        Assert.assertSame(HDF5Library.getLibrary(), library);
-    }
-
-    @Test(dependsOnGroups = "supported")
+    @Test
     public void testOpenReadOnly() {
         final HDF5File reader = new HDF5File(TEST_PON);
         reader.close();
     }
 
-    @Test(dependsOnGroups = "supported",expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = HDF5LibException.class)
     public void testOpenReadOnlyOnBadFile() {
         final HDF5File reader = new HDF5File(new File("/tmp/no-file"));
         reader.close();
     }
 
-    @Test(dependsOnGroups = "supported")
+    @Test
     public void testTargetNameReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
@@ -79,7 +74,7 @@ public final class HDF5LibraryUnitTest {
         reader.close();
     }
 
-    @Test(dependsOnGroups = "supported")
+    @Test
     public void testSampleNameReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
@@ -101,7 +96,7 @@ public final class HDF5LibraryUnitTest {
         Assert.assertEquals(logNormalSampleNames, expected);
     }
 
-    @Test(dependsOnGroups = "supported", dependsOnMethods = "testTargetNameReading")
+    @Test(dependsOnMethods = "testTargetNameReading")
     public void testTargetFactorsReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
@@ -119,7 +114,7 @@ public final class HDF5LibraryUnitTest {
         reader.close();
     }
 
-    @Test(dependsOnGroups = "supported")
+    @Test
     public void testVersionReading() {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);
@@ -127,7 +122,7 @@ public final class HDF5LibraryUnitTest {
         reader.close();
     }
 
-    @Test(dependsOnGroups = "supported", dependsOnMethods = {"testTargetNameReading","testSampleNameReading"})
+    @Test(dependsOnMethods = {"testTargetNameReading","testSampleNameReading"})
     public void testNormalizedPcovReading() throws IOException {
         final HDF5File reader = new HDF5File(TEST_PON);
         final PoN pon = new HDF5PoN(reader);

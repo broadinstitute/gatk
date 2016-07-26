@@ -3,13 +3,14 @@ package org.broadinstitute.hellbender.tools.exome;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pca.PCA;
 
@@ -104,6 +105,10 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        if (! new HDF5Library().load(null)){ //Note: passing null means using the default temp dir.
+            throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
+                    "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
+        }
         ParamUtils.isPositiveOrZero(numComponentsRequested, "number of components to use must be positive or zero.");
         ParamUtils.inRange(proportionOfVariance, 0, 1, "proportion of variance explained must be between 0 and 1");
         final PCA pca = readPcaInputFile(pcaFile);
@@ -160,11 +165,9 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
     }
 
     private PCA readPcaInputFile(final File pcaFile) {
-        final PCA pca;
         try (final HDF5File pcaHd5 = new HDF5File(pcaFile, HDF5File.OpenMode.READ_ONLY)) {
-            pca = PCA.readHDF5(pcaHd5);
+            return PCA.readHDF5(pcaHd5);
         }
-        return pca;
     }
 
     private void writeOutputCoverage(final ReadCountCollection tangentNormalizedCoverage) {

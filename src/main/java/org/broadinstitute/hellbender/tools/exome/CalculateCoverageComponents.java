@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hdf5.HDF5File;
+import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -10,7 +12,6 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.pca.PCA;
 import org.broadinstitute.hellbender.utils.svd.SVDFactory;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -80,6 +81,10 @@ public class CalculateCoverageComponents extends SparkToggleCommandLineProgram {
 
     @Override
     protected void runPipeline(final JavaSparkContext ctx) {
+        if (! new HDF5Library().load(null)){  //Note: passing null means using the default temp dir.
+            throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
+                    "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
+        }
         final ReadCountCollection analysisReadCounts = composeAnalysisReadCounts();
         final List<String> targetNames = analysisReadCounts.targets().stream().map(Target::getName).collect(Collectors.toList());
         final List<String> sampleNames = analysisReadCounts.columnNames();

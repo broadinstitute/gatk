@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.hdf5;
 
 
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
