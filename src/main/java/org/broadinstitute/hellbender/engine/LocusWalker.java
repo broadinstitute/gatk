@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
-import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
 import java.util.*;
@@ -126,7 +125,7 @@ public abstract class LocusWalker extends GATKTool {
                 new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
                 makeReadFilter();
         // get the LIBS
-        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header, ignoreOverlpas);
+        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs(), ignoreOverlpas);
         // prepare the iterator
         Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function

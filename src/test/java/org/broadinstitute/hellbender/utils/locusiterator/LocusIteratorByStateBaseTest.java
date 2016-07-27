@@ -64,11 +64,12 @@ public abstract class LocusIteratorByStateBaseTest extends BaseTest {
         return new LocusIteratorByState(
                 new FakeCloseableIterator<>(reads.iterator()),
                 downsamplingMethod,
-                true,
-                includeNs,
                 keepUniqueReadList,
                 sampleListForSAMWithoutReadGroups(),
-                header);
+                header,
+                true,
+                includeNs
+        );
     }
 
     private boolean isIndel(final CigarElement ce) {
