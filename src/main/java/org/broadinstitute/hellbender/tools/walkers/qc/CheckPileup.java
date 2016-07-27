@@ -90,6 +90,12 @@ public final class CheckPileup extends LocusWalker {
         }
     }
 
+    // No downsampling by default
+    @Override
+    protected int defaultMaxDepthPerSample() {
+        return 0;
+    }
+
     public void apply(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
         final ReadPileup pileup = context.getBasePileup();
         final SAMPileupFeature truePileup = getTruePileup(featureContext);
