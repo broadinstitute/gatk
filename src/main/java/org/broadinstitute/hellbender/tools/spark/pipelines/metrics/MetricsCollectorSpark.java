@@ -142,5 +142,5 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
      * @param inputBaseName base name of the input file
      * @param authHolder authentication info. May be null.
      */
-    default void saveMetrics(String inputBaseName, AuthHolder authHolder) { }
+     void saveMetrics(String inputBaseName, AuthHolder authHolder);
 }

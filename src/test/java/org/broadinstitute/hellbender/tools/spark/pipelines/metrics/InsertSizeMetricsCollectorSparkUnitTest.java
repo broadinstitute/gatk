@@ -72,11 +72,11 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         isArgs.output = outfile.getAbsolutePath();
         isArgs.useEnd = InsertSizeMetricsArgumentCollection.EndToUse.SECOND;
         if (allLevels) {
-            isArgs.metricAccumulationLevel = new HashSet<>();
-            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.ALL_READS);
-            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.SAMPLE);
-            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.LIBRARY);
-            isArgs.metricAccumulationLevel.add(MetricAccumulationLevel.READ_GROUP);
+            isArgs.metricAccumulationLevel.accumulationLevels = new HashSet<>();
+            isArgs.metricAccumulationLevel.accumulationLevels.add(MetricAccumulationLevel.ALL_READS);
+            isArgs.metricAccumulationLevel.accumulationLevels.add(MetricAccumulationLevel.SAMPLE);
+            isArgs.metricAccumulationLevel.accumulationLevels.add(MetricAccumulationLevel.LIBRARY);
+            isArgs.metricAccumulationLevel.accumulationLevels.add(MetricAccumulationLevel.READ_GROUP);
         }
 
         InsertSizeMetricsCollectorSpark isSpark = new InsertSizeMetricsCollectorSpark();

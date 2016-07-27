@@ -62,7 +62,7 @@ public final class CollectInsertSizeMetricsSpark
     }
 
     @Override
-    protected void finish(final String inputName, final AuthHolder authHolder) {
+    protected void saveMetrics(final String inputName, final AuthHolder authHolder) {
         insertSizeCollector.saveMetrics(inputName, authHolder);
     }
 }

@@ -20,7 +20,7 @@ import java.util.List;
  *
  * - Declare an instance of a collector that implements the {@link MetricsCollectorSpark} interface
  * - Declare an instance of the input argument collection (of type T) for the collector
- * - Implement or override the {@link #getReadFilter}, {@link #initialize}, {@link #collectMetrics} and {@link #finish}
+ * - Implement or override the {@link #getReadFilter}, {@link #initialize}, {@link #collectMetrics} and {@link #saveMetrics}
  *   methods by forwarding to the collector object
  *
  * The {link #runTool} method for this class will automatically put the collector through the
@@ -39,7 +39,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
     abstract protected SortOrder getExpectedSortOrder();
     abstract protected void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
     abstract protected void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
-    abstract protected void finish(String inputBaseName, AuthHolder authHolder);
+    abstract protected void saveMetrics(String inputBaseName, AuthHolder authHolder);
 
     /**
      * To be implemented by subclasses; return the fully initialized and populated
@@ -85,7 +85,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
         initialize(collectorArgs, getHeaderForReads(), getDefaultHeaders());
         final JavaRDD<GATKRead> filteredReads = getReads();
         collectMetrics(filteredReads, getHeaderForReads());
-        finish(getReadSourceName(), getAuthHolder());
+        saveMetrics(getReadSourceName(), getAuthHolder());
     }
 
 }

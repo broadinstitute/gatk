@@ -1,0 +1,22 @@
+## htsjdk.samtools.metrics.StringHeader
+# org.broadinstitute.hellbender.tools.examples.metrics.multi.ExampleCollectMultiMetricsSpark  --metricAccumulationLevel ALL_READS --metricAccumulationLevel SAMPLE --metricAccumulationLevel LIBRARY --metricAccumulationLevel READ_GROUP --output /var/folders/3g/0dh8mspj3pz8qpmm4qqqzblr0000gn/T/test2087100780389339923.txt --input /Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/examples/metrics/exampleMetrics.bam --verbosity ERROR  --readValidationStringency SILENT --interval_set_rule UNION --interval_padding 0 --bamPartitionSize 0 --disableSequenceDictionaryValidation false --shardedOutput false --numReducers 0 --sparkMaster local[*] --help false --version false --QUIET false --use_jdk_deflater false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: August 12, 2016 11:29:15 AM EDT
+
+## METRICS CLASS	org.broadinstitute.hellbender.tools.examples.metrics.multi.ExampleMultiMetrics
+NUMREADS	SAMPLE	LIBRARY	READ_GROUP
+52			
+52	NA12878		
+0	NA12878	Solexa-41739	
+6	NA12878	Solexa-41734	
+28	NA12878	Solexa-41748	
+18	NA12878	Solexa-41753	
+0	NA12878	Solexa-41739	62A79AAXX100907.1
+0	NA12878	Solexa-41739	62A79AAXX100907.2
+2	NA12878	Solexa-41734	62A79AAXX100907.3
+4	NA12878	Solexa-41734	62A79AAXX100907.5
+18	NA12878	Solexa-41748	62A79AAXX100907.6
+10	NA12878	Solexa-41748	62A79AAXX100907.7
+18	NA12878	Solexa-41753	62A79AAXX100907.8
+
+
