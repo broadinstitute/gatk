@@ -59,6 +59,32 @@ public interface GATKRead extends Locatable {
     }
 
     /**
+     * Gets the contig name for the contig this is mapped to.  May return null if there is no unique mapping.
+     *
+     * @param isUnmapped
+     * @return name of the contig this is mapped to, potentially null
+     */
+    default String getContig(final boolean isUnmapped){
+        return getContig();
+    }
+
+    /**
+     * @param isUnmapped
+     * @return 1-based start position, undefined if getContig() == null
+     */
+    default int getStart(final boolean isUnmapped){
+        return getStart();
+    }
+
+    /**
+     * @param isUnmapped
+     * @return 1-based closed-ended position, undefined if getContig() == null
+     */
+    default int getEnd(final boolean isUnmapped){
+        return getEnd();
+    }
+
+    /**
      * Set the position of the read (the contig and the start position). Cannot be used to
      * set the read to an unmapped position; use {@link #setIsUnmapped} for that purpose.
      *
@@ -113,6 +139,24 @@ public interface GATKRead extends Locatable {
     int getUnclippedStart();
 
     /**
+     * Returns the alignment start (1-based, inclusive) adjusted for clipped bases.
+     * For example, if the read has an alignment start of 100 but the first 4 bases
+     * were clipped (hard or soft clipped) then this method will return 96.
+     *
+     * For unmapped reads, always returns {@link ReadConstants#UNSET_POSITION}
+     *
+     * This method is a performance shortcut that will not call {@link #isUnmapped()} but rather use the provided value.
+     * The default implementation ignores the parameter and calls the unoptimized version. Subclasses may override.
+     *
+     * @param isUnmapped whether this read is unmapped.
+     * @return The alignment start (1-based, inclusive) adjusted for clipped bases,
+     *         or {@link ReadConstants#UNSET_POSITION} if the read is unmapped.
+     */
+    default int getUnclippedStart(final boolean isUnmapped){
+        return getUnclippedStart();
+    }
+
+    /**
      * Returns the alignment end (1-based, inclusive) adjusted for clipped bases.
      * For example, if the read has an alignment end of 100 but the last 7 bases
      * were clipped (hard or soft clipped) then this method will return 107.
@@ -124,11 +168,19 @@ public interface GATKRead extends Locatable {
      */
     int getUnclippedEnd();
 
+    default int getUnclippedEnd(final boolean isUnmapped){
+        return getUnclippedEnd();
+    }
+
     /**
      * @return The contig that this read's mate is mapped to, or {@code null} if the mate is unmapped
      * @throws IllegalStateException if the read is not paired (has no mate)
      */
     String getMateContig();
+
+    default String getMateContig(final boolean mateIsUnmapped){
+        return getMateContig();
+    }
 
     /**
      * @return The alignment start (1-based, inclusive) of this read's mate, or {@link ReadConstants#UNSET_POSITION}
@@ -136,6 +188,10 @@ public interface GATKRead extends Locatable {
      * @throws IllegalStateException if the read is not paired (has no mate)
      */
     int getMateStart();
+
+    default int getMateStart(final boolean mateIsUnmapped){
+        return getMateStart();
+    }
 
     /**
      * Set the position of the read's mate (the contig and the start position). Cannot be used to
@@ -398,6 +454,16 @@ public interface GATKRead extends Locatable {
     boolean mateIsUnmapped();
 
     /**
+     * @param isPaired is the read paired
+     * @return True if this read's mate is unmapped (this includes mates that have a position but are explicitly marked as unmapped,
+     *         as well as mates that lack a fully-defined position but are not explicitly marked as unmapped). Otherwise false.
+     * @throws IllegalStateException if the read is not paired (has no mate)
+     */
+    default boolean mateIsUnmapped(boolean isPaired){
+        return mateIsUnmapped();
+    }
+
+    /**
      * Mark the read's mate as unmapped (lacking a defined position on the genome).
      *
      * To mark the read's mate as mapped, use {@link #setMatePosition}
@@ -426,6 +492,16 @@ public interface GATKRead extends Locatable {
      * @throws GATKException.MissingReadField if this information is not available
      */
     boolean mateIsReverseStrand();
+
+    /**
+     * @param isPaired is the read paired
+     * @return True if this read's mate is on the reverse strand as opposed to the forward strand, otherwise false.
+     * @throws IllegalStateException if the read is not paired (has no mate)
+     * @throws GATKException.MissingReadField if this information is not available
+     */
+    default boolean mateIsReverseStrand(final boolean isPaired){
+        return mateIsReverseStrand();
+    }
 
     /**
      * Mark the read's mate as being on the reverse (or forward) strand.

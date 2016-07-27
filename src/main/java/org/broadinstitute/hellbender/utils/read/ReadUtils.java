@@ -422,17 +422,22 @@ public final class ReadUtils {
      * CANNOT_COMPUTE_ADAPTOR_BOUNDARY if the read is unmapped or the mate is mapped to another contig.
      */
     public static int getAdaptorBoundary(final GATKRead read) {
-        if ( ! hasWellDefinedFragmentSize(read) ) {
+        // only reads when both reads are mapped can be trimmed
+        // only reads that are paired can be adaptor trimmed
+        if ( read.isUnmapped() || ! read.isPaired() || read.mateIsUnmapped() ) {
+            return CANNOT_COMPUTE_ADAPTOR_BOUNDARY;
+        }
+        if ( ! hasWellDefinedFragmentSizeAssumeBothMatesMapped(read) ) {
             return CANNOT_COMPUTE_ADAPTOR_BOUNDARY;
         } else if ( read.isReverseStrand() ) {
-            return read.getMateStart() - 1;           // case 1 (see header)
+            return read.getMateStart(false) - 1;           // case 1 (see header)
         } else {
             final int insertSize = Math.abs(read.getFragmentLength());    // the inferred insert size can be negative if the mate is mapped before the read (so we take the absolute value)
-            return read.getStart() + insertSize + 1;  // case 2 (see header)
+            return read.getStart(false) + insertSize + 1;  // case 2 (see header)
         }
     }
 
-    public static int CANNOT_COMPUTE_ADAPTOR_BOUNDARY = Integer.MIN_VALUE;
+    public static final int CANNOT_COMPUTE_ADAPTOR_BOUNDARY = Integer.MIN_VALUE;
 
     /**
      * Can the adaptor sequence of read be reliably removed from the read based on the alignment of
@@ -442,37 +447,41 @@ public final class ReadUtils {
      * @return true if it can, false otherwise
      */
     public static boolean hasWellDefinedFragmentSize(final GATKRead read) {
+        final boolean isUnmapped = read.isUnmapped();
+        // only reads when both reads are mapped can be trimmed
+        if ( isUnmapped ) {
+            return false;
+        }
+        if ( ! read.isPaired() ){
+            // only reads that are paired can be adaptor trimmed
+            return false;
+        }
+        final boolean mateIsUnmapped = read.mateIsUnmapped();
+        if ( mateIsUnmapped ){
+            return false;
+        }
+        return hasWellDefinedFragmentSizeAssumeBothMatesMapped(read);
+    }
+
+    private static boolean hasWellDefinedFragmentSizeAssumeBothMatesMapped(final GATKRead read) {
         if ( read.getFragmentLength() == 0 )
             // no adaptors in reads with mates in another chromosome or unmapped pairs
         {
             return false;
 	    }
-        if ( ! read.isPaired() )
-            // only reads that are paired can be adaptor trimmed
+        final boolean reverseStrand = read.isReverseStrand();
+        if ( reverseStrand == read.mateIsReverseStrand() )
+        // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
         {
-            return false;
-	}
-        if ( read.isUnmapped() || read.mateIsUnmapped() )
-            // only reads when both reads are mapped can be trimmed
-        {
-            return false;
-	}
-//        if ( ! read.isProperlyPaired() )
-//            // note this flag isn't always set properly in BAMs, can will stop us from eliminating some proper pairs
-//            // reads that aren't part of a proper pair (i.e., have strange alignments) can't be trimmed
-//            return false;
-        if ( read.isReverseStrand() == read.mateIsReverseStrand() )
-            // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
-	    {
             return false;
         }
 
-        if ( read.isReverseStrand() ) {
+        if (reverseStrand) {
             // we're on the negative strand, so our read runs right to left
-            return read.getEnd() > read.getMateStart();
+            return read.getEnd(false) > read.getMateStart(false);
         } else {
             // we're on the positive strand, so our mate should be to our right (his start + insert size should be past our start)
-            return read.getStart() <= read.getMateStart() + read.getFragmentLength();
+            return read.getStart(false) <= read.getMateStart(false) + read.getFragmentLength();
         }
     }
 
@@ -1044,12 +1053,36 @@ public final class ReadUtils {
      * @param basePos base position in REFERENCE coordinates (not read coordinates)
      * @return whether or not the base is in the adaptor
      */
-    public static boolean isBaseInsideAdaptor(final GATKRead read, long basePos) {
-        final int adaptorBoundary = ReadUtils.getAdaptorBoundary(read);
-        if (adaptorBoundary == CANNOT_COMPUTE_ADAPTOR_BOUNDARY || read.getFragmentLength() > DEFAULT_ADAPTOR_SIZE)
-            return false;
+    public static boolean isBaseInsideAdaptor(final GATKRead read, final long basePos) {
+        // only reads when both reads are mapped can be trimmed
+        // only reads that are paired can be adaptor trimmed
 
-        return read.isReverseStrand() ? basePos <= adaptorBoundary : basePos >= adaptorBoundary;
+        //Note: this method is very heavily hit during LocusWalker iterations
+        // so it's important to keep it optimized and exit as soon as possible
+        if (! read.isPaired() || read.isUnmapped() || read.mateIsUnmapped(true)){
+            return false;
+        }
+        final int fragmentLength = read.getFragmentLength();
+        if (fragmentLength == 0 || fragmentLength > DEFAULT_ADAPTOR_SIZE){
+            // no adaptors in reads with mates in another chromosome or unmapped pairs
+            return false;
+        }
+        final boolean reverseStrand = read.isReverseStrand();
+        if ( reverseStrand == read.mateIsReverseStrand(true) ) {
+            // sanity check on isProperlyPaired to ensure that read1 and read2 aren't on the same strand
+            return false;
+        }
+
+        final int mateStart = read.getMateStart(false);
+        if (reverseStrand) {
+            // we're on the negative strand, so our read runs right to left
+            return read.getEnd(false) > mateStart && basePos <= mateStart - 1;           // case 1 (see header);
+        } else {
+            // we're on the positive strand, so our mate should be to our right (his start + insert size should be past our start)
+            final int start = read.getStart(false);
+            // the inferred insert size can be negative if the mate is mapped before the read (so we take the absolute value)
+            return start <= mateStart + fragmentLength && basePos >= start + Math.abs(fragmentLength) + 1;  // case 2 (see header);
+        }
     }
 
     /**

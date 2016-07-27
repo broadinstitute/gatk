@@ -315,7 +315,7 @@ public final class ReadUtilsUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "HasWellDefinedFragmentSizeData")
-    private void testHasWellDefinedFragmentSize(final String name, final GATKRead read, final boolean expected) {
+    public void testHasWellDefinedFragmentSize(final String name, final GATKRead read, final boolean expected) {
         Assert.assertEquals(ReadUtils.hasWellDefinedFragmentSize(read), expected);
     }
 
