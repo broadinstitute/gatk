@@ -70,9 +70,18 @@ public final class BwaSparkEngine implements Serializable{
 
         final JavaRDD<Tuple2<ShortRead, ShortRead>> shortReadPairs = convertToUnalignedReadPairs(unalignedReads);
         final JavaRDD<String> samLines = align(shortReadPairs);
-        final SAMLineParser samLineParser = new SAMLineParser(new DefaultSAMRecordFactory(), ValidationStringency.SILENT, readsHeader, null, null);
-        final Broadcast<SAMLineParser> samLineParserBroadcast = ctx.broadcast(samLineParser);
-        return samLines.map(r -> new SAMRecordToGATKReadAdapter(samLineParserBroadcast.getValue().parseLine(r)));
+        final Broadcast<SAMFileHeader>  readsHeaderBroadcast = ctx.broadcast(readsHeader);
+        return samLines.mapPartitions(lineIterator -> {
+            //Note: The parser is stateful and not thread safe.
+            // So we reuse the parser over the whole partition and call it from one thread only.
+            final SAMLineParser samLineParser = new SAMLineParser(new DefaultSAMRecordFactory(), ValidationStringency.SILENT, readsHeaderBroadcast.getValue(), null, null);
+            final List<GATKRead> reads = new ArrayList<>();
+            while (lineIterator.hasNext()) {
+                final String samLine = lineIterator.next();
+                reads.add(new SAMRecordToGATKReadAdapter(samLineParser.parseLine(samLine)));
+            }
+            return reads;
+        });
     }
 
     private JavaRDD<Tuple2<ShortRead, ShortRead>> convertToUnalignedReadPairs(final JavaRDD<GATKRead> unalignedReads) {
