@@ -17,7 +17,7 @@ public class AllelicCountUnitTest {
     @Test
     public void testEstimateMinorAlleleFraction() {
         final SimpleInterval interval = new SimpleInterval("contig", 1, 2);
-        final double tolerance = 0.0001;
+        final double tolerance = 0.005;
 
         //exact MLE values obtained from Sage Math
         Assert.assertEquals(new AllelicCount(interval, 10, 10).estimateMinorAlleleFraction(), 0.5, tolerance);

@@ -285,4 +285,15 @@ public class GATKProtectedMathUtilsTest {
         Assert.assertEquals(GATKProtectedMathUtils.secondSmallestMinusSmallest(new int[] { -10, -23, 3}, -1), 13);
         Assert.assertEquals(GATKProtectedMathUtils.secondSmallestMinusSmallest(new int[] { -10, -23, 3}, -1), 13);
     }
+
+    @Test
+    public void testMaxDifference() {
+        final double[] array1 = {0.0, 1.0, 2.0};
+        final double[] array2 = {-0.1, 1.05, 2.0};
+        Assert.assertEquals(GATKProtectedMathUtils.maxDifference(array1, array2), 0.1, 1e-10);
+
+        final double[] array3 = {0.0, 1.0, 2.0, 3.0};
+        final double[] array4 = {0.0, 1.0, 2.0, 0.0};
+        Assert.assertEquals(GATKProtectedMathUtils.maxDifference(array3, array4), 3.0, 1e-10);
+    }
 }

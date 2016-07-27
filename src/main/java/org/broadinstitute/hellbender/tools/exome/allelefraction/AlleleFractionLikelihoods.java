@@ -7,10 +7,10 @@ import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Collection;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import static java.lang.Math.log;
+import static java.lang.Math.min;
 import static java.lang.Math.sqrt;
 import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
 import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
@@ -37,8 +37,8 @@ public final class AlleleFractionLikelihoods {
      * Finally, note that this is a static method and does not get mu, beta, and minorFraction from an AlleleFractionState object
      * We need such functionality because MCMC evaluates the likelihood under proposed parameter changes.
      *
-     * @param state allele fraction state
-     * @param segment index of segment containijng this het site
+     * @param parameters global parameters mean, variance, and outlier probability of allele fraction model
+     * @param minorFraction minor allele fraction of segment containing this het site
      * @param count AllelicCount of alt and ref reads
      * @param indicator the hidden state (alt minor / ref minor / outlier)
      *
@@ -52,33 +52,23 @@ public final class AlleleFractionLikelihoods {
      * <p>
      * where alpha = mu*beta and n = a + r
      */
-    public static double hetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count, final AlleleFractionIndicator indicator) {
-        return hetLogLikelihood(state, segment, count, indicator, AllelicPanelOfNormals.EMPTY_PON);
+    public static double hetLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction, final AllelicCount count, final AlleleFractionIndicator indicator) {
+        return hetLogLikelihood(parameters, minorFraction, count, indicator, AllelicPanelOfNormals.EMPTY_PON);
     }
 
     /**
      * Computes {@link AlleleFractionLikelihoods#hetLogLikelihood} using allelic-bias priors derived from an
      * {@link AllelicPanelOfNormals}.  See docs/CNVs/CNV-methods.pdf for details.
      */
-    public static double hetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count, final AlleleFractionIndicator indicator,
+    public static double hetLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction,
+                                          final AllelicCount count, final AlleleFractionIndicator indicator,
                                           final AllelicPanelOfNormals allelicPON) {
         final SimpleInterval site = count.getInterval();
-        final double alpha;
-        final double beta;
-        if (allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON)) {
-            // if PON is not available, use alpha and beta learned from sample
-            beta = state.meanBias() / state.biasVariance();
-            alpha = state.meanBias() * beta;
-        } else {
-            // if PON is available, return alpha and beta at site if site is in PON, otherwise return MLE alpha and beta if site is not in PON
-            alpha = allelicPON.getAlpha(site);
-            beta = allelicPON.getBeta(site);
-        }
-        final double pi = state.outlierProbability();
-        final double minorFraction = state.segmentMinorFraction(segment);
+        final double alpha = allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON) ? parameters.getAlpha() : allelicPON.getAlpha(site);
+        final double beta = allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON) ? parameters.getBeta() : allelicPON.getBeta(site);
+        final double pi = parameters.getOutlierProbability();
         final int a = count.getAltReadCount();
         final int r = count.getRefReadCount();
-
         return hetLogLikelihood(alpha, beta, minorFraction, pi, indicator, a, r);
     }
 
@@ -94,6 +84,80 @@ public final class AlleleFractionLikelihoods {
     }
 
     /**
+     * the log likelihood summed (marginalized) over indicator states, which we use in the fully collapsed model
+     * in which latent variables (bias and indicator) are marginalized out
+     *
+     * @param parameters global parameters mean, variance, and outlier probability of allele fraction model
+     * @param minorFraction minor allele fraction of segment containing this het site
+     * @param count AllelicCount of alt and ref reads
+     * @param allelicPON allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
+     * @return the log of the likelihood at this het site, marginalized over indicator states.
+     */
+    public static double collapsedHetLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction,
+                                                   final AllelicCount count, final AllelicPanelOfNormals allelicPON) {
+        return GATKProtectedMathUtils.logSumExp(
+                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.ALT_MINOR, allelicPON),
+                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.REF_MINOR, allelicPON),
+                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.OUTLIER, allelicPON));
+    }
+
+    /**
+     * the log-likelihood of all the hets in a segment
+     *
+     * @param parameters global parameters mean, variance, and outlier probability of allele fraction model
+     * @param minorFraction minor allele fraction of segment containing this het site
+     * @param counts AllelicCount of alt and ref reads in this segment
+     * @param allelicPON allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
+     * @return the sum of log-likelihoods over all het sites in a segment
+     */
+    public static double segmentLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction,
+                                              final Collection<AllelicCount> counts, final AllelicPanelOfNormals allelicPON) {
+        return counts.stream().mapToDouble(c -> collapsedHetLogLikelihood(parameters, minorFraction, c, allelicPON)).sum();
+    }
+
+    /**
+     * the total log likelihood of all segments
+     * @param parameters
+     * @param data data
+     * @return sum of log likelihoods of all segments
+     */
+    public static double logLikelihood(final AlleleFractionGlobalParameters parameters, final AlleleFractionState.MinorFractions minorFractions,
+                                       final AlleleFractionData data) {
+        return IntStream.range(0, data.getNumSegments())
+                .mapToDouble(s -> segmentLogLikelihood(parameters, minorFractions.get(s), data.getCountsInSegment(s), data.getPON())).sum();
+    }
+
+    /**
+     * Calculates the log-likelihood function for MLE initialization of the {@link AllelicPanelOfNormals}.
+     * See docs/CNVs/CNV-methods.pdf for details.
+     * @param meanBias      mean of the allelic-bias prior
+     * @param biasVariance  variance of the allelic-bias prior
+     * @param counts        counts at all sites in the {@link AllelicPanelOfNormals}
+     */
+    protected static double logLikelihoodForAllelicPanelOfNormals(final double meanBias, final double biasVariance, final AllelicCountCollection counts) {
+        final double alpha = alpha(meanBias, biasVariance);
+        final double beta = beta(meanBias, biasVariance);
+        final double balancedMinorAlleleFraction = 0.5;
+        return counts.getCounts().stream().mapToDouble(c -> AlleleFractionLikelihoods.logIntegralOverAllelicBias(alpha, beta, balancedMinorAlleleFraction, c.getAltReadCount(), c.getRefReadCount())).sum();
+    }
+
+    /**
+     * Calculates the gamma distribution "alpha" parameter associated with a given mean and variance.  Does not check
+     * that inputs are positive in order to keep this method suitable for performance-sensitive code.
+     */
+    public static double alpha(final double meanBias, final double biasVariance) {
+        return meanBias * meanBias / biasVariance;
+    }
+
+    /**
+     * Calculates the gamma distribution "beta" parameter associated with a given mean and variance.  Does not check
+     * that inputs are positive in order to keep this method suitable for performance-sensitive code.
+     */
+    public static double beta(final double meanBias, final double biasVariance) {
+        return meanBias / biasVariance;
+    }
+
+    /**
      * Calculates the log of the integral of the allelic-bias posterior (approximated as a Gamma distribution
      * with mode and curvature given by {@link AlleleFractionLikelihoods#biasPosteriorMode}
      * and {@link AlleleFractionLikelihoods#biasPosteriorCurvature}, respectively)
@@ -103,8 +167,8 @@ public final class AlleleFractionLikelihoods {
      * @param alpha alpha hyperparameter for allelic-bias Gamma-distribution prior
      * @param beta  beta hyperparameter for allelic-bias Gamma-distribution prior
      * @param f     minor-allele fraction
-     * @param a     alt counts
-     * @param r     ref counts
+     * @param a     alt read count
+     * @param r     ref read count
      */
     protected static double logIntegralOverAllelicBias(final double alpha, final double beta, final double f, final int a, final int r) {
         final double lambda0 = biasPosteriorMode(alpha, beta, f, a, r);
@@ -166,75 +230,5 @@ public final class AlleleFractionLikelihoods {
      */
     protected static double biasPosteriorEffectiveBeta(final double lambda0, final double kappa) {
         return -kappa * lambda0;
-    }
-
-    /**
-     * the log likelihood summed (marginalized) over indicator states, which we use in the fully collapsed model
-     * in which latent variables (bias and indicator) are marginalized out
-     *
-     * @param state allele fraction state
-     * @param segment index of segment containing this het site
-     * @param count AllelicCount of alt and ref reads
-     * @param allelicPON allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
-     * @return the log of the likelihood at this het site, marginalized over indicator states.
-     */
-    public static double collapsedHetLogLikelihood(final AlleleFractionState state, final int segment, final AllelicCount count, final AllelicPanelOfNormals allelicPON) {
-        return GATKProtectedMathUtils.logSumExp(
-                hetLogLikelihood(state, segment, count, AlleleFractionIndicator.ALT_MINOR, allelicPON),
-                hetLogLikelihood(state, segment, count, AlleleFractionIndicator.REF_MINOR, allelicPON),
-                hetLogLikelihood(state, segment, count, AlleleFractionIndicator.OUTLIER, allelicPON));
-    }
-
-    /**
-     * the log-likelihood of all the hets in a segment
-     *
-     * @param state allele fraction state
-     * @param segment index of segment containijng this het site
-     * @param counts AllelicCount of alt and ref reads in this segment
-     * @param allelicPON allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
-     * @return the sum of log-likelihoods over all het sites in a segment
-     */
-    public static double segmentLogLikelihood(final AlleleFractionState state, final int segment, final Collection<AllelicCount> counts, final AllelicPanelOfNormals allelicPON) {
-        return counts.stream().mapToDouble(c -> collapsedHetLogLikelihood(state, segment, c, allelicPON)).sum();
-    }
-
-    /**
-     * the total log likelihood of all segments
-     * @param state current state
-     * @param data data
-     * @return sum of log likelihoods of all segments
-     */
-    public static double logLikelihood(final AlleleFractionState state, final AlleleFractionData data) {
-        return IntStream.range(0, data.getNumSegments()).mapToDouble(s -> segmentLogLikelihood(state, s, data.getCountsInSegment(s), data.getPON())).sum();
-    }
-
-    protected static Function<Double, Double> segmentLogLikelihoodConditionalOnMinorFraction(final AlleleFractionState state,
-                                                                                             final AlleleFractionData data, final int segment) {
-        return minorFraction -> {
-            final AlleleFractionState proposal = new AlleleFractionState(state.meanBias(), state.biasVariance(), state.outlierProbability(), minorFraction);
-            return AlleleFractionLikelihoods.segmentLogLikelihood(proposal, 0, data.getCountsInSegment(segment), data.getPON());
-        };
-    }
-
-    /**
-     * Calculates the log-likelihood function for MLE initialization of the {@link AllelicPanelOfNormals}.
-     * See docs/CNVs/CNV-methods.pdf for details.
-     * @param meanBias      mean of the allelic-bias prior
-     * @param biasVariance  variance of the allelic-bias prior
-     * @param counts        counts at all sites in the {@link AllelicPanelOfNormals}
-     */
-    protected static double logLikelihoodForAllelicPanelOfNormals(final double meanBias, final double biasVariance, final AllelicCountCollection counts) {
-        final double alpha = alpha(meanBias, biasVariance);
-        final double beta = beta(meanBias, biasVariance);
-        final double balancedMinorAlleleFraction = 0.5;
-        return counts.getCounts().stream().mapToDouble(c -> AlleleFractionLikelihoods.logIntegralOverAllelicBias(alpha, beta, balancedMinorAlleleFraction, c.getAltReadCount(), c.getRefReadCount())).sum();
-    }
-
-    private static double alpha(final double meanBias, final double biasVariance) {
-        return meanBias * meanBias / biasVariance;
-    }
-
-    private static double beta(final double meanBias, final double biasVariance) {
-        return meanBias / biasVariance;
     }
 }

@@ -1,19 +1,18 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
-import org.apache.commons.math3.optim.univariate.SearchInterval;
-import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
+import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Represents the panel of normals used for allele-bias correction.  See docs/CNVs/CNV-methods.pdf.
@@ -163,17 +162,15 @@ public final class AllelicPanelOfNormals {
     }
 
     private static double estimateMeanBias(final double meanBias, final double biasVariance, final AllelicCountCollection counts) {
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(proposedMeanBias ->
-                AlleleFractionLikelihoods.logLikelihoodForAllelicPanelOfNormals(proposedMeanBias, biasVariance, counts));
-        final SearchInterval searchInterval = new SearchInterval(0.0, AlleleFractionInitializer.MAX_REASONABLE_MEAN_BIAS, meanBias);
-        return AlleleFractionInitializer.OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, AlleleFractionInitializer.BRENT_MAX_EVAL).getPoint();
+        final Function<Double, Double> objective = proposedMeanBias ->
+                AlleleFractionLikelihoods.logLikelihoodForAllelicPanelOfNormals(proposedMeanBias, biasVariance, counts);
+        return OptimizationUtils.argmax(objective, 0.0, AlleleFractionInitializer.MAX_REASONABLE_MEAN_BIAS, meanBias);
     }
 
     private static double estimateBiasVariance(final double meanBias, final double biasVariance, final AllelicCountCollection counts) {
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(proposedBiasVariance ->
-                AlleleFractionLikelihoods.logLikelihoodForAllelicPanelOfNormals(meanBias, proposedBiasVariance, counts));
-        final SearchInterval searchInterval = new SearchInterval(0.0, AlleleFractionInitializer.MAX_REASONABLE_BIAS_VARIANCE, biasVariance);
-        return AlleleFractionInitializer.OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, AlleleFractionInitializer.BRENT_MAX_EVAL).getPoint();
+        final Function<Double, Double> objective = proposedBiasVariance ->
+                AlleleFractionLikelihoods.logLikelihoodForAllelicPanelOfNormals(meanBias, proposedBiasVariance, counts);
+        return OptimizationUtils.argmax(objective, 0.0, AlleleFractionInitializer.MAX_REASONABLE_BIAS_VARIANCE, biasVariance);
     }
 
     private void initializeSiteToHyperparameterPairMap(final AllelicCountCollection counts) {

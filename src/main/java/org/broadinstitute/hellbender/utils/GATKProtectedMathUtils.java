@@ -279,4 +279,13 @@ public class GATKProtectedMathUtils {
             return secondSmallest - smallest;
         }
     }
+
+    /**
+     * Find the maximum difference between entries of two arrays.  This is useful for testing convergence, for example
+     */
+    public static double maxDifference(final double[] array1, final double[] array2) {
+        Utils.validateArg(array1.length == array2.length, "arrays must have same length.");
+        Utils.validateArg(array1.length > 0, "arrays must be non-empty");
+        return IntStream.range(0, array1.length).mapToDouble(n -> Math.abs(array1[n] - array2[n])).max().getAsDouble();
+    }
 }

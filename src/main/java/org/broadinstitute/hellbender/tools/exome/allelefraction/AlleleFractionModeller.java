@@ -57,15 +57,18 @@ public final class AlleleFractionModeller {
 
         // Initialization got us to the mode of the likelihood
         // if we approximate conditionals as normal we can guess the width from the curvature at the mode and use as the step size
+        final AlleleFractionGlobalParameters initialParameters = initialState.globalParameters();
+        final AlleleFractionState.MinorFractions initialMinorFractions = initialState.minorFractions();
 
         final double meanBiasInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(meanBias ->
-                AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(meanBias), data), initialState.meanBias());
+                AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewMeanBias(meanBias), initialMinorFractions, data), initialParameters.getMeanBias());
         final double biasVarianceInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(biasVariance ->
-                AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedBiasVariance(biasVariance), data), initialState.biasVariance());
+                AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewBiasVariance(biasVariance), initialMinorFractions, data), initialParameters.getBiasVariance());
         final double outlierProbabilityInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(outlierProbability ->
-                AlleleFractionLikelihoods.logLikelihood(initialState.shallowCopyWithProposedMeanBias(outlierProbability), data), initialState.outlierProbability());
+                AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewOutlierProbability(outlierProbability), initialMinorFractions, data), initialParameters.getOutlierProbability());
+
         final List<Double> minorFractionsInitialStepSizes = IntStream.range(0, numSegments).mapToDouble(segment ->
-                getStepSizeFromApproximatePosteriorWidthAtMode(AlleleFractionLikelihoods.segmentLogLikelihoodConditionalOnMinorFraction(initialState, data, segment), initialState.segmentMinorFraction(segment)))
+                getStepSizeFromApproximatePosteriorWidthAtMode(f -> AlleleFractionLikelihoods.segmentLogLikelihood(initialParameters, f, data.getCountsInSegment(segment), allelicPON), initialMinorFractions.get(segment)))
                 .boxed().collect(Collectors.toList());
 
         final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> meanBiasSampler =

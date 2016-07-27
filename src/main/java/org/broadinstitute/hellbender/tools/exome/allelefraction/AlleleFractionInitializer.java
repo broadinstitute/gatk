@@ -2,16 +2,13 @@ package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.exception.MaxCountExceededException;
-import org.apache.commons.math3.optim.MaxEval;
-import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
-import org.apache.commons.math3.optim.univariate.BrentOptimizer;
-import org.apache.commons.math3.optim.univariate.SearchInterval;
-import org.apache.commons.math3.optim.univariate.UnivariateObjectiveFunction;
 import org.apache.commons.math3.special.Beta;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
+import org.broadinstitute.hellbender.utils.OptimizationUtils;
 
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -42,25 +39,23 @@ public final class AlleleFractionInitializer {
     protected static final double INITIAL_OUTLIER_PROBABILITY = 0.01;
     protected static final double INITIAL_MEAN_BIAS = 1.0;
     protected static final double INITIAL_BIAS_VARIANCE = 0.1;   // this is an overestimate, but starting small makes it slow for
-    // mean bias to escape a bad initial guess
+                                                                 // mean bias to escape a bad initial guess
+    public static final AlleleFractionGlobalParameters INITIAL_GLOBAL_PARAMETERS =
+        new AlleleFractionGlobalParameters(INITIAL_MEAN_BIAS, INITIAL_BIAS_VARIANCE, INITIAL_OUTLIER_PROBABILITY);
+
     protected static final double LOG_LIKELIHOOD_CONVERGENCE_THRESHOLD = 0.5;
     protected static final int MAX_ITERATIONS = 50;
 
     //define maxima of search intervals for maximum likelihood -- parameter values above these would be ridiculous
-    private static final double MAX_REASONABLE_OUTLIER_PROBABILITY = 0.1;
-    protected static final double MAX_REASONABLE_MEAN_BIAS = 5.0;
-    protected static final double MAX_REASONABLE_BIAS_VARIANCE = 1.0;
+    public static final double MAX_REASONABLE_OUTLIER_PROBABILITY = 0.1;
+    public static final double MAX_REASONABLE_MEAN_BIAS = 5.0;
+    public static final double MAX_REASONABLE_BIAS_VARIANCE = 1.0;
 
     //the minor allele fraction of a segment must be less than one half by definition
     private static final double MAX_MINOR_ALLELE_FRACTION = 0.5;
 
-    // constants for Brent optimization
-    protected static final MaxEval BRENT_MAX_EVAL = new MaxEval(1000);
-    private static final double RELATIVE_TOLERANCE = 0.001;
-    private static final double ABSOLUTE_TOLERANCE = 0.001;
-    protected static final BrentOptimizer OPTIMIZER = new BrentOptimizer(RELATIVE_TOLERANCE, ABSOLUTE_TOLERANCE);
-
-    private AlleleFractionState state;
+    private AlleleFractionGlobalParameters globalParameters;
+    private AlleleFractionState.MinorFractions minorFractions;
     private static final Logger logger = LogManager.getLogger(AlleleFractionInitializer.class);
 
     /**
@@ -68,7 +63,8 @@ public final class AlleleFractionInitializer {
      * @param data data
      */
     public AlleleFractionInitializer(final AlleleFractionData data) {
-        state = new AlleleFractionState(INITIAL_MEAN_BIAS, INITIAL_BIAS_VARIANCE, INITIAL_OUTLIER_PROBABILITY, initialMinorFractions(data));
+        globalParameters = INITIAL_GLOBAL_PARAMETERS;
+        minorFractions = initialMinorFractions(data);
         double previousIterationLogLikelihood;
         double nextIterationLogLikelihood = Double.NEGATIVE_INFINITY;
         logger.info(String.format("Initializing allele-fraction model.  Iterating until log likelihood converges to within %.3f.",
@@ -76,9 +72,11 @@ public final class AlleleFractionInitializer {
         int iteration = 1;
         do {
             previousIterationLogLikelihood = nextIterationLogLikelihood;
-            state = new AlleleFractionState(estimateMeanBias(data), estimateBiasVariance(data),
-                    estimateOutlierProbability(data), estimateMinorFractions(data));
-            nextIterationLogLikelihood = AlleleFractionLikelihoods.logLikelihood(state, data);
+            globalParameters = new AlleleFractionGlobalParameters(estimateMeanBias(data), estimateBiasVariance(data),
+                    estimateOutlierProbability(data));
+            minorFractions = estimateMinorFractions(data);
+
+            nextIterationLogLikelihood = AlleleFractionLikelihoods.logLikelihood(globalParameters, minorFractions, data);
             logger.info(String.format("Iteration %d, model log likelihood = %.3f.", iteration, nextIterationLogLikelihood));
             iteration++;
         } while (iteration < MAX_ITERATIONS &&
@@ -89,7 +87,9 @@ public final class AlleleFractionInitializer {
      *
      * @return the initialized state of the Allele Fraction Model
      */
-    public AlleleFractionState getInitializedState() { return state; }
+    public AlleleFractionState getInitializedState() {
+        return new AlleleFractionState(globalParameters.getMeanBias(), globalParameters.getBiasVariance(), globalParameters.getOutlierProbability(), minorFractions);
+    }
 
     /**
      *  Initialize minor fractions assuming no allelic bias <p></p>
@@ -130,34 +130,27 @@ public final class AlleleFractionInitializer {
     }
 
     private double estimateOutlierProbability(final AlleleFractionData data) {
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(outlierProbability ->
-                AlleleFractionLikelihoods.logLikelihood(state.shallowCopyWithProposedOutlierProbability(outlierProbability), data));
-        final SearchInterval searchInterval = new SearchInterval(0.0, MAX_REASONABLE_OUTLIER_PROBABILITY, state.outlierProbability());
-        return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
+        final Function<Double, Double> objective = outlierProbability ->
+                AlleleFractionLikelihoods.logLikelihood(globalParameters.copyWithNewOutlierProbability(outlierProbability), minorFractions, data);
+        return OptimizationUtils.argmax(objective, 0.0, MAX_REASONABLE_OUTLIER_PROBABILITY, globalParameters.getOutlierProbability());
     }
 
     private double estimateMeanBias(final AlleleFractionData data) {
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(meanBias ->
-                AlleleFractionLikelihoods.logLikelihood(state.shallowCopyWithProposedMeanBias(meanBias), data));
-        final SearchInterval searchInterval = new SearchInterval(0.0, MAX_REASONABLE_MEAN_BIAS, state.meanBias());
-        return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
+        final Function<Double, Double> objective = meanBias ->
+                AlleleFractionLikelihoods.logLikelihood(globalParameters.copyWithNewMeanBias(meanBias), minorFractions, data);
+        return OptimizationUtils.argmax(objective, 0.0, MAX_REASONABLE_MEAN_BIAS, globalParameters.getMeanBias());
     }
 
     private double estimateBiasVariance(final AlleleFractionData data) {
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(biasVariance ->
-                AlleleFractionLikelihoods.logLikelihood(state.shallowCopyWithProposedBiasVariance(biasVariance), data));
-        final SearchInterval searchInterval = new SearchInterval(0.0, MAX_REASONABLE_BIAS_VARIANCE, state.biasVariance());
-        return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
+        final Function<Double, Double> objective = biasVariance ->
+                AlleleFractionLikelihoods.logLikelihood(globalParameters.copyWithNewBiasVariance(biasVariance), minorFractions, data);
+        return OptimizationUtils.argmax(objective, 0.0, MAX_REASONABLE_BIAS_VARIANCE, globalParameters.getBiasVariance());
     }
 
     private double estimateMinorFraction(final int segment, final AlleleFractionData data) {
-        final UnivariateObjectiveFunction objective = new UnivariateObjectiveFunction(minorFraction -> {
-            final AlleleFractionState proposal =
-                    new AlleleFractionState(state.meanBias(), state.biasVariance(), state.outlierProbability(), minorFraction); //single-segment state
-            return AlleleFractionLikelihoods.segmentLogLikelihood(proposal, 0, data.getCountsInSegment(segment), data.getPON());
-        });
-        final SearchInterval searchInterval = new SearchInterval(0.0, MAX_MINOR_ALLELE_FRACTION, state.segmentMinorFraction(segment));
-        return OPTIMIZER.optimize(objective, GoalType.MAXIMIZE, searchInterval, BRENT_MAX_EVAL).getPoint();
+        final Function<Double, Double> objective = minorFraction ->
+            AlleleFractionLikelihoods.segmentLogLikelihood(globalParameters, minorFraction, data.getCountsInSegment(segment), data.getPON());
+        return OptimizationUtils.argmax(objective, 0.0, MAX_MINOR_ALLELE_FRACTION, minorFractions.get(segment));
     }
 
     private AlleleFractionState.MinorFractions estimateMinorFractions(final AlleleFractionData data) {

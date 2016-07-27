@@ -36,11 +36,11 @@ public class AlleleFractionLikelihoodsUnitTest {
                 for (final double variance : Arrays.asList(0.01, 0.005, 0.001)) {
                     final double alpha = mean * mean / variance;
                     final double beta = mean / variance;
-                    final AlleleFractionState state = new AlleleFractionState(mean, variance, pi, f);
+                    final AlleleFractionGlobalParameters parameters = new AlleleFractionGlobalParameters(mean, variance, pi);
                     for (final int a : Arrays.asList(1, 2, 3)) {  //alt count
                         for (final int r : Arrays.asList(50, 100, 200)) { //ref count
                             final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double actual = AlleleFractionLikelihoods.hetLogLikelihood(state, 0, count, AlleleFractionIndicator.ALT_MINOR);
+                            final double actual = AlleleFractionLikelihoods.hetLogLikelihood(parameters, f, count, AlleleFractionIndicator.ALT_MINOR);
                             final double expected = a * log(beta) + Gamma.logGamma(alpha - a) - Gamma.logGamma(alpha)
                                     + log((1 - pi) / 2) + a * log(f / (1 - f));
                             Assert.assertEquals(actual, expected, 1e-3);
@@ -60,11 +60,11 @@ public class AlleleFractionLikelihoodsUnitTest {
                 for (final double variance : Arrays.asList(0.01, 0.005, 0.001)) {
                     final double alpha = mean * mean / variance;
                     final double beta = mean / variance;
-                    final AlleleFractionState state = new AlleleFractionState(mean, variance, pi, f);
+                    final AlleleFractionGlobalParameters parameters = new AlleleFractionGlobalParameters(mean, variance, pi);
                     for (final int a : Arrays.asList(1, 10, 20)) {  //alt count
                         for (final int r : Arrays.asList(1, 10, 20)) { //ref count
                             final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double actual = AlleleFractionLikelihoods.hetLogLikelihood(state, 0, count, AlleleFractionIndicator.ALT_MINOR);
+                            final double actual = AlleleFractionLikelihoods.hetLogLikelihood(parameters, f, count, AlleleFractionIndicator.ALT_MINOR);
                             final double expected = -r * log(beta) + Gamma.logGamma(alpha + r) - Gamma.logGamma(alpha)
                                     + log((1 - pi) / 2) - r * log(f / (1 - f));
                             Assert.assertEquals(actual, expected,1e-4);
@@ -82,11 +82,11 @@ public class AlleleFractionLikelihoodsUnitTest {
         for (final double f : Arrays.asList(0.1, 0.2, 0.3)) {
             for (final double mean : Arrays.asList(0.9, 1.0, 1.1)) {
                 for (final double variance : Arrays.asList(1e-6, 1e-7, 1e-8)) {
-                    final AlleleFractionState state = new AlleleFractionState(mean, variance, pi, f);
+                    final AlleleFractionGlobalParameters parameters = new AlleleFractionGlobalParameters(mean, variance, pi);
                     for (final int a : Arrays.asList(1, 10, 20)) {  //alt count
                         for (final int r : Arrays.asList(1, 10, 20)) { //ref count
                             final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double actual = AlleleFractionLikelihoods.hetLogLikelihood(state, 0, count, AlleleFractionIndicator.ALT_MINOR);
+                            final double actual = AlleleFractionLikelihoods.hetLogLikelihood(parameters, f, count, AlleleFractionIndicator.ALT_MINOR);
                             final double expected = log((1 - pi) / 2) + a * log(f) + r * log(1-f) + r * log(mean) - (a+r) * log(f + (1-f)*mean);
                             Assert.assertEquals(actual, expected, 1e-3);
                         }
@@ -103,13 +103,12 @@ public class AlleleFractionLikelihoodsUnitTest {
         for (final double f : Arrays.asList(0.1, 0.2, 0.3)) {
             for (final double mean : Arrays.asList(0.9, 1.0, 1.1)) {
                 for (final double variance : Arrays.asList(0.02, 0.01)) {
-                    final AlleleFractionState altMinorState = new AlleleFractionState(mean, variance, pi, f);
-                    final AlleleFractionState refMinorState = new AlleleFractionState(mean, variance, pi, 1 - f);
+                    final AlleleFractionGlobalParameters parameters = new AlleleFractionGlobalParameters(mean, variance, pi);
                     for (final int a : Arrays.asList(1, 10, 20)) {  //alt count
                         for (final int r : Arrays.asList(1, 10, 20)) { //ref count
                             final AllelicCount count = new AllelicCount(DUMMY, r, a);
-                            final double altMinorLk = AlleleFractionLikelihoods.hetLogLikelihood(altMinorState, 0, count, AlleleFractionIndicator.ALT_MINOR);
-                            final double refMinorLk = AlleleFractionLikelihoods.hetLogLikelihood(refMinorState, 0, count, AlleleFractionIndicator.REF_MINOR);
+                            final double altMinorLk = AlleleFractionLikelihoods.hetLogLikelihood(parameters, f, count, AlleleFractionIndicator.ALT_MINOR);
+                            final double refMinorLk = AlleleFractionLikelihoods.hetLogLikelihood(parameters, 1-f, count, AlleleFractionIndicator.REF_MINOR);
                             Assert.assertEquals(altMinorLk, refMinorLk, 1e-10);
                         }
                     }
@@ -128,13 +127,13 @@ public class AlleleFractionLikelihoodsUnitTest {
         final double pi2 = 0.2;
         final double pi3 = 0.3;
 
-        final AlleleFractionState state1 = new AlleleFractionState(mean, variance, pi1, f);
-        final AlleleFractionState state2 = new AlleleFractionState(mean, variance, pi2, f);
-        final AlleleFractionState state3 = new AlleleFractionState(mean, variance, pi3, f);
+        final AlleleFractionGlobalParameters parameters1 = new AlleleFractionGlobalParameters(mean, variance, pi1);
+        final AlleleFractionGlobalParameters parameters2 = new AlleleFractionGlobalParameters(mean, variance, pi2);
+        final AlleleFractionGlobalParameters parameters3 = new AlleleFractionGlobalParameters(mean, variance, pi3);
 
-        final double lk1 = AlleleFractionLikelihoods.hetLogLikelihood(state1, 0, count, AlleleFractionIndicator.ALT_MINOR);
-        final double lk2 = AlleleFractionLikelihoods.hetLogLikelihood(state2, 0, count, AlleleFractionIndicator.ALT_MINOR);
-        final double lk3 = AlleleFractionLikelihoods.hetLogLikelihood(state3, 0, count, AlleleFractionIndicator.ALT_MINOR);
+        final double lk1 = AlleleFractionLikelihoods.hetLogLikelihood(parameters1, f, count, AlleleFractionIndicator.ALT_MINOR);
+        final double lk2 = AlleleFractionLikelihoods.hetLogLikelihood(parameters2, f, count, AlleleFractionIndicator.ALT_MINOR);
+        final double lk3 = AlleleFractionLikelihoods.hetLogLikelihood(parameters3, f, count, AlleleFractionIndicator.ALT_MINOR);
 
         Assert.assertEquals(lk2 - lk1, log(1 - pi2) - log(1 - pi1), EPSILON);
         Assert.assertEquals(lk3 - lk2, log(1 - pi3) - log(1 - pi2), EPSILON);
