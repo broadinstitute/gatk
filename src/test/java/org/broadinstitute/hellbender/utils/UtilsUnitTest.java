@@ -677,4 +677,11 @@ public final class UtilsUnitTest extends BaseTest {
     public void testListFromPrimitivesNoneEmpty() throws Exception {
         Assert.assertEquals(Utils.listFromPrimitives(new int[]{1,2}), Arrays.asList(1,2));
     }
+
+    @Test
+    public void testNonEmptyString() {
+        Assert.assertThrows(IllegalArgumentException.class, () -> Utils.nonEmpty((String)null, "deliberately empty"));
+        Assert.assertThrows(IllegalArgumentException.class, () -> Utils.nonEmpty("", "deliberately empty" ));
+        Utils.nonEmpty("this is not empty");
+    }
 }

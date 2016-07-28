@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -25,48 +24,29 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(null, new VCFCodec());
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testHandleNullCodec() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, null);
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(null);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(new File("/foo/bar/nonexistent.vcf"), new VCFCodec());
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(new File("/foo/bar/nonexistent.vcf"));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleInvalidQueryLookahead() {
-        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "MyName", -1);
+        FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "MyName", -1);
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testHandleQueryOverUnindexedFile() {
-        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(UNINDEXED_VCF, new VCFCodec()) ) {
+        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(UNINDEXED_VCF) ) {
             featureSource.query(new SimpleInterval("1", 1, 1));  // Should throw, since we have no index
         }
     }
 
     @Test
-    public void testGetCodecClass() {
-        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
-            Assert.assertEquals(featureSource.getCodecClass(), VCFCodec.class, "Wrong codec class returned from getCodecClass()");
-        }
-    }
-
-    @Test
-    public void testGetFeatureType() {
-        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
-            Assert.assertEquals(featureSource.getFeatureType(), VariantContext.class, "Wrong feature type returned from getFeatureType()");
-        }
-    }
-
-    @Test
     public void testGetName() {
-        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName")) {
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {
             Assert.assertEquals(featureSource.getName(), "CustomName", "Wrong name returned from getName()");
         }
     }
@@ -74,7 +54,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     @Test
     public void testGetHeader() {
         Object header = null;
-        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName")) {
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {
             header = featureSource.getHeader();
         }
         Assert.assertTrue(header instanceof VCFHeader, "Header for " + QUERY_TEST_VCF.getAbsolutePath() + " not a VCFHeader");
@@ -82,7 +62,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test
     public void testGetSequenceDictionary() {
-        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec(), "CustomName")) {
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, "CustomName")) {
             final SAMSequenceDictionary dict = featureSource.getSequenceDictionary();
             Assert.assertEquals(dict.size(), 4);
             Assert.assertEquals(dict.getSequences().stream().map(s->s.getSequenceName()).collect(Collectors.toList()), Arrays.asList("1", "2", "3", "4"));
@@ -100,7 +80,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "CompleteIterationTestData")
     public void testCompleteIterationOverFile( final File vcfFile, final List<String> expectedVariantIDs ) {
-        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(vcfFile, new VCFCodec()) ) {
+        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(vcfFile) ) {
             Iterator<VariantContext> iter = featureSource.iterator();
 
             checkTraversalResults(iter, expectedVariantIDs, vcfFile, null);
@@ -157,7 +137,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "TraversalByIntervalsTestData")
     public void testTraversalByIntervals( final List<SimpleInterval> intervalsForTraversal, final List<String> expectedVariantIDs ) {
-        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec()) ) {
+        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF) ) {
             featureSource.setIntervalsForTraversal(intervalsForTraversal);
             Iterator<VariantContext> iter = featureSource.iterator();
 
@@ -236,7 +216,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     @Test(expectedExceptions = ArithmeticException.class)
     public void testBlowUpOnOverflow() {
         final SimpleInterval queryInterval = new SimpleInterval("4", 777, Integer.MAX_VALUE);
-        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF)) {
             Iterator<VariantContext> featureIterator = featureSource.query(queryInterval);
         }
     }
@@ -250,7 +230,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
      */
     @Test(dataProvider = "IndependentFeatureQueryTestData")
     public void testIndependentFeatureQuerying( final SimpleInterval queryInterval, final List<String> expectedVariantIDs ) {
-        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF)) {
 
             // Use query() here rather than queryAndPrefetch() so that query() will have test coverage
             // (the other tests below use queryAndPrefetch())
@@ -362,7 +342,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
      */
     @Test(dataProvider = "SingleDataSourceMultipleQueriesTestData")
     public void testSingleDataSourceMultipleQueries( final List<Pair<SimpleInterval, List<String>>> testQueries ) {
-        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+        try (final FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF)) {
 
             // This test re-uses the same FeatureDataSource across queries to test caching of query results.
             for ( Pair<SimpleInterval, List<String>> testQuery : testQueries ) {
@@ -397,7 +377,7 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
 
     @Test(dataProvider = "GVCFQueryTestData")
     public void testQueryGVCF( final SimpleInterval queryInterval, final List<String> expectedVariantIDs ) {
-        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_GVCF, new VCFCodec()) ) {
+        try ( FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_GVCF) ) {
             final List<VariantContext> queryResults = featureSource.queryAndPrefetch(queryInterval);
             checkVariantQueryResults(queryResults, expectedVariantIDs, queryInterval);
         }
@@ -666,4 +646,5 @@ public final class FeatureDataSourceUnitTest extends BaseTest {
     /*********************************************************
      * End of direct testing on the FeatureCache inner class
      *********************************************************/
+
 }

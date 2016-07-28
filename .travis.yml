@@ -10,6 +10,8 @@ env:
   - CLOUD=mandatory
   - CLOUD=false
   global:
+  #for genomics db
+  - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
   #gradle needs this
   - TERM=dumb
   #limit gradle jvm memory
@@ -19,6 +21,8 @@ env:
   - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
   - CLOUDSDK_PYTHON_SITEPACKAGES=1 
   - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/servicekey.json
+  #Path to GenomicsDB binaries
+  - GATK_GENOMICSDB_BIN=src/test/resources/large/tiledb_bin
   #hellbender specific variables
   - HELLBENDER_TEST_INPUTS=gs://hellbender/test/resources/
   - HELLBENDER_TEST_STAGING=gs://hellbender/test/staging/
@@ -57,9 +61,20 @@ before_install:
 - sudo apt-get update
 - sudo apt-get install -y --force-yes r-base
 - R --version
-#install gcc
-- sudo apt-get install -y --force-yes  gcc
-- gcc --version
+###### necessary for running the dynamically linked GenomicsDB binaries in src/test/resources/large
+#Install lcov and MPICH
+- sudo apt-get -y install lcov mpich zlib1g-dev libssl-dev
+- sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+- sudo apt-get update -q
+- sudo apt-get install g++-4.9 -y
+- sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 60
+#Install libcsv
+- cd $TRAVIS_BUILD_DIR
+- mkdir dependencies
+- wget -O dependencies/libcsv.tar.gz http://downloads.sourceforge.net/project/libcsv/libcsv/libcsv-3.0.3/libcsv-3.0.3.tar.gz
+- mkdir -p dependencies/libcsv && tar xzf dependencies/libcsv.tar.gz  -C dependencies/libcsv --strip-components=1 && cd dependencies/libcsv && ./configure && make
+- cd $TRAVIS_BUILD_DIR
+###### end GenomicsDB stuff
 install:
 - if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
     echo "Can't run cloud tests without keys so don't bother building";

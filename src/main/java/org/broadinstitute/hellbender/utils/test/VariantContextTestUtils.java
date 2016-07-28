@@ -7,11 +7,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
 
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class VariantContextTestUtils {
@@ -115,16 +111,19 @@ public final class VariantContextTestUtils {
     }
 
     private static boolean isMissing(final Object value) {
-        if ( value == null ) return true;
-        else if ( value.equals(VCFConstants.MISSING_VALUE_v4) ) return true;
+        if ( value == null ) { return true; }
+        else if ( value.equals(VCFConstants.MISSING_VALUE_v4) ) { return true; }
         else if ( value instanceof List ) {
             // handles the case where all elements are null or the list is empty
-            for ( final Object elt : (List)value)
-                if ( elt != null )
+            for ( final Object elt : (List)value) {
+                if (elt != null) {
                     return false;
+                }
+            }
             return true;
-        } else
+        } else {
             return false;
+        }
     }
 
     /**

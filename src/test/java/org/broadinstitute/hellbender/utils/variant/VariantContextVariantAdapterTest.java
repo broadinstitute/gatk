@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.variant;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -10,7 +9,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VariantContextVariantAdapterTest extends BaseTest {
 
@@ -20,7 +20,7 @@ public class VariantContextVariantAdapterTest extends BaseTest {
     @Test(dataProvider = "VariantDataProvider")
     public void testVariantAdapter(final List<GATKVariant> expectedVariantList) {
         // The test suite for reading in VCF files is FeatureDataSourceUnitTest.
-        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF, new VCFCodec())) {
+        try (FeatureDataSource<VariantContext> featureSource = new FeatureDataSource<>(QUERY_TEST_VCF)) {
             List<GATKVariant> variantList = new ArrayList<>();
             for (VariantContext feature : featureSource) {
                 VariantContextVariantAdapter va = new VariantContextVariantAdapter(feature);

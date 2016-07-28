@@ -581,6 +581,34 @@ public final class Utils {
     }
 
     /**
+     * Checks that a {@link String} is not {@code null} and that it is not empty.
+     * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
+     * @param string any String
+     * @param message a message to include in the output
+     * @return the original string
+     * @throws IllegalArgumentException if string is null or empty
+     */
+    public static String nonEmpty(String string, String message){
+        nonNull(string, "The string is null: " + message);
+        if(string.isEmpty()){
+            throw new IllegalArgumentException("The string is empty: " + message);
+        } else {
+            return string;
+        }
+    }
+
+    /**
+     * Checks that a {@link String} is not {@code null} and that it is not empty.
+     * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
+     * @param string any String
+     * @return the original string
+     * @throws IllegalArgumentException if string is null or empty
+     */
+    public static String nonEmpty(final String string){
+        return nonEmpty(string, "string must not be null or empty");
+    }
+
+    /**
      * Checks that a {@link Collection} is not {@code null} and that it is not empty.
      * If it's non-null and non-empty it returns the input, otherwise it throws an {@link IllegalArgumentException}
      * @param collection any Collection

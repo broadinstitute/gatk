@@ -1,0 +1,22 @@
+{
+    "row_based_partitioning" : false,
+    "produce_combined_vcf": false,
+    "produce_tiledb_array" : true,
+    "column_partitions" : [
+        {"begin": 0, "workspace":"src/test/resources/org/broadinstitute/hellbender/engine/GenomicsDBIntegration/workspace", "array": "tinyArray" }
+    ],
+    "vid_mapping_file" : "src/test/resources/org/broadinstitute/hellbender/engine/GenomicsDBIntegration/tiny_jsons/vid.json",
+    "callset_mapping_file" : "src/test/resources/org/broadinstitute/hellbender/engine/GenomicsDBIntegration/tiny_jsons/callset-mapping.json",
+    "max_num_rows_in_array" : 1,
+    "size_per_column_partition": 30000,
+    "treat_deletions_as_intervals" : true,
+    "num_parallel_vcf_files" : 1,
+    "delete_and_create_tiledb_array" : true,
+    "do_ping_pong_buffering" : true,
+    "offload_vcf_output_processing" : true,
+    "discard_vcf_index": true,
+    "compress_tiledb_array" : true,
+    "disable_synced_writes" : true,
+    "segment_size" : 1048576,
+    "num_cells_per_tile" : 1000
+}

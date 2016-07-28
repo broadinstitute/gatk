@@ -1,19 +1,14 @@
 package org.broadinstitute.hellbender.engine.datasources;
 
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.function.Function;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * VariantsSource loads variants from a local file (GCS Bucket to come).
@@ -40,20 +35,11 @@ public class VariantsSource {
 
         for ( final String variantSource : variantSources ) {
             try ( final FeatureDataSource<VariantContext> dataSource =
-                          new FeatureDataSource<>(new File(variantSource), getCodecForVariantSource(variantSource), null, 0) ) {
+                          new FeatureDataSource<>(variantSource, null, 0, VariantContext.class) ) {
                 aggregatedResults.addAll(wrapQueryResults(dataSource.iterator(), wrapFunction));
             }
         }
         return aggregatedResults;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static FeatureCodec<VariantContext, ?> getCodecForVariantSource( final String variantSource ) {
-        final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(new File(variantSource));
-        if ( !VariantContext.class.isAssignableFrom(codec.getFeatureType()) ) {
-            throw new UserException(variantSource + " is not in a format that produces VariantContexts");
-        }
-        return (FeatureCodec<VariantContext, ?>)codec;
     }
 
     private static <T> List<T> wrapQueryResults( final Iterator<VariantContext> queryResults, final Function<VariantContext, T> wrapFunction) {

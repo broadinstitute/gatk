@@ -52,11 +52,15 @@ repositories {
 
 }
 
+final htsjdkVersion = '2.5.0'
+
 configurations.all {
     resolutionStrategy {
         force 'com.google.http-client:google-http-client:1.21.0'
         // the snapshot folder contains a dev version of guava, we don't want to use that.
         force 'com.google.guava:guava:18.0'
+        // force the htsjdk version so we don't get a different one transitively
+        force 'com.github.samtools:htsjdk:' + htsjdkVersion
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -98,9 +102,10 @@ task gcovTestReport(type: Exec){
 }
 
 dependencies {
+    compile 'com.intel:genomicsdb:0.2.1'
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
-    compile 'com.github.samtools:htsjdk:2.5.0'
+    compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
@@ -181,6 +186,12 @@ processResources {
     from("gatk-launch")
 }
 
+processTestResources {
+    //Don't waste time packaging our test data into the test jar
+    exclude "**/large/**"
+    exclude "**/org/broadinstitute/hellbender/**"
+}
+
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -198,7 +209,6 @@ tasks.withType(Jar) {
                 'Main-Class': project.mainClassName
     }
 }
-
 
 test {
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
@@ -239,6 +249,7 @@ test {
     // set heap size for the test JVM(s)
     minHeapSize = "1G"
     maxHeapSize = "2G"
+
 
     if (CI == "true" && CLOUD == "false" ) {
         int count = 0

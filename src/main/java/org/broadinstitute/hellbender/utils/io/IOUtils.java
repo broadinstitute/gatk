@@ -528,4 +528,23 @@ public final class IOUtils {
             return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
         }
     }
+
+    /**
+     * @param file file to test
+     * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotReadInputFile if the file isn't readable
+     *         and a regular file
+     */
+    public static void assertFileIsReadable(final File file) {
+        Utils.nonNull(file);
+
+        if ( ! file.exists() ) {
+            throw new UserException.CouldNotReadInputFile(file, "It doesn't exist.");
+        }
+        if ( ! file.isFile() ) {
+            throw new UserException.CouldNotReadInputFile(file, "It isn't a regular file");
+        }
+        if ( ! file.canRead() ) {
+            throw new UserException.CouldNotReadInputFile(file, "It is not readable, check the file permissions");
+        }
+    }
 }

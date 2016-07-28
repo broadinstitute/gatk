@@ -1,0 +1,6 @@
+{
+  "workspace" : "src/test/resources/org/broadinstitute/hellbender/engine/GenomicsDBIntegration/workspace",
+  "array" : "tinyArray",
+  "reference_genome" : "src/test/resources/large/human_g1k_v37.20.21.fasta",
+  "scan_full": true
+}

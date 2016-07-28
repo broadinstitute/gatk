@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.engine;
 
-import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
 import htsjdk.tribble.Feature;
+import htsjdk.tribble.FeatureReader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -23,7 +23,7 @@ import java.util.NoSuchElementException;
  */
 class FeatureIntervalIterator<T extends Feature> implements CloseableTribbleIterator<T> {
     private final String sourceName;
-    private final AbstractFeatureReader<T, ?> featureReader;
+    private final FeatureReader<T> featureReader;
     private final Iterator<SimpleInterval> intervalIterator;
     private CloseableTribbleIterator<T> featuresInCurrentInterval;
     private T nextFeature;
@@ -40,7 +40,7 @@ class FeatureIntervalIterator<T extends Feature> implements CloseableTribbleIter
      * @param featureReader Feature reader used to perform queries
      * @param sourceName a logical name for the backing source of Features (used for error messages)
      */
-    public FeatureIntervalIterator( final List<SimpleInterval> intervals, final AbstractFeatureReader<T, ?> featureReader, final String sourceName ) {
+    public FeatureIntervalIterator( final List<SimpleInterval> intervals, final FeatureReader<T> featureReader, final String sourceName ) {
         this.intervalIterator = intervals.iterator();
         this.featureReader = featureReader;
         this.sourceName = sourceName;
