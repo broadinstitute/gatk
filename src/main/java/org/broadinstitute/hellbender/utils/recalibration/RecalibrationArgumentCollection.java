@@ -101,8 +101,8 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
     @Hidden
-    @Argument(fullName = "skipBAQ", shortName = "skipBAQ", doc = "don't do BAQ correction")
-    public boolean skipBAQ = false;
+    @Argument(fullName = "enableBAQ", shortName = "enableBAQ", doc = "do BAQ correction")
+    public boolean enableBAQ = false;
 
     @Hidden
     @Argument(fullName = "computeIndelBQSRTables", shortName = "indelBQSR", doc = "compute indel BQSR tables")
