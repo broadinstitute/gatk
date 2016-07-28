@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -38,6 +39,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -97,8 +99,8 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String,String>, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
                 assembledBreakpointsByBreakpointIdAndContigId
-                        .filter(CallVariantsFromAlignedContigsSpark::inversionBreakpointFilter)
-                        .mapToPair(CallVariantsFromAlignedContigsSpark::keyByBreakpointAllele);
+                        .mapToPair(CallVariantsFromAlignedContigsSpark::keyByBreakpointAllele)
+                        .filter(CallVariantsFromAlignedContigsSpark::inversionBreakpointFilter);
 
         final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, AssembledBreakpoint>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
 
@@ -170,7 +172,9 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
     public static Iterable<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions(final byte[] contigSequence, final Iterable<AlignmentRegion> alignmentRegionsIterable) {
         final List<AlignmentRegion> alignmentRegions = IterableUtils.toList(alignmentRegionsIterable);
-        alignmentRegions.sort(Comparator.comparing(a -> a.startInAssembledContig));
+        if (alignmentRegions.size() > 1) {
+            alignmentRegions.sort(Comparator.comparing(a -> a.startInAssembledContig));
+        }
         return ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegions);
     }
 
@@ -259,11 +263,11 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     }
 
     private static boolean is3To5Inversion(final BreakpointAllele breakpointAllele) {
-        return ! breakpointAllele.left5Prime && breakpointAllele.right5Prime;
+        return ! breakpointAllele.fiveToThree && breakpointAllele.threeToFive;
     }
 
     private static boolean is5To3Inversion(final BreakpointAllele breakpointAllele) {
-        return breakpointAllele.left5Prime && ! breakpointAllele.right5Prime;
+        return breakpointAllele.fiveToThree && ! breakpointAllele.threeToFive;
     }
 
     private static String getInversionId(final BreakpointAllele breakpointAllele) {
@@ -280,17 +284,14 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         return invType + "_" + breakpointAllele.leftAlignedLeftBreakpoint.getContig() + "_" + breakpointAllele.leftAlignedLeftBreakpoint.getStart() + "_" + breakpointAllele.leftAlignedRightBreakpoint.getStart();
     }
 
-    @VisibleForTesting
-    static boolean inversionBreakpointFilter(final Tuple2<Tuple2<String, String>, AssembledBreakpoint> assembledBreakpoint) {
-        final AlignmentRegion region1 = assembledBreakpoint._2.region1;
-        final AlignmentRegion region2 = assembledBreakpoint._2.region2;
-        return region1.referenceInterval.getContig().equals(region2.referenceInterval.getContig()) &&
-                (region1.forwardStrand && ! region2.forwardStrand || ! region1.forwardStrand && region2.forwardStrand) &&
-                ! region1.referenceInterval.overlaps(region2.referenceInterval);
-    }
 
     public static Tuple2<BreakpointAllele, Tuple2<Tuple2<String,String>, AssembledBreakpoint>> keyByBreakpointAllele(final Tuple2<Tuple2<String,String>, AssembledBreakpoint> breakpointIdAndAssembledBreakpoint) {
         final BreakpointAllele breakpointAllele = breakpointIdAndAssembledBreakpoint._2.getBreakpointAllele();
         return new Tuple2<>(breakpointAllele, new Tuple2<>(breakpointIdAndAssembledBreakpoint._1, breakpointIdAndAssembledBreakpoint._2));
+    }
+
+    public static Boolean inversionBreakpointFilter(final Tuple2<BreakpointAllele, Tuple2<Tuple2<String,String>,AssembledBreakpoint>> breakpointAlleleTuple2Tuple2) {
+        final BreakpointAllele breakpointAllele = breakpointAlleleTuple2Tuple2._1;
+        return breakpointAllele.leftAlignedLeftBreakpoint.getContig().equals(breakpointAllele.leftAlignedRightBreakpoint.getContig()) && (breakpointAllele.fiveToThree || breakpointAllele.threeToFive);
     }
 }

@@ -7,7 +7,9 @@ import com.github.lindenb.jbwa.jni.ShortRead;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.util.SequenceUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -82,7 +84,7 @@ public class ContigAligner implements Closeable {
 
     @VisibleForTesting
     public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final byte[] sequence, final List<AlignmentRegion> alignmentRegionList) {
-        final List<AssembledBreakpoint> results = new ArrayList<>(alignmentRegionList.size() / 2);
+        final List<AssembledBreakpoint> results = new ArrayList<>(alignmentRegionList.size() - 1);
         final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
         final List<String> insertionAlignmentRegions = new ArrayList<>();
         if ( iterator.hasNext() ) {
@@ -105,7 +107,19 @@ public class ContigAligner implements Closeable {
 
                 String insertedSequence = "";
                 if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
-                    insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
+
+                    final byte[] sequenceCopy = Arrays.copyOf(sequence, sequence.length);
+                    final int insertionStart;
+                    final int insertionEnd;
+
+                    insertionStart = previous.endInAssembledContig + 1;
+                    insertionEnd = current.startInAssembledContig - 1;
+
+                    final byte[] insertedSequenceBytes = Arrays.copyOfRange(sequenceCopy, insertionStart - 1, insertionEnd);
+                    if (previous.referenceInterval.getStart() > current.referenceInterval.getStart()) {
+                        SequenceUtil.reverseComplement(insertedSequenceBytes, 0, insertedSequenceBytes.length);
+                    }
+                    insertedSequence = new String(insertedSequenceBytes);
                 }
                 final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(current.contigId, previous, current, insertedSequence, homology, insertionAlignmentRegions);
 
@@ -255,12 +269,19 @@ public class ContigAligner implements Closeable {
         public BreakpointAllele getBreakpointAllele() {
             final SimpleInterval leftAlignedLeftBreakpointOnAssembledContig = getLeftAlignedLeftBreakpointOnAssembledContig();
             final SimpleInterval leftAlignedRightBreakpointOnAssembledContig = getLeftAlignedRightBreakpointOnAssembledContig();
+
+            final boolean isFiveToThreeInversion = region1.forwardStrand && ! region2.forwardStrand &&
+                    ! region1.referenceInterval.contains(region2.referenceInterval);
+
+            final boolean isThreeToFiveInversion = ! region1.forwardStrand && region2.forwardStrand
+                    && ! region1.referenceInterval.contains(region2.referenceInterval);
+
             if (! leftAlignedLeftBreakpointOnAssembledContig.getContig().equals(leftAlignedRightBreakpointOnAssembledContig.getContig())) {
-                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, region1.forwardStrand, region2.forwardStrand);
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, isFiveToThreeInversion, isThreeToFiveInversion);
             } else if ( leftAlignedLeftBreakpointOnAssembledContig.getStart() < leftAlignedRightBreakpointOnAssembledContig.getStart()) {
-                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, region1.forwardStrand, region2.forwardStrand);
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, isFiveToThreeInversion, isThreeToFiveInversion);
             } else {
-                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, region1.forwardStrand, region2.forwardStrand);
+                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, isFiveToThreeInversion, isThreeToFiveInversion);
             }
         }
     }
@@ -269,15 +290,15 @@ public class ContigAligner implements Closeable {
         SimpleInterval leftAlignedLeftBreakpoint;
         SimpleInterval leftAlignedRightBreakpoint;
         String insertedSequence;
-        boolean left5Prime;
-        boolean right5Prime;
+        boolean fiveToThree;
+        boolean threeToFive;
 
-        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence, final boolean left5Prime, final boolean right5Prime) {
+        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence, final boolean fiveToThree, final boolean threeToFive) {
             this.leftAlignedLeftBreakpoint = leftAlignedLeftBreakpoint;
             this.leftAlignedRightBreakpoint = leftAlignedRightBreakpoint;
             this.insertedSequence = insertedSequence;
-            this.left5Prime = left5Prime;
-            this.right5Prime = right5Prime;
+            this.fiveToThree = fiveToThree;
+            this.threeToFive = threeToFive;
         }
 
         @Override
@@ -285,8 +306,8 @@ public class ContigAligner implements Closeable {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             final BreakpointAllele that = (BreakpointAllele) o;
-            return left5Prime == that.left5Prime &&
-                    right5Prime == that.right5Prime &&
+            return fiveToThree == that.fiveToThree &&
+                    threeToFive == that.threeToFive &&
                     Objects.equals(leftAlignedLeftBreakpoint, that.leftAlignedLeftBreakpoint) &&
                     Objects.equals(leftAlignedRightBreakpoint, that.leftAlignedRightBreakpoint) &&
                     Objects.equals(insertedSequence, that.insertedSequence);
@@ -294,7 +315,7 @@ public class ContigAligner implements Closeable {
 
         @Override
         public int hashCode() {
-            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence, left5Prime, right5Prime);
+            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence, fiveToThree, threeToFive);
         }
     }
 
@@ -345,11 +366,21 @@ public class ContigAligner implements Closeable {
             this.forwardStrand = ! read.isReverseStrand();
             this.cigar = forwardStrand ? read.getCigar() : CigarUtils.invertCigar(read.getCigar());
             this.referenceInterval = new SimpleInterval(read);
-            this.assembledContigLength = cigar.getReadLength();
+            this.assembledContigLength = cigar.getReadLength() + getHardClipping(cigar);
             this.startInAssembledContig = startOfAlignmentInContig(cigar);
             this.endInAssembledContig = endOfAlignmentInContig(assembledContigLength, cigar);
             this.mqual = read.getMappingQuality();
-            this.mismatches = read.getAttributeAsInteger("NM");
+            if (read.hasAttribute("NM")) {
+                this.mismatches = read.getAttributeAsInteger("NM");
+            } else {
+                this.mismatches = 0;
+            }
+        }
+
+        private static int getHardClipping(final Cigar cigar) {
+            final List<CigarElement> cigarElements = cigar.getCigarElements();
+            return (cigarElements.get(0).getOperator() == CigarOperator.HARD_CLIP ? cigarElements.get(0).getLength() : 0) +
+                    (cigarElements.get(cigarElements.size() - 1).getOperator() == CigarOperator.HARD_CLIP ? cigarElements.get(cigarElements.size() - 1).getLength() : 0);
         }
 
         private static int startOfAlignmentInContig(final Cigar cigar) {
