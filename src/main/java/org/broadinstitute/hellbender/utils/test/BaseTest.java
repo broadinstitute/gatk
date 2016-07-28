@@ -148,7 +148,11 @@ public abstract class BaseTest {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
     }
 
-    protected static String getNonNullEnvironmentVariable(String envVarName) {
+    public static String getServiceAccountKeyPath() {
+      return getNonNullEnvironmentVariable("HELLBENDER_JSON_SERVICE_ACCOUNT_KEY");
+    }
+
+    private static String getNonNullEnvironmentVariable(String envVarName) {
         String value = System.getenv(envVarName);
         if (null == value) {
             throw new UserException("For this test, please define environment variable \""+envVarName+"\"");

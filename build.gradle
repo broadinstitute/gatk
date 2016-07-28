@@ -57,6 +57,8 @@ configurations.all {
         force 'com.google.http-client:google-http-client:1.21.0'
         // the snapshot folder contains a dev version of guava, we don't want to use that.
         force 'com.google.guava:guava:18.0'
+	    // later versions explode Hadoop
+	    force 'com.google.protobuf:protobuf-java:3.0.0-beta-1'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -101,6 +103,7 @@ dependencies {
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:2.5.0'
+    compile 'com.google.cloud:gcloud-java-nio:0.2.5'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
