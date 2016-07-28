@@ -94,10 +94,14 @@ public class ContigAligner implements Closeable {
             }
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
-                if (treatNextAlignmentRegionInPairAsInsertion(current, next) && iterator.hasNext()) {
-                    insertionAlignmentRegions.add(next.toPackedString());
-                    // todo: track alignments of skipped regions for classification as duplications, mei's etc.
-                    continue;
+                if (treatNextAlignmentRegionInPairAsInsertion(current, next)) {
+                    if (iterator.hasNext()) {
+                        insertionAlignmentRegions.add(next.toPackedString());
+                        // todo: track alignments of skipped regions for classification as duplications, mei's etc.
+                        continue;
+                    } else {
+                        break;
+                    }
                 }
 
                 final AlignmentRegion previous = current;

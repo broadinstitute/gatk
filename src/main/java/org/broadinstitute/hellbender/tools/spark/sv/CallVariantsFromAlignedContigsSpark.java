@@ -195,6 +195,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final List<String> breakpointIds = new ArrayList<>(numBreakpoints);
         final List<String> assembledContigIds = new ArrayList<>(numBreakpoints);
 
+
         for (final Tuple2<Tuple2<String,String>, AssembledBreakpoint> assembledBreakpointPair : assembledBreakpointsList) {
             final AssembledBreakpoint assembledBreakpoint = assembledBreakpointPair._2;
             numAssembledBreakpoints = numAssembledBreakpoints + 1;
