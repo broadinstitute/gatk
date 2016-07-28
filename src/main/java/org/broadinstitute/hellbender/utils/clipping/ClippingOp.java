@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.clipping;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -176,24 +177,36 @@ public final class ClippingOp {
     }
 
     /**
-     * Given a cigar string, get the number of bases hard or soft clipped at the start
+     * Given two cigar strings corresponding to read before and after soft-clipping, returns an integer
+     * corresponding to the number of reference bases that the new string must be offset by in order to have the
+     * correct start according to the reference.
+     *
+     * @param clippedCigar the new cigar string after clipping
+     * @param oldCigar the cigar string of the read before it was soft clipped
      */
-    private int getNewAlignmentStartOffset(final Cigar __cigar, final Cigar __oldCigar) {
-        int num = 0;
-        for (final CigarElement e : __cigar.getCigarElements()) {
+    @VisibleForTesting
+    static int getNewAlignmentStartOffset(final Cigar clippedCigar, final Cigar oldCigar) {
+        int readBasesBeforeReference = 0; // The number of read bases consumed on the new cigar before reference bases are consumed
+
+        int basesBeforeReferenceOld = 0; // The number of read bases consumed on the old cigar before reference bases are consumed
+        int curReadCounter = 0; // A measure of the reference offset between the oldCigar and the clippedCigar
+
+        for (final CigarElement e : clippedCigar.getCigarElements()) {
             if (!e.getOperator().consumesReferenceBases()) {
                 if (e.getOperator().consumesReadBases()) {
-                    num += e.getLength();
+                    readBasesBeforeReference += e.getLength();
                 }
             } else {
-                break;
+                if (!e.getOperator().consumesReadBases()) {
+                    basesBeforeReferenceOld -= e.getLength(); // Accounting for any D or N cigar operators at the front of the string
+                } else {
+                    break;
+                }
             }
         }
 
-        int oldNum = 0;
-        int curReadCounter = 0;
 
-        for (final CigarElement e : __oldCigar.getCigarElements()) {
+        for (final CigarElement e : oldCigar.getCigarElements()) {
             int curRefLength = e.getLength();
             int curReadLength = e.getLength();
             if (!e.getOperator().consumesReadBases()) {
@@ -201,9 +214,9 @@ public final class ClippingOp {
             }
 
             boolean truncated = false;
-            if (curReadCounter + curReadLength > num) {
-                curReadLength = num - curReadCounter;
-                curRefLength = num - curReadCounter;
+            if (curReadCounter + curReadLength > readBasesBeforeReference) {
+                curReadLength = readBasesBeforeReference - curReadCounter;
+                curRefLength = readBasesBeforeReference - curReadCounter;
                 truncated = true;
             }
 
@@ -212,14 +225,14 @@ public final class ClippingOp {
             }
 
             curReadCounter += curReadLength;
-            oldNum += curRefLength;
+            basesBeforeReferenceOld += curRefLength;
 
-            if (curReadCounter > num || truncated) {
+            if (curReadCounter > readBasesBeforeReference || truncated) {
                 break;
             }
         }
 
-        return oldNum;
+        return Math.abs(basesBeforeReferenceOld); // if oldNum is negative it means some of the preceding N/Ds were trimmed but not all so we take absolute value
     }
 
     /**
