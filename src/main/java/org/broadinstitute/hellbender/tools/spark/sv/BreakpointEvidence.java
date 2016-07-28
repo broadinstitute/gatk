@@ -15,8 +15,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  *   instantiating one of the subclasses that addresses that type of funkiness.
  */
 public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
-    private final short contigIndex; // which reference contig (as an index into the sequence dictionary)
-    private final short eventWidth; // i.e., eventEndPosition would be eventStartPosition+eventWidth
+    private final int contigIndex; // which reference contig (as an index into the sequence dictionary)
+    private final int eventWidth; // i.e., eventEndPosition would be eventStartPosition+eventWidth
     private final int eventStartPosition; // offset on the contig of the starting position of the event
     private final String templateName; // QNAME of the read that was funky (i.e., the name of the fragment)
     private final TemplateEnd templateEnd; // which read we're talking about (first or last, for paired-end reads)
@@ -40,7 +40,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      * evidence offset and width is set to "the rest of the fragment" not covered by this read
      */
     protected BreakpointEvidence( final GATKRead read, final ReadMetadata metadata ) {
-        final int templateLen = Math.round(metadata.getStatistics(read.getReadGroup()).getMedianFragmentSize());
+        final int templateLen = metadata.getStatistics(read.getReadGroup()).getMedianFragmentSize();
         final int width;
         final int start;
         if ( read.isReverseStrand() ) {
@@ -56,7 +56,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         this.templateName = read.getName();
         if ( templateName == null ) throw new GATKException("Read has no name.");
         this.templateEnd = findTemplateEnd(read);
-        this.eventWidth = (short)width;
+        this.eventWidth = width;
         this.eventStartPosition = start;
     }
 
@@ -64,13 +64,13 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      * for use when the uncertainty in location has a fixed size
      */
     protected BreakpointEvidence( final GATKRead read, final ReadMetadata metadata,
-                        final int contigOffset, final short offsetUncertainty ) {
+                        final int contigOffset, final int offsetUncertainty ) {
         this.contigIndex = metadata.getContigID(read.getContig());
         this.templateName = read.getName();
         if ( templateName == null ) throw new GATKException("Read has no name.");
         this.templateEnd = findTemplateEnd(read);
         this.eventStartPosition = contigOffset - offsetUncertainty;
-        this.eventWidth = (short)(2*offsetUncertainty);
+        this.eventWidth = 2*offsetUncertainty;
     }
 
     /**
@@ -79,8 +79,8 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      * it will be called by subclasses in their own constructors from Kryo streams (as super(kryo, input)).
      */
     protected BreakpointEvidence( final Kryo kryo, final Input input ) {
-        this.contigIndex = input.readShort();
-        this.eventWidth = input.readShort();
+        this.contigIndex = input.readInt();
+        this.eventWidth = input.readInt();
         this.eventStartPosition = input.readInt();
         this.templateName = kryo.readObject(input, String.class);
         this.templateEnd = TemplateEnd.values()[input.readByte()];
@@ -91,7 +91,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      * used by the MapPartitioner to flush pending evidence in the FindBreakEvidenceSpark.WindowSorter.
      */
     public BreakpointEvidence( final int contigIndex ) {
-        this.contigIndex = (short)contigIndex;
+        this.contigIndex = contigIndex;
         this.templateName = "sentinel";
         this.templateEnd = TemplateEnd.PAIRED_UNKNOWN;
         this.eventStartPosition = 0;
@@ -99,8 +99,8 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
     }
 
     protected void serialize( final Kryo kryo, final Output output ) {
-        output.writeShort(contigIndex);
-        output.writeShort(eventWidth);
+        output.writeInt(contigIndex);
+        output.writeInt(eventWidth);
         output.writeInt(eventStartPosition);
         kryo.writeObject(output, templateName);
         output.writeByte(templateEnd.ordinal());
@@ -116,11 +116,11 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
     @Override
     public int compareTo( final BreakpointEvidence that ) {
         if ( this == that ) return 0;
-        int result = Short.compare(this.contigIndex, that.contigIndex);
+        int result = Integer.compare(this.contigIndex, that.contigIndex);
         if ( result == 0 ) {
             result = Integer.compare(this.eventStartPosition, that.eventStartPosition);
             if ( result == 0 ) {
-                result = Short.compare(this.eventWidth, that.eventWidth);
+                result = Integer.compare(this.eventWidth, that.eventWidth);
                 if ( result == 0 ) {
                     result = this.templateEnd.compareTo(that.templateEnd);
                     if ( result == 0 ) {
@@ -168,7 +168,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
 
     @DefaultSerializer(SplitRead.Serializer.class)
     public static final class SplitRead extends BreakpointEvidence {
-        private static final short UNCERTAINTY = 2;
+        private static final int UNCERTAINTY = 2;
         private static final String SA_TAG_NAME = "SA";
         private final String cigar;
         private final String tagSA;
@@ -230,7 +230,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
 
     @DefaultSerializer(LargeIndel.Serializer.class)
     public static final class LargeIndel extends BreakpointEvidence {
-        private static final short UNCERTAINTY = 4;
+        private static final int UNCERTAINTY = 4;
         private final String cigar;
 
         LargeIndel( final GATKRead read, final ReadMetadata metadata, final int contigOffset ) {

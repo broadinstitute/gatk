@@ -8,9 +8,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import java.util.*;
 import java.util.function.Function;
 
-// TODO: figure out a way to include funky template size data without swamping ourselves in a sea of evidence
-// TODO: maybe count each such read as fractional evidence?
-
 /**
  * Figures out what kind of BreakpointEvidence, if any, a read represents.
  */
@@ -18,9 +15,8 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     @VisibleForTesting static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
     @VisibleForTesting static final int MIN_INDEL_LEN = 40; // minimum length of an interesting indel
     private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
-    //private static final float MIN_ZISH_SCORE = -4.f;
-    //private static final float MAX_ZISH_SCORE = 6.f;
-    //private static final float CRAZY_ZISH_SCORE = 100.f;
+    private static final float MAX_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
+    private static final float MIN_CRAZY_ZISH_SCORE = 100.f; // "z" score that's probably associated with a mapping error
     private final ReadMetadata readMetadata;
 
     public ReadClassifier( final ReadMetadata readMetadata ) {
@@ -29,6 +25,8 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
 
     @Override
     public Iterator<BreakpointEvidence> apply( final GATKRead read ) {
+        if ( read.isUnmapped() ) return Collections.emptyIterator();
+
         final List<BreakpointEvidence> evidenceList = new ArrayList<>();
 
         checkForSplitRead(read, evidenceList);
@@ -37,8 +35,8 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         return evidenceList.iterator();
     }
 
-    public void checkForSplitRead( final GATKRead read,
-                                   final List<BreakpointEvidence> evidenceList ) {
+    @VisibleForTesting void checkForSplitRead( final GATKRead read,
+                                               final List<BreakpointEvidence> evidenceList ) {
         final List<CigarElement> cigarElements = read.getCigar().getCigarElements();
         if ( hasInitialSoftClip(cigarElements, read) ) {
             evidenceList.add(new BreakpointEvidence.SplitRead(read, readMetadata, true));
@@ -49,7 +47,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         checkBigIndel(cigarElements, read, evidenceList);
     }
 
-    public static boolean hasInitialSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
+    private static boolean hasInitialSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
         final ListIterator<CigarElement> itr = cigarElements.listIterator();
         if ( !itr.hasNext() ) return false;
 
@@ -62,7 +60,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
                 isHighQualityRegion(read.getBaseQualities(), 0);
     }
 
-    public static boolean hasFinalSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
+    private static boolean hasFinalSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
         final ListIterator<CigarElement> itr = cigarElements.listIterator(cigarElements.size());
         if ( !itr.hasPrevious() ) return false;
 
@@ -75,14 +73,14 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
                 isHighQualityRegion(read.getBaseQualities(), read.getLength() - lastEle.getLength());
     }
 
-    public static boolean isHighQualityRegion( final byte[] quals, int idx ) {
+    private static boolean isHighQualityRegion( final byte[] quals, int idx ) {
         for ( final int end = idx+MIN_SOFT_CLIP_LEN; idx != end; ++idx ) {
             if ( quals[idx] < MIN_QUALITY ) return false;
         }
         return true;
     }
 
-    public void checkBigIndel( final List<CigarElement> cigarElements,
+    private void checkBigIndel( final List<CigarElement> cigarElements,
                                final GATKRead read,
                                final List<BreakpointEvidence> evidenceList ) {
         int locus = read.getStart();
@@ -101,7 +99,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         }
     }
 
-    public void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
+    @VisibleForTesting void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
         if ( read.mateIsUnmapped() ) {
             evidenceList.add(new BreakpointEvidence.MateUnmapped(read, readMetadata));
         } else if ( !read.getContig().equals(read.getMateContig()) ) {
@@ -111,17 +109,15 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         } else if ( (read.getStart() < read.getMateStart() && read.isReverseStrand()) ||
                     (read.getStart() > read.getMateStart() && !read.isReverseStrand()) ) {
             evidenceList.add(new BreakpointEvidence.OutiesPair(read, readMetadata));
-// TODO: we need to turn this on to boost our odds of finding large insertions and deletions.
-// This type of evidence is, however, so copious that it overwhelms all the other evidence --
-//   we'll need some way to de-weight it.
-/*      } else {
-            final ReadMetadata.ReadGroupFragmentStatistics stats = readMetadata.getStatistics(read.getReadGroup());
-            final float zIshScore = (Math.abs(read.getFragmentLength()) - stats.getMedianFragmentSize()) /
-                                        stats.getMedianAbsoluteDeviationFragmentSize();
-
-            if ( zIshScore < MIN_ZISH_SCORE || (zIshScore > MAX_ZISH_SCORE && zIshScore < CRAZY_ZISH_SCORE) ) {
+        } else {
+            final float zIshScore =
+                    readMetadata.getStatistics(read.getReadGroup()).getZIshScore(Math.abs(read.getFragmentLength()));
+            if ( zIshScore > MAX_ZISH_SCORE && zIshScore < MIN_CRAZY_ZISH_SCORE ) {
                 evidenceList.add(new BreakpointEvidence.WeirdTemplateSize(read, readMetadata));
             }
-*/      }
+            // TODO: see if there's anything we can do about anomalously short fragment sizes
+            // (With current fragment sizes and read lengths there aren't enough bases to have a >=50bp insertion
+            // between the mates.)
+        }
     }
 }

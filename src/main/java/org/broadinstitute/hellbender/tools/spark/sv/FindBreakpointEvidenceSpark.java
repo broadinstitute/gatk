@@ -128,6 +128,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputDir;
 
+    @Argument(doc = "file for read metadata", fullName = "readMetadata", optional = true)
+    private String metadataFile;
+
     @Argument(doc = "directory for evidence output", fullName = "breakpointEvidenceDir", optional = true)
     private String evidenceDir;
 
@@ -178,7 +181,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
 
         final Locations locations =
-                new Locations(evidenceDir, intervalFile, qNamesMappedFile,
+                new Locations(metadataFile, evidenceDir, intervalFile, qNamesMappedFile,
                                 highFrequencyKmersFile, kmerFile, qNamesAssemblyFile, exclusionIntervalsFile);
         final Params params =
                 new Params(kSize, minEntropy, minEvidenceMapQ, minEvidenceMatchLength, maxIntervalCoverage,
@@ -271,8 +274,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> mappedReads =
                 unfilteredReads.filter(read ->
                         !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
-        final ReadMetadata readMetadata = getMetadata(header);
+        final ReadMetadata readMetadata = new ReadMetadata(header, mappedReads);
+        if ( locations.metadataFile != null ) writeMetadata(readMetadata, locations.metadataFile, pipelineOptions);
         log("Metadata retrieved.");
+
         final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadata);
         List<SVInterval> intervals = getIntervals(params, broadcastMetadata, header, mappedReads, locations);
 
@@ -297,6 +302,29 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         log("Discovered " + qNamesMultiMap.size() + " mapped template names.");
 
         return new Tuple2<>(intervals, qNamesMultiMap);
+    }
+
+    private static void writeMetadata( final ReadMetadata readMetadata,
+                                       final String filename,
+                                       final PipelineOptions pipelineOptions ) {
+        try ( final Writer writer =
+                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(filename, pipelineOptions))) ) {
+            writer.write("#reads:\t"+readMetadata.getNReads()+"\n");
+            writer.write("#partitions:\t"+readMetadata.getNPartitions()+"\n");
+            writer.write("max reads/partition:\t"+readMetadata.getMaxReadsInPartition()+"\n");
+            writer.write("coverage:\t"+readMetadata.getCoverage()+"\n");
+            for ( final Map.Entry<String, ReadMetadata.ReadGroupFragmentStatistics> entry :
+                    readMetadata.getAllGroupStatistics().entrySet() ) {
+                ReadMetadata.ReadGroupFragmentStatistics stats = entry.getValue();
+                String name = entry.getKey();
+                if ( name == null ) name = "NoGroup";
+                writer.write("group "+name+":\t"+stats.getMedianFragmentSize()+
+                        "-"+stats.getMedianNegativeDeviation()+"+"+stats.getMedianPositiveDeviation()+"\n");
+            }
+        }
+        catch ( IOException ioe ) {
+            throw new GATKException("Can't write metadata file.", ioe);
+        }
     }
 
     /**
@@ -400,7 +428,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     }
 
     /** write a FASTQ file for an assembly */
-    private static Tuple2<Integer, String> writeFastq( final Tuple2<Integer, List<byte[]>> intervalAndFastqs,
+    @VisibleForTesting static Tuple2<Integer, String> writeFastq( final Tuple2<Integer, List<byte[]>> intervalAndFastqs,
                                     final String outputDir, final int maxFastqSize ) {
         final List<byte[]> fastqsList = intervalAndFastqs._2;
         SVFastqUtils.sortFastqRecords(fastqsList);
@@ -538,7 +566,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     /** remove intervals that are near gaps */
     @VisibleForTesting static List<SVInterval> removeIntervalsNearGaps( final List<SVInterval> intervals,
                                                                         final int minDistanceToGap,
-                                                                        final Map<String, Short> contigNameMap,
+                                                                        final Map<String, Integer> contigNameMap,
                                                                         final String exclusionIntervalsFile,
                                                                         final PipelineOptions pipelineOptions ) {
         if ( exclusionIntervalsFile == null ) return intervals;
@@ -706,25 +734,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         return intervals;
     }
 
-    /** gather some interesting factoids about the reads in aggregate */
-    @VisibleForTesting static ReadMetadata getMetadata( final SAMFileHeader header ) {
-        final List<SAMReadGroupRecord> groups = header.getReadGroups();
-        final int nGroups = groups.size();
-        final ReadMetadata.ReadGroupFragmentStatistics groupStats =
-                //TODO: get real data
-                new ReadMetadata.ReadGroupFragmentStatistics(400.f, 75.f);
-        final List<ReadMetadata.ReadGroupFragmentStatistics> stats = new ArrayList<>(nGroups);
-        for ( int idx = 0; idx != nGroups; ++idx ) {
-            stats.add(groupStats);
-        }
-        return new ReadMetadata(header, stats, groupStats);
-    }
-
     private void log( final String message ) {
         logger.info(message);
     }
 
     @VisibleForTesting static class Locations {
+        public final String metadataFile;
         public final String evidenceDir;
         public final String intervalFile;
         public final String qNamesMappedFile;
@@ -733,10 +748,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         public final String qNamesAssemblyFile;
         public final String exclusionIntervalsFile;
 
-        public Locations( final String evidenceDir, final String intervalFile,
+        public Locations( final String metadataFile, final String evidenceDir, final String intervalFile,
                           final String qNamesMappedFile, final String highFrequencyKmersFile,
                           final String kmerFile, final String qNamesAssemblyFile,
                           final String exclusionIntervalsFile) {
+            this.metadataFile = metadataFile;
             this.evidenceDir = evidenceDir;
             this.intervalFile = intervalFile;
             this.qNamesMappedFile = qNamesMappedFile;

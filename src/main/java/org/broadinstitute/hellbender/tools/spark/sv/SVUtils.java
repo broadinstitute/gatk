@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -64,7 +63,7 @@ public final class SVUtils {
 
     /** Read intervals from file. */
     public static List<SVInterval> readIntervalsFile( final String intervalsFile, final PipelineOptions popts,
-                                                      final Map<String, Short> contigNameMap ) {
+                                                      final Map<String, Integer> contigNameMap ) {
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
                       new BufferedReader(new InputStreamReader(BucketUtils.openFile(intervalsFile, popts))) ) {
@@ -81,11 +80,11 @@ public final class SVUtils {
                                             lineNo+" did not contain 3 columns: "+line);
                 }
                 try {
-                    final Short contigId = contigNameMap.get(tokens[0]);
+                    final Integer contigId = contigNameMap.get(tokens[0]);
                     if ( contigId == null ) throw new GATKException("contig name "+tokens[0]+" not in dictionary");
                     final int start = Integer.valueOf(tokens[1])-1;
                     final int end = Integer.valueOf(tokens[2]);
-                    intervals.add(new SVInterval(contigId.intValue(), start, end));
+                    intervals.add(new SVInterval(contigId, start, end));
                 }
                 catch ( final Exception e ) {
                     throw new GATKException("Unable to parse interval file "+intervalsFile+" line "+lineNo+": "+line, e);
