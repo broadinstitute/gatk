@@ -445,7 +445,15 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
     }
 
     /**
-     * Fix the quality of two elements that comes from an overlaping pair
+     * Fix the quality of two elements that comes from an overlaping pair in the same way as samtools does
+     * {@see tweak_overlap_quality function in <a href="https://github.com/samtools/htslib/blob/master/sam.c">samtools</a>}.
+     *
+     * Setting the quality of one of the bases to 0 effectively remove the redundant base for calling. In addition, if the
+     * bases overlaps we have increased confidence if they agree (or reduced if they don't). Thus, the algorithm proceed as following:
+     *
+     * 1. If the bases are the same, the quality of the first element is the sum of both qualities and the quality of the second is reduced to 0.
+     * 2. If the bases are different, the base with the highest quality is reduced with a factor of 0.8, and the quality of the lowest is reduced to 0.
+     *
      */
     @VisibleForTesting
     static void fixPairOverlappingQualities(final PileupElement firstElement, final PileupElement secondElement) {
