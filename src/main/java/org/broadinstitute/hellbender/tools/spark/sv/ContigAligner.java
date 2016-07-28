@@ -89,6 +89,12 @@ public class ContigAligner implements Closeable {
         final List<String> insertionAlignmentRegions = new ArrayList<>();
         if ( iterator.hasNext() ) {
             AlignmentRegion current = iterator.next();
+            while (iterator.hasNext()) {
+                if (current.referenceInterval.size() >= 50 || current.mqual >= 60) {
+                    break;
+                }
+                current = iterator.next();
+            }
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
                 if (treatAlignmentRegionAsInsertion(current, next) && iterator.hasNext()) {
@@ -130,7 +136,7 @@ public class ContigAligner implements Closeable {
     }
 
     private static boolean treatAlignmentRegionAsInsertion(AlignmentRegion current, AlignmentRegion next) {
-        return next.mqual < 60 || current.referenceInterval.contains(next.referenceInterval);
+        return next.mqual < 60 || next.referenceInterval.size() < 50 || current.referenceInterval.contains(next.referenceInterval);
     }
 
     private Collector<AlignmentRegion, ?, ArrayList<AlignmentRegion>> arrayListCollector(final int size) {
