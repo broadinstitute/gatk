@@ -89,15 +89,12 @@ public class ContigAligner implements Closeable {
         final List<String> insertionAlignmentRegions = new ArrayList<>();
         if ( iterator.hasNext() ) {
             AlignmentRegion current = iterator.next();
-            while (iterator.hasNext()) {
-                if (current.referenceInterval.size() >= 50 || current.mqual >= 60) {
-                    break;
-                }
+            while (treatAlignmentRegionAsInsertion(current) && iterator.hasNext()) {
                 current = iterator.next();
             }
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
-                if (treatAlignmentRegionAsInsertion(current, next) && iterator.hasNext()) {
+                if (treatNextAlignmentRegionInPairAsInsertion(current, next) && iterator.hasNext()) {
                     insertionAlignmentRegions.add(next.toPackedString());
                     // todo: track alignments of skipped regions for classification as duplications, mei's etc.
                     continue;
@@ -135,8 +132,12 @@ public class ContigAligner implements Closeable {
         return results;
     }
 
-    private static boolean treatAlignmentRegionAsInsertion(AlignmentRegion current, AlignmentRegion next) {
-        return next.mqual < 60 || next.referenceInterval.size() < 50 || current.referenceInterval.contains(next.referenceInterval);
+    private static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next) {
+        return treatAlignmentRegionAsInsertion(next) || current.referenceInterval.contains(next.referenceInterval);
+    }
+
+    private static boolean treatAlignmentRegionAsInsertion(final AlignmentRegion next) {
+        return next.mqual < 60 || next.referenceInterval.size() < 50;
     }
 
     private Collector<AlignmentRegion, ?, ArrayList<AlignmentRegion>> arrayListCollector(final int size) {
