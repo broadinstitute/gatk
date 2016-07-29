@@ -40,7 +40,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final ReadMetadata readMetadataExpected = new ReadMetadata(header, reads);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
     private final FindBreakpointEvidenceSpark.Locations locations =
-        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null, null);
+        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null);
     private final Set<String> expectedQNames = loadExpectedQNames(qNamesFile);
     private final Set<String> expectedAssemblyQNames = loadExpectedQNames(asmQNamesFile);
     private final List<SVInterval> expectedIntervalList = Arrays.asList(testIntervals);
@@ -64,12 +64,9 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void getKmerIntervalsTest() {
-        final List<SVKmer> highCountKmers = FindBreakpointEvidenceSpark.getHighCountKmers(params, reads, locations, null);
-        Assert.assertEquals(2, highCountKmers.size());
         final Set<SVKmer> killSet = new HashSet<>();
         killSet.add(SVKmerizer.toKmer("ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACG"));
         killSet.add(SVKmerizer.toKmer("TACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTAC"));
-        killSet.addAll(highCountKmers);
         Assert.assertEquals(2, killSet.size());
 
         final HopscotchUniqueMultiMap<String, Integer, FindBreakpointEvidenceSpark.QNameAndInterval> qNameMultiMap =
