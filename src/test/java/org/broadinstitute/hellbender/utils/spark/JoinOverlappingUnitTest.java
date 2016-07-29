@@ -78,7 +78,7 @@ public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
                 new CountOverlappingReadsFunction()).mapToPair(t -> t);
         assertEquals(readsPerInterval.collectAsMap(), ImmutableMap.of(intervals.get(0), 1, intervals.get(1), 7, intervals.get(2), 4));
 
-        JavaPairRDD<Locatable, Integer> readsPerIntervalNaive = SparkUtils.joinOverlappingNaive(ctx, reads, TestRead.class, intervals,
+        JavaPairRDD<Locatable, Integer> readsPerIntervalNaive = SparkUtils.joinOverlappingShuffle(ctx, reads, TestRead.class, intervals,
                 new CountOverlappingReadsFlatFunction()).mapToPair(t -> t);
         assertEquals(readsPerIntervalNaive.collectAsMap(), ImmutableMap.of(intervals.get(0), 1, intervals.get(1), 7, intervals.get(2), 4));
     }
@@ -116,7 +116,7 @@ public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
                 new CountOverlappingReadsFunction()).mapToPair(t -> t);
         assertEquals(readsPerInterval.collectAsMap(), ImmutableMap.of(intervals.get(0), 1, intervals.get(1), 1, intervals.get(2), 2));
 
-        JavaPairRDD<Locatable, Integer> readsPerIntervalNaive = SparkUtils.joinOverlappingNaive(ctx, reads, TestRead.class, intervals,
+        JavaPairRDD<Locatable, Integer> readsPerIntervalNaive = SparkUtils.joinOverlappingShuffle(ctx, reads, TestRead.class, intervals,
                 new CountOverlappingReadsFlatFunction()).mapToPair(t -> t);
         assertEquals(readsPerIntervalNaive.collectAsMap(), ImmutableMap.of(intervals.get(0), 1, intervals.get(1), 1, intervals.get(2), 2));
 

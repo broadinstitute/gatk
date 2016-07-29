@@ -252,9 +252,9 @@ public final class SparkUtils {
         }
     }
 
-    public static <R extends Locatable, I extends Locatable, T> JavaRDD<T> joinOverlappingNaive(JavaSparkContext ctx, JavaRDD<R> reads, Class<R> readClass,
-                                                                                           List<I> intervals,
-                                                                                                FlatMapFunction<Tuple2<I,Iterable<R>>, T> f) {
+    public static <R extends Locatable, I extends Locatable, T> JavaRDD<T> joinOverlappingShuffle(JavaSparkContext ctx, JavaRDD<R> reads, Class<R> readClass,
+                                                                                                  List<I> intervals,
+                                                                                                  FlatMapFunction<Tuple2<I,Iterable<R>>, T> f) {
         OverlapDetector<I> overlapDetector = OverlapDetector.create(intervals);
         Broadcast<OverlapDetector<I>> overlapDetectorBroadcast = ctx.broadcast(overlapDetector);
         JavaPairRDD<I, R> intervalsToReads = reads.flatMapToPair(read -> {
