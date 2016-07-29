@@ -83,10 +83,10 @@ public final class BaseRecalibrationEngine implements Serializable {
         this.recalArgs = recalArgs;
         this.readsHeader = readsHeader;
 
-        if (recalArgs.skipBAQ) {
-            baq = null;
-        } else {
+        if (recalArgs.enableBAQ) {
             baq = new BAQ(recalArgs.BAQGOP); // setup the BAQ object with the provided gap open penalty
+        } else {
+            baq = null;
         }
 
         covariates = new StandardCovariateList(recalArgs, readsHeader);
@@ -130,7 +130,7 @@ public final class BaseRecalibrationEngine implements Serializable {
 
         // note for efficiency reasons we don't compute the BAQ array unless we actually have
         // some error to marginalize over.  For ILMN data ~85% of reads have no error
-        final byte[] baqArray = (nErrors == 0 || recalArgs.skipBAQ) ? flatBAQArray(read) : calculateBAQArray(read, refDS);
+        final byte[] baqArray = (nErrors == 0 || !recalArgs.enableBAQ) ? flatBAQArray(read) : calculateBAQArray(read, refDS);
 
         if( baqArray != null ) { // some reads just can't be BAQ'ed
             final ReadCovariates covariates = RecalUtils.computeCovariates(read, readsHeader, this.covariates, true, keyCache);
