@@ -29,8 +29,8 @@ public class InsertSizeMetricsCollectorSpark
     private InsertSizeMetricsArgumentCollection inputArgs = null;
     private InsertSizeMetricsCollector collector = null;
 
-    InsertSizeMetricsCollector resultMetrics = null;
-    MetricsFile<InsertSizeMetrics, Integer> metricsFile = null;
+    private InsertSizeMetricsCollector resultMetrics = null;
+    private MetricsFile<InsertSizeMetrics, Integer> metricsFile = null;
 
     /**
      * Initialize the collector with input arguments;

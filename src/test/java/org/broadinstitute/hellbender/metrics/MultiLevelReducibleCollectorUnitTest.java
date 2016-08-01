@@ -12,6 +12,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.*;
 
 import static htsjdk.samtools.util.CollectionUtil.makeSet;
@@ -43,7 +44,9 @@ public final class MultiLevelReducibleCollectorUnitTest {
     /** We will just Tally up the number of times records were added to this metric and change FINISHED
      * to true when FINISHED is called
      */
-    static final class TotalNumberMetric extends MultiLevelMetrics {
+    static final class TotalNumberMetric extends MultiLevelMetrics implements Serializable {
+        private static final long serialVersionUID = 1L;
+
         /** The number of these encountered **/
         public Integer TALLY = 0;
         public boolean FINISHED = false;

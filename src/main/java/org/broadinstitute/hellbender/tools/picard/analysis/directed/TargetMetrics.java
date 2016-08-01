@@ -2,11 +2,16 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 
+import java.io.Serializable;
+
 /**
  * For a sequencing run targeting specific regions of the genome this metric class holds metrics describing
  * how well those regions were targeted.
  */
-public final class TargetMetrics extends MultiLevelMetrics {
+public final class TargetMetrics extends MultiLevelMetrics implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     /**  The name of the PROBE_SET (BAIT SET, AMPLICON SET, ...) used in this metrics collection run */
     public String PROBE_SET;
 

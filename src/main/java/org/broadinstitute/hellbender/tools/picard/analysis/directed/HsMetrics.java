@@ -2,12 +2,17 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 
+import java.io.Serializable;
+
 /**
  * The set of metrics captured that are specific to a hybrid selection analysis.
  *
  * @author Tim Fennell
  */
-public final class HsMetrics extends MultiLevelMetrics {
+public final class HsMetrics extends MultiLevelMetrics implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     /** The name of the bait set used in the hybrid selection. */
     public String BAIT_SET;
 

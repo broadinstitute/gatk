@@ -2,12 +2,17 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 
 import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
 
+import java.io.Serializable;
+
 /**
  * Holds summary statistics from RRBS processing QC
  *
  * @author jgentry
  */
-public final class RrbsSummaryMetrics extends MultiLevelMetrics {
+public final class RrbsSummaryMetrics extends MultiLevelMetrics implements Serializable {
+
+	private static final long serialVersionUID = 1L;
+
 	/** Number of mapped reads processed */
 	public Integer READS_ALIGNED;
 	/** Number of times a non-CpG cytosine was encountered */

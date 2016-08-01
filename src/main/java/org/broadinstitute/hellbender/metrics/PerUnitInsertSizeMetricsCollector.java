@@ -151,11 +151,12 @@ public final class PerUnitInsertSizeMetricsCollector
     }
 
     /**
-     * Combine this InsertSizeMetricsCollector with sourceCollector and return a combined InsertSizeMetricsCollector.
-     * @param sourceCollector InsertSizeMetricsCollector to combine in
-     * @return InsertSizeMetricsCollector representing the combination of the source collector with this collector
+     * Combine this PerUnitInsertSizeMetricsCollector with sourceCollector and return a combined
+     * PerUnitInsertSizeMetricsCollector.
+     * @param sourceCollector PerUnitInsertSizeMetricsCollector to combine in
+     * @return PerUnitInsertSizeMetricsCollector representing the combination of the source collector with this collector
      */
-    public PerUnitInsertSizeMetricsCollector combine(PerUnitInsertSizeMetricsCollector sourceCollector) {
+    public PerUnitInsertSizeMetricsCollector combine(final PerUnitInsertSizeMetricsCollector sourceCollector) {
         Utils.nonNull(sourceCollector);
         final String validationMessage = "Internal error combining collectors";
         validateEquals(this.sample, sourceCollector.sample, validationMessage);
