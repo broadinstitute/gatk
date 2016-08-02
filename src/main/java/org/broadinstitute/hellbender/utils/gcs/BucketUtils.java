@@ -1,11 +1,16 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.services.storage.Storage;
+import com.google.cloud.AuthCredentials;
+import com.google.cloud.RetryParams;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
 import com.google.cloud.dataflow.sdk.util.Transport;
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath;
+import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import com.google.common.io.ByteStreams;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -23,6 +28,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -31,7 +37,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -346,5 +355,55 @@ public final class BucketUtils {
 
     public static boolean isFileUrl(String path) {
         return path.startsWith(FILE_PREFIX);
+    }
+
+    /**
+     * Given a path of the form "gcs://bucket/folder/folder/file", returns "bucket".
+     */
+    public static String getBucket(String path) {
+        return path.split("/")[2];
+    }
+
+    /**
+     * Given a path of the form "gcs://bucket/folder/folder/file", returns "folder/folder/file".
+     */
+    public static String getPathWithoutBucket(String path) {
+        final String[] split = path.split("/");
+        final String BUCKET = split[2];
+        return String.join("/", Arrays.copyOfRange(split, 3, split.length));
+
+    }
+
+
+    /**
+     * Get an authenticated GCS-backed NIO FileSystem object representing the selected projected and bucket.
+     * Credentials are found automatically when running on Compute/App engine, logged into gcloud, or
+     * if the GOOGLE_APPLICATION_CREDENTIALS env. variable is set. In that case leave credentials null.
+     * Otherwise, you must pass the contents of the service account credentials file.
+     * See https://github.com/GoogleCloudPlatform/gcloud-java#authentication
+     *
+     * Note that most of the time it's enough to just open a file via
+     * Files.newInputStream(Paths.get(URI.create( path ))).
+     */
+    public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
+        StorageOptions.Builder builder = StorageOptions.builder()
+                .projectId(projectId);
+        if (null != credentials) {
+            builder = builder.authCredentials((AuthCredentials.createForJson(new ByteArrayInputStream(credentials))));
+        }
+        // generous timeouts, to avoid tests failing when not warranted.
+        StorageOptions storageOptions = builder.connectTimeout(60000)
+            .readTimeout(60000)
+            .retryParams(RetryParams.builder()
+                    .retryMaxAttempts(10)
+                    .retryMinAttempts(6)
+                    .maxRetryDelayMillis(30000)
+                    .totalRetryPeriodMillis(120000)
+                    .initialRetryDelayMillis(250)
+                    .build())
+            .build();
+
+        // 2. Create GCS filesystem object with those credentials
+        return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
     }
 }

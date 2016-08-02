@@ -1,0 +1,1 @@
+This file is meant to be copied to GCS so that NioTests can make sure they can get to it, even if it's not public.

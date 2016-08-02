@@ -148,6 +148,14 @@ public abstract class BaseTest {
         return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
     }
 
+    /**
+     * A local path where the service account credentials are stored
+     * @return GOOGLE_APPLICATION_CREDENTIALS env. var if defined, throws otherwise.
+     */
+    public static String getGoogleServiceAccountKeyPath() {
+      return getNonNullEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+    }
+
     protected static String getNonNullEnvironmentVariable(String envVarName) {
         String value = System.getenv(envVarName);
         if (null == value) {
