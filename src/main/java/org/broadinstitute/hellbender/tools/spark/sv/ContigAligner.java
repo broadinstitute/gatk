@@ -136,8 +136,8 @@ public class ContigAligner implements Closeable {
         return results;
     }
 
-    private static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next) {
-        return treatAlignmentRegionAsInsertion(next) || current.referenceInterval.contains(next.referenceInterval);
+    protected static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next) {
+        return treatAlignmentRegionAsInsertion(next) || (next.referenceInterval.size() - current.overlapOnContig(next) < 50);
     }
 
     private static boolean treatAlignmentRegionAsInsertion(final AlignmentRegion next) {
@@ -343,7 +343,6 @@ public class ContigAligner implements Closeable {
         final int assembledContigLength;
         final int mismatches;
 
-
         public AlignmentRegion(final String breakpointId, final String contigId, final AlnRgn alnRgn) {
             this.contigId = contigId;
             this.breakpointId = breakpointId;
@@ -386,6 +385,10 @@ public class ContigAligner implements Closeable {
             } else {
                 this.mismatches = 0;
             }
+        }
+
+        public int overlapOnContig(final AlignmentRegion other) {
+            return Math.max(0, Math.min(endInAssembledContig, other.endInAssembledContig) - Math.max(startInAssembledContig, other.startInAssembledContig));
         }
 
         private static int getHardClipping(final Cigar cigar) {

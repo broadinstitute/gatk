@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.sv;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.report.GATKReportColumnFormat;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -177,8 +179,11 @@ public class ContigAlignerTest extends BaseTest {
     }
 
     @Test
-    public void testAlignmentRegionFromGATKRead() throws Exception {
+    public void testTreatAlignmentRegionAsInsertion() throws Exception {
+        AlignmentRegion overlappingRegion1 = new AlignmentRegion("overlap", "22", TextCigarCodec.decode("47S154M"), false, new SimpleInterval("19", 48699881, 48700035), 60, 1, 154, 0);
+        AlignmentRegion overlappingRegion2 = new AlignmentRegion("overlap", "22", TextCigarCodec.decode("116H85M"), true, new SimpleInterval("19", 48700584, 48700669), 60, 117, 201, 0);
 
+        Assert.assertTrue(ContigAligner.treatNextAlignmentRegionInPairAsInsertion(overlappingRegion1, overlappingRegion2));
     }
 
     @AfterClass
