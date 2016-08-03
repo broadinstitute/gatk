@@ -208,7 +208,7 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 lowMqMappings = lowMqMappings + 1;
             }
             mqs.add(assembledBreakpointMapq);
-            final int assembledBreakpointAlignmentLength = Math.min(assembledBreakpoint.region1.referenceInterval.size(), assembledBreakpoint.region2.referenceInterval.size());
+            final int assembledBreakpointAlignmentLength = Math.min(assembledBreakpoint.region1.referenceInterval.size(), assembledBreakpoint.region2.referenceInterval.size()) - assembledBreakpoint.region1.overlapOnContig(assembledBreakpoint.region2);
             alignLengths.add(assembledBreakpointAlignmentLength);
             maxAlignLength = Math.max(maxAlignLength, assembledBreakpointAlignmentLength);
             breakpointIds.add(assembledBreakpointPair._1._1);
