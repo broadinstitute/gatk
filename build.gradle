@@ -50,9 +50,12 @@ repositories {
         url "https://artifactory.broadinstitute.org/artifactory/libs-snapshot/" //for htsjdk snapshots
     }
 
+    mavenLocal()
+
 }
 
-final htsjdkVersion = '2.5.0'
+final htsjdkVersion = System.getProperty('htsjdk.version','2.5.0')
+final hadoopBamVersion = System.getProperty('hadoopBam.version','7.6.0')
 
 configurations.all {
     resolutionStrategy {
@@ -149,7 +152,7 @@ dependencies {
     compile 'org.testng:testng:6.9.6' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
     compile 'org.apache.hadoop:hadoop-minicluster:2.7.2' //the version of minicluster should match the version of hadoop
 
-    compile('org.seqdoop:hadoop-bam:7.6.0') {
+    compile('org.seqdoop:hadoop-bam:' + hadoopBamVersion) {
         exclude group: 'org.apache.hadoop'
         exclude module: 'htsjdk'
     }
