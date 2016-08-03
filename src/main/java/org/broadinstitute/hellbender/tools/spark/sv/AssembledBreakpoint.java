@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.BreakpointAllele;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Arrays;
@@ -108,11 +109,11 @@ class AssembledBreakpoint {
 
     public SimpleInterval getLeftAlignedRightBreakpointOnAssembledContig() {
         final int alignmentStart = region2.forwardStrand ? region2.referenceInterval.getStart() : region2.referenceInterval.getEnd();
-        final int position = region2.forwardStrand ? alignmentStart : alignmentStart - homology.length();
+        final int position = ! region2.forwardStrand ? alignmentStart : alignmentStart + homology.length();
         return new SimpleInterval(region2.referenceInterval.getContig(), position, position);
     }
 
-    public ContigAligner.BreakpointAllele getBreakpointAllele() {
+    public BreakpointAllele getBreakpointAllele() {
         final SimpleInterval leftAlignedLeftBreakpointOnAssembledContig = getLeftAlignedLeftBreakpointOnAssembledContig();
         final SimpleInterval leftAlignedRightBreakpointOnAssembledContig = getLeftAlignedRightBreakpointOnAssembledContig();
 
@@ -123,11 +124,11 @@ class AssembledBreakpoint {
                 && ! region1.referenceInterval.contains(region2.referenceInterval);
 
         if (! leftAlignedLeftBreakpointOnAssembledContig.getContig().equals(leftAlignedRightBreakpointOnAssembledContig.getContig())) {
-            return new ContigAligner.BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
+            return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
         } else if ( leftAlignedLeftBreakpointOnAssembledContig.getStart() < leftAlignedRightBreakpointOnAssembledContig.getStart()) {
-            return new ContigAligner.BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
+            return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
         } else {
-            return new ContigAligner.BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
+            return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
         }
     }
 }

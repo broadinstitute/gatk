@@ -230,7 +230,7 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(assembledBreakpoint.region2, region2);
 
         Assert.assertEquals(assembledBreakpoint.getLeftAlignedLeftBreakpointOnAssembledContig(), new SimpleInterval("chr19", 20138007, 20138007));
-        Assert.assertEquals(assembledBreakpoint.getLeftAlignedRightBreakpointOnAssembledContig(), new SimpleInterval("chr19", 20152030, 20152030));
+        Assert.assertEquals(assembledBreakpoint.getLeftAlignedRightBreakpointOnAssembledContig(), new SimpleInterval("chr19", 20152651, 20152651));
     }
 
     @Test
