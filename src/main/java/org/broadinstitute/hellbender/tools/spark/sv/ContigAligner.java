@@ -288,11 +288,11 @@ public class ContigAligner implements Closeable {
                     && ! region1.referenceInterval.contains(region2.referenceInterval);
 
             if (! leftAlignedLeftBreakpointOnAssembledContig.getContig().equals(leftAlignedRightBreakpointOnAssembledContig.getContig())) {
-                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, isFiveToThreeInversion, isThreeToFiveInversion);
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
             } else if ( leftAlignedLeftBreakpointOnAssembledContig.getStart() < leftAlignedRightBreakpointOnAssembledContig.getStart()) {
-                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, isFiveToThreeInversion, isThreeToFiveInversion);
+                return new BreakpointAllele(leftAlignedLeftBreakpointOnAssembledContig, leftAlignedRightBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
             } else {
-                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, isFiveToThreeInversion, isThreeToFiveInversion);
+                return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion);
             }
         }
     }
@@ -301,13 +301,15 @@ public class ContigAligner implements Closeable {
         SimpleInterval leftAlignedLeftBreakpoint;
         SimpleInterval leftAlignedRightBreakpoint;
         String insertedSequence;
+        String homology;
         boolean fiveToThree;
         boolean threeToFive;
 
-        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence, final boolean fiveToThree, final boolean threeToFive) {
+        public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence, final String homology, final boolean fiveToThree, final boolean threeToFive) {
             this.leftAlignedLeftBreakpoint = leftAlignedLeftBreakpoint;
             this.leftAlignedRightBreakpoint = leftAlignedRightBreakpoint;
             this.insertedSequence = insertedSequence;
+            this.homology = insertedSequence;
             this.fiveToThree = fiveToThree;
             this.threeToFive = threeToFive;
         }
@@ -321,12 +323,13 @@ public class ContigAligner implements Closeable {
                     threeToFive == that.threeToFive &&
                     Objects.equals(leftAlignedLeftBreakpoint, that.leftAlignedLeftBreakpoint) &&
                     Objects.equals(leftAlignedRightBreakpoint, that.leftAlignedRightBreakpoint) &&
-                    Objects.equals(insertedSequence, that.insertedSequence);
+                    Objects.equals(insertedSequence, that.insertedSequence) &&
+                    Objects.equals(homology, that.homology);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence, fiveToThree, threeToFive);
+            return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence, homology, fiveToThree, threeToFive);
         }
     }
 
