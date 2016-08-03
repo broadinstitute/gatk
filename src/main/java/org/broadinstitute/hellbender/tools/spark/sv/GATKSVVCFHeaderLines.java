@@ -26,6 +26,7 @@ public class GATKSVVCFHeaderLines {
     public static final String BREAKPOINT_IDS = "BREAKPOINT_IDS";
     public static final String CONTIG_IDS = "CONTIG_IDS";
     public static final String INSERTED_SEQUENCE = "INSERTED_SEQUENCE";
+    public static final String HOMOLOGY = "HOMOLOGY";
     public static final String INV_3_TO_5 = "INV_3_TO_5";
     public static final String INV_5_TO_3 = "INV_5_TO_3";
 

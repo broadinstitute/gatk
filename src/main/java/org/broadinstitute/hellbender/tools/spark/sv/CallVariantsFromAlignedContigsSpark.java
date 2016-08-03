@@ -251,6 +251,10 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, breakpointAllele.insertedSequence);
         }
 
+        if (breakpointAllele.homology.length() > 0) {
+            vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.HOMOLOGY, breakpointAllele.insertedSequence);
+        }
+
         if (is5To3Inversion(breakpointAllele)) {
             vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INV_5_TO_3, "");
         }
