@@ -1,15 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import org.apache.commons.collections4.IterableUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AlignmentRegion;
-import org.broadinstitute.hellbender.tools.spark.sv.ContigAligner.AssembledBreakpoint;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import scala.Tuple2;
-
-import java.util.List;
 
 public class AlignAssembledContigsSparkTest extends BaseTest {
 
