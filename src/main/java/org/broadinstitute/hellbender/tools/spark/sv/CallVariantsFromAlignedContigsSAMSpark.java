@@ -61,10 +61,11 @@ public class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
+        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
         final JavaPairRDD<Tuple2<String, String>, Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey();
         final JavaPairRDD<Tuple2<String, String>, Tuple2<byte[], Iterable<AlignmentRegion>>> alignmentRegionsIterable = alignmentsGroupedByName.mapValues(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
-        final JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> alignedBreakpoints = alignmentRegionsIterable.flatMapValues(v -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(v._1, v._2, minAlignLength));
+        final Integer minAlignLengthFinal = minAlignLength;
+        final JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> alignedBreakpoints = alignmentRegionsIterable.flatMapValues(v -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(v._1, v._2, minAlignLengthFinal));
 
 
         final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String, String>, AssembledBreakpoint>> inversionBreakpoints =
