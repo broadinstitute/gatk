@@ -142,7 +142,7 @@ public class ContigAligner implements Closeable {
     }
 
     protected static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next) {
-        return treatAlignmentRegionAsInsertion(next) || (next.referenceInterval.size() - current.overlapOnContig(next) < 50);
+        return treatAlignmentRegionAsInsertion(next) || (next.referenceInterval.size() - current.overlapOnContig(next) < 50) || current.referenceInterval.contains(next.referenceInterval) || next.referenceInterval.contains(current.referenceInterval);
     }
 
     private static boolean treatAlignmentRegionAsInsertion(final AlignmentRegion next) {
