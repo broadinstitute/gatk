@@ -97,8 +97,11 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<Tuple2<String, String>, Tuple2<Iterable<AlignmentRegion>, byte[]>> alignmentRegionsWithContigSequences = alignmentRegionsKeyedByBreakpointAndContig.join(contigSequences);
 
+        final Integer minAlignLengthFinal = this.minAlignLength;
         JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> assembledBreakpointsByBreakpointIdAndContigId =
-                alignmentRegionsWithContigSequences.flatMapValues(alignmentRegionsAndSequences -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(alignmentRegionsAndSequences._2, alignmentRegionsAndSequences._1, minAlignLength));
+                alignmentRegionsWithContigSequences.flatMapValues(alignmentRegionsAndSequences -> {
+                    return CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(alignmentRegionsAndSequences._2, alignmentRegionsAndSequences._1, minAlignLengthFinal);
+                });
 
         final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String,String>, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
                 assembledBreakpointsByBreakpointIdAndContigId
@@ -211,7 +214,9 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 lowMqMappings = lowMqMappings + 1;
             }
             mqs.add(assembledBreakpointMapq);
-            final int assembledBreakpointAlignmentLength = Math.min(assembledBreakpoint.region1.referenceInterval.size(), assembledBreakpoint.region2.referenceInterval.size()) - assembledBreakpoint.region1.overlapOnContig(assembledBreakpoint.region2);
+            final int assembledBreakpointAlignmentLength =
+                    Math.min(assembledBreakpoint.region1.referenceInterval.size(),
+                            assembledBreakpoint.region2.referenceInterval.size()) - assembledBreakpoint.region1.overlapOnContig(assembledBreakpoint.region2);
             alignLengths.add(assembledBreakpointAlignmentLength);
             maxAlignLength = Math.max(maxAlignLength, assembledBreakpointAlignmentLength);
             breakpointIds.add(assembledBreakpointPair._1._1);
