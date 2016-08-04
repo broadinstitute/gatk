@@ -189,7 +189,7 @@ public class ContigAligner implements Closeable {
             this.leftAlignedLeftBreakpoint = leftAlignedLeftBreakpoint;
             this.leftAlignedRightBreakpoint = leftAlignedRightBreakpoint;
             this.insertedSequence = insertedSequence;
-            this.homology = insertedSequence;
+            this.homology = homology;
             this.fiveToThree = fiveToThree;
             this.threeToFive = threeToFive;
         }
