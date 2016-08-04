@@ -45,6 +45,7 @@ public class GATKSVVCFHeaderLines {
         vcfHeaderLines.put(CONTIG_IDS, new VCFInfoHeaderLine(CONTIG_IDS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "IDs of the contigs that produced each alignment"));
 
         vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
+        vcfHeaderLines.put(HOMOLOGY, new VCFInfoHeaderLine(HOMOLOGY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Homologous sequence at the breakpoint"));
         vcfHeaderLines.put(INV_3_TO_5, new VCFInfoHeaderLine(INV_3_TO_5, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
         vcfHeaderLines.put(INV_5_TO_3, new VCFInfoHeaderLine(INV_5_TO_3, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
     }
