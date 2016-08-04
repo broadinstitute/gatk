@@ -182,7 +182,7 @@ public class ContigAlignerTest extends BaseTest {
         alignmentRegionList.add(region1);
         alignmentRegionList.add(region2);
         alignmentRegionList.add(region3);
-        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegionList);
+        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
         final AssembledBreakpoint assembledBreakpoint = assembledBreakpointsFromAlignmentRegions.get(0);
         Assert.assertEquals(assembledBreakpoint.contigId, "contig-1");
@@ -202,7 +202,7 @@ public class ContigAlignerTest extends BaseTest {
         alignmentRegionList.add(region1);
         alignmentRegionList.add(region2);
         alignmentRegionList.add(region3);
-        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegionList);
+        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
         final AssembledBreakpoint assembledBreakpoint = assembledBreakpointsFromAlignmentRegions.get(0);
         Assert.assertEquals(assembledBreakpoint.contigId, "contig-1");
@@ -222,7 +222,7 @@ public class ContigAlignerTest extends BaseTest {
         final ArrayList<AlignmentRegion> alignmentRegionList = new ArrayList<>();
         alignmentRegionList.add(region1);
         alignmentRegionList.add(region2);
-        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions(sequence, alignmentRegionList);
+        final List<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions = ContigAligner.getAssembledBreakpointsFromAlignmentRegions(sequence, alignmentRegionList, 50);
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
         final AssembledBreakpoint assembledBreakpoint = assembledBreakpointsFromAlignmentRegions.get(0);
         Assert.assertEquals(assembledBreakpoint.contigId, "702700");
@@ -238,7 +238,7 @@ public class ContigAlignerTest extends BaseTest {
         AlignmentRegion overlappingRegion1 = new AlignmentRegion("overlap", "22", TextCigarCodec.decode("47S154M"), false, new SimpleInterval("19", 48699881, 48700035), 60, 1, 154, 0);
         AlignmentRegion overlappingRegion2 = new AlignmentRegion("overlap", "22", TextCigarCodec.decode("116H85M"), true, new SimpleInterval("19", 48700584, 48700669), 60, 117, 201, 0);
 
-        Assert.assertTrue(ContigAligner.treatNextAlignmentRegionInPairAsInsertion(overlappingRegion1, overlappingRegion2));
+        Assert.assertTrue(ContigAligner.treatNextAlignmentRegionInPairAsInsertion(overlappingRegion1, overlappingRegion2, 50));
     }
 
     @AfterClass

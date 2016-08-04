@@ -48,6 +48,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.AlignAssembledContigs
         programGroup = SparkProgramGroup.class)
 public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
+    public static final Integer DEFAULT_MIN_ALIGNMENT_LENGTH = 50;
 
     @Argument(doc = "URL of the output path", shortName = "outputPath",
             fullName = "outputPath", optional = false)
@@ -60,6 +61,10 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
     @Argument(doc = "Input file of assembled contigs", shortName = "inputAssemblies",
             fullName = "inputAssemblies", optional = false)
     private String inputAssemblies;
+
+    @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
+            fullName = "minAlignLength", optional = true)
+    private Integer minAlignLength = CallVariantsFromAlignedContigsSpark.DEFAULT_MIN_ALIGNMENT_LENGTH;
 
     // This class requires a reference parameter in 2bit format (to broadcast) and a reference in FASTA format
     // (to get a good sequence dictionary).
@@ -92,7 +97,8 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<Tuple2<String, String>, Tuple2<Iterable<AlignmentRegion>, byte[]>> alignmentRegionsWithContigSequences = alignmentRegionsKeyedByBreakpointAndContig.join(contigSequences);
 
-        JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> assembledBreakpointsByBreakpointIdAndContigId = alignmentRegionsWithContigSequences.flatMapValues(alignmentRegionsAndSequences -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(alignmentRegionsAndSequences._2, alignmentRegionsAndSequences._1));
+        JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> assembledBreakpointsByBreakpointIdAndContigId =
+                alignmentRegionsWithContigSequences.flatMapValues(alignmentRegionsAndSequences -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(alignmentRegionsAndSequences._2, alignmentRegionsAndSequences._1, minAlignLength));
 
         final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String,String>, AssembledBreakpoint>> assembled3To5BreakpointsKeyedByPosition =
                 assembledBreakpointsByBreakpointIdAndContigId
@@ -167,12 +173,12 @@ public class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         return vcWriterBuilder.build();
     }
 
-    public static Iterable<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions(final byte[] contigSequence, final Iterable<AlignmentRegion> alignmentRegionsIterable) {
+    public static Iterable<AssembledBreakpoint> assembledBreakpointsFromAlignmentRegions(final byte[] contigSequence, final Iterable<AlignmentRegion> alignmentRegionsIterable, final Integer minAlignLength) {
         final List<AlignmentRegion> alignmentRegions = IterableUtils.toList(alignmentRegionsIterable);
         if (alignmentRegions.size() > 1) {
             alignmentRegions.sort(Comparator.comparing(a -> a.startInAssembledContig));
         }
-        return ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegions);
+        return ContigAligner.getAssembledBreakpointsFromAlignmentRegions(contigSequence, alignmentRegions, minAlignLength);
     }
 
     @VisibleForTesting

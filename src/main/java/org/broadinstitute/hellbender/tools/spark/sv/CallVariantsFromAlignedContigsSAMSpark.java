@@ -40,6 +40,10 @@ public class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool {
             fullName = "fastaReference", optional = false)
     private String fastaReference;
 
+    @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
+            fullName = "minAlignLength", optional = true)
+    private Integer minAlignLength = CallVariantsFromAlignedContigsSpark.DEFAULT_MIN_ALIGNMENT_LENGTH;
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -60,7 +64,7 @@ public class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool {
         Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
         final JavaPairRDD<Tuple2<String, String>, Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey();
         final JavaPairRDD<Tuple2<String, String>, Tuple2<byte[], Iterable<AlignmentRegion>>> alignmentRegionsIterable = alignmentsGroupedByName.mapValues(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
-        final JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> alignedBreakpoints = alignmentRegionsIterable.flatMapValues(v -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(v._1, v._2));
+        final JavaPairRDD<Tuple2<String, String>, AssembledBreakpoint> alignedBreakpoints = alignmentRegionsIterable.flatMapValues(v -> CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(v._1, v._2, minAlignLength));
 
 
         final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String, String>, AssembledBreakpoint>> inversionBreakpoints =

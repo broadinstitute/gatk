@@ -34,7 +34,6 @@ import static org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuild
 
 public class ContigAligner implements Closeable {
 
-    public static final int MIN_ALIGNMENT_LENGTH = 50;
     static String referencePath;
 
     final BwaIndex index;
@@ -84,7 +83,7 @@ public class ContigAligner implements Closeable {
     }
 
     @VisibleForTesting
-    public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final byte[] sequence, final List<AlignmentRegion> alignmentRegionList) {
+    public static List<AssembledBreakpoint> getAssembledBreakpointsFromAlignmentRegions(final byte[] sequence, final List<AlignmentRegion> alignmentRegionList, final Integer minAlignLength) {
         final List<AssembledBreakpoint> results = new ArrayList<>(alignmentRegionList.size() - 1);
         final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
         final List<String> insertionAlignmentRegions = new ArrayList<>();
@@ -95,11 +94,11 @@ public class ContigAligner implements Closeable {
             }
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
-                if (currentAlignmentRegionIsTooSmall(current, next)) {
+                if (currentAlignmentRegionIsTooSmall(current, next, minAlignLength)) {
                     continue;
                 }
 
-                if (treatNextAlignmentRegionInPairAsInsertion(current, next)) {
+                if (treatNextAlignmentRegionInPairAsInsertion(current, next, minAlignLength)) {
                     if (iterator.hasNext()) {
                         insertionAlignmentRegions.add(next.toPackedString());
                         // todo: track alignments of skipped regions for classification as duplications, mei's etc.
@@ -146,13 +145,13 @@ public class ContigAligner implements Closeable {
         return results;
     }
 
-    private static boolean currentAlignmentRegionIsTooSmall(final AlignmentRegion current, final AlignmentRegion next) {
-        return current.referenceInterval.size() - current.overlapOnContig(next) < MIN_ALIGNMENT_LENGTH;
+    private static boolean currentAlignmentRegionIsTooSmall(final AlignmentRegion current, final AlignmentRegion next, final Integer minAlignLength) {
+        return current.referenceInterval.size() - current.overlapOnContig(next) < minAlignLength;
     }
 
-    protected static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next) {
+    protected static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next, final Integer minAlignLength) {
         return treatAlignmentRegionAsInsertion(next) ||
-                (next.referenceInterval.size() - current.overlapOnContig(next) < MIN_ALIGNMENT_LENGTH) ||
+                (next.referenceInterval.size() - current.overlapOnContig(next) < minAlignLength) ||
                 current.referenceInterval.contains(next.referenceInterval) ||
                 next.referenceInterval.contains(current.referenceInterval);
     }
