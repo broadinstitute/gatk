@@ -34,6 +34,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuild
 
 public class ContigAligner implements Closeable {
 
+    public static final int MIN_ALIGNMENT_LENGTH = 50;
     static String referencePath;
 
     final BwaIndex index;
@@ -94,6 +95,10 @@ public class ContigAligner implements Closeable {
             }
             while ( iterator.hasNext() ) {
                 final AlignmentRegion next = iterator.next();
+                if (currentAlignmentRegionIsTooSmall(current, next)) {
+                    continue;
+                }
+
                 if (treatNextAlignmentRegionInPairAsInsertion(current, next)) {
                     if (iterator.hasNext()) {
                         insertionAlignmentRegions.add(next.toPackedString());
@@ -141,12 +146,19 @@ public class ContigAligner implements Closeable {
         return results;
     }
 
+    private static boolean currentAlignmentRegionIsTooSmall(final AlignmentRegion current, final AlignmentRegion next) {
+        return current.referenceInterval.size() - current.overlapOnContig(next) < MIN_ALIGNMENT_LENGTH;
+    }
+
     protected static boolean treatNextAlignmentRegionInPairAsInsertion(AlignmentRegion current, AlignmentRegion next) {
-        return treatAlignmentRegionAsInsertion(next) || (next.referenceInterval.size() - current.overlapOnContig(next) < 50) || current.referenceInterval.contains(next.referenceInterval) || next.referenceInterval.contains(current.referenceInterval);
+        return treatAlignmentRegionAsInsertion(next) ||
+                (next.referenceInterval.size() - current.overlapOnContig(next) < MIN_ALIGNMENT_LENGTH) ||
+                current.referenceInterval.contains(next.referenceInterval) ||
+                next.referenceInterval.contains(current.referenceInterval);
     }
 
     private static boolean treatAlignmentRegionAsInsertion(final AlignmentRegion next) {
-        return next.mqual < 60 || next.referenceInterval.size() < 50;
+        return next.mqual < 60;
     }
 
     private Collector<AlignmentRegion, ?, ArrayList<AlignmentRegion>> arrayListCollector(final int size) {
