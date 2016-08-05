@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.test.SerializationTestUtils;
+import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -40,7 +40,7 @@ public class SparkReadShardUnitTest extends BaseTest {
     public void testKryoCanSerialize(){
         final List<GATKRead> readList = Arrays.asList(ArtificialReadUtils.createArtificialRead("50M"));
         final SparkReadShard initialShard = new SparkReadShard(BOUND, readList);
-        final SparkReadShard shard = SerializationTestUtils.roundTripInKryo(initialShard, SparkReadShard.class, SparkContextFactory.getTestSparkContext().getConf());
+        final SparkReadShard shard = SparkTestUtils.roundTripInKryo(initialShard, SparkReadShard.class, SparkContextFactory.getTestSparkContext().getConf());
         Assert.assertEquals(shard, initialShard);
     }
 }

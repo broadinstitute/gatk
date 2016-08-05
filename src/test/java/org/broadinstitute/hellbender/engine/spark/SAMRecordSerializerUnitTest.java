@@ -6,7 +6,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.broadinstitute.hellbender.utils.test.SerializationTestUtils;
+import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -27,7 +27,7 @@ public class SAMRecordSerializerUnitTest {
         // check round trip with no header
         final SAMRecord read = ((SAMRecordToGATKReadAdapter)ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50)).getEncapsulatedSamRecord();
 
-        final SAMRecord roundTrippedRead = SerializationTestUtils.roundTripInKryo(read, SAMRecord.class, conf);
+        final SAMRecord roundTrippedRead = SparkTestUtils.roundTripInKryo(read, SAMRecord.class, conf);
         Assert.assertEquals(roundTrippedRead, read, "\nActual read: " + roundTrippedRead.getSAMString() + "\nExpected read: " + read.getSAMString());
     }
 
@@ -37,13 +37,13 @@ public class SAMRecordSerializerUnitTest {
                 "org.broadinstitute.hellbender.engine.spark.SAMRecordSerializerUnitTest$TestGATKRegistrator");
         final SAMRecord read = ((SAMRecordToGATKReadAdapter)ArtificialReadUtils.createHeaderlessSamBackedRead("read1", "1", 100, 50)).getEncapsulatedSamRecord();
 
-        final SAMRecord roundTrippedRead = SerializationTestUtils.roundTripInKryo(read, SAMRecord.class, conf);
+        final SAMRecord roundTrippedRead = SparkTestUtils.roundTripInKryo(read, SAMRecord.class, conf);
         Assert.assertEquals(roundTrippedRead, read, "\nActual read: " + roundTrippedRead.getSAMString() + "\nExpected read: " + read.getSAMString());
 
         read.setReferenceName("2");
         read.setAlignmentStart(1);
 
-        final SAMRecord roundTrippedRead2 = SerializationTestUtils.roundTripInKryo(read, SAMRecord.class, conf);
+        final SAMRecord roundTrippedRead2 = SparkTestUtils.roundTripInKryo(read, SAMRecord.class, conf);
         Assert.assertEquals(roundTrippedRead2, read, "\nActual read: " + roundTrippedRead2.getSAMString() + "\nExpected read: " + read.getSAMString());
     }
 }

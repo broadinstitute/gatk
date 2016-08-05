@@ -8,8 +8,8 @@ import org.broadinstitute.hellbender.utils.Utils;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
-public final class SerializationTestUtils {
-    private SerializationTestUtils() {}
+public final class SparkTestUtils {
+    private SparkTestUtils() {}
 
     /**
      * Takes an input object and returns the value of the object after it has been serialized and then deserialized in Kryo.
