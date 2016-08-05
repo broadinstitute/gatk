@@ -119,7 +119,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     @Override
     public final boolean requiresReference() { return true; }
 
-    private List<LazyReadShard> readShards;
+    private List<LocalReadShard> readShards;
     private Shard<GATKRead> currentReadShard;
 
     /**
@@ -159,13 +159,13 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * Shard our intervals for traversal into ReadShards using the {@link #readShardSize} and {@link #readShardPadding} arguments
      *
      * @param intervals unmodified intervals for traversal
-     * @return List of {@link LazyReadShard} objects, sharded and padded as necessary
+     * @return List of {@link LocalReadShard} objects, sharded and padded as necessary
      */
-    private List<LazyReadShard> makeReadShards(final List<SimpleInterval> intervals ) {
-        final List<LazyReadShard> shards = new ArrayList<>();
+    private List<LocalReadShard> makeReadShards(final List<SimpleInterval> intervals ) {
+        final List<LocalReadShard> shards = new ArrayList<>();
 
         for ( final SimpleInterval interval : intervals ) {
-            shards.addAll(LazyReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
+            shards.addAll(LocalReadShard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, reads, getHeaderForReads().getSequenceDictionary()));
         }
 
         return shards;
@@ -205,7 +205,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         // meter to check the time more frequently (every 10 regions instead of every 1000 regions).
         progressMeter.setRecordsBetweenTimeChecks(10L);
 
-        for ( final LazyReadShard readShard : readShards ) {
+        for ( final LocalReadShard readShard : readShards ) {
             // Since reads in each shard are lazily fetched, we need to pass the filter to the window
             // instead of filtering the reads directly here
             readShard.setReadFilter(countedFilter);

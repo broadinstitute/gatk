@@ -21,6 +21,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
         return header;
     }
 
+
     @Test
     public void testCleanSplices() {
 

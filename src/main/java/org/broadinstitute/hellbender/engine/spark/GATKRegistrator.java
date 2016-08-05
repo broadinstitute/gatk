@@ -4,7 +4,6 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
 import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.api.services.genomics.model.Read;
-import de.javakaffee.kryoserializers.ArraysAsListSerializer;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.serializer.KryoRegistrator;
@@ -12,7 +11,6 @@ import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.PairedEnds;
 
-import java.util.Arrays;
 import java.util.Collections;
 
 /**
@@ -34,8 +32,9 @@ public class GATKRegistrator implements KryoRegistrator {
         // JsonSerializer is needed for the Google Genomics classes like Read and Reference.
         kryo.register(Read.class, new JsonSerializer<Read>());
 
-        kryo.register(Arrays.asList("some","values").getClass(), new ArraysAsListSerializer());
-        kryo.register(Collections.nCopies(2,"").getClass(), new JavaSerializer());
+        //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
+        //any Collection created with Collections.nCopies fails to serialize at run time
+        kryo.register(Collections.nCopies(2, "").getClass(), new JavaSerializer());
 
         // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
         // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
@@ -52,7 +51,7 @@ public class GATKRegistrator implements KryoRegistrator {
 
         //register to avoid writing the full name of this class over and over
         kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
-	
+
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord
         //     Genotype

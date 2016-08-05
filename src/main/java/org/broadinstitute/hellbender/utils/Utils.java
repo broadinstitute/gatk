@@ -627,8 +627,8 @@ public final class Utils {
      */
     public static void containsNoNull(final Collection<?> collection, final String message) {
         Utils.nonNull(collection, message);
-        //cannot use Collection.containsNull here because this throws a NullPointerException when used with many Sets
-        if (collection.stream().anyMatch( v -> v == null)){
+        //cannot use Collection.contains(null) here because this throws a NullPointerException when used with many Sets
+        if (collection.stream().anyMatch(v -> v == null)){
             throw new IllegalArgumentException(message);
         }
     }

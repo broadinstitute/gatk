@@ -11,9 +11,10 @@ import java.util.List;
 
 
 /**
- * An interface representing a group of reads with an associated
+ * A Shard of records of type T covering a specific genomic interval, optionally expanded by a configurable
+ * amount of padded data, that provides the ability to iterate over its records.
  */
-public interface Shard<T> extends Iterable<T>,Locatable {
+public interface Shard<T> extends Iterable<T>, Locatable {
 
     /**
      * @return the interval this shard spans
@@ -30,7 +31,7 @@ public interface Shard<T> extends Iterable<T>,Locatable {
      * @return the start of the non-padded interval this shard covers
      */
     @Override
-    default int getStart(){
+    default int getStart() {
         return getInterval().getStart();
     }
 
@@ -38,7 +39,7 @@ public interface Shard<T> extends Iterable<T>,Locatable {
      * @return the end of the non-padded interval this shard covers
      */
     @Override
-    default int getEnd(){
+    default int getEnd() {
         return getInterval().getEnd();
     }
 
@@ -46,8 +47,23 @@ public interface Shard<T> extends Iterable<T>,Locatable {
      * @return contig this shard belongs to
      */
     @Override
-    default String getContig(){
+    default String getContig() {
         return getInterval().getContig();
+    }
+
+    /**
+     * Divide an interval into ShardBoundaries. Each shard will cover up to shardSize bases, include shardPadding
+     * bases of extra padding on either side, and begin shardSize bases after the previous shard (ie., shards will
+     * not overlap except potentially in the padded regions).
+     *
+     * @param interval interval to shard; must be on the contig according to the provided dictionary
+     * @param shardSize desired shard size; intervals larger than this will be divided into shards of up to this size
+     * @param shardPadding desired shard padding; each shard's interval will be padded on both sides by this number of bases (may be 0)
+     * @param dictionary sequence dictionary for reads
+     * @return List of {@link ShardBoundary} objects spanning the interval
+     */
+    static List<ShardBoundary> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardPadding, final SAMSequenceDictionary dictionary) {
+        return  divideIntervalIntoShards(interval, shardSize, shardSize, shardPadding, dictionary);
     }
 
     /**
@@ -61,7 +77,7 @@ public interface Shard<T> extends Iterable<T>,Locatable {
      * @param dictionary sequence dictionary for reads
      * @return List of {@link ShardBoundary} objects spanning the interval
      */
-    static List<ShardBoundary> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardStep, final int shardPadding, final SAMSequenceDictionary dictionary ) {
+    static List<ShardBoundary> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardStep, final int shardPadding, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(interval);
         Utils.nonNull(dictionary);
         Utils.validateArg(shardSize >= 1, "shardSize must be >= 1");

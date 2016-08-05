@@ -458,7 +458,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
               final ReferenceDataSource refSource = new ReferenceFileSource(reference) ) {
 
             // Set the shard's read filter to match the GATK 3/4 HaplotypeCaller settings when the expected output was generated:
-            final LazyReadShard shard = new LazyReadShard(shardInterval, paddedShardInterval, readsSource);
+            final LocalReadShard shard = new LocalReadShard(shardInterval, paddedShardInterval, readsSource);
             shard.setReadFilter(new CountingReadFilter("MAPPING_QUALITY", new MappingQualityReadFilter(20))
                     .and(new CountingReadFilter("MAPPING_QUALITY_AVAILABLE", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
                     .and(new CountingReadFilter("MAPPED", ReadFilterLibrary.MAPPED))

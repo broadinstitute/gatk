@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Contains information to determine ShardBoundaries
+ * Holds the bounds of a {@link Shard}, both with and without padding
  */
 public final class ShardBoundary implements Locatable, Serializable {
     private static final long serialVersionUID = 1L;
@@ -18,6 +18,7 @@ public final class ShardBoundary implements Locatable, Serializable {
 
     /**
      * Create a new ShardBoundary from the given intervals
+     *
      * @param interval the interval covered by the shard
      * @param paddedInterval the interval covered by the shard's padding, must contain the shard interval
      */
@@ -32,23 +33,23 @@ public final class ShardBoundary implements Locatable, Serializable {
 
     @Override
     public String getContig() {
-        return paddedInterval.getContig();
+        return interval.getContig();
     }
 
     /**
-     * @return start of the shard boundary including the padding
+     * @return start of the shard boundary without padding
      */
     @Override
     public int getStart() {
-        return paddedInterval.getStart();
+        return interval.getStart();
     }
 
     /**
-     * @return end of the shard boundary including the padding
+     * @return end of the shard boundary without padding
      */
     @Override
     public int getEnd() {
-        return paddedInterval.getEnd();
+        return interval.getEnd();
     }
 
     /**
@@ -67,19 +68,19 @@ public final class ShardBoundary implements Locatable, Serializable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
+        if ( this == o ) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if ( o == null || getClass() != o.getClass() ) {
             return false;
         }
 
         final ShardBoundary key = (ShardBoundary) o;
 
-        if (!Objects.equals(interval, key.interval)) {
+        if ( !Objects.equals(interval, key.interval) ) {
             return false;
         }
-        return Objects.equals(paddedInterval,key.paddedInterval);
+        return Objects.equals(paddedInterval, key.paddedInterval);
 
     }
 

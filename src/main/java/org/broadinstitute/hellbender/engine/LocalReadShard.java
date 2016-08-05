@@ -28,7 +28,7 @@ import java.util.stream.StreamSupport;
  *
  * The reads in the shard can be filtered via {@link #setReadFilter} (no filtering is performed by default).
  */
-public final class LazyReadShard implements Shard<GATKRead> {
+public final class LocalReadShard implements Shard<GATKRead> {
 
     private final SimpleInterval interval;
     private final SimpleInterval paddedInterval;
@@ -43,7 +43,7 @@ public final class LazyReadShard implements Shard<GATKRead> {
      * @param paddedInterval the span covered by this shard, plus any additional padding on each side (must contain the un-padded interval)
      * @param readsSource source of reads from which to populate this shard
      */
-    public LazyReadShard(final SimpleInterval interval, final SimpleInterval paddedInterval, final ReadsDataSource readsSource ) {
+    public LocalReadShard(final SimpleInterval interval, final SimpleInterval paddedInterval, final ReadsDataSource readsSource) {
         Utils.nonNull(interval);
         Utils.nonNull(paddedInterval);
         Utils.nonNull(readsSource);
@@ -60,7 +60,7 @@ public final class LazyReadShard implements Shard<GATKRead> {
      * @param interval the genomic span covered by this shard
      * @param readsSource source of reads from which to populate this shard
      */
-    public LazyReadShard(final SimpleInterval interval, final ReadsDataSource readsSource ) {
+    public LocalReadShard(final SimpleInterval interval, final ReadsDataSource readsSource) {
         this(interval, interval, readsSource);
     }
 
@@ -70,7 +70,7 @@ public final class LazyReadShard implements Shard<GATKRead> {
      *
      * @param filter filter to use (may be null, which signifies that no filtering is to be performed)
      */
-    public void setReadFilter( final ReadFilter filter ) {
+    public void setReadFilter(final ReadFilter filter) {
         this.readFilter = filter;
     }
 
@@ -80,7 +80,7 @@ public final class LazyReadShard implements Shard<GATKRead> {
      *
      * @param downsampler downsampler to use (may be null, which signifies that no downsampling is to be performed)
      */
-    public void setDownsampler( final ReadsDownsampler downsampler ) {
+    public void setDownsampler(final ReadsDownsampler downsampler) {
         this.downsampler = downsampler;
     }
 
@@ -118,7 +118,7 @@ public final class LazyReadShard implements Shard<GATKRead> {
      * @param loc Locatable to test
      * @return true if loc is completely contained within this shard's interval, otherwise false
      */
-    public boolean contains( final Locatable loc ) {
+    public boolean contains(final Locatable loc) {
         Utils.nonNull(loc);
         return interval.contains(loc);
     }
@@ -127,7 +127,7 @@ public final class LazyReadShard implements Shard<GATKRead> {
      * @param loc Locatable to test
      * @return true if loc starts within this shard's interval, otherwise false
      */
-    public boolean containsStartPosition( final Locatable loc ) {
+    public boolean containsStartPosition(final Locatable loc) {
         Utils.nonNull(loc);
         return interval.contains(new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart()));
     }
@@ -175,9 +175,9 @@ public final class LazyReadShard implements Shard<GATKRead> {
      * @param shardPadding desired shard padding; each shard's interval will be padded on both sides by this number of bases (may be 0)
      * @param readsSource data source for reads
      * @param dictionary sequence dictionary for reads
-     * @return List of {@link LazyReadShard} objects spanning the interval
+     * @return List of {@link LocalReadShard} objects spanning the interval
      */
-    public static List<LazyReadShard> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary ) {
+    public static List<LocalReadShard> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary) {
         return divideIntervalIntoShards(interval, shardSize, shardSize, shardPadding, readsSource, dictionary);
     }
 
@@ -191,12 +191,12 @@ public final class LazyReadShard implements Shard<GATKRead> {
      * @param shardPadding desired shard padding; each shard's interval will be padded on both sides by this number of bases (may be 0)
      * @param readsSource data source for reads
      * @param dictionary sequence dictionary for reads
-     * @return List of {@link LazyReadShard} objects spanning the interval
+     * @return List of {@link LocalReadShard} objects spanning the interval
      */
-    public static List<LazyReadShard> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardStep, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary ) {
+    public static List<LocalReadShard> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardStep, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(readsSource);
         return Shard.divideIntervalIntoShards(interval, shardSize, shardStep, shardPadding, dictionary)
-                .stream().map( shardBoundary -> new LazyReadShard(shardBoundary.getInterval(), shardBoundary.getPaddedInterval(), readsSource))
-                .collect(Collectors.toList());
+                    .stream().map(shardBoundary -> new LocalReadShard(shardBoundary.getInterval(), shardBoundary.getPaddedInterval(), readsSource))
+                    .collect(Collectors.toList());
     }
 }

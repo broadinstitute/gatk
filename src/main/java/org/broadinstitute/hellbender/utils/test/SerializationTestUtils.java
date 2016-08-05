@@ -12,7 +12,9 @@ public final class SerializationTestUtils {
     private SerializationTestUtils() {}
 
     /**
-     *  Test that an instance can be serialized in kryo.
+     * Takes an input object and returns the value of the object after it has been serialized and then deserialized in Kryo.
+     * Requires the class of the input object as a parameter because it's not generally possible to get the class of a
+     * generified method parameter with reflection.
      *
      * @param input instance of inputClazz.  Never {@code null}
      * @param inputClazz class to cast input
