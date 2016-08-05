@@ -14,8 +14,8 @@ public class ShardBoundaryUnitTest extends BaseTest {
     public void testShardBoundaryOperations(){
         final ShardBoundary shardBoundary = new ShardBoundary(INNER, OUTER);
         Assert.assertEquals(shardBoundary.getContig(), "1");
-        Assert.assertEquals(shardBoundary.getStart(), OUTER.getStart());
-        Assert.assertEquals(shardBoundary.getEnd(), OUTER.getEnd());
+        Assert.assertEquals(shardBoundary.getStart(), INNER.getStart());
+        Assert.assertEquals(shardBoundary.getEnd(), INNER.getEnd());
         Assert.assertEquals(shardBoundary.getInterval(), INNER);
         Assert.assertEquals(shardBoundary.getPaddedInterval(), OUTER);
     }
