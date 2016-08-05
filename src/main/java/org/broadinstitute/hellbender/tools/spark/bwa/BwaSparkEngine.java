@@ -81,89 +81,23 @@ public final class BwaSparkEngine implements Serializable{
             final List<GATKRead> reads = new ArrayList<>();
             while (pairIterator.hasNext()) {
                 final Pair<String, GATKRead> p = pairIterator.next();
-		final GATKRead originalRead = p.getRight();
-		final GATKRead alignedRead = new SAMRecordToGATKReadAdapter(samLineParser.parseLine(p.getLeft()));
+                final GATKRead originalRead = p.getRight();
+                final SAMRecord originalSamRecord = originalRead.convertToSAMRecord(readsHeader);
 
-		//we're going to just modify the original read
-		copyPositionalInfo(alignedRead, originalRead);
-		copyAlignmentRelatedTags(alignedRead, originalRead);
-		copyFlags(alignedRead, originalRead);
+                final SAMRecord alignedRead = samLineParser.parseLine(p.getLeft());
 
-		//we need to copy the bases and quals too because bwa may have reversed complemented them
-		originalRead.setBases(alignedRead.getBases());
-		originalRead.setBaseQualities(alignedRead.getBaseQualities());
+                final List<SAMRecord.SAMTagAndValue> attributes = originalSamRecord.getAttributes();
+                attributes.stream()
+                          .map(tagAndValue -> tagAndValue.tag)
+                          .filter( tag -> alignedRead.getAttribute(tag) == null) //find tags that aren't in aligned read
+                          .forEach( tag -> alignedRead.setAttribute(tag, originalSamRecord.getAttribute(tag)));
 
-                reads.add(originalRead);
+
+                final GATKRead alignedReadConverted = SAMRecordToGATKReadAdapter.headerlessReadAdapter(alignedRead);
+                reads.add(alignedReadConverted);
             }
             return reads;
         });
-    }
-
-    private static void copyPositionalInfo(final GATKRead from, final GATKRead to) {
-        if (from.isUnmapped()) {
-            to.setIsUnmapped();
-        } else {
-            to.setPosition(from);
-        }
-        if (from.mateIsUnmapped()) {
-            to.setMateIsUnmapped();
-        } else {
-            to.setMatePosition(from.getMateContig(), from.getMateStart());
-        }
-        to.setCigar(from.getCigar());
-        to.setFragmentLength(from.getFragmentLength());
-        to.setMappingQuality(from.getMappingQuality());
-    }
-
-    private static void copyAlignmentRelatedTags(final GATKRead from, final GATKRead to) {
-        //Note: not all tags need to be copied, only those that pertain to the alignment itself
-
-        to.setAttribute(SAMTag.AS.name(), from.getAttributeAsInteger(SAMTag.AS.name()));
-        to.setAttribute(SAMTag.MD.name(), from.getAttributeAsString(SAMTag.MD.name()));
-        to.setAttribute(SAMTag.NM.name(), from.getAttributeAsInteger(SAMTag.NM.name()));
-        to.setAttribute(SAMTag.SA.name(), from.getAttributeAsString(SAMTag.SA.name()));
-        to.setAttribute(SAMTag.MC.name(), from.getAttributeAsString(SAMTag.MC.name()));
-        to.setAttribute(SAMTag.BC.name(), from.getAttributeAsString(SAMTag.BC.name()));
-
-        //copy all bwa tags, listed here http://bio-bwa.sourceforge.net/bwa.shtml
-        //note: the doc does not mention their types, so we just guess
-        to.setAttribute("X0", from.getAttributeAsInteger("X0"));  //Number of best hits
-        to.setAttribute("X1", from.getAttributeAsInteger("X1"));  //Number of suboptimal hits found by BWA
-        to.setAttribute("XN", from.getAttributeAsInteger("XN"));  //Number of ambiguous bases in the referenece
-        to.setAttribute("XM", from.getAttributeAsInteger("XM"));  //Number of mismatches in the alignment
-        to.setAttribute("XO", from.getAttributeAsInteger("XO"));  //Number of gap opens
-        to.setAttribute("XG", from.getAttributeAsInteger("XG"));  //Number of gap extentions
-        to.setAttribute("XT", from.getAttributeAsString("XT"));   //Type: Unique/Repeat/N/Mate-sw
-        to.setAttribute("XA", from.getAttributeAsString("XA"));   //Alternative hits; format: (chr,pos,CIGAR,NM;)*
-        to.setAttribute("XS", from.getAttributeAsInteger("XS"));  //Suboptimal alignment score
-        to.setAttribute("XF", from.getAttributeAsInteger("XF"));  //Support from forward/reverse alignment
-        to.setAttribute("XE", from.getAttributeAsInteger("XE"));  //Number of supporting seeds
-    }
-
-    private static void copyFlags(final GATKRead from, final GATKRead to) {
-        to.setIsPaired(from.isPaired());
-        to.setIsProperlyPaired(from.isProperlyPaired());
-        if (from.isUnmapped()) {
-            to.setIsUnmapped();
-        }
-
-        if (from.isPaired()) {
-            if (from.mateIsUnmapped()) {
-                to.setMateIsUnmapped();
-            }
-            to.setMateIsReverseStrand(from.mateIsReverseStrand());//this has to be caller regardless of whether mate is unmapped or not
-        }
-        to.setIsReverseStrand(from.isReverseStrand());
-        if ( from.isFirstOfPair() ) {
-            to.setIsFirstOfPair();
-        }
-        if ( from.isSecondOfPair() ) {
-            to.setIsSecondOfPair();
-        }
-        to.setIsSecondaryAlignment(from.isSecondaryAlignment());
-        to.setFailsVendorQualityCheck(from.failsVendorQualityCheck());
-        to.setIsDuplicate(from.isDuplicate());
-        to.setIsSupplementaryAlignment(from.isSupplementaryAlignment());
     }
 
     private JavaRDD<Pair<BwaHelperShortRead, BwaHelperShortRead>> convertToUnalignedReadPairs(final JavaRDD<GATKRead> unalignedReads) {
@@ -209,7 +143,7 @@ public final class BwaSparkEngine implements Serializable{
         Files.copy(remotePath, localPath);
         for (final String extension : new String[] { ".amb", ".ann", ".bwt", ".pac", ".sa" }) {
             Files.copy(remotePath.resolveSibling(remotePath.getFileName() + extension),
-                    localPath.resolveSibling(localPath.getFileName() + extension));
+                       localPath.resolveSibling(localPath.getFileName() + extension));
         }
         downloadRefStopwatch.stop();
         log.info("Time to download reference: " + downloadRefStopwatch.elapsed(TimeUnit.SECONDS) + "s");
