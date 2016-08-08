@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.engine.spark;
 
 import com.esotericsoftware.kryo.Kryo;
-import com.google.api.services.genomics.model.Read;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
+import com.google.api.services.genomics.model.Read;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.SAMRecord;
 import org.apache.spark.serializer.KryoRegistrator;
@@ -30,6 +31,11 @@ public class GATKRegistrator implements KryoRegistrator {
 
         // JsonSerializer is needed for the Google Genomics classes like Read and Reference.
         kryo.register(Read.class, new JsonSerializer<Read>());
+
+        //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
+        //any Collection created with Collections.nCopies fails to serialize at run time
+        kryo.register(Collections.nCopies(2, "").getClass(), new JavaSerializer());
+
         // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
         // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
         // in newer versions (3.0.x), but we can't use those because of incompatibility with Spark. We just include the
@@ -43,9 +49,9 @@ public class GATKRegistrator implements KryoRegistrator {
 
         kryo.register(SAMRecord.class, new SAMRecordSerializer());
 
-	//register to avoid writing the full name of this class over and over
-	kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
-	
+        //register to avoid writing the full name of this class over and over
+        kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
+
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord
         //     Genotype

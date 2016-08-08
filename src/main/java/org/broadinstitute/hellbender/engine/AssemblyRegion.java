@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -438,7 +439,7 @@ public final class AssemblyRegion implements Locatable {
      * @param genomeLoc a non-null genome loc indicating the base span of the bp we'd like to get the reference for
      * @return a non-null array of bytes holding the reference bases in referenceReader
      */
-    private static byte[] getReference(final IndexedFastaSequenceFile referenceReader, final int padding, final SimpleInterval genomeLoc) {
+    private static byte[] getReference(final ReferenceSequenceFile referenceReader, final int padding, final SimpleInterval genomeLoc) {
         Utils.nonNull(referenceReader, "referenceReader cannot be null");
         Utils.nonNull(genomeLoc, "genomeLoc cannot be null");
         Utils.validateArg( padding >= 0, () -> "padding must be a positive integer but got " + padding);
@@ -452,7 +453,7 @@ public final class AssemblyRegion implements Locatable {
     /**
      * See {@link #getAssemblyRegionReference} with padding == 0
      */
-    public byte[] getAssemblyRegionReference( final IndexedFastaSequenceFile referenceReader ) {
+    public byte[] getAssemblyRegionReference( final ReferenceSequenceFile referenceReader ) {
         return getAssemblyRegionReference(referenceReader, 0);
     }
 
@@ -466,7 +467,7 @@ public final class AssemblyRegion implements Locatable {
      * @param padding the padding, in BP, we want to add to either side of this active region extended region
      * @return a non-null array of bytes holding the reference bases in referenceReader
      */
-    public byte[] getAssemblyRegionReference( final IndexedFastaSequenceFile referenceReader, final int padding ) {
+    public byte[] getAssemblyRegionReference(final ReferenceSequenceFile referenceReader, final int padding ) {
         return getReference(referenceReader, padding, extendedLoc);
     }
 
@@ -503,7 +504,7 @@ public final class AssemblyRegion implements Locatable {
      * Divide a read shard up into one or more AssemblyRegions using the provided AssemblyRegionEvaluator to find
      * the borders between "active" and "inactive" regions within the shard.
      *
-     * @param shard ReadShard to divide into assembly regions
+     * @param shard Shard to divide into assembly regions
      * @param readsHeader header for the reads
      * @param referenceContext reference data overlapping the shard's extended span (including padding)
      * @param features features overlapping the shard's extended span (including padding)
@@ -514,9 +515,9 @@ public final class AssemblyRegion implements Locatable {
      * @param activeProbThreshold minimum probability for a site to be considered active, as reported by the provided evaluator
      * @param maxProbPropagationDistance maximum number of bases probabilities can propagate in each direction when finding region boundaries
      * @return a Iterable over one or more AssemblyRegions, each marked as either "active" or "inactive", spanning
-     *         part of the provided ReadShard, and filled with all reads that overlap the region.
+     *         part of the provided Shard, and filled with all reads that overlap the region.
      */
-    public static Iterable<AssemblyRegion> createFromReadShard( final ReadShard shard,
+    public static Iterable<AssemblyRegion> createFromReadShard( final Shard<GATKRead> shard,
                                                                 final SAMFileHeader readsHeader,
                                                                 final ReferenceContext referenceContext,
                                                                 final FeatureContext features,
@@ -559,10 +560,10 @@ public final class AssemblyRegion implements Locatable {
 
     /**
      * Helper method for {@link #createFromReadShard} that uses the provided activity profile and locus iterator
-     * to generate a set of assembly regions covering the fully-padded span of the provided ReadShard. The returned
+     * to generate a set of assembly regions covering the fully-padded span of the provided Shard. The returned
      * assembly regions will not contain any reads.
      *
-     * @param shard ReadShard to divide into assembly regions
+     * @param shard Shard to divide into assembly regions
      * @param locusIterator Iterator over pileups to be fed to the AssemblyRegionEvaluator
      * @param activityProfile Activity profile to generate the assembly regions
      * @param readsHeader header for the reads
@@ -574,7 +575,7 @@ public final class AssemblyRegion implements Locatable {
      * @param assemblyRegionPadding each assembly region will be padded by this amount on each side
      * @return A list of AssemblyRegions covering
      */
-    private static List<AssemblyRegion> determineAssemblyRegionBounds( final ReadShard shard,
+    private static List<AssemblyRegion> determineAssemblyRegionBounds( final Shard<GATKRead> shard,
                                                                        final LocusIteratorByState locusIterator,
                                                                        final ActivityProfile activityProfile,
                                                                        final SAMFileHeader readsHeader,

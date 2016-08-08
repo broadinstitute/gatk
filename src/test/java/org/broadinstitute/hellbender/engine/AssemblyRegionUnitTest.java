@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -12,7 +11,6 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -460,7 +458,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
               final ReferenceDataSource refSource = new ReferenceFileSource(reference) ) {
 
             // Set the shard's read filter to match the GATK 3/4 HaplotypeCaller settings when the expected output was generated:
-            final ReadShard shard = new ReadShard(shardInterval, paddedShardInterval, readsSource);
+            final LocalReadShard shard = new LocalReadShard(shardInterval, paddedShardInterval, readsSource);
             shard.setReadFilter(new CountingReadFilter("MAPPING_QUALITY", new MappingQualityReadFilter(20))
                     .and(new CountingReadFilter("MAPPING_QUALITY_AVAILABLE", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
                     .and(new CountingReadFilter("MAPPED", ReadFilterLibrary.MAPPED))

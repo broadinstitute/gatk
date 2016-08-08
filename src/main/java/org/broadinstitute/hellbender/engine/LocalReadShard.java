@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
@@ -11,7 +10,10 @@ import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterato
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -26,7 +28,7 @@ import java.util.stream.StreamSupport;
  *
  * The reads in the shard can be filtered via {@link #setReadFilter} (no filtering is performed by default).
  */
-public final class ReadShard implements Iterable<GATKRead>, Locatable {
+public final class LocalReadShard implements Shard<GATKRead> {
 
     private final SimpleInterval interval;
     private final SimpleInterval paddedInterval;
@@ -35,13 +37,13 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     private ReadsDownsampler downsampler;
 
     /**
-     * Create a new ReadShard spanning the specified interval, with the specified amount of padding.
+     * Create a new Shard spanning the specified interval, with the specified amount of padding.
      *
      * @param interval the genomic span covered by this shard
      * @param paddedInterval the span covered by this shard, plus any additional padding on each side (must contain the un-padded interval)
      * @param readsSource source of reads from which to populate this shard
      */
-    public ReadShard( final SimpleInterval interval, final SimpleInterval paddedInterval, final ReadsDataSource readsSource ) {
+    public LocalReadShard(final SimpleInterval interval, final SimpleInterval paddedInterval, final ReadsDataSource readsSource) {
         Utils.nonNull(interval);
         Utils.nonNull(paddedInterval);
         Utils.nonNull(readsSource);
@@ -53,12 +55,12 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     }
 
     /**
-     * Create a new ReadShard spanning the specified interval, with no additional padding
+     * Create a new Shard spanning the specified interval, with no additional padding
      *
      * @param interval the genomic span covered by this shard
      * @param readsSource source of reads from which to populate this shard
      */
-    public ReadShard( final SimpleInterval interval, final ReadsDataSource readsSource ) {
+    public LocalReadShard(final SimpleInterval interval, final ReadsDataSource readsSource) {
         this(interval, interval, readsSource);
     }
 
@@ -68,7 +70,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      *
      * @param filter filter to use (may be null, which signifies that no filtering is to be performed)
      */
-    public void setReadFilter( final ReadFilter filter ) {
+    public void setReadFilter(final ReadFilter filter) {
         this.readFilter = filter;
     }
 
@@ -78,37 +80,14 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      *
      * @param downsampler downsampler to use (may be null, which signifies that no downsampling is to be performed)
      */
-    public void setDownsampler( final ReadsDownsampler downsampler ) {
+    public void setDownsampler(final ReadsDownsampler downsampler) {
         this.downsampler = downsampler;
-    }
-
-    /**
-     * @return Contig this shard belongs to
-     */
-    @Override
-    public String getContig() {
-        return interval.getContig();
-    }
-
-    /**
-     * @return Start position of this shard
-     */
-    @Override
-    public int getStart() {
-        return interval.getStart();
-    }
-
-    /**
-     * @return End position of this shard
-     */
-    @Override
-    public int getEnd() {
-        return interval.getEnd();
     }
 
     /**
      * @return the interval this shard spans
      */
+    @Override
     public SimpleInterval getInterval() {
         return interval;
     }
@@ -116,6 +95,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     /**
      * @return the interval this shard spans, potentially with additional padding on each side
      */
+    @Override
     public SimpleInterval getPaddedInterval() {
         return paddedInterval;
     }
@@ -138,7 +118,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      * @param loc Locatable to test
      * @return true if loc is completely contained within this shard's interval, otherwise false
      */
-    public boolean contains( final Locatable loc ) {
+    public boolean contains(final Locatable loc) {
         Utils.nonNull(loc);
         return interval.contains(loc);
     }
@@ -147,7 +127,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      * @param loc Locatable to test
      * @return true if loc starts within this shard's interval, otherwise false
      */
-    public boolean containsStartPosition( final Locatable loc ) {
+    public boolean containsStartPosition(final Locatable loc) {
         Utils.nonNull(loc);
         return interval.contains(new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart()));
     }
@@ -186,7 +166,7 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
     }
 
     /**
-     * Divide an interval into ReadShards. Each shard will cover up to shardSize bases, include shardPadding
+     * Divide an interval into LocalReadShards. Each shard will cover up to shardSize bases, include shardPadding
      * bases of extra padding on either side, and begin shardSize bases after the previous shard (ie., shards will
      * not overlap except potentially in the padded regions).
      *
@@ -195,14 +175,14 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      * @param shardPadding desired shard padding; each shard's interval will be padded on both sides by this number of bases (may be 0)
      * @param readsSource data source for reads
      * @param dictionary sequence dictionary for reads
-     * @return List of {@link ReadShard} objects spanning the interval
+     * @return List of {@link LocalReadShard} objects spanning the interval
      */
-    public static List<ReadShard> divideIntervalIntoShards( final SimpleInterval interval, final int shardSize, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary ) {
+    public static List<LocalReadShard> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary) {
         return divideIntervalIntoShards(interval, shardSize, shardSize, shardPadding, readsSource, dictionary);
     }
 
     /**
-     * Divide an interval into ReadShards. Each shard will cover up to shardSize bases, include shardPadding
+     * Divide an interval into LocalReadShards. Each shard will cover up to shardSize bases, include shardPadding
      * bases of extra padding on either side, and begin shardStep bases after the previous shard.
      *
      * @param interval interval to shard; must be on the contig according to the provided dictionary
@@ -211,32 +191,12 @@ public final class ReadShard implements Iterable<GATKRead>, Locatable {
      * @param shardPadding desired shard padding; each shard's interval will be padded on both sides by this number of bases (may be 0)
      * @param readsSource data source for reads
      * @param dictionary sequence dictionary for reads
-     * @return List of {@link ReadShard} objects spanning the interval
+     * @return List of {@link LocalReadShard} objects spanning the interval
      */
-    public static List<ReadShard> divideIntervalIntoShards( final SimpleInterval interval, final int shardSize, final int shardStep, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary ) {
-        Utils.nonNull(interval);
+    public static List<LocalReadShard> divideIntervalIntoShards(final SimpleInterval interval, final int shardSize, final int shardStep, final int shardPadding, final ReadsDataSource readsSource, final SAMSequenceDictionary dictionary) {
         Utils.nonNull(readsSource);
-        Utils.nonNull(dictionary);
-        Utils.validateArg(shardSize >= 1, "shardSize must be >= 1");
-        Utils.validateArg(shardStep >= 1, "shardStep must be >= 1");
-        Utils.validateArg(shardPadding >= 0, "shardPadding must be >= 0");
-
-        Utils.validateArg(IntervalUtils.intervalIsOnDictionaryContig(interval, dictionary), () ->
-                "Interval " + interval + " not within the bounds of a contig in the provided dictionary");
-
-        final List<ReadShard> shards = new ArrayList<>();
-        int start = interval.getStart();
-
-        while ( start <= interval.getEnd() ) {
-            int end = Math.min(start + shardSize - 1, interval.getEnd());
-
-            final SimpleInterval nextShardInterval = new SimpleInterval(interval.getContig(), start, end);
-            final SimpleInterval nextShardIntervalPadded = nextShardInterval.expandWithinContig(shardPadding, dictionary);
-            shards.add(new ReadShard(nextShardInterval, nextShardIntervalPadded, readsSource));
-
-            start += shardStep;
-        }
-
-        return shards;
+        return Shard.divideIntervalIntoShards(interval, shardSize, shardStep, shardPadding, dictionary)
+                    .stream().map(shardBoundary -> new LocalReadShard(shardBoundary.getInterval(), shardBoundary.getPaddedInterval(), readsSource))
+                    .collect(Collectors.toList());
     }
 }
