@@ -32,6 +32,10 @@ public final class MathUtils {
 
     public static final double INV_SQRT_2_PI = 1.0 / Math.sqrt(2.0 * Math.PI);
 
+    private static final double NATURAL_LOG_OF_TEN = Math.log(10.0);
+
+    private static final double SQUARE_ROOT_OF_TWO_TIMES_PI = Math.sqrt(2.0 * Math.PI);
+
     /**
      * Log10 of the e constant.
      */
@@ -588,6 +592,40 @@ public final class MathUtils {
     }
 
     /**
+     * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
+     * @param mean the desired mean of the Normal distribution
+     * @param sd the desired standard deviation of the Normal distribution
+     * @param x the value to evaluate
+     * @return a well-formed double
+     */
+    public static double normalDistributionLog10(final double mean, final double sd, final double x) {
+        if( sd < 0 )
+            throw new IllegalArgumentException("sd: Standard deviation of normal must be >0");
+        if ( ! wellFormedDouble(mean) || ! wellFormedDouble(sd) || ! wellFormedDouble(x) )
+            throw new IllegalArgumentException("mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
+        final double a = -1.0 * Math.log10(sd * SQUARE_ROOT_OF_TWO_TIMES_PI);
+        final double b = -1.0 * (square(x - mean) / (2.0 * square(sd))) / NATURAL_LOG_OF_TEN;
+        return a + b;
+    }
+
+    /**
+     * Calculate f(x) = x^2
+     * @param x the value to square
+     * @return x * x
+     */
+    public static double square(final double x) {
+        return x * x;
+    }
+
+    public static double distanceSquared(final double[] x, final double[] y) {
+        double dist = 0.0;
+        for (int iii = 0; iii < x.length; iii++) {
+            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
+        }
+        return dist;
+    }
+
+    /**
      * normalizes the log-probability array.  ASSUMES THAT ALL ARRAY ENTRIES ARE <= 0 (<= 1 IN REAL-SPACE).
      *
      * @param array the array to be normalized
@@ -880,7 +918,7 @@ public final class MathUtils {
 
     /**
      * Return the likelihood of observing the counts of categories having sampled a population
-     * whose categorial frequencies are distributed according to a Dirichlet distribution
+     * whose categorical frequencies are distributed according to a Dirichlet distribution
      * @param params - params of the prior dirichlet distribution
      * @param counts - the counts of observation in each category
      * @return - associated likelihood

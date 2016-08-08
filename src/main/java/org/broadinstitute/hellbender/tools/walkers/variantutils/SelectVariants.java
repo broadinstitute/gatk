@@ -40,6 +40,7 @@ import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
+import org.broadinstitute.hellbender.utils.samples.SampleUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.*;
@@ -487,17 +488,20 @@ public final class SelectVariants extends VariantWalker {
         IDsToKeep = getIDsFromFile(rsIDFile);
         IDsToRemove = getIDsFromFile(XLrsIDFile);
 
+        //TODO: this should be refactored/consolidated as part of
+        // https://github.com/broadinstitute/gatk/issues/121 and
+        // https://github.com/broadinstitute/gatk/issues/1116
         Set<VCFHeaderLine> actualLines = null;
         SAMSequenceDictionary sequenceDictionary = null;
         if (hasReference()) {
             File refFile = referenceArguments.getReferenceFile();
             sequenceDictionary= this.getReferenceDictionary();
-            actualLines = withUpdatedContigsAsLines(headerLines, refFile, sequenceDictionary, suppressReferencePath);
+            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refFile, sequenceDictionary, suppressReferencePath);
         }
         else {
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
             if (null != sequenceDictionary) {
-                actualLines = withUpdatedContigsAsLines(headerLines, null, sequenceDictionary, suppressReferencePath);
+                actualLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
             }
             else {
                 actualLines = headerLines;
@@ -646,7 +650,7 @@ public final class SelectVariants extends VariantWalker {
      */
     private SortedSet<String> createSampleNameInclusionList(Map<String, VCFHeader> vcfHeaders) {
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
-        final Collection<String> samplesFromFile = getSamplesFromFiles(sampleFiles);
+        final Collection<String> samplesFromFile = SampleUtils.getSamplesFromFiles(sampleFiles);
         final Collection<String> samplesFromExpressions = matchSamplesExpressions(vcfSamples, sampleExpressions);
 
         // first, check overlap between requested and present samples
@@ -684,7 +688,7 @@ public final class SelectVariants extends VariantWalker {
         }
 
         // Exclude samples take precedence over include - remove any excluded samples
-        final Collection<String> XLsamplesFromFile = getSamplesFromFiles(XLsampleFiles);
+        final Collection<String> XLsamplesFromFile = SampleUtils.getSamplesFromFiles(XLsampleFiles);
         final Collection<String> XLsamplesFromExpressions = matchSamplesExpressions(vcfSamples, XLsampleExpressions);
         samples.removeAll(XLsamplesFromFile);
         samples.removeAll(XLsampleNames);
@@ -732,7 +736,7 @@ public final class SelectVariants extends VariantWalker {
     private Set<VCFHeaderLine> createVCFHeaderLineList(Map<String, VCFHeader> vcfHeaders) {
 
         final Set<VCFHeaderLine> headerLines = VCFUtils.smartMergeHeaders(vcfHeaders.values(), true);
-        headerLines.add(new VCFHeaderLine("source", "SelectVariants"));
+        headerLines.add(new VCFHeaderLine("source", this.getClass().getSimpleName()));
 
         if (keepOriginalChrCounts) {
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.ORIGINAL_AC_KEY));
@@ -747,63 +751,6 @@ public final class SelectVariants extends VariantWalker {
         headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.DEPTH_KEY));
 
         return headerLines;
-    }
-
-    private static Set<VCFHeaderLine> withUpdatedContigsAsLines(
-            final Set<VCFHeaderLine> oldLines,
-            final File referenceFile,
-            final SAMSequenceDictionary refDict,
-            final boolean referenceNameOnly) {
-        final Set<VCFHeaderLine> lines = new LinkedHashSet<>(oldLines.size());
-
-        for (final VCFHeaderLine line : oldLines) {
-            if (line instanceof VCFContigHeaderLine) {
-                continue; // skip old contig lines
-            }
-            if (line.getKey().equals(VCFHeader.REFERENCE_KEY)) {
-                continue; // skip the old reference key
-            }
-            lines.add(line);
-        }
-
-        lines.addAll(makeContigHeaderLines(refDict, referenceFile).stream().collect(Collectors.toList()));
-
-        if (referenceFile != null) {
-            final String referenceValue;
-            if (referenceNameOnly) {
-                final int extensionStart = referenceFile.getName().lastIndexOf(".");
-                referenceValue = extensionStart == -1 ? referenceFile.getName() : referenceFile.getName().substring(0, extensionStart);
-            }
-            else {
-                referenceValue = "file://" + referenceFile.getAbsolutePath();
-            }
-            lines.add(new VCFHeaderLine(VCFHeader.REFERENCE_KEY, referenceValue));
-        }
-        return lines;
-    }
-
-    /**
-     * Create VCFHeaderLines for each refDict entry, and optionally the assembly if referenceFile != null
-     * @param refDict reference dictionary
-     * @param referenceFile for assembly name.  May be null
-     * @return list of vcf contig header lines
-     */
-    private static List<VCFContigHeaderLine> makeContigHeaderLines(final SAMSequenceDictionary refDict,
-                                                                   final File referenceFile) {
-        final List<VCFContigHeaderLine> lines = new ArrayList<>();
-        final String assembly = referenceFile != null ? referenceFile.getName() : null;
-        lines.addAll(refDict.getSequences().stream().map(contig -> makeContigHeaderLine(contig, assembly)).collect(Collectors.toList()));
-        return lines;
-    }
-
-    private static VCFContigHeaderLine makeContigHeaderLine(final SAMSequenceRecord contig, final String assembly) {
-        final Map<String, String> map = new LinkedHashMap<>(3);
-        map.put("ID", contig.getSequenceName());
-        map.put("length", String.valueOf(contig.getSequenceLength()));
-        if (assembly != null) {
-            map.put("assembly", assembly);
-        }
-        return new VCFContigHeaderLine(map, contig.getSequenceIndex());
     }
 
     /**
@@ -829,26 +776,6 @@ public final class SelectVariants extends VariantWalker {
             samples.addAll(ListFileUtils.includeMatching(originalSamples, sampleExpressions, false));
         }
         return samples;
-    }
-
-    /**
-     * Given a list of files with sample names it reads all files and creates a list of unique samples from all these files.
-     * @param files list of files with sample names in
-     * @return a collection of unique samples from all files
-     */
-    private static Collection<String> getSamplesFromFiles (Collection<File> files) {
-        final Set<String> samplesFromFiles = new LinkedHashSet<>();
-        if (files != null) {
-            for (final File file : files) {
-                try (XReadLines reader = new XReadLines(file)) {
-                    List<String> lines = reader.readLines();
-                    samplesFromFiles.addAll(lines.stream().collect(Collectors.toList()));
-                } catch (IOException e) {
-                    throw new UserException.CouldNotReadInputFile(file, e);
-                }
-            }
-        }
-        return samplesFromFiles;
     }
 
     /**

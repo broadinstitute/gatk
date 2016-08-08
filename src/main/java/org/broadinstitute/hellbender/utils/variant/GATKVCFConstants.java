@@ -9,10 +9,18 @@ import htsjdk.variant.variantcontext.Allele;
  */
 public final class GATKVCFConstants {
 
+    public static final String CONTIG_ID_KEY =                      "ID";
+    public static final String CONTIG_LENGTH_KEY =                  "length";
+    public static final String ASSEMBLY_NAME_KEY =                  "assembly";
+
     //INFO keys
+    public static final String ALLELE_SPECIFIC_PREFIX =             "AS_";
+    public static final String AS_FILTER_STATUS_KEY =               "AS_FilterStatus";
     public static final String RAW_RMS_MAPPING_QUALITY_KEY =        "RAW_MQ";
     public static final String AS_RMS_MAPPING_QUALITY_KEY =         "AS_MQ";
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
+    public static final String AS_CULPRIT_KEY =                     "AS_culprit";
+    public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
     public static final String ALLELE_BALANCE_HET_KEY =             "ABHet";
     public static final String ALLELE_BALANCE_HOM_KEY =             "ABHom";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
