@@ -21,7 +21,7 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public abstract class ClusteringGenomicHMMSegmenter<T> {
-    protected final Logger logger = LogManager.getLogger(ClusteringGenomicHMM.class);
+    protected final Logger logger = LogManager.getLogger(ClusteringGenomicHMMSegmenter.class);
 
     private double concentration;
     protected double[] weights; //one per hidden state
@@ -64,6 +64,10 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
     protected static final double RELATIVE_TOLERANCE_FOR_OPTIMIZATION = 0.01;
     protected static final double ABSOLUTE_TOLERANCE_FOR_OPTIMIZATION = 0.01;
     protected static final int MAX_EVALUATIONS_FOR_OPTIMIZATION = 100;
+
+    //RNG used in attemptBigChangeInMemoryLength method
+    private static final int RANDOM_SEED = 239;
+    private final Random random = new Random(RANDOM_SEED);
 
     /**
      * Initialize the segmenter with its data and panel of normals, giving equal weight to a set of evenly-spaced
@@ -231,7 +235,7 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
     // memoryLength may move slowly because the E and M steps are entangled.  We try to get around this by maximizing the
     // exact model log-likelihood
     private void attemptBigChangeInMemoryLength() {
-        final double memoryLengthMultiplier = Math.exp(new Random().nextGaussian()/2);
+        final double memoryLengthMultiplier = Math.exp(random.nextGaussian()/2);
         final double currentLogLikelihood = ForwardBackwardAlgorithm.apply(data, positions, makeModel()).logDataLikelihood();
         final double oldMemoryLength = memoryLength;
         memoryLength = memoryLength * memoryLengthMultiplier;
