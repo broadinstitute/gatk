@@ -52,6 +52,10 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName="addOutputSAMProgramRecord", shortName="addOutputSAMProgramRecord", doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true)
     public boolean addOutputSAMProgramRecord = true;
 
+    @Argument(fullName = "fix_misencoded_quality_scores", shortName="fixMisencodedQuals", doc="Fix mis-encoded base quality scores", optional = true)
+    public boolean fixMissencodedQualityScores = false;
+
+
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
      * TODO: Perhaps we should eventually do the same auto-discovery for all input arguments (reads, reference, etc.)
@@ -118,6 +122,7 @@ public abstract class GATKTool extends CommandLineProgram {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
             reads = new ReadsDataSource(readArguments.getReadFiles(), factory);
+            reads.setFixMisencodedQuals(fixMissencodedQualityScores);
         }
         else {
             reads = null;
