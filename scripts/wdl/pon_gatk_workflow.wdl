@@ -194,7 +194,7 @@ task CalculateTargetCoverage {
     File ref_fasta_fai
     File ref_fasta_dict
     File gatk_jar
-    String disable_sequence_dictionary_validation
+    Boolean disable_sequence_dictionary_validation
     Boolean isWGS
     Int mem
 
