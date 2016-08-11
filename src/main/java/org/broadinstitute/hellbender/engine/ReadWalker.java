@@ -4,6 +4,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -17,6 +18,12 @@ import java.util.List;
  * optional contextual information from a reference and/or sets of variants/Features.
  *
  * If multiple sources of reads are specified, they are merged together into a single sorted stream of reads.
+ *
+ * Reads will be:
+ * - Transformed with {@link #makePreReadFilterTransformer()} before filtering.
+ * - Filtered with {@link #makeReadFilter()} before post-transformers.
+ * - Transformed with {@link #makePostReadFilterTransformer()} before processing.
+ * - Passed to {@link #apply(GATKRead, ReferenceContext, FeatureContext)} for processing.
  *
  * ReadWalker authors must implement the apply() method to process each read, and may optionally implement
  * onTraversalStart() and/or onTraversalSuccess(). See the PrintReadsWithReference walker for an example.
@@ -68,8 +75,9 @@ public abstract class ReadWalker extends GATKTool {
      * Implementation of read-based traversal.
      * Subclasses can override to provide own behavior but default implementation should be suitable for most uses.
      *
-     * The default implementation creates filters using {@link #makeReadFilter}
-     * and then iterates over all reads, applies the filter and hands the resulting reads to the {@link #apply}
+     * The default implementation creates filters using {@link #makeReadFilter} and transformers using
+     * {@link #makePreReadFilterTransformer()} {@link #makePostReadFilterTransformer()} and then iterates over all reads, applies
+     * the pre-filter transformer, the filter, then the post-filter transformer and hands the resulting reads to the {@link #apply}
      * function of the walker (along with additional contextual information, if present, such as reference bases).
      */
     @Override
@@ -77,9 +85,12 @@ public abstract class ReadWalker extends GATKTool {
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
         final CountingReadFilter countedFilter = makeReadFilter();
-
+        final ReadTransformer preTransformer = makePreReadFilterTransformer();
+        final ReadTransformer postTransformer = makePostReadFilterTransformer();
         Utils.stream(reads)
+                .map(preTransformer)
                 .filter(countedFilter)
+                .map(postTransformer)
                 .forEach(read -> {
                     final SimpleInterval readInterval = getReadInterval(read);
                     apply(read,
@@ -115,6 +126,33 @@ public abstract class ReadWalker extends GATKTool {
     public List<ReadFilter> getDefaultReadFilters() {
         return Collections.singletonList(new WellformedReadFilter());
     }
+
+    /**
+     * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
+     * The default implementation uses the {@link ReadTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (ie override and call super).
+     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
+     */
+    public ReadTransformer makePreReadFilterTransformer() {
+        return ReadTransformer.identity();
+    }
+
+    /**
+     * Returns the post-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
+     * The default implementation uses the {@link ReadTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (ie override and call super).
+     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
+     */
+    public ReadTransformer makePostReadFilterTransformer(){
+        return ReadTransformer.identity();
+    }
+
 
     /**
      * Process an individual read (with optional contextual information). Must be implemented by tool authors.

@@ -8,11 +8,13 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
-import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,6 +24,12 @@ import java.util.stream.StreamSupport;
  * A LocusWalker is a tool that processes reads that overlap a single position in a reference at a time from
  * one or multiple sources of reads, with optional contextual information from a reference and/or sets of
  * variants/Features.
+ *
+ * Reads will be:
+ * - Transformed with {@link #makePreReadFilterTransformer()} before filtering.
+ * - Filtered with {@link #makeReadFilter()} before post-transformers.
+ * - Transformed with {@link #makePostReadFilterTransformer()} before processing.
+ * - Include them into the {@link AlignmentContext} before passing to {@link #apply(AlignmentContext, ReferenceContext, FeatureContext)}.
  *
  * LocusWalker authors must implement the apply() method to process each position, and may optionally implement
  * onTraversalStart(), onTraversalSuccess() and/or closeTool().
@@ -77,7 +85,7 @@ public abstract class LocusWalker extends GATKTool {
     /**
      * Returns the default list of CommandLineReadFilters that are used for this tool. The filters returned
      * by this method are subject to selective enabling/disabling by the user via the command line. The
-     * default implementation uses the {@link WellformedReadFilter} and {@link ReadFilterLibrary.MappedReadFilter}filter
+     * default implementation uses the {@link WellformedReadFilter} and {@link ReadFilterLibrary.MappedReadFilter} filter
      * with all default options. Subclasses can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
@@ -103,6 +111,32 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
+     * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
+     * The default implementation uses the {@link ReadTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (ie override and call super).
+     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
+     */
+    public ReadTransformer makePreReadFilterTransformer() {
+        return ReadTransformer.identity();
+    }
+
+    /**
+     * Returns the post-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
+     * The default implementation uses the {@link ReadTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (ie override and call super).
+     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
+     */
+    public ReadTransformer makePostReadFilterTransformer(){
+        return ReadTransformer.identity();
+    }
+
+    /**
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
      */
     @Override
@@ -117,8 +151,8 @@ public abstract class LocusWalker extends GATKTool {
      * Implementation of locus-based traversal.
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      *
-     * The default implementation iterates over all positions in the reference covered by reads for all samples in the read groups, using
-     * the downsampling method provided by {@link #getDownsamplingInfo()}
+     * The default implementation iterates over all positions in the reference covered by reads (filtered and transformed)
+     * for all samples in the read groups, using the downsampling method provided by {@link #getDownsamplingInfo()}
      * and including deletions only if {@link #includeDeletions()} returns {@code true}.
      */
     @Override
@@ -129,10 +163,19 @@ public abstract class LocusWalker extends GATKTool {
                                           .map(SAMReadGroupRecord::getSample)
                                           .collect(Collectors.toSet());
         final CountingReadFilter countedFilter = makeReadFilter();
+        // get the transformers
+        final ReadTransformer preTransformer = makePreReadFilterTransformer();
+        final ReadTransformer postTransformer = makePostReadFilterTransformer();
+        // get the filter and transformed iterator
+        final Iterator<GATKRead> readIterator = Utils.stream(reads)
+                .map(preTransformer)
+                .filter(countedFilter)
+                .map(postTransformer)
+                .iterator();
         // get the LIBS
-        final LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
+        final LocusIteratorByState libs = new LocusIteratorByState(readIterator, getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
         // prepare the iterator
-        Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
+        final Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function
         StreamSupport.stream(iterator, false)
             .forEach(alignmentContext -> {
