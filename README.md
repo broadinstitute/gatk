@@ -27,7 +27,7 @@ If you are looking for the codebase of the current production version of GATK, p
 * Git 2.5 or greater
 * Optional, but recommended:
     * Gradle 2.12 or greater, needed for building the GATK. We recommend using the `./gradlew` script which will
-      download and use an appropriate gradle version automatically), see examples below.
+      download and use an appropriate gradle version automatically (see examples below).
     * Python 2.6 or greater (needed for running the `gatk-launch` frontend script)
     * R 3.1.3 (needed for producing plots in certain tools, and for running the test suite)
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
@@ -43,22 +43,30 @@ If you are looking for the codebase of the current production version of GATK, p
 
 ##Building GATK4
 
-* **Recommended method:** To build everything you need to run all GATK tools, run **`./gradlew installAll`**.
-    * This does both the standard build and the Spark build described below.
+* To do a fast build that lets you run GATK tools locally (but not on a cluster) from inside a git clone, run
+        
+        ./gradlew installDist
+        
+* To do a slower build that lets you run GATK tools both locally and on a cluster from inside a git clone, run
 
-* To _only_ do a standard build to save time, run **`./gradlew installDist`**.
-    * The resulting executable will be `build/install/gatk/bin/gatk`,
-      and will be suitable for running non-Spark tools and for running Spark tools locally (not on a cluster).
-    * This executable is **not** a fully-packaged executable that can be copied across machines, it's just
-      for running in-place. To create a packaged version of this build, run `./gradlew shadowJar`. The
-      packaged jar will be in `build/libs/` with a name like `gatk-all-*-SNAPSHOT-shadowJar.jar`.
+        ./gradlew installAll
+     
+* To build a fully-packaged GATK jar that can be distributed and includes all dependencies needed for running tools locally, run
 
-* To _only_ build a special jar suitable for running spark tools on a cluster, run **`./gradlew installSpark`**.
-    * The resulting jar will be in `build/libs/` and will have a name like `gatk-all-*-SNAPSHOT-spark.jar`
-    * This jar will not include Spark and Hadoop libraries, in order to allow
-      the versions of Spark and Hadoop installed on your cluster to be used.
+        ./gradlew localJar
+        
+    * The resulting jar will be in `build/libs` with a name like `gatk-package-VERSION-local.jar`
+    
+* To build a fully-packaged GATK jar that can be distributed and includes all dependencies needed for running spark tools on a cluster, run
 
-* To remove previous builds, run **`./gradlew clean`**
+        ./gradlew sparkJar
+        
+    * The resulting jar will be in `build/libs` with a name like `gatk-package-VERSION-spark.jar`
+    * This jar will not include Spark and Hadoop libraries, in order to allow the versions of Spark and Hadoop installed on your cluster to be used.
+
+* To remove previous builds, run 
+
+        ./gradlew clean
 
 * For faster gradle operations, add `org.gradle.daemon=true` to your `~/.gradle/gradle.properties` file.
   This will keep a gradle daemon running in the background and avoid the ~6s gradle start up time on every command.
@@ -70,6 +78,10 @@ If you are looking for the codebase of the current production version of GATK, p
 * The standard way to run GATK4 tools is via the **`gatk-launch`** wrapper script located in the root directory of a clone of this repository.
     * Requires Python 2.6 or greater.
     * You need to have built the GATK as described in the "Building GATK4" section above before running this script.
+    * There are three ways `gatk-launch` can be run:
+        * from the root of your git clone after building
+        * or, put the `gatk-launch` script within the same directory as fully-packaged GATK jars produced by `./gradlew localJar` and `./gradlew sparkJar`
+        * or, the environment variables `GATK_LOCAL_JAR` and `GATK_SPARK_JAR` can be defined, and contain the paths to the fully-packaged GATK jars produced by `./gradlew localJar` and `./gradlew sparkJar` 
     * Can run non-Spark tools as well as Spark tools, and can run Spark tools locally, on a Spark cluster, or on Google Cloud Dataproc.
 
 * For help on using `gatk-launch` itself, run **`./gatk-launch --help`**
@@ -79,11 +91,6 @@ If you are looking for the codebase of the current production version of GATK, p
       `Spark` categories. All other tools are non-Spark-based.
 
 * To print help for a particular tool, run **`./gatk-launch ToolName --help`**.
-
-* If you don't want to run the GATK via the `gatk-launch` script, it's possible to run non-Spark and local Spark
-  tools directly using the `build/install/gatk/bin/gatk` executable after a `./gradlew installDist`, and to run Spark tools
-  on a cluster or the cloud by building a Spark jar with `./gradlew installSpark` and passing the resulting jar in `build/libs/`
-  directly to either `spark-submit` or `gcloud`.
 
 * To run a non-Spark tool, or to run a Spark tool locally, the syntax is:
 **`./gatk-launch ToolName toolArguments`**.
@@ -331,9 +338,9 @@ source("scripts/install_R_packages.R")
     
 ##Setting up profiling using JProfiler (not using IntelliJ)
     
-   * Build GATK using `./gradlew installAll`
+   * Build a full GATK4 jar using `./gradlew localJar`
 
-   * In the "Session Settings" windown, select the `all` GATK4 jar, eg `~/gatk/build/libs/gatk-all-4.alpha-196-gb542813-SNAPSHOT-spark.jar` for "Main class or executable JAR" and enter the right "Arguments"
+   * In the "Session Settings" window, select the GATK4 jar, eg. `~/gatk/build/libs/gatk-package-4.alpha-196-gb542813-SNAPSHOT-local.jar` for "Main class or executable JAR" and enter the right "Arguments"
 
 ##Updating the Intellij project when dependencies change
 If there are dependency changes in `build.gradle` it is necessary to refresh the gradle project. This is easily done with the following steps.
