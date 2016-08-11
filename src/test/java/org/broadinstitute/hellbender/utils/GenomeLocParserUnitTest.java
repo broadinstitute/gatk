@@ -32,7 +32,7 @@ import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertFalse;
 
 /**
- *         Test out the functionality of the new genome loc parser
+ * Test out the functionality of the new genome loc parser
  */
 public final class GenomeLocParserUnitTest extends BaseTest {
     private GenomeLocParser genomeLocParser;
@@ -87,6 +87,16 @@ public final class GenomeLocParserUnitTest extends BaseTest {
     @Test(expectedExceptions=UserException.MalformedGenomeLoc.class)
     public void testParseBadString() {
         genomeLocParser.parseGenomeLoc("Bad:0-1");
+    }
+
+    @Test
+    public void testParseUnknownSequenceLength() {
+        SAMSequenceDictionary seqDict = new SAMSequenceDictionary();
+        seqDict.addSequence(new SAMSequenceRecord("1", SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH));
+        Assert.assertEquals(seqDict.getSequence("1").getSequenceLength(), SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH);
+        GenomeLocParser myLocParser = new GenomeLocParser(seqDict);
+        GenomeLoc genomeLoc = myLocParser.parseGenomeLoc("1:1-99");
+        Assert.assertEquals(genomeLoc.getEnd(), 99);
     }
 
     @Test

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -121,4 +122,19 @@ public final class IndexUtilsUnitTest extends BaseTest{
         final Set<String> contigs = dict.getSequences().stream().map(s -> s.getSequenceName()).collect(Collectors.toSet());
         Assert.assertEquals(contigs, Sets.newHashSet("1", "2", "3", "4"));
     }
+
+    @Test
+    public void testIsSequenceDictionaryFromIndexPositive() throws Exception {
+        final SAMSequenceDictionary dict = IndexUtils.createSequenceDictionaryFromFeatureIndex(new File(getToolTestDataDir(), "test_variants_for_index.vcf"));
+        Assert.assertTrue(IndexUtils.isSequenceDictionaryFromIndex(dict));
+    }
+
+    @Test
+    public void testIsSequenceDictionaryFromIndexNegative() throws Exception {
+        SAMSequenceDictionary dict = new SAMSequenceDictionary();
+        dict.addSequence(new SAMSequenceRecord("1", 99));
+        dict.addSequence(new SAMSequenceRecord("2", 99));
+        Assert.assertFalse(IndexUtils.isSequenceDictionaryFromIndex(dict));
+    }
+
 }

@@ -40,8 +40,8 @@ public final class GATKToolUnitTest extends BaseTest{
     }
 
     @CommandLineProgramProperties(
-            summary = "TestGATKToolWithReads",
-            oneLineSummary = "TestGATKToolWithReads",
+            summary = "TestGATKToolWithFeatures",
+            oneLineSummary = "TestGATKToolWithFeatures",
             programGroup = TestProgramGroup.class
     )
     private static final class TestGATKToolWithFeatures extends GATKTool{

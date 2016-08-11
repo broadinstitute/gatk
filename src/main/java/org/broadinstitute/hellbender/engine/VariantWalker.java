@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.stream.StreamSupport;
@@ -57,7 +58,16 @@ public abstract class VariantWalker extends GATKTool {
     public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
         final SAMSequenceDictionary dictFromDrivingVariants = drivingVariants.getSequenceDictionary();
         if (dictFromDrivingVariants != null){
-            return dictFromDrivingVariants;
+            //If this dictionary looks like it was synthesized from a feature index, see
+            //if there is a better dictionary available from another source (i.e., the reference)
+            if (IndexUtils.isSequenceDictionaryFromIndex(dictFromDrivingVariants)) {
+                final SAMSequenceDictionary otherDictionary = super.getBestAvailableSequenceDictionary();
+                return otherDictionary != null ?
+                        otherDictionary :
+                        dictFromDrivingVariants;
+            } else {
+                return dictFromDrivingVariants;
+            }
         }
         return super.getBestAvailableSequenceDictionary();
     }
