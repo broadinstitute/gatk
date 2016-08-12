@@ -119,7 +119,7 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
         tests.add(new Object[]{AAAAAA, 0, AACCAA, 4, 2, false});
         tests.add(new Object[]{AAAAAA, 3, AACCAA, 0, 2, false});
         tests.add(new Object[]{AAAAAA, 3, AACCAA, 0, 3, false});
-        tests.add(new Object[]{AAAAAA, 4, AACCAA, 0, 4, true});
+        tests.add(new Object[]{AAAAAA, 2, AACCAA, 0, 4, true});
 
         return tests.toArray(new Object[][]{});
     }
@@ -264,8 +264,11 @@ public final class OverhangFixingManagerUnitTest extends BaseTest {
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 1);
         manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialUnmappedRead(hg19Header,new byte[]{(byte)'A'}, new byte[]{(byte)'A'})));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 2);
-        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 2, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
+        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 1, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
         Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 3);
+        // testing that it does clear properly for a new contig
+        manager.addReadGroup(Collections.singletonList(ArtificialReadUtils.createArtificialRead(hg19Header, "read1", 2, 10000, new byte[]{(byte)'A'}, new byte[]{(byte)'A'}, "6M")));
+        Assert.assertEquals(manager.getReadsInQueueForTesting().size(), 1);
     }
 
 }
