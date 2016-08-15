@@ -63,7 +63,7 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     }
 
     @Override
-    protected void finish(final String inputName, final AuthHolder authHolder) {
+    protected void saveMetrics(final String inputName, final AuthHolder authHolder) {
         qualityYieldCollector.saveMetrics(inputName, authHolder);
     }
 

@@ -5,8 +5,10 @@ import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulationLevelArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -40,8 +42,8 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
                 doc = "Base name of output files.")
     public String outputBaseName;
 
-    @Argument(shortName="LEVEL", doc="The level(s) at which to accumulate metrics. ", optional = true)
-    public Set<MetricAccumulationLevel> metricAccumulationLevel = EnumSet.of(MetricAccumulationLevel.ALL_READS);
+    @ArgumentCollection
+    MetricAccumulationLevelArgumentCollection metricAccumulationLevel = new MetricAccumulationLevelArgumentCollection();
 
     @Argument(fullName="collectors",
             doc = "List of metrics collectors to apply during the pass through the SAM file. " +
@@ -81,7 +83,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
                 isArgs.histogramPlotFile = localBaseName + ".pdf";
 
                 isArgs.useEnd = InsertSizeMetricsArgumentCollection.EndToUse.SECOND;
-                isArgs.metricAccumulationLevel = metricAccumulationLevel;
+                isArgs.metricAccumulationLevel.accumulationLevels = metricAccumulationLevel;
 
                 final InsertSizeMetricsCollectorSpark collector = new InsertSizeMetricsCollectorSpark();
                 collector.initialize(isArgs, samHeader, defaultHeaders);
@@ -138,7 +140,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
             MetricsCollectorSpark<? extends MetricsArgumentCollection> metricsCollector =
                     provider.createCollector(
                         outputBaseName,
-                        metricAccumulationLevel,
+                        metricAccumulationLevel.accumulationLevels,
                         getDefaultHeaders(),
                         getHeaderForReads()
                     );

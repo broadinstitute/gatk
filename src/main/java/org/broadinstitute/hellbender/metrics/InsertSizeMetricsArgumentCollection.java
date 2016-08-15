@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.metrics;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulationLevelArgumentCollection;
 
-import java.io.File;
 import java.io.Serializable;
-import java.util.EnumSet;
-import java.util.Set;
 
 // TODO: filter reads based on only isReverseStrand/mateIsReverseStrand (strand bias)
 // TODO: filter reads based on {MATE_ON_SAME_CONTIG, MATE_DIFFERENT_STRAND, GOOD_CIGAR, NON_ZERO_REFERENCE_LENGTH_ALIGNMENT}
@@ -78,11 +77,8 @@ public class InsertSizeMetricsArgumentCollection extends MetricsArgumentCollecti
             optional = true)
     public int MQPassingThreshold = 0;
 
-    @Argument(doc="The level(s) at which to accumulate metrics. Possible values are {ALL_READS, SAMPLE, LIBRARY, READ GROUP}.",
-            shortName="LEVEL",
-            fullName = "MetricsAccumulationLevel",
-            optional = false)
-    public Set<MetricAccumulationLevel> metricAccumulationLevel = EnumSet.of(MetricAccumulationLevel.ALL_READS);
+    @ArgumentCollection
+    public MetricAccumulationLevelArgumentCollection metricAccumulationLevel = new MetricAccumulationLevelArgumentCollection();
 
     /**
      * Which end of a read pair to use for collecting insert size metrics.

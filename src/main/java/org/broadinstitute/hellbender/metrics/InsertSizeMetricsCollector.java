@@ -45,7 +45,7 @@ public final class InsertSizeMetricsCollector
         Utils.nonNull(samHeader);
 
         this.inputArgs = inputArgs;
-        setup(inputArgs.metricAccumulationLevel, samHeader.getReadGroups());
+        setup(inputArgs.metricAccumulationLevel.accumulationLevels, samHeader.getReadGroups());
     }
 
     /**

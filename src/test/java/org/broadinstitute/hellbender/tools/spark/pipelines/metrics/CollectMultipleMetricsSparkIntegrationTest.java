@@ -5,6 +5,7 @@ import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
@@ -118,10 +119,16 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
     public static class TestCustomCollector implements MetricsCollectorSpark<MetricsArgumentCollection> {
         private static final long serialVersionUID = 1L;
         long count = 0;
+        @Override
         public void initialize(
                 MetricsArgumentCollection inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders) {}
+        @Override
         public void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader) {
             count = filteredReads.count();
+        }
+        @Override
+        public void saveMetrics(String inputBaseName, AuthHolder authHolder) {
+            //no-op
         }
     }
 

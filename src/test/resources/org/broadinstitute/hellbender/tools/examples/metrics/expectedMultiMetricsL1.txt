@@ -1,0 +1,10 @@
+## htsjdk.samtools.metrics.StringHeader
+# org.broadinstitute.hellbender.tools.examples.metrics.multi.ExampleCollectMultiMetricsSpark  --output /var/folders/3g/0dh8mspj3pz8qpmm4qqqzblr0000gn/T/test4918273972257819172.txt --input /Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/examples/metrics/exampleMetrics.bam --verbosity ERROR  --metricAccumulationLevel ALL_READS --readValidationStringency SILENT --interval_set_rule UNION --interval_padding 0 --bamPartitionSize 0 --disableSequenceDictionaryValidation false --shardedOutput false --numReducers 0 --sparkMaster local[*] --help false --version false --QUIET false --use_jdk_deflater false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: August 12, 2016 11:29:47 AM EDT
+
+## METRICS CLASS	org.broadinstitute.hellbender.tools.examples.metrics.multi.ExampleMultiMetrics
+NUMREADS	SAMPLE	LIBRARY	READ_GROUP
+52			
+
+
