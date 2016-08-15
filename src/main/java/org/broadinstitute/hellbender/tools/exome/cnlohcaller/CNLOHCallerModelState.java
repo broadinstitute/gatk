@@ -17,8 +17,8 @@ public class CNLOHCallerModelState implements Serializable {
 
     static final long serialVersionUID = 33733733712L;
 
-    final static private int MIN_CN = 0;
-    final static private int MAX_CN = 5;
+    private static final int MIN_CN = 0;
+    private static final int MAX_CN = 5;
 
     private double effectiveAlpha;
 

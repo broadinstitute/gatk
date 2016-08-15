@@ -132,7 +132,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * Reads with length lower than this number, after clipping off overhands outside the active region,
      * won't be considered for genotyping.
      */
-    private final static int READ_LENGTH_FILTER_THRESHOLD = 10;
+    private static final int READ_LENGTH_FILTER_THRESHOLD = 10;
 
     /**
      * Reads with mapping quality lower than this number won't be considered for genotyping, even if they have
@@ -142,8 +142,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private static final List<VariantContext> NO_CALLS = Collections.emptyList();
 
-    private final static Allele FAKE_REF_ALLELE = Allele.create("N", true); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
-    private final static Allele FAKE_ALT_ALLELE = Allele.create("<FAKE_ALT>", false); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
+    private static final Allele FAKE_REF_ALLELE = Allele.create("N", true); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
+    private static final Allele FAKE_ALT_ALLELE = Allele.create("<FAKE_ALT>", false); // used in isActive function to call into UG Engine. Should never appear anywhere in a VCF file
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,

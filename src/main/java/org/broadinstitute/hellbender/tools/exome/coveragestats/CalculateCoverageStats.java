@@ -160,7 +160,7 @@ public final class CalculateCoverageStats extends CommandLineProgram {
     private Pair<Boolean, List<String>> checkInputCoverageContent() {
         try (final ReadCountsReader reader = new ReadCountsReader(inputFile)) {
             final List<String> countColumnNames = reader.getCountColumnNames();
-            if (countColumnNames.size() == 0) {
+            if (countColumnNames.isEmpty()) {
                 throw new UserException.BadInput("the input coverage does not contain any coverage column");
             }
             return new Pair<>(reader.hasTargetIntervals(), countColumnNames);

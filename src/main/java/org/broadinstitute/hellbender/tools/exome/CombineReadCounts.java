@@ -500,7 +500,7 @@ public final class CombineReadCounts extends CommandLineProgram {
             for (final TableReader<ReadCountRecord> reader : readers) {
                 unsortedCountColumnNames.addAll(readCountColumnNames(reader.columns()));
             }
-            if (unsortedCountColumnNames.size() == 0) {
+            if (unsortedCountColumnNames.isEmpty()) {
                 throw new IllegalStateException("there must be at least one count column");
             }
             countColumnSourceIndexMap = IntStream.range(0, unsortedCountColumnNames.size()).boxed()

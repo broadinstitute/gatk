@@ -41,7 +41,7 @@ public class AllelicCount implements Locatable {
 
         this.refReadCount = ParamUtils.isPositiveOrZero(refReadCount, "Can't construct AllelicCount with negative read counts.");
         this.altReadCount = ParamUtils.isPositiveOrZero(altReadCount, "Can't construct AllelicCount with negative read counts.");
-        ParamUtils.isPositive(altReadCount + refReadCount, "Can't construct AllelicCount with zero total counts.");
+        ParamUtils.isPositiveOrZero(altReadCount + refReadCount, "Can't construct AllelicCount with negative total counts.");
 
         this.interval = Utils.nonNull(interval, "Can't construct AllelicCount with null interval.");
 
@@ -106,9 +106,12 @@ public class AllelicCount implements Locatable {
 
     /**
      * Returns the maximum likelihood estimate of the alternate-allele fraction.
-     * @return      alternate-allele fraction
+     * @return      alternate-allele fraction (or {@code Double.NaN} if total count is zero)
      */
     public double estimateAltAlleleFraction() {
+        if (refReadCount + altReadCount == 0) {
+            return Double.NaN;
+        }
         return (double) altReadCount / (refReadCount + altReadCount);
     }
 

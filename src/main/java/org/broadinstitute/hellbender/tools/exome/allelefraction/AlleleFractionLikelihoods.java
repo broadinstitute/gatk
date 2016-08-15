@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.allelefraction;
 import org.apache.commons.math3.special.Gamma;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -10,7 +11,6 @@ import java.util.Collection;
 import java.util.stream.IntStream;
 
 import static java.lang.Math.log;
-import static java.lang.Math.min;
 import static java.lang.Math.sqrt;
 import static org.broadinstitute.hellbender.utils.MathUtils.log10Factorial;
 import static org.broadinstitute.hellbender.utils.MathUtils.log10ToLog;
@@ -62,10 +62,10 @@ public final class AlleleFractionLikelihoods {
      */
     public static double hetLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction,
                                           final AllelicCount count, final AlleleFractionIndicator indicator,
-                                          final AllelicPanelOfNormals allelicPON) {
+                                          final AllelicPanelOfNormals allelicPoN) {
         final SimpleInterval site = count.getInterval();
-        final double alpha = allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON) ? parameters.getAlpha() : allelicPON.getAlpha(site);
-        final double beta = allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON) ? parameters.getBeta() : allelicPON.getBeta(site);
+        final double alpha = allelicPoN.equals(AllelicPanelOfNormals.EMPTY_PON) ? parameters.getAlpha() : allelicPoN.getAlpha(site);
+        final double beta = allelicPoN.equals(AllelicPanelOfNormals.EMPTY_PON) ? parameters.getBeta() : allelicPoN.getBeta(site);
         final double pi = parameters.getOutlierProbability();
         final int a = count.getAltReadCount();
         final int r = count.getRefReadCount();
@@ -90,15 +90,15 @@ public final class AlleleFractionLikelihoods {
      * @param parameters global parameters mean, variance, and outlier probability of allele fraction model
      * @param minorFraction minor allele fraction of segment containing this het site
      * @param count AllelicCount of alt and ref reads
-     * @param allelicPON allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
+     * @param allelicPoN allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
      * @return the log of the likelihood at this het site, marginalized over indicator states.
      */
     public static double collapsedHetLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction,
-                                                   final AllelicCount count, final AllelicPanelOfNormals allelicPON) {
+                                                   final AllelicCount count, final AllelicPanelOfNormals allelicPoN) {
         return GATKProtectedMathUtils.logSumExp(
-                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.ALT_MINOR, allelicPON),
-                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.REF_MINOR, allelicPON),
-                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.OUTLIER, allelicPON));
+                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.ALT_MINOR, allelicPoN),
+                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.REF_MINOR, allelicPoN),
+                hetLogLikelihood(parameters, minorFraction, count, AlleleFractionIndicator.OUTLIER, allelicPoN));
     }
 
     /**
@@ -107,24 +107,24 @@ public final class AlleleFractionLikelihoods {
      * @param parameters global parameters mean, variance, and outlier probability of allele fraction model
      * @param minorFraction minor allele fraction of segment containing this het site
      * @param counts AllelicCount of alt and ref reads in this segment
-     * @param allelicPON allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
+     * @param allelicPoN allelic panel of normals constructed from total alt and ref counts observed across all normals at each site
      * @return the sum of log-likelihoods over all het sites in a segment
      */
     public static double segmentLogLikelihood(final AlleleFractionGlobalParameters parameters, final double minorFraction,
-                                              final Collection<AllelicCount> counts, final AllelicPanelOfNormals allelicPON) {
-        return counts.stream().mapToDouble(c -> collapsedHetLogLikelihood(parameters, minorFraction, c, allelicPON)).sum();
+                                              final Collection<AllelicCount> counts, final AllelicPanelOfNormals allelicPoN) {
+        return counts.stream().mapToDouble(c -> collapsedHetLogLikelihood(parameters, minorFraction, c, allelicPoN)).sum();
     }
 
     /**
      * the total log likelihood of all segments
-     * @param parameters
+     * @param parameters parameters
      * @param data data
      * @return sum of log likelihoods of all segments
      */
     public static double logLikelihood(final AlleleFractionGlobalParameters parameters, final AlleleFractionState.MinorFractions minorFractions,
                                        final AlleleFractionData data) {
         return IntStream.range(0, data.getNumSegments())
-                .mapToDouble(s -> segmentLogLikelihood(parameters, minorFractions.get(s), data.getCountsInSegment(s), data.getPON())).sum();
+                .mapToDouble(s -> segmentLogLikelihood(parameters, minorFractions.get(s), data.getCountsInSegment(s), data.getPoN())).sum();
     }
 
     /**
@@ -134,7 +134,7 @@ public final class AlleleFractionLikelihoods {
      * @param biasVariance  variance of the allelic-bias prior
      * @param counts        counts at all sites in the {@link AllelicPanelOfNormals}
      */
-    protected static double logLikelihoodForAllelicPanelOfNormals(final double meanBias, final double biasVariance, final AllelicCountCollection counts) {
+    public static double logLikelihoodForAllelicPanelOfNormals(final double meanBias, final double biasVariance, final AllelicCountCollection counts) {
         final double alpha = alpha(meanBias, biasVariance);
         final double beta = beta(meanBias, biasVariance);
         final double balancedMinorAlleleFraction = 0.5;
@@ -155,6 +155,22 @@ public final class AlleleFractionLikelihoods {
      */
     public static double beta(final double meanBias, final double biasVariance) {
         return meanBias / biasVariance;
+    }
+
+    /**
+     * Calculates the mean bias from the gamma-distribution parameters.  Does not check
+     * that inputs are positive in order to keep this method suitable for performance-sensitive code.
+     */
+    public static double meanBias(final double alpha, final double beta) {
+        return alpha / beta;
+    }
+
+    /**
+     * Calculates the bias variance from the gamma-distribution parameters.  Does not check
+     * that inputs are positive in order to keep this method suitable for performance-sensitive code.
+     */
+    public static double biasVariance(final double alpha, final double beta) {
+        return alpha / (beta * beta);
     }
 
     /**
@@ -191,7 +207,7 @@ public final class AlleleFractionLikelihoods {
      * @param a     alt counts
      * @param r     ref counts
      */
-    protected static double biasPosteriorMode(final double alpha, final double beta, final double f, final int a, final int r) {
+    public static double biasPosteriorMode(final double alpha, final double beta, final double f, final int a, final int r) {
         final double w = (1 - f) * (a - alpha + 1) + beta * f;
         return (sqrt(w * w + 4 * beta * f * (1 - f) * (r + alpha - 1)) - w) / (2 * beta * (1 - f));
     }
@@ -207,7 +223,7 @@ public final class AlleleFractionLikelihoods {
      * @param n         total counts
      * @param lambda0   mode of allelic-bias posterior
      */
-    protected static double biasPosteriorCurvature(final double alpha, final double f, final int r, final int n, final double lambda0) {
+    public static double biasPosteriorCurvature(final double alpha, final double f, final int r, final int n, final double lambda0) {
         final double y = (1 - f)/(f + (1 - f) * lambda0);
         return n * y * y - (r + alpha - 1) / (lambda0 * lambda0);
     }
@@ -218,7 +234,7 @@ public final class AlleleFractionLikelihoods {
      * @param lambda0   mode of allelic-bias posterior
      * @param kappa     curvature of allelic-bias posterior
      */
-    protected static double biasPosteriorEffectiveAlpha(final double lambda0, final double kappa) {
+    public static double biasPosteriorEffectiveAlpha(final double lambda0, final double kappa) {
         return 1 - kappa * lambda0 * lambda0;
     }
 
@@ -228,7 +244,7 @@ public final class AlleleFractionLikelihoods {
      * @param lambda0   mode of allelic-bias posterior
      * @param kappa     curvature of allelic-bias posterior
      */
-    protected static double biasPosteriorEffectiveBeta(final double lambda0, final double kappa) {
+    public static double biasPosteriorEffectiveBeta(final double lambda0, final double kappa) {
         return -kappa * lambda0;
     }
 }

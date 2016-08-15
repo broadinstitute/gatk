@@ -8,10 +8,11 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationResult;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationUtils;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5LibraryUnitTest;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
@@ -33,9 +34,7 @@ import java.util.stream.IntStream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgramTest {
-
     private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome");
-
     private static final File FULL_READ_COUNTS_INPUT = new File(TEST_DIR,"full-read-counts.txt");
     private static final File FULL_READ_COUNTS_INPUT_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts.1sample.txt");
     private static final File TARGET_NAME_ONLY_READ_COUNTS_INPUT = new File(TEST_DIR,"only-names-read-counts.txt");
@@ -48,13 +47,9 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private static final File FULL_READ_COUNTS_MISSING_A_TARGET_INPUT_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts-missing-a-target.1sample.txt");
     private static final File FULL_READ_COUNTS_BAD_NAME = new File(TEST_DIR,"full-read-counts-bad-target-name.txt");
     private static final File FULL_READ_COUNTS_BAD_NAME_ONE_SAMPLE = new File(TEST_DIR,"full-read-counts-bad-target-name.1sample.txt");
-
     private static final File TEST_TARGETS = new File(TEST_DIR,"targets.tsv");
-
     private static final File TEST_TARGETS_WITH_BAD_NAME = new File(TEST_DIR,"targets-with-bad-name.tsv");
-
-    private static final File TEST_PON = HDF5LibraryUnitTest.TEST_PON;
-
+    private static final File TEST_PON = new File(TEST_DIR, "test_creation_of_panel.pon");
 
     @Override
     public String getTestedClassName() {
@@ -332,7 +327,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
         try (final TableReader<double[]> reader = TableUtils.reader(betaHatsOutput,
                 (columns, formatExceptionFactory) -> {
                     TableUtils.checkMandatoryColumns(columns, new TableColumnCollection(input.columnNames()), formatExceptionFactory);
-                    if (!columns.matches(0, NormalizeSomaticReadCounts.PON_SAMPLE_BETA_HAT_COLUMN_NAME) ||
+                    if (!columns.matches(0, PCATangentNormalizationResult.PON_SAMPLE_BETA_HAT_COLUMN_NAME) ||
                             columns.columnCount() != input.columnNames().size() + 1) {
                         Assert.fail("Beta-hats has bad header");
                     }
@@ -412,8 +407,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
 
     private void assertFactorNormalizedValues(final ReadCountCollection input, final ReadCountCollection factorNormalized) {
         try (final HDF5File ponReader = new HDF5File(TEST_PON)) {
-            final PoN pon = new HDF5PoN(ponReader);
-            final RealMatrix targetFactors = pon.getTargetFactors();
+            final PCACoveragePoN pon = new HDF5PCACoveragePoN(ponReader);
+            final double[] targetFactors = pon.getTargetFactors();
             final List<String> ponTargets = pon.getTargetNames();
             final Map<String,Integer> ponTargetIndexes = new HashMap<>(ponTargets.size());
             for (int i = 0; i < ponTargets.size(); i++) {
@@ -422,7 +417,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
             final RealMatrix inputCounts = input.counts();
             final RealMatrix factorNormalizedCounts = factorNormalized.counts();
             for (int i = 0; i < factorNormalizedCounts.getRowDimension(); i++) {
-                final double factor = targetFactors.getEntry(ponTargetIndexes.get(factorNormalized.targets().get(i).getName()),0);
+                final double factor = targetFactors[ponTargetIndexes.get(factorNormalized.targets().get(i).getName())];
                 final double[] inputValues = inputCounts.getRow(i);
                 final double[] outputValues = factorNormalizedCounts.getRow(i);
                 for (int j = 0; j < inputValues.length; j++) {
@@ -447,7 +442,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
      * @param factorNormalized input.
      */
     private void assertPreTangentNormalizedValues(final ReadCountCollection factorNormalized, final ReadCountCollection preTangentNormalized) {
-        final double epsilon = TangentNormalizer.EPSILON;
+        final double epsilon = PCATangentNormalizationUtils.EPSILON;
         final RealMatrix outCounts = preTangentNormalized.counts();
         final RealMatrix inCounts = factorNormalized.counts();
         final double[] columnMeans = GATKProtectedMathUtils.columnMeans(inCounts);
@@ -481,7 +476,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
      */
     private void assertBetaHatsRobustToOutliers(final ReadCountCollection preTangentNormalized, final File ponFile) {
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
-            final PoN pon = new HDF5PoN(ponReader);
+            final PCACoveragePoN pon = new HDF5PCACoveragePoN(ponReader);
             final List<String> ponTargets = pon.getPanelTargetNames();
 
             final RealMatrix input = reorderTargetsToPoNOrder(preTangentNormalized, ponTargets);
@@ -497,8 +492,8 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
                 }
             });
 
-            final RealMatrix betaHats = pon.betaHats(input, true, TangentNormalizer.EPSILON);
-            final RealMatrix noisyBetaHats = pon.betaHats(noisyInput, true, TangentNormalizer.EPSILON);
+            final RealMatrix betaHats = PCATangentNormalizationUtils.calculateBetaHats(pon.getReducedPanelPInverseCounts(), input, PCATangentNormalizationUtils.EPSILON);
+            final RealMatrix noisyBetaHats = PCATangentNormalizationUtils.calculateBetaHats(pon.getReducedPanelPInverseCounts(), noisyInput, PCATangentNormalizationUtils.EPSILON);
             final RealMatrix difference = betaHats.subtract(noisyBetaHats);
 
             difference.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
@@ -517,10 +512,10 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private void assertBetaHats(final ReadCountCollection preTangentNormalized,
                                 final RealMatrix actual, final File ponFile) {
         Assert.assertEquals(actual.getColumnDimension(), preTangentNormalized.columnNames().size());
-        final double epsilon = TangentNormalizer.EPSILON;
+        final double epsilon = PCATangentNormalizationUtils.EPSILON;
 
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
-            final PoN pon = new HDF5PoN(ponReader);
+            final PCACoveragePoN pon = new HDF5PCACoveragePoN(ponReader);
             final List<String> ponTargets = pon.getPanelTargetNames();
             final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, ponTargets);
 
@@ -553,7 +548,7 @@ public class NormalizeSomaticReadCountsIntegrationTest extends CommandLineProgra
     private void assertTangentNormalized(final ReadCountCollection actualReadCounts, final ReadCountCollection preTangentNormalized, final RealMatrix betaHats, final File ponFile) {
 
         try (final HDF5File ponReader = new HDF5File(ponFile)) {
-            final PoN pon = new HDF5PoN(ponReader);
+            final PCACoveragePoN pon = new HDF5PCACoveragePoN(ponReader);
             final RealMatrix inCounts = reorderTargetsToPoNOrder(preTangentNormalized, pon.getPanelTargetNames());
             final RealMatrix actual = reorderTargetsToPoNOrder(actualReadCounts,pon.getPanelTargetNames());
             final RealMatrix ponMat = pon.getReducedPanelCounts();

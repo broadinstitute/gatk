@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
+import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
-import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 
 import java.util.Arrays;
 import java.util.HashMap;

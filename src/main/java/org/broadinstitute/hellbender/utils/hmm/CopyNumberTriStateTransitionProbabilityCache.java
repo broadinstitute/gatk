@@ -92,7 +92,7 @@ public class CopyNumberTriStateTransitionProbabilityCache {
 
     // wrapper for a real matrix that is indexed by the CopyNumberTriState enum
     private static class LogTransitionProbabilityMatrix {
-        final static int size = CopyNumberTriState.values().length;
+        static final int size = CopyNumberTriState.values().length;
         private final RealMatrix matrix;
 
         public LogTransitionProbabilityMatrix() {

@@ -134,15 +134,15 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
         // The actual work:
 
         // T x C matrix.
-        final RealMatrix eigenVectors = pca.getEigenVectors();
+        final RealMatrix eigenvectors = pca.getEigenvectors();
         final RealVector centers = pca.getCenters();
-        // S x T matrix with the counts ready to be multiplied by the eigen-vectors T x C
+        // S x T matrix with the counts ready to be multiplied by the eigenvectors T x C
         final RealMatrix transposedCoverage = composeCoverageMatrixReadyForNormalization(pcaTargetIndexByName, coverageTargetIndexByName, centers, coverage);
         // S x C matrix where each row indicate the projection value of the sample onto a component.
-        final RealMatrix projection = transposedCoverage.multiply(eigenVectors);
+        final RealMatrix projection = transposedCoverage.multiply(eigenvectors);
 
         // T x S matrix with the normalized new counts.
-        final RealMatrix resultMatrix = subtractComponentProjectionsAndTranspose(projection, transposedCoverage, eigenVectors, numComponents);
+        final RealMatrix resultMatrix = subtractComponentProjectionsAndTranspose(projection, transposedCoverage, eigenvectors, numComponents);
 
         // Creates the output read count collection.
         final ReadCountCollection tangentNormalizedCoverage = new ReadCountCollection(composeTargetList(pca, coverage, coverageTargetIndexByName),
@@ -191,7 +191,7 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
      * @return never {@code null}, a S(sample) x T
      */
     private RealMatrix subtractComponentProjectionsAndTranspose(final RealMatrix projection,
-            final RealMatrix transposedCoverage, final RealMatrix eigenVectors, final int numberOfComponentsToUse) {
+            final RealMatrix transposedCoverage, final RealMatrix eigenvectors, final int numberOfComponentsToUse) {
         final int sampleCount = projection.getRowDimension();
         final int targetCount = transposedCoverage.getColumnDimension();
         final int componentCount = Math.min(numberOfComponentsToUse, projection.getColumnDimension());
@@ -199,10 +199,10 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
         for (int i = 0; i < sampleCount; i++) {
             final double[] newCoverage = transposedCoverage.getRow(i);
             for (int j = 0; j < componentCount; j++) {
-                final double[] eigenVector = eigenVectors.getColumn(j);
+                final double[] eigenvector = eigenvectors.getColumn(j);
                 final double factor = projection.getEntry(i, j);
                 for (int k = 0; k < targetCount; k++) {
-                    newCoverage[k] -= eigenVector[k] * factor;
+                    newCoverage[k] -= eigenvector[k] * factor;
                 }
             }
             result.setColumn(i, newCoverage);
@@ -224,7 +224,7 @@ public final class SubtractCoverageComponents extends CommandLineProgram {
      */
     private Map<String, Integer> composeComponentTargetIndexMap(final PCA pca) {
         final Map<String, Integer> result = composeTargetIndexByNameMap(pca.getVariables(), "input pca file");
-        if (result.size() == 0) {
+        if (result.isEmpty()) {
             throw new UserException.BadInput("there are 0 targets in the PCA file");
         }
         return result;

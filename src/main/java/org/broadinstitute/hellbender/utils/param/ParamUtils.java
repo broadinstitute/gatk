@@ -231,7 +231,7 @@ public class ParamUtils {
     public static void writeValuesToFile(final double[] data, final File outputFile) {
         Utils.nonNull(data, "input data cannot be null");
         try (final FileWriter writer = new FileWriter(outputFile.getAbsolutePath())) {
-            for (double d : data) {
+            for (final double d : data) {
                 writer.write(String.valueOf(d) + System.lineSeparator());
             }
         } catch (final IOException ioe) {

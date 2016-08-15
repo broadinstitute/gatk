@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.analysis.integration.SimpsonIntegrator;
 import org.apache.commons.math3.analysis.integration.UnivariateIntegrator;
 import org.apache.commons.math3.special.Gamma;

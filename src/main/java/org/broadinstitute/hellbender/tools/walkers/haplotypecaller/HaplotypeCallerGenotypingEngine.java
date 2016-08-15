@@ -539,7 +539,7 @@ public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<Asse
         for (final Map.Entry<String,List<GATKRead>> sampleEntry : perSampleFilteredReadList.entrySet()) {
             final List<GATKRead> originalList = sampleEntry.getValue();
             final String sample = sampleEntry.getKey();
-            if (originalList == null || originalList.size() == 0) {
+            if (originalList == null || originalList.isEmpty()) {
                 continue;
             }
             final List<GATKRead> newList = new ArrayList<>(originalList.size());
@@ -548,7 +548,7 @@ public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<Asse
                     newList.add(read);
                 }
             }
-            if (newList.size() == 0) {
+            if (newList.isEmpty()) {
                 continue;
             }
             overlappingFilteredReads.put(sample,newList);

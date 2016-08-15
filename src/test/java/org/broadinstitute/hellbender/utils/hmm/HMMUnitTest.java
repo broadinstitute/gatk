@@ -28,7 +28,7 @@ import java.util.stream.IntStream;
  */
 public final class HMMUnitTest extends BaseTest {
 
-    private final static Random RANDOM = new Random(1313);
+    private static final Random RANDOM = new Random(1313);
 
     private static List<TestHMModel> TEST_MODELS = new ArrayList<>(Arrays.asList(
             TestHMModel.fromPhredProbabilities(

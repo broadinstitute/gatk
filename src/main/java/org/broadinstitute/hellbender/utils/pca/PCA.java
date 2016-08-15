@@ -32,7 +32,7 @@ public final class PCA {
 
     public static final String CENTERS_FULL_PATH = PCA_GROUP_NAME + "/" + "CENTERS";
 
-    public static final String EIGEN_VECTORS_FULL_PATH = PCA_GROUP_NAME + "/" + "EIGEN_VECTORS";
+    public static final String EIGENVECTORS_FULL_PATH = PCA_GROUP_NAME + "/" + "EIGEN_VECTORS";
 
     /**
      * Array of variable centers subtracted from the data-matrix before PCA.
@@ -40,10 +40,10 @@ public final class PCA {
     private final double[] centers;
 
     /**
-     * Principal component directions or eigenVectors, one per column in the same order
+     * Principal component directions or eigenvectors, one per column in the same order
      * as in {@link #variances}.
      */
-    private final RealMatrix eigenVectors;
+    private final RealMatrix eigenvectors;
 
     /**
      * Principal component variances sorted by magnitude (large variance comes first).
@@ -122,10 +122,10 @@ public final class PCA {
             centers[i] = center;
         }
         final SVD svd = svdFactory.apply(centered);
-        final RealMatrix eigenVectors = svd.getU();
+        final RealMatrix eigenvectors = svd.getU();
         final double inverseDenominator = 1.0 / (columnCount - 1.0);
         final double[] variances = DoubleStream.of(svd.getSingularValues()).map(d -> d * d * inverseDenominator).toArray();
-        return new PCA(variableNames, sampleNames, centers, eigenVectors, variances);
+        return new PCA(variableNames, sampleNames, centers, eigenvectors, variances);
     }
 
     /**
@@ -164,19 +164,19 @@ public final class PCA {
      * Creates a PCA instance given all its member values.
      *
      * @param centers the new instance centers.
-     * @param eigenVectors the new instance eigenVectors.
+     * @param eigenvectors the new instance eigenvectors.
      * @param variances the new instance variances.
      */
-    private PCA(final List<String> variables, final List<String> samples, final double[] centers, final RealMatrix eigenVectors, final double[] variances) {
+    private PCA(final List<String> variables, final List<String> samples, final double[] centers, final RealMatrix eigenvectors, final double[] variances) {
         this.variables = variables;
         this.samples = samples;
         this.centers = centers;
-        this.eigenVectors = eigenVectors;
+        this.eigenvectors = eigenvectors;
         this.variances = variances;
     }
 
     /**
-     * Returns the eigen-vectors for the principal components.
+     * Returns the eigenvectors for the principal components.
      * <p>
      *     The result matrix has one column per principal components.
      * </p>
@@ -186,8 +186,8 @@ public final class PCA {
      *
      * @return never {@code null}.
      */
-    public RealMatrix getEigenVectors() {
-        return eigenVectors;
+    public RealMatrix getEigenvectors() {
+        return eigenvectors;
     }
 
     /**
@@ -225,7 +225,7 @@ public final class PCA {
         }
         output.makeDoubleArray(VARIANCES_FULL_PATH, pca.variances);
         output.makeDoubleArray(CENTERS_FULL_PATH, pca.centers);
-        output.makeDoubleMatrix(EIGEN_VECTORS_FULL_PATH, pca.eigenVectors.getData());
+        output.makeDoubleMatrix(EIGENVECTORS_FULL_PATH, pca.eigenvectors.getData());
     }
 
     /**
@@ -238,10 +238,10 @@ public final class PCA {
     public static PCA readHDF5(final HDF5File hdf5)  {
         final List<String> variables = hdf5.isPresent(VARIABLES_FULL_PATH) ? Arrays.asList(hdf5.readStringArray(VARIABLES_FULL_PATH)) : null;
         final List<String> samples = hdf5.isPresent(SAMPLES_FULL_PATH) ? Arrays.asList(hdf5.readStringArray(SAMPLES_FULL_PATH)) : null;
-        final RealMatrix eigenVectors = new Array2DRowRealMatrix(hdf5.readDoubleMatrix(EIGEN_VECTORS_FULL_PATH));
+        final RealMatrix eigenvectors = new Array2DRowRealMatrix(hdf5.readDoubleMatrix(EIGENVECTORS_FULL_PATH));
         final double[] centers = hdf5.readDoubleArray(CENTERS_FULL_PATH);
         final double[] variances = hdf5.readDoubleArray(VARIANCES_FULL_PATH);
-        return new PCA(variables, samples, centers, eigenVectors, variances);
+        return new PCA(variables, samples, centers, eigenvectors, variances);
     }
 
     /**

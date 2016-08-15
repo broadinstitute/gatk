@@ -18,7 +18,7 @@ import java.util.Random;
 /**
  * @author lichtens &lt;lichtens@broadinstitute.org&gt;
  */
-final public class CoverageDropoutDetectorTest extends BaseTest {
+public final class CoverageDropoutDetectorTest extends BaseTest {
 
 
     @DataProvider(name = "randomUnivariateGaussianTargetsLowVariance")

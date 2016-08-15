@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 
 public final class ReadThreadingGraphUnitTest extends BaseTest {
-    private final static boolean DEBUG = false;
+    private static final boolean DEBUG = false;
 
     public static byte[] getBytes(final String alignment) {
         return alignment.replace("-","").getBytes();

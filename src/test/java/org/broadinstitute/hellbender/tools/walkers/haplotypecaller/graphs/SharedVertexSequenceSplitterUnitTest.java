@@ -13,7 +13,7 @@ import java.io.File;
 import java.util.*;
 
 public class SharedVertexSequenceSplitterUnitTest extends BaseTest {
-    private final static boolean PRINT_GRAPHS = false;
+    private static final boolean PRINT_GRAPHS = false;
 
     @DataProvider(name = "PrefixSuffixData")
     public Object[][] makePrefixSuffixData() {

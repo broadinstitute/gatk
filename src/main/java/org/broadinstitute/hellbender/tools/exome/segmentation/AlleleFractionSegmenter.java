@@ -1,11 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
+import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionGlobalParameters;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionInitializer;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionState;
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionGlobalParameters;
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 

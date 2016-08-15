@@ -361,6 +361,6 @@ public final class AssemblyRegionTestDataSetUnitTest extends BaseTest {
                     "CTGGGAGCCTAAGGCATCACTCAAGATACAGGCTCGGTAACGTACGCTCTAGCCATCTAA" +
                     "CTATCCCCTATGTCTTATAGGGACCTACGTTATCTGCCTG";
 
-    protected final static String REF_MD5 = Utils.calcMD5(REF);
+    protected static final String REF_MD5 = Utils.calcMD5(REF);
 
 }

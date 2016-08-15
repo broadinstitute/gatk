@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.exception.MaxCountExceededException;
 import org.apache.commons.math3.special.Beta;
 import org.apache.logging.log4j.LogManager;
@@ -35,16 +34,15 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleFractionInitializer {
-    @VisibleForTesting
-    protected static final double INITIAL_OUTLIER_PROBABILITY = 0.01;
-    protected static final double INITIAL_MEAN_BIAS = 1.0;
-    protected static final double INITIAL_BIAS_VARIANCE = 0.1;   // this is an overestimate, but starting small makes it slow for
+    public static final double INITIAL_OUTLIER_PROBABILITY = 0.01;
+    public static final double INITIAL_MEAN_BIAS = 1.0;
+    public static final double INITIAL_BIAS_VARIANCE = 0.1;   // this is an overestimate, but starting small makes it slow for
                                                                  // mean bias to escape a bad initial guess
     public static final AlleleFractionGlobalParameters INITIAL_GLOBAL_PARAMETERS =
         new AlleleFractionGlobalParameters(INITIAL_MEAN_BIAS, INITIAL_BIAS_VARIANCE, INITIAL_OUTLIER_PROBABILITY);
 
-    protected static final double LOG_LIKELIHOOD_CONVERGENCE_THRESHOLD = 0.5;
-    protected static final int MAX_ITERATIONS = 50;
+    public static final double LOG_LIKELIHOOD_CONVERGENCE_THRESHOLD = 0.5;
+    public static final int MAX_ITERATIONS = 50;
 
     //define maxima of search intervals for maximum likelihood -- parameter values above these would be ridiculous
     public static final double MAX_REASONABLE_OUTLIER_PROBABILITY = 0.1;
@@ -149,7 +147,7 @@ public final class AlleleFractionInitializer {
 
     private double estimateMinorFraction(final int segment, final AlleleFractionData data) {
         final Function<Double, Double> objective = minorFraction ->
-            AlleleFractionLikelihoods.segmentLogLikelihood(globalParameters, minorFraction, data.getCountsInSegment(segment), data.getPON());
+            AlleleFractionLikelihoods.segmentLogLikelihood(globalParameters, minorFraction, data.getCountsInSegment(segment), data.getPoN());
         return OptimizationUtils.argmax(objective, 0.0, MAX_MINOR_ALLELE_FRACTION, minorFractions.get(segment));
     }
 

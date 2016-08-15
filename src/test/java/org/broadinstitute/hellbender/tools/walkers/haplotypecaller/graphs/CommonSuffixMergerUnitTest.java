@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class CommonSuffixMergerUnitTest extends BaseTest {
-    private final static boolean PRINT_GRAPHS = false;
+    private static final boolean PRINT_GRAPHS = false;
 
     @DataProvider(name = "CompleteCycleData")
     public Object[][] makeCompleteCycleData() {

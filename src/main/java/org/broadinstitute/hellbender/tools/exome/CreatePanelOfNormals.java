@@ -9,11 +9,12 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.pon.coverage.CoveragePoNQCUtils;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoNCreationUtils;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoNCreator;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -21,6 +22,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.stream.DoubleStream;
 
 /**
  * Tool to create a panel of normals (PoN) given a collection of read-counts
@@ -39,8 +41,9 @@ import java.util.OptionalInt;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Create a Panel of Normals (PoN) given the proportional read counts for the samples that are part of the panel.  Supports Apache Spark for some operations.",
-        oneLineSummary = "Create a Panel of Normals",
+        summary = "Create a coverage panel of normals (PoN) given the proportional read counts " +
+                "for samples in the panel.  Supports Apache Spark for some operations.",
+        oneLineSummary = "Create a coverage panel of normals",
         programGroup = CopyNumberProgramGroup.class
 )
 public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
@@ -49,29 +52,20 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
 
     public static final double DEFAULT_TARGET_FACTOR_THRESHOLD_PERCENTILE = 25.0;
 
+    public static final double DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_COLUMN = 2.0;
+
+    public static final double DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET = 5.0;
+
     public static final double DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE = 2.5;
 
     // 0.1% by default as copied from python code... perhaps a bug there as most of these constants in that code
     // are then multiplied by 100 or subtracted from a 100, check out PanelCleaner.py in ReCapSeg repo.
     public static final double DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD = 0.1;
 
-    public static final double DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_COLUMN = 2.0;
+    public static final String INFER_NUMBER_OF_EIGENSAMPLES = "auto";
 
-    public static final double DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET = 5.0;
+    public static final String DEFAULT_NUMBER_OF_EIGENSAMPLES = INFER_NUMBER_OF_EIGENSAMPLES;
 
-    public static final String INFER_NUMBER_OF_EIGEN_SAMPLES = "auto";
-
-    public static final String DEFAULT_NUMBER_OF_EIGEN_SAMPLES = INFER_NUMBER_OF_EIGEN_SAMPLES;
-
-
-    public static final String NUMBER_OF_EIGEN_SAMPLES_DOCUMENTATION =
-            "Number of eigen samples to use for the reduced PoN. " +
-            "By default it will infer the appropriate number of eigen samples (value " + INFER_NUMBER_OF_EIGEN_SAMPLES + ")";
-
-    public static final String COLUMN_EXTREME_THRESHOLD_PERCENTILE_DOCUMENTATION =
-            "Percentile for the two-tailed extreme median column coverage filter. " +
-            "Columns that have a median count in the that bottom or top percentile are excluded from the PoN. " +
-            "Any value in the range (0, 50) (default is " + DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE + ")";
 
     public static final String TARGET_FACTOR_THRESHOLD_PERCENTILE_DOCUMENTATION =
             "Percentile to determine the minimum target factor for any target to be considered part of the PoN. " +
@@ -85,10 +79,19 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
             "Maximum percentage of 0 counts for a target to drop it from the panel. " +
                     "Any value in the range (0, 100) (default is " + DEFAULT_MAXIMUM_PERCENT_ZEROS_IN_TARGET + ")";
 
+    public static final String COLUMN_EXTREME_THRESHOLD_PERCENTILE_DOCUMENTATION =
+            "Percentile for the two-tailed extreme median column coverage filter. " +
+                    "Columns that have a median count in the that bottom or top percentile are excluded from the PoN. " +
+                    "Any value in the range (0, 50) (default is " + DEFAULT_COLUMN_OUTLIER_DROP_THRESHOLD_PERCENTILE + ")";
+
     public static final String COUNT_TRUNCATE_PERCENTILE_DOCUMENTATION =
             "Percentiles to obtain the maximum and minimum value for any count in the panel. " +
             "Any value outside the resulting range would be set will be truncated to that minimum or maximum. " +
             "Valid values are within the range (0, 50) (default is " + DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD + ")";
+
+    public static final String NUMBER_OF_EIGENSAMPLES_DOCUMENTATION =
+            "Number of eigensamples to use for the reduced PoN. " +
+                    "By default it will infer the appropriate number of eigensamples (value " + INFER_NUMBER_OF_EIGENSAMPLES + ")";
 
 
     public static final String TARGET_FACTOR_THRESHOLD_PERCENTILE_SHORT_NAME = "minTFPcTh";
@@ -101,8 +104,8 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
     public static final String COLUMN_EXTREME_THRESHOLD_PERCENTILE_FULL_NAME = "extremeColumnMedianCountPercentileThreshold";
     public static final String COUNT_TRUNCATE_PERCENTILE_SHORT_NAME = "truncPcThr";
     public static final String COUNT_TRUNCATE_PERCENTILE_FULL_NAME = "truncatePercentileThreshold";
-    public static final String NUMBER_OF_EIGEN_SAMPLES_SHORT_NAME = "numEigen";
-    public static final String NUMBER_OF_EIGEN_SAMPLES_FULL_NAME = "numberOfEigenSamples";
+    public static final String NUMBER_OF_EIGENSAMPLES_SHORT_NAME = "numEigen";
+    public static final String NUMBER_OF_EIGENSAMPLES_FULL_NAME = "numberOfEigensamples";
     public static final String DRY_RUN_SHORT_NAME = "dryRun";
     public static final String DRY_RUN_FULL_NAME = DRY_RUN_SHORT_NAME;
     public static final String NO_QC_SHORT_NAME = "noQC";
@@ -157,12 +160,12 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
     protected double outlierTruncatePercentileThresh = DEFAULT_OUTLIER_TRUNCATE_PERCENTILE_THRESHOLD;
 
     @Argument(
-            doc = NUMBER_OF_EIGEN_SAMPLES_DOCUMENTATION,
-            shortName = NUMBER_OF_EIGEN_SAMPLES_SHORT_NAME,
-            fullName = NUMBER_OF_EIGEN_SAMPLES_FULL_NAME,
+            doc = NUMBER_OF_EIGENSAMPLES_DOCUMENTATION,
+            shortName = NUMBER_OF_EIGENSAMPLES_SHORT_NAME,
+            fullName = NUMBER_OF_EIGENSAMPLES_FULL_NAME,
             optional = true
     )
-    protected String numberOfEigenSamples = DEFAULT_NUMBER_OF_EIGEN_SAMPLES;
+    protected String numberOfEigensamplesString = DEFAULT_NUMBER_OF_EIGENSAMPLES;
 
     @Argument(
             doc = "Skip the QC step.  PoN creation will be substantially faster, but greater risk of bad samples being introduced into the PoN.",
@@ -220,8 +223,8 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
     protected boolean dryRun = false;
 
     @Override
-    protected void runPipeline(JavaSparkContext ctx) {
-        if (! new HDF5Library().load(null)){  //Note: passing null means using the default temp dir.
+    protected void runPipeline(final JavaSparkContext ctx) {
+        if (!new HDF5Library().load(null)) {  //Note: passing null means using the default temp dir.
             throw new UserException.HardwareFeatureException("Cannot load the required HDF5 library. " +
                     "HDF5 is currently supported on x86-64 architecture and Linux or OSX systems.");
         }
@@ -234,47 +237,45 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
         }
 
         // Check parameters and load values to meet the backend PoN creation interface
+        validateArguments();
         final TargetCollection<Target> targets = targetArguments.readTargetCollection(true);
-        final double targetFactorPercentileThreshold = checkTargetFactorsPercentileThreshold();
-        final double extremeColumnMedianCountPercentileThreshold = checkExtremeColumnMedianCountsPercentileThreshold();
-        final double countTruncatePercentile = checkCountTruncatePercentile();
-        final double maximumPercentageZeroTargets = checkTargetMaximumZeroPercentage();
-        final double maximumPercentageZeroColumns = checkColumnMaximumZeroPercentage();
-        final OptionalInt numberOfEigenSamples = calculatePreferredNumberOfEigenSamples();
+        final OptionalInt numberOfEigensamples = parseNumberOfEigensamples(numberOfEigensamplesString);
 
         // Create the PoN, including QC, if specified.
         if (!isNoQc && !dryRun) {
             logger.info("QC:  Beginning creation of QC PoN...");
             final File outputQCFile = IOUtils.createTempFile("qc-pon-",".hd5");
-            HDF5PoNCreator.createPoN(ctx, inputFile, OptionalInt.of(NUM_QC_EIGENSAMPLES), new ArrayList<>(),
-                    outputQCFile, dryRun, targets, targetFactorPercentileThreshold, extremeColumnMedianCountPercentileThreshold,
-                    countTruncatePercentile, maximumPercentageZeroTargets, maximumPercentageZeroColumns);
+            HDF5PCACoveragePoNCreationUtils.create(ctx, outputQCFile, HDF5File.OpenMode.READ_WRITE, inputFile, targets, new ArrayList<>(),
+                    targetFactorThreshold, maximumPercentZerosInColumn, maximumPercentZerosInTarget,
+                    columnExtremeThresholdPercentile, outlierTruncatePercentileThresh, OptionalInt.of(NUM_QC_EIGENSAMPLES), dryRun
+            );
             logger.info("QC:  QC PoN created...");
 
             logger.info("QC:  Collecting suspicious samples...");
-            final List<String> failingSampleNames = PoNIssueDetector.retrieveSamplesWithArmLevelEvents(outputQCFile, ctx);
+            try (final HDF5File ponReader = new HDF5File(outputQCFile, HDF5File.OpenMode.READ_ONLY)) {
+                final PCACoveragePoN qcPoN = new HDF5PCACoveragePoN(ponReader);
+                final List<String> failingSampleNames = CoveragePoNQCUtils.retrieveSamplesWithArmLevelEvents(qcPoN, ctx);
+                ParamUtils.writeStringListToFile(failingSampleNames, blacklistOutFile);
+                // If no suspicious samples were found, just redo the PoN reduction to save time.
+                if (failingSampleNames.size() != 0) {
+                    logger.info("QC:  Suspicious sample list created...");
 
-            ParamUtils.writeStringListToFile(failingSampleNames, blacklistOutFile);
-
-            // If no suspicious samples were found, just redo the PoN reduction to save time.
-            if (failingSampleNames.size() != 0) {
-                logger.info("QC:  Suspicious sample list created...");
-
-                logger.info("Creating final PoN with " + failingSampleNames.size() + " suspicious samples removed...");
-                HDF5PoNCreator.createPoN(ctx, inputFile, numberOfEigenSamples, failingSampleNames, outFile, dryRun,
-                        targets, targetFactorPercentileThreshold, extremeColumnMedianCountPercentileThreshold,
-                        countTruncatePercentile, maximumPercentageZeroTargets, maximumPercentageZeroColumns);
-            } else {
-                logger.info("QC:  No suspicious samples found ...");
-                logger.info("Creating final PoN only redo'ing the reduction step ...");
-                HDF5PoNCreator.redoReduction(ctx, numberOfEigenSamples, outputQCFile, outFile);
+                    logger.info("Creating final PoN with " + failingSampleNames.size() + " suspicious samples removed...");
+                    HDF5PCACoveragePoNCreationUtils.create(ctx, outFile, HDF5File.OpenMode.CREATE, inputFile, targets, failingSampleNames,
+                            targetFactorThreshold, maximumPercentZerosInColumn, maximumPercentZerosInTarget,
+                            columnExtremeThresholdPercentile, outlierTruncatePercentileThresh, numberOfEigensamples, dryRun);
+                } else {
+                    logger.info("QC:  No suspicious samples found ...");
+                    logger.info("Creating final PoN only redo'ing the reduction step ...");
+                    HDF5PCACoveragePoNCreationUtils.redoReduction(ctx, numberOfEigensamples, outputQCFile, outFile, HDF5File.OpenMode.CREATE);
+                }
             }
-
         } else {
             logger.info("Creating PoN directly (skipping QC)...");
-            HDF5PoNCreator.createPoN(ctx, inputFile, numberOfEigenSamples, new ArrayList<>(), outFile, dryRun, targets,
-                    targetFactorPercentileThreshold, extremeColumnMedianCountPercentileThreshold,
-                    countTruncatePercentile, maximumPercentageZeroTargets, maximumPercentageZeroColumns);
+            HDF5PCACoveragePoNCreationUtils.create(ctx, outFile, HDF5File.OpenMode.CREATE, inputFile, targets, new ArrayList<>(),
+                    targetFactorThreshold, maximumPercentZerosInColumn, maximumPercentZerosInTarget,
+                    columnExtremeThresholdPercentile, outlierTruncatePercentileThresh, numberOfEigensamples, dryRun
+            );
         }
 
         if (!dryRun) {
@@ -284,92 +285,54 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
         logger.info("Done...");
     }
 
+    private void validateArguments() {
+        Utils.validateArg(targetFactorThreshold >= 0 && targetFactorThreshold <= 100 && !Double.isNaN(targetFactorThreshold),
+                TARGET_FACTOR_THRESHOLD_PERCENTILE_FULL_NAME + " must be in [0, 100].");
+        Utils.validateArg(maximumPercentZerosInColumn >= 0 && maximumPercentZerosInColumn <= 100 && !Double.isNaN(maximumPercentZerosInColumn),
+                MAXIMUM_PERCENT_ZEROS_IN_COLUMN_FULL_NAME + " must be in [0, 100].");
+        Utils.validateArg(maximumPercentZerosInTarget >= 0 && maximumPercentZerosInTarget <= 100 && !Double.isNaN(maximumPercentZerosInTarget),
+                MAXIMUM_PERCENT_ZEROS_IN_TARGET_FULL_NAME + " must be in [0, 100].");
+        Utils.validateArg(columnExtremeThresholdPercentile >= 0 && columnExtremeThresholdPercentile <= 50 && !Double.isNaN(columnExtremeThresholdPercentile),
+                COLUMN_EXTREME_THRESHOLD_PERCENTILE_FULL_NAME + " must be in [0, 50].");
+        Utils.validateArg(outlierTruncatePercentileThresh >= 0 && outlierTruncatePercentileThresh <= 50 && !Double.isNaN(outlierTruncatePercentileThresh),
+                COUNT_TRUNCATE_PERCENTILE_FULL_NAME + " must be in [0, 50].");
+    }
 
     /**
-     * Composes the preferred number of eigen values optional given the user input.
+     * Composes the preferred number of eigenvalues optional given the user input.
      *
      * @return an empty optional if the user elected to use the automatic/inferred value, otherwise
      * a strictly positive integer.
      */
-    private OptionalInt calculatePreferredNumberOfEigenSamples() {
-        if (numberOfEigenSamples.equalsIgnoreCase(INFER_NUMBER_OF_EIGEN_SAMPLES)) {
+    private static OptionalInt parseNumberOfEigensamples(final String numberOfEigensamplesString) {
+        if (numberOfEigensamplesString.equalsIgnoreCase(INFER_NUMBER_OF_EIGENSAMPLES)) {
             return OptionalInt.empty();
         } else {
             try {
-                final int result = Integer.parseInt(numberOfEigenSamples);
+                final int result = Integer.parseInt(numberOfEigensamplesString);
                 if (result <= 0) {
-                    throw new UserException.BadArgumentValue(NUMBER_OF_EIGEN_SAMPLES_FULL_NAME, "0 or negative values are not allowed: " + numberOfEigenSamples);
+                    throw new IllegalArgumentException(NUMBER_OF_EIGENSAMPLES_FULL_NAME + " must be positive.");
                 } else {
                     return OptionalInt.of(result);
                 }
             } catch (final NumberFormatException ex) {
-                throw new UserException.BadArgumentValue(NUMBER_OF_EIGEN_SAMPLES_FULL_NAME,
-                        "it must be either '" + INFER_NUMBER_OF_EIGEN_SAMPLES + "' or an integer value");
+                throw new IllegalArgumentException(NUMBER_OF_EIGENSAMPLES_FULL_NAME + " must be either '" + INFER_NUMBER_OF_EIGENSAMPLES + "' or an integer value");
             }
         }
     }
 
-    private double checkExtremeColumnMedianCountsPercentileThreshold() {
-        if (columnExtremeThresholdPercentile < 0 || columnExtremeThresholdPercentile > 50 || Double.isNaN(columnExtremeThresholdPercentile)) {
-            throw new UserException.BadArgumentValue(COLUMN_EXTREME_THRESHOLD_PERCENTILE_FULL_NAME, "the value must be in the range [0, 50]");
-        }
-        return columnExtremeThresholdPercentile;
-    }
-
-    private double checkTargetFactorsPercentileThreshold() {
-        if (targetFactorThreshold < 0 || targetFactorThreshold > 100 || Double.isNaN(targetFactorThreshold)) {
-            throw new UserException.BadArgumentValue(TARGET_FACTOR_THRESHOLD_PERCENTILE_FULL_NAME, "the value must be in the range [0, 100]");
-        }
-        return targetFactorThreshold;
-    }
-
     /**
-     * Checks that the user input {@link #outlierTruncatePercentileThresh} is correct.
-     * @return the user input {@link #outlierTruncatePercentileThresh}.
+     * Read target variances from an HDF5 PoN file and write the corresponding target weights
+     * to a file that can be read in by R CBS.
+     * @param ponFile       never {@code null}, HDF5 PoN file
+     * @param outputFile    never {@code null}, output file
      */
-    private double checkCountTruncatePercentile() {
-        if (outlierTruncatePercentileThresh < 0 || outlierTruncatePercentileThresh > 50.0 || Double.isNaN(outlierTruncatePercentileThresh)) {
-            throw new UserException.BadArgumentValue(COUNT_TRUNCATE_PERCENTILE_FULL_NAME, "the value must be in the [0, 50.0) range");
-        }
-        return outlierTruncatePercentileThresh;
-    }
-
-    private double checkTargetMaximumZeroPercentage() {
-        if (maximumPercentZerosInTarget < 0 || maximumPercentZerosInTarget > 100 || Double.isNaN(maximumPercentZerosInTarget)) {
-            throw new UserException.BadArgumentValue(MAXIMUM_PERCENT_ZEROS_IN_TARGET_FULL_NAME, "the value must be in the [0, 100.0) range");
-        }
-        return maximumPercentZerosInTarget;
-    }
-
-    private double checkColumnMaximumZeroPercentage() {
-        if (maximumPercentZerosInColumn < 0 || maximumPercentZerosInColumn > 100 || Double.isNaN(maximumPercentZerosInColumn)) {
-            throw new UserException.BadArgumentValue(MAXIMUM_PERCENT_ZEROS_IN_COLUMN_FULL_NAME, "the value must be in the [0, 100.0) range");
-        }
-        return maximumPercentZerosInColumn;
-    }
-
-    /**
-     * Write a target weight file that can be read in by the R CBS.
-     *
-     * @param pon never {@code null}
-     * @param outputFile never {@code null}.  Must be writable.
-     */
-    public static void writeTargetWeightsFile(final PoN pon, final File outputFile) {
-        final double[] targetWeights = HDF5PoNCreator.calculateTargetWeights(pon);
-        ParamUtils.writeValuesToFile(targetWeights, outputFile);
-    }
-
-    /**
-     * Write a target weight file that can be read in by the R CBS.
-     *
-     * @param ponFile never {@code null}.  Must be readable.
-     * @param outputFile never {@code null}.  Must be writable.
-     */
-    public static void writeTargetWeightsFile(final File ponFile, final File outputFile) {
+    private static void writeTargetWeightsFile(final File ponFile, final File outputFile) {
         Utils.regularReadableUserFile(ponFile);
         try (final HDF5File file = new HDF5File(ponFile, HDF5File.OpenMode.READ_ONLY)) {
-            final HDF5PoN pon = new HDF5PoN(file);
-            writeTargetWeightsFile(pon, outputFile);
+            final HDF5PCACoveragePoN pon = new HDF5PCACoveragePoN(file);
+            final double[] targetWeights = DoubleStream.of(pon.getTargetVariances()).map(v -> 1 / v).toArray();
+            ParamUtils.writeValuesToFile(targetWeights, outputFile);
         }
     }
 }

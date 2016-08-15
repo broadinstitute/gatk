@@ -165,7 +165,7 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
         final ReadCountCollection inputCounts = ReadCountCollectionUtils.parse(inputFile).arrangeTargets(targets);
         final ReadCountCollection outputCounts = ReadCountCollectionUtils.parse(outputFile).arrangeTargets(targets);
         final List<String> samples = inputCounts.columnNames();
-        final RealMatrix eigenVectors = pca.getEigenVectors();
+        final RealMatrix eigenvectors = pca.getEigenvectors();
 
         for (int i = 0; i < samples.size(); i++) {
             final String sample = samples.get(i);
@@ -181,9 +181,9 @@ public final class SubtractCoverageComponentsIntegrationTest extends CommandLine
             final double[] outputSampleValues = outputCounts.counts().getColumn(outputIndex);
             final double[] expectedSampleValues = centeredSampleValues.clone();
             final double[] revertedSampleValues = outputSampleValues.clone();
-            for (int k = 0; k < Math.min(eigenVectors.getColumnDimension(), numComponentsUsed); k++) {
-                final double loading = new ArrayRealVector(eigenVectors.getColumn(k)).dotProduct(new ArrayRealVector(centeredSampleValues));
-                final RealVector projection = new ArrayRealVector(eigenVectors.getColumn(k)).mapMultiply(loading);
+            for (int k = 0; k < Math.min(eigenvectors.getColumnDimension(), numComponentsUsed); k++) {
+                final double loading = new ArrayRealVector(eigenvectors.getColumn(k)).dotProduct(new ArrayRealVector(centeredSampleValues));
+                final RealVector projection = new ArrayRealVector(eigenvectors.getColumn(k)).mapMultiply(loading);
                 final RealVector updatedCenteredSampleValues = new ArrayRealVector(centeredSampleValues).subtract(projection);
                 System.arraycopy(updatedCenteredSampleValues.toArray(), 0, centeredSampleValues, 0, centeredSampleValues.length);
                 final RealVector updatedRevertedValues = new ArrayRealVector(revertedSampleValues).add(projection);

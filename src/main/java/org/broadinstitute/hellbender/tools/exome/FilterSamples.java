@@ -143,7 +143,7 @@ public class FilterSamples extends CommandLineProgram {
             for (final SampleCoverageStats stats : reader) {
                 final List<SampleFilterPredicate> failingFilters = filters.stream()
                         .filter(f -> !f.test(stats)).collect(Collectors.toList());
-                if (failingFilters.size() == 0) {
+                if (failingFilters.isEmpty()) {
                     outputWriter.writeSampleName(stats.sample);
                 } else {
                     failingFilters.stream().forEach(f -> rejectionWriter.writeRecord(

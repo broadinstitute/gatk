@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionLikelihoods;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionGlobalParameters;
-import org.broadinstitute.hellbender.tools.exome.allelefraction.AllelicPanelOfNormals;
+import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionLikelihoods;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -36,7 +36,7 @@ import java.util.Arrays;
  */
 public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<AllelicCount> {
     private final AlleleFractionGlobalParameters parameters;
-    private final AllelicPanelOfNormals allelicPON;
+    private final AllelicPanelOfNormals allelicPoN;
 
     /**
      * @param minorAlleleFractions array of minor allele fractions corresponding to the hidden states
@@ -45,16 +45,16 @@ public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<
      *                probabilities, which is useful when using variational Bayes.
      * @param memoryLength when consecutive SNPs are a distance d bases apart, the prior probability
      *                     for memory of the CNV state to be kept is exp(-d/memoryLength)
-     * @param allelicPON allelic panel of normals containing prior knowledge of allelic biases at common SNPs
+     * @param allelicPoN allelic panel of normals containing prior knowledge of allelic biases at common SNPs
      * @param parameters the global parameters of the allelic bias model: mean bias, bias variance, and
      *                   outlier probability
      */
     public AlleleFractionHiddenMarkovModel(final double[] minorAlleleFractions, final double[] weights,
-                                           final double memoryLength, final AllelicPanelOfNormals allelicPON,
+                                           final double memoryLength, final AllelicPanelOfNormals allelicPoN,
                                            final AlleleFractionGlobalParameters parameters) {
         super(minorAlleleFractions, weights, memoryLength);
         Arrays.stream(minorAlleleFractions).forEach(f -> ParamUtils.inRange(f, 0, 0.5, "minor fractions must be between 0 and 1/2, found " + f));
-        this.allelicPON = Utils.nonNull(allelicPON);
+        this.allelicPoN = Utils.nonNull(allelicPoN);
         this.parameters = Utils.nonNull(parameters);
     }
 
@@ -68,19 +68,19 @@ public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<
      */
     @Override
     public double logEmissionProbability(final AllelicCount data, final double minorFraction) {
-        return logEmissionProbability(data, minorFraction, parameters, allelicPON);
+        return logEmissionProbability(data, minorFraction, parameters, allelicPoN);
     }
 
     /**
      * Visible for {@link AlleleFractionSegmenter}
      */
     protected static double logEmissionProbability(final AllelicCount data, final double minorFraction,
-                                                   final AlleleFractionGlobalParameters parameters, final AllelicPanelOfNormals allelicPON) {
-        return AlleleFractionLikelihoods.collapsedHetLogLikelihood(parameters, minorFraction, data, allelicPON);
+                                                   final AlleleFractionGlobalParameters parameters, final AllelicPanelOfNormals allelicPoN) {
+        return AlleleFractionLikelihoods.collapsedHetLogLikelihood(parameters, minorFraction, data, allelicPoN);
     }
 
     public double getMinorAlleleFraction(final int state) { return getHiddenStateValue(state); }
     public double[] getMinorFractions() { return getHiddenStateValues(); }
-    public AllelicPanelOfNormals getAllelicPON() { return allelicPON; }
+    public AllelicPanelOfNormals getAllelicPoN() { return allelicPoN; }
     public AlleleFractionGlobalParameters getParameters() { return parameters; }
 }

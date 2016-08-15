@@ -353,7 +353,7 @@ public final class Civar {
     }
 
     private static List<Element> cle(final List<Element> original) {
-        if (original.size() == 0)
+        if (original.isEmpty())
             return original;
         if (original.size() == 1) {
             final Element e = original.get(0);
@@ -756,7 +756,7 @@ public final class Civar {
             final LinkedList<Token> tokens = tokenize(s, 0, s.length());
             final LinkedList<Element> elements = elementize(tokens, s);
             final Civar result;
-            if (elements.size() == 0) {
+            if (elements.isEmpty()) {
                 result = new Civar(Collections.emptyList());
             } else if (elements.size() == 1) {
                 result = new Civar(Collections.singletonList(elements.getFirst()));

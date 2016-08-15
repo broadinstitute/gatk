@@ -70,7 +70,7 @@ class GenotypeEvaluationRecordWriter extends TableWriter<GenotypeEvaluationRecor
                 .append(record.getFilterString())
                 .append(record.result.toString())
                 .append(record.truth == null ? NO_VALUE : record.truth.toString())
-                .append(record.calls.size() == 0 ? NO_VALUE : record.calls.stream()
+                .append(record.calls.isEmpty() ? NO_VALUE : record.calls.stream()
                         .map(Object::toString)
                         .collect(Collectors.joining("; ")));
     }

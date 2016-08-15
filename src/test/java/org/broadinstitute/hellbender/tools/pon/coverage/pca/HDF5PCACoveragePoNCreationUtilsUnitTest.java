@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.hdf5;
+package org.broadinstitute.hellbender.tools.pon.coverage.pca;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
@@ -15,7 +15,10 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
+import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -37,60 +40,52 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * Unit test for most relevant static routines in {@link HDF5PoNCreator}.
+ * Unit test for {@link HDF5PCACoveragePoNCreationUtils}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public class HDF5PoNCreatorUnitTest extends BaseTest {
-    private final static String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
-    private final static File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
-    private final static File GT_TARGET_VAR_FILE = new File(TEST_DIR, "dummy_pon_target_variances_matlab.txt");
-    private final static File TEST_FULL_PON_FILE = new File(TEST_DIR, "create-pon-all-targets.pon");
+public final class HDF5PCACoveragePoNCreationUtilsUnitTest extends BaseTest {
+    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/";
+    private static final File TEST_PCOV_FILE = new File(TEST_DIR, "create-pon-control-full.pcov");
+    private static final File GT_TARGET_VAR_FILE = new File(TEST_DIR, "dummy_pon_target_variances_matlab.txt");
+    private static final File TEST_FULL_PON_FILE = new File(TEST_DIR, "create-pon-all-targets.pon");
 
     @Test
-    public void testCreateVariance() {
+    public void testRedoReductionWithSameEigensampleCount() {
+        final int numEigensamples = 20;
+        final File tempOutputPoN = IOUtils.createTempFile("redo-reduction-same-count-", ".pon");
+        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, numEigensamples);
+        HDF5PCACoveragePoNCreationUtils.redoReduction(null, OptionalInt.of(numEigensamples), ponFile, tempOutputPoN, HDF5File.OpenMode.CREATE);
+        PoNTestUtils.assertEquivalentPoN(ponFile, tempOutputPoN);
+    }
+
+    @Test
+    public void testCalculateVariance() {
         /*
         This tests that the post-projection variance is correct.  Ground truth was acquired through a breakpoint (to get input values),
         some text parsing, and matlab.  This simply tests that the variances are correctly calculated from a matrix.
         */
-        final int numEigenSamples = 20;
-        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, numEigenSamples);
+        final int numEigensamples = 20;
+        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, numEigensamples);
         final double[] gtTargetVariances = ParamUtils.readValuesFromFile(GT_TARGET_VAR_FILE);
 
         try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
-            final HDF5PoN pon = new HDF5PoN(ponHDF5File);
+            final HDF5PCACoveragePoN pon = new HDF5PCACoveragePoN(ponHDF5File);
             final double[] targetVariances = pon.getTargetVariances();
-            PoNTestUtils.assertEqualsDoubleArrays(targetVariances, gtTargetVariances);
+            PoNTestUtils.assertEqualsDoubleArrays(targetVariances, gtTargetVariances, 1E-4);
         }
     }
 
     @Test
-    public void testCreateVarianceCalculation() {
-
+    public void testCalculateVarianceCalculation() {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         try (final HDF5File ponHDF5File = new HDF5File(TEST_FULL_PON_FILE)) {
-            final PoN pon = new HDF5PoN(ponHDF5File);
-            final TangentNormalizationResult tnWithSpark = TangentNormalizer.tangentNormalizeNormalsInPoN(pon, ctx);
-            final double[] variances = HDF5PoNCreator.calculateRowVariances(tnWithSpark.getTangentNormalized().counts());
+            final PCACoveragePoN pon = new HDF5PCACoveragePoN(ponHDF5File);
+            final PCATangentNormalizationResult tnWithSpark = pon.normalizeNormalsInPoN(ctx);
+            final double[] variances = MatrixSummaryUtils.getRowVariances(tnWithSpark.getTangentNormalized().counts());
             final double[] targetVariances = pon.getTargetVariances();
             PoNTestUtils.assertEqualsDoubleArrays(targetVariances, variances);
-        }
-    }
-
-    @Test(dataProvider="normalizeReadCountByTargetFactorsData")
-    public void testNormalizeReadCountByTargetFactors(final ReadCountCollection readCount, final double[] targetFactors) {
-        final RealMatrix before = readCount.counts().copy();
-        HDF5PoNCreator.normalizeReadCountsByTargetFactors(readCount, targetFactors);
-        final RealMatrix after = readCount.counts();
-        Assert.assertEquals(before.getColumnDimension(), after.getColumnDimension());
-        Assert.assertEquals(before.getRowDimension(), after.getRowDimension());
-        for (int i = 0; i < after.getColumnDimension(); i++) {
-            for (int j = 0; j < after.getRowDimension(); j++) {
-                final double beforeValue = before.getEntry(j, i);
-                final double afterValue = after.getEntry(j, i);
-                Assert.assertEquals(afterValue, beforeValue / targetFactors[j], 0.001);
-            }
         }
     }
 
@@ -105,14 +100,14 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
             final int expectedRemainingCount = (int) IntStream.of(numberOfZeros).filter(i -> i <= maxZerosThres).count();
             if (expectedRemainingCount == 0) {
                 try {
-                    HDF5PoNCreator.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+                    HDF5PCACoveragePoNCreationUtils.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
                 } catch (final UserException.BadInput ex) {
                     // expected.
                     continue;
                 }
                 Assert.fail("expects an exception");
             }
-            final ReadCountCollection rc = HDF5PoNCreator.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+            final ReadCountCollection rc = HDF5PCACoveragePoNCreationUtils.removeColumnsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
             Assert.assertEquals(rc.columnNames().size(), expectedRemainingCount);
             final int[] newIndices = new int[expectedRemainingCount];
             int nextIndex = 0;
@@ -144,14 +139,14 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
             final int expectedRemainingCount = (int) IntStream.of(numberOfZeros).filter(i -> i <= maxZerosThres).count();
             if (expectedRemainingCount == 0) {
                 try {
-                    HDF5PoNCreator.removeTargetsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+                    HDF5PCACoveragePoNCreationUtils.removeTargetsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
                 } catch (final UserException.BadInput ex) {
                     // expected.
                     continue;
                 }
                 Assert.fail("expects an exception");
             }
-            final ReadCountCollection rc = HDF5PoNCreator.removeTargetsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
+            final ReadCountCollection rc = HDF5PCACoveragePoNCreationUtils.removeTargetsWithTooManyZeros(readCount, maxZeros, NULL_LOGGER);
             Assert.assertEquals(rc.targets().size(), expectedRemainingCount);
             int nextIndex = 0;
             for (int i = 0; i < readCount.targets().size(); i++) {
@@ -180,7 +175,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         for (int i = 0; i < expected.length; i++) {
             expected[i] = DoubleStream.of(counts.getRow(i)).map(d -> d < bottom ? bottom : (d > top) ? top : d).toArray();
         }
-        HDF5PoNCreator.truncateExtremeCounts(readCount, percentile, NULL_LOGGER);
+        HDF5PCACoveragePoNCreationUtils.truncateExtremeCounts(readCount, percentile, NULL_LOGGER);
         final RealMatrix newCounts = readCount.counts();
         Assert.assertEquals(newCounts.getRowDimension(), newCounts.getRowDimension());
         Assert.assertEquals(newCounts.getColumnDimension(), newCounts.getColumnDimension());
@@ -202,7 +197,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         final Boolean[] toBeKept = DoubleStream.of(columnMedians)
                 .mapToObj(d -> d <= top && d >= bottom).toArray(Boolean[]::new);
         final int toBeKeptCount = (int) Stream.of(toBeKept).filter(b -> b).count();
-        final ReadCountCollection result = HDF5PoNCreator.removeColumnsWithExtremeMedianCounts(readCount, percentile, NULL_LOGGER);
+        final ReadCountCollection result = HDF5PCACoveragePoNCreationUtils.removeColumnsWithExtremeMedianCounts(readCount, percentile, NULL_LOGGER);
         Assert.assertEquals(result.columnNames().size(), toBeKeptCount);
         int nextIndex = 0;
         for (int i = 0; i < toBeKept.length; i++) {
@@ -233,7 +228,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                 }
             }
         }
-        HDF5PoNCreator.imputeZeroCountsAsTargetMedians(readCounts, NULL_LOGGER);
+        HDF5PCACoveragePoNCreationUtils.imputeZeroCountsAsTargetMedians(readCounts, NULL_LOGGER);
         final RealMatrix newCounts = readCounts.counts();
         Assert.assertEquals(newCounts.getColumnDimension(), expected[0].length);
         Assert.assertEquals(newCounts.getRowDimension(), expected.length);
@@ -254,7 +249,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         final Boolean[] toBeKept = DoubleStream.of(targetMedians)
                 .mapToObj(d -> d >= threshold).toArray(Boolean[]::new);
         final int toBeKeptCount = (int) Stream.of(toBeKept).filter(b -> b).count();
-        final Pair<ReadCountCollection, double[]> result = HDF5PoNCreator.subsetReadCountsToUsableTargets(readCount, percentile, NULL_LOGGER);
+        final Pair<ReadCountCollection, double[]> result = HDF5PCACoveragePoNCreationUtils.subsetReadCountsToUsableTargets(readCount, percentile, NULL_LOGGER);
         Assert.assertEquals(result.getLeft().targets().size(), toBeKeptCount);
         Assert.assertEquals(result.getRight().length, toBeKeptCount);
         int nextIndex = 0;
@@ -276,7 +271,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         final Median median = new Median();
         final double[] columnMedians = IntStream.range(0, counts.getColumnDimension())
                 .mapToDouble(i -> median.evaluate(counts.getColumn(i))).toArray();
-        final double epsilon = HDF5PoNCreator.EPSILON;
+        final double epsilon = HDF5PCACoveragePoNCreationUtils.EPSILON;
         final double[][] expected = new double[counts.getRowDimension()][];
         for (int i = 0; i < expected.length; i++) {
             expected[i] = counts.getRow(i).clone();
@@ -288,7 +283,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                 expected[i][j] = Math.log(expected[i][j]) / Math.log(2);
             }
         }
-        HDF5PoNCreator.normalizeAndLogReadCounts(readCounts, NULL_LOGGER);
+        HDF5PCACoveragePoNCreationUtils.normalizeAndLogReadCounts(readCounts, NULL_LOGGER);
         final RealMatrix newCounts = readCounts.counts();
         Assert.assertEquals(newCounts.getColumnDimension(), expected[0].length);
         Assert.assertEquals(newCounts.getRowDimension(), expected.length);
@@ -300,7 +295,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "readCountOnlyData")
-    public void testSubtractBGSCenters(final ReadCountCollection readCounts) {
+    public void testSubtractMedianOfMedians(final ReadCountCollection readCounts) {
         final RealMatrix counts = readCounts.counts();
         final Median median = new Median();
         final double[] columnMedians = IntStream.range(0, counts.getColumnDimension())
@@ -313,7 +308,7 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
                 expected[i][j] -= center;
             }
         }
-        HDF5PoNCreator.subtractBGSCenter(readCounts, NULL_LOGGER);
+        HDF5PCACoveragePoNCreationUtils.subtractMedianOfMedians(readCounts, NULL_LOGGER);
         final RealMatrix newCounts = readCounts.counts();
         Assert.assertEquals(newCounts.getColumnDimension(), expected[0].length);
         Assert.assertEquals(newCounts.getRowDimension(), expected.length);
@@ -327,71 +322,62 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
     @Test(dataProvider = "readCountOnlyWithDiverseShapeData")
     public void testCalculateReducedPanelAndPInversesUsingJollifesRule(final ReadCountCollection readCounts) {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final ReductionResult result = HDF5PoNCreator.calculateReducedPanelAndPInverses(readCounts, OptionalInt.empty(), NULL_LOGGER, ctx);
+        final ReductionResult result = HDF5PCACoveragePoNCreationUtils.calculateReducedPanelAndPInverses(readCounts, OptionalInt.empty(), NULL_LOGGER, ctx);
         final RealMatrix counts = readCounts.counts();
         Assert.assertNotNull(result);
         Assert.assertNotNull(result.getPseudoInverse());
         Assert.assertNotNull(result.getReducedCounts());
-        Assert.assertNotNull(result.getReducedInverse());
+        Assert.assertNotNull(result.getReducedPseudoInverse());
         Assert.assertNotNull(result.getAllSingularValues());
         Assert.assertEquals(counts.getColumnDimension(), result.getAllSingularValues().length);
         Assert.assertEquals(result.getReducedCounts().getRowDimension(), counts.getRowDimension());
-        final int eigenSamples = result.getReducedCounts().getColumnDimension();
+        final int eigensamples = result.getReducedCounts().getColumnDimension();
         final Mean mean = new Mean();
         final double meanSingularValue = mean.evaluate(result.getAllSingularValues());
-        final double threshold = HDF5PoNCreator.JOLLIFES_RULE_MEAN_FACTOR * meanSingularValue;
-        final int expectedEigenSamples = (int) DoubleStream.of(result.getAllSingularValues()).filter(d -> d >= threshold).count();
-        Assert.assertTrue(eigenSamples <= counts.getColumnDimension());
-        Assert.assertEquals(eigenSamples, expectedEigenSamples);
+        final double threshold = HDF5PCACoveragePoNCreationUtils.JOLLIFES_RULE_MEAN_FACTOR * meanSingularValue;
+        final int expectedEigensamples = (int) DoubleStream.of(result.getAllSingularValues()).filter(d -> d >= threshold).count();
+        Assert.assertTrue(eigensamples <= counts.getColumnDimension());
+        Assert.assertEquals(eigensamples, expectedEigensamples);
         assertPseudoInverse(counts, result.getPseudoInverse());
-        assertPseudoInverse(result.getReducedCounts(), result.getReducedInverse());
+        assertPseudoInverse(result.getReducedCounts(), result.getReducedPseudoInverse());
     }
 
     @Test(dataProvider = "readCountOnlyWithDiverseShapeData")
     public void testCalculateReducedPanelAndPInversesKeepingHalfOfAllColumns(final ReadCountCollection readCounts) {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final ReductionResult result = HDF5PoNCreator.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size() / 2), NULL_LOGGER, ctx);
+        final ReductionResult result = HDF5PCACoveragePoNCreationUtils.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size() / 2), NULL_LOGGER, ctx);
         final RealMatrix counts = readCounts.counts();
         Assert.assertNotNull(result);
         Assert.assertNotNull(result.getPseudoInverse());
         Assert.assertNotNull(result.getReducedCounts());
-        Assert.assertNotNull(result.getReducedInverse());
+        Assert.assertNotNull(result.getReducedPseudoInverse());
         Assert.assertNotNull(result.getAllSingularValues());
         Assert.assertEquals(counts.getColumnDimension(), result.getAllSingularValues().length);
         Assert.assertEquals(result.getReducedCounts().getRowDimension(), counts.getRowDimension());
         Assert.assertEquals(result.getReducedCounts().getColumnDimension(), readCounts.columnNames().size() / 2);
-        final int eigenSamples = result.getReducedCounts().getColumnDimension();
-        Assert.assertEquals(eigenSamples, readCounts.columnNames().size() / 2);
+        final int eigensamples = result.getReducedCounts().getColumnDimension();
+        Assert.assertEquals(eigensamples, readCounts.columnNames().size() / 2);
         assertPseudoInverse(counts, result.getPseudoInverse());
-        assertPseudoInverse(result.getReducedCounts(), result.getReducedInverse());
-    }
-
-    @Test
-    public void testRedoReductionWithSameEigenSampleCount() {
-        final int numEigenSamples = 20;
-        final File tempOutputPoN = IOUtils.createTempFile("redo-reduction-same-count-", ".pon");
-        final File ponFile = PoNTestUtils.createDummyHDF5FilePoN(TEST_PCOV_FILE, numEigenSamples);
-        HDF5PoNCreator.redoReduction(null, OptionalInt.of(numEigenSamples), ponFile, tempOutputPoN);
-        PoNTestUtils.assertEquivalentPoN(ponFile, tempOutputPoN);
+        assertPseudoInverse(result.getReducedCounts(), result.getReducedPseudoInverse());
     }
 
     @Test(dataProvider = "readCountOnlyWithDiverseShapeData")
     public void testCalculateReducedPanelAndPInversesKeepingAllColumns(final ReadCountCollection readCounts) {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
-        final ReductionResult result = HDF5PoNCreator.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size()), NULL_LOGGER, ctx);
+        final ReductionResult result = HDF5PCACoveragePoNCreationUtils.calculateReducedPanelAndPInverses(readCounts, OptionalInt.of(readCounts.columnNames().size()), NULL_LOGGER, ctx);
         final RealMatrix counts = readCounts.counts();
         Assert.assertNotNull(result);
         Assert.assertNotNull(result.getPseudoInverse());
         Assert.assertNotNull(result.getReducedCounts());
-        Assert.assertNotNull(result.getReducedInverse());
+        Assert.assertNotNull(result.getReducedPseudoInverse());
         Assert.assertNotNull(result.getAllSingularValues());
         Assert.assertEquals(counts.getColumnDimension(), result.getAllSingularValues().length);
         Assert.assertEquals(result.getReducedCounts().getRowDimension(), counts.getRowDimension());
         Assert.assertEquals(result.getReducedCounts().getColumnDimension(), readCounts.columnNames().size());
-        final int eigenSamples = result.getReducedCounts().getColumnDimension();
-        Assert.assertEquals(eigenSamples, readCounts.columnNames().size());
+        final int eigensamples = result.getReducedCounts().getColumnDimension();
+        Assert.assertEquals(eigensamples, readCounts.columnNames().size());
         assertPseudoInverse(counts, result.getPseudoInverse());
-        assertPseudoInverse(result.getReducedCounts(), result.getReducedInverse());
+        assertPseudoInverse(result.getReducedCounts(), result.getReducedPseudoInverse());
     }
 
     private static void assertPseudoInverse(final RealMatrix A, final RealMatrix pinvA) {
@@ -401,9 +387,9 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         // 1. condition: A * pinvA * A = A.
         final RealMatrix mustBeZeros1 = A.multiply(pinvA).multiply(A).subtract(A);
         for (int i = 0; i < mustBeZeros1.getRowDimension(); i++) {
-           for (int j = 0; j < mustBeZeros1.getColumnDimension(); j++) {
-               Assert.assertEquals(mustBeZeros1.getEntry(i, j), 0.0, 0.00001);
-           }
+            for (int j = 0; j < mustBeZeros1.getColumnDimension(); j++) {
+                Assert.assertEquals(mustBeZeros1.getEntry(i, j), 0.0, 0.00001);
+            }
         }
         // 2. condition: pinvA * A * pinvA = pinvA.
         final RealMatrix mustBeZeros2 = pinvA.multiply(A).multiply(pinvA).subtract(pinvA);
@@ -430,7 +416,6 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         }
 
     }
-
 
     @DataProvider(name="readCountOnlyWithDiverseShapeData")
     public Object[][] readCountOnlyWithDiverseShapeData() {
@@ -522,34 +507,8 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         return result.toArray(new Object[result.size()][]);
     }
 
-    @DataProvider(name="normalizeReadCountByTargetFactorsData")
-    public Object[][] normalizeReadCountByTargetFactorsData() {
-        final List<Object[]> result = new ArrayList<>(1);
-        @SuppressWarnings("serial")
-        final List<Target> targets = new ArrayList<Target>() {{
-            add(new Target("A"));
-            add(new Target("B"));
-            add(new Target("C"));
-        }};
-
-        @SuppressWarnings("serial")
-        final List<String> columnNames = new ArrayList<String>() {{
-                add("1");
-                add("2");
-                add("3");
-        }};
-        result.add(new Object[] {
-                new ReadCountCollection(targets, columnNames,
-                   new Array2DRowRealMatrix(new double[][] {
-                           new double[] { 1.1, 2.2, 3.3 },
-                           new double[] { 0.1, 0.2, 0.3},
-                           new double[] { 11.1, 22.2, 33.3 } }, false))
-        , new double[] { 100.0, 200.0, 300.0 }});
-        return result.toArray(new Object[1][]);
-    }
-
-    @DataProvider(name="singleEigenExample")
-    public Object[][] simpleEigenExampleData() {
+    @DataProvider(name="singleEigensample")
+    public Object[][] simpleEigensampleData() {
         final List<Object[]> result = new ArrayList<>();
         final int NUM_TARGETS = 10;
         final int NUM_SAMPLES = 5;
@@ -576,27 +535,26 @@ public class HDF5PoNCreatorUnitTest extends BaseTest {
         return result.toArray(new Object[result.size()][]);
     }
 
-    @Test(dataProvider = "singleEigenExample" )
-    public void testDetermineNumberOfEigenSamplesNoSpark(final ReadCountCollection logNormals){
+    @Test(dataProvider = "singleEigensample" )
+    public void testDetermineNumberOfEigensamplesNoSpark(final ReadCountCollection logNormals){
 
         final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts());
 
-        final int actualNumber = HDF5PoNCreator.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
+        final int actualNumber = HDF5PCACoveragePoNCreationUtils.determineNumberOfEigensamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
         Assert.assertEquals(actualNumber, 1);
     }
 
-    @Test(dataProvider = "singleEigenExample" )
-    public void testDetermineNumberOfEigenSamplesSpark(final ReadCountCollection logNormals){
+    @Test(dataProvider = "singleEigensample" )
+    public void testDetermineNumberOfEigensamplesSpark(final ReadCountCollection logNormals){
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         final SVD logNormalsSVD = SVDFactory.createSVD(logNormals.counts(), ctx);
 
-        final int actualNumber = HDF5PoNCreator.determineNumberOfEigenSamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
+        final int actualNumber = HDF5PCACoveragePoNCreationUtils.determineNumberOfEigensamples(OptionalInt.empty(), logNormals.columnNames().size(), logNormalsSVD, NULL_LOGGER);
         Assert.assertEquals(actualNumber, 1);
     }
 
     @SuppressWarnings("serial")
     private static final Logger NULL_LOGGER = new AbstractLogger() {
-
         @Override
         public Level getLevel() {
             return Level.ALL;

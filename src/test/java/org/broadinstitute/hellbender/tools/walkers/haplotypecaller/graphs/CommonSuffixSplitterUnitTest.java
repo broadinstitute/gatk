@@ -9,7 +9,7 @@ import java.io.File;
 import java.util.Arrays;
 
 public final class CommonSuffixSplitterUnitTest extends BaseTest {
-    private final static boolean DEBUG = false;
+    private static final boolean DEBUG = false;
 
     @DataProvider(name = "SplitData")
     public Object[][] makeSplitData() {

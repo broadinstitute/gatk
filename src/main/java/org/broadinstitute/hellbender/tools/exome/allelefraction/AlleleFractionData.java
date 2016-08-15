@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.allelefraction;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.DataCollection;
 
@@ -20,7 +21,7 @@ import java.util.stream.IntStream;
  */
 public final class AlleleFractionData implements DataCollection {
     private final int numSegments;
-    private final AllelicPanelOfNormals allelicPON;
+    private final AllelicPanelOfNormals allelicPoN;
     private final List<AllelicCount> allelicCounts; // allelic counts indexed by het
     private final List<Integer> hetIndices; // the numbers 0, 1, 2 . . . N_hets
     private final List<Integer> startHetsPerSegment = new ArrayList<>();
@@ -30,9 +31,9 @@ public final class AlleleFractionData implements DataCollection {
         this(segmentedGenome, AllelicPanelOfNormals.EMPTY_PON);
     }
 
-    public AlleleFractionData(final SegmentedGenome segmentedGenome, final AllelicPanelOfNormals allelicPON) {
+    public AlleleFractionData(final SegmentedGenome segmentedGenome, final AllelicPanelOfNormals allelicPoN) {
         numSegments = segmentedGenome.getSegments().size();
-        this.allelicPON = allelicPON;
+        this.allelicPoN = allelicPoN;
         allelicCounts = new ArrayList<>();
         final List<SimpleInterval> segmentIntervals = segmentedGenome.getSegments();
         final TargetCollection<AllelicCount> alleleCounts = segmentedGenome.getGenome().getSNPs();
@@ -49,7 +50,7 @@ public final class AlleleFractionData implements DataCollection {
         hetIndices = IntStream.range(0, allelicCounts.size()).boxed().collect(Collectors.toList());
     }
 
-    public AllelicPanelOfNormals getPON() { return allelicPON; }
+    public AllelicPanelOfNormals getPoN() { return allelicPoN; }
 
     public List<AllelicCount> getAllelicCounts() { return Collections.unmodifiableList(allelicCounts); }
 

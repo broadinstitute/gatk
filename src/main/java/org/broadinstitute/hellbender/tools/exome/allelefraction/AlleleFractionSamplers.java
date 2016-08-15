@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
 import org.apache.commons.math3.random.RandomGenerator;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.mcmc.AdaptiveMetropolisSampler;
 import org.broadinstitute.hellbender.utils.mcmc.ParameterSampler;
 
@@ -26,12 +27,12 @@ final class AlleleFractionSamplers {
         }
 
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            final AllelicPanelOfNormals allelicPON = data.getPON();
-            if (allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON)) {
+            final AllelicPanelOfNormals allelicPoN = data.getPoN();
+            if (allelicPoN.equals(AllelicPanelOfNormals.EMPTY_PON)) {
                 return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(
                         state.globalParameters().copyWithNewMeanBias(x),  state.minorFractions(), data));
             }
-            return allelicPON.getMLEMeanBias(); // if PON is available, always return MLE mean bias as "sample"
+            return allelicPoN.getGlobalMeanBias(); // if PoN is available, always return MLE mean bias as "sample"
         }
     }
 
@@ -44,12 +45,12 @@ final class AlleleFractionSamplers {
         }
 
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
-            final AllelicPanelOfNormals allelicPON = data.getPON();
-            if (allelicPON.equals(AllelicPanelOfNormals.EMPTY_PON)) {
+            final AllelicPanelOfNormals allelicPoN = data.getPoN();
+            if (allelicPoN.equals(AllelicPanelOfNormals.EMPTY_PON)) {
                 return sampler.sample(rng, x -> AlleleFractionLikelihoods.logLikelihood(
                         state.globalParameters().copyWithNewBiasVariance(x), state.minorFractions(), data));
             }
-            return allelicPON.getMLEBiasVariance(); // if PON is available, always return MLE bias variance as "sample"
+            return allelicPoN.getGlobalBiasVariance(); // if PoN is available, always return MLE bias variance as "sample"
         }
     }
 
@@ -83,7 +84,7 @@ final class AlleleFractionSamplers {
                 return Double.NaN;
             }
 
-            return sampler.sample(rng, f -> AlleleFractionLikelihoods.segmentLogLikelihood(state.globalParameters(), f, data.getCountsInSegment(segmentIndex), data.getPON()));
+            return sampler.sample(rng, f -> AlleleFractionLikelihoods.segmentLogLikelihood(state.globalParameters(), f, data.getCountsInSegment(segmentIndex), data.getPoN()));
         }
     }
 

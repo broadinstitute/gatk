@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
@@ -30,10 +31,10 @@ import java.util.stream.Collectors;
 public final class AlleleFractionModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
-    // test data is a "normal" PON generated from 50 normals simulated from the allele-fraction model with alpha = 65 and beta = 60
-    // and a PON with "bad SNPs" described below
-    private static final File ALLELIC_PON_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-normal.tsv");
-    private static final File ALLELIC_PON_WITH_BAD_SNPS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-bad.tsv");
+    // test data is a "normal" PoN with counts generated from 50 normals simulated from the allele-fraction model with alpha = 65 and beta = 60
+    // and a PoN with "bad SNPs" described below
+    private static final File ALLELIC_PON_NORMAL_COUNTS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-counts-normal.tsv");
+    private static final File ALLELIC_PON_WITH_BAD_SNPS_COUNTS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-pon-counts-bad.tsv");
 
     private static final File SAMPLE_NORMAL_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-sample-normal.tsv");
     private static final File SAMPLE_WITH_BAD_SNPS_FILE = new File(TEST_SUB_DIR, "allelic-pon-test-sample-bad.tsv");
@@ -48,34 +49,34 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
      * along with outlier probability and minor fractions.
      */
     @Test
-    public void testMCMCWithoutAllelicPON() {
+    public void testMCMCWithoutAllelicPoN() {
         final double meanBiasSimulated = 1.2;
         final double biasVarianceSimulated = 0.04;
         testMCMC(meanBiasSimulated, biasVarianceSimulated, meanBiasSimulated, biasVarianceSimulated, AllelicPanelOfNormals.EMPTY_PON);
     }
 
     /**
-     * Test MCMC inference on simulated data using an allelic PON.  Note that these MCMC tests were written to use
-     * simulated hets before the allelic PON was introduced.  Rather than generate a simulated PON on the fly,
-     * we simply use a fixed simulated PON loaded from a file and check that its MLE hyperparameters are "sampled"
-     * correctly by simply taking the MLE PON values---i.e., the PON does not actually cover the simulated sites and
+     * Test MCMC inference on simulated data using an allelic PoN.  Note that these MCMC tests were written to use
+     * simulated hets before the allelic PoN was introduced.  Rather than generate a simulated PoN on the fly,
+     * we simply use a fixed simulated PoN loaded from a file and check that its MLE hyperparameters are "sampled"
+     * correctly by simply taking the MLE PoN values---i.e., the PoN does not actually cover the simulated sites and
      * hence is not used to correct reference bias in the simulated data in any way.
      * This latter functionality is tested on fixed data loaded from files in
      * {@link AlleleFractionModellerUnitTest#testBiasCorrection} instead.
      */
     @Test
-    public void testMCMCWithAllelicPON() {
+    public void testMCMCWithAllelicPoN() {
         final double meanBiasSimulated = 1.2;
         final double biasVarianceSimulated = 0.04;
-        final double meanBiasOfPON = 1.083;         // PON generated with alpha = 65
-        final double biasVarianceOfPON = 0.0181;    // PON generated with beta = 60
-        final AllelicPanelOfNormals allelicPON = new AllelicPanelOfNormals(ALLELIC_PON_NORMAL_FILE);
-        testMCMC(meanBiasSimulated, biasVarianceSimulated, meanBiasOfPON, biasVarianceOfPON, allelicPON);
+        final double meanBiasOfPoN = 1.083;         // PoN generated with alpha = 65
+        final double biasVarianceOfPoN = 0.0181;    // PoN generated with beta = 60
+        final AllelicPanelOfNormals allelicPoN = new AllelicPanelOfNormals(new AllelicCountCollection(ALLELIC_PON_NORMAL_COUNTS_FILE));
+        testMCMC(meanBiasSimulated, biasVarianceSimulated, meanBiasOfPoN, biasVarianceOfPoN, allelicPoN);
     }
 
     private void testMCMC(final double meanBiasSimulated, final double biasVarianceSimulated,
                           final double meanBiasExpected, final double biasVarianceExpected,
-                          final AllelicPanelOfNormals allelicPON) {
+                          final AllelicPanelOfNormals allelicPoN) {
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
@@ -97,7 +98,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final AlleleFractionSimulatedData simulatedData = new AlleleFractionSimulatedData(averageHetsPerSegment, numSegments,
                 averageDepth, meanBiasSimulated, biasVarianceSimulated, outlierProbability);
 
-        final AlleleFractionModeller modeller = new AlleleFractionModeller(simulatedData.getSegmentedGenome(), allelicPON);
+        final AlleleFractionModeller modeller = new AlleleFractionModeller(simulatedData.getSegmentedGenome(), allelicPoN);
         modeller.fitMCMC(numSamples, numBurnIn);
 
         final List<Double> meanBiasSamples = modeller.getmeanBiasSamples();
@@ -167,18 +168,18 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final AllelicCountCollection sampleWithBadSNPs = new AllelicCountCollection(SAMPLE_WITH_BAD_SNPS_FILE);
         final AllelicCountCollection sampleWithEvent = new AllelicCountCollection(SAMPLE_WITH_EVENT_FILE);
 
-        final AllelicPanelOfNormals allelicPONNormal = new AllelicPanelOfNormals(ALLELIC_PON_NORMAL_FILE);
-        final AllelicPanelOfNormals allelicPONWithBadSNPs = new AllelicPanelOfNormals(ALLELIC_PON_WITH_BAD_SNPS_FILE);
+        final AllelicPanelOfNormals allelicPoNNormal = new AllelicPanelOfNormals(new AllelicCountCollection(ALLELIC_PON_NORMAL_COUNTS_FILE));
+        final AllelicPanelOfNormals allelicPoNWithBadSNPs = new AllelicPanelOfNormals(new AllelicCountCollection(ALLELIC_PON_WITH_BAD_SNPS_COUNTS_FILE));
 
         final double minorFractionExpectedInMiddleSegmentNormal = 0.5;
-        final double minorFractionExpectedInMiddleSegmentWithBadSNPsAndNormalPON = 0.4;
+        final double minorFractionExpectedInMiddleSegmentWithBadSNPsAndNormalPoN = 0.4;
         final double minorFractionExpectedInMiddleSegmentWithEvent = 0.33;
 
         return new Object[][]{
-                {sampleNormal, allelicPONNormal, minorFractionExpectedInMiddleSegmentNormal},
-                {sampleWithBadSNPs, allelicPONNormal, minorFractionExpectedInMiddleSegmentWithBadSNPsAndNormalPON},
-                {sampleWithEvent, allelicPONNormal, minorFractionExpectedInMiddleSegmentWithEvent},
-                {sampleWithBadSNPs, allelicPONWithBadSNPs, minorFractionExpectedInMiddleSegmentNormal}
+                {sampleNormal, allelicPoNNormal, minorFractionExpectedInMiddleSegmentNormal},
+                {sampleWithBadSNPs, allelicPoNNormal, minorFractionExpectedInMiddleSegmentWithBadSNPsAndNormalPoN},
+                {sampleWithEvent, allelicPoNNormal, minorFractionExpectedInMiddleSegmentWithEvent},
+                {sampleWithBadSNPs, allelicPoNWithBadSNPs, minorFractionExpectedInMiddleSegmentNormal}
         };
     }
 
@@ -202,19 +203,19 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
      *     which are drawn from a gamma distribution with alpha = 65, beta = 60 -> mean bias = 1.083 ("SAMPLE_EVENT").
      * </p>
      *
-     * In this segment, using a PON that doesn't know about the high reference bias of these sites ("ALLELIC_PON_NORMAL")
-     * we should infer a minor-allele fraction of 6 / (6 + 9) = 0.40 in scenario 2; however, with a PON that does know
+     * In this segment, using a PoN that doesn't know about the high reference bias of these sites ("ALLELIC_PON_NORMAL")
+     * we should infer a minor-allele fraction of 6 / (6 + 9) = 0.40 in scenario 2; however, with a PoN that does know
      * about the high bias at these sites ("ALLELIC_PON_WITH_BAD_SNPS") we correctly infer that all of the segments are balanced.
      *
      * <p>
-     *     Note that alpha and beta are not actually correctly recovered in this PON via MLE because the biases are
+     *     Note that alpha and beta are not actually correctly recovered in this PoN via MLE because the biases are
      *     drawn from a mixture of gamma distributions (as opposed to a single gamma distribution as assumed in the model).
      *     TODO https://github.com/broadinstitute/gatk-protected/issues/421
      * </p>
      */
     @Test(dataProvider = "biasCorrection")
     public void testBiasCorrection(final AllelicCountCollection sample,
-                                   final AllelicPanelOfNormals allelicPON,
+                                   final AllelicPanelOfNormals allelicPoN,
                                    final double minorFractionExpectedInMiddleSegment) {
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
@@ -227,7 +228,7 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
 
         final int numSamples = 100;
         final int numBurnIn = 25;
-        final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedGenome, allelicPON);
+        final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedGenome, allelicPoN);
         modeller.fitMCMC(numSamples, numBurnIn);
 
         final List<PosteriorSummary> minorAlleleFractionPosteriorSummaries =

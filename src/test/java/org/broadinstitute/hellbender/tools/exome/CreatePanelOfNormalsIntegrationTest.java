@@ -6,10 +6,10 @@ import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.hdf5.HDF5PoN;
-import org.broadinstitute.hellbender.utils.hdf5.PoN;
-import org.broadinstitute.hellbender.utils.hdf5.PoNTestUtils;
-import org.broadinstitute.hellbender.utils.hdf5.RamPoN;
+import org.broadinstitute.hellbender.tools.pon.PoNTestUtils;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.HDF5PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCACoveragePoN;
+import org.broadinstitute.hellbender.tools.pon.coverage.pca.RamPCACoveragePoN;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -53,7 +53,8 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
             arguments.add(targetsFile.toString());
         }
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("--verbosity");
@@ -80,7 +81,8 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
             arguments.add(targetsFile.toString());
         }
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("--verbosity");
@@ -106,6 +108,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add(targetsFile.toString());
         }
         final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("--verbosity");
@@ -131,6 +134,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add(targetsFile.toString());
         }
         final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("--verbosity");
@@ -155,7 +159,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
 
     private void assertBasicPoNAssumptions(final File ponFile, final File initialTargetsFileUsedToCreatePoN) {
         try (final HDF5File ponHDF5File = new HDF5File(ponFile)) {
-            final HDF5PoN pon = new HDF5PoN(ponHDF5File);
+            final HDF5PCACoveragePoN pon = new HDF5PCACoveragePoN(ponHDF5File);
 
             Assert.assertTrue(pon.getTargets().size() >= pon.getPanelTargets().size());
             Assert.assertTrue(pon.getRawTargets().size() > pon.getTargets().size());
@@ -165,7 +169,6 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             Assert.assertTrue(pon.getRawTargetNames().size() == pon.getRawTargetNames().size());
 
             if (initialTargetsFileUsedToCreatePoN != null) {
-
                 final TargetCollection<Target> tc = TargetArgumentCollection.readTargetCollection(initialTargetsFileUsedToCreatePoN);
                 Assert.assertEquals(pon.getRawTargets().size(), tc.targetCount());
 
@@ -180,7 +183,7 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
         outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
@@ -194,18 +197,20 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_TARGET_COORDINATE_ONLY_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider="badPercentileMax50Data", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider="badPercentileMax50Data", expectedExceptions = IllegalArgumentException.class)
     public void testBadCountTruncatePercentile(final double percentile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("-" + CreatePanelOfNormals.COUNT_TRUNCATE_PERCENTILE_SHORT_NAME);
@@ -213,12 +218,13 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider="badPercentileMax100Data", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider="badPercentileMax100Data", expectedExceptions = IllegalArgumentException.class)
     public void testBadMaximumAllowedZerosInColumn(final double percentile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("-" + CreatePanelOfNormals.MAXIMUM_PERCENT_ZEROS_IN_COLUMN_SHORT_NAME);
@@ -226,12 +232,13 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider="badPercentileMax100Data", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider="badPercentileMax100Data", expectedExceptions = IllegalArgumentException.class)
     public void testBadMaximumAllowedZerosInTarget(final double percentile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("-" + CreatePanelOfNormals.MAXIMUM_PERCENT_ZEROS_IN_TARGET_SHORT_NAME);
@@ -239,12 +246,13 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider="badPercentileMax100Data", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider="badPercentileMax100Data", expectedExceptions = IllegalArgumentException.class)
     public void testBadPercentileUsableTargets(final double percentile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("-" + CreatePanelOfNormals.TARGET_FACTOR_THRESHOLD_PERCENTILE_SHORT_NAME);
@@ -252,12 +260,13 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider="badPercentileMax50Data", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider="badPercentileMax50Data", expectedExceptions = IllegalArgumentException.class)
     public void testBadOutlierColumnPercentile(final double percentile) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         arguments.add("-" + CreatePanelOfNormals.COLUMN_EXTREME_THRESHOLD_PERCENTILE_SHORT_NAME);
@@ -265,21 +274,22 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         runCommandLine(arguments);
     }
 
-    @Test(dataProvider="badNumOfEigenSamplesData", expectedExceptions = UserException.BadArgumentValue.class)
-    public void testBadNumOfEigenSamples(final String numberOfEigenSamples) {
+    @Test(dataProvider="badNumOfEigensamplesData", expectedExceptions = IllegalArgumentException.class)
+    public void testBadNumOfEigensamples(final String numberOfEigensamples) {
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
         arguments.add(CONTROL_PCOV_FULL_FILE.toString());
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
-        arguments.add("-" + CreatePanelOfNormals.NUMBER_OF_EIGEN_SAMPLES_SHORT_NAME);
-        arguments.add("" + numberOfEigenSamples);
+        arguments.add("-" + CreatePanelOfNormals.NUMBER_OF_EIGENSAMPLES_SHORT_NAME);
+        arguments.add("" + numberOfEigensamples);
         runCommandLine(arguments);
     }
 
-    @DataProvider(name = "badNumOfEigenSamplesData")
-    public Object[][] badNumOfEigenSamplesData() {
+    @DataProvider(name = "badNumOfEigensamplesData")
+    public Object[][] badNumOfEigensamplesData() {
         return new Object[][]{
                 { "-1.0" },
                 { "" + Double.NaN },
@@ -288,7 +298,6 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
                 { "10.01" }
         };
     }
-
 
     @DataProvider(name = "badPercentileMax50Data")
     public Object[][] badPercentileMax50Data() {
@@ -320,7 +329,8 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add(targetsFile.toString());
         }
         arguments.add("-ds");
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         runCommandLine(arguments);
@@ -337,7 +347,8 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
             arguments.add("-" + TargetArgumentCollection.TARGET_FILE_SHORT_NAME);
             arguments.add(targetsFile.toString());
         }
-        final File outputFile = createTempFile("pon-",".hd5");
+        final File outputFile = createTempFile("pon-", ".hd5");
+        outputFile.delete();
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.toString());
         runCommandLine(arguments);
@@ -345,10 +356,9 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         assertRamPoNDuplicate(outputFile);
     }
 
-
     private void assertRamPoNDuplicate(final File outputFile) {
         try (final HDF5File hdf5FilePoN = new HDF5File(outputFile)) {
-            final HDF5PoN filePoN = new HDF5PoN(hdf5FilePoN);
+            final HDF5PCACoveragePoN filePoN = new HDF5PCACoveragePoN(hdf5FilePoN);
             assertRamPoNDuplicate(filePoN);
         }
     }
@@ -358,16 +368,16 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
      *
      * @param pon never {@code null}
      */
-    private void assertRamPoNDuplicate(final PoN pon) {
+    private void assertRamPoNDuplicate(final PCACoveragePoN pon) {
 
-        final PoN ramPoN = new RamPoN(pon);
+        final PCACoveragePoN ramPoN = new RamPCACoveragePoN(pon);
 
         PoNTestUtils.assertEqualsMatrix(pon.getLogNormalizedCounts(), ramPoN.getLogNormalizedCounts(), false);
         PoNTestUtils.assertEqualsMatrix(pon.getLogNormalizedPInverseCounts(), ramPoN.getLogNormalizedPInverseCounts(), false);
         PoNTestUtils.assertEqualsMatrix(pon.getNormalizedCounts(), ramPoN.getNormalizedCounts(), false);
         PoNTestUtils.assertEqualsMatrix(pon.getReducedPanelCounts(), ramPoN.getReducedPanelCounts(), false);
         PoNTestUtils.assertEqualsMatrix(pon.getReducedPanelPInverseCounts(), ramPoN.getReducedPanelPInverseCounts(), false);
-        PoNTestUtils.assertEqualsMatrix(pon.getTargetFactors(), ramPoN.getTargetFactors(), false);
+        PoNTestUtils.assertEqualsDoubleArrays(pon.getTargetFactors(), ramPoN.getTargetFactors());
 
         final List<Target> ponPanelTargets = pon.getPanelTargets();
         final List<Target> ponTargets = pon.getTargets();
@@ -392,7 +402,6 @@ public class CreatePanelOfNormalsIntegrationTest extends CommandLineProgramTest 
         // Make sure every target name is the same
         Assert.assertTrue(IntStream.range(0, pon.getTargetNames().size()).boxed().allMatch(i -> pon.getTargetNames().get(i).equals(ramPoN.getTargetNames().get(i))));
         Assert.assertTrue(IntStream.range(0, pon.getPanelTargetNames().size()).boxed().allMatch(i -> pon.getPanelTargetNames().get(i).equals(ramPoN.getPanelTargetNames().get(i))));
-
     }
 
     @DataProvider(name="allTargetsHDF5PoNCreationData")

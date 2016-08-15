@@ -25,7 +25,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
     private final double[][] emissionProbabilities;
 
 
-    private final static double LN_OF_10 = Math.log(10);
+    private static final double LN_OF_10 = Math.log(10);
 
     static TestHMModel fromPhredProbabilities(final double ... phred) {
 
