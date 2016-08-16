@@ -303,7 +303,7 @@ task wrapper(type: Wrapper) {
 
 tasks.withType(ShadowJar) {
     from(project.sourceSets.main.output)
-    baseName = project.name + '-all'
+    baseName = project.name + '-package'
     mergeServiceFiles()
     relocate 'com.google.common', 'org.broadinstitute.hellbender.relocated.com.google.common'
     zip64 true
@@ -338,9 +338,11 @@ configurations {
 
 shadowJar {
     configurations = [project.configurations.runtime]
-    classifier = 'shadowJar'
+    classifier = 'local'
     mergeServiceFiles('reference.conf')
 }
+
+task localJar{ dependsOn shadowJar }
 
 task sparkJar(type: ShadowJar) {
     group = "Shadow"
