@@ -287,16 +287,19 @@ public final class IntervalUtils {
             final IntervalList il = IntervalList.fromFile(inputFile);
             isPicardInterval = true;
 
-            int nInvalidIntervals = 0;
             for (final Interval interval : il.getIntervals()) {
-                if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
+                // The current Agilent exome interval list is off-by-one on all end positions. Until this is fixed we
+                // need to tolerate intervals where the end is one before the start. We should remove this once a
+                // corrected version of the interval list is released. This is tracked in:
+                // https://github.com/broadinstitute/gatk/issues/2089
+                if (interval.getStart() - interval.getEnd() == 1 ) {
+                    logger.warn("Ignoring possibly incorrectly converted length 1 interval : " + interval);
+                }
+                else if ( glParser.isValidGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true)) {
                     ret.add(glParser.createGenomeLoc(interval.getContig(), interval.getStart(), interval.getEnd(), true));
                 } else {
-                    nInvalidIntervals++;
+                    throw new UserException(inputFile.getAbsolutePath() +  " has an invalid interval : " + interval) ;
                 }
-            }
-            if ( nInvalidIntervals > 0 ) {
-                logger.warn("Ignoring " + nInvalidIntervals + " invalid intervals from " + inputFile);
             }
         }
         // if that didn't work, try parsing file as a GATK interval file
@@ -448,7 +451,7 @@ public final class IntervalUtils {
     }
 
     /**
-     * Check if string argument was intented as a file
+     * Check if string argument was intended as a file
      * Accepted file extensions: .bed .list, .picard, .interval_list, .intervals.
      * @param str token to identify as a filename.
      * @return true if the token looks like a filename, or false otherwise.
@@ -458,7 +461,7 @@ public final class IntervalUtils {
     }
 
     /**
-     * Check if string argument was intented as a file
+     * Check if string argument was intended as a file
      * Accepted file extensions are defined in {@link #INTERVAL_FILE_EXTENSIONS}
      * @param str token to identify as a filename.
      * @param checkExists if true throws an exception if the file doesn't exist and has an interval file extension
