@@ -14,8 +14,8 @@ env:
   - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
   #gradle needs this
   - TERM=dumb
-  #limit gradle jvm memory
-  - GRADLE_OPTS=-Xmx1024m
+  #limit gradle jvm memory and disable daemon
+  - GRADLE_OPTS="-Xmx1024m -Dorg.gradle.daemon=false"
   #google cloud stuff
   - CLOUDSDK_CORE_DISABLE_PROMPTS=1
   - GCLOUD=$HOME/gcloud/google-cloud-sdk/bin 
@@ -104,5 +104,5 @@ after_script:
     $GCLOUD/gcloud components -q update gsutil;
     REPORT_PATH=$TRAVIS_BRANCH_$TRAVIS_JOB_NUMBER;
     $GCLOUD/gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs://hellbender/test/build_reports/$REPORT_PATH/;
-    echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/index.html";
+    echo "See the test report at https://storage.googleapis.com/hellbender/test/build_reports/$REPORT_PATH/tests/test/index.html";
   fi
