@@ -352,6 +352,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         if ( referenceURL != null ) {
             referenceSource = new ReferenceMultiSource(gcsOptions, referenceURL, getReferenceWindowFunction());
             referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
+            if (referenceDictionary == null) {
+                throw new UserException.MissingReferenceDictFile(referenceURL);
+            }
         }
     }
 
