@@ -64,6 +64,12 @@ If you are looking for the codebase of the current production version of GATK, p
     * The resulting jar will be in `build/libs` with a name like `gatk-package-VERSION-spark.jar`
     * This jar will not include Spark and Hadoop libraries, in order to allow the versions of Spark and Hadoop installed on your cluster to be used.
 
+* To create a zip archive containing a complete standalone GATK distribution, including our launcher `gatk-launch`, both the local and spark jars, and this README, run
+
+        ./gradlew gatkZipDistribution
+        
+    * The resulting zip file will be in `build` with a name like `gatk-VERSION.zip`
+
 * To remove previous builds, run 
 
         ./gradlew clean
