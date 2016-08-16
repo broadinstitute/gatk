@@ -69,6 +69,19 @@ public final class BucketUtils {
     }
 
     /**
+     * Changes relative local file paths to be absolute file paths. Paths with a scheme are left unchanged.
+     * @param path the path
+     * @return an absolute file path if the original path was a relative file path, otherwise the original path
+     */
+    public static String makeFilePathAbsolute(String path){
+        if (isCloudStorageUrl(path) || isHadoopUrl(path) || isFileUrl(path)){
+            return path;
+        } else {
+            return new File(path).getAbsolutePath();
+        }
+    }
+
+    /**
      * Open a file for reading regardless of whether it's on GCS, HDFS or local disk.
      *
      * If the file ends with .gz will attempt to wrap it in an appropriate unzipping stream

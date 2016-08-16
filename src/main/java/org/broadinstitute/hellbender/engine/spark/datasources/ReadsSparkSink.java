@@ -137,9 +137,9 @@ public final class ReadsSparkSink {
 
         SAMFormat samOutputFormat = IOUtils.isCramFileName(outputFile) ? SAMFormat.CRAM : SAMFormat.BAM;
 
-        String absoluteOutputFile = makeFilePathAbsolute(outputFile);
+        String absoluteOutputFile = BucketUtils.makeFilePathAbsolute(outputFile);
         String absoluteReferenceFile = referenceFile != null ?
-                                        makeFilePathAbsolute(referenceFile) :
+                                        BucketUtils.makeFilePathAbsolute(referenceFile) :
                                         referenceFile;
         setHadoopBAMConfigurationProperties(ctx, absoluteOutputFile, absoluteReferenceFile);
 
@@ -282,14 +282,6 @@ public final class ReadsSparkSink {
     private static void deleteHadoopFile(String fileToObliterate, Configuration conf) throws IOException {
         final Path pathToDelete = new Path(fileToObliterate);
         pathToDelete.getFileSystem(conf).delete(pathToDelete, true);
-    }
-
-    private static String makeFilePathAbsolute(String path){
-        if(BucketUtils.isCloudStorageUrl(path) || BucketUtils.isHadoopUrl(path) || BucketUtils.isFileUrl(path)){
-            return path;
-        } else {
-            return new File(path).getAbsolutePath();
-        }
     }
 
     /**

@@ -519,7 +519,7 @@ public final class IOUtils {
     public static Path getPath(String uriString) throws IOException {
         URI uri = URI.create(uriString);
         try {
-            return Paths.get(uri);
+            return uri.getScheme() == null ? Paths.get(uriString) : Paths.get(uri);
         } catch (FileSystemNotFoundException e) {
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
             if (cl == null) {
