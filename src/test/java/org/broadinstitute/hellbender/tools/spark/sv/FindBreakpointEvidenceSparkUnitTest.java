@@ -20,15 +20,16 @@ import java.util.*;
 
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final ReadMetadata.ReadGroupFragmentStatistics testStats =
-            new ReadMetadata.ReadGroupFragmentStatistics(400.f, 75.f);
-    private static final SVInterval testInterval = new SVInterval(1, 33143134, 33143478);
+            new ReadMetadata.ReadGroupFragmentStatistics(400, 175, 20);
+    private static final SVInterval[] testIntervals =
+            { new SVInterval(1, 33140934, 33141497), new SVInterval(1, 33143116, 33143539) };
 
     private final String toolDir = getToolTestDataDir();
     private final String readsFile = toolDir+"SVBreakpointsTest.bam";
     private final String qNamesFile = toolDir+"SVBreakpointsTest.qnames";
     private final String kmersFile = toolDir+"SVBreakpointsTest.kmers";
     private final String asmQNamesFile = toolDir+"SVBreakpointsTest.assembly.qnames";
-    private final String fastqFile = toolDir+"SVBreakpointsTest.assembly";
+    private final String fastqFile = toolDir+"SVBreakpointsTest.assembly.";
 
     private final FindBreakpointEvidenceSpark.Params params = FindBreakpointEvidenceSpark.defaultParams;
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
@@ -36,26 +37,19 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final SAMFileHeader header = readsSource.getHeader(readsFile, null, null);
     private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null, 0L);
     private final JavaRDD<GATKRead> mappedReads = reads.filter(read -> !read.isUnmapped());
-    private final ReadMetadata readMetadataExpected =
-            new ReadMetadata(header, Arrays.asList(testStats, testStats, testStats), testStats);
+    private final ReadMetadata readMetadataExpected = new ReadMetadata(header, reads);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
     private final FindBreakpointEvidenceSpark.Locations locations =
-        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null);
+        new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null, null);
     private final Set<String> expectedQNames = loadExpectedQNames(qNamesFile);
     private final Set<String> expectedAssemblyQNames = loadExpectedQNames(asmQNamesFile);
-    private final List<SVInterval> expectedIntervalList = Collections.singletonList(testInterval);
-
-    @Test(groups = "spark")
-    public void getMetadataTest() {
-        final ReadMetadata readMetadataActual = FindBreakpointEvidenceSpark.getMetadata(header);
-        Assert.assertEquals(readMetadataActual, readMetadataExpected);
-    }
+    private final List<SVInterval> expectedIntervalList = Arrays.asList(testIntervals);
 
     @Test(groups = "spark")
     public void getIntervalsTest() {
         final List<SVInterval> actualIntervals =
                 FindBreakpointEvidenceSpark.getIntervals(params, broadcastMetadata, header, mappedReads, locations);
-        Assert.assertEquals(actualIntervals, expectedIntervalList);
+        Assert.assertEquals(expectedIntervalList, actualIntervals);
     }
 
     @Test(groups = "spark")
@@ -65,18 +59,18 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .stream()
                 .map(qNameAndInterval -> qNameAndInterval.getKey())
                 .forEach(actualQNames::add);
-        Assert.assertEquals(actualQNames, expectedQNames);
+        Assert.assertEquals(expectedQNames, actualQNames);
     }
 
     @Test(groups = "spark")
     public void getKmerIntervalsTest() {
         final List<SVKmer> highCountKmers = FindBreakpointEvidenceSpark.getHighCountKmers(params, reads, locations, null);
-        Assert.assertEquals(highCountKmers.size(), 2);
+        Assert.assertEquals(2, highCountKmers.size());
         final Set<SVKmer> killSet = new HashSet<>();
         killSet.add(SVKmerizer.toKmer("ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACG"));
         killSet.add(SVKmerizer.toKmer("TACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTAC"));
         killSet.addAll(highCountKmers);
-        Assert.assertEquals(killSet.size(), 2);
+        Assert.assertEquals(2, killSet.size());
 
         final HopscotchUniqueMultiMap<String, Integer, FindBreakpointEvidenceSpark.QNameAndInterval> qNameMultiMap =
                 new HopscotchUniqueMultiMap<>(expectedAssemblyQNames.size());
@@ -88,7 +82,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                         FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, new HopscotchSet<>(0),
                                 reads, locations, null));
         final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null);
-        Assert.assertEquals(actualKmerAndIntervalSet.size(), expectedKmers.size());
+        Assert.assertEquals(expectedKmers.size(), actualKmerAndIntervalSet.size());
         for ( final FindBreakpointEvidenceSpark.KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
             Assert.assertTrue(expectedKmers.contains(kmerAndInterval.getKey()));
         }
@@ -107,7 +101,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .stream()
                 .map(qNameAndInterval -> qNameAndInterval.getKey())
                 .forEach(actualAssemblyQNames::add);
-        Assert.assertEquals(actualAssemblyQNames, expectedAssemblyQNames);
+        Assert.assertEquals(expectedAssemblyQNames, actualAssemblyQNames);
     }
 
     @Test(groups = "spark")
@@ -118,7 +112,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .map(qName -> new FindBreakpointEvidenceSpark.QNameAndInterval(qName, 0))
                 .forEach(qNameMultiMap::add);
         final String expectedFile = fastqFile;
-        FindBreakpointEvidenceSpark.generateFastqs(ctx, qNameMultiMap, reads, 1, false,
+        FindBreakpointEvidenceSpark.generateFastqs(ctx, qNameMultiMap, reads, 2, true,
                 intervalAndFastqBytes -> compareFastqs(intervalAndFastqBytes, expectedFile));
     }
 
@@ -133,12 +127,13 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
             System.arraycopy(fastq, 0, concatenatedFastqs, idx, fastq.length);
             idx += fastq.length;
         }
+        String expectedFile = fastqFile+intervalAndFastqBytes._1();
         final ByteArrayInputStream actualStream = new ByteArrayInputStream(concatenatedFastqs);
-        try( InputStream expectedStream = new BufferedInputStream(new FileInputStream(fastqFile)) ) {
+        try( InputStream expectedStream = new BufferedInputStream(new FileInputStream(expectedFile)) ) {
             int val;
             while ( (val = expectedStream.read()) != -1 )
-                Assert.assertEquals(actualStream.read(), val);
-            Assert.assertEquals(actualStream.read(), -1);
+                Assert.assertEquals(val, actualStream.read());
+            Assert.assertEquals(-1, actualStream.read());
         }
         catch ( final IOException ioe ) {
             throw new GATKException("can't read expected values", ioe);

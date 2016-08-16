@@ -17,9 +17,9 @@ public class ReadClassifierTest extends BaseTest {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(2, 1, 10000000, 1);
         final String groupName = header.getReadGroups().get(0).getReadGroupId();
         final int readSize = 151;
-        final int fragmentLen = 475;
-        final ReadMetadata.ReadGroupFragmentStatistics groupStats = new ReadMetadata.ReadGroupFragmentStatistics(fragmentLen, 25.f);
-        final ReadMetadata readMetadata = new ReadMetadata(header, Collections.singletonList(groupStats), groupStats);
+        final int fragmentLen = 400;
+        final ReadMetadata.ReadGroupFragmentStatistics groupStats = new ReadMetadata.ReadGroupFragmentStatistics(fragmentLen, 175, 20);
+        final ReadMetadata readMetadata = new ReadMetadata(header, groupStats, 1, 2L, 2L, 1);
         final String templateName = "xyzzy";
         final int leftStart = 1010101;
         final int rightStart = leftStart + fragmentLen - readSize;
@@ -51,7 +51,7 @@ public class ReadClassifierTest extends BaseTest {
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.InterContigPair(read, readMetadata)));
     }
 
-    void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {
+    private void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {
         final List<BreakpointEvidence> evidence = new ArrayList<>();
         classifier.apply(read).forEachRemaining(evidence::add);
         Assert.assertEquals(evidence, expectedEvidence);
