@@ -1,7 +1,7 @@
 ##fileformat=VCFv4.1
 ##FILTER=<ID=highDP,Description="DP < 8">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="read depth">
-##FORMAT=<ID=FT,Number=1,Type=String,Description="Genotype-level filter">
+##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
 ##contig=<ID=1,length=249250621,assembly=b37>
