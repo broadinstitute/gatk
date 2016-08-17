@@ -353,6 +353,27 @@ task sparkJar(type: ShadowJar) {
     classifier = 'spark'
 }
 
+task gatkZipDistribution(type: Zip) {
+    dependsOn shadowJar, sparkJar
+
+    doFirst {
+        assert file("settings.gradle").exists()
+        assert file("gatk-launch").exists()
+        assert file("README.md").exists()
+    }
+
+    baseName = project.name + "-" + project.version
+    destinationDir file("$buildDir")
+    archiveName baseName + ".zip"
+
+    from(shadowJar.archivePath)
+    from(sparkJar.archivePath)
+    from("settings.gradle")
+    from("gatk-launch")
+    from("README.md")
+    into(baseName)
+}
+
 task javadocJar(type: Jar, dependsOn: javadoc) {
     classifier = 'javadoc'
     from 'build/docs/javadoc'
