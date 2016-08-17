@@ -1,7 +1,7 @@
 ##fileformat=VCFv4.2
 ##FILTER=<ID=lowDP,Description="DP < 8">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="read depth">
-##FORMAT=<ID=FT,Number=1,Type=String,Description="Genotype-level filter">
+##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Test1	Test2
