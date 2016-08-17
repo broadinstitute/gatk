@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
@@ -12,20 +11,6 @@ public final class ExampleVariantWalkerIntegrationTest extends CommandLineProgra
 
     private static final String TEST_DATA_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
-
-    @Test
-    public void testExampleVariantWalker_UndefinedContigLengthsInDictionary() throws IOException {
-        final IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " -L 1:100-200" +
-                " -R " + hg19MiniReference +
-                " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
-                " -V " + TEST_DATA_DIRECTORY + "example_variants.vcf" +
-                " -auxiliaryVariants " + TEST_DATA_DIRECTORY + "feature_data_source_test.vcf" +
-                " -O %s",
-                1,
-                UserException.MalformedGenomeLoc.class);
-        testSpec.executeTest("testExampleVariantWalker_UndefinedContigLengthsInDictionary", this);
-    }
 
     @Test
     public void testExampleVariantWalker() throws IOException {

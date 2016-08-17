@@ -234,8 +234,14 @@ public final class GenomeLocParser {
                     vglHelper(String.format("The stop position %d is less than 1", stop));
 
                 final int contigSize = contigInfo.getSequenceLength();
-                if (start > contigSize || stop > contigSize)
+                if (contigSize == SAMSequenceRecord.UNKNOWN_SEQUENCE_LENGTH) {
+                    logger.warn(String.format("The available sequence dictionary does not contain a sequence length for contig (%s). " +
+                            "Skipping validation of the genome loc end coordinate (%d).",
+                            contig, stop));
+                }
+                else if (start > contigSize || stop > contigSize) {
                     vglHelper(String.format("The genome loc coordinates %d-%d exceed the contig size (%d)", start, stop, contigSize));
+                }
             }
 
             return contigInfo.getSequenceName();
