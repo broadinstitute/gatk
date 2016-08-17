@@ -95,17 +95,6 @@ compileTestJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror','-Xdiags:verbose']
 }
 
-task gcovTestReport(type: Exec){
-    dependsOn test
-    group = "Reporting"
-    description = "Generate gcov C code coverage reports after running tests."
-
-    String reportDir = "$buildDir/reports/gcov"
-    mkdir(reportDir)
-
-    commandLine "gcovr",  "--root=.", "-s", "--html", "--html-details", "--output=$reportDir/index.html"
-}
-
 dependencies {
     compile 'com.intel:genomicsdb:0.2.1'
     compile 'com.opencsv:opencsv:3.4'
