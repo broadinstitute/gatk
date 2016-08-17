@@ -83,10 +83,6 @@ jacocoTestReport {
     }
 }
 
-jacoco {
-    toolVersion = "0.7.5.201505241946"
-}
-
 //NOTE: we ignore contracts for now
 compileJava {
   options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror','-Xdiags:verbose']
@@ -289,7 +285,7 @@ test {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.13'
+    gradleVersion = '3.0'
 }
 
 tasks.withType(ShadowJar) {
