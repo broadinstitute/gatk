@@ -28,7 +28,7 @@ public final class AlignmentUtils {
      * @return true if the first or last operator of cigar is a D
      */
     public static boolean startsOrEndsWithInsertionOrDeletion(final Cigar cigar) {
-        if ( cigar == null ) throw new IllegalArgumentException("Cigar cannot be null");
+        Utils.nonNull(cigar);
 
         if ( cigar.isEmpty() )
             return false;
@@ -128,8 +128,8 @@ public final class AlignmentUtils {
     public static byte[] getBasesCoveringRefInterval(final int refStart, final int refEnd, final byte[] bases, final int basesStartOnRef, final Cigar basesToRefCigar) {
         if ( refStart < 0 || refEnd < refStart ) throw new IllegalArgumentException("Bad start " + refStart + " and/or stop " + refEnd);
         if ( basesStartOnRef < 0 ) throw new IllegalArgumentException("BasesStartOnRef must be >= 0 but got " + basesStartOnRef);
-        if ( bases == null ) throw new IllegalArgumentException("Bases cannot be null");
-        if ( basesToRefCigar == null ) throw new IllegalArgumentException("basesToRefCigar cannot be null");
+        Utils.nonNull( bases );
+        Utils.nonNull( basesToRefCigar );
         if ( bases.length != basesToRefCigar.getReadLength() ) throw new IllegalArgumentException("Mismatch in length between reference bases " + bases.length + " and cigar length " + basesToRefCigar);
 
         int refPos = basesStartOnRef;
@@ -246,8 +246,8 @@ public final class AlignmentUtils {
      */
     @SuppressWarnings("fallthrough")
     public static MismatchCount getMismatchCount(GATKRead r, byte[] refSeq, int refIndex, int startOnRead, int nReadBases) {
-        if ( r == null ) throw new IllegalArgumentException("attempting to calculate the mismatch count from a read that is null");
-        if ( refSeq == null ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a reference sequence that is null");
+        Utils.nonNull( r );
+        Utils.nonNull( refSeq );
         if ( refIndex < 0 ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a reference index that is negative");
         if ( startOnRead < 0 ) throw new IllegalArgumentException("attempting to calculate the mismatch count with a read start that is negative");
         if ( nReadBases < 0 ) throw new IllegalArgumentException("attempting to calculate the mismatch count for a negative number of read bases");
@@ -324,7 +324,7 @@ public final class AlignmentUtils {
      * @return number of continuous alignment blocks (i.e. 'M' elements of the cigar; all indel and clipping elements are ignored).
      */
     public static int getNumAlignmentBlocks(final GATKRead r) {
-        if ( r == null ) throw new IllegalArgumentException("read cannot be null");
+        Utils.nonNull( r );
         final Cigar cigar = r.getCigar();
         if (cigar == null) return 0;
 
@@ -504,6 +504,51 @@ public final class AlignmentUtils {
     }
 
     /**
+     * Is the offset inside a deletion?
+     *
+     * @param cigar         the read's CIGAR -- cannot be null
+     * @param offset        the offset into the CIGAR
+     * @return true if the offset is inside a deletion, false otherwise
+     */
+    public static boolean isInsideDeletion(final Cigar cigar, final int offset) {
+        Utils.nonNull(cigar);
+        if ( offset < 0 ) return false;
+
+        // pos counts read bases
+        int pos = 0;
+        int prevPos = 0;
+
+        for (final CigarElement ce : cigar.getCigarElements()) {
+
+            switch (ce.getOperator()) {
+                case I:
+                case S:
+                case D:
+                case M:
+                case EQ:
+                case X:
+                    prevPos = pos;
+                    pos += ce.getLength();
+                    break;
+                case H:
+                case P:
+                case N:
+                    break;
+                default:
+                    throw new GATKException("Unsupported cigar operator: " + ce.getOperator());
+            }
+
+            // Is the offset inside a deletion?
+            if ( prevPos < offset && pos >= offset && ce.getOperator() == CigarOperator.D ) {
+                return true;
+
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Generate an array of bases for just those that are aligned to the reference (i.e. no clips or insertions)
      *
      * @param cigar            the read's CIGAR -- cannot be null
@@ -512,8 +557,8 @@ public final class AlignmentUtils {
      */
     @SuppressWarnings("fallthrough")
     public static byte[] readToAlignmentByteArray(final Cigar cigar, final byte[] read) {
-        if ( cigar == null ) throw new IllegalArgumentException("attempting to generate an alignment from a CIGAR that is null");
-        if ( read == null ) throw new IllegalArgumentException("attempting to generate an alignment from a read sequence that is null");
+        Utils.nonNull(cigar);
+        Utils.nonNull(read);
 
         final int alignmentLength = cigar.getReferenceLength();
         final byte[] alignment = new byte[alignmentLength];
@@ -667,9 +712,9 @@ public final class AlignmentUtils {
     }
 
     private static void ensureLeftAlignmentHasGoodArguments(final Cigar cigar, final byte[] refSeq, final byte[] readSeq, final int refIndex, final int readIndex) {
-        if ( cigar == null ) throw new IllegalArgumentException("attempting to left align a CIGAR that is null");
-        if ( refSeq == null ) throw new IllegalArgumentException("attempting to left align a reference sequence that is null");
-        if ( readSeq == null ) throw new IllegalArgumentException("attempting to left align a read sequence that is null");
+        Utils.nonNull( cigar );
+        Utils.nonNull( refSeq );
+        Utils.nonNull( readSeq );
         if ( refIndex < 0 ) throw new IllegalArgumentException("attempting to left align with a reference index less than 0");
         if ( readIndex < 0 ) throw new IllegalArgumentException("attempting to left align with a read index less than 0");
     }

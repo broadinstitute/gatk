@@ -46,6 +46,11 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
             return OptionalDouble.empty();
         }
 
+        // If the offset inside a deletion, it does not lie on a read.
+        if ( AlignmentUtils.isInsideDeletion(read.getCigar(), offset) ) {
+            return OptionalDouble.of(INVALID_ELEMENT_FROM_READ);
+        }
+
         int readPos = AlignmentUtils.calcAlignmentByteArrayOffset(read.getCigar(), offset, false, 0, 0);
         final int numAlignedBases = AlignmentUtils.getNumAlignedBasesCountingSoftClips( read );
 
