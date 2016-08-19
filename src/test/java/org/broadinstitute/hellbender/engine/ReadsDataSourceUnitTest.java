@@ -41,7 +41,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
-        ReadsDataSource readsSource = new ReadsDataSource(new File("/foo/bar/nonexistent.bam"));
+        new ReadsDataSource(BaseTest.getSafeNonExistentFile("nonexistent.bam"));
     }
 
     @Test(expectedExceptions = UserException.class)

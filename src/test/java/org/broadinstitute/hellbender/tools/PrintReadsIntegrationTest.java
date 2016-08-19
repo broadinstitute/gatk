@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.tools;
 import org.apache.commons.io.FileUtils;
 import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
@@ -214,5 +216,20 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
                 Assert.assertEquals(actualReads.get(readNumber).getName(), expectedReadNames.get(readNumber), "Unexpected read name");
             }
         }
+    }
+    @Test(expectedExceptions = UserException.MissingReference.class)
+    public void testNonExistentReference() throws Exception {
+        final File inCram = new File(TEST_DATA_DIR, "print_reads.sorted.cram");
+        final File outCram = BaseTest.createTempFile("print_reads_bad_reference", ".cram");
+
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("--" + StandardArgumentDefinitions.INPUT_LONG_NAME);
+        args.add(inCram.getCanonicalPath());
+        args.add("--" + StandardArgumentDefinitions.OUTPUT_LONG_NAME);
+        args.add(outCram.getCanonicalPath());
+        args.add("-R");
+        args.add(BaseTest.getSafeNonExistentFile("Nonexistent.fasta").getCanonicalPath());
+
+        runCommandLine(args.getArgsArray());
     }
 }

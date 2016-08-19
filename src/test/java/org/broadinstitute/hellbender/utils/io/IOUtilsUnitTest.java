@@ -111,7 +111,7 @@ public final class IOUtilsUnitTest extends BaseTest {
 
     @Test( expectedExceptions = UserException.CouldNotReadInputFile.class )
     public void testReadNonExistentFileIntoByteArray() {
-        File nonExistentFile = new File("djfhsdkjghdfk");
+        File nonExistentFile = BaseTest.getSafeNonExistentFile("djfhsdkjghdfk");
         Assert.assertFalse(nonExistentFile.exists());
 
         IOUtils.readFileIntoByteArray(nonExistentFile);

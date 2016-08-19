@@ -121,7 +121,7 @@ public class SampleDBUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.class)
     public void loadNonExistentFile() {
-        builder.addSamplesFromPedigreeFiles(Arrays.asList(new File("non-existence-file.txt")));
+        builder.addSamplesFromPedigreeFiles(Arrays.asList(BaseTest.getSafeNonExistentFile("non-existence-file.txt")));
         SampleDB db = builder.getFinalSampleDB();
         Assert.assertEquals(testSAMSamples, db.getSamples());
     }

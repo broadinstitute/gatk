@@ -1008,7 +1008,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     // So we'll blow up with MalformedGenomeLoc and not anything related to files
     @Test(expectedExceptions = UserException.MalformedGenomeLoc.class)
     public void testLoadIntervalsFromNonExistentFile() {
-        IntervalUtils.loadIntervals(Arrays.asList(publicTestDir + "non_existent_file.vcf"), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
+        IntervalUtils.loadIntervals(Arrays.asList(BaseTest.getSafeNonExistentFile("non_existent_file.vcf").getAbsolutePath()), IntervalSetRule.UNION, IntervalMergingRule.ALL, 0, hg19GenomeLocParser);
     }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)

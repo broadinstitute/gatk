@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import htsjdk.samtools.*;
-import htsjdk.samtools.cram.build.CramIO;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -30,6 +28,7 @@ import org.broadinstitute.hellbender.utils.read.BDGAlignmentRecordToGATKReadAdap
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.seqdoop.hadoop_bam.AnySAMInputFormat;
 import org.seqdoop.hadoop_bam.BAMInputFormat;
 import org.seqdoop.hadoop_bam.CRAMInputFormat;
@@ -238,7 +237,11 @@ public final class ReadsSparkSource implements Serializable {
                     throw new UserException("A 2bit file cannot be used as a CRAM file reference");
                 }
                 else { // Hadoop-BAM requires the reference to be a URI, including scheme
-                    String referenceURI = null ==  new Path(referenceName).toUri().getScheme() ?
+                    final Path refPath = new Path(referenceName);
+                    if (!SparkUtils.pathExists(ctx, refPath)) {
+                        throw new UserException.MissingReference("The specified fasta file (" + referenceName + ") does not exist.");
+                    }
+                    final String referenceURI = null == refPath.toUri().getScheme() ?
                             "file://" + new File(referenceName).getAbsolutePath() :
                             referenceName;
                     conf.set(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY, referenceURI);

@@ -58,6 +58,14 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
         };
     }
 
+    // this tests handling the case where a reference is specified but the file doesn't exist
+    @Test(expectedExceptions = UserException.MissingReference.class)
+    public void loadReadsNonExistentReference() {
+        doLoadReads(dir + "valid.cram",
+                BaseTest.getSafeNonExistentFile("NonExistentReference.fasta").getAbsolutePath(),
+                ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
+    }
+
     private void doLoadReadsTest(String bam, String referencePath) {
         doLoadReads(bam, referencePath, ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY);
     }
