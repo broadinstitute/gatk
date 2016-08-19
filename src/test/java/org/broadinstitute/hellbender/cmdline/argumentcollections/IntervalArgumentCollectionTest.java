@@ -51,7 +51,6 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
         clp.parseArguments(System.out, args);
     }
 
-
     @Test(dataProvider = "optionalOrNot",expectedExceptions = GATKException.class)
     public void emptyIntervalsTest(IntervalArgumentCollection iac){
         Assert.assertFalse(iac.intervalsSpecified());
@@ -68,8 +67,8 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
 
     @Test(dataProvider = "optionalOrNot")
     public void testExcludeWithPadding(IntervalArgumentCollection iac){
-        iac.intervalPadding = 10;
-        iac.addToIntervalStrings("1:10-100");
+        iac.intervalExclusionPadding = 10;
+        iac.addToIntervalStrings("1:1-100");
         iac.excludeIntervalStrings.add("1:90-100");
         Assert.assertTrue(iac.intervalsSpecified());
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 79)));
@@ -81,6 +80,13 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
         iac.excludeIntervalStrings.add("1:90-200");
         Assert.assertTrue(iac.intervalsSpecified());
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 89)));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
+    public void testIncludeWithPadding(IntervalArgumentCollection iac){
+        iac.addToIntervalStrings("1:20-30");
+        iac.intervalPadding = 10;
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 10, 40)));
     }
 
     @Test(dataProvider = "optionalOrNot")
@@ -99,12 +105,6 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
         Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 200)));
     }
 
-    @Test(dataProvider = "optionalOrNot")
-    public void testPadding(IntervalArgumentCollection iac){
-        iac.addToIntervalStrings("1:20-30");
-        iac.intervalPadding = 10;
-        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 10, 40)));
-    }
 
     @Test(dataProvider = "optionalOrNot", expectedExceptions = UserException.BadArgumentValue.class)
     public void testAllExcluded(IntervalArgumentCollection iac){
