@@ -1,15 +1,14 @@
-/* User needs to populate 'FILL_ME_IN' and save with new filename. */
 {
   "pon_gatk_workflow.disable_sequence_dictionary_validation": "true",
-  "pon_gatk_workflow.isWGS": "false", /* Change to true if running WGS samples */
-  "pon_gatk_workflow.max_open_files": "100", /* Maximum number of files to combine simultaneously while combining read counts */
-  "pon_gatk_workflow.wgsBinSize": "10000",  /* Size of bins for WGS read counts CLI */
-  "pon_gatk_workflow.enable_gc_correction": "true", /* true/false option change to false to bypass gc bias correction step */
-  "pon_gatk_workflow.ref_fasta": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta */
-  "pon_gatk_workflow.ref_fasta_fai": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta.fai */
-  "pon_gatk_workflow.pon_entity_id": "test", /* Name of the final PoN file */
-  "pon_gatk_workflow.normal_bam_list": "FILL_ME_IN", /* tsv file consisting of corresponding bam and corresponding index files as described in pon_gatk_workflow.wdl  */
-  "pon_gatk_workflow.ref_fasta_dict": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.dict */
-  "pon_gatk_workflow.target_file": "FILL_ME_IN", /* same file as was used for the PoN */
-  "pon_gatk_workflow.gatk_jar": "FILL_ME_IN", /* absolute path to gatk-protected.jar */
+  "pon_gatk_workflow.isWGS": "false", 
+  "pon_gatk_workflow.max_open_files": "1000",
+  "pon_gatk_workflow.wgsBinSize": "10000",  
+  "pon_gatk_workflow.enable_gc_correction": "true", 
+  "pon_gatk_workflow.ref_fasta": "$__ref_fasta__",
+  "pon_gatk_workflow.ref_fasta_fai": "$__ref_fasta_fai__",
+  "pon_gatk_workflow.pon_entity_id": "$__output_pon_name__",
+  "pon_gatk_workflow.normal_bam_list": "$__input_normal_bam_list___",
+  "pon_gatk_workflow.ref_fasta_dict": "$__ref_fasta_dict__",
+  "pon_gatk_workflow.target_file": "$__target_file__",
+  "pon_gatk_workflow.gatk_jar": "$__gatk_jar__"
 }
