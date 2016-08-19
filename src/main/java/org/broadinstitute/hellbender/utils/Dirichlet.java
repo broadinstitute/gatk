@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.util.MathArrays;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,19 +23,25 @@ import java.util.stream.IntStream;
 public class Dirichlet {
     final double[] alpha;
 
-    public Dirichlet(final double[] alpha) {
+    public Dirichlet(final double... alpha) {
         Utils.nonNull(alpha);
         Utils.validateArg(alpha.length >= 1, "Dirichlet parameters must have at least one element");
-        this.alpha = Arrays.copyOf(alpha, alpha.length);
+        Utils.validateArg(MathUtils.allMatch(alpha, x -> x >= 0), "Dirichlet parameters may not be negative");
+        Utils.validateArg(MathUtils.allMatch(alpha, Double::isFinite), "Dirichlet parameters must be finite");
+        this.alpha = alpha.clone();
     }
 
     public Dirichlet(final Dirichlet prior, final double[] counts) {
-        Utils.nonNull(counts);
-        Utils.validateArg(counts.length == prior.size(), "Counts and prior must have same length.");
-        alpha = IntStream.range(0, prior.size()).mapToDouble(n -> prior.alpha[n] + counts[n]).toArray();
+        this(MathArrays.ebeAdd(prior.alpha, counts));
     }
 
+    /**
+     * Create a symmetric distribution Dir(a/K, a/K, a/K . . .) where K is the number of states and
+     * a is the concentration.
+     */
     public static Dirichlet symmetricDirichlet(final int numStates, final double concentration) {
+        Utils.validateArg(numStates > 0, "Must have at leat one state");
+        Utils.validateArg(concentration > 0, "concentration must be positive");
         return new Dirichlet(Collections.nCopies(numStates, concentration/numStates).stream().mapToDouble(x->x).toArray());
     }
 

@@ -71,7 +71,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final double refPseudocount = configuration.genotypeArgs.snpHeterozygosity / Math.pow(configuration.genotypeArgs.heterozygosityStandardDeviation,2);
         final double snpPseudocount = configuration.genotypeArgs.snpHeterozygosity * refPseudocount;
         final double indelPseudocount = configuration.genotypeArgs.indelHeterozygosity * refPseudocount;
-        newAFCalculator = new NewAFCalculator(refPseudocount, snpPseudocount, indelPseudocount, configuration.genotypeArgs.samplePloidy);
+        newAFCalculator = new AlleleFrequencyCalculator(refPseudocount, snpPseudocount, indelPseudocount, configuration.genotypeArgs.samplePloidy);
     }
 
     /**

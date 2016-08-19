@@ -23,7 +23,7 @@ import java.util.stream.IntStream;
 /**
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class NewAFCalculator extends AFCalculator {
+public final class AlleleFrequencyCalculator extends AFCalculator {
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
     private static final double THRESHOLD_FOR_ALLELE_COUNT_CONVERGENCE = 0.1;
     private static final int HOM_REF_GENOTYPE_INDEX = 0;
@@ -34,7 +34,7 @@ public final class NewAFCalculator extends AFCalculator {
     private final int defaultPloidy;
 
 
-    public NewAFCalculator(final double refPseudocount, final double snpPseudocount, final double indelPseudocount, final int defaultPloidy) {
+    public AlleleFrequencyCalculator(final double refPseudocount, final double snpPseudocount, final double indelPseudocount, final int defaultPloidy) {
         this.refPseudocount = refPseudocount;
         this.snpPseudocount = snpPseudocount;
         this.indelPseudocount = indelPseudocount;
@@ -42,6 +42,7 @@ public final class NewAFCalculator extends AFCalculator {
     }
 
     public AFCalculationResult getLog10PNonRef(final VariantContext vc) {
+        // maxAltAlleles is not used by getLog10PNonRef, so don't worry about the 0
         return getLog10PNonRef(vc, defaultPloidy, 0, null);
     }
     //TODO: this should be a class of static methods once the old AFCalculator is gone.
@@ -96,15 +97,18 @@ public final class NewAFCalculator extends AFCalculator {
             log10PNoVariant += Math.log10(genotypePosteriors[HOM_REF_GENOTYPE_INDEX]);
 
             // per allele non-log space probabilities of zero counts for this sample
-
-
             // for each allele calculate the total probability of genotypes containing at least one copy of the allele
-            double[] pOfNonZeroAltAlleles = new double[numAlleles];
-            new IndexRange(0, glCalc.genotypeCount()).forEach(genotypeIndex ->
-                    glCalc.genotypeAlleleCountsAt(genotypeIndex).forEachAlleleIndexAndCount((alleleIndex, count) ->
-                            pOfNonZeroAltAlleles[alleleIndex] += genotypePosteriors[genotypeIndex]));
+            final double[] pOfNonZeroAltAlleles = new double[numAlleles];
 
-            new IndexRange(0, numAlleles).forEach(a -> log10POfZeroCountsByAllele[a] += Math.log10(1 - pOfNonZeroAltAlleles[a]));
+            for (int genotype = 0; genotype < glCalc.genotypeCount(); genotype++) {
+                final double genotypePosterior = genotypePosteriors[genotype];
+                glCalc.genotypeAlleleCountsAt(genotype).forEachAlleleIndexAndCount((alleleIndex, count) ->
+                        pOfNonZeroAltAlleles[alleleIndex] += genotypePosterior);
+            }
+
+            for (int allele = 0; allele < numAlleles; allele++) {
+                log10POfZeroCountsByAllele[allele] += Math.log10(1 - pOfNonZeroAltAlleles[allele]);
+            }
         }
 
         // unfortunately AFCalculationResult expects integers for the MLE.  We really should emit the EM no-integer values
@@ -127,7 +131,7 @@ public final class NewAFCalculator extends AFCalculator {
     private double[] effectiveAlleleCounts(final VariantContext vc, final double[] log10AlleleFrequencies) {
         final int numAlleles = vc.getNAlleles();
         Utils.validateArg(numAlleles == log10AlleleFrequencies.length, "number of alleles inconsistent");
-        double[] result = new double[numAlleles];
+        final double[] result = new double[numAlleles];
         for (final Genotype g : vc.getGenotypes()) {
             if (!g.hasLikelihoods()) {
                 continue;

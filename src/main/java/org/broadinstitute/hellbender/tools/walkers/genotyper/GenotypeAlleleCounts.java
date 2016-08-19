@@ -4,6 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.functionalinterfaces.IntBiConsumer;
+import org.broadinstitute.hellbender.utils.functionalinterfaces.IntToDoubleBiFunction;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -649,22 +651,11 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
     }
 
 
-
-    @FunctionalInterface
-    public interface TwoIntConsumer {
-        void accept(final int alleleIndex, final int alleleCount);
-    }
-
-    public void forEachAlleleIndexAndCount(final TwoIntConsumer action) {
+    public void forEachAlleleIndexAndCount(final IntBiConsumer action) {
         new IndexRange(0, distinctAlleleCount).forEach(n -> action.accept(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
     }
 
-    @FunctionalInterface
-    public interface TwoIntToDoubleFunction {
-        double apply(final int alleleIndex, final int alleleCount);
-    }
-
-    public double sumOverAlleleIndicesAndCounts(final TwoIntToDoubleFunction func) {
+    public double sumOverAlleleIndicesAndCounts(final IntToDoubleBiFunction func) {
         return new IndexRange(0, distinctAlleleCount).sum(n -> func.apply(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
     }
 

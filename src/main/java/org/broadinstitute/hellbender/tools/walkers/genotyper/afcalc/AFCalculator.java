@@ -85,7 +85,7 @@ public abstract class AFCalculator {
      * @param maximumAlternativeAlleleCount the maximum alternative allele count it must be able to handle. Has no effect if
      *                                     the current tracker is able to handle that number.
      *
-     * @return never {@code null}, except in the case of {@link NewAFCalculator}, whioch doesn't use a state tracker
+     * @return {@code null} iff this calculator implementation does not use a state tracker.
      */
     protected StateTracker getStateTracker(final boolean reset, final int maximumAlternativeAlleleCount) {
         if (stateTracker == null) {
