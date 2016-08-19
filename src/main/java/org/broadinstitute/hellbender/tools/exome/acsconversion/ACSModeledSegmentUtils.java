@@ -103,14 +103,15 @@ public class ACSModeledSegmentUtils {
     public static ACSModeledSegment convertACNVSegmentToACSSegment(final ACNVModeledSegment acnvModeledSegment, final double divisor, final Genome genome, final boolean isSegmentBalanced) {
 
         final double segmentMeanInLog2CR = acnvModeledSegment.getSegmentMeanPosteriorSummary().getCenter();
-        final double f = (isSegmentBalanced ? 0.5 : acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().getCenter());
+        final double fACNV = acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().getCenter();
+        final double f = isSegmentBalanced && !Double.isNaN(fACNV) ? 0.5 : fACNV;
         final double tau = Math.pow(2, segmentMeanInLog2CR) * 2.0;
-        final double widthTau = Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().getUpper()) - Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().getLower());
-        final double sigmaTau = widthTau/divisor;
+        final double tauWidth = Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().getUpper()) - Math.pow(2, acnvModeledSegment.getSegmentMeanPosteriorSummary().getLower());
+        final double sigmaTau = tauWidth / divisor;
         final double muMinor = tau * f;
-        final double widthF = acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().getUpper() - acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().getLower();
-        final double sigmaMinor = widthF/divisor;
-        final double muMajor = tau * (1-f);
+        final double fWidth = acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().getUpper() - acnvModeledSegment.getMinorAlleleFractionPosteriorSummary().getLower();
+        final double sigmaMinor = fWidth / divisor;
+        final double muMajor = tau * (1 - f);
         final double sigmaMajor = sigmaMinor;
         final int targetCount = genome.getTargets().targetCount(acnvModeledSegment.getInterval());
         final int segLabelCNLOH = 2;
