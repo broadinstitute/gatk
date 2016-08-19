@@ -67,6 +67,15 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
     }
 
     @Test(dataProvider = "optionalOrNot")
+    public void testExcludeWithPadding(IntervalArgumentCollection iac){
+        iac.intervalPadding = 10;
+        iac.addToIntervalStrings("1:10-100");
+        iac.excludeIntervalStrings.add("1:90-100");
+        Assert.assertTrue(iac.intervalsSpecified());
+        Assert.assertEquals(iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary()), Arrays.asList(new SimpleInterval("1", 1, 79)));
+    }
+
+    @Test(dataProvider = "optionalOrNot")
     public void testIncludeWithExclude(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:1-100");
         iac.excludeIntervalStrings.add("1:90-200");

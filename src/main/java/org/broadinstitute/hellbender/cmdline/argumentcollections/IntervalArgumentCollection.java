@@ -124,7 +124,7 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
             }
         }
 
-        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, 0, genomeLocParser);
+        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, intervalPadding, genomeLocParser);
         if ( excludeSortedSet.contains(GenomeLoc.UNMAPPED) ) {
             throw new UserException("-XL unmapped is not currently supported");
         }
