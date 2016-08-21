@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.commons.math3.special.Gamma;
-import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,7 +21,10 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public class Dirichlet {
-    final double[] alpha;
+    private static final double SUM_TO_UNITY_EPSILON = 1E-3;
+    private static final double EPSILON = 1E-10;
+
+    private final double[] alpha;
 
     public Dirichlet(final double... alpha) {
         Utils.nonNull(alpha);
@@ -64,6 +67,18 @@ public class Dirichlet {
     public double[] log10MeanWeights() {
         final double sum = MathUtils.sum(alpha);
         return MathUtils.applyToArray(alpha, x -> Math.log10(x / sum));
+    }
+
+    /**
+     * Return the log density at a given point.
+     */
+    public double logDensity(final double[] point) {
+        Utils.nonNull(point, "Point cannot be null.");
+        Utils.validateArg(point.length == alpha.length, "Dimension of point and alpha must be identical.");
+        Arrays.stream(point).forEach(x -> ParamUtils.inRange(x, 0, 1, "Point elements must be in [0, 1]."));
+        Utils.validateArg(Math.abs(1. - Arrays.stream(point).sum()) < SUM_TO_UNITY_EPSILON, "Point must lie on simplex.");
+        return IntStream.range(0, point.length).mapToDouble(i -> (alpha[i] - 1.) * Math.log(point[i] + EPSILON) - Gamma.logGamma(alpha[i])).sum()
+                + Gamma.logGamma(Arrays.stream(alpha).sum());
     }
 
     public int size() { return alpha.length; }

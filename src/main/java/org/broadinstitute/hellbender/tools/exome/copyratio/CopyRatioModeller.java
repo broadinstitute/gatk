@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.copyratio;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
 import java.util.*;
@@ -90,6 +91,9 @@ public final class CopyRatioModeller {
      * @param numBurnIn     number of burn-in samples to discard
      */
     public void fitMCMC(final int numSamples, final int numBurnIn) {
+        Utils.validateArg(numSamples > 0, "Total number of samples must be positive.");
+        Utils.validateArg(0 <= numBurnIn && numBurnIn < numSamples,
+                "Number of burn-in samples to discard must be non-negative and strictly less than total number of samples.");
         //run MCMC
         final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioData> gibbsSampler
                 = new GibbsSampler<>(numSamples, model);
@@ -175,7 +179,10 @@ public final class CopyRatioModeller {
      * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
      * @return                      list of {@link PosteriorSummary} elements summarizing the global parameters
      */
-    public Map<CopyRatioParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
+    public Map<CopyRatioParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha,
+                                                                                          final JavaSparkContext ctx) {
+        Utils.validateArg(0. <= credibleIntervalAlpha && credibleIntervalAlpha <= 1., "Credible-interval alpha must be in [0, 1].");
+        Utils.nonNull(ctx);
         final Map<CopyRatioParameter, PosteriorSummary> posteriorSummaries = new LinkedHashMap<>();
         posteriorSummaries.put(CopyRatioParameter.VARIANCE, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(varianceSamples, credibleIntervalAlpha, ctx));
         posteriorSummaries.put(CopyRatioParameter.OUTLIER_PROBABILITY, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(outlierProbabilitySamples, credibleIntervalAlpha, ctx));

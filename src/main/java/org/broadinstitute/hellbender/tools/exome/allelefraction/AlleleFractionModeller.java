@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.allelefraction;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
 
 import java.util.*;
@@ -100,6 +101,9 @@ public final class AlleleFractionModeller {
      * @param numBurnIn     number of burn-in samples to discard
      */
     public void fitMCMC(final int numSamples, final int numBurnIn) {
+        Utils.validateArg(numSamples > 0, "Total number of samples must be positive.");
+        Utils.validateArg(0 <= numBurnIn && numBurnIn < numSamples,
+                "Number of burn-in samples to discard must be non-negative and strictly less than total number of samples.");
         //run MCMC
         final GibbsSampler<AlleleFractionParameter, AlleleFractionState, AlleleFractionData> gibbsSampler = new GibbsSampler<>(numSamples, model);
         gibbsSampler.runMCMC();
@@ -166,7 +170,10 @@ public final class AlleleFractionModeller {
      * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
      * @return                      list of {@link PosteriorSummary} elements summarizing the global parameters
      */
-    public Map<AlleleFractionParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
+    public Map<AlleleFractionParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha,
+                                                                                               final JavaSparkContext ctx) {
+        Utils.validateArg(0. <= credibleIntervalAlpha && credibleIntervalAlpha <= 1., "Credible-interval alpha must be in [0, 1].");
+        Utils.nonNull(ctx);
         final Map<AlleleFractionParameter, PosteriorSummary> posteriorSummaries = new LinkedHashMap<>();
         posteriorSummaries.put(AlleleFractionParameter.MEAN_BIAS, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(meanBiasSamples, credibleIntervalAlpha, ctx));
         posteriorSummaries.put(AlleleFractionParameter.BIAS_VARIANCE, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(biasVarianceSamples, credibleIntervalAlpha, ctx));

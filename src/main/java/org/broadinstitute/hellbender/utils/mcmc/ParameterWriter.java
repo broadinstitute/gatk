@@ -29,6 +29,7 @@ public final class ParameterWriter<T extends Enum<T> & ParameterEnum> extends Ta
                 .append(formatDouble(posteriorSummary.getCenter()))
                 .append(formatDouble(posteriorSummary.getLower()))
                 .append(formatDouble(posteriorSummary.getUpper()))
+                .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_0)))
                 .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_10)))
                 .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_20)))
                 .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_30)))
@@ -37,7 +38,8 @@ public final class ParameterWriter<T extends Enum<T> & ParameterEnum> extends Ta
                 .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_60)))
                 .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_70)))
                 .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_80)))
-                .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_90)));
+                .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_90)))
+                .append(formatDouble(posteriorSummary.getDeciles().get(Decile.DECILE_100)));
     }
 
     private String formatDouble(final double d) {

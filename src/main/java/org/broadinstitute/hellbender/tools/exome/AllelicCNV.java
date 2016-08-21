@@ -74,7 +74,7 @@ import java.util.stream.Collectors;
 )
 @DocumentedFeature
 public class AllelicCNV extends SparkCommandLineProgram {
-    private static final long serialVersionUID = 1l;
+    private static final long serialVersionUID = 739846845L;
 
     private static final double INITIAL_ALLELIC_BIAS_GUESS = 1.;
 

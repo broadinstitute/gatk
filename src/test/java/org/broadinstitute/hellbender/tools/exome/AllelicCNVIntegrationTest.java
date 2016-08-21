@@ -50,7 +50,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 {new String[]{"--" + INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME, "0"}},
                 {new String[]{"--" + INTERVAL_THRESHOLD_ALLELE_FRACTION_LONG_NAME, "-1"}},
                 {new String[]{"--" + MAX_NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_LONG_NAME, "-1"}},
-                {new String[]{"--" + NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_PER_FIT_LONG_NAME, "-1"}},
+                {new String[]{"--" + NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_PER_FIT_LONG_NAME, "-1"}}
         };
     }
 
@@ -81,7 +81,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
                 "--" + NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
                 "--" + NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
-                "--verbosity", "INFO",
+                "--verbosity", "INFO"
         };
         testACNV(arguments, outputPrefix);
     }
@@ -102,7 +102,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + NUM_BURN_IN_COPY_RATIO_LONG_NAME, "10",
                 "--" + NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
                 "--" + NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
-                "--verbosity", "INFO",
+                "--verbosity", "INFO"
         };
         testACNV(arguments, outputPrefix);
     }
@@ -124,7 +124,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
                 "--" + NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
                 "--" + MAX_NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_LONG_NAME, "0",
-                "--verbosity", "INFO",
+                "--verbosity", "INFO"
         };
         testACNV(arguments, outputPrefix);
 
@@ -153,7 +153,7 @@ public class AllelicCNVIntegrationTest extends CommandLineProgramTest {
                 "--" + NUM_SAMPLES_ALLELE_FRACTION_LONG_NAME, "25",
                 "--" + NUM_BURN_IN_ALLELE_FRACTION_LONG_NAME, "10",
                 "--" + NUM_SIMILAR_SEGMENT_MERGING_ITERATIONS_PER_FIT_LONG_NAME, "2",
-                "--verbosity", "INFO",
+                "--verbosity", "INFO"
         };
         testACNV(arguments, outputPrefix);
 

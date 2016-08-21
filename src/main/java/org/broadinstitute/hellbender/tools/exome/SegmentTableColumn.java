@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import com.google.common.collect.Iterables;
 import org.apache.commons.collections4.ListUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
@@ -14,6 +15,7 @@ public enum SegmentTableColumn {
     SEGMENT_MEAN_POSTERIOR_MODE("Segment_Mean_Post_Mode"),
     SEGMENT_MEAN_POSTERIOR_LOWER("Segment_Mean_Post_Lo"),
     SEGMENT_MEAN_POSTERIOR_UPPER("Segment_Mean_Post_Hi"),
+    SEGMENT_MEAN_POSTERIOR_0("Segment_Mean_Post_0"),
     SEGMENT_MEAN_POSTERIOR_10("Segment_Mean_Post_10"),
     SEGMENT_MEAN_POSTERIOR_20("Segment_Mean_Post_20"),
     SEGMENT_MEAN_POSTERIOR_30("Segment_Mean_Post_30"),
@@ -23,9 +25,11 @@ public enum SegmentTableColumn {
     SEGMENT_MEAN_POSTERIOR_70("Segment_Mean_Post_70"),
     SEGMENT_MEAN_POSTERIOR_80("Segment_Mean_Post_80"),
     SEGMENT_MEAN_POSTERIOR_90("Segment_Mean_Post_90"),
+    SEGMENT_MEAN_POSTERIOR_100("Segment_Mean_Post_100"),
     MINOR_ALLELE_FRACTION_POSTERIOR_MODE("MAF_Post_Mode"),
     MINOR_ALLELE_FRACTION_POSTERIOR_LOWER("MAF_Post_Lo"),
     MINOR_ALLELE_FRACTION_POSTERIOR_UPPER("MAF_Post_Hi"),
+    MINOR_ALLELE_FRACTION_POSTERIOR_0("MAF_Post_0"),
     MINOR_ALLELE_FRACTION_POSTERIOR_10("MAF_Post_10"),
     MINOR_ALLELE_FRACTION_POSTERIOR_20("MAF_Post_20"),
     MINOR_ALLELE_FRACTION_POSTERIOR_30("MAF_Post_30"),
@@ -35,6 +39,7 @@ public enum SegmentTableColumn {
     MINOR_ALLELE_FRACTION_POSTERIOR_70("MAF_Post_70"),
     MINOR_ALLELE_FRACTION_POSTERIOR_80("MAF_Post_80"),
     MINOR_ALLELE_FRACTION_POSTERIOR_90("MAF_Post_90"),
+    MINOR_ALLELE_FRACTION_POSTERIOR_100("MAF_Post_100"),
 
     /** For appending results of the CN LoH Caller to an ACNV segment tsv.*/
     BALANCED_CALL("Segment_Balanced"),
@@ -103,30 +108,39 @@ public enum SegmentTableColumn {
     public static final TableColumnCollection NUM_TARGETS_AND_SNPS_COLUMNS =
             new TableColumnCollection(SAMPLE, CONTIG, START, END, NUM_TARGETS, NUM_SNPS);
 
-    public static final TableColumnCollection ACNV_MODELED_SEGMENT_MEAN_DECILES_SUMMARY_COLUMNS =
-            new TableColumnCollection(SEGMENT_MEAN_POSTERIOR_MODE, SEGMENT_MEAN_POSTERIOR_LOWER, SEGMENT_MEAN_POSTERIOR_UPPER,
-                    SEGMENT_MEAN_POSTERIOR_10, SEGMENT_MEAN_POSTERIOR_20, SEGMENT_MEAN_POSTERIOR_30,
-                    SEGMENT_MEAN_POSTERIOR_40, SEGMENT_MEAN_POSTERIOR_50, SEGMENT_MEAN_POSTERIOR_60,
-                    SEGMENT_MEAN_POSTERIOR_70, SEGMENT_MEAN_POSTERIOR_80, SEGMENT_MEAN_POSTERIOR_90);
+    public static final TableColumnCollection ACNV_MODELED_SEGMENT_MEAN_POSTERIOR_SUMMARY_COLUMNS =
+            new TableColumnCollection(SEGMENT_MEAN_POSTERIOR_MODE, SEGMENT_MEAN_POSTERIOR_LOWER, SEGMENT_MEAN_POSTERIOR_UPPER);
 
-    public static final TableColumnCollection ACNV_MODELED_SEGMENT_MAF_DECILES_SUMMARY_COLUMNS =
-            new TableColumnCollection(MINOR_ALLELE_FRACTION_POSTERIOR_MODE, MINOR_ALLELE_FRACTION_POSTERIOR_LOWER, MINOR_ALLELE_FRACTION_POSTERIOR_UPPER,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_10, MINOR_ALLELE_FRACTION_POSTERIOR_20, MINOR_ALLELE_FRACTION_POSTERIOR_30,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_40, MINOR_ALLELE_FRACTION_POSTERIOR_50, MINOR_ALLELE_FRACTION_POSTERIOR_60,
-                    MINOR_ALLELE_FRACTION_POSTERIOR_70, MINOR_ALLELE_FRACTION_POSTERIOR_80, MINOR_ALLELE_FRACTION_POSTERIOR_90);
+    public static final TableColumnCollection ACNV_MODELED_SEGMENT_MEAN_DECILES_COLUMNS =
+            new TableColumnCollection(SEGMENT_MEAN_POSTERIOR_0, SEGMENT_MEAN_POSTERIOR_10, SEGMENT_MEAN_POSTERIOR_20,
+                    SEGMENT_MEAN_POSTERIOR_30, SEGMENT_MEAN_POSTERIOR_40, SEGMENT_MEAN_POSTERIOR_50, SEGMENT_MEAN_POSTERIOR_60,
+                    SEGMENT_MEAN_POSTERIOR_70, SEGMENT_MEAN_POSTERIOR_80, SEGMENT_MEAN_POSTERIOR_90, SEGMENT_MEAN_POSTERIOR_100);
 
+    public static final TableColumnCollection ACNV_MODELED_SEGMENT_MAF_POSTERIOR_SUMMARY_COLUMNS =
+            new TableColumnCollection(MINOR_ALLELE_FRACTION_POSTERIOR_MODE, MINOR_ALLELE_FRACTION_POSTERIOR_LOWER, MINOR_ALLELE_FRACTION_POSTERIOR_UPPER);
+
+    public static final TableColumnCollection ACNV_MODELED_SEGMENT_MAF_DECILES_COLUMNS =
+            new TableColumnCollection(MINOR_ALLELE_FRACTION_POSTERIOR_0, MINOR_ALLELE_FRACTION_POSTERIOR_10, MINOR_ALLELE_FRACTION_POSTERIOR_20,
+                    MINOR_ALLELE_FRACTION_POSTERIOR_30, MINOR_ALLELE_FRACTION_POSTERIOR_40, MINOR_ALLELE_FRACTION_POSTERIOR_50,
+                    MINOR_ALLELE_FRACTION_POSTERIOR_60, MINOR_ALLELE_FRACTION_POSTERIOR_70, MINOR_ALLELE_FRACTION_POSTERIOR_80,
+                    MINOR_ALLELE_FRACTION_POSTERIOR_90, MINOR_ALLELE_FRACTION_POSTERIOR_100);
+
+    @SuppressWarnings("unchecked")  //the use of varargs in Iterables.concat when concatenating 5 or more iterables causes a warning
     public static final TableColumnCollection ACNV_MODELED_SEGMENT_COLUMNS =
-            new TableColumnCollection(ListUtils.union(
-                    ListUtils.union(NUM_TARGETS_AND_SNPS_COLUMNS.names(), ACNV_MODELED_SEGMENT_MEAN_DECILES_SUMMARY_COLUMNS.names()),
-                    ACNV_MODELED_SEGMENT_MAF_DECILES_SUMMARY_COLUMNS.names()));
+            new TableColumnCollection(Iterables.concat(
+                    NUM_TARGETS_AND_SNPS_COLUMNS.names(),
+                    ACNV_MODELED_SEGMENT_MEAN_POSTERIOR_SUMMARY_COLUMNS.names(),
+                    ACNV_MODELED_SEGMENT_MEAN_DECILES_COLUMNS.names(),
+                    ACNV_MODELED_SEGMENT_MAF_POSTERIOR_SUMMARY_COLUMNS.names(),
+                    ACNV_MODELED_SEGMENT_MAF_DECILES_COLUMNS.names()));
 
     public static final TableColumnCollection CNLOH_ACNV_MODELED_SEGMENT_COLUMNS =
-            new TableColumnCollection(ListUtils.union(
+            new TableColumnCollection(Iterables.concat(
                     ACNV_MODELED_SEGMENT_COLUMNS.names(),
                     new TableColumnCollection(BALANCED_CALL, CNLOH_CALL, RHO_CALL, M_CALL, N_CALL, F_CR, F_MAF).names()));
 
     public static final TableColumnCollection GERMLINE_CALL_COLUMNS =
-            new TableColumnCollection(ListUtils.union(
+            new TableColumnCollection(Iterables.concat(
                     INTERVAL_COLUMNS.names(),
                     new TableColumnCollection(CALL, NUM_TARGETS, MEAN, SD, EXACT_QUALITY, SOME_QUALITY, START_QUALITY, END_QUALITY, EVENT_QUALITY).names()));
 }

@@ -29,7 +29,7 @@ public class ParameterizedState<T extends Enum<T> & ParameterEnum> {
         Utils.validateArg(numUniqueParameters == parameters.size(), "List of parameters may not contain duplicates.");
         //construct parameter map
         final LinkedHashMap<T, Parameter<T, ?>> map = new LinkedHashMap<>();
-        parameters.stream().forEach(p -> map.put(p.getName(), p));
+        parameters.forEach(p -> map.put(p.getName(), p));
         //check that parameter-map key set matches list of parameters
         final Class<T> keyClass = parameters.get(0).getName().getDeclaringClass();
         final Set<T> keySet = EnumSet.allOf(keyClass);

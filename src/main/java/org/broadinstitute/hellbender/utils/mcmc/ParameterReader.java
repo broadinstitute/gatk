@@ -31,6 +31,7 @@ public final class ParameterReader<T extends Enum<T> & ParameterEnum> extends Ta
         final double lower = dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_LOWER);
         final double upper = dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_UPPER);
         final DecileCollection deciles = new DecileCollection(Arrays.asList(
+                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_0),
                 dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_10),
                 dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_20),
                 dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_30),
@@ -39,7 +40,9 @@ public final class ParameterReader<T extends Enum<T> & ParameterEnum> extends Ta
                 dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_60),
                 dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_70),
                 dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_80),
-                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_90)));
+                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_90),
+                dataLine.getDouble(ParameterTableColumn.PARAMETER_POSTERIOR_100)),
+                DecileCollection.ConstructionMode.DECILES);
         final PosteriorSummary posteriorSummary = new PosteriorSummary(center, lower, upper);
         posteriorSummary.setDeciles(deciles);
         return new AbstractMap.SimpleEntry<>(parameter, posteriorSummary);

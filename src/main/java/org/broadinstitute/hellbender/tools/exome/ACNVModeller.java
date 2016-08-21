@@ -32,7 +32,8 @@ public final class ACNVModeller {
 
     //use 95% HPD interval to construct {@link PosteriorSummary} for segment means and minor allele fractions
     private static final double CREDIBLE_INTERVAL_ALPHA = 0.05;
-    private static final DecileCollection NAN_DECILE_COLLECTION = new DecileCollection(Collections.singletonList(Double.NaN));
+    private static final DecileCollection NAN_DECILE_COLLECTION =
+            new DecileCollection(Collections.singletonList(Double.NaN), DecileCollection.ConstructionMode.SAMPLES);
 
     public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 

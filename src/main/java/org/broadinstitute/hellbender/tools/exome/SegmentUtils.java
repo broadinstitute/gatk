@@ -557,10 +557,12 @@ public final class SegmentUtils {
                 dataLine.getDouble(SegmentTableColumn.MINOR_ALLELE_FRACTION_POSTERIOR_UPPER.toString()));
 
         final DecileCollection mafDecileCollection = new DecileCollection(
-                SegmentTableColumn.ACNV_MODELED_SEGMENT_MAF_DECILES_SUMMARY_COLUMNS.names().stream().map(dataLine::getDouble).collect(Collectors.toList()));
+                SegmentTableColumn.ACNV_MODELED_SEGMENT_MAF_DECILES_COLUMNS.names().stream().map(dataLine::getDouble).collect(Collectors.toList()),
+                DecileCollection.ConstructionMode.DECILES);
 
         final DecileCollection segmentMeanDecileCollection = new DecileCollection(
-                SegmentTableColumn.ACNV_MODELED_SEGMENT_MEAN_DECILES_SUMMARY_COLUMNS.names().stream().map(dataLine::getDouble).collect(Collectors.toList()));
+                SegmentTableColumn.ACNV_MODELED_SEGMENT_MEAN_DECILES_COLUMNS.names().stream().map(dataLine::getDouble).collect(Collectors.toList()),
+                DecileCollection.ConstructionMode.DECILES);
 
         minorAlleleFractionPosteriorSummary.setDeciles(mafDecileCollection);
         segmentMeanPosteriorSummary.setDeciles(segmentMeanDecileCollection);
@@ -622,6 +624,7 @@ public final class SegmentUtils {
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getCenter()))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getLower()))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getUpper()))
+                        .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_0)))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_10)))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_20)))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_30)))
@@ -631,9 +634,11 @@ public final class SegmentUtils {
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_70)))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_80)))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_90)))
+                        .append(String.format(ACNV_DOUBLE_FORMAT, segment.getSegmentMeanPosteriorSummary().getDeciles().get(Decile.DECILE_100)))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getCenter()).replaceAll("\\s+", "")) //removes whitespace for NaN entries
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getLower()).replaceAll("\\s+", ""))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getUpper()).replaceAll("\\s+", ""))
+                        .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_0)).replaceAll("\\s+", ""))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_10)).replaceAll("\\s+", ""))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_20)).replaceAll("\\s+", ""))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_30)).replaceAll("\\s+", ""))
@@ -642,6 +647,7 @@ public final class SegmentUtils {
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_60)).replaceAll("\\s+", ""))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_70)).replaceAll("\\s+", ""))
                         .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_80)).replaceAll("\\s+", ""))
-                        .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_90)).replaceAll("\\s+", ""));
+                        .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_90)).replaceAll("\\s+", ""))
+                        .append(String.format(ACNV_DOUBLE_FORMAT, segment.getMinorAlleleFractionPosteriorSummary().getDeciles().get(Decile.DECILE_100)).replaceAll("\\s+", ""));
     }
 }

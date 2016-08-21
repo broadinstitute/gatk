@@ -32,7 +32,6 @@ public final class AdaptiveMetropolisSampler {
     private int iteration = 1;  // the amount of step size adjustment decreases with the iteration number
     private final double lowerBound;
     private final double upperBound;
-    private double optimalAcceptanceRate = DEFAULT_OPTIMAL_ACCEPTANCE_RATE;
 
     //adjustments to the step size are scaled by adjustmentRate * timeScale / (timeScale + iteration)
     private final double adjustmentRate;
@@ -68,7 +67,7 @@ public final class AdaptiveMetropolisSampler {
                 : Math.min(1, Math.exp(logPDF.apply(proposal) - logPDF.apply(xCurrent)));
 
         //adjust stepSize larger/smaller to decrease/increase the acceptance rate
-        final double correctionFactor = (acceptanceProbability - optimalAcceptanceRate) * adjustmentRate * (timeScale / (timeScale + iteration));
+        final double correctionFactor = (acceptanceProbability - DEFAULT_OPTIMAL_ACCEPTANCE_RATE) * adjustmentRate * (timeScale / (timeScale + iteration));
         stepSize *= Math.exp(correctionFactor);
         iteration++;
         return rng.nextDouble() < acceptanceProbability ? proposal : xCurrent;
