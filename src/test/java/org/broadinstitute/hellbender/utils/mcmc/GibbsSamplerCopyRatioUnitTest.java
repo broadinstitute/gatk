@@ -5,6 +5,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.mcmc.univariatesamplers.SliceSampler;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -19,9 +20,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Unit test for {@link GibbsSampler}.  Demonstrates application of {@link GibbsSampler} to a hierarchical
- * {@link ParameterizedModel} that is specified using helper classes that extend
- * {@link ParameterizedState} or implement {@link DataCollection}.
+ * Unit test for Gibbs sampling.  Demonstrates application of {@link ModelSampler} to sample a hierarchical {@link ParameterizedModel.GibbsBuilder}
+ *  that is specified using helper classes that extend {@link ParameterizedState} or implement {@link DataCollection}.
+ *
  * <p>
  *     Test performs Bayesian inference of a simple copy-ratio model with 1 global and 100 segment-level parameters.
  *     We consider an exome with 100 segments, each of which has a number of targets that is drawn from a
@@ -180,14 +181,14 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         }
     }
 
-    //We create a Modeller helper class to initialize the model state and specify the parameter samplers.
+    //We create a ModelSampler helper class to initialize the model state and specify the parameter samplers.
     private final class CopyRatioModeller {
-        //Create fields in the Modeller for the model and samplers.
+        //Create fields in the ModelSampler for the model and samplers.
         private final ParameterizedModel<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> model;
         private final ParameterSampler<Double, CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> varianceSampler;
         private final ParameterSampler<SegmentMeans, CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> meansSampler;  //note that this returns a SegmentMeans sample
 
-        //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
+        //Constructor for the ModelSampler takes as parameters all quantities needed to construct the ParameterizedState
         //(here, the initial variance and the initial mean) and the DataCollection.
         public CopyRatioModeller(final double initialVariance, final double initalMean,
                                  final CopyRatioDataCollection dataset) {
@@ -252,7 +253,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
                     .build();
         }
 
-        //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
+        //Constructor for the ModelSampler takes as parameters all quantities needed to construct the ParameterizedState
         //(here, the initial variance and the initial mean) and the DataCollection
         //(here, the coverage and target-number files).
         public CopyRatioModeller(final double initialVariance, final double initalMean,
@@ -283,20 +284,20 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
      */
     @Test
     public void testRunMCMCOnCopyRatioSegmentedGenome() {
-        //Create new instance of the Modeller helper class, passing all quantities needed to initialize state and data.
+        //Create new instance of the ModelSampler helper class, passing all quantities needed to initialize state and data.
         final CopyRatioModeller modeller =
                 new CopyRatioModeller(VARIANCE_INITIAL, MEAN_INITIAL, COVERAGES_FILE, NUM_TARGETS_PER_SEGMENT_FILE);
-        //Create a GibbsSampler, passing the total number of samples (including burn-in samples)
-        //and the model held by the Modeller.
-        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
-                new GibbsSampler<>(NUM_SAMPLES, modeller.model);
+        //Create a ModelSampler, passing the total number of samples (including burn-in samples)
+        //and the model held by the ModelSampler.
+        final ModelSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> modelSampler =
+                new ModelSampler<>(NUM_SAMPLES, modeller.model);
         //Run the MCMC.
-        gibbsSampler.runMCMC();
+        modelSampler.runMCMC();
 
         //Check that the statistics---i.e., the mean and standard deviation---of the variance posterior
         //agree with those found by emcee/analytically to a relative error of 1% and 5%, respectively.
         final double[] varianceSamples =
-                Doubles.toArray(gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, NUM_BURN_IN));
+                Doubles.toArray(modelSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, NUM_BURN_IN));
         final double variancePosteriorCenter = new Mean().evaluate(varianceSamples);
         final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
         Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH),
@@ -309,7 +310,7 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         final List<Double> meansTruth = loadList(MEANS_TRUTH_FILE, Double::parseDouble);
         final int numSegments = meansTruth.size();
         final List<SegmentMeans> meansSamples =
-                gibbsSampler.getSamples(CopyRatioParameter.SEGMENT_MEANS, SegmentMeans.class, NUM_BURN_IN);
+                modelSampler.getSamples(CopyRatioParameter.SEGMENT_MEANS, SegmentMeans.class, NUM_BURN_IN);
         int numMeansOutsideOneSigma = 0;
         int numMeansOutsideTwoSigma = 0;
         int numMeansOutsideThreeSigma = 0;
@@ -359,29 +360,29 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNegativeNumSamplesException() {
-        new GibbsSampler<>(-1, EXCEPTION_MODEL);
+        new ModelSampler<>(-1, EXCEPTION_MODEL);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNegativeNumSamplesPerLogEntryException() {
-        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
-                new GibbsSampler<>(1, EXCEPTION_MODEL);
-        gibbsSampler.setNumSamplesPerLogEntry(1);
-        gibbsSampler.setNumSamplesPerLogEntry(-1);
+        final ModelSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> modelSampler =
+                new ModelSampler<>(1, EXCEPTION_MODEL);
+        modelSampler.setNumSamplesPerLogEntry(1);
+        modelSampler.setNumSamplesPerLogEntry(-1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNegativeNumBurnInException() {
-        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
-                new GibbsSampler<>(1, EXCEPTION_MODEL);
-        gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, -1);
+        final ModelSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> modelSampler =
+                new ModelSampler<>(1, EXCEPTION_MODEL);
+        modelSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, -1);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNumBurnInExceedsNumSamplesException() {
-        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> gibbsSampler =
-                new GibbsSampler<>(5, EXCEPTION_MODEL);
-        gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, 0);
-        gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, 10);
+        final ModelSampler<CopyRatioParameter, CopyRatioState, CopyRatioDataCollection> modelSampler =
+                new ModelSampler<>(5, EXCEPTION_MODEL);
+        modelSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, 0);
+        modelSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, 10);
     }
 }

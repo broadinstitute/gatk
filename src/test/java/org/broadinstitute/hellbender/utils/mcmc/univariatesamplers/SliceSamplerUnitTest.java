@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.mcmc;
+package org.broadinstitute.hellbender.utils.mcmc.univariatesamplers;
 
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.BetaDistribution;

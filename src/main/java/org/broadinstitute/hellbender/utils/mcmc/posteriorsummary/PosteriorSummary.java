@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.mcmc;
+package org.broadinstitute.hellbender.utils.mcmc.posteriorsummary;
 
 import java.io.Serializable;
 

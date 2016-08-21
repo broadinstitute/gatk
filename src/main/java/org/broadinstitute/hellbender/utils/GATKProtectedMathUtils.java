@@ -43,7 +43,6 @@ public class GATKProtectedMathUtils implements Serializable {
      */
     private static final double LN_1_M_EXP_THRESHOLD = - Math.log(2);
 
-
     /**
      * Computes $\log(\sum_i e^{a_i})$ trying to avoid underflow issues by using the log-sum-exp trick.
      *

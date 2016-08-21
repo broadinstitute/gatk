@@ -6,6 +6,8 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
+import org.broadinstitute.hellbender.utils.mcmc.ParameterizedModel.GibbsBuilder;
+import org.broadinstitute.hellbender.utils.mcmc.univariatesamplers.SliceSampler;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -14,7 +16,7 @@ import java.util.*;
 import java.util.function.Function;
 
 /**
- * Unit test for {@link GibbsSampler}.  Demonstrates application of {@link GibbsSampler} to a {@link ParameterizedModel}
+ * Unit test for Gibbs sampling.  Demonstrates application of {@link ModelSampler} to sample a {@link ParameterizedModel.GibbsBuilder}
  * that is specified using {@link ParameterizedState} and a class that implements {@link DataCollection}.
  * <p>
  *     Test performs Bayesian inference of a Gaussian model with 2 global parameters specifying the variance and the mean.
@@ -91,14 +93,14 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         VARIANCE, MEAN
     }
 
-    //We create a Modeller helper class to initialize the model state and specify the parameter samplers.
+    //We create a ModelSampler helper class to initialize the model state and specify the parameter samplers.
     private final class GaussianModeller {
-        //Create fields in the Modeller for the model and samplers.
+        //Create fields in the ModelSampler for the model and samplers.
         private final ParameterizedModel<GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> model;
         private final ParameterSampler<Double, GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> varianceSampler;
         private final ParameterSampler<Double, GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> meanSampler;
 
-        //Constructor for the Modeller takes as parameters all quantities needed to construct the ParameterizedState
+        //Constructor for the ModelSampler takes as parameters all quantities needed to construct the ParameterizedState
         //(here, the initial variance and the initial mean) and the DataCollection (here, the list of datapoints).
         private GaussianModeller(final double varianceInitial, final double meanInitial, final List<Double> datapoints) {
             //Construct the initial ParameterizedState by passing a list of Parameters of mixed type to the constructor.
@@ -152,7 +154,7 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
             //Build the ParameterizedModel using the GibbsBuilder pattern.
             //Pass in the initial ParameterizedState and DataCollection, and specify the class of the ParameterizedState.
             //Add samplers for each of the parameters, with names matching those used in initialization.
-            model = new ParameterizedModel.GibbsBuilder<>(initialState, dataset)
+            model = new GibbsBuilder<>(initialState, dataset)
                     .addParameterSampler(GaussianParameter.VARIANCE, varianceSampler, Double.class)
                     .addParameterSampler(GaussianParameter.MEAN, meanSampler, Double.class)
                     .build();
@@ -167,19 +169,19 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
      */
     @Test
     public void testRunMCMCOnSingleGaussianModel() {
-        //Create new instance of the Modeller helper class, passing all quantities needed to initialize state and data.
+        //Create new instance of the ModelSampler helper class, passing all quantities needed to initialize state and data.
         final GaussianModeller modeller = new GaussianModeller(VARIANCE_INITIAL, MEAN_INITIAL, datapointsList);
-        //Create a GibbsSampler, passing the total number of samples (including burn-in samples)
-        //and the model held by the Modeller.
-        final GibbsSampler<GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> gibbsSampler =
-                new GibbsSampler<>(NUM_SAMPLES, modeller.model);
+        //Create a ModelSampler, passing the total number of samples (including burn-in samples)
+        //and the model held by the ModelSampler.
+        final ModelSampler<GaussianParameter, ParameterizedState<GaussianParameter>, GaussianDataCollection> modelSampler =
+                new ModelSampler<>(NUM_SAMPLES, modeller.model);
         //Run the MCMC.
-        gibbsSampler.runMCMC();
+        modelSampler.runMCMC();
 
         //Get the samples of each of the parameter posteriors (discarding burn-in samples) by passing the
         //parameter name, type, and burn-in number to the getSamples method.
-        final double[] varianceSamples = Doubles.toArray(gibbsSampler.getSamples(GaussianParameter.VARIANCE, Double.class, NUM_BURN_IN));
-        final double[] meanSamples = Doubles.toArray(gibbsSampler.getSamples(GaussianParameter.MEAN, Double.class, NUM_BURN_IN));
+        final double[] varianceSamples = Doubles.toArray(modelSampler.getSamples(GaussianParameter.VARIANCE, Double.class, NUM_BURN_IN));
+        final double[] meanSamples = Doubles.toArray(modelSampler.getSamples(GaussianParameter.MEAN, Double.class, NUM_BURN_IN));
 
         //Check that the statistics---i.e., the means and standard deviations---of the posteriors
         //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.

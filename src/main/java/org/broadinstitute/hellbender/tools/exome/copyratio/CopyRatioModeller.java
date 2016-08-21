@@ -3,7 +3,10 @@ package org.broadinstitute.hellbender.tools.exome.copyratio;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.PosteriorSummary;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.PosteriorSummaryUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -90,18 +93,21 @@ public final class CopyRatioModeller {
      * @param numBurnIn     number of burn-in samples to discard
      */
     public void fitMCMC(final int numSamples, final int numBurnIn) {
+        Utils.validateArg(numSamples > 0, "Total number of samples must be positive.");
+        Utils.validateArg(0 <= numBurnIn && numBurnIn < numSamples,
+                "Number of burn-in samples to discard must be non-negative and strictly less than total number of samples.");
         //run MCMC
-        final GibbsSampler<CopyRatioParameter, CopyRatioState, CopyRatioData> gibbsSampler
-                = new GibbsSampler<>(numSamples, model);
-        gibbsSampler.runMCMC();
+        final ModelSampler<CopyRatioParameter, CopyRatioState, CopyRatioData> modelSampler
+                = new ModelSampler<>(numSamples, model);
+        modelSampler.runMCMC();
         //update posterior samples
-        varianceSamples.addAll(gibbsSampler.getSamples(CopyRatioParameter.VARIANCE,
+        varianceSamples.addAll(modelSampler.getSamples(CopyRatioParameter.VARIANCE,
                 Double.class, numBurnIn));
-        outlierProbabilitySamples.addAll(gibbsSampler.getSamples(CopyRatioParameter.OUTLIER_PROBABILITY,
+        outlierProbabilitySamples.addAll(modelSampler.getSamples(CopyRatioParameter.OUTLIER_PROBABILITY,
                 Double.class, numBurnIn));
-        segmentMeansSamples.addAll(gibbsSampler.getSamples(CopyRatioParameter.SEGMENT_MEANS,
+        segmentMeansSamples.addAll(modelSampler.getSamples(CopyRatioParameter.SEGMENT_MEANS,
                 CopyRatioState.SegmentMeans.class, numBurnIn));
-        outlierIndicatorsSamples.addAll(gibbsSampler.getSamples(CopyRatioParameter.OUTLIER_INDICATORS,
+        outlierIndicatorsSamples.addAll(modelSampler.getSamples(CopyRatioParameter.OUTLIER_INDICATORS,
                 CopyRatioState.OutlierIndicators.class, numBurnIn));
     }
 
@@ -175,7 +181,10 @@ public final class CopyRatioModeller {
      * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
      * @return                      list of {@link PosteriorSummary} elements summarizing the global parameters
      */
-    public Map<CopyRatioParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
+    public Map<CopyRatioParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha,
+                                                                                          final JavaSparkContext ctx) {
+        Utils.validateArg(0. <= credibleIntervalAlpha && credibleIntervalAlpha <= 1., "Credible-interval alpha must be in [0, 1].");
+        Utils.nonNull(ctx);
         final Map<CopyRatioParameter, PosteriorSummary> posteriorSummaries = new LinkedHashMap<>();
         posteriorSummaries.put(CopyRatioParameter.VARIANCE, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(varianceSamples, credibleIntervalAlpha, ctx));
         posteriorSummaries.put(CopyRatioParameter.OUTLIER_PROBABILITY, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(outlierProbabilitySamples, credibleIntervalAlpha, ctx));

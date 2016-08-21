@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.mcmc;
+package org.broadinstitute.hellbender.utils.mcmc.univariatesamplers;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;

@@ -3,7 +3,10 @@ package org.broadinstitute.hellbender.tools.exome.allelefraction;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.tools.exome.SegmentedGenome;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.mcmc.*;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.PosteriorSummary;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.PosteriorSummaryUtils;
 
 import java.util.*;
 import java.util.function.Function;
@@ -100,15 +103,18 @@ public final class AlleleFractionModeller {
      * @param numBurnIn     number of burn-in samples to discard
      */
     public void fitMCMC(final int numSamples, final int numBurnIn) {
+        Utils.validateArg(numSamples > 0, "Total number of samples must be positive.");
+        Utils.validateArg(0 <= numBurnIn && numBurnIn < numSamples,
+                "Number of burn-in samples to discard must be non-negative and strictly less than total number of samples.");
         //run MCMC
-        final GibbsSampler<AlleleFractionParameter, AlleleFractionState, AlleleFractionData> gibbsSampler = new GibbsSampler<>(numSamples, model);
-        gibbsSampler.runMCMC();
+        final ModelSampler<AlleleFractionParameter, AlleleFractionState, AlleleFractionData> modelSampler = new ModelSampler<>(numSamples, model);
+        modelSampler.runMCMC();
 
         //update posterior samples
-        meanBiasSamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.MEAN_BIAS, Double.class, numBurnIn));
-        biasVarianceSamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.BIAS_VARIANCE, Double.class, numBurnIn));
-        outlierProbabilitySamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.OUTLIER_PROBABILITY, Double.class, numBurnIn));
-        minorFractionsSamples.addAll(gibbsSampler.getSamples(AlleleFractionParameter.MINOR_ALLELE_FRACTIONS, AlleleFractionState.MinorFractions.class, numBurnIn));
+        meanBiasSamples.addAll(modelSampler.getSamples(AlleleFractionParameter.MEAN_BIAS, Double.class, numBurnIn));
+        biasVarianceSamples.addAll(modelSampler.getSamples(AlleleFractionParameter.BIAS_VARIANCE, Double.class, numBurnIn));
+        outlierProbabilitySamples.addAll(modelSampler.getSamples(AlleleFractionParameter.OUTLIER_PROBABILITY, Double.class, numBurnIn));
+        minorFractionsSamples.addAll(modelSampler.getSamples(AlleleFractionParameter.MINOR_ALLELE_FRACTIONS, AlleleFractionState.MinorFractions.class, numBurnIn));
     }
 
     public List<Double> getmeanBiasSamples() {
@@ -166,7 +172,10 @@ public final class AlleleFractionModeller {
      * @param ctx                   {@link JavaSparkContext} used for mllib kernel density estimation
      * @return                      list of {@link PosteriorSummary} elements summarizing the global parameters
      */
-    public Map<AlleleFractionParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha, final JavaSparkContext ctx) {
+    public Map<AlleleFractionParameter, PosteriorSummary> getGlobalParameterPosteriorSummaries(final double credibleIntervalAlpha,
+                                                                                               final JavaSparkContext ctx) {
+        Utils.validateArg(0. <= credibleIntervalAlpha && credibleIntervalAlpha <= 1., "Credible-interval alpha must be in [0, 1].");
+        Utils.nonNull(ctx);
         final Map<AlleleFractionParameter, PosteriorSummary> posteriorSummaries = new LinkedHashMap<>();
         posteriorSummaries.put(AlleleFractionParameter.MEAN_BIAS, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(meanBiasSamples, credibleIntervalAlpha, ctx));
         posteriorSummaries.put(AlleleFractionParameter.BIAS_VARIANCE, PosteriorSummaryUtils.calculateHighestPosteriorDensityAndDecilesSummary(biasVarianceSamples, credibleIntervalAlpha, ctx));

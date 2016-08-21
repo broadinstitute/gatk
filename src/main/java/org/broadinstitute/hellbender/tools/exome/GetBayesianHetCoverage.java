@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.tools.exome.pulldown.BalancedHeterozygousPi
 import org.broadinstitute.hellbender.tools.exome.pulldown.BayesianHetPulldownCalculator;
 import org.broadinstitute.hellbender.tools.exome.pulldown.HeterogeneousHeterozygousPileupPriorModel;
 import org.broadinstitute.hellbender.tools.exome.pulldown.Pulldown;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
@@ -382,12 +383,16 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
         /* determine the job type */
         if (normalBamFile != null && tumorBamFile != null) { /* both normal and tumor BAM files are provided */
             logger.info("MATCHED_NORMAL_TUMOR mode selected.");
+            Utils.regularReadableUserFile(normalBamFile);
+            Utils.regularReadableUserFile(tumorBamFile);
             runMatchedNormalTumor();
         } else if (normalBamFile != null) { /* only the normal BAM file is provided */
             logger.info("NORMAL_ONLY mode selected.");
+            Utils.regularReadableUserFile(normalBamFile);
             runNormalOnly();
         } else { /* only the tumor BAM file is provided */
             logger.info("TUMOR_ONLY mode selected.");
+            Utils.regularReadableUserFile(tumorBamFile);
             runTumorOnly();
         }
 

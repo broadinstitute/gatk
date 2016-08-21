@@ -9,10 +9,10 @@ import org.broadinstitute.hellbender.tools.exome.copyratio.CopyRatioModeller;
 import org.broadinstitute.hellbender.tools.pon.allelic.AllelicPanelOfNormals;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.mcmc.DecileCollection;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.DecileCollection;
 import org.broadinstitute.hellbender.utils.mcmc.ParameterEnum;
-import org.broadinstitute.hellbender.utils.mcmc.ParameterWriter;
-import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.PosteriorSummaryWriter;
+import org.broadinstitute.hellbender.utils.mcmc.posteriorsummary.PosteriorSummary;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +32,8 @@ public final class ACNVModeller {
 
     //use 95% HPD interval to construct {@link PosteriorSummary} for segment means and minor allele fractions
     private static final double CREDIBLE_INTERVAL_ALPHA = 0.05;
-    private static final DecileCollection NAN_DECILE_COLLECTION = new DecileCollection(Collections.singletonList(Double.NaN));
+    private static final DecileCollection NAN_DECILE_COLLECTION =
+            new DecileCollection(Collections.singletonList(Double.NaN), DecileCollection.ConstructionMode.SAMPLES);
 
     public static final Logger logger = LogManager.getLogger(ACNVModeller.class);
 
@@ -206,7 +207,7 @@ public final class ACNVModeller {
 
     private <T extends Enum<T> & ParameterEnum> void writeModelParameterFile(final Map<T, PosteriorSummary> parameterPosteriorSummaries,
                                                                              final File outFile) {
-        try (final ParameterWriter<T> writer = new ParameterWriter<>(outFile, ACNV_DOUBLE_FORMAT)) {
+        try (final PosteriorSummaryWriter<T> writer = new PosteriorSummaryWriter<>(outFile, ACNV_DOUBLE_FORMAT)) {
             writer.writeAllRecords(parameterPosteriorSummaries.entrySet());
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);

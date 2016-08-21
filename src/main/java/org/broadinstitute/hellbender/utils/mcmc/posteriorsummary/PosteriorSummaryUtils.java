@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.mcmc;
+package org.broadinstitute.hellbender.utils.mcmc.posteriorsummary;
 
 import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.optim.MaxEval;
@@ -99,7 +99,7 @@ public class PosteriorSummaryUtils {
         Utils.validateArg(0 < alpha && alpha < 1, "Alpha must be in (0, 1).");
 
         final PosteriorSummary posteriorSummary = calculateHighestPosteriorDensitySummary(samples, alpha, ctx);
-        final DecileCollection deciles = new DecileCollection(samples);
+        final DecileCollection deciles = new DecileCollection(samples, DecileCollection.ConstructionMode.SAMPLES);
         posteriorSummary.setDeciles(deciles);
         return posteriorSummary;
     }

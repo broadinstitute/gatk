@@ -14,17 +14,17 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
- * Implements Gibbs sampling of a multivariate probability density function.
- * See GibbsSamplerSingleGaussianUnitTest and GibbsSamplerCopyRatioUnitTest for examples of use.
+ * Implements sampling of a multivariate probability density function.
+ * See GibbsSamplerSingleGaussianUnitTest and GibbsSamplerCopyRatioUnitTest for examples of Gibbs sampling.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
-public final class GibbsSampler<V extends Enum<V> & ParameterEnum, S extends ParameterizedState<V>, T extends DataCollection> {
+public class ModelSampler<V extends Enum<V> & ParameterEnum, S extends ParameterizedState<V>, T extends DataCollection> {
     private static final int RANDOM_SEED = 42;
     private static final RandomGenerator rng =
             RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
 
-    private static final Logger logger = LogManager.getLogger(GibbsSampler.class);
+    private static final Logger logger = LogManager.getLogger(ModelSampler.class);
     private static final int NUMBER_OF_SAMPLES_PER_LOG_ENTRY = 25;
 
     private final int numSamples;
@@ -37,15 +37,14 @@ public final class GibbsSampler<V extends Enum<V> & ParameterEnum, S extends Par
     private boolean isMCMCRunComplete = false;
 
     /**
-     * Constructs a GibbsSampler given the total number of samples (including burn-in) and a {@link ParameterizedModel}.
+     * Constructs a ModelSampler given the total number of samples (including burn-in) and a {@link ParameterizedModel}.
      * The {@link ParameterizedState} held by the model is used to initialize the Monte Carlo Markov Chain and is taken
      * to be the first sample.  Number of samples per log entry will be set to the default.
      * @param numSamples    total number of samples; must be positive
      * @param model         {@link ParameterizedModel} to be sampled
      */
-    public GibbsSampler(final int numSamples, final ParameterizedModel<V, S, T> model) {
+    public ModelSampler(final int numSamples, final ParameterizedModel<V, S, T> model) {
         ParamUtils.isPositive(numSamples, "Number of samples must be positive.");
-        Utils.validateArg(model.getUpdateMethod() == ParameterizedModel.UpdateMethod.GIBBS, "ParameterizedModel must be constructed to update using Gibbs sampling.");
         this.numSamples = numSamples;
         this.model = model;
         numSamplesPerLogEntry = NUMBER_OF_SAMPLES_PER_LOG_ENTRY;

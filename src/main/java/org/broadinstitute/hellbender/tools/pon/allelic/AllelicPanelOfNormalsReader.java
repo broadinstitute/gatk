@@ -12,7 +12,7 @@ import java.util.Map;
 /**
  * Reads an {@link AllelicPanelOfNormals} from a tab-separated table file.
  *
- * @author Samuel Lee &lt;mehrtash@broadinstitute.org&gt;
+ * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 final class AllelicPanelOfNormalsReader extends TableReader<Map.Entry<SimpleInterval, AllelicPanelOfNormals.HyperparameterValues>> {
     /**

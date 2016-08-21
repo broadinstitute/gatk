@@ -4,7 +4,7 @@ import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.mcmc.ParameterSampler;
-import org.broadinstitute.hellbender.utils.mcmc.SliceSampler;
+import org.broadinstitute.hellbender.utils.mcmc.univariatesamplers.SliceSampler;
 
 import java.util.ArrayList;
 import java.util.List;

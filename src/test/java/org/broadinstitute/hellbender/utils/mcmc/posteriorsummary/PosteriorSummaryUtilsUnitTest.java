@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.mcmc;
+package org.broadinstitute.hellbender.utils.mcmc.posteriorsummary;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.distribution.BetaDistribution;
