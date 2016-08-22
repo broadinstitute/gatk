@@ -5,7 +5,8 @@ jdk:
 - oraclejdk8
 env:
   matrix:
-  - TERM=dumb
+  - RUN_CROMWELL=true
+  - RUN_CROMWELL=false
   global:
   #limit gradle jvm memory usage
   - GRADLE_OPTS=-Xmx512m
@@ -24,9 +25,30 @@ before_install:
 - sudo Rscript scripts/install_R_packages.R
 # Install git-lfs, and fetch the large test files
 - sudo bash scripts/install_git_lfs.sh
+# Download cromwell jar 
+- if [[ $RUN_CROMWELL == true ]]; then
+    wget -O ~/cromwell-0.19.3.jar https://github.com/broadinstitute/cromwell/releases/download/0.19.3/cromwell-0.19.3.jar;
+  fi
+
+install:
+- if [[ $RUN_CROMWELL == true ]]; then 
+    ./gradlew shadowJar;
+  else
+    ./gradlew assemble;
+  fi 
+
+script:
+- if [[ $RUN_CROMWELL == true ]]; then
+    echo "Running ACNV pipeline";
+    bash scripts/acnv_cromwell_tests/run_acnv_pipelines.sh;
+  else
+    ./gradlew check;
+  fi
 
 after_success:
-- ./gradlew jacocoTestReport coveralls
+- if [[ $RUN_CROMWELL == false ]]; then
+    ./gradlew jacocoTestReport coveralls;
+  fi
 
 after_failure:
 - dmesg | tail -100
