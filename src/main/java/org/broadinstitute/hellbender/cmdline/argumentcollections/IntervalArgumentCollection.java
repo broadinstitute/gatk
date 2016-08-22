@@ -64,13 +64,19 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
     @Argument(fullName = "interval_set_rule", shortName = "isr", doc = "Set merging approach to use for combining interval inputs")
     protected IntervalSetRule intervalSetRule = IntervalSetRule.UNION;
     /**
-     * Use this to add padding to the intervals specified using -L and/or -XL. For example, '-L 1:100' with a
+     * Use this to add padding to the intervals specified using -L. For example, '-L 1:100' with a
      * padding value of 20 would turn into '-L 1:80-120'. This is typically used to add padding around targets when
      * analyzing exomes.
      */
-    @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval")
+    @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval you are including.")
     protected int intervalPadding = 0;
-
+    /**
+     * Use this to add padding to the intervals specified using -XL. For example, '-XL 1:100' with a
+     * padding value of 20 would turn into '-XL 1:80-120'. This is typically used to add padding around targets when
+     * analyzing exomes.
+     */
+    @Argument(fullName = "interval_exclusion_padding", shortName= "ixp", doc = "Amount of padding (in bp) to add to each interval you are excluding.")
+    protected int intervalExclusionPadding = 0;
     /**
      * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records
      * should be returned. Lazily initialized.
@@ -124,7 +130,7 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
             }
         }
 
-        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, 0, genomeLocParser);
+        final GenomeLocSortedSet excludeSortedSet = IntervalUtils.loadIntervals(excludeIntervalStrings, IntervalSetRule.UNION, intervalMerging, intervalExclusionPadding, genomeLocParser);
         if ( excludeSortedSet.contains(GenomeLoc.UNMAPPED) ) {
             throw new UserException("-XL unmapped is not currently supported");
         }
