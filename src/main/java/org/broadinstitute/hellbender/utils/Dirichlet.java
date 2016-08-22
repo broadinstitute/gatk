@@ -31,10 +31,6 @@ public class Dirichlet {
         this.alpha = alpha.clone();
     }
 
-    public Dirichlet(final Dirichlet prior, final double[] counts) {
-        this(MathArrays.ebeAdd(prior.alpha, counts));
-    }
-
     /**
      * Create a symmetric distribution Dir(a/K, a/K, a/K . . .) where K is the number of states and
      * a is the concentration.

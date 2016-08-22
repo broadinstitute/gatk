@@ -4,8 +4,8 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.functionalinterfaces.IntBiConsumer;
-import org.broadinstitute.hellbender.utils.functionalinterfaces.IntToDoubleBiFunction;
+import org.broadinstitute.hellbender.utils.functional.IntBiConsumer;
+import org.broadinstitute.hellbender.utils.functional.IntToDoubleBiFunction;
 
 import java.util.Arrays;
 import java.util.Collections;

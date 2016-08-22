@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.functionalinterfaces;
+package org.broadinstitute.hellbender.utils.functional;
 
 /**
  * Created by davidben on 8/19/16.
