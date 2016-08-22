@@ -92,7 +92,7 @@ compileTestJava {
 }
 
 dependencies {
-    compile 'com.intel:genomicsdb:0.2.1'
+    compile 'com.intel:genomicsdb:0.3.0'
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion

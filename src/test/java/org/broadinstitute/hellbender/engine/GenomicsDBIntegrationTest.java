@@ -72,7 +72,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
     }
 
     private void testExpectedVariantsFromGenomicsDB(File expected, ArgumentsBuilder baseArgs) throws IOException {
-        final File output = createTempFile("variants", "vcf");
+        final File output = createTempFile("variants", ".vcf");
         GenomicsDBTestUtils.runOnGenomicsDBArray( () -> {
             final ArgumentsBuilder args = baseArgs
                     .addOutput(output);
