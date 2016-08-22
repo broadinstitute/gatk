@@ -109,7 +109,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
             final GATKRead read = el.getKey();
             if ( isUsableRead(read, refLoc) ) {
                 final OptionalDouble value = getElementForRead(read, refLoc, a);
-                if (! value.isPresent() ) {
+                if (! value.isPresent() || value.getAsDouble() == INVALID_ELEMENT_FROM_READ ) {
                     continue;
                 }
 

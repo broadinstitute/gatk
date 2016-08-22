@@ -19,6 +19,7 @@ import java.util.*;
  * Abstract root for all RankSum based annotations
  */
 public abstract class RankSumTest extends InfoFieldAnnotation {
+    protected static double INVALID_ELEMENT_FROM_READ = Double.NEGATIVE_INFINITY;
     private boolean useDithering = true;
 
     public RankSumTest(final boolean useDithering){
@@ -76,7 +77,8 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
             final GATKRead read = el.getKey();
             if ( isUsableRead(read, refLoc) ) {
                 final OptionalDouble value = getElementForRead(read, refLoc, a);
-                if ( !value.isPresent() ) {
+                // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
+                if ( !value.isPresent() || value.getAsDouble() == INVALID_ELEMENT_FROM_READ ) {
                     continue;
                 }
 

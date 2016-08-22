@@ -648,6 +648,28 @@ public final class AlignmentUtilsUnitTest {
         Assert.assertEquals(actual, expectedResult, "Wrong alignment offset detected for cigar " + cigar.toString());
     }
 
+    @Test
+    public void testIsInsideDeletion() {
+        final List<CigarElement> cigarElements = Arrays.asList(new CigarElement(5, CigarOperator.S),
+                new CigarElement(5, CigarOperator.M),
+                new CigarElement(5, CigarOperator.EQ),
+                new CigarElement(6, CigarOperator.N),
+                new CigarElement(5, CigarOperator.X),
+                new CigarElement(6, CigarOperator.D),
+                new CigarElement(1, CigarOperator.P),
+                new CigarElement(1, CigarOperator.H));
+        final Cigar cigar = new Cigar(cigarElements);
+        for ( int i=-1; i <= 20; i++ ) {
+            Assert.assertFalse(AlignmentUtils.isInsideDeletion(cigar, i));
+        }
+        for ( int i=21; i <= 26; i++ ){
+            Assert.assertTrue(AlignmentUtils.isInsideDeletion(cigar, i));
+        }
+        for ( int i=27; i <= 28; i++ ) {
+            Assert.assertFalse(AlignmentUtils.isInsideDeletion(cigar, i));
+        }
+    }
+
     ////////////////////////////////////////////////////
     // Test AlignmentUtils.readToAlignmentByteArray() //
     ////////////////////////////////////////////////////
