@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
@@ -83,7 +80,8 @@ CreateSequenceDictionary extends PicardCommandLineProgram {
         SAMFileWriter samWriter = null;
         //This writes the header with sequenceDictionary
         try {
-            samWriter = createSAMWriter(OUTPUT, REFERENCE_SEQUENCE, samHeader, false);
+            // do not use createSAMWriter because it does not create a plain text file without a .sam extension
+            samWriter = new SAMFileWriterFactory().makeSAMWriter(samHeader, false, OUTPUT);
         }
         finally {
             samWriter.close();
