@@ -14,7 +14,7 @@ public class PlotACNVResultsIntegrationTest extends CommandLineProgramTest {
     private static final File TANGENT_NORMALIZED_COVERAGE_FILE = new File(TOOLS_TEST_DIRECTORY, "coverages-for-allelic-integration.tsv");
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TOOLS_TEST_DIRECTORY, "snps-for-allelic-integration.tsv");
     private static final File SEGMENTS_FILE = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter/ACNV_final_segments.seg");
-    private static final String sampleName = "test"; // This is what is in the segments file
+    private static final String OUTPUT_PREFIX = "sample";
 
     @Test
     public void testACNVPlotting() {
@@ -23,15 +23,16 @@ public class PlotACNVResultsIntegrationTest extends CommandLineProgramTest {
                 "-" + ExomeStandardArgumentDefinitions.ALLELIC_COUNTS_FILE_SHORT_NAME, TUMOR_ALLELIC_COUNTS_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, TANGENT_NORMALIZED_COVERAGE_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEGMENTS_FILE.getAbsolutePath(),
-                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath()
+                "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
+                "-" + PlotACNVResults.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX,
         };
         runCommandLine(arguments);
-        Assert.assertTrue(new File(tDir, sampleName + "_ACNV.png").exists());
-        Assert.assertTrue(new File(tDir, sampleName + "_ACNV.png").length() > 0);
-        Assert.assertTrue(new File(tDir, sampleName + "_Chr_1_30116_62393753.png").exists());
-        Assert.assertTrue(new File(tDir, sampleName + "_Chr_1_30116_62393753.png").length() > 0);
-        Assert.assertTrue(new File(tDir, sampleName + "_Chr_10_92745_49997881.png").exists());
-        Assert.assertTrue(new File(tDir, sampleName + "_Chr_10_92745_49997881.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_ACNV.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_ACNV.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Chr_1_30116_62393753.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Chr_1_30116_62393753.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Chr_10_92745_49997881.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Chr_10_92745_49997881.png").length() > 0);
     }
 
     @Test
@@ -42,10 +43,11 @@ public class PlotACNVResultsIntegrationTest extends CommandLineProgramTest {
                 "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, TANGENT_NORMALIZED_COVERAGE_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEGMENTS_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
+                "-" + PlotACNVResults.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX,
                 "-" + ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_SHORT_NAME,
         };
         runCommandLine(arguments);
-        Assert.assertTrue(new File(tDir, sampleName + "_ACNV.png").exists());
-        Assert.assertTrue(new File(tDir, sampleName + "_ACNV.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_ACNV.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_ACNV.png").length() > 0);
     }
 }

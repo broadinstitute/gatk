@@ -8,6 +8,7 @@ option_list = list(
     make_option(c("--coverage_file", "-coverage_file"), dest="coverage_file", action="store"),
     make_option(c("--segments_file", "-segments_file"), dest="segments_file", action="store"),
     make_option(c("--output_dir", "-output_dir"), dest="output_dir", action="store"),
+    make_option(c("--output_prefix", "-output_prefix"), dest="output_prefix", action="store"),
     make_option(c("--sex_chrs", "-sexchrs"), dest="sex_chrs", action="store"))
 
 opt = parse_args(OptionParser(option_list=option_list))
@@ -17,7 +18,8 @@ sample_name=opt[["sample_name"]]
 snp_counts_file=opt[["snp_counts_file"]]
 coverage_file=opt[["coverage_file"]]
 segments_file=opt[["segments_file"]]
-output_file=opt[["output_dir"]]
+output_dir=opt[["output_dir"]]
+output_prefix=opt[["output_prefix"]]
 sex_chrs=as.logical(opt[["sex_chrs"]])
 num_chromosomes = ifelse(sex_chrs, 24, 22)
 
@@ -26,7 +28,7 @@ if (!all(file.exists(c(snp_counts_file, coverage_file, segments_file)))) {
     quit(save = "no", status = 1, runLast = FALSE)
 }
 
-create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, segments_file, output_dir, num_chromosomes) {
+create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, segments_file, output_dir, output_prefix, num_chromosomes) {
 	#set up coverage, snps, and segments data frames
 	snp_counts = read.table(snp_counts_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
 	segments = read.table(segments_file, sep="\t", stringsAsFactors=FALSE, header=TRUE, check.names=FALSE)
@@ -41,7 +43,7 @@ create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, s
     segments[, "Chromosome"] = convert_XY_to_23_24(segments[, "Chromosome"])
 
     #make the plots
-    plot_file_name = file.path(output_dir, paste(sample_name, "_ACNV.png", sep=""))
+    plot_file_name = file.path(output_dir, paste(output_prefix, "_ACNV.png", sep=""))
     png(plot_file_name, 12, 7, units="in", type="cairo", res=300, bg="white")
     par(mfrow=c(2,1), cex=0.75, las=1)
     SetUpPlot("Tangent-Normalized Coverage", 0, 4, "Chromosome", TRUE, num_chromosomes)
@@ -56,5 +58,5 @@ create_acnv_plots_file = function(sample_name, snp_counts_file, coverage_file, s
     }
 }
 
-create_acnv_plots_file(sample_name, snp_counts_file, coverage_file, segments_file, output_file, num_chromosomes)
+create_acnv_plots_file(sample_name, snp_counts_file, coverage_file, segments_file, output_dir, output_prefix, num_chromosomes)
 

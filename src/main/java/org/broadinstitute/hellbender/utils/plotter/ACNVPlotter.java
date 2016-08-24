@@ -22,7 +22,7 @@ public final class ACNVPlotter {
      * @param useSexChromosomes plot results for X and Y chromosomes
      */
     public static void writeSegmentedAlleleFractionPlot(final String sampleName, final String snpCountsFile, final String coverageFile,
-            final String segmentsFile, final String outputDir, final Boolean useSexChromosomes) {
+            final String segmentsFile, final String outputDir, final String outputPrefix, final Boolean useSexChromosomes) {
         final RScriptExecutor executor = new RScriptExecutor();
         String schr = useSexChromosomes ? "TRUE" : "FALSE";
         //This leads to the R statement source("CNV_plotting_library.R") before the main script runs
@@ -30,7 +30,7 @@ public final class ACNVPlotter {
         executor.addScript(new Resource(ACNV_PLOTTING_R_SCRIPT, ACNVPlotter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
         executor.addArgs("--args", "--sample_name="+sampleName, "--snp_counts_file="+snpCountsFile,  "--coverage_file="+coverageFile,
-                "--segments_file="+segmentsFile, "--output_dir="+outputDir, "--sex_chrs="+schr);
+                "--segments_file="+segmentsFile, "--output_dir="+outputDir, "--output_prefix="+outputPrefix, "--sex_chrs="+schr);
         executor.exec();
     }
 
@@ -43,7 +43,7 @@ public final class ACNVPlotter {
      * @param useSexChromosomes plot results for X and Y chromosomes
      */
     public static void writeSegmentedAlleleFractionPlotPerSeg(final String sampleName, final String snpCountsFile, final String coverageFile,
-                                                        final String segmentsFile, final String outputDir, final Boolean useSexChromosomes) {
+                                                        final String segmentsFile, final String outputDir, final String outputPrefix, final Boolean useSexChromosomes) {
         final RScriptExecutor executor = new RScriptExecutor();
         String schr = useSexChromosomes ? "TRUE" : "FALSE";
         //This leads to the R statement source("CNV_plotting_library.R") before the main script runs
@@ -51,7 +51,7 @@ public final class ACNVPlotter {
         executor.addScript(new Resource(ACNV_PLOTTING_PER_SEG_R_SCRIPT, ACNVPlotter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
         executor.addArgs("--args", "--sample_name="+sampleName, "--snp_counts_file="+snpCountsFile,  "--coverage_file="+coverageFile,
-                "--segments_file="+segmentsFile, "--output_dir="+outputDir, "--sex_chrs="+schr);
+                "--segments_file="+segmentsFile, "--output_dir="+outputDir, "--output_prefix="+outputPrefix, "--sex_chrs="+schr);
         executor.exec();
     }
 }
