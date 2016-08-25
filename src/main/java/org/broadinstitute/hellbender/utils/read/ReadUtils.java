@@ -1120,4 +1120,59 @@ public final class ReadUtils {
         return isValid;
     }
 
+
+    /**
+     * Sets a collection of GATKReads as supplemental reads of the primary read,
+     * This tool will set the isSupplemental attribute as well as the 'SA:' tag
+     * properly according to the samspec (example: SA:primaryreadname,position,strand,Cigar,mapQ,NM;...)
+     *
+     * @param primaryRead the primary read in the set of supplemental reads
+     * @param supplementalReads an arbitrarily sorted list of reads to be set as
+     *                          supplemental to eachother and the primary read
+     *
+     * @throws UserException 
+     */
+    public static void setReadsAsSupplemental(GATKRead primaryRead, List<GATKRead> supplementalReads) {
+        Utils.nonNull(primaryRead);
+        Utils.nonEmpty(supplementalReads);
+        List<String> orderedTags = new ArrayList<>();
+        orderedTags.add(String.format("%s,%d,%s,%s,%s,%s;",
+                ((primaryRead.getContig()!=null)?primaryRead.getContig():"*"),
+                primaryRead.getStart(),
+                (primaryRead.isReverseStrand()?"-":"+"),
+                primaryRead.getCigar().toString(),
+                primaryRead.getMappingQuality(),
+                (primaryRead.hasAttribute("NM")?primaryRead.getAttributeAsString("NM"):"0")));
+
+        // create the SA tag string for every read in the sequence
+        for (GATKRead read : supplementalReads) {
+            orderedTags.add(String.format("%s,%d,%s,%s,%s,%s;",
+                    ((read.getContig()!=null)?read.getContig():"*"),
+                    read.getStart(),
+                    (read.isReverseStrand()?"-":"+"),
+                    read.getCigar().toString(),
+                    read.getMappingQuality(),
+                    (read.hasAttribute("NM")?primaryRead.getAttributeAsString("NM"):"0")));
+        }
+
+        StringBuffer primaryTag = new StringBuffer();
+        for (int j = 1; j < orderedTags.size(); j++) {
+            primaryTag.append(orderedTags.get(j));
+        }
+        primaryRead.setAttribute("SA",primaryTag.toString());
+        primaryRead.setIsSupplementaryAlignment(false);
+
+
+        // Add that string sequence to the others (minus itself)
+        for (int i = 0; i < supplementalReads.size(); i++) {
+            StringBuffer newTag = new StringBuffer();
+            for (int j = 0; j < orderedTags.size(); j++) {
+                if (j-1!=i) {
+                    newTag.append(orderedTags.get(j));
+                }
+            }
+            supplementalReads.get(i).setIsSupplementaryAlignment(true);
+            supplementalReads.get(i).setAttribute("SA",newTag.toString());
+        }
+    }
 }
