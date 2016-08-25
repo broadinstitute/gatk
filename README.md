@@ -6,7 +6,7 @@ GATK4-Protected (codename Hellbender-protected)
 
 GATK4 development of the license-protected part of the toolkit
 
-This README is aimed at developers.  For user information, please see the [GATK 4 forum](http://http://gatkforums.broadinstitute.org/gatk/categories/gatk-4-alpha)
+This README is aimed at developers.  For user information, please see the [GATK 4 forum](http://gatkforums.broadinstitute.org/gatk/categories/gatk-4-alpha)
 
 Requirements
 ------------
