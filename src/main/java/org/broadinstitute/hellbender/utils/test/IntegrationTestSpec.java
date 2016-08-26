@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.test;
 
 import htsjdk.samtools.ValidationStringency;
 import org.apache.commons.lang3.StringUtils;
-import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -47,7 +46,7 @@ public final class IntegrationTestSpec {
     }
 
     public IntegrationTestSpec(String args, int nOutputFiles, Class<?> expectedException) {
-        if (expectedException == null){
+        if (expectedException == null) {
             throw new IllegalArgumentException("expected exception is null");
         }
         this.args = args;
@@ -68,7 +67,7 @@ public final class IntegrationTestSpec {
         return expectedException;
     }
 
-    public void setCompareBamFilesSorted(final boolean compareBamFilesSorted){
+    public void setCompareBamFilesSorted(final boolean compareBamFilesSorted) {
         this.compareBamFilesSorted = compareBamFilesSorted;
     }
 
@@ -84,7 +83,7 @@ public final class IntegrationTestSpec {
         return expectedFileNames;
     }
 
-    public void executeTest(final String name, CommandLineProgramTest test) throws IOException {
+    public void executeTest(final String name, CommandLineProgramTestInterface test) throws IOException {
         List<File> tmpFiles = new ArrayList<>();
         for (int i = 0; i < nOutputFiles; i++) {
             String ext = DEFAULT_TEMP_EXTENSION;
@@ -101,7 +100,7 @@ public final class IntegrationTestSpec {
             executeTest(name, test, null, null, tmpFiles, formattedArgs, getExpectedException());
         } else {
             final List<String> expectedFileNames = new ArrayList<>(expectedFileNames());
-            if (!expectedFileNames.isEmpty() && preFormattedArgs.equals(formattedArgs)){
+            if (!expectedFileNames.isEmpty() && preFormattedArgs.equals(formattedArgs)) {
                 throw new GATKException("Incorrect test specification - you're expecting " + expectedFileNames.size() + " file(s) the specified arguments do not contain the same number of \"%s\" placeholders");
             }
 
@@ -119,7 +118,7 @@ public final class IntegrationTestSpec {
      * @param args                  the argument list
      * @param expectedException     the expected exception or null
      */
-    private void executeTest(String testName, CommandLineProgramTest testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
+    private void executeTest(String testName, CommandLineProgramTestInterface testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
         if (outputFileLocation != null) {
             args += " -O " + outputFileLocation.getAbsolutePath();
         }
@@ -138,7 +137,7 @@ public final class IntegrationTestSpec {
      * @param args              the argument list
      * @param expectedException the expected exception or null
      */
-    private void executeTest(String testName, CommandLineProgramTest testClass, String args, Class<?> expectedException) {
+    private void executeTest(String testName, CommandLineProgramTestInterface testClass, String args, Class<?> expectedException) {
         String[] command = Utils.escapeExpressions(args);
         // run the executable
         boolean gotAnException = false;
@@ -209,7 +208,7 @@ public final class IntegrationTestSpec {
         for (int i = 0; i < minLen; i++) {
             Assert.assertEquals(actualLines.get(i).toString(), expectedLines.get(i).toString(), "Line number " + i + " (not counting comments)");
         }
-        Assert.assertEquals (actualLines.size(), expectedLines.size(), "line counts");
+        Assert.assertEquals(actualLines.size(), expectedLines.size(), "line counts");
     }
 
 }
