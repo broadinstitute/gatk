@@ -745,4 +745,40 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         spec.executeTest("testTetraDiploid--" + testFile, this);
     }
+
+    @Test
+    public void testSACSimpleDiploid() throws IOException {
+        final String testFile = getToolTestDataDir() + "261_S01_raw_variants_gvcf.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -trimAlternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SimpleDiploid.vcf")
+        );
+
+        spec.executeTest("testSACSimpleDiploid" + testFile, this);
+    }
+
+    @Test
+    public void testSACDiploid() throws IOException {
+        final String testFile = getToolTestDataDir() + "diploid-multisample-sac.g.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn NA12891 -trimAlternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SACDiploid.vcf")
+        );
+
+        spec.executeTest("testSACDiploid" + testFile, this);
+    }
+
+    @Test
+    public void testSACNonDiploid() throws IOException {
+        final String testFile = getToolTestDataDir() + "tetraploid-multisample-sac.g.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" -sn NA12891 -trimAlternates", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SACNonDiploid.vcf")
+        );
+
+        spec.executeTest("testSACNonDiploid" + testFile, this);
+    }
 }

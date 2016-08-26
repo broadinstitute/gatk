@@ -1325,7 +1325,7 @@ public final class GATKVariantContextUtils {
         return absoluteIndex == -1 ? -1 : absoluteIndex - 1;
     }
 
-    // Impements index search using equals.
+    // Implements index search using equals.
     private static int indexOfEqualAllele(final VariantContext vc, final Allele allele, final boolean ignoreRefState,
                                           final boolean considerRefAllele) {
         int i = 0;
