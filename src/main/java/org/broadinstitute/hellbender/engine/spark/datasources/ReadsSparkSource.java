@@ -20,6 +20,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.transformers.MisencodedBaseQualityReadTransformer;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -50,6 +51,11 @@ public final class ReadsSparkSource implements Serializable {
     private transient final JavaSparkContext ctx;
     private ValidationStringency validationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
 
+    /**
+     * Should the base qualities be fixed? By default this should not be performed.
+     */
+    private boolean fixMisencodedQuals = false;
+
     private static final Logger logger = LogManager.getLogger(ReadsSparkSource.class);
 
     public ReadsSparkSource(final JavaSparkContext ctx) { this.ctx = ctx; }
@@ -60,6 +66,13 @@ public final class ReadsSparkSource implements Serializable {
         this.validationStringency = validationStringency;
     }
 
+    /**
+     * Fix misencoded qualities from reads returned by this data source if set to {@code true}; only check the qualities
+     * otherwise.
+     */
+    public void setFixMisencodedQuals(final boolean fixMisencodedQuals) {
+        this.fixMisencodedQuals = fixMisencodedQuals;
+    }
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
@@ -104,11 +117,11 @@ public final class ReadsSparkSource implements Serializable {
         rdd2 = ctx.newAPIHadoopFile(
                     readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
                     conf);
-
+        final MisencodedBaseQualityReadTransformer checkOrFixQuals = new MisencodedBaseQualityReadTransformer(fixMisencodedQuals);
         return rdd2.map(v1 -> {
             SAMRecord sam = v1._2().get();
             if (isBam || samRecordOverlaps(sam, intervals)) { // don't check overlaps for BAM since it is done by input format
-                return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
+                return checkOrFixQuals.apply(SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam));
             }
             return null;
         }).filter(v1 -> v1 != null);
@@ -158,7 +171,8 @@ public final class ReadsSparkSource implements Serializable {
         JavaRDD<AlignmentRecord> recordsRdd = ctx.newAPIHadoopFile(
                 inputPath, AvroParquetInputFormat.class, Void.class, AlignmentRecord.class, job.getConfiguration())
                 .values();
-        JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
+        final MisencodedBaseQualityReadTransformer checkOrFixQuals = new MisencodedBaseQualityReadTransformer(fixMisencodedQuals);
+        JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> checkOrFixQuals.apply(new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue())));
         JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), intervals));
         return filteredRdd;
     }

@@ -82,6 +82,9 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             shortName = "numReducers", fullName = "numReducers", optional = true)
     protected int numReducers = 0;
 
+    @Argument(fullName = "fix_misencoded_quality_scores", shortName="fixMisencodedQuals", doc="Fix mis-encoded base quality scores", optional = true)
+    public boolean fixMissencodedQualityScores = false;
+
     private ReadsSparkSource readsSource;
     private SAMFileHeader readsHeader;
     private String readInput;
