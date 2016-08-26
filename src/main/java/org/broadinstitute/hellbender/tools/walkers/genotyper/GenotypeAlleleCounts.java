@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.functional.IntBiConsumer;
+import org.broadinstitute.hellbender.utils.functional.IntToDoubleBiFunction;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -58,7 +61,18 @@ import java.util.stream.IntStream;
  */
 public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCounts> {
 
-    private double log10CombinationCount;
+    private static final double UNCOMPUTED_LOG_10_COMBINATION_COUNT = -1;
+
+    /**
+     * The log10 number of phased genotypes corresponding to this unphased genotype.  For example,
+     * [0, 1, 1, 1] = AB:  log10(2)
+     * [0, 2] = AA:  log10(1)
+     * [0, 1, 1, 1, 2, 1] = ABC: log10(6)
+     * [0, 2, 1, 2] = AABB: log10(4!/(2!2!))
+     * This is evaluated lazily i.e. it is initialized to {@link GenotypeAlleleCounts::UNCOMPUTED_LOG_10_COMBINATION_COUNT}
+     * and only calculated if its getter is invoked.
+     */
+    private double log10CombinationCount = UNCOMPUTED_LOG_10_COMBINATION_COUNT;
 
     /**
      * The ploidy of the genotype.
@@ -106,15 +120,14 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      * @param index the genotype index.
      */
     private GenotypeAlleleCounts(final int ploidy, final int index, final int... sortedAlleleCounts) {
-        this(ploidy, index, sortedAlleleCounts, sortedAlleleCounts.length >> 1, -1);
+        this(ploidy, index, sortedAlleleCounts, sortedAlleleCounts.length >> 1);
     }
 
-    private GenotypeAlleleCounts(final int ploidy, final int index, final int[] sortedAlleleCounts, final int distinctAlleleCount, final double log10CombinationCount){
+    private GenotypeAlleleCounts(final int ploidy, final int index, final int[] sortedAlleleCounts, final int distinctAlleleCount){
         this.ploidy = ploidy;
         this.index = index;
         this.sortedAlleleCounts = sortedAlleleCounts;
         this.distinctAlleleCount = distinctAlleleCount;
-        this.log10CombinationCount = log10CombinationCount;
     }
 
     public int ploidy() { return ploidy; }
@@ -223,40 +236,27 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      * @return never null.
      */
     protected GenotypeAlleleCounts next() {
-        // if the ploidy is zero there is only one possible genotype.
+        // a few cases worth explicitly optimizing
         if (distinctAlleleCount == 0) {
-            return this;
+            return this;    // only one possible genotype with zero ploidy
+        } else if (distinctAlleleCount == 1 && ploidy == 1) {
+            return new GenotypeAlleleCounts(1, index + 1, sortedAlleleCounts[0] + 1, 1);    // A -> B , D -> E etc...
+        } else if (distinctAlleleCount == 1) {
+            return new GenotypeAlleleCounts(ploidy, index + 1, 0, ploidy - 1, sortedAlleleCounts[0] + 1, 1);    // AAAAA -> AAAAB, DDD -> AAE etc...
         }
 
-        // Worth make this case faster.
-        if (distinctAlleleCount == 1) {
-            if (ploidy == 1)  // A -> B , D -> E etc...
-            {
-                return new GenotypeAlleleCounts(1, index + 1, sortedAlleleCounts[0] + 1, 1);
-            } else  // AAAAA -> AAAAB, DDD -> AAE etc...
-            {
-                return new GenotypeAlleleCounts(ploidy, index + 1, 0, ploidy - 1, sortedAlleleCounts[0] + 1, 1);
-            }
-        }
-        // Now, all the following ifs are just the way to avoid working with dynamically sizing List<int[]>
-        // as the final size of the resulting new sorted-allele-counts array varies depending on the situation.
-        // this is considerably faster and the logic complexity would not be that different actually so it is worth
-        // the if indentations.
-        //
-        // Notice that at this point distinctAlleleCount >= 2 thus sortedAlleleCounts.length >= 4.
-        //
+        // The following logic avoids dynamically sizing the new sorted-allele-counts array, which would be very slow
+        // At this point distinctAlleleCount >= 2 thus sortedAlleleCounts.length >= 4.
         // We only need to look at the two lowest allele indices to decide what to do.
 
-        final int allele0 = sortedAlleleCounts[0];
         final int freq0 = sortedAlleleCounts[1];
-        final int allele1 = sortedAlleleCounts[2];
-        final int allele0Plus1 = allele0 + 1;
-        final boolean allele0And1AreConsecutive = allele0Plus1 == allele1;
+        final int allele0Plus1 = sortedAlleleCounts[0] + 1;
+        final boolean allele0And1AreConsecutive = allele0Plus1 == sortedAlleleCounts[2];
         final int[] newSortedAlleleCounts;
         // The rest of the sorted allele counts array contains junk
         final int sortedAlleleCountsLength = distinctAlleleCount << 1;
 
-        if (freq0 == 1) {   // in this case allele0 wont be present in the result and all is frequency should go to allele0 + 1.
+        if (freq0 == 1) {   // in this case allele0 won't be present in the result and all its frequency should go to allele0 + 1.
             if (allele0And1AreConsecutive) {  // need just to remove the first allele and 1 to the frequency of the second (freq1 += 1).
                 newSortedAlleleCounts = Arrays.copyOfRange(sortedAlleleCounts, 2, sortedAlleleCountsLength);
                 newSortedAlleleCounts[1]++;
@@ -290,6 +290,22 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      */
     public int distinctAlleleCount() {
         return distinctAlleleCount;
+    }
+
+    /**
+     * Gets the log10 combination count, computing it if uninitialized.  Note that the invoked MathUtils method uses fast cached
+     * log10 values of integers for any reasonable ploidy.
+     *
+     * This method should be invoked on instances of {@link GenotypeAlleleCounts} cached in {@link GenotypeLikelihoodCalculators::genotypeTableByPloidy}.
+     * Such usage allows the result of this computation to be cached once for an entire run of HaplotypeCaller.
+     * @return
+     */
+    public double log10CombinationCount() {
+        if (log10CombinationCount == UNCOMPUTED_LOG_10_COMBINATION_COUNT) {
+            log10CombinationCount = MathUtils.log10Factorial(ploidy)
+                    - new IndexRange(0, distinctAlleleCount).sum(n -> MathUtils.log10Factorial(sortedAlleleCounts[2*n+1]));
+        }
+        return log10CombinationCount;
     }
 
     /**
@@ -608,7 +624,7 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
      * @return never {@code null}.
      */
     GenotypeAlleleCounts copy() {
-        return new GenotypeAlleleCounts(this.ploidy, this.index, this.sortedAlleleCounts.clone(), this.distinctAlleleCount, this.log10CombinationCount);
+        return new GenotypeAlleleCounts(this.ploidy, this.index, this.sortedAlleleCounts.clone(), this.distinctAlleleCount);
     }
 
     /**
@@ -633,5 +649,15 @@ public final class GenotypeAlleleCounts implements Comparable<GenotypeAlleleCoun
                             return Collections.nCopies(repeats, allele).stream();
                         }).collect(Collectors.toList());
     }
+
+
+    public void forEachAlleleIndexAndCount(final IntBiConsumer action) {
+        new IndexRange(0, distinctAlleleCount).forEach(n -> action.accept(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
+    }
+
+    public double sumOverAlleleIndicesAndCounts(final IntToDoubleBiFunction func) {
+        return new IndexRange(0, distinctAlleleCount).sum(n -> func.apply(sortedAlleleCounts[2*n], sortedAlleleCounts[2*n+1]));
+    }
+
 
 }
