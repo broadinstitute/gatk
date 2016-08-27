@@ -10,9 +10,10 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Utility interface for CommandLine Program testing.
+ * Utility interface for CommandLine Program testing. API users that have their own Main implementation
+ * should override {@link #makeCommandLineArgs(List)} to make their tests work with {@link IntegrationTestSpec}.
  */
-public interface CommandLineProgramTestInterface {
+public interface CommandLineProgramTester {
 
     /**
      * Returns the name for the tested tool.

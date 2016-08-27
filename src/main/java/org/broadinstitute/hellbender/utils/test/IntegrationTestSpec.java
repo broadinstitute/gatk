@@ -83,7 +83,7 @@ public final class IntegrationTestSpec {
         return expectedFileNames;
     }
 
-    public void executeTest(final String name, CommandLineProgramTestInterface test) throws IOException {
+    public void executeTest(final String name, CommandLineProgramTester test) throws IOException {
         List<File> tmpFiles = new ArrayList<>();
         for (int i = 0; i < nOutputFiles; i++) {
             String ext = DEFAULT_TEMP_EXTENSION;
@@ -118,7 +118,7 @@ public final class IntegrationTestSpec {
      * @param args                  the argument list
      * @param expectedException     the expected exception or null
      */
-    private void executeTest(String testName, CommandLineProgramTestInterface testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
+    private void executeTest(String testName, CommandLineProgramTester testClass, File outputFileLocation, List<String> expectedFileNames, List<File> tmpFiles, String args, Class<?> expectedException) throws IOException {
         if (outputFileLocation != null) {
             args += " -O " + outputFileLocation.getAbsolutePath();
         }
@@ -137,7 +137,7 @@ public final class IntegrationTestSpec {
      * @param args              the argument list
      * @param expectedException the expected exception or null
      */
-    private void executeTest(String testName, CommandLineProgramTestInterface testClass, String args, Class<?> expectedException) {
+    private void executeTest(String testName, CommandLineProgramTester testClass, String args, Class<?> expectedException) {
         String[] command = Utils.escapeExpressions(args);
         // run the executable
         boolean gotAnException = false;
