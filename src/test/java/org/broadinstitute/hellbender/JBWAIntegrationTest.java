@@ -4,41 +4,24 @@ import com.github.lindenb.jbwa.jni.AlnRgn;
 import com.github.lindenb.jbwa.jni.BwaIndex;
 import com.github.lindenb.jbwa.jni.BwaMem;
 import com.github.lindenb.jbwa.jni.ShortRead;
-import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.bwa.BWANativeLibrary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
-import org.testng.SkipException;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
 
 public class JBWAIntegrationTest extends BaseTest {
 
-    private void skipJBWATestOnUnsupportedPlatforms() {
-        if ( ! NativeUtils.runningOnLinux() && ! NativeUtils.runningOnMac() ) {
-            throw new SkipException("jbwa not available on this platform");
-        }
-        if ( NativeUtils.runningOnPPCArchitecture() ) {
-            throw new SkipException("jbwa not available for this architecture");
-        }
-    }
-
     @Test
     public void testJBWAIsLoadable(){
-        skipJBWATestOnUnsupportedPlatforms();
-
         BWANativeLibrary.load();
     }
 
 
     @Test
     public void testJBWAAlignSingleRead() throws Exception {
-        skipJBWATestOnUnsupportedPlatforms();
-
         BWANativeLibrary.load();
 
         final BwaIndex index= new BwaIndex(new File(b37_reference_20_21));
@@ -64,8 +47,6 @@ public class JBWAIntegrationTest extends BaseTest {
 
     @Test
     public void testJBWAAlignChimericContig() throws Exception {
-        skipJBWATestOnUnsupportedPlatforms();
-
         BWANativeLibrary.load();
 
         final BwaIndex index = new BwaIndex(new File(b37_reference_20_21));
@@ -101,6 +82,5 @@ public class JBWAIntegrationTest extends BaseTest {
             bwaMem.dispose();
             index.close();
         }
-    }
-
+    }   
 }
