@@ -226,8 +226,8 @@ public final class AlleleFractionModellerUnitTest extends BaseTest {
         final List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(SEGMENTS_FILE);
         final SegmentedGenome segmentedGenome = new SegmentedGenome(segments, genome);
 
-        final int numSamples = 100;
-        final int numBurnIn = 25;
+        final int numSamples = 150;
+        final int numBurnIn = 50;
         final AlleleFractionModeller modeller = new AlleleFractionModeller(segmentedGenome, allelicPoN);
         modeller.fitMCMC(numSamples, numBurnIn);
 

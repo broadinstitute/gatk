@@ -22,8 +22,8 @@ public final class Genome {
     private final String sampleName;
 
     /**
-     * Constructs a genome from lists containing linear target-coverage and SNP-allele-count data.
-     * @param targets       list of linear target coverages, cannot be {@code null}
+     * Constructs a genome from lists containing log_2 target-coverage and SNP-allele-count data.
+     * @param targets       list of log_2 target coverages, cannot be {@code null}
      * @param snps          list of SNP allele counts, cannot be {@code null}
      */
     public Genome(final ReadCountCollection targets, final List<AllelicCount> snps) {
@@ -35,9 +35,9 @@ public final class Genome {
     }
 
     /**
-     * Constructs a genome from files containing linear target-coverage and SNP-allele-count data.
-     * @param tangentNormalizedCoverageFile    linear target-coverage file
-     * @param snpFile       SNP-allele-count file
+     * Constructs a genome from files containing log_2 target-coverage and SNP-allele-count data.
+     * @param tangentNormalizedCoverageFile     log_2 target-coverage file
+     * @param snpFile                           SNP-allele-count file
      */
     public Genome(final File tangentNormalizedCoverageFile, final File snpFile) {
         sampleName = ReadCountCollectionUtils.getSampleNameForCLIsFromReadCountsFile(tangentNormalizedCoverageFile);

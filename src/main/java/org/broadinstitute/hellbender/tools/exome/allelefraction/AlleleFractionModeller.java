@@ -42,6 +42,9 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleFractionModeller {
+    public static final double MAX_REASONABLE_MEAN_BIAS = AlleleFractionInitializer.MAX_REASONABLE_MEAN_BIAS;
+    public static final double MAX_REASONABLE_BIAS_VARIANCE = AlleleFractionInitializer.MAX_REASONABLE_BIAS_VARIANCE;
+
     private final SegmentedGenome segmentedGenome;
     private final ParameterizedModel<AlleleFractionParameter, AlleleFractionState, AlleleFractionData> model;
     private final List<Double> meanBiasSamples = new ArrayList<>();
@@ -57,29 +60,29 @@ public final class AlleleFractionModeller {
         final AlleleFractionState initialState = new AlleleFractionInitializer(data).getInitializedState();
 
         // Initialization got us to the mode of the likelihood
-        // if we approximate conditionals as normal we can guess the width from the curvature at the mode and use as the step size
+        // if we approximate conditionals as normal we can guess the width from the curvature at the mode and use as the slice-sampling widths
         final AlleleFractionGlobalParameters initialParameters = initialState.globalParameters();
         final AlleleFractionState.MinorFractions initialMinorFractions = initialState.minorFractions();
 
-        final double meanBiasInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(meanBias ->
+        final double meanBiasSamplingWidths = approximatePosteriorWidthAtMode(meanBias ->
                 AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewMeanBias(meanBias), initialMinorFractions, data), initialParameters.getMeanBias());
-        final double biasVarianceInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(biasVariance ->
+        final double biasVarianceSamplingWidths = approximatePosteriorWidthAtMode(biasVariance ->
                 AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewBiasVariance(biasVariance), initialMinorFractions, data), initialParameters.getBiasVariance());
-        final double outlierProbabilityInitialStepSize = getStepSizeFromApproximatePosteriorWidthAtMode(outlierProbability ->
+        final double outlierProbabilitySamplingWidths = approximatePosteriorWidthAtMode(outlierProbability ->
                 AlleleFractionLikelihoods.logLikelihood(initialParameters.copyWithNewOutlierProbability(outlierProbability), initialMinorFractions, data), initialParameters.getOutlierProbability());
 
-        final List<Double> minorFractionsInitialStepSizes = IntStream.range(0, numSegments).mapToDouble(segment ->
-                getStepSizeFromApproximatePosteriorWidthAtMode(f -> AlleleFractionLikelihoods.segmentLogLikelihood(initialParameters, f, data.getCountsInSegment(segment), allelicPoN), initialMinorFractions.get(segment)))
+        final List<Double> minorFractionsSliceSamplingWidths = IntStream.range(0, numSegments).mapToDouble(segment ->
+                approximatePosteriorWidthAtMode(f -> AlleleFractionLikelihoods.segmentLogLikelihood(initialParameters, f, data.getCountsInSegment(segment), allelicPoN), initialMinorFractions.get(segment)))
                 .boxed().collect(Collectors.toList());
 
         final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> meanBiasSampler =
-                new AlleleFractionSamplers.MeanBiasSampler(initialState, meanBiasInitialStepSize);
+                new AlleleFractionSamplers.MeanBiasSampler(MAX_REASONABLE_MEAN_BIAS, meanBiasSamplingWidths);
         final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> biasVarianceSampler =
-                new AlleleFractionSamplers.BiasVarianceSampler(initialState, biasVarianceInitialStepSize);
+                new AlleleFractionSamplers.BiasVarianceSampler(MAX_REASONABLE_BIAS_VARIANCE, biasVarianceSamplingWidths);
         final ParameterSampler<Double, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> outlierProbabilitySampler =
-                new AlleleFractionSamplers.OutlierProbabilitySampler(initialState, outlierProbabilityInitialStepSize);
+                new AlleleFractionSamplers.OutlierProbabilitySampler(outlierProbabilitySamplingWidths);
         final ParameterSampler<AlleleFractionState.MinorFractions, AlleleFractionParameter, AlleleFractionState, AlleleFractionData> minorFractionsSampler =
-                new AlleleFractionSamplers.MinorFractionsSampler(initialState, minorFractionsInitialStepSizes);
+                new AlleleFractionSamplers.MinorFractionsSampler(minorFractionsSliceSamplingWidths);
 
         model = new ParameterizedModel.GibbsBuilder<>(initialState, data)
                 .addParameterSampler(AlleleFractionParameter.MEAN_BIAS, meanBiasSampler, Double.class)
@@ -172,11 +175,11 @@ public final class AlleleFractionModeller {
     }
 
     //use width of a probability distribution given the position of its mode (estimated from Gaussian approximation) as step size
-    private static double getStepSizeFromApproximatePosteriorWidthAtMode(final Function<Double, Double> logPDF, final double mode) {
+    private static double approximatePosteriorWidthAtMode(final Function<Double, Double> logPDF, final double mode) {
         final double absMode = Math.abs(mode);
-        final double EPSILON = Math.min(1e-6, absMode / 2);    //adjust scale is mode is very near zero
-        final double DEFAULT = absMode / 10;                   //if "mode" is not close to true mode of logPDF, approximation may not apply; just use 1/10 of absMode in this case
-        final double secondDerivative = (logPDF.apply(mode + EPSILON) - 2*logPDF.apply(mode) + logPDF.apply(mode - EPSILON))/(EPSILON*EPSILON);
-        return secondDerivative < 0 ? Math.sqrt(-1.0 / secondDerivative) : DEFAULT;
+        final double epsilon = Math.min(1e-6, absMode / 2);    //adjust scale if mode is very near zero
+        final double defaultWidth = absMode / 10;              //if "mode" is not close to true mode of logPDF, approximation may not apply; just use 1/10 of absMode in this case
+        final double secondDerivative = (logPDF.apply(mode + epsilon) - 2 * logPDF.apply(mode) + logPDF.apply(mode - epsilon)) / (epsilon * epsilon);
+        return secondDerivative < 0 ? Math.sqrt(-1.0 / secondDerivative) : defaultWidth;
     }
 }

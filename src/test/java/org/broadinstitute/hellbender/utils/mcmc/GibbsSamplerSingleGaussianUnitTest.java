@@ -49,6 +49,10 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
     private static final int NUM_SAMPLES = 500;
     private static final int NUM_BURN_IN = 250;
 
+    //test specifications
+    private static final double RELATIVE_ERROR_THRESHOLD_FOR_CENTERS = 0.01;
+    private static final double RELATIVE_ERROR_THRESHOLD_FOR_STANDARD_DEVIATIONS = 0.1;
+
     //Create dataset of 10000 datapoints drawn from a normal distribution Normal(MEAN_TRUTH, VARIANCE_TRUTH)
     private static final int RANDOM_SEED = 42;
     private static final RandomGenerator rng =
@@ -181,15 +185,17 @@ public final class GibbsSamplerSingleGaussianUnitTest extends BaseTest {
         //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.
         final double variancePosteriorCenter = new Mean().evaluate(varianceSamples);
         final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
-        Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH), 0., 0.01);
+        Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH),
+                0., RELATIVE_ERROR_THRESHOLD_FOR_CENTERS);
         Assert.assertEquals(
                 relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
-                0., 0.1);
+                0., RELATIVE_ERROR_THRESHOLD_FOR_STANDARD_DEVIATIONS);
         final double meanPosteriorCenter = new Mean().evaluate(meanSamples);
         final double meanPosteriorStandardDeviation = new StandardDeviation().evaluate(meanSamples);
-        Assert.assertEquals(relativeError(meanPosteriorCenter, MEAN_TRUTH), 0., 0.01);
+        Assert.assertEquals(relativeError(meanPosteriorCenter, MEAN_TRUTH),
+                0., RELATIVE_ERROR_THRESHOLD_FOR_CENTERS);
         Assert.assertEquals(
                 relativeError(meanPosteriorStandardDeviation, MEAN_POSTERIOR_STANDARD_DEVIATION_TRUTH),
-                0., 0.1);
+                0., RELATIVE_ERROR_THRESHOLD_FOR_STANDARD_DEVIATIONS);
     }
 }

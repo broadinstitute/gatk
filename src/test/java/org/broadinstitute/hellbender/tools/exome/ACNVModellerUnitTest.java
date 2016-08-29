@@ -28,7 +28,6 @@ import static org.broadinstitute.hellbender.tools.exome.AllelicCNV.*;
 public final class ACNVModellerUnitTest extends BaseTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/";
 
-    private static final String SAMPLE_NAME = "test";
     private static final File COVERAGES_FILE = new File(TEST_SUB_DIR, "coverages-for-acnv-modeller.tsv");
     private static final File TUMOR_ALLELIC_COUNTS_FILE = new File(TEST_SUB_DIR, "snps-for-acnv-modeller.tsv");
     private static final File SEGMENT_FILE = new File(TEST_SUB_DIR, "segments-for-acnv-modeller.seg");  //44 segments (some spurious)

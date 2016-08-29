@@ -51,7 +51,7 @@ public final class CopyRatioModeller {
         //variance posterior is inverse chi-squared, segment-mean posteriors are Gaussian; the below expressions
         //approximate the standard deviations of these distributions.
         final double varianceEstimate = data.estimateVariance();
-        final double varianceSliceSamplingWidth = Math.sqrt(2. * varianceEstimate / data.getNumTargets());
+        final double varianceSliceSamplingWidth = Math.sqrt(2. * varianceEstimate / data.getNumTargets()) / 10.;    //take the width down an order of magnitude to account for inflation by outliers
         final double coverageMin = data.getCoverageMin();
         final double coverageMax = data.getCoverageMax();
         final double meanSliceSamplingWidth = Math.sqrt(varianceEstimate * data.getNumSegments() / data.getNumTargets());
