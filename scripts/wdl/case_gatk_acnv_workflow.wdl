@@ -37,7 +37,7 @@ workflow case_gatk_acnv_workflow {
     File input_bam_list
     Array[Array[String]] bam_list_array = read_tsv(input_bam_list)
     File PoN
-    File gatk_jar
+    String gatk_jar
 
     # Input parameters of the PerformSegmentation tool
     Float seg_param_alpha
@@ -161,7 +161,7 @@ workflow case_gatk_acnv_workflow {
           mem=2
     }
 
-    call HetPulldown {
+    call BayesianHetPulldownPaired {
       input:
           entity_id_tumor=row[0],
           entity_id_normal=row[3],
@@ -174,14 +174,15 @@ workflow case_gatk_acnv_workflow {
           normal_bam=row[4],
           normal_bam_idx=row[5],
           common_snp_list=common_snp_list,
-          mem=4
+          mem=4,
+          stringency=30
     }
 
     call AllelicCNV {
       input:
           entity_id=row[0],
           gatk_jar=gatk_jar,
-          tumor_hets=HetPulldown.tumor_hets,
+          tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           called_file=TumorCaller.called_file,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
           mem=4
@@ -200,7 +201,7 @@ workflow case_gatk_acnv_workflow {
     call PlotACNVResults {
       input:
           gatk_jar=gatk_jar,
-          tumor_hets=HetPulldown.tumor_hets,
+          tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           acnv_segments=AllelicCNV.acnv_final_segs,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
           output_dir="${plots_dir}ACNV_plots/${row[0]}/",
@@ -211,7 +212,7 @@ workflow case_gatk_acnv_workflow {
       input:
           entity_id=row[0],
           gatk_jar=gatk_jar,
-          tumor_hets=HetPulldown.tumor_hets,
+          tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           acnv_segments=AllelicCNV.acnv_final_segs,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
           output_dir="${call_cnloh_dir}CallCNLoH/${row[0]}/",
@@ -314,9 +315,9 @@ workflow case_gatk_acnv_workflow {
 # Pad the target file. This was found to help sensitivity and specificity. This step should only be altered
 # by advanced users. Note that by changing this, you need to have a PoN that also reflects the change.
 task PadTargets {
-    String target_file
+    File target_file
     Int padding = 250
-    File gatk_jar
+    String gatk_jar
     Boolean isWGS
     Int mem
 
@@ -355,7 +356,7 @@ task CalculateTargetCoverage {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    File gatk_jar
+    String gatk_jar
     Boolean disable_sequence_dictionary_validation
     Boolean isWGS
     Int mem
@@ -395,7 +396,7 @@ task WholeGenomeCoverage {
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
-    File gatk_jar
+    String gatk_jar
     Boolean isWGS
     Int wgsBinSize
     Int mem
@@ -421,7 +422,7 @@ task WholeGenomeCoverage {
 task AnnotateTargets {
     String entity_id
     File target_file
-    File gatk_jar
+    String gatk_jar
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
@@ -447,7 +448,7 @@ task CorrectGCBias {
     String entity_id
     File coverage_file
     File annotated_targets
-    File gatk_jar
+    String gatk_jar
     Boolean enable_gc_correction
     Int mem
 
@@ -471,7 +472,7 @@ task NormalizeSomaticReadCounts {
     File coverage_file
     File padded_target_file
     File pon
-    File gatk_jar
+    String gatk_jar
     Int mem
 
     command {
@@ -504,7 +505,7 @@ task PerformSegmentation {
     String seg_param_undoSplits
     Float seg_param_undoPrune
     Int seg_param_undoSD
-    File gatk_jar
+    String gatk_jar
     File tn_file
     Int mem
 
@@ -525,7 +526,7 @@ task PerformSegmentation {
 # Make calls (amp, neutral, or deleted) on each segment.
 task Caller {
     String entity_id
-    File gatk_jar
+    String gatk_jar
     File tn_file
     File seg_file
     Int mem
@@ -546,7 +547,7 @@ task Caller {
 task HetPulldown {
     String entity_id_tumor
     String entity_id_normal
-    File gatk_jar
+    String gatk_jar
     File ref_fasta
     File ref_fasta_fai
     File ref_fasta_dict
@@ -570,10 +571,40 @@ task HetPulldown {
     }
 }
 
+# Call heterozygous SNPs in the normal and then count the reads in the tumor for each position called position.
+# entity IDs can be the same value
+task BayesianHetPulldownPaired {
+    String entity_id_tumor
+    String entity_id_normal
+    String gatk_jar
+    File ref_fasta
+    File ref_fasta_fai
+    File ref_fasta_dict
+    File tumor_bam
+    File tumor_bam_idx
+    File normal_bam
+    File normal_bam_idx
+    File common_snp_list
+    Int mem
+    Int stringency
+
+    command {
+        java -Xmx${mem}g -jar ${gatk_jar} GetBayesianHetCoverage --reference ${ref_fasta} \
+         --normal ${normal_bam} --tumor ${tumor_bam} --snpIntervals ${common_snp_list} \
+         --normalHets ${entity_id_normal}.normal.hets.tsv --tumorHets ${entity_id_tumor}.tumor.hets.tsv --hetCallingStringency ${stringency} \
+         --help false --version false --verbosity INFO --QUIET false --VALIDATION_STRINGENCY LENIENT
+    }
+
+    output {
+        File normal_hets="${entity_id_normal}.normal.hets.tsv"
+        File tumor_hets="${entity_id_tumor}.tumor.hets.tsv"
+    }
+}
+
 # Estimate minor allelic fraction and revise segments
 task AllelicCNV {
     String entity_id
-    File gatk_jar
+    String gatk_jar
     File tumor_hets
     File called_file
     File tn_file
@@ -594,7 +625,7 @@ task AllelicCNV {
 
 # Create plots of coverage data and copy-ratio estimates
 task PlotSegmentedCopyRatio { 
-    File gatk_jar
+    String gatk_jar
     File tn_file
     File pre_tn_file
     File called_file
@@ -615,7 +646,7 @@ task PlotSegmentedCopyRatio {
 
 # Create plots of allelic-count data and minor-allele-fraction estimates
 task PlotACNVResults {
-    File gatk_jar
+    String gatk_jar
     File tumor_hets
     File tn_file
     File acnv_segments
@@ -637,7 +668,7 @@ task PlotACNVResults {
 # Call ACNV segments as CNLoH and balanced
 task CNLoHAndSplitsCaller {
     String entity_id
-    File gatk_jar
+    String gatk_jar
     File tumor_hets
     File acnv_segments
     File tn_file

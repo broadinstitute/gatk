@@ -6,10 +6,6 @@ FROM ubuntu:14.04
 ARG GITHUB_TAG
 ARG GITHUB_DIR=tags/
 
-ENV GITHUB_TAG ${GITHUB_TAG}
-ENV GITHUB_DIR ${GITHUB_DIR}
-
-
 #### Basic image utilities
 RUN apt-get update && \
      apt-get upgrade -y && \
@@ -63,6 +59,7 @@ RUN \
 
 # Define commonly used JAVA_HOME variable
 ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
+ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Added from GATK4 public (Getting R setup)
 RUN mkdir -p /usr/local/lib/R/
@@ -83,6 +80,8 @@ RUN apt-get install -y --force-yes r-base-core=3.1.3-1trusty
 RUN git clone https://github.com/broadinstitute/gatk-protected.git
 
 # Install R dependencies and build the shadowJar
+ENV GITHUB_TAG ${GITHUB_TAG}
+ENV GITHUB_DIR ${GITHUB_DIR}
 WORKDIR /root/gatk-protected/
 RUN git checkout ${GITHUB_DIR}${GITHUB_TAG}
 RUN Rscript /root/gatk-protected/scripts/install_R_packages.R
@@ -94,11 +93,6 @@ WORKDIR /root
 RUN ln -sFv /root/gatk-protected/build/libs/gatk-protected.jar
 RUN java -jar gatk-protected.jar -h
 
-ENV JAVA_LIBRARY_PATH /usr/lib/jni
-
-# Get the cromwell jar file
-RUN wget https://github.com/broadinstitute/cromwell/releases/download/0.19.3/cromwell-0.19.jar
-
 # Install git lfs and get latest big files
 WORKDIR /root/gatk-protected/
 RUN bash scripts/install_git_lfs.sh
@@ -106,6 +100,7 @@ RUN bash scripts/install_git_lfs.sh
 RUN echo This docker image is running gatk-protected `git describe --tags` > /root/GATK_PROTECTED_VERSION
 
 # Create a simple unit test runner
+ENV CI true
 RUN echo "cd /root/gatk-protected/ && ./gradlew test" >/root/run_unit_tests.sh
 
 WORKDIR /root

@@ -5,8 +5,9 @@ jdk:
 - oraclejdk8
 env:
   matrix:
-  - RUN_CROMWELL=true
-  - RUN_CROMWELL=false
+  - RUN_CROMWELL=true TEST_DOCKER=false
+  - RUN_CROMWELL=false TEST_DOCKER=false
+  - RUN_CROMWELL=false TEST_DOCKER=true
   global:
   #limit gradle jvm memory usage
   - GRADLE_OPTS=-Xmx512m
@@ -33,7 +34,7 @@ before_install:
 install:
 - if [[ $RUN_CROMWELL == true ]]; then 
     ./gradlew shadowJar;
-  else
+  elif [[$TEST_DOCKER == false ]]; then
     ./gradlew assemble;
   fi 
 
@@ -41,12 +42,16 @@ script:
 - if [[ $RUN_CROMWELL == true ]]; then
     echo "Running ACNV pipeline";
     bash scripts/acnv_cromwell_tests/run_acnv_pipelines.sh;
+  elif [[ $TEST_DOCKER == true ]]; then
+    echo "Building docker image with unit tests...";
+    cd scripts/docker/;
+    sudo bash build_docker.sh  -e `git rev-parse ${TRAVIS_BRANCH}` -s;
   else
     ./gradlew check;
   fi
 
 after_success:
-- if [[ $RUN_CROMWELL == false ]]; then
+- if [[ $RUN_CROMWELL == false ]] && [[ $TEST_DOCKER == false ]]; then
     ./gradlew jacocoTestReport coveralls;
   fi
 
