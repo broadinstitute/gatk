@@ -5,30 +5,24 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
-import org.broadinstitute.hellbender.engine.spark.GATKSparkToolIntegrationTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TwoPassReadsWalkerUnitTest extends CommandLineProgramTest{
 
     //public class
     @CommandLineProgramProperties(
-            summary = "Dummy that reads file and counts it twice .",
+            summary = "Dummy that reads file and counts it twice",
             oneLineSummary = "empty class",
             programGroup = TestProgramGroup.class
     )
     private static class dummyTwoPassReadsWalker extends TwoPassReadWalker {
-        int firstPass = 0;
-        int secondPass = 0;
+        public int firstPass = 0;
+        public int secondPass = 0;
         boolean betweenTraversals = false;
         @Override
         protected void firstPassApply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
@@ -42,41 +36,56 @@ public class TwoPassReadsWalkerUnitTest extends CommandLineProgramTest{
         protected void afterFirstPass() {
             betweenTraversals = true;
         }
-
-        public boolean everythingWorked() {
-            if (firstPass != secondPass || !betweenTraversals) {
-                return false;
-            }
-            return true;
-        }
     }
 
-    @Override
-    public String getTestedClassName() {
-        return TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker.class.getSimpleName();
-    }
-
-    @Test(dataProvider = "extensions")
-    public void testDifferentFormatEquivalentBehavior(String ext) throws IOException {
+    @Test(dataProvider = "unsortedFiles")
+    public void testDifferentFormatEquivalentBehavior(String file) throws IOException {
         final TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker tool = new TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker();
         final CommandLineParser clp = new CommandLineParser(tool);
 
         final String[] args = {
-                "-I", getTestDataDir()+ "/count_reads" + ext,
+                "-I", getTestDataDir()+ file,
                 "-R", getTestDataDir()+ "/count_reads.fasta"
         };
-
 
         clp.parseArguments(System.out, args);
         tool.onStartup();
         tool.doWork();
         tool.onShutdown();
 
-        Assert.assertTrue(tool.everythingWorked());
+        Assert.assertEquals(tool.firstPass, 8);
+        Assert.assertEquals(tool.secondPass, 8);
+        Assert.assertTrue(tool.betweenTraversals);
     }
 
-    @DataProvider(name = "extensions")
+    @DataProvider(name = "unsortedFiles")
     public Object[][] makeExtensions() {
-        return new Object[][] {{".bam"}, {".sam"}, {".cram"}};
+        return new Object[][] {{"/count_reads.bam"}, {"/count_reads.sam"}, {"/count_reads.cram"}};
+    }
+
+    @Test(dataProvider = "sortedFiles")
+    public void testIntervalFiltering(String file) {
+        final TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker tool = new TwoPassReadsWalkerUnitTest.dummyTwoPassReadsWalker();
+        final CommandLineParser clp = new CommandLineParser(tool);
+
+        final String[] args = {
+                "-I", getTestDataDir()+ file,
+                "-R", getTestDataDir()+ "/count_reads.fasta",
+                "-L", "chr7:10-40"
+        };
+
+        clp.parseArguments(System.out, args);
+        tool.onStartup();
+        tool.doWork();
+        tool.onShutdown();
+
+        Assert.assertEquals(tool.firstPass, 5);
+        Assert.assertEquals(tool.secondPass, 5);
+        Assert.assertTrue(tool.betweenTraversals);
+    }
+
+    @DataProvider(name = "sortedFiles")
+    public Object[][] makeSortedExtensions() {
+        return new Object[][] {{"/count_reads_sorted.bam"}, {"/count_reads_sorted.cram"}};
     }
 }
