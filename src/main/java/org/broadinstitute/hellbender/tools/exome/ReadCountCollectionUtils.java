@@ -1,12 +1,19 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.primitives.Doubles;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.collections4.list.SetUniqueList;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
+import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -14,17 +21,14 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.SortedMap;
+import java.io.*;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
 
 /**
- * Reads {@link ReadCountCollection} instances from a tab-separated text file.
+ * Reads {@link ReadCountCollection} instances from a tab-separated text file and implements a number of read count filters.
  * <p>
  * The tab separated file consist of a header and body with the data.
  * </p>
@@ -74,6 +78,26 @@ public final class ReadCountCollectionUtils {
     private ReadCountCollectionUtils() {}
 
     /**
+     * Writes the content of a collection into a writer.
+     *
+     * @param writer         the output writer.
+     * @param collection     the output collection.
+     * @param headerComments header comments.
+     * @throws IllegalArgumentException if any of the input parameters is {@code null}
+     *                                  or {@code collection} has a mixture of targets with and without intervals
+     *                                  defined.
+     * @throws IOException              if there is some IO issue when writing into the output file.
+     */
+    public static void write(final Writer writer, final ReadCountCollection collection, final String... headerComments) throws IOException {
+        Utils.nonNull(collection, "input collection cannot be null");
+        Utils.nonNull(headerComments, "header comments cannot be null");
+        final boolean withIntervals = collection.targets().stream().anyMatch(t -> t.getInterval() != null);
+        final TableWriter<ReadCountRecord> tableWriter = withIntervals
+                ? writerWithIntervals(writer, collection.columnNames()) : writerWithoutIntervals(writer, collection);
+        performWriting(collection, tableWriter, headerComments);
+    }
+
+    /**
      * Writes the content of a collection into a file.
      *
      * @param file           the output file.
@@ -86,13 +110,8 @@ public final class ReadCountCollectionUtils {
      */
     public static void write(final File file, final ReadCountCollection collection, final String... headerComments) throws IOException {
         Utils.nonNull(file, "output file cannot be null");
-        Utils.nonNull(collection, "input collection cannot be null");
-        Utils.nonNull(headerComments, "header comments cannot be null");
         try (final Writer writer = new FileWriter(file)) {
-            final boolean withIntervals = collection.targets().stream().anyMatch(t -> t.getInterval() != null);
-            final TableWriter<ReadCountRecord> tableWriter = withIntervals
-                    ? writerWithIntervals(writer, collection.columnNames()) : writerWithoutIntervals(writer, collection);
-            performWriting(collection, tableWriter, headerComments);
+            write(writer, collection, headerComments);
         }
     }
 
@@ -166,6 +185,20 @@ public final class ReadCountCollectionUtils {
     }
 
     /**
+     * Reads the content from a reader into a {@link ReadCountCollection}.
+     *
+     * @param sourceReader the source reader
+     * @param sourceName source name.
+     * @return never {@code null}.
+     * @throws IOException            if there was some problem reading the file contents.
+     * @throws UserException.BadInput if there is some formatting issue in the source file contents. This includes
+     *                                lack of target names in the source file.
+     */
+    public static ReadCountCollection parse(final Reader sourceReader, final String sourceName) throws IOException {
+        return parse(sourceReader, sourceName, null, false);
+    }
+
+    /**
      * Reads the content of a file into a {@link ReadCountCollection}.
      *
      * @param file the source file.
@@ -181,7 +214,7 @@ public final class ReadCountCollectionUtils {
     /**
      * Reads the content of a file into a {@link ReadCountCollection}.
      * <p>
-     * If no target name is include in the input but intervals are present, the {@code exons} collection provided
+     * If no target name is included in the input but intervals are present, the {@code exons} collection provided
      * will be utilized to resolve those names.
      * </p>
      *
@@ -194,25 +227,55 @@ public final class ReadCountCollectionUtils {
      * @throws IllegalArgumentException if {@code file} is {@code null}.
      * @throws IOException              if there was any problem reading the content of {@code file}.
      * @throws UserException.BadInput   if there is some formatting issue with the file. This includes inability to
-     *                                  resolve a target name based on the input file content and the target collection provided as long as
-     *                                  {@code ignoreMissingTargets} is {@code false}.
+     *                                  resolve a target name based on the input file content and the target collection
+     *                                  provided as long as {@code ignoreMissingTargets} is {@code false}.
      */
-    public static ReadCountCollection parse(final File file, final TargetCollection<Target> targets, final boolean ignoreMissingTargets) throws IOException {
+    public static ReadCountCollection parse(final File file, final TargetCollection<Target> targets,
+                                                final boolean ignoreMissingTargets) throws IOException {
         Utils.nonNull(file, "the input file cannot be null");
         final ReadCountsReader reader = new ReadCountsReader(file, targets, ignoreMissingTargets);
-        return readCounts(file, reader, reader.getCountColumnNames());
+        return readCounts(file.getPath(), reader, reader.getCountColumnNames());
+    }
+
+    /**
+     * Reads the content of a source reader into a {@link ReadCountCollection}.
+     * <p>
+     * If no target name is included in the input but intervals are present, the {@code exons} collection provided
+     * will be utilized to resolve those names.
+     * </p>
+     *
+     * @param sourceReader  the source reader.
+     * @param sourceName  source name.
+     * @param targets collection of exons (targets). This parameter can be {@code null}, to indicate that no exon
+     *              collection is to be considered.
+     * @param ignoreMissingTargets whether we ignore read counts that make reference to targets that are not present in
+     *                             the input target collection {@code targets}.
+     * @return never {@code null}.
+     * @throws IllegalArgumentException if {@code file} is {@code null}.
+     * @throws IOException              if there was any problem reading the content of {@code file}.
+     * @throws UserException.BadInput   if there is some formatting issue with the file. This includes inability to
+     *                                  resolve a target name based on the input file content and the target collection
+     *                                  provided as long as {@code ignoreMissingTargets} is {@code false}.
+     */
+    public static ReadCountCollection parse(final Reader sourceReader, final String sourceName,
+                                                final TargetCollection<Target> targets, final boolean ignoreMissingTargets) throws IOException {
+        Utils.nonNull(sourceReader, "the input source reader cannot be null");
+        Utils.nonNull(sourceName, "the input source name be null");
+
+        final ReadCountsReader readCountsReader = new ReadCountsReader(sourceReader, targets, ignoreMissingTargets);
+        return readCounts(sourceName, readCountsReader, readCountsReader.getCountColumnNames());
     }
 
     /**
      * Reads the counts section of the file and create the resulting collection.
      *
-     * @param file        the source file name (used in error messages).
+     * @param sourceName  the source name (used in error messages).
      * @param tableReader the source table-reader.
      * @param columnNames the name of the columns.
      * @return never {@code null}.
      * @throws IOException if there is a low level IO error.
      */
-    private static ReadCountCollection readCounts(final File file,
+    private static ReadCountCollection readCounts(final String sourceName,
                                                   final TableReader<ReadCountRecord> tableReader,
                                                   final List<String> columnNames) throws IOException {
         final Buffer buffer = new Buffer();
@@ -222,13 +285,13 @@ public final class ReadCountCollectionUtils {
             final Target target = record.getTarget();
             final double[] lineCounts = record.getDoubleCounts();
             if (!buffer.add(target, lineCounts)) {
-                throw new UserException.BadInput(String.format("duplicated target with name %s in file %s", target.getName(), file));
+                throw new UserException.BadInput(String.format("duplicated target with name %s in %s", target.getName(), sourceName));
             }
         }
         if (buffer.getTargets().isEmpty()) {
-            throw new UserException.BadInput("there is no counts (zero targets) in the input file " + file);
+            throw new UserException.BadInput("there is no counts (zero targets) in the input source " + sourceName);
         }
-        return new ReadCountCollection(buffer.getTargets(), columnNames, new Array2DRowRealMatrix(buffer.getCounts(),false));
+        return new ReadCountCollection(buffer.getTargets(), columnNames, new Array2DRowRealMatrix(buffer.getCounts(), false));
     }
 
     /**
@@ -245,6 +308,22 @@ public final class ReadCountCollectionUtils {
         }
     }
 
+    /**
+     * Retrieve the sample names from a ReadCountCollection file (e.g. TangentNormalization file)
+     * @param readCountsReader targets and coverage reader
+     * @param readCountsName name of the read count collection
+     * @return list of strings that contain the sample names.  I.e. returns list of all columns that do not describe the
+     * targets themselves.
+     */
+    public static List<String> retrieveSampleNamesFromReadCountsReader(final Reader readCountsReader,
+                                                                       final String readCountsName) {
+        try  {
+            return new ReadCountsReader(readCountsReader).getCountColumnNames();
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile(readCountsName, e);
+        }
+    }
+
     /** Extract the sample name from a read counts file.
      *
      * Throws an exception if there is not exactly one sample in the file.
@@ -258,7 +337,8 @@ public final class ReadCountCollectionUtils {
         if (sampleNames.size() == 1) {
             sampleName = sampleNames.get(0);
         } else if (sampleNames.size() > 1) {
-            throw new UserException.BadInput("Input file must contain data for only one sample.  Found samples: " + StringUtils.join(sampleNames, ", "));
+            throw new UserException.BadInput("Input file must contain data for only one sample.  Found samples: " +
+                    StringUtils.join(sampleNames, ", "));
         } else {
             throw new UserException.BadInput("Input file must contain data for only one sample.  Could not find any sample information.");
         }
@@ -289,8 +369,26 @@ public final class ReadCountCollectionUtils {
     public static <N extends Number> void writeReadCountsFromSimpleInterval(final File outFile, final String sampleName,
                                                                             final SortedMap<SimpleInterval, N> byKeySorted,
                                                                             final String[] comments) {
+        try (final Writer outWriter = new FileWriter(outFile)) {
+            writeReadCountsFromSimpleInterval(outWriter, outFile.getPath(), sampleName, byKeySorted, comments);
+        } catch (final IOException e) {
+            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+        }
+    }
 
-        Utils.nonNull(outFile, "Output file cannot be null.");
+    /**
+     * Write a read counts file of targets with coverage to file with dummy names
+     * @param outWriter Writer to write targets with coverage. Never {@code null}
+     * @param outName Name of the output writer. Never {@code null}
+     * @param sampleName Name of sample being written. Never {@code null}
+     * @param byKeySorted Map of simple-intervals to their copy-ratio. Never {@code null}
+     * @param comments Comments to add to header of coverage file.
+     */
+    public static <N extends Number> void writeReadCountsFromSimpleInterval(final Writer outWriter, final String outName,
+                                                                            final String sampleName, final SortedMap<SimpleInterval, N> byKeySorted,
+                                                                            final String[] comments) {
+
+        Utils.nonNull(outWriter, "Output writer cannot be null.");
         Utils.nonNull(sampleName, "Sample name cannot be null.");
         Utils.nonNull(byKeySorted, "Targets cannot be null.");
         Utils.nonNull(comments, "Comments cannot be null.");
@@ -301,7 +399,7 @@ public final class ReadCountCollectionUtils {
         }
 
         try (final TableWriter<ReadCountRecord> writer =
-                     writerWithIntervals(new FileWriter(outFile), Arrays.asList(sampleName))) {
+                     writerWithIntervals(outWriter, Arrays.asList(sampleName))) {
             for (String comment : comments) {
                 writer.writeComment(comment);
             }
@@ -312,12 +410,250 @@ public final class ReadCountCollectionUtils {
                 writer.writeRecord(new ReadCountRecord.SingleSampleRecord(new Target(interval), coverage));
             }
         } catch (final IOException e) {
-            throw new UserException.CouldNotCreateOutputFile(outFile, e);
+            throw new UserException.CouldNotCreateOutputFile(outName, e);
         }
 
+    }
 
+    /**
+     * Impute zero counts to the median of non-zero values in the enclosing target row.
+     *
+     * <p>The imputation is done in-place, thus the input matrix is well be modified as a result of this call.</p>
+     *
+     * @param readCounts the input and output read-count matrix.
+     */
+    public static void imputeZeroCountsAsTargetMedians(final ReadCountCollection readCounts, final Logger logger) {
 
+        final RealMatrix counts = readCounts.counts();
+        final int targetCount = counts.getRowDimension();
 
+        final Median medianCalculator = new Median();
+        int totalCounts = counts.getColumnDimension() * counts.getRowDimension();
+
+        // Get the number of zeroes contained in the counts.
+        final long totalZeroCounts = IntStream.range(0, targetCount)
+                .mapToLong(t -> DoubleStream.of(counts.getRow(t))
+                        .filter(c -> c == 0.0).count()).sum();
+
+        // Get the median of each row, not including any entries that are zero.
+        final double[] medians = IntStream.range(0, targetCount)
+                .mapToDouble(t -> medianCalculator.evaluate(
+                        DoubleStream.of(counts.getRow(t))
+                                .filter(c -> c != 0.0)
+                                .toArray()
+                )).toArray();
+
+        // Change any zeros in the counts to the median for the row.
+        counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
+            @Override
+            public double visit(final int row, final int column, final double value) {
+                return value != 0 ? value : medians[row];
+            }
+        });
+
+        if (totalZeroCounts > 0) {
+            final double totalZeroCountsPercentage = 100.0 * (totalZeroCounts / totalCounts);
+            logger.info(String.format("Some 0.0 counts (%d out of %d, %.2f%%) were imputed to their enclosing target " +
+                    "non-zero median", totalZeroCounts, totalZeroCounts, totalZeroCountsPercentage));
+        } else {
+            logger.info("No count is 0.0 thus no count needed to be imputed.");
+        }
+    }
+
+    /**
+     * Truncates the extreme count values in the input read-count collection.
+     * Values are forced to be bound by the percentile indicated with the input {@code percentile} which must be
+     * in the range [0 .. 50.0]. Values under that percentile and the complementary (1 - percentile) are set to the
+     * corresponding threshold value.
+     *
+     * <p>The imputation is done in-place, thus the input matrix is modified as a result of this call.</p>
+     *
+     * @param readCounts the input and output read-count matrix.
+     */
+    public static void truncateExtremeCounts(final ReadCountCollection readCounts, final double percentile, final Logger logger) {
+
+        final RealMatrix counts = readCounts.counts();
+        final int targetCount = counts.getRowDimension();
+        final int columnCount = counts.getColumnDimension();
+
+        // Create a row major array of the counts.
+        final double[] values = Doubles.concat(counts.getData());
+
+        final Percentile bottomPercentileEvaluator = new Percentile(percentile);
+        final Percentile topPercentileEvaluator = new Percentile(100.0 - percentile);
+        final double bottomPercentileThreshold = bottomPercentileEvaluator.evaluate(values);
+        final double topPercentileThreshold = topPercentileEvaluator.evaluate(values);
+        long totalCounts = 0;
+        long bottomTruncatedCounts = 0;
+        long topTruncatedCounts = 0;
+
+        for (int i = 0; i < targetCount; i++) {
+            final double[] rowCounts = counts.getRow(i);
+            for (int j = 0; j < columnCount; j++) {
+                final double count = rowCounts[j];
+                totalCounts++;
+                if (count < bottomPercentileThreshold) {
+                    counts.setEntry(i, j, bottomPercentileThreshold);
+                    bottomTruncatedCounts++;
+                } else if (count > topPercentileThreshold) {
+                    counts.setEntry(i, j, topPercentileThreshold);
+                    topTruncatedCounts++;
+                }
+            }
+        }
+        if (topTruncatedCounts == 0 && bottomTruncatedCounts == 0) {
+            logger.info(String.format("None of the %d counts were truncated as they all fall in the non-extreme range " +
+                    "[%.2f, %.2f]", totalCounts, bottomPercentileThreshold, topPercentileThreshold));
+        } else {
+            final double truncatedPercentage = ((double)(topTruncatedCounts + bottomTruncatedCounts) / totalCounts) * 100;
+            logger.info(String.format("Some counts (%d out of %d, %.2f%%) were truncated as they fall out of the " +
+                    "non-extreme range [%.2f, %.2f]", topTruncatedCounts + bottomTruncatedCounts, totalCounts,
+                    truncatedPercentage, bottomPercentileThreshold, topPercentileThreshold));
+        }
+    }
+
+    /**
+     * Creates a new read-count collection that is a copy of the input but dropping columns with extreme median coverage.
+     *
+     * @param readCounts the input read-counts.
+     * @param extremeColumnMedianCountPercentileThreshold bottom percentile to use as an exclusion threshold.
+     * @return never {@code null}. It might be a reference to the input read-counts if
+     * there are no columns to be dropped.
+     */
+    public static ReadCountCollection removeColumnsWithExtremeMedianCounts(final ReadCountCollection readCounts,
+                                                                           final double extremeColumnMedianCountPercentileThreshold,
+                                                                           final Logger logger) {
+        final List<String> columnNames = readCounts.columnNames();
+        final RealMatrix counts = readCounts.counts();
+        final double[] columnMedians = MatrixSummaryUtils.getColumnMedians(counts);
+
+        // Calculate thresholds:
+        final double bottomExtremeThreshold = new Percentile(extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
+        final double topExtremeThreshold = new Percentile(100 - extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
+
+        // Determine kept and dropped column sets.
+        final Set<String> columnsToKeep = new HashSet<>(readCounts.columnNames().size());
+        final int initialMapSize = ((int) (2.0 * extremeColumnMedianCountPercentileThreshold / 100.0)) * readCounts.columnNames().size();
+        final Map<String, Double> columnsToDrop = new LinkedHashMap<>(initialMapSize);
+        for (int i = 0; i < columnMedians.length; i++) {
+            if (columnMedians[i] >= bottomExtremeThreshold && columnMedians[i] <= topExtremeThreshold) {
+                columnsToKeep.add(columnNames.get(i));
+            } else {
+                columnsToDrop.put(columnNames.get(i), columnMedians[i]);
+            }
+        }
+
+        // log and drop columns if it applies
+        if (columnsToKeep.isEmpty()) {
+            throw new UserException.BadInput("No column count left after applying the extreme counts outlier filter");
+        } else if (columnsToKeep.size() == columnNames.size()) {
+            logger.info(String.format("No column dropped due to extreme counts outside [%.10f, %.10f]",
+                    bottomExtremeThreshold, topExtremeThreshold));
+            return readCounts;
+        } else {
+            final double droppedPercentage = ((double)(columnsToDrop.size()) / columnNames.size()) * 100;
+            logger.info(String.format("Some columns dropped (%d out of %d, %.2f%%) as they are classified as having extreme " +
+                    "median counts across targets outside [%.10f, %.10f]: e.g. %s",
+                    columnsToDrop.size(), columnNames.size(), droppedPercentage, bottomExtremeThreshold, topExtremeThreshold,
+                    columnsToDrop.entrySet().stream().limit(10).map(kv -> kv.getKey() + " (" + kv.getValue() + ")")
+                            .collect(Collectors.joining(", "))));
+            return readCounts.subsetColumns(columnsToKeep);
+        }
+    }
+
+    private static long countZeroes(final double[] data) {
+        return DoubleStream.of(data).filter(d -> d == 0.0).count();
+    }
+
+    /**
+     * Remove targets that have too many counts equal to 0.
+     * <p>
+     *     It will return a copy of the input read-count collection with such targets dropped.
+     * </p>
+     *
+     * @param readCounts the input read counts.
+     * @param maximumTargetZeros maximum number of counts equal to 0 per target tolerated.
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no target to be dropped.
+     */
+    public static ReadCountCollection removeTargetsWithTooManyZeros(final ReadCountCollection readCounts,
+                                                                    final int maximumTargetZeros, final Logger logger) {
+        final RealMatrix counts = readCounts.counts();
+
+        final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
+                .filter(i -> countZeroes(counts.getRow(i)) <= maximumTargetZeros)
+                .map(i -> readCounts.targets().get(i)).collect(Collectors.toSet());
+
+        final int targetsToDropCount = readCounts.targets().size() - targetsToKeep.size();
+        if (targetsToDropCount == 0) {
+            logger.info(
+                    String.format("There are no targets with large number of columns with zero counts (<= %d of %d) to drop",
+                            maximumTargetZeros, readCounts.columnNames().size()));
+            return readCounts;
+        } else if (targetsToDropCount == readCounts.targets().size()) {
+            throw new UserException.BadInput("the number of zeros per target in the input is too large resulting " +
+                    "in all targets being dropped");
+        } else {
+            final double droppedPercentage = ((double)(targetsToDropCount) / readCounts.targets().size()) * 100;
+            logger.info(String.format("Some targets dropped (%d out of %d, %.2f%%) as they had too many zeros (> %d of %d).",
+                    targetsToDropCount, readCounts.targets().size(), droppedPercentage, maximumTargetZeros,
+                    readCounts.columnNames().size()));
+            return readCounts.subsetTargets(targetsToKeep);
+        }
+    }
+
+    /**
+     * Remove targets that are fully uncovered in the collection
+     * <p>
+     *     It will return a copy of the input read-count collection with such targets dropped.
+     * </p>
+
+     * @param readCounts the input read counts.
+     * @param logger instance of logger.
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no target to be dropped.
+     */
+    public static ReadCountCollection removeTotallyUncoveredTargets(final ReadCountCollection readCounts, final Logger logger) {
+        return removeTargetsWithTooManyZeros(readCounts, readCounts.columnNames().size() - 1, logger);
+    }
+
+    /**
+     * Remove columns that have too many counts equal to 0.
+     * <p>
+     *     It will return a copy of the input read-count collection with such columns dropped.
+     * </p>
+     *
+     * @param readCounts the input read counts.
+     * @param maximumColumnZeros maximum number of counts equal to 0 per column tolerated.
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no column to be dropped.
+     */
+    @VisibleForTesting
+    public static ReadCountCollection removeColumnsWithTooManyZeros(final ReadCountCollection readCounts,
+                                                                    final int maximumColumnZeros, final Logger logger) {
+
+        final RealMatrix counts = readCounts.counts();
+
+        final Set<String> columnsToKeep = IntStream.range(0, counts.getColumnDimension()).boxed()
+                .filter(i -> countZeroes(counts.getColumn(i)) <= maximumColumnZeros)
+                .map(i -> readCounts.columnNames().get(i)).collect(Collectors.toSet());
+
+        final int columnsToDropCount = readCounts.columnNames().size() - columnsToKeep.size();
+        if (columnsToDropCount == 0) {
+            logger.info(
+                    String.format("There were no columns with a large number of targets with zero counts " +
+                            "(<= %d of %d) to drop", maximumColumnZeros, readCounts.targets().size()));
+            return readCounts;
+        } else if (columnsToDropCount == readCounts.columnNames().size()) {
+            throw new UserException.BadInput("The number of zeros per count column is too large resulting in all count " +
+                    "columns to be dropped");
+        } else {
+            final double droppedPercentage = ((double)(columnsToDropCount) / readCounts.columnNames().size()) * 100;
+            logger.info(String.format("Some counts columns dropped (%d out of %d, %.2f%%) as they had too many targets with zeros (> %d of %d)",
+                    columnsToDropCount, readCounts.columnNames().size(), droppedPercentage, maximumColumnZeros,
+                    readCounts.targets().size()));
+            return readCounts.subsetColumns(columnsToKeep);
+        }
     }
 
     /**

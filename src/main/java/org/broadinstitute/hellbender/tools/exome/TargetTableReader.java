@@ -11,9 +11,8 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.Reader;
+import javax.annotation.Nonnull;
+import java.io.*;
 import java.util.List;
 
 /**
@@ -60,12 +59,28 @@ public final class TargetTableReader extends TableReader<Target> {
      */
     public static List<Target> readTargetFile(final File targetsFile) {
         Utils.regularReadableUserFile(targetsFile);
-        logger.log(Level.INFO, String.format("Reading targets from file '%s' ...", targetsFile.getAbsolutePath()));
+        try {
+            return readTargetFromReader(targetsFile.getAbsolutePath(), new FileReader(targetsFile));
+        } catch (final FileNotFoundException ex) {
+            throw new UserException.CouldNotReadInputFile("Could not read input targets", ex);
+        }
+    }
+
+    /**
+     * Read targets from a {@link Reader} in the format of {@link TargetWriter}.
+     *
+     * @param targetSourceName target reader name
+     * @param targetSourceReader target reader
+     * @return never {@code null}
+     */
+    public static List<Target> readTargetFromReader(@Nonnull final String targetSourceName,
+                                                    @Nonnull final Reader targetSourceReader) {
+        logger.log(Level.INFO, String.format("Reading targets from '%s' ...", targetSourceName));
         final List<Target> inputTargets;
-        try (final TargetTableReader reader = new TargetTableReader(targetsFile)) {
+        try (final TargetTableReader reader = new TargetTableReader(targetSourceReader)) {
             inputTargets = reader.toList();
         } catch (final IOException ex) {
-            throw new UserException.CouldNotReadInputFile("Could not read input targets file", ex);
+            throw new UserException.CouldNotReadInputFile("Could not read input targets", ex);
         }
         return inputTargets;
     }

@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.internal.junit.ArrayAsserts;
 
 import java.io.IOException;
 import java.util.*;
@@ -247,6 +248,14 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         }
     }
 
+    @Test(dataProvider = "getColumnOnSpecifiedTargetsTestData")
+    public void testGetColumnOnSpecifiedTargets(final ReadCountCollection rcc,
+                                                final int columnIndex,
+                                                final List<Target> targets, final double[] expected) {
+        final double[] result = rcc.getColumnOnSpecifiedTargets(columnIndex, targets, true);
+        ArrayAsserts.assertArrayEquals(expected, result, 1e-12);
+    }
+
     private static class ReadCountCollectionInfo {
         private final int columnCount;
         private int targetCount;
@@ -351,6 +360,34 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
             intervals = null;
         }
         return new ReadCountCollectionInfo(columnCount,targetCount,columnNames,targetNames,intervals,counts);
+    }
+
+    @DataProvider(name = "getColumnOnSpecifiedTargetsTestData")
+    public Object[][] getColumnOnSpecifiedTargetsTestData() {
+        final ReadCountCollectionInfo info = newInstanceInfo(3, 10, true);
+        final ReadCountCollection rcc = info.newInstance();
+        final List<Target> allTargets = rcc.targets();
+        final List<Target> newTargets_1 = Arrays.stream(new Target[] {
+                allTargets.get(0), allTargets.get(2), allTargets.get(4), allTargets.get(6)})
+                .collect(Collectors.toList());
+        final List<Target> newTargets_2 = Arrays.stream(new Target[] {
+                allTargets.get(3), allTargets.get(1), allTargets.get(5)})
+                .collect(Collectors.toList());
+        final List<Target> newTargets_3 = Arrays.stream(new Target[] {
+                allTargets.get(2), allTargets.get(2), allTargets.get(8)})
+                .collect(Collectors.toList());
+        final double[] col1 = rcc.getColumn(1);
+        final double[] col2 = rcc.getColumn(2);
+        return new Object[][] {
+                {rcc, 1, allTargets, col1},
+                {rcc, 1, newTargets_1, new double[] {col1[0], col1[2], col1[4], col1[6]}},
+                {rcc, 1, newTargets_2, new double[] {col1[3], col1[1], col1[5]}},
+                {rcc, 1, newTargets_3, new double[] {col1[2], col1[2], col1[8]}},
+                {rcc, 2, allTargets, col2},
+                {rcc, 2, newTargets_1, new double[] {col2[0], col2[2], col2[4], col2[6]}},
+                {rcc, 2, newTargets_2, new double[] {col2[3], col2[1], col2[5]}},
+                {rcc, 2, newTargets_3, new double[] {col2[2], col2[2], col2[8]}}
+        };
     }
 
     @DataProvider(name="wrongInstantiationData")

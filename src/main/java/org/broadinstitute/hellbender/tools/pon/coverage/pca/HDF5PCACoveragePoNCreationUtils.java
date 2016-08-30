@@ -195,11 +195,11 @@ public final class HDF5PCACoveragePoNCreationUtils {
 
     /**
      * Performs
-     * {@link HDF5PCACoveragePoNCreationUtils#removeColumnsWithTooManyZeros},
-     * {@link HDF5PCACoveragePoNCreationUtils#removeTargetsWithTooManyZeros},
-     * {@link HDF5PCACoveragePoNCreationUtils#removeColumnsWithExtremeMedianCounts},
-     * {@link HDF5PCACoveragePoNCreationUtils#imputeZeroCountsAsTargetMedians}, and
-     * {@link HDF5PCACoveragePoNCreationUtils#truncateExtremeCounts}.
+     * {@link ReadCountCollectionUtils#removeColumnsWithTooManyZeros},
+     * {@link ReadCountCollectionUtils#removeTargetsWithTooManyZeros},
+     * {@link ReadCountCollectionUtils#removeColumnsWithExtremeMedianCounts},
+     * {@link ReadCountCollectionUtils#imputeZeroCountsAsTargetMedians}, and
+     * {@link ReadCountCollectionUtils#truncateExtremeCounts}.
      */
     private static ReadCountCollection cleanNormalizedCounts(final ReadCountCollection readCounts, final Logger logger,
                                                              double maximumPercentageZeroColumns,
@@ -209,17 +209,17 @@ public final class HDF5PCACoveragePoNCreationUtils {
         // Remove column and targets with too many zeros and targets with extreme median coverage:
         final int maximumColumnZerosCount = calculateMaximumZerosCount(readCounts.targets().size(), maximumPercentageZeroColumns);
         final int maximumTargetZerosCount = calculateMaximumZerosCount(readCounts.columnNames().size(), maximumPercentageZeroTargets);
-        ReadCountCollection cleanedCounts = removeColumnsWithTooManyZeros(readCounts, maximumColumnZerosCount, logger);
-        cleanedCounts = removeTargetsWithTooManyZeros(cleanedCounts, maximumTargetZerosCount, logger);
-        cleanedCounts = removeColumnsWithExtremeMedianCounts(cleanedCounts, extremeColumnMedianCountPercentileThreshold, logger);
+        ReadCountCollection cleanedCounts = ReadCountCollectionUtils.removeColumnsWithTooManyZeros(readCounts, maximumColumnZerosCount, logger);
+        cleanedCounts = ReadCountCollectionUtils.removeTargetsWithTooManyZeros(cleanedCounts, maximumTargetZerosCount, logger);
+        cleanedCounts = ReadCountCollectionUtils.removeColumnsWithExtremeMedianCounts(cleanedCounts, extremeColumnMedianCountPercentileThreshold, logger);
 
         // Impute zero counts to be same as the median for the same target.
         // This happens in-place.
-        imputeZeroCountsAsTargetMedians(cleanedCounts, logger);
+        ReadCountCollectionUtils.imputeZeroCountsAsTargetMedians(cleanedCounts, logger);
 
         // Truncate extreme count values.
         // This happens in-place.
-        truncateExtremeCounts(cleanedCounts, countTruncatePercentile, logger);
+        ReadCountCollectionUtils.truncateExtremeCounts(cleanedCounts, countTruncatePercentile, logger);
         return cleanedCounts;
     }
 
@@ -359,218 +359,6 @@ public final class HDF5PCACoveragePoNCreationUtils {
         ParamUtils.isPositiveOrZero(totalCounts, "Total counts must be non-negative.");
         ParamUtils.inRange(percentage, 0, 100, "Percentage must be in [0, 100].");
         return (int) Math.ceil(totalCounts * percentage / 100.0);
-    }
-
-    /**
-     * Remove columns that have too many counts equal to 0.
-     * <p>
-     *     It will return a copy of the input read-count collection with such columns dropped.
-     * </p>
-     *
-     * @param readCounts the input read counts.
-     * @param maximumColumnZeros maximum number of counts equal to 0. per column tolerated.
-     * @return never {@code null}. It might be a reference to the input read-counts if there is
-     *   is no column to be dropped.
-     */
-    @VisibleForTesting
-    static ReadCountCollection removeColumnsWithTooManyZeros(final ReadCountCollection readCounts, final int maximumColumnZeros, final Logger logger) {
-        final RealMatrix counts = readCounts.counts();
-
-        final Set<String> columnsToKeep = IntStream.range(0, counts.getColumnDimension())
-                .filter(i -> countZeroes(counts.getColumn(i)) <= maximumColumnZeros)
-                .mapToObj(i -> readCounts.columnNames().get(i)).collect(Collectors.toSet());
-
-        final int columnsToDropCount = readCounts.columnNames().size() - columnsToKeep.size();
-        if (columnsToDropCount == 0) {
-            logger.info(
-                    String.format("No count column dropped due to zero counts; there is no column with a large number of targets with zero counts (<= %d of %d) ", maximumColumnZeros, readCounts.targets().size()));
-            return readCounts;
-        } else if (columnsToDropCount == readCounts.columnNames().size()) {
-            throw new UserException.BadInput("The number of zeros per count column is too large resulting in all count columns to be dropped");
-        } else {
-            logger.info(
-                    String.format("Some counts columns dropped, %d of %d, as they have too many targets with zeros (> %d of %d)."
-                            , columnsToDropCount, readCounts.columnNames().size(), maximumColumnZeros, readCounts.targets().size()));
-            return readCounts.subsetColumns(columnsToKeep);
-        }
-    }
-
-    /**
-     * Remove targets that have too many counts equal to 0.
-     * <p>
-     *     It will return a copy of the input read-count collection with such targets dropped.
-     * </p>
-     *
-     * @param readCounts the input read counts.
-     * @param maximumTargetZeros maximum number of counts equal to 0. per target tolerated.
-     * @return never {@code null}. It might be a reference to the input read-counts if there is
-     *   is no target to be dropped.
-     */
-    @VisibleForTesting
-    static ReadCountCollection removeTargetsWithTooManyZeros(final ReadCountCollection readCounts, final int maximumTargetZeros, final Logger logger) {
-        final RealMatrix counts = readCounts.counts();
-
-        final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
-                .filter(i -> countZeroes(counts.getRow(i)) <= maximumTargetZeros)
-                .map(i -> readCounts.targets().get(i)).collect(Collectors.toSet());
-
-        final int targetsToDropCount = readCounts.targets().size() - targetsToKeep.size();
-        if (targetsToDropCount == 0) {
-            logger.info(
-                    String.format("No target drop due to too many zero counts; there is no target with a large number of columns with zero counts (<= %d of %d) ", maximumTargetZeros, readCounts.targets().size()));
-            return readCounts;
-        } else if (targetsToDropCount == readCounts.targets().size()) {
-            throw new UserException.BadInput("the number of zeros per target in the input is too large resulting in all targets being dropped");
-        } else {
-            logger.info(
-                    String.format("Some targets dropped, %d of %d, as they have too many zeros (> %d of %d)."
-                            , targetsToDropCount, readCounts.columnNames().size(), maximumTargetZeros, readCounts.targets().size()));
-            return readCounts.subsetTargets(targetsToKeep);
-        }
-    }
-
-    private static long countZeroes(final double[] data) {
-        return DoubleStream.of(data).filter(d -> d == 0.0).count();
-    }
-
-    /**
-     * Creates a new read-count collection that is a copy of the input but dropping columns with extreme median coverage.
-     *
-     * @param readCounts the input read-counts.
-     * @param extremeColumnMedianCountPercentileThreshold bottom percentile to use as an exclusion threshold.
-     * @return never {@code null}. It might be a reference to the input read-counts if
-     * there are no columns to be dropped.
-     */
-    @VisibleForTesting
-    static ReadCountCollection removeColumnsWithExtremeMedianCounts(final ReadCountCollection readCounts, final double extremeColumnMedianCountPercentileThreshold, final Logger logger) {
-        final List<String> columnNames = readCounts.columnNames();
-        final RealMatrix counts = readCounts.counts();
-        final double[] columnMedians = MatrixSummaryUtils.getColumnMedians(counts);
-
-        // Calculate thresholds:
-        final double bottomExtremeThreshold = new Percentile(extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
-        final double topExtremeThreshold = new Percentile(100 - extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
-
-        // Determine kept and dropped column sets.
-        final Set<String> columnsToKeep = new HashSet<>(readCounts.columnNames().size());
-        final int initialMapSize = ((int) (2. * extremeColumnMedianCountPercentileThreshold / 100.)) * readCounts.columnNames().size();
-        final Map<String, Double> columnsToDrop = new LinkedHashMap<>(initialMapSize);
-        for (int i = 0; i < columnMedians.length; i++) {
-            if (columnMedians[i] >= bottomExtremeThreshold && columnMedians[i] <= topExtremeThreshold) {
-                columnsToKeep.add(columnNames.get(i));
-            } else {
-                columnsToDrop.put(columnNames.get(i), columnMedians[i]);
-            }
-        }
-
-        // log and drop columns if it applies
-        if (columnsToKeep.isEmpty()) {
-            throw new UserException.BadInput("No column count left after applying the extreme counts outlier filter");
-        } else if (columnsToKeep.size() == columnNames.size()) {
-            logger.info(String.format("No column dropped due to extreme counts outside [%.10f, %.10f]", bottomExtremeThreshold, topExtremeThreshold));
-            return readCounts;
-        } else {
-            logger.info(String.format("Some columns dropped, %d of %d, as they are classified as having extreme median counts across targets outside [%.10f, %.10f]: e.g. %s",
-                    columnNames.size() - columnsToKeep.size(), columnNames.size(), bottomExtremeThreshold, topExtremeThreshold,
-                    columnsToDrop.entrySet().stream().limit(10).map(kv -> kv.getKey() + " (" + kv.getValue() + ")").collect(Collectors.joining(", "))));
-            return readCounts.subsetColumns(columnsToKeep);
-        }
-
-    }
-
-    /**
-     * Impute zero counts to the median of non-zero values in the enclosing target row.
-     *
-     * <p>The imputation is done in-place, thus the input matrix is well be modified as a result of this call.</p>
-     *
-     * @param readCounts the input and output read-count matrix.
-     */
-    @VisibleForTesting
-    static void imputeZeroCountsAsTargetMedians(final ReadCountCollection readCounts, final Logger logger) {
-
-        final RealMatrix counts = readCounts.counts();
-        final int targetCount = counts.getRowDimension();
-
-        final Median medianCalculator = new Median();
-        int totalCounts = counts.getColumnDimension() * counts.getRowDimension();
-
-        // Get the number of zeroes contained in the counts.
-        final long totalZeroCounts = IntStream.range(0, targetCount)
-                .mapToLong(t -> DoubleStream.of(counts.getRow(t))
-                        .filter(c -> c == 0.0).count()).sum();
-
-        // Get the median of each row, not including any entries that are zero.
-        final double[] medians = IntStream.range(0, targetCount)
-                .mapToDouble(t -> medianCalculator.evaluate(
-                        DoubleStream.of(counts.getRow(t))
-                                .filter(c -> c != 0.0)
-                                .toArray()
-                )).toArray();
-
-        // Change any zeros in the counts to the median for the row.
-        counts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(final int row, final int column, final double value) {
-                return value != 0 ? value : medians[row];
-            }
-        });
-
-        if (totalZeroCounts > 0) {
-            logger.info(String.format("Some 0.0 counts, %d of %d (%.2f%%), were imputed to their enclosing target non-zero median", totalZeroCounts, totalZeroCounts, 100.0 * (totalZeroCounts / totalCounts)));
-        } else {
-            logger.info("No count is 0.0 thus no count needed to be imputed.");
-        }
-    }
-
-    /**
-     * Truncates the extreme count values in the input read-count collection.
-     * Values are forced to be bound by the percentile indicated with the input {@code percentile} which must be
-     * in the range [0 .. 50.0]. Values under that percentile and the complementary (1 - percentile) are set to the
-     * corresponding threshold value.
-     *
-     * <p>The imputation is done in-place, thus the input matrix is modified as a result of this call.</p>
-     *
-     * @param readCounts the input and output read-count matrix.
-     */
-    @VisibleForTesting
-    static void truncateExtremeCounts(final ReadCountCollection readCounts, final double percentile, final Logger logger) {
-
-        final RealMatrix counts = readCounts.counts();
-        final int targetCount = counts.getRowDimension();
-        final int columnCount = counts.getColumnDimension();
-
-        // Create a row major array of the counts.
-        final double[] values = Doubles.concat(counts.getData());
-
-        final Percentile bottomPercentileEvaluator = new Percentile(percentile);
-        final Percentile topPercentileEvaluator = new Percentile(100.0 - percentile);
-        final double bottomPercentileThreshold = bottomPercentileEvaluator.evaluate(values);
-        final double topPercentileThreshold = topPercentileEvaluator.evaluate(values);
-        long totalCounts = 0;
-        long bottomTruncatedCounts = 0;
-        long topTruncatedCounts = 0;
-
-        for (int i = 0; i < targetCount; i++) {
-            final double[] rowCounts = counts.getRow(i);
-            for (int j = 0; j < columnCount; j++) {
-                final double count = rowCounts[j];
-                totalCounts++;
-                if (count < bottomPercentileThreshold) {
-                    counts.setEntry(i, j, bottomPercentileThreshold);
-                    bottomTruncatedCounts++;
-                } else if (count > topPercentileThreshold) {
-                    counts.setEntry(i, j, topPercentileThreshold);
-                    topTruncatedCounts++;
-                }
-            }
-        }
-        if (topTruncatedCounts == 0 && bottomTruncatedCounts == 0) {
-            logger.info(String.format("None of the %d counts where truncated as they all fall in the non-extreme range [%.2f, %.2f]", totalCounts, bottomPercentileThreshold, topPercentileThreshold));
-        } else {
-            final double truncatedPercentage = ((double)(topTruncatedCounts + bottomTruncatedCounts) / totalCounts) * 100;
-            logger.info(String.format("Some counts, %d out of %d (%.2f%%), where truncated as they fall out of the non-extreme range [%.2f, %.2f]",
-                    topTruncatedCounts + bottomTruncatedCounts, totalCounts, truncatedPercentage, bottomPercentileThreshold, topPercentileThreshold));
-        }
     }
 
     /**

@@ -2,13 +2,13 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
-import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
-import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.*;
+import org.apache.spark.sql.catalyst.expressions.In;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import javax.annotation.Nonnull;
 import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,6 +29,11 @@ public final class ReadCountCollection implements Serializable {
      * Unmodifiable target list in the row order of their counts in {@link #counts}.
      */
     private final List<Target> targets;
+
+    /**
+     * A map from targets to their indices in the list
+     */
+    private final Map<Target, Integer> targetIndexMap;
 
     /**
      * Unmodifiable column name list in the column order of their counts in {@link #counts}.
@@ -106,6 +111,7 @@ public final class ReadCountCollection implements Serializable {
             this.columnNames = columnNames;
             this.counts = counts;
         }
+        this.targetIndexMap = createTargetIndexMap(this.targets);
     }
 
     /**
@@ -135,6 +141,40 @@ public final class ReadCountCollection implements Serializable {
     }
 
     /**
+     * Returns a column from the collection
+     * @param columnIndex index of the column to return
+     * @return a double array
+     */
+    public double[] getColumn(final int columnIndex) {
+        ParamUtils.inRange(columnIndex, 0, counts.getColumnDimension() - 1, "Column index is out of range");
+        return counts.getColumn(columnIndex);
+    }
+
+    /**
+     * TODO unit test
+     *
+     * Returns a column from the collection on a given list of targets with the same ordering as {@code targetsToKeep}
+     *
+     * @param columnIndex index of the column to return
+     * @param targetsToKeep list of targets
+     * @return a double array
+     */
+    public double[] getColumnOnSpecifiedTargets(final int columnIndex, @Nonnull final List<Target> targetsToKeep,
+                                                final boolean verifyInput) {
+        if (verifyInput) {
+            ParamUtils.inRange(columnIndex, 0, counts.getColumnDimension() - 1, "Column index out of range");
+            if (targetsToKeep.isEmpty()) {
+                throw new IllegalArgumentException("The input target list can not be empty");
+            } else if (!new HashSet<>(targets).containsAll(targetsToKeep)) {
+                throw unknownTargetsToKeep(new HashSet<>(targetsToKeep));
+            }
+        }
+
+        final double[] fullColumn = counts.getColumn(columnIndex);
+        return targetsToKeep.stream().mapToDouble(t -> fullColumn[targetIndexMap.get(t)]).toArray();
+    }
+
+    /**
      * Returns a live {@link RealMatrix} representation of the counts in this collection.
      *
      * <p>
@@ -154,6 +194,18 @@ public final class ReadCountCollection implements Serializable {
      * @return the result matrix is a mutable live copy of the counts in this collection.
      */
     public RealMatrix counts() { return counts; }
+
+    /**
+     * Returns a map from targets to their indices
+     *
+     * @param targets target list
+     * @return map
+     */
+    private Map<Target, Integer> createTargetIndexMap(@Nonnull final List<Target> targets) {
+        final Map<Target, Integer> targetIndexMap = new HashMap<>();
+        IntStream.range(0, targets.size()).forEach(i -> targetIndexMap.put(targets.get(i), i));
+        return targetIndexMap;
+    }
 
     /**
      * Subsets the targets in the read-count collection.

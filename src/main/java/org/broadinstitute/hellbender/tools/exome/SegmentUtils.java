@@ -18,9 +18,7 @@ import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.io.*;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -207,7 +205,8 @@ public final class SegmentUtils {
                 dataLine -> toModeledSegment(dataLine, false));
     }
 
-    /** Read only the sample names from a segment file.
+    /**
+     * Read only the sample names from a segment file.
      *
      * @param segmentFile Never {@code null}
      * @return a list of the unique sample names in the seg file.
@@ -215,7 +214,24 @@ public final class SegmentUtils {
     public static List<String> readSampleNamesFromSegmentFile(final File segmentFile) {
         Utils.nonNull(segmentFile);
         Utils.regularReadableUserFile(segmentFile);
-        try (final TableReader<String> reader = TableUtils.reader(segmentFile,
+        try (final Reader segmentFileReader = new FileReader(segmentFile)) {
+            return readSampleNamesFromSegmentReader(segmentFileReader, segmentFile.getAbsolutePath());
+        } catch (final IOException ex) {
+            throw new UserException.CouldNotReadInputFile("Could not read the segment file: " + segmentFile.getAbsolutePath());
+        }
+    }
+
+    /**
+     * Read only the sample names from a segment reader.
+     *
+     * @param segmentReader Never {@code null}; an instance of {@link Reader} for input segments
+     * @param segmentSourceName Never {@code null}; a string identifier for the input segments reader (used in error messages)
+     * @return a list of the unique sample names in the seg file.
+     */
+    public static List<String> readSampleNamesFromSegmentReader(final Reader segmentReader, final String segmentSourceName) {
+        Utils.nonNull(segmentReader);
+        Utils.nonNull(segmentSourceName);
+        try (final TableReader<String> reader = TableUtils.reader(segmentReader,
                 (columns, formatExceptionFactory) -> {
                     if (!columns.contains(SegmentTableColumn.SAMPLE.toString())) {
                         throw formatExceptionFactory.apply("No sample name in segment file.");
@@ -227,7 +243,7 @@ public final class SegmentUtils {
             // Return the unique sample name values in a list.
             return new ArrayList<>(reader.stream().collect(Collectors.toSet()));
         } catch (final IOException | UncheckedIOException e) {
-            throw new UserException.CouldNotReadInputFile(segmentFile, e);
+            throw new UserException.CouldNotReadInputFile(segmentSourceName, e);
         }
     }
 

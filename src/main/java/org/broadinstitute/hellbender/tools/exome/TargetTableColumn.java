@@ -11,10 +11,10 @@ import java.util.stream.Stream;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
 public enum TargetTableColumn {
-    NAME("name", true),
-    CONTIG("contig", true),
-    START("start", true),
-    END("stop", true),
+    NAME("name", true), /* it was a terrible idea to change this from "NAME" to "name"! */
+    CONTIG("contig", true), /* it was a terrible idea to change this from "CONTIG" to "contig"! */
+    START("start", true), /* it was a terrible idea to change this from "START" to "start"! */
+    END("stop", true), /* it was a terrible idea to change this from "END" to "stop"! */
     GC_CONTENT("GC_CONTENT", false),
     REPEAT_FRACTION("REPEAT_FRACTION", false),
     MEAN_COVERAGE("MEAN_COVERAGE", false),
