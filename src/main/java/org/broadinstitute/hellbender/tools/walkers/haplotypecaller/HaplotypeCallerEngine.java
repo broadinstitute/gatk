@@ -885,6 +885,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     private Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final Collection<GATKRead> reads ) {
+        return splitReadsBySample(samplesList, readsHeader, reads);
+    }
+
+    public static Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final SAMFileHeader header, final Collection<GATKRead> reads ) {
         final Map<String, List<GATKRead>> returnMap = new HashMap<>();
         final int sampleCount = samplesList.numberOfSamples();
         for (int i = 0; i < sampleCount; i++) {
@@ -892,7 +896,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         for ( final GATKRead read : reads ) {
-            returnMap.get(ReadUtils.getSampleName(read, readsHeader)).add(read);
+            returnMap.get(ReadUtils.getSampleName(read, header)).add(read);
         }
 
         return returnMap;

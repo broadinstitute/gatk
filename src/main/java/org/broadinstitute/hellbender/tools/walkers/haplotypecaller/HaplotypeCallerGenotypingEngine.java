@@ -28,7 +28,7 @@ import java.util.*;
 /**
  * HaplotypeCaller's genotyping strategy implementation.
  */
-public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBasedCallerArgumentCollection> {
+public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBasedCallerArgumentCollection> {
 
     protected static final int ALLELE_EXTENSION = 2;
     private static final String phase01 = "0|1";
@@ -739,7 +739,7 @@ public final class HaplotypeCallerGenotypingEngine extends GenotypingEngine<Asse
         return false;
     }
 
-    private static final class Event {
+    protected static final class Event {
         public VariantContext vc;
 
         public Event( final VariantContext vc ) {
