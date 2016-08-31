@@ -61,8 +61,8 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
                 try (final ContigAligner contigAligner = new ContigAligner(referenceFileName)) {
                     final List<AlignmentRegion> results = new ArrayList<>(NUM_ASSEMBLIES_PER_PARTITION * EXPECTED_CONTIGS_PER_ASSEMBLY);
                     iter.forEachRemaining(cc -> {
-                        String breakpointId = cc._1;
-                        final List<AlignmentRegion> contigAlignments = contigAligner.alignContigs(breakpointId, cc._2);
+                        String assemblyId = cc._1;
+                        final List<AlignmentRegion> contigAlignments = contigAligner.alignContigs(assemblyId, cc._2);
                         contigAlignments.forEach(results::add);
                     });
                     return results;

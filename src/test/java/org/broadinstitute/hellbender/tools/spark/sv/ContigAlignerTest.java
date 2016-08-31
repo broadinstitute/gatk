@@ -61,31 +61,28 @@ public class ContigAlignerTest extends BaseTest {
         contigsData.add(">contig-7 151 0");
         contigsData.add("TATTAAATAAAAGTGGTAGAATTTTGGATGGGTGCAAGTCAAGTAATGGGATAAAAGAATGATGATCGAAGGAGATGACTCATGATAACTAAGTGCCCTTATGTGAAACCTAGCAACAATTTCTTACTTATGATAAAGGCACAATCTCCCC");
 
-        final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
+        final ContigsCollection contigsCollection = new ContigsCollection(1, contigsData);
 
         final List<AlignmentRegion> contigAlignments = contigAligner.alignContigs("1", contigsCollection);
         Assert.assertEquals(contigAlignments.size(), 20);
 
         final AlignmentRegion alignmentRegion1 = contigAlignments.get(3);
-        Assert.assertEquals(alignmentRegion1.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion1.contigId, "contig-9");
         Assert.assertEquals(alignmentRegion1.referenceInterval, new SimpleInterval("21", 27373209, 27374158));
         Assert.assertTrue(alignmentRegion1.forwardStrand);
         Assert.assertEquals(alignmentRegion1.mapqual, 60);
 
         final AlignmentRegion alignmentRegion2 = contigAlignments.get(4);
-        Assert.assertEquals(alignmentRegion2.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion2.contigId, "contig-9");
         Assert.assertEquals(alignmentRegion2.referenceInterval, new SimpleInterval("21", 27374159, 27374706));
         Assert.assertFalse(alignmentRegion2.forwardStrand);
         Assert.assertEquals(alignmentRegion2.mapqual, 60);
 
         final AlignmentRegion alignmentRegion3 = contigAlignments.get(5);
-        Assert.assertEquals(alignmentRegion3.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion3.contigId, "contig-9");
         Assert.assertEquals(alignmentRegion3.referenceInterval, new SimpleInterval("21", 27374701, 27375218));
         Assert.assertTrue(alignmentRegion3.forwardStrand);
         Assert.assertEquals(alignmentRegion3.mapqual, 60);
-
-
-
     }
 
     @Test
@@ -96,7 +93,7 @@ public class ContigAlignerTest extends BaseTest {
         contigsData.add(">contig-3 312 0");
         contigsData.add("CCTGTAGATAGAGAGGTGGGTGAGAGATGGCCTTGTGGCAGCTCCTGGCAAGCTCACCTGACTTCTCATGATCTGGGTGACCATGGGGTATCCCTCCAAGACTTAGGTCAGCAGTGGTTAAGCCTTGCCCTGTAGCCTAGGAAAAAATGTGCAAGGTTGTCAGGGCACCAGCATGGAGGAGTTCCCCTACAGTCTTTCCAATACCTATGTGGTCTCTGGAACAGACATTTCATCCAGTAGCCATTCCTTTCCATTGTTTCCCTTCTTGGAAGAGCCTATCTTCCAAGACAGATGGTGAAATATTAGTAATTT");
 
-        final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
+        final ContigsCollection contigsCollection = new ContigsCollection(1, contigsData);
 
         final List<AlignmentRegion> alignmentRegions = contigAligner.alignContigs("1", contigsCollection);
         Assert.assertEquals(2, alignmentRegions.size());
@@ -114,7 +111,6 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(breakpoint1Region2.mapqual, 60);
         Assert.assertEquals(breakpoint1Region2.startInAssembledContig, 189);
         Assert.assertEquals(breakpoint1Region2.endInAssembledContig, 312);
-
     }
 
     @Test
@@ -127,7 +123,7 @@ public class ContigAlignerTest extends BaseTest {
         final String snippet2 = "GTGATCCAGCTACAGACTGTTCCAAAGACTTTGCAACTGTTATTTTTGCTTAATCCTCACAACAACCTATGAGGTAGGCACATTTATTGCCCCCATGTGA";
         contigsData.add(snippet1 + snippet2);
 
-        final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
+        final ContigsCollection contigsCollection = new ContigsCollection(1, contigsData);
 
         final List<AlignmentRegion> alignmentRegions = contigAligner.alignContigs("1", contigsCollection);
         Assert.assertEquals(2, alignmentRegions.size());

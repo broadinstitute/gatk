@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import static org.broadinstitute.hellbender.utils.pairhmm.PairHMMModel.*;
 
 public class LoglessPairHMM extends N2MemoryPairHMM {
+
     static final double INITIAL_CONDITION = Math.pow(2, 1020);
     static final double INITIAL_CONDITION_LOG10 = Math.log10(INITIAL_CONDITION);
 

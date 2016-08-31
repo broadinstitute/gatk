@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.fs.ContentSummary;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -19,7 +21,6 @@ import scala.Tuple2;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,12 +50,6 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = false)
     public String pathToAllInterleavedFASTQFiles = null;
 
-    @Argument(doc       = "A substring in the FASTQ file names that needs to be stripped out for retrieving the breakpoint ID",
-              shortName = "scrub",
-              fullName  = "subStringToStrip",
-              optional  = false)
-    public String subStringToStrip = null;
-
     @Argument(doc       = "An URI (prefix) to a directory to write results to. " +
                           "Breakpoints where local assembly were successful are saved in a directory prefix_0," +
                           "breakpoints where local assembly failed are saved in directory prefix_1",
@@ -75,16 +70,45 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
               optional  = true)
     public boolean enableSTDIOCapture = false;
 
-    // a few hard-coded parameters for use in various SGA modules based on some tuning experiences.
-    // subject to future changes as we see more test cases
-    @VisibleForTesting static final int MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE = 55;
-    @VisibleForTesting static final int FILTER_STEP_KMER_FREQUENCY_THREASHOLD = 1;
-    @VisibleForTesting static final double OVERLAP_STEP_ERROR_RATE = 0.05;
-    @VisibleForTesting static final double ASSEMBLE_STEP_MAX_GAP_DIVERGENCE = 0.0;
-    @VisibleForTesting static final int ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH = 50;
-    @VisibleForTesting static final int CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS = 0;
-    @VisibleForTesting static final boolean TURN_ON_TRANSITIVE_REDUCTION = false;
-
+    //----------------------------------------------------------------------------------------------------------------//
+    // Result-affecting parameters for use in various SGA modules with default values.
+    // Long names are the same as those in SGA documentation, except using camel case in place of dashes.
+    //----------------------------------------------------------------------------------------------------------------//
+    @Argument(doc       = "Minimum overlap parameter value for steps: fm-merge, overlap, and assemble.",
+            shortName = "mol",
+            fullName  = "minOverlap",
+            optional  = true)
+    public static final int MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE = 55;
+    @Argument(doc       = "Require at least this number of coverage for each kmer in a read in order to pass filter.",
+            shortName = "kfreq",
+            fullName  = "kmerThreshold",
+            optional  = true)
+    public static final int FILTER_STEP_KMER_FREQUENCY_THRESHOLD = 1;
+    @Argument(doc       = "The maximum error rate allowed to consider two sequences aligned in the overlap step.",
+            shortName = "err",
+            fullName  = "errorRate",
+            optional  = true)
+    public static final double OVERLAP_STEP_ERROR_RATE = 0.02;
+    @Argument(doc       = "Remove variation only if the divergence between sequences when only counting indels is less than this value.",
+            shortName = "maxGapDiv",
+            fullName  = "maxGapDivergence",
+            optional  = true)
+    public static final double ASSEMBLE_STEP_MAX_GAP_DIVERGENCE = 0.0;
+    @Argument(doc       = "Remove terminal branches only if they are less than this number of bases long. Ineffective when terminal branch removal is turned off.",
+            shortName = "minTailLen",
+            fullName  = "minBranchLength",
+            optional  = true)
+    public static final int ASSEMBLE_STEP_MIN_BRANCH_TAIL_LENGTH = 50;
+    @Argument(doc       = "Cut off terminal branches in this number of rounds. When set to zero, removal is turned off.",
+            shortName = "cutTail",
+            fullName  = "cutTerminal",
+            optional  = true)
+    public static final int CUT_OFF_TERMINAL_BRANCHES_IN_N_ROUNDS = 0;
+    @Argument(doc       = "Remove transitive edges from the graph.",
+            shortName = "rmTransEdges",
+            fullName  = "transitiveReduction",
+            optional  = true)
+    public static final boolean TURN_ON_TRANSITIVE_REDUCTION = false;
 
     // for developer performance debugging use
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -93,35 +117,12 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     @Override
     public void runTool(final JavaSparkContext ctx){
 
-        logger.debug("SGAOnSpark_debug: Start job at " + dateFormat.format(new Date()));
-
         // first load RDD of pair that has path to FASTQ file path as its first and FASTQ file contents as its second
-        final JavaPairRDD<String, String> fastqContentsForEachBreakpoint = loadFASTQFiles(ctx, pathToAllInterleavedFASTQFiles);
+        final JavaPairRDD<String, String> fastqContentsForEachBreakpoint = SVFastqUtils.loadFASTQFiles(ctx, pathToAllInterleavedFASTQFiles);
 
-        final JavaPairRDD<Long, SGAAssemblyResult> assembly = fastqContentsForEachBreakpoint.mapToPair(entry -> performAssembly(entry, subStringToStrip, pathToSGA, runCorrection, enableSTDIOCapture));
+        final JavaPairRDD<Long, SGAAssemblyResult> assembly = fastqContentsForEachBreakpoint.mapToPair(entry -> performAssembly(entry, pathToSGA, runCorrection, enableSTDIOCapture));
 
         validateAndSaveResults(assembly, outDirPrefix);
-
-        logger.debug("SGAOnSpark_debug: Finish job at " + dateFormat.format(new Date()));
-    }
-
-    /**
-     * Load the FASTQ files in the user specified directory and returns an RDD that satisfies the same requirement
-     * as described in {@link JavaSparkContext#wholeTextFiles(String, int)}.
-     * @param ctx
-     * @param pathToAllInterleavedFASTQFiles path to the directory where all FASTQ files to perform local assembly upon are located
-     * @throws GATKException when getting the file count in the specified directory
-     * @return
-     */
-    private static JavaPairRDD<String, String> loadFASTQFiles(final JavaSparkContext ctx, final String pathToAllInterleavedFASTQFiles){
-        try{
-            final FileSystem hadoopFileSystem = FileSystem.get(ctx.hadoopConfiguration());
-            final ContentSummary cs = hadoopFileSystem.getContentSummary(new org.apache.hadoop.fs.Path(pathToAllInterleavedFASTQFiles));
-            final int fileCount = (int) cs.getFileCount();
-            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles, fileCount);
-        }catch (final IOException e){
-            throw new GATKException(e.getMessage());
-        }
     }
 
     /**
@@ -136,8 +137,8 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final JavaPairRDD<Long, SGAAssemblyResult> cachedResults = results.cache(); // cache because Spark doesn't have an efficient RDD.split(predicate) yet
 
         // save fasta file contents or failure message
-        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null);
-        final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null);
+        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null).cache();
+        final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null).cache();
 
         if(!success.isEmpty()){
             success.map(entry -> entry._1().toString() + "\t" + entry._2().assembledContigs.toPackedFasta())
@@ -145,8 +146,10 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         }
 
         if(!failure.isEmpty()){
+            final long failCnt = failure.count();
             failure.map(entry ->  entry._1().toString() + "\n" + entry._2().collectiveRuntimeInfo.toString())
-                    .saveAsTextFile(outputDir+"_1");
+                    .coalesce((int)failCnt).saveAsTextFile(outputDir+"_1"); // coalesce to produce one file for each failed job
+            throw new GATKException(failCnt + " jobs failed. Please look at the logging files produced in directory " + outputDir + "_1 for detail.");
         }
     }
 
@@ -154,7 +157,6 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      * Performs assembly on the FASTA files pointed to by the URI that is associated with the breakpoint identified by the long ID.
      * Actual assembly work is delegated to other functions.
      * @param fastqOfABreakpoint    the (partial) URI to the FASTQ file and FASTQ file contents as String
-     * @param subStringInFilenameToScrub the part in a file name that must be stripped out to extract breakpoint ID, e.g. "assembly1234" -> 1234
      * @param sgaPath               full path to SGA
      * @param runCorrections        user's decision to run SGA's corrections (with default parameter values) or not
      * @param enableSTDIOCapture    to enable capture of stderr & stdout of SGA processes or not
@@ -163,15 +165,14 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      */
     @VisibleForTesting
     static Tuple2<Long, SGAAssemblyResult> performAssembly(final Tuple2<String, String> fastqOfABreakpoint,
-                                                           final String subStringInFilenameToScrub,
                                                            final String sgaPath,
                                                            final boolean runCorrections,
                                                            final boolean enableSTDIOCapture)
             throws IOException{
 
-        final Tuple2<Long, File> localFASTQFileForOneBreakpoint = writeToLocal(fastqOfABreakpoint, subStringInFilenameToScrub);
+        final Tuple2<Long, File> localFASTQFileForOneBreakpoint = writeToLocal(fastqOfABreakpoint);
 
-        final SGAAssemblyResult assembledContigsFileAndRuntimeInfo = runSGAModulesInSerial(sgaPath, localFASTQFileForOneBreakpoint._2(), runCorrections, enableSTDIOCapture);
+        final SGAAssemblyResult assembledContigsFileAndRuntimeInfo = runSGAModulesInSerial(sgaPath, localFASTQFileForOneBreakpoint, runCorrections, enableSTDIOCapture);
 
         return new Tuple2<>(localFASTQFileForOneBreakpoint._1(), assembledContigsFileAndRuntimeInfo);
     }
@@ -183,7 +184,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      * @throws IOException  if fails to create the temporary directory or fails to write to local file
      */
     @VisibleForTesting
-    static Tuple2<Long, File> writeToLocal(final Tuple2<String, String> oneBreakPoint, final String subStringToStripout) throws IOException{
+    static Tuple2<Long, File> writeToLocal(final Tuple2<String, String> oneBreakPoint) throws IOException{
 
         final String fastqFilename = FilenameUtils.getName(oneBreakPoint._1());
 
@@ -193,7 +194,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final File localFASTQFile =  new File(localTempWorkingDir, fastqFilename);
         FileUtils.writeStringToFile(localFASTQFile, oneBreakPoint._2());
 
-        final Long breakpointID = Long.parseLong(FilenameUtils.getBaseName(oneBreakPoint._1()).replace(subStringToStripout, ""));
+        final Long breakpointID = Long.parseLong(FilenameUtils.getBaseName(oneBreakPoint._1()).replace(SVConstants.FASTQ_OUT_PREFIX, ""));
 
         return new Tuple2<>(breakpointID, localFASTQFile);
     }
@@ -202,7 +203,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      * Linear pipeline for running the SGA local assembly process on a particular FASTQ file for its associated putative breakpoint.
      *
      * @param sgaPathString     full path to the SGA program
-     * @param rawFASTQFile      local FASTQ file living in a temp local working dir
+     * @param localFASTQFileForOneBreakpoint      a pair of assembly id and local FASTQ file living in a temp local working dir
      * @param runCorrections    to run SGA correction steps--correct, filter, rmdup, merge--or not
      * @param enableSTDIOCapture to enable capture of stderr & stdout of SGA processes or not
      * @return                  the result accumulated through running the pipeline, where the contigs file name could be null if the process erred.
@@ -210,11 +211,13 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      */
     @VisibleForTesting
     static SGAAssemblyResult runSGAModulesInSerial(final String sgaPathString,
-                                                   final File rawFASTQFile,
+                                                   final Tuple2<Long, File> localFASTQFileForOneBreakpoint,
                                                    final boolean runCorrections,
                                                    final boolean enableSTDIOCapture)
             throws IOException{
 
+        final long assemblyId = localFASTQFileForOneBreakpoint._1();
+        final File rawFASTQFile = localFASTQFileForOneBreakpoint._2();
         logger.debug("SGAOnSpark_debug: start actual assembly process for " + rawFASTQFile.getName() + " at " + dateFormat.format(new Date()));
 
         final Path sgaPath = Paths.get(sgaPathString);
@@ -240,23 +243,23 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             moduleArgsAndValues.put("--out", FilenameUtils.getBaseName(rawFASTQFile.getName()) + ".pp.fa");
 
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "preprocess", ".pp.fa", rawFASTQFile, workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
-            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(assemblyId, null, runtimeInfo); }
         }
 
         if(runCorrections){//optional kmer based error correction
             moduleArgsAndValues.clear();
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "correct", ".ec.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
-            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(assemblyId, null, runtimeInfo); }
         }
 
         {//filter
             moduleArgsAndValues.clear();
-            moduleArgsAndValues.put("--kmer-threshold", String.valueOf(FILTER_STEP_KMER_FREQUENCY_THREASHOLD));
+            moduleArgsAndValues.put("--kmer-threshold", String.valueOf(FILTER_STEP_KMER_FREQUENCY_THRESHOLD));
             moduleArgsAndValues.put("--homopolymer-check", "");
             moduleArgsAndValues.put("--low-complexity-check", "");
 
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "filter", ".filter.pass.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, null, null, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
-            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(assemblyId, null, runtimeInfo); }
         }
 
         {//merge
@@ -264,13 +267,13 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             moduleArgsAndValues.put("--min-overlap", String.valueOf(MIN_OVERLAP_IN_FILTER_OVERLAP_ASSEMBLE));
 
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "fm-merge", ".merged.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
-            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(assemblyId, null, runtimeInfo); }
         }
 
         {//deduplicate
             moduleArgsAndValues.clear();
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "rmdup", ".rmdup.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, indexer, indexerArgs, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
-            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(assemblyId, null, runtimeInfo); }
         }
 
         {//overlap
@@ -279,7 +282,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             moduleArgsAndValues.put("--error-rate", String.valueOf(OVERLAP_STEP_ERROR_RATE));
 
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "overlap", ".asqg.gz", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, null, null, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
-            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(null, runtimeInfo); }
+            if( null == nameOfFileToFeedToNextStep ){ return new SGAAssemblyResult(assemblyId, null, runtimeInfo); }
         }
 
         {//assembly
@@ -292,7 +295,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
 
             nameOfFileToFeedToNextStep = runSGAModule(sgaPath, "assemble", "-contigs.fa", new File(workingDir, nameOfFileToFeedToNextStep), workingDir, null, null, turnCmdLineArgsKeyValuePairIntoList(moduleArgsAndValues), runtimeInfo, enableSTDIOCapture);
             if( null == nameOfFileToFeedToNextStep ){
-                return new SGAAssemblyResult(null, runtimeInfo);
+                return new SGAAssemblyResult(assemblyId, null, runtimeInfo);
             }else{
                 nameOfFileToFeedToNextStep = nameOfFileToFeedToNextStep.replace(".asqg", ""); // strip out substring ".asqg"
             }
@@ -305,9 +308,9 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final File assembledContigsFile = new File(workingDir, nameOfFileToFeedToNextStep);
         final List<String> contigsFASTAContents = !assembledContigsFile.exists() ? null : Files.readAllLines(Paths.get(assembledContigsFile.getAbsolutePath()));
         if(null==contigsFASTAContents){
-            return new SGAAssemblyResult(null, runtimeInfo);
+            return new SGAAssemblyResult(assemblyId, null, runtimeInfo);
         }else{
-            return new SGAAssemblyResult(contigsFASTAContents, runtimeInfo);
+            return new SGAAssemblyResult(assemblyId, contigsFASTAContents, runtimeInfo);
         }
     }
 
@@ -343,6 +346,10 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final SGAModule.RuntimeInfo moduleInfo = module.run(sgaPath, workingDir, moduleArgs, enableSTDIOCapture);
         collectedRuntimeInfo.add(moduleInfo);
 
+        if(!collectedRuntimeInfo.get(collectedRuntimeInfo.size()-1).returnStatus.equals(SGAModule.RuntimeInfo.ReturnStatus.SUCCESS)){
+            return null;
+        }
+
         final String outputFileName = FilenameUtils.getBaseName(inputFile.getName()) + extensionToAppend;
 
         if(null!=indexer){
@@ -376,25 +383,47 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
      *   or until the last step if no errors occur along the line.
      *   The list is organized along the process of executing the assembly pipeline.
      */
+    @DefaultSerializer(SGAAssemblyResult.Serializer.class)
     @VisibleForTesting
-    static final class SGAAssemblyResult implements Serializable{
-        private static final long serialVersionUID = 1L;
+    static final class SGAAssemblyResult {
+        private static final ContigsCollection.Serializer ccs = new ContigsCollection.Serializer();
 
-        public final ContigsCollection assembledContigs;
-        public final List<SGAModule.RuntimeInfo> collectiveRuntimeInfo;
+        final ContigsCollection assembledContigs;
+        final ArrayList<SGAModule.RuntimeInfo> collectiveRuntimeInfo;
 
-        public SGAAssemblyResult(final List<String> fastaContents, final List<SGAModule.RuntimeInfo> collectedRuntimeInfo){
-            this.assembledContigs      =  null== fastaContents ? null : new ContigsCollection(fastaContents);
-            this.collectiveRuntimeInfo = collectedRuntimeInfo;
+        SGAAssemblyResult(final long assemblyID,
+                          final List<String> fastaContents,
+                          final List<SGAModule.RuntimeInfo> collectedRuntimeInfo){
+            this.assembledContigs      =  null== fastaContents ? null : new ContigsCollection(assemblyID, fastaContents);
+            this.collectiveRuntimeInfo = new ArrayList<>(collectedRuntimeInfo);
+        }
+
+        @SuppressWarnings("unchecked")
+        SGAAssemblyResult(final Kryo kryo, final Input input){
+            this.assembledContigs = kryo.readObjectOrNull(input, ContigsCollection.class, ccs);
+            this.collectiveRuntimeInfo = kryo.readObject(input, ArrayList.class);
         }
 
         @Override
         public String toString(){
-            if(null!=assembledContigs){
-                return assembledContigs.toString();
-            }else{
-                return StringUtils.join(collectiveRuntimeInfo.stream().map(info -> info.toString()), "\n");
+            return assembledContigs!=null ? assembledContigs.toString() : StringUtils.join(collectiveRuntimeInfo.stream().map(SGAModule.RuntimeInfo::toString), "\n");
+        }
+
+        public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SGAAssemblyResult>{
+            @Override
+            public SGAAssemblyResult read(final Kryo kryo, final Input input, final Class<SGAAssemblyResult> klass){
+                return new SGAAssemblyResult(kryo, input);
             }
+
+            @Override
+            public void write(final Kryo kryo, final Output output, final SGAAssemblyResult contig){
+                contig.serialize(kryo, output);
+            }
+        }
+
+        protected void serialize(final Kryo kryo, final Output output){
+            kryo.writeObjectOrNull(output, assembledContigs, ccs);
+            kryo.writeObject(output, collectiveRuntimeInfo);
         }
     }
 

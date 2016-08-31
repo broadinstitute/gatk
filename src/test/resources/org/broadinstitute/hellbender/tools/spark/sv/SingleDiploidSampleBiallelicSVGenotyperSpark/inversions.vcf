@@ -1,0 +1,25 @@
+##fileformat=VCFv4.2
+##INFO=<ID=ALIGN_LENGTHS,Number=.,Type=Integer,Description="Minimum lengths of the flanking aligned region from each contig alignment">
+##INFO=<ID=ASSEMBLY_IDS,Number=.,Type=String,Description="IDs of the assemblies that produced each contig alignment">
+##INFO=<ID=CONTIG_IDS,Number=.,Type=String,Description="IDs of the contigs that produced each alignment">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=HOMOLOGY,Number=.,Type=String,Description="Homologous sequence from contig at the breakpoint">
+##INFO=<ID=HOMOLOGY_LENGTH,Number=1,Type=Integer,Description="Length of homologous sequence">
+##INFO=<ID=HQ_MAPPINGS,Number=1,Type=Integer,Description="Number of high-quality contig alignments that support the variant">
+##INFO=<ID=INSERTED_SEQUENCE,Number=.,Type=String,Description="Inserted sequence at the breakpoint">
+##INFO=<ID=INSERTED_SEQUENCE_MAPPINGS,Number=.,Type=String,Description="Alignments of inserted sequence">
+##INFO=<ID=INV_3_TO_5,Number=0,Type=Flag,Description="Whether the event represents a 3' to 5' inversion">
+##INFO=<ID=INV_5_TO_3,Number=0,Type=Flag,Description="Whether the event represents a 5' to 3' inversion">
+##INFO=<ID=MAPPING_QUALITIES,Number=.,Type=Integer,Description="Mapping qualities of the contig alignments that support the variant">
+##INFO=<ID=MAX_ALIGN_LENGTH,Number=1,Type=Integer,Description="Maximum of the minimum aligned lengths of flanking regions from each contig alignment">
+##INFO=<ID=SVLEN,Number=.,Type=Integer,Description="Difference in length between REF and ALT alleles">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=TOTAL_MAPPINGS,Number=1,Type=Integer,Description="Number of contig alignments that support the variant">
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+20	26210907	INV_5_TO_3_20_26210907_26211109	A	<INV>	.	.	ALIGN_LENGTHS=58,81;ASSEMBLY_IDS=5718,7161;CONTIG_IDS=contig-7,contig-3;END=26211109;HQ_MAPPINGS=2;INSERTED_SEQUENCE=CACACACACACGTAGCCTCATAATACCATATATATATA;INSERTED_SEQUENCE_MAPPINGS=5718-contig-7:58-78:8,135161223,+,57S21M102S,9,0|5718-contig-7:81-111:13,20561708,+,80S31M69S,54,0|7161-contig-3:82-103:5,170965739,-,81S22M101S,18,0|7161-contig-3:104-124:8,135161223,-,103S21M80S,9,0;INV_5_TO_3;MAPPING_QUALITIES=60,60;MAX_ALIGN_LENGTH=81;SVLEN=202;SVTYPE=INV;TOTAL_MAPPINGS=2
+20	26210907	INV_5_TO_3_20_26210907_26211109	A	<INV>	.	.	ALIGN_LENGTHS=74,74,74,74;ASSEMBLY_IDS=5718,11259,12583,13670;CONTIG_IDS=contig-3,contig-321,contig-239,contig-0;END=26211109;HQ_MAPPINGS=4;INSERTED_SEQUENCE=CACACGTAGCCTCATAATACCATATATATATA;INSERTED_SEQUENCE_MAPPINGS=5718-contig-3:77-98:5,170965739,-,76S22M94S,18,0|5718-contig-3:99-119:8,135161223,-,98S21M73S,0,0|11259-contig-321:74-94:8,135161223,+,73S21M98S,0,0|11259-contig-321:95-116:5,170965739,+,94S22M76S,18,0|12583-contig-239:77-98:5,170965739,-,76S22M94S,18,0|12583-contig-239:99-119:8,135161223,-,98S21M73S,0,0|13670-contig-0:77-98:5,170965739,-,76S22M94S,18,0|13670-contig-0:99-119:8,135161223,-,98S21M73S,0,0;INV_5_TO_3;MAPPING_QUALITIES=60,60,60,60;MAX_ALIGN_LENGTH=74;SVLEN=202;SVTYPE=INV;TOTAL_MAPPINGS=4
+20	48450848	INV_5_TO_3_20_48450848_48450921	T	<INV>	.	.	ALIGN_LENGTHS=137;ASSEMBLY_IDS=12697;CONTIG_IDS=contig-21;END=48450921;HOMOLOGY=GTATATATATATATATACTGTGTATATATATATA;HOMOLOGY_LENGTH=34;HQ_MAPPINGS=1;INV_5_TO_3;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=137;SVLEN=73;SVTYPE=INV;TOTAL_MAPPINGS=1
+21	27374151	INV_5_TO_3_21_27374151_27374706	A	<INV>	.	.	ALIGN_LENGTHS=541;ASSEMBLY_IDS=12944;CONTIG_IDS=contig-2;END=27374706;HOMOLOGY=GGATCCA;HOMOLOGY_LENGTH=7;HQ_MAPPINGS=1;INV_5_TO_3;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=541;SVLEN=555;SVTYPE=INV;TOTAL_MAPPINGS=1
+21	27374159	INV_3_TO_5_21_27374159_27374701	T	<INV>	.	.	ALIGN_LENGTHS=548;ASSEMBLY_IDS=12944;CONTIG_IDS=contig-2;END=27374701;HQ_MAPPINGS=1;INV_3_TO_5;MAPPING_QUALITIES=60;MAX_ALIGN_LENGTH=548;SVLEN=542;SVTYPE=INV;TOTAL_MAPPINGS=1
