@@ -34,6 +34,9 @@ public abstract class TwoPassReadWalker extends ReadWalker {
         traverseReads(countedFilter, this::firstPassApply);
         logger.info("Finished First Pass");
         afterFirstPass();
+        // Need to reinitialize the reads and intervals so they are guaranteed to pass over a file
+        initializeReads();
+        setReadTraversalBounds();
         logger.info("Starting SecondPass");
         traverseReads(countedFilter, this::secondPassApply);
 
