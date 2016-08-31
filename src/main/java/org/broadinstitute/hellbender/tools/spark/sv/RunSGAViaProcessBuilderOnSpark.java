@@ -120,6 +120,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     // for developer performance debugging use
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private static final Logger logger = LogManager.getLogger(RunSGAViaProcessBuilderOnSpark.class);
+    private static final int files_per_partition = 5; // performance tuning
 
     @Override
     public void runTool(final JavaSparkContext ctx){
@@ -149,7 +150,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             final FileSystem hadoopFileSystem = FileSystem.get(ctx.hadoopConfiguration());
             final ContentSummary cs = hadoopFileSystem.getContentSummary(new org.apache.hadoop.fs.Path(pathToAllInterleavedFASTQFiles));
             final int fileCount = (int) cs.getFileCount();
-            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles, fileCount);
+            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles).repartition(fileCount/files_per_partition);
         }catch (final IOException e){
             throw new GATKException(e.getMessage());
         }
