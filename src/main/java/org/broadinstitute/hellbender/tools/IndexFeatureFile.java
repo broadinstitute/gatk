@@ -70,6 +70,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
              * Note: IndexFactory.writeIndex is incorrect for tabix indexes (does not use BlockCompressedOutputStream)
              * The workaround is to use the BlockCompressedOutputStream ourselves.
              */
+            // TODO: this will be fixed after https://github.com/samtools/htsjdk/pull/683 is accepted
             if (index instanceof TabixIndex) {
                 writeTabixIndex((TabixIndex) index, indexFile);
             } else {
@@ -104,13 +105,16 @@ public final class IndexFeatureFile extends CommandLineProgram {
     }
 
     private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec ) {
-        // For block-compression VCF files, write a Tabix index
+        // For block-compression files, write a Tabix index
         if ( AbstractFeatureReader.hasBlockCompressedExtension(featureFile) ) {
-            if ( isVCFCodec(codec) ) {
-                return IndexFactory.createTabixIndex(featureFile, codec, TabixFormat.VCF, null);
-            }
-            else {
-                throw new UserException("This tool only supports indexing of block-compressed files when they are in VCF format");
+            try {
+                // TODO: this could benefit from provided sequence dictionary from reference
+                // TODO: this can be an optional parameter for the tool
+                return IndexFactory.createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
+            } catch(TribbleException e) {
+                // this exception is thrown if the codec does not implement getTabixFormat()
+                throw new UserException("This tool does not supports indexing of block-compressed files for"
+                        + codec.getClass().getSimpleName());
             }
         }
         // TODO: detection of GVCF files should not be file-extension-based. Need to come up with canonical
@@ -125,6 +129,11 @@ public final class IndexFeatureFile extends CommandLineProgram {
         }
     }
 
+    /**
+     * @deprecated because it is not used anymore
+     */
+    // TODO: should be removed?
+    @Deprecated
     private boolean isVCFCodec( final FeatureCodec<? extends Feature, ?> codec ) {
         if ( codec.getClass() == VCFCodec.class || codec.getClass() == VCF3Codec.class ) {
             return true;

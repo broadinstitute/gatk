@@ -5,7 +5,9 @@ import htsjdk.samtools.SAMUtils;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.SimpleFeature;
+import htsjdk.tribble.TribbleException;
 import htsjdk.tribble.exception.CodecLineParsingException;
+import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 
@@ -165,6 +167,11 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
             throw new CodecLineParsingException("The SAM pileup line had unexpected base at " + parsedValue + ": " + token);
         }
         return parseBase((byte) token.charAt(0), parsedValue);
+    }
+
+    @Override
+    public TabixFormat getTabixFormat() {
+        return new TabixFormat(TabixFormat.GENERIC_FLAGS, 1, 2, 0, '#', 0);
     }
 
 }
