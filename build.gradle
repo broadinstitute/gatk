@@ -54,7 +54,7 @@ repositories {
 
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.6.0')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.6.1')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.7.0')
 
 configurations.all {
