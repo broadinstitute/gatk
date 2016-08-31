@@ -4,29 +4,21 @@ import com.github.lindenb.jbwa.jni.AlnRgn;
 import com.github.lindenb.jbwa.jni.BwaIndex;
 import com.github.lindenb.jbwa.jni.BwaMem;
 import com.github.lindenb.jbwa.jni.ShortRead;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.TextCigarCodec;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BWANativeLibrary;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import scala.Tuple2;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection;
-import static org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection.ContigID;
-import static org.broadinstitute.hellbender.tools.spark.sv.RunSGAViaProcessBuilderOnSpark.ContigsCollection.ContigSequence;
+import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.ContigID;
+import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.ContigSequence;
 
 public class ContigAligner implements Closeable {
 
@@ -54,56 +46,36 @@ public class ContigAligner implements Closeable {
         log.info("Created BWA MEM");
     }
 
-    public List<AssembledBreakpoint> alignContigs (final ContigsCollection contigsCollection) {
-        final List<AssembledBreakpoint> assembledBreakpoints = new ArrayList<>();
+    /**
+     * Takes a collection of assembled contigs and aligns them to the reference with jBWA. Non-canonical
+     * (secondary) alignments are filtered out, preserving the primary and supplementary alignments.
+     * Within the output list, alignments are sorted first by contig (based on the order in which
+     * the contigs were passed in, and then by their start position on the contig).
+     *
+     * @param assemblyId An identifier for the assembly or set of contigs
+     * @param contigsCollection The set of all canonical (primary or supplementary) alignments for the contigs.
+     * @return
+     */
+    public List<AlignmentRegion> alignContigs(final String assemblyId, final ContigsCollection contigsCollection) {
+        final List<AlignmentRegion> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
         try {
             for(final Tuple2<ContigID, ContigSequence> contigInfo : contigsCollection.getContents()) {
                 final String contigId = contigInfo._1.toString();
                 final byte[] sequence = contigInfo._2.toString().getBytes();
                 final AlnRgn[] alnRgns = bwaAlignSequence(bwaMem, contigId, sequence);
 
-                log.info("alnRgns : " + (alnRgns == null ? "null" : alnRgns.length));
-                // todo: parse cigar for internal indels
-                if (alnRgns.length > 1) {
-
-                    // filter out secondary alignments, convert to AlignmentRegion objects and sort by alignment start pos
-                    final List<AlignmentRegion> alignmentRegionList = Arrays.stream(alnRgns)
-                            .filter(a -> a.getSecondary() < 0)
-                            .map(AlignmentRegion::new)
-                            .sorted(Comparator.comparing(a -> a.startInAssembledContig))
-                            .collect(arrayListCollector(alnRgns.length));
-
-
-                    final Iterator<AlignmentRegion> iterator = alignmentRegionList.iterator();
-                    if ( iterator.hasNext() ) {
-                        AlignmentRegion current = iterator.next();
-                        while ( iterator.hasNext() ) {
-                            final AlignmentRegion previous = current;
-                            current = iterator.next();
-                            String homology = "NA";
-                            if (previous.endInAssembledContig >= current.startInAssembledContig) {
-                                homology = new String(Arrays.copyOfRange(sequence, current.startInAssembledContig - 1, previous.endInAssembledContig));
-                            }
-
-                            String insertedSequence = "NA";
-                            if (previous.endInAssembledContig < current.startInAssembledContig - 1) {
-                                insertedSequence = new String(Arrays.copyOfRange(sequence, previous.endInAssembledContig, current.startInAssembledContig));
-                            }
-                            final AssembledBreakpoint assembledBreakpoint = new AssembledBreakpoint(contigId, previous, current, homology, insertedSequence);
-                            assembledBreakpoints.add(assembledBreakpoint);
-                        }
-                    }
-                }
+                // filter out secondary alignments, convert to AlignmentRegion objects and sort by alignment start pos
+                Arrays.stream(alnRgns)
+                        .filter(a -> a.getSecondary() < 0)
+                        .map(a -> new AlignmentRegion(assemblyId, contigId, a))
+                        .sorted(Comparator.comparing(a -> a.startInAssembledContig))
+                        .forEach(alignedContigs::add);
             }
         } catch (final IOException e) {
             throw new GATKException("could not execute BWA");
         }
 
-        return assembledBreakpoints;
-    }
-
-    private Collector<AlignmentRegion, ?, ArrayList<AlignmentRegion>> arrayListCollector(final int size) {
-        return Collectors.toCollection( () -> new ArrayList<>(size));
+        return alignedContigs;
     }
 
     /**
@@ -128,137 +100,6 @@ public class ContigAligner implements Closeable {
         log.info("closing BWA mem and index");
         bwaMem.dispose();
         index.close();
-    }
-
-    /**
-     * Holds information about a split alignment of a contig, which may represent an SV breakpoint. Each AssembledBreakpoint
-     * represents the junction on the contig of two aligned regions. For example, if a contig aligns to three different regions
-     * of the genome (with one primary and two supplementary alignment records), there will be two AssembledBreakpoint
-     * objects created, one to represent each junction between alignment regions:
-     *
-     * Example Contig:
-     * ACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTGCACTGACTG
-     * Alignment regions:
-     * |---------1:100-200------------|
-     *                                 |----------2:100-200------------------|
-     *                                                                       |----------3:100-200-----------------|
-     * Assmbled breakpoints:
-     * 1) links 1:100-200 to 2:100-200
-     * 2) links 2:100-200 to 3:100-200
-     *
-     * Inserted sequence contains portions of the contig that are aligned to neither region, and therefore may be inserted in
-     * the sample. For example, a translocation breakpoint with a microinsertion:
-     *
-     * Contig:
-     * ACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
-     * Alignment regions:
-     * |-----1:100-200-------|
-     *                          |----2:100-200-----|
-     * Inserted sequence:
-     *  GA
-     *
-     * Homology represents ambiguity about the exact location of the breakpoint. For example, in this case one alignment
-     * region ends with "AC" and the next begins with AC, so we don't know if the AC truly belongs with the first or
-     * second alignment region.
-     *
-     * Contig:
-     * ACTGACTGACTGACTGACTGACTGACTGACTGACTGACTGACTG
-     * Alignment regions:
-     * |-----1:100-200-------|
-     *                    |-----2:100-200----------|
-     * Homology:
-     *  AC
-     */
-    static class AssembledBreakpoint {
-        String contigId;
-        AlignmentRegion region1;
-        AlignmentRegion region2;
-        String insertedSequence;
-        String homology;
-
-        public AssembledBreakpoint(final String contigId, final AlignmentRegion region1, final AlignmentRegion region2, final String homology, final String insertedSequence) {
-            this.contigId = contigId;
-            this.region1 = region1;
-            this.region2 = region2;
-            this.insertedSequence = insertedSequence;
-            this.homology = homology;
-        }
-
-        @Override
-        public String toString() {
-            return contigId +
-                    "\t" +
-                    region1.toString() +
-                    "\t" +
-                    region2.toString() +
-                    "\t" +
-                    insertedSequence +
-                    "\t" +
-                    homology;
-        }
-    }
-
-    static class AlignmentRegion {
-
-        final Cigar cigar;
-        final boolean forwardStrand;
-        final SimpleInterval referenceInterval;
-        final int mqual;
-        final int startInAssembledContig;
-        final int endInAssembledContig;
-        final int assembledContigLength;
-
-
-        public AlignmentRegion(final AlnRgn alnRgn) {
-            this.forwardStrand = alnRgn.getStrand() == '+';
-            final Cigar alignmentCigar = TextCigarCodec.decode(alnRgn.getCigar());
-            this.cigar = forwardStrand ? alignmentCigar : CigarUtils.invertCigar(alignmentCigar);
-            this.referenceInterval = new SimpleInterval(alnRgn.getChrom(), (int) alnRgn.getPos() + 1, (int) (alnRgn.getPos() + 1 + cigar.getReferenceLength()));
-            this.mqual = alnRgn.getMQual();
-            this.assembledContigLength = cigar.getReadLength();
-            this.startInAssembledContig = startOfAlignmentInContig(cigar);
-            this.endInAssembledContig = endOfAlignmentInContig(assembledContigLength, cigar);
-        }
-
-        private static int startOfAlignmentInContig(final Cigar cigar) {
-            return getClippedBases(true, cigar) + 1;
-        }
-
-        private static int endOfAlignmentInContig(final int assembledContigLength, final Cigar cigar) {
-            return assembledContigLength - getClippedBases(false, cigar);
-        }
-
-        private static int getClippedBases(final boolean fromStart, final Cigar cigar) {
-            int posInContig = 0;
-            int j = fromStart ? 0 : cigar.getCigarElements().size() - 1;
-            final int offset = fromStart ? 1 : -1;
-            CigarElement ce = cigar.getCigarElement(j);
-            while(ce.getOperator().isClipping()){
-                posInContig += ce.getLength();
-                j += offset;
-                ce = cigar.getCigarElement(j);
-            }
-            return posInContig;
-        }
-
-        @Override
-        public String toString() {
-            return referenceInterval.getContig() +
-                    "\t" +
-                    referenceInterval.getStart() +
-                    "\t" +
-                    referenceInterval.getEnd() +
-                    "\t" +
-                    (forwardStrand ? "+" : "-") +
-                    "\t" +
-                    cigar.toString() +
-                    "\t" +
-                    mqual +
-                    "\t" +
-                    startInAssembledContig +
-                    "\t" +
-                    endInAssembledContig;
-        }
     }
 
     private static class LocalizedReference {

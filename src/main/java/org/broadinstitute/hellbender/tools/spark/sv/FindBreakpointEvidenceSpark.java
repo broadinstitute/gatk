@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.utils.*;
@@ -34,7 +35,7 @@ import java.util.stream.IntStream;
  */
 @CommandLineProgramProperties(summary="Find reads that evidence breakpoints.",
         oneLineSummary="Dump FASTQs for local assembly of putative genomic breakpoints.",
-        programGroup = SparkProgramGroup.class)
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

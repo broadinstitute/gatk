@@ -10,7 +10,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -18,8 +18,11 @@ import org.broadinstitute.hellbender.tools.spark.utils.HopscotchSet;
 import org.broadinstitute.hellbender.utils.*;
 import scala.Tuple2;
 
-import java.io.*;
-import java.util.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -27,7 +30,7 @@ import java.util.stream.Collectors;
  */
 @CommandLineProgramProperties(summary="Find the set of high copy number kmers in a reference.",
         oneLineSummary="find ref kmers with high copy number",
-        programGroup = SparkProgramGroup.class)
+        programGroup = StructuralVariationSparkProgramGroup.class)
 public final class FindBadGenomicKmersSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
     @VisibleForTesting static final Long MAX_KMER_FREQ = 3L;

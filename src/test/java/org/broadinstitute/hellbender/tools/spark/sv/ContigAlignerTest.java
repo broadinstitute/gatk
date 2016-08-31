@@ -7,7 +7,6 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,45 +61,29 @@ public class ContigAlignerTest extends BaseTest {
         contigsData.add(">contig-7 151 0");
         contigsData.add("TATTAAATAAAAGTGGTAGAATTTTGGATGGGTGCAAGTCAAGTAATGGGATAAAAGAATGATGATCGAAGGAGATGACTCATGATAACTAAGTGCCCTTATGTGAAACCTAGCAACAATTTCTTACTTATGATAAAGGCACAATCTCCCC");
 
-        final RunSGAViaProcessBuilderOnSpark.ContigsCollection contigsCollection = new RunSGAViaProcessBuilderOnSpark.ContigsCollection(contigsData);
+        final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
-        final List<ContigAligner.AssembledBreakpoint> assembledBreakpoints = contigAligner.alignContigs(contigsCollection);
-        Assert.assertEquals(2, assembledBreakpoints.size());
+        final List<AlignmentRegion> contigAlignments = contigAligner.alignContigs("1", contigsCollection);
+        Assert.assertEquals(contigAlignments.size(), 20);
 
-        final ContigAligner.AssembledBreakpoint breakpoint1 = assembledBreakpoints.get(0);
+        final AlignmentRegion alignmentRegion1 = contigAlignments.get(3);
+        Assert.assertEquals(alignmentRegion1.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion1.referenceInterval, new SimpleInterval("21", 27373209, 27374158));
+        Assert.assertTrue(alignmentRegion1.forwardStrand);
+        Assert.assertEquals(alignmentRegion1.mapqual, 60);
 
-        Assert.assertEquals(breakpoint1.contigId, ">contig-9 2009 0");
+        final AlignmentRegion alignmentRegion2 = contigAlignments.get(4);
+        Assert.assertEquals(alignmentRegion2.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion2.referenceInterval, new SimpleInterval("21", 27374159, 27374706));
+        Assert.assertFalse(alignmentRegion2.forwardStrand);
+        Assert.assertEquals(alignmentRegion2.mapqual, 60);
 
-        final ContigAligner.AlignmentRegion breakpoint1Region1 = breakpoint1.region1;
-        //todo verify that the 1-based vs 0-based nature of this is correct
-        Assert.assertEquals(breakpoint1Region1.referenceInterval, new SimpleInterval("21", 27373209, 27374159));
-        Assert.assertTrue(breakpoint1Region1.forwardStrand);
-        Assert.assertEquals(breakpoint1Region1.mqual, 60);
+        final AlignmentRegion alignmentRegion3 = contigAlignments.get(5);
+        Assert.assertEquals(alignmentRegion3.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion3.referenceInterval, new SimpleInterval("21", 27374701, 27375218));
+        Assert.assertTrue(alignmentRegion3.forwardStrand);
+        Assert.assertEquals(alignmentRegion3.mapqual, 60);
 
-        final ContigAligner.AlignmentRegion breakpoint1Region2 = breakpoint1.region2;
-        Assert.assertEquals(breakpoint1Region2.referenceInterval, new SimpleInterval("21", 27374159, 27374707));
-        Assert.assertFalse(breakpoint1Region2.forwardStrand);
-        Assert.assertEquals(breakpoint1Region2.mqual, 60);
-
-        Assert.assertEquals(breakpoint1.homology, "GGATCCA");
-        Assert.assertEquals(breakpoint1.insertedSequence, "NA");
-
-        final ContigAligner.AssembledBreakpoint breakpoint2 = assembledBreakpoints.get(1);
-
-        Assert.assertEquals(breakpoint2.contigId, ">contig-9 2009 0");
-
-        final ContigAligner.AlignmentRegion breakpoint2Region1 = breakpoint2.region1;
-        Assert.assertEquals(breakpoint2Region1.referenceInterval, new SimpleInterval("21", 27374159, 27374707));
-        Assert.assertFalse(breakpoint2Region1.forwardStrand);
-        Assert.assertEquals(breakpoint2Region1.mqual, 60);
-
-        final ContigAligner.AlignmentRegion breakpoint2Region2 = breakpoint2.region2;
-        Assert.assertEquals(breakpoint2Region2.referenceInterval, new SimpleInterval("21", 27374701, 27375219));
-        Assert.assertTrue(breakpoint2Region2.forwardStrand);
-        Assert.assertEquals(breakpoint2Region2.mqual, 60);
-
-        Assert.assertEquals(breakpoint2.homology, "NA");
-        Assert.assertEquals(breakpoint2.insertedSequence, "NA");
 
 
     }
@@ -113,31 +96,56 @@ public class ContigAlignerTest extends BaseTest {
         contigsData.add(">contig-3 312 0");
         contigsData.add("CCTGTAGATAGAGAGGTGGGTGAGAGATGGCCTTGTGGCAGCTCCTGGCAAGCTCACCTGACTTCTCATGATCTGGGTGACCATGGGGTATCCCTCCAAGACTTAGGTCAGCAGTGGTTAAGCCTTGCCCTGTAGCCTAGGAAAAAATGTGCAAGGTTGTCAGGGCACCAGCATGGAGGAGTTCCCCTACAGTCTTTCCAATACCTATGTGGTCTCTGGAACAGACATTTCATCCAGTAGCCATTCCTTTCCATTGTTTCCCTTCTTGGAAGAGCCTATCTTCCAAGACAGATGGTGAAATATTAGTAATTT");
 
-        final RunSGAViaProcessBuilderOnSpark.ContigsCollection contigsCollection = new RunSGAViaProcessBuilderOnSpark.ContigsCollection(contigsData);
+        final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
-        final List<ContigAligner.AssembledBreakpoint> assembledBreakpoints = contigAligner.alignContigs(contigsCollection);
-        Assert.assertEquals(1, assembledBreakpoints.size());
+        final List<AlignmentRegion> alignmentRegions = contigAligner.alignContigs("1", contigsCollection);
+        Assert.assertEquals(2, alignmentRegions.size());
 
-        final ContigAligner.AssembledBreakpoint breakpoint1 = assembledBreakpoints.get(0);
-
-        Assert.assertEquals(breakpoint1.contigId, ">contig-3 312 0");
-
-        final ContigAligner.AlignmentRegion breakpoint1Region1 = breakpoint1.region1;
-        Assert.assertEquals(breakpoint1Region1.referenceInterval, new SimpleInterval("20", 1388956, 1389147));
+        final AlignmentRegion breakpoint1Region1 = alignmentRegions.get(0);
+        Assert.assertEquals(breakpoint1Region1.referenceInterval, new SimpleInterval("20", 1388956, 1389146));
         Assert.assertTrue(breakpoint1Region1.forwardStrand);
-        Assert.assertEquals(breakpoint1Region1.mqual, 60);
+        Assert.assertEquals(breakpoint1Region1.mapqual, 60);
         Assert.assertEquals(breakpoint1Region1.startInAssembledContig, 1);
         Assert.assertEquals(breakpoint1Region1.endInAssembledContig, 191);
 
-        final ContigAligner.AlignmentRegion breakpoint1Region2 = breakpoint1.region2;
-        Assert.assertEquals(breakpoint1Region2.referenceInterval, new SimpleInterval("20", 1390815, 1390939));
+        final AlignmentRegion breakpoint1Region2 = alignmentRegions.get(1);
+        Assert.assertEquals(breakpoint1Region2.referenceInterval, new SimpleInterval("20", 1390815, 1390938));
         Assert.assertTrue(breakpoint1Region2.forwardStrand);
-        Assert.assertEquals(breakpoint1Region2.mqual, 60);
+        Assert.assertEquals(breakpoint1Region2.mapqual, 60);
         Assert.assertEquals(breakpoint1Region2.startInAssembledContig, 189);
         Assert.assertEquals(breakpoint1Region2.endInAssembledContig, 312);
 
-        Assert.assertEquals(breakpoint1.homology, "ACA");
-        Assert.assertEquals(breakpoint1.insertedSequence, "NA");
+    }
+
+    @Test
+    public void testAlignArtificialBreakpointContig() throws Exception {
+
+        // take DNA sequence from the reference split between 20:
+        final List<String> contigsData = new ArrayList<>();
+        contigsData.add(">contig-fake-20:1000000-1000099+20:5000002-5000101");
+        final String snippet1 = "GTGGGAGAGAACTGGAACAAGAACCCAGTGCTCTTTCTGCTCTACCCACTGACCCATCCTCTCACGCATCATACACCCATACTCCCATCCACCCACCTTC";
+        final String snippet2 = "GTGATCCAGCTACAGACTGTTCCAAAGACTTTGCAACTGTTATTTTTGCTTAATCCTCACAACAACCTATGAGGTAGGCACATTTATTGCCCCCATGTGA";
+        contigsData.add(snippet1 + snippet2);
+
+        final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
+
+        final List<AlignmentRegion> alignmentRegions = contigAligner.alignContigs("1", contigsCollection);
+        Assert.assertEquals(2, alignmentRegions.size());
+
+        final AlignmentRegion breakpoint1Region1 = alignmentRegions.get(0);
+        Assert.assertEquals(breakpoint1Region1.referenceInterval, new SimpleInterval("20", 1000000, 1000099));
+        Assert.assertTrue(breakpoint1Region1.forwardStrand);
+        Assert.assertEquals(breakpoint1Region1.mapqual, 60);
+        Assert.assertEquals(breakpoint1Region1.startInAssembledContig, 1);
+        Assert.assertEquals(breakpoint1Region1.endInAssembledContig, 100);
+
+        final AlignmentRegion breakpoint1Region2 = alignmentRegions.get(1);
+        Assert.assertEquals(breakpoint1Region2.referenceInterval, new SimpleInterval("20", 5000002, 5000101));
+        Assert.assertTrue(breakpoint1Region2.forwardStrand);
+        Assert.assertEquals(breakpoint1Region2.mapqual, 60);
+        Assert.assertEquals(breakpoint1Region2.startInAssembledContig, 101);
+        Assert.assertEquals(breakpoint1Region2.endInAssembledContig, 200);
+
     }
 
     @AfterClass
