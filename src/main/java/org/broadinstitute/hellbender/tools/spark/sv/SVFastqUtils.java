@@ -22,7 +22,7 @@ public class SVFastqUtils {
         String mapLoc = "";
         if ( includeMappingLocation ) {
             if ( read.isUnmapped() ) mapLoc = " mapping=unmapped";
-            else mapLoc = " mapping=" + read.getContig() + ":" + read.getStart();
+            else mapLoc = " mapping=" + read.getContig() + ":" + read.getStart() + ";" + read.getCigar().toString();
         }
         final String rec =
                 "@" + read.getName() + nameSuffix + mapLoc + "\n" +
