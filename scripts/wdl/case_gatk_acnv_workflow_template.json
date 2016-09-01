@@ -1,36 +1,35 @@
-/* User needs to populate 'FILL_ME_IN' and save with new filename. */
 {
-  "case_gatk_acnv_workflow.input_bam_list": "FILL_ME_IN",  /* tsv file consisting of corresponding bam files and entity names as described in case_gatk_acnv_workflow.wdl  */
+  "case_gatk_acnv_workflow.input_bam_list": "$__input_bam_list__",
   "case_gatk_acnv_workflow.CalculateTargetCoverage.grouping": "SAMPLE",
-  "case_gatk_acnv_workflow.common_snp_list": "FILL_ME_IN", /* SNP list to use in het pulldown */
-  "case_gatk_acnv_workflow.ref_fasta_fai": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta.fai */
-  "case_gatk_acnv_workflow.target_file": "FILL_ME_IN", /* same file as was used for the PoN */
-  "case_gatk_acnv_workflow.gatk_jar": "FILL_ME_IN", /* absolute path to gatk-protected.jar */
+  "case_gatk_acnv_workflow.common_snp_list": "$__common_snp_list__", 
+  "case_gatk_acnv_workflow.ref_fasta_fai": "$__ref_fasta_fai__", 
+  "case_gatk_acnv_workflow.target_file": "$__target_file__", 
+  "case_gatk_acnv_workflow.gatk_jar": "$__gatk_jar__", 
   "case_gatk_acnv_workflow.PadTargets.mem": "1",
   "case_gatk_acnv_workflow.CalculateTargetCoverage.disable_all_read_filters": "false",
   "case_gatk_acnv_workflow.CalculateTargetCoverage.mem": "4",
-  "case_gatk_acnv_workflow.ref_fasta_dict": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.dict */
+  "case_gatk_acnv_workflow.ref_fasta_dict": "$__ref_fasta_dict__", 
   "case_gatk_acnv_workflow.CalculateTargetCoverage.keepduplicatereads": "true",
-  "case_gatk_acnv_workflow.PoN": "FILL_ME_IN", /* Path to GATK PoN file */
+  "case_gatk_acnv_workflow.PoN": "$__PoN__", 
   "case_gatk_acnv_workflow.CalculateTargetCoverage.transform": "PCOV",
-  "case_gatk_acnv_workflow.ref_fasta": "FILL_ME_IN", /* Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta */
+  "case_gatk_acnv_workflow.ref_fasta": "$__ref_fasta__", 
   "case_gatk_acnv_workflow.NormalizeSomaticReadCounts.mem": "4",
   "case_gatk_acnv_workflow.PadTargets.pd": "250",
   "case_gatk_acnv_workflow.disable_sequence_dictionary_validation": "true",
-  "case_gatk_acnv_workflow.plots_dir": "FILL_ME_IN", /* path to store produced plots for CopyRatio and ACNV */
-  "case_gatk_acnv_workflow.call_cnloh_dir": "FILL_ME_IN", /* path to directory to store CNLoH and splits results */
-  "case_gatk_acnv_workflow.enable_gc_correction": "true", /* true/false option change to false to bypass gc bias correction step */
-  "case_gatk_acnv_workflow.isWGS": "false", /* Change to true if running WGS samples */
-  "case_gatk_acnv_workflow.wgsBinSize": "10000", /* Size of bins for WGS read counts CLI */
-  "case_gatk_acnv_workflow.seg_param_alpha": "FILL_ME_IN", /* Segmenter parameter, default=0.01 */
-  "case_gatk_acnv_workflow.seg_param_nperm": "FILL_ME_IN", /* Segmenter parameter, default=10000 */
-  "case_gatk_acnv_workflow.seg_param_pmethod": "FILL_ME_IN", /* Segmenter parameter, default=HYBRID */
-  "case_gatk_acnv_workflow.seg_param_minWidth": "FILL_ME_IN", /* Segmenter parameter, default=2 */
-  "case_gatk_acnv_workflow.seg_param_kmax": "FILL_ME_IN", /* Segmenter parameter, default=25 */
-  "case_gatk_acnv_workflow.seg_param_nmin": "FILL_ME_IN", /* Segmenter parameter, default=200 */
-  "case_gatk_acnv_workflow.seg_param_eta": "FILL_ME_IN", /* Segmenter parameter, default=0.05 */
-  "case_gatk_acnv_workflow.seg_param_trim": "FILL_ME_IN", /* Segmenter parameter, default=0.025 */
-  "case_gatk_acnv_workflow.seg_param_undoSplits": "FILL_ME_IN", /* Segmenter parameter, default=NONE */
-  "case_gatk_acnv_workflow.seg_param_undoPrune": "FILL_ME_IN", /* Segmenter parameter, default=0.05 */
-  "case_gatk_acnv_workflow.seg_param_undoSD": "FILL_ME_IN" /* Segmenter parameter, default=3 */
+  "case_gatk_acnv_workflow.plots_dir": "plots/", 
+  "case_gatk_acnv_workflow.call_cnloh_dir": "splits/", 
+  "case_gatk_acnv_workflow.enable_gc_correction": "$__IS_GCC_APPLIED__", 
+  "case_gatk_acnv_workflow.isWGS": "$__IS_WGS__", 
+  "case_gatk_acnv_workflow.wgsBinSize": "10000", 
+  "case_gatk_acnv_workflow.seg_param_alpha": "0.01", 
+  "case_gatk_acnv_workflow.seg_param_nperm": "10000", 
+  "case_gatk_acnv_workflow.seg_param_pmethod": "HYBRID", 
+  "case_gatk_acnv_workflow.seg_param_minWidth": "2", 
+  "case_gatk_acnv_workflow.seg_param_kmax": "25", 
+  "case_gatk_acnv_workflow.seg_param_nmin": "200", 
+  "case_gatk_acnv_workflow.seg_param_eta": "0.05", 
+  "case_gatk_acnv_workflow.seg_param_trim": "0.025", 
+  "case_gatk_acnv_workflow.seg_param_undoSplits": "$__UNDO_SPLITS__", 
+  "case_gatk_acnv_workflow.seg_param_undoPrune": "0.05", 
+  "case_gatk_acnv_workflow.seg_param_undoSD": "$__UNDO_SD__" 
 }
