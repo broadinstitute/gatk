@@ -542,8 +542,8 @@ task Caller {
     }
 }
 
-# Call heterozygous SNPs in the normal and then count the reads in the tumor for each position called position.
-# entity IDs can be the same value
+# Call heterozygous SNPs in the normal and then count the reads in the tumor for each called position.
+# Entity IDs can be the same value
 task HetPulldown {
     String entity_id_tumor
     String entity_id_normal
@@ -571,8 +571,8 @@ task HetPulldown {
     }
 }
 
-# Call heterozygous SNPs in the normal and then count the reads in the tumor for each position called position.
-# entity IDs can be the same value
+# Call heterozygous SNPs in the normal and then count the reads in the tumor for each called position.
+# Entity IDs can be the same value
 task BayesianHetPulldownPaired {
     String entity_id_tumor
     String entity_id_normal
