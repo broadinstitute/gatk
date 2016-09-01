@@ -1,5 +1,5 @@
 {
-  "case_gatk_acnv_workflow.input_bam_list": "$__input_bam_list___",  
+  "case_gatk_acnv_workflow.input_bam_list": "$__input_bam_list__",
   "case_gatk_acnv_workflow.CalculateTargetCoverage.grouping": "SAMPLE",
   "case_gatk_acnv_workflow.common_snp_list": "$__common_snp_list__", 
   "case_gatk_acnv_workflow.ref_fasta_fai": "$__ref_fasta_fai__", 
