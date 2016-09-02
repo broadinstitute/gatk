@@ -263,9 +263,9 @@ public class GATKProtectedMathUtils {
     /**
      * Find the maximum difference between entries of two arrays.  This is useful for testing convergence, for example
      */
-    public static double maxDifference(final double[] array1, final double[] array2) {
-        Utils.validateArg(array1.length == array2.length, "arrays must have same length.");
-        Utils.validateArg(array1.length > 0, "arrays must be non-empty");
-        return IntStream.range(0, array1.length).mapToDouble(n -> Math.abs(array1[n] - array2[n])).max().getAsDouble();
+    public static double maxDifference(final List<Double> array1, final List<Double> array2) {
+        Utils.validateArg(array1.size() == array2.size(), "arrays must have same length.");
+        Utils.validateArg(array1.size() > 0, "arrays must be non-empty");
+        return IntStream.range(0, array1.size()).mapToDouble(n -> Math.abs(array1.get(n) - array2.get(n))).max().getAsDouble();
     }
 }

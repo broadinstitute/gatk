@@ -1,17 +1,20 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
+import com.google.common.primitives.Doubles;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.analysis.integration.SimpsonIntegrator;
 import org.apache.commons.math3.analysis.integration.UnivariateIntegrator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
 import org.broadinstitute.hellbender.utils.hmm.ViterbiAlgorithm;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -19,19 +22,18 @@ import java.util.stream.IntStream;
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public abstract class ClusteringGenomicHMMSegmenter<T> {
+public abstract class ClusteringGenomicHMMSegmenter<DATA, HIDDEN> {
     protected final Logger logger = LogManager.getLogger(ClusteringGenomicHMMSegmenter.class);
 
     private double concentration;
-    protected double[] weights; //one per hidden state
-    protected double[] hiddenStateValues;
-    protected double memoryLength;
+    private List<Double> weights; //one per hidden state
+    private List<HIDDEN> hiddenStateValues;
+    private double memoryLength;
     private boolean parametersHaveBeenLearned = false;
 
-    protected static final int NEUTRAL_VALUE_INDEX = 0;
-
     private static final int MAX_EM_ITERATIONS = 50;
-    protected final List<T> data;
+    protected final List<DATA> data;
+
     protected final List<SimpleInterval> positions;
     private final double[] distances;   // distances[n] is the n to n+1 distance
 
@@ -39,11 +41,11 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
 
     private static final double MINIMUM_MEMORY_LENGTH = 1;
     private static final double MAXIMUM_MEMORY_LENGTH = 1e10;
-    private static final double DEFAULT_MEMORY_LENGTH = 5e7;
 
     // parameters for pruning unused hidden states
-    final double DISTANCE_TO_NEIGHBOR_TO_BE_CONSIDERED_SPURIOUS = 0.01;  // if a hidden state is this close to another state, it might be false
-    final double MAX_WEIGHT_CONSIDERED_FOR_PRUNING = 0.02;  // never prune a state with greater weight than this
+    final double DISTANCE_TO_NEIGHBOR_TO_BE_CONSIDERED_SPURIOUS = 0.02;  // if a hidden state is this close to another state, it might be false
+    final double DISTANCE_TO_NEIGHBOR_TO_BE_CONSIDERED_DEFINITELY_SPURIOUS = 0.01;  // if a hidden state is this close to another state, one is assumed a clone
+    final double MAX_WEIGHT_CONSIDERED_FOR_PRUNING = 0.04;  // never prune a state with greater weight than this
     final double AUTOMATICALLY_PRUNED_WEIGHT = 5e-4;    // a weight so low it is always pruned
 
     // (unnormalized) vague gamma prior on concentration
@@ -57,7 +59,7 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
     private static final int MAX_INTEGRATION_EVALUATIONS = 1000;
     private static final UnivariateIntegrator UNIVARIATE_INTEGRATOR = new SimpsonIntegrator(1e-3, 1e-3, 5, 20);
 
-    private static final double CONVERGENCE_THRESHOLD = 0.01;
+    protected static final double CONVERGENCE_THRESHOLD = 0.01;
     private static final double MEMORY_LENGTH_CONVERGENCE_THRESHOLD = 1e4;
 
     protected static final double RELATIVE_TOLERANCE_FOR_OPTIMIZATION = 0.01;
@@ -68,45 +70,51 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
     private static final int RANDOM_SEED = 239;
     private final Random random = new Random(RANDOM_SEED);
 
+
     /**
-     * Initialize the segmenter with its data and panel of normals, giving equal weight to a set of evenly-spaced
-     * hidden minor allele fraction values.
-     *
-     * @param initialNumStates  A liberal estimate of the number of hidden minor allele fraction values to
-     *                          include in the model.  Hidden states are pruned as the model is learned.
-     * @param data              The data attached to this segmenter
+     * Initialize the segmenter with everything given i.e. without default values
      */
-    public ClusteringGenomicHMMSegmenter(final int initialNumStates, final List<SimpleInterval> positions, final List<T> data) {
-        this.data = Utils.nonNull(data);
-        concentration = 1;
-        weights = Collections.nCopies(initialNumStates, 1.0/initialNumStates).stream().mapToDouble(x->x).toArray();   //uniform
-        memoryLength = DEFAULT_MEMORY_LENGTH;
-        this.positions = positions;
-        distances = IntStream.range(0, positions.size() - 1)
-                .mapToDouble(n -> ClusteringGenomicHMM.calculateDistance(positions.get(n), positions.get(n + 1)))
-                .toArray();
-        initializeHiddenStateValues(initialNumStates);
-        initializeAdditionalParameters();
+    public ClusteringGenomicHMMSegmenter(final List<SimpleInterval> positions,
+                                         final List<DATA> data,
+                                         final List<HIDDEN> hiddenStateValues,
+                                         final List<Double> weights,
+                                         final double concentration,
+                                         final double memoryLength) {
+        this.data = Utils.nonEmpty(data);
+        this.positions = Utils.nonEmpty(positions);
+        Utils.validateArg(data.size() == positions.size(), "The number of data must equal the number of positions.");
+        distances = calculateDistances(positions);
+        this.concentration = concentration;
+        this.hiddenStateValues = Utils.nonEmpty(hiddenStateValues);
+        this.weights = Utils.nonEmpty(weights);
+        Utils.validateArg(hiddenStateValues.size() == weights.size(), "The number of hidden states must equal the number of weights.");
+        this.memoryLength = memoryLength;
     }
 
-    protected abstract void initializeHiddenStateValues(final int K);
+    private static double[] calculateDistances(final List<SimpleInterval> positions) {
+        return IntStream.range(0, positions.size() - 1)
+                .mapToDouble(n -> ClusteringGenomicHMM.calculateDistance(positions.get(n), positions.get(n + 1)))
+                .toArray();
+    }
 
-    // override this if any parameters other than weights, memory length, and hidden state values must be initialized
-    protected abstract void initializeAdditionalParameters();
 
     /**
      * given current values of memory length, weights, hidden state values, and any other parameters that a child class
      * may have, generate the model.  This is needed for running the Viterbi and forward-backward algorithms.
      */
-    protected abstract ClusteringGenomicHMM<T> makeModel();
+    protected abstract ClusteringGenomicHMM<DATA, HIDDEN> makeModel();
 
-    public List<ModeledSegment> findSegments() {
+    public void makeSureParametersHaveBeenLearned() {
         if (!parametersHaveBeenLearned) {
             learn();
         }
-        final ClusteringGenomicHMM<T> model = makeModel();
+    }
+
+    public List<Pair<SimpleInterval, HIDDEN>> findSegments() {
+        makeSureParametersHaveBeenLearned();
+        final ClusteringGenomicHMM<DATA, HIDDEN> model = makeModel();
         List<Integer> states = ViterbiAlgorithm.apply(data, positions, model);
-        List<ModeledSegment> result = new ArrayList<>();
+        List<Pair<SimpleInterval, HIDDEN>> result = new ArrayList<>();
 
         int beginningOfCurrentSegment = 0;
         int currentState = states.get(0);
@@ -116,10 +124,9 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
             if (n == positions.size() || currentState != states.get(n) || !currentContig.equals(positions.get(n).getContig())) {
                 final int previousSegmentStart = positions.get(beginningOfCurrentSegment).getStart();
                 final int previousSegmentEnd = positions.get(n-1).getEnd();
-                final int previousSegmentSnpCount = n - beginningOfCurrentSegment;
-                final double previousSegmentHiddenStateValue = hiddenStateValues[currentState];
+                final HIDDEN previousSegmentHiddenStateValue = hiddenStateValues.get(currentState);
                 final SimpleInterval interval = new SimpleInterval(currentContig, previousSegmentStart, previousSegmentEnd);
-                result.add(new ModeledSegment(interval, previousSegmentSnpCount, previousSegmentHiddenStateValue));
+                result.add(new ImmutablePair<>(interval, previousSegmentHiddenStateValue));
                 if (n < positions.size()) {
                     currentState = states.get(n);
                     currentContig = positions.get(n).getContig();
@@ -135,75 +142,61 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
         boolean converged = false;
         while (!converged && iteration++ < MAX_EM_ITERATIONS) {
             logger.info(String.format("Beginning iteration %d of learning.", iteration));
-            logger.info(String.format("Current values of hidden states: %s.", Arrays.toString(hiddenStateValues)));
-            logger.info(String.format("Current weights of hidden states: %s.", Arrays.toString(weights)));
             logger.info(String.format("Current memory length: %f bases.", memoryLength));
 
             final double oldMemoryLength = memoryLength;
-            final double[] oldWeights = weights.clone();
-            final double[] oldHiddenStateValues = hiddenStateValues.clone();
+            final List<Double> oldWeights = new ArrayList<>(weights);
+            final List<HIDDEN> oldHiddenStateValues = new ArrayList<>(hiddenStateValues);
             performEMIteration();
-            converged = oldWeights.length == weights.length &&
+            converged = oldWeights.size() == numStates() &&
                     Math.abs(oldMemoryLength - memoryLength) < MEMORY_LENGTH_CONVERGENCE_THRESHOLD &&
                     GATKProtectedMathUtils.maxDifference(oldWeights, weights) < CONVERGENCE_THRESHOLD &&
-                    GATKProtectedMathUtils.maxDifference(oldHiddenStateValues, hiddenStateValues) < CONVERGENCE_THRESHOLD;
+                    hiddenStateValuesHaveConverged(oldHiddenStateValues);
         }
         parametersHaveBeenLearned = true;
     }
 
+    protected abstract boolean hiddenStateValuesHaveConverged(final List<HIDDEN> oldHiddenStateValues);
+
     // update the model and the concentration parameter with a single EM step
     private void performEMIteration() {
-        logger.info("Performing E step via the forward-backward algorithm.");
         final ExpectationStep expectationStep = new ExpectationStep();
-        logger.info("Performing M step optimizations of parameters.");
-        logger.info("Relearning hidden state values.");
         relearnHiddenStateValues(expectationStep);
-        logger.info("Relearning hidden state weights.");
         relearnWeights(expectationStep);
-        logger.info("Relearning memory length.");
+        reportStatesAndWeights("After M step");
         relearnMemoryLength(expectationStep);
-        logger.info("Attempting larger change in memory length");
         attemptBigChangeInMemoryLength();
-        logger.info("Relearning additional parameters.");
         relearnAdditionalParameters(expectationStep);
-        logger.info("Attempting to reduce the number of hidden states used.");
         pruneUnusedComponents();
-        logger.info("Number of states after pruning: " + hiddenStateValues.length);
-        logger.info("Relearning concentration hyperparameter.");
+        reportStatesAndWeights("After pruning");
         relearnConcentration();
+    }
+
+    private void reportStatesAndWeights(final String timing) {
+        logger.info(timing + ", there are " + numStates() + " hidden states.");
+        final StringBuilder message = new StringBuilder("(state, weight) pairs are: ");
+        for (int n = 0; n < numStates(); n++) {
+            message.append(String.format("(%s, %f)", getState(n).toString(), weights.get(n)) + ((n < numStates() - 1) ? "; " : "."));
+        }
+        logger.info(message);
     }
 
     protected abstract void relearnAdditionalParameters(final ExpectationStep eStep);
 
     private void relearnWeights(final ExpectationStep expectationStep) {
-        final double symmetricPriorWeight = concentration / weights.length;
+        final double symmetricPriorWeight = concentration / numStates();
         final double[] transitionCounts = expectationStep.transitionCounts();
         final double[] posteriorDirichletParameters = Arrays.stream(transitionCounts).map(x -> x + symmetricPriorWeight).toArray();
-        weights =  new Dirichlet(posteriorDirichletParameters).effectiveMultinomialWeights();
+        weights = Doubles.asList(new Dirichlet(posteriorDirichletParameters).effectiveMultinomialWeights());
     }
 
-    // filter out components that have low weight and are too close to another component -- these will
-    // die out eventually in EM, but very slowly, so we hasten their demise for quicker convergence
-    private void pruneUnusedComponents() {
-        final int K = weights.length;
+    protected abstract void pruneUnusedComponents();
 
-        final Set<Integer> componentsToPrune = new TreeSet<>();
-        for (final int state : IntStream.range(0, K).filter(n -> n != NEUTRAL_VALUE_INDEX).toArray()) {
-            final int closestOtherState = MathUtils.maxElementIndex(IntStream.range(0, K)
-                    .mapToDouble(n -> n == state ? Double.NEGATIVE_INFINITY : -Math.abs(hiddenStateValues[n] - hiddenStateValues[state]))
-                    .toArray());
-            final boolean hasLowWeight = weights[state] < MAX_WEIGHT_CONSIDERED_FOR_PRUNING;
-            final boolean isCloseToNeighbor = Math.abs(hiddenStateValues[state] - hiddenStateValues[closestOtherState]) < DISTANCE_TO_NEIGHBOR_TO_BE_CONSIDERED_SPURIOUS;
-            final boolean hasLessWeightThanNeighbor = weights[state] < weights[closestOtherState];
-            if (weights[state] < AUTOMATICALLY_PRUNED_WEIGHT || (hasLowWeight && isCloseToNeighbor && hasLessWeightThanNeighbor)) {
-                componentsToPrune.add(state);
-            }
-        }
-
-        weights = IntStream.range(0, K)
-                .filter(n -> !componentsToPrune.contains(n)).mapToDouble(n -> weights[n]).toArray();
-        hiddenStateValues = IntStream.range(0, K)
-                .filter(n -> !componentsToPrune.contains(n)).mapToDouble(n -> hiddenStateValues[n]).toArray();
+    protected void removeStates(Collection<Integer> componentsToPrune) {
+        weights = IntStream.range(0, numStates())
+                .filter(n -> !componentsToPrune.contains(n)).mapToObj(weights::get).collect(Collectors.toList());
+        hiddenStateValues = IntStream.range(0, numStates())
+                .filter(n -> !componentsToPrune.contains(n)).mapToObj(hiddenStateValues::get).collect(Collectors.toList());
     }
 
     /**
@@ -214,9 +207,9 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
      * effective weights.
      */
     private void relearnConcentration() {
-        final double geometricMeanOfEffectiveWeights = Math.exp(Arrays.stream(weights).map(Math::log).average().getAsDouble());
+        final double geometricMeanOfEffectiveWeights = Math.exp(weights.stream().mapToDouble(Math::log).average().getAsDouble());
 
-        final int K = weights.length;
+        final int K = numStates();
         final Function<Double, Double> distribution = alpha -> PRIOR_ON_CONCENTRATION.apply(alpha)
                 * Math.pow(geometricMeanOfEffectiveWeights, alpha)  //likelihood
                 * Math.exp(Gamma.logGamma(alpha) - K * Gamma.logGamma(alpha/K));    //normalization constant
@@ -246,22 +239,7 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
         }
     }
 
-    private void relearnHiddenStateValues(final ExpectationStep eStep) {
-        final ClusteringGenomicHMM<T> model = makeModel();
-        // by convention, state = 0 represents the neutral value (minor allele fraction = 1/2 or copy ratio = 1)
-        // which we always retain and do not wish to adjust via MLE.  Thus we start at state 1
-        for (final int state : IntStream.range(0, hiddenStateValues.length).filter(n -> n != NEUTRAL_VALUE_INDEX).toArray()) {
-            final Function<Double, Double> objective = f -> IntStream.range(0, data.size())
-                    .filter(n -> eStep.pStateAtPosition(state, n) > NEGLIGIBLE_POSTERIOR_FOR_M_STEP)
-                    .mapToDouble(n -> eStep.pStateAtPosition(state, n) * model.logEmissionProbability(data.get(n), f))
-                    .sum();
-            hiddenStateValues[state] = OptimizationUtils.singleNewtonArgmaxUpdate(objective, minHiddenStateValue(),
-                    maxHiddenStateValue(), hiddenStateValues[state]);
-        }
-    }
-
-    protected abstract double minHiddenStateValue();
-    protected abstract double maxHiddenStateValue();
+    protected abstract void relearnHiddenStateValues(final ExpectationStep eStep);
 
     /**
      * Stores the results of the expectation (E) step in which we run the forward-backward algorithm
@@ -270,7 +248,7 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
      * and the expected number of 4) transitions to each state with memory loss, totalled over all het positions
      */
     protected final class ExpectationStep {
-        private final int K = weights.length;
+        private final int K = numStates();
         private final int N = positions.size();
 
         private final double[][] pStateByPosition = new double[K][N];
@@ -282,7 +260,7 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
         private final double[] transitionCountsByState = new double[K];
 
         public ExpectationStep() {
-            final ForwardBackwardAlgorithm.Result<T, SimpleInterval, Integer> fbResult =
+            final ForwardBackwardAlgorithm.Result<DATA, SimpleInterval, Integer> fbResult =
                     ForwardBackwardAlgorithm.apply(data, positions, makeModel());
 
             IntStream.range(0, K).forEach(state ->
@@ -299,7 +277,7 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
                         } else {
                             final double priorPForget = 1 - Math.exp(-distances[n] / memoryLength);
                             // Bayes' Rule gives the probability that the state was forgotten given that toState == fromState
-                            final double pForgetAndTransition = pTransition * (priorPForget * weights[to] / ((1-priorPForget) + priorPForget * weights[to]));
+                            final double pForgetAndTransition = pTransition * (priorPForget * getWeight(to) / ((1-priorPForget) + priorPForget * getWeight(to)));
                             transitionCountsByState[to] += pForgetAndTransition;
                             pForget[n] += pForgetAndTransition;
                         }
@@ -311,5 +289,20 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
         public double pForget(final int position) { return pForget[position]; }
         public double pStateAtPosition(final int state, final int position) { return pStateByPosition[state][position]; }
         public double[] transitionCounts() { return transitionCountsByState; }
+        public int numPositions() { return N; }
     }
+
+    protected ExpectationStep getExpectationStep() { return new ExpectationStep(); }
+
+    public int numStates() { return hiddenStateValues.size(); }
+    public int numPositions() { return positions.size(); }
+    public SimpleInterval getPosition(final int n) { return positions.get(n); }
+    public DATA getDatum(final int n) { return data.get(n); }
+    public double getConcentration() { return concentration; }
+    public double getMemoryLength() { return memoryLength; }
+    protected double getWeight(final int n) { return weights.get(n); }
+    protected HIDDEN getState(final int n) { return hiddenStateValues.get(n); }
+    protected void setState(final int n, final HIDDEN value) { hiddenStateValues.set(n, value); }
+    protected List<Double> getWeights() { return Collections.unmodifiableList(weights); }
+    protected List<HIDDEN> getStates() { return Collections.unmodifiableList(hiddenStateValues); }
 }

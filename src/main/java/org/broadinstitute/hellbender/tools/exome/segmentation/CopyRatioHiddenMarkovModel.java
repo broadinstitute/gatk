@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
+import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.CauchyDistribution;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -19,14 +20,14 @@ import java.util.stream.Collectors;
  * the probability to remember a state is exp(-d/memoryLength).  If the state is forgotten, a new state
  * is chosen with probabilities given by an array of weights.
  *
- * Thus our transition probabilities are P(i -> j) = exp(-d/D) delta_{ij} + (1 - exp(-d/D) weights[j]
+ * Thus our transition probabilities are P(i -> j) = exp(-d/D) delta_{ij} + (1 - exp(-d/D)) weights[j]
  * where delta is the Kronecker delta and D is the memory length.
  *
  * Emission likelihoods as a function of copy ratio are assumed Gaussian in log2 space with a shared global variance.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class CopyRatioHiddenMarkovModel extends ClusteringGenomicHMM<Double> {
+public final class CopyRatioHiddenMarkovModel extends ClusteringGenomicHMM<Double, Double> {
     private final double logCoverageCauchyWidth;
     private final List<AbstractRealDistribution> emissionDistributions;
 
@@ -38,12 +39,12 @@ public final class CopyRatioHiddenMarkovModel extends ClusteringGenomicHMM<Doubl
      * @param memoryLength when consecutive SNPs are a distance d bases apart, the prior probability
      *                     for memory of the CNV state to be kept is exp(-d/memoryLength)
      */
-    public CopyRatioHiddenMarkovModel(final double[] log2CopyRatios, final double[] weights,
+    public CopyRatioHiddenMarkovModel(final List<Double> log2CopyRatios, final List<Double> weights,
                                       final double memoryLength, final double logCoverageCauchyWidth) {
         super(log2CopyRatios, weights, memoryLength);
         this.logCoverageCauchyWidth = logCoverageCauchyWidth;
         emissionDistributions = hiddenStates().stream()
-                .map(n -> new CauchyDistribution(log2CopyRatios[n], logCoverageCauchyWidth)).collect(Collectors.toList());
+                .map(n -> new CauchyDistribution(null, log2CopyRatios.get(n), logCoverageCauchyWidth)).collect(Collectors.toList());
     }
 
     /**
@@ -58,18 +59,14 @@ public final class CopyRatioHiddenMarkovModel extends ClusteringGenomicHMM<Doubl
      * Visible for the segmenter
      */
     @Override
-    public double logEmissionProbability(final Double data, final double copyRatio) {
-        return logEmissionProbability(data, copyRatio, logCoverageCauchyWidth);
+    public double logEmissionProbability(final Double data, final Double log2CopyRatio) {
+        return logEmissionProbability(data, log2CopyRatio, logCoverageCauchyWidth);
     }
 
     /**
      * Visible for the segmenter
      */
-    public static double logEmissionProbability(final Double data, final double copyRatio, final double cauchyWidth) {
-        return new CauchyDistribution(null, copyRatio, cauchyWidth).logDensity(data);
+    public static double logEmissionProbability(final Double data, final double log2CopyRatio, final double cauchyWidth) {
+        return new CauchyDistribution(null, log2CopyRatio, cauchyWidth).logDensity(data);
     }
-
-    public double getCopyRatio(final int state) { return getHiddenStateValue(state); }
-    public double[] getCopyRatios() { return getHiddenStateValues(); }
-    public double getLogCoverageCauchyWidth() { return logCoverageCauchyWidth; }
 }
