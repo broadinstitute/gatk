@@ -1,6 +1,7 @@
 {
   "pon_gatk_workflow.disable_sequence_dictionary_validation": "true",
   "pon_gatk_workflow.isWGS": "false", 
+  "pon_gatk_workflow.noQC": "false",
   "pon_gatk_workflow.max_open_files": "1000",
   "pon_gatk_workflow.wgsBinSize": "10000",  
   "pon_gatk_workflow.enable_gc_correction": "true", 

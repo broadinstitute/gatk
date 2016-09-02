@@ -40,6 +40,7 @@ workflow pon_gatk_workflow {
     String combined_entity_id = "combined_read_counts"
     Int max_open_files
     Int wgsBinSize
+    Boolean noQC
 
     # PoN name
     String pon_entity_id
@@ -132,6 +133,7 @@ workflow pon_gatk_workflow {
         pon_entity_id=pon_entity_id,
         read_counts_file=CorrectGCBias.coverage_file_gcbias_corrected,
         gatk_jar=gatk_jar,
+        noQC=noQC,
         mem=4
   }
 }
@@ -339,11 +341,15 @@ task CreatePanelOfNormals {
     String pon_entity_id
     File read_counts_file
     File gatk_jar
+    Boolean noQC
     Int mem
 
     command {
+        # If there are no removed samples the output file still needs to be created
+        touch "${pon_entity_id}.pon.removed_samples.txt"
         java -Xmx${mem}g -jar ${gatk_jar} CreatePanelOfNormals --extremeColumnMedianCountPercentileThreshold 2.5 \
-         --truncatePercentileThreshold 0.1 --input ${read_counts_file} --output ${pon_entity_id}.pon
+         --truncatePercentileThreshold 0.1 --input ${read_counts_file} --output ${pon_entity_id}.pon \
+         --noQC ${noQC}
     }
 
     output {
