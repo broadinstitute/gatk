@@ -395,11 +395,6 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="setFilteredGtToNocall", optional=true, doc="Set filtered genotypes to no-call")
     private boolean setFilteredGenotypesToNocall = false;
 
-    @Argument(fullName=StandardArgumentDefinitions.LENIENT_LONG_NAME,
-                            shortName = StandardArgumentDefinitions.LENIENT_SHORT_NAME,
-                            doc = "Lenient processing of VCF files", common = true, optional = true)
-    private boolean lenientVCFProcessing;
-
     @HiddenOption
     @Argument(fullName="ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES", optional=true,
                     doc="Allow samples other than those in the VCF to be specified on the command line. These samples will be ignored.")
@@ -509,7 +504,7 @@ public final class SelectVariants extends VariantWalker {
             }
         }
 
-        vcfWriter = GATKVariantContextUtils.createVCFWriter(outFile, sequenceDictionary, lenientVCFProcessing);
+        vcfWriter = createVCFWriter(outFile);
         vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
     }
 

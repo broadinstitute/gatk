@@ -4,9 +4,7 @@ import com.google.common.collect.Sets;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.VariantContextUtils.JexlVCMatchExp;
-import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
@@ -16,6 +14,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -199,8 +198,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     private void initializeVcfWriter() {
-        //TODO remove hardwiring to output VCFs
-        writer = new VariantContextWriterBuilder().setOutputFile(out).setOutputFileType(VariantContextWriterBuilder.OutputType.VCF).unsetOption(Options.INDEX_ON_THE_FLY).build();
+        writer = createVCFWriter(new File(out));
 
         // setup the header fields
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>();
