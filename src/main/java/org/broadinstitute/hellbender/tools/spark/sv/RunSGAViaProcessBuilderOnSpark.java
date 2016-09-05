@@ -120,7 +120,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
     // for developer performance debugging use
     private static final DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private static final Logger logger = LogManager.getLogger(RunSGAViaProcessBuilderOnSpark.class);
-    private static final int files_per_partition = 5; // performance tuning
+    private static final int FILES_PER_PARTITION = 5; // performance tuning
 
     @Override
     public void runTool(final JavaSparkContext ctx){
@@ -150,7 +150,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
             final FileSystem hadoopFileSystem = FileSystem.get(ctx.hadoopConfiguration());
             final ContentSummary cs = hadoopFileSystem.getContentSummary(new org.apache.hadoop.fs.Path(pathToAllInterleavedFASTQFiles));
             final int fileCount = (int) cs.getFileCount();
-            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles).repartition(fileCount/files_per_partition);
+            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles).repartition(fileCount/ FILES_PER_PARTITION);
         }catch (final IOException e){
             throw new GATKException(e.getMessage());
         }
@@ -168,7 +168,7 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final JavaPairRDD<Long, SGAAssemblyResult> cachedResults = results.cache(); // cache because Spark doesn't have an efficient RDD.split(predicate) yet
 
         // save fasta file contents or failure message
-        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null).cache();
+        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null);
         final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null).cache();
 
         if(!success.isEmpty()){
