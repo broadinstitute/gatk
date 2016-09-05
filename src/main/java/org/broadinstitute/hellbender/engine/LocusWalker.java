@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
+import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
 import java.util.*;
@@ -30,6 +30,12 @@ public abstract class LocusWalker extends GATKTool {
 
     @Argument(fullName = "disable_all_read_filters", shortName = "f", doc = "Disable all read filters", common = false, optional = true)
     public boolean disableAllReadFilters = false;
+
+    @Argument(fullName = "ignore_overlaps", shortName = "x", doc = "Disable read-pair overlap detection", common = false, optional = true)
+    public boolean ignoreOverlpas = false;
+
+    @Argument(fullName = "maxDepthPerSample", shortName = "maxDepthPerSample", doc = "Maximum number of reads to retain per sample. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
      * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
@@ -82,15 +88,9 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
-     * Get the information about how to downsample the reads. By default {@link DownsamplingMethod#NONE} is returned.
-     * Subclasses should override it to provide their own downsampling methods.
-     *
-     * @return the downsampling method for the reads
+     * @return Default value for the {@link #maxDepthPerSample} parameter, if none is provided on the command line
      */
-    public DownsamplingMethod getDownsamplingMethod() {
-        // TODO: change when downsampling command line options are implemented
-        return DownsamplingMethod.NONE;
-    }
+    protected abstract int defaultMaxDepthPerSample();
 
     /**
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
@@ -104,12 +104,20 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
+     * Returns the downsampling info using {@link #maxDepthPerSample} as target coverage
+     */
+    protected final LIBSDownsamplingInfo getDownsamplingInfo() {
+        return new LIBSDownsamplingInfo(maxDepthPerSample != 0, maxDepthPerSample);
+    }
+
+    /**
      * Implementation of locus-based traversal.
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      *
-     * The default implementation iterates over all positions in the reference covered by reads for all samples in the read groups, using
-     * the downsampling method provided by {@link #getDownsamplingMethod()}
-     * and including deletions only if {@link #includeDeletions()} returns {@code true}.
+     * The default implementation iterates over all positions in the reference covered by reads for all samples in the
+     * read groups, downsampling per sample using {@link #getDownsamplingInfo()},
+     * including deletions and Ns depending on {@link #includeDeletions()} and {@link #includeNs()}
+     * and keeping unique reads depending on {@link #keepUniqueReadListInLibs()}
      */
     @Override
     public void traverse() {
@@ -122,7 +130,7 @@ public abstract class LocusWalker extends GATKTool {
                 new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
                 makeReadFilter();
         // get the LIBS
-        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header);
+        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs(), ignoreOverlpas);
         // prepare the iterator
         Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function

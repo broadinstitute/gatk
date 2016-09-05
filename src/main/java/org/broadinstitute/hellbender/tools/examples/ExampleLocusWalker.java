@@ -47,6 +47,11 @@ public class ExampleLocusWalker extends LocusWalker {
     }
 
     @Override
+    protected int defaultMaxDepthPerSample() {
+        return 0;
+    }
+
+    @Override
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         // Get pileup and counts
         ReadPileup pileup = alignmentContext.getBasePileup();

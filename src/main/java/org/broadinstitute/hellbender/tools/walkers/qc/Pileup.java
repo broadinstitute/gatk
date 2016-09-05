@@ -121,6 +121,12 @@ public final class Pileup extends LocusWalker {
             .and(new CountingReadFilter("Primary alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT));
     }
 
+    // No downsampling by default
+    @Override
+    protected int defaultMaxDepthPerSample() {
+        return 0;
+    }
+
 
     @Override
     public void onTraversalStart() {
