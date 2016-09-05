@@ -255,7 +255,6 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends BaseTest {
         supplTest1.add(new VariantContextBuilder(makeVC("2", Arrays.asList(Aref,T,C))).attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, Arrays.asList(5,4)).attribute(VCFConstants.ALLELE_NUMBER_KEY,10).make());
         final VariantContext test1result = PosteriorProbabilitiesUtils.calculatePosteriorProbs(inputIndel,supplTest1,0,0.001,true,false,false);
 
-        System.out.println(test1result);
         final int[] GPs = _mleparse( (List<Integer>)test1result.getGenotype(0).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
         final int[] PLs = test1result.getGenotype(0).getPL();
         Assert.assertEquals(PLs,GPs);
@@ -270,8 +269,6 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends BaseTest {
         supplTest1.add(new VariantContextBuilder(makeVC("2", Arrays.asList(Aref,ATC,ATCATC))).attribute(GATKVCFConstants.MLE_ALLELE_COUNT_KEY, Arrays.asList(5,4)).attribute(VCFConstants.ALLELE_NUMBER_KEY,10).make());
         final VariantContext test1result = PosteriorProbabilitiesUtils.calculatePosteriorProbs(inputIndel,supplTest1,0,0.001,true,false,false);
 
-
-        System.out.println(test1result);
         final int[] GPs = _mleparse( (List<Integer>)test1result.getGenotype(0).getAnyAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY));
         final int[] PLs = test1result.getGenotype(0).getPL();
         Assert.assertEquals(PLs,GPs);

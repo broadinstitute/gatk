@@ -51,17 +51,18 @@ public final class CopyRatioModellerUnitTest extends BaseTest {
 
     //truths for the posterior standard deviations are based on the standard deviations of the appropriate analytic
     //posteriors, scaled appropriately for the total number of coverages or the average number of coverages per segment
-    private static final double VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH = 0.014;                //inverse chi-squared with 10000 DOF and variance = 1
-    private static final double OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH = 0.0022;    //Beta for alpha ~ 0.05 * 10000, beta ~ 0.95 * 10000
     private static final double MEAN_POSTERIOR_STANDARD_DEVIATION_MEAN_TRUTH = 0.1;                 //Gaussian with 100 points for each mean and unit variance gives 1 / sqrt(100)
+    private static final double VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH = 0.014;                //inverse chi-squared with 100 DOF and variance = 1
+    private static final double OUTLIER_PROBABILITY_POSTERIOR_STANDARD_DEVIATION_TRUTH = 0.0022;    //Beta for alpha ~ 516 (true # of outliers + prior alpha - 1),
+                                                                                                    //         beta ~ 9580 (true # of non-outliers + prior beta - 1)
 
     //test specifications
     private static final double MULTIPLES_OF_SD_THRESHOLD = 1.5;
     private static final double RELATIVE_ERROR_THRESHOLD = 0.15;
     private static final double FRACTION_OF_OUTLIER_INDICATORS_CORRECT_THRESHOLD = 0.98;
-    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_1_SIGMA = 5;
-    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_2_SIGMA = 2;
-    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_3_SIGMA = 1;
+    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_1_SIGMA = 10;
+    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_2_SIGMA = 5;
+    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_3_SIGMA = 2;
 
     private static final int NUM_SAMPLES = 500;
     private static final int NUM_BURN_IN = 250;

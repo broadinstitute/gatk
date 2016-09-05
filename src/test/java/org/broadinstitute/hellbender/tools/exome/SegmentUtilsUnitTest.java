@@ -11,10 +11,14 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
 public class SegmentUtilsUnitTest extends BaseTest {
+    private static final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
+    private static final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
+
     //a common set of ModeledSegments for tests
     private static final ModeledSegment ci1 = new ModeledSegment(new SimpleInterval("chr1", 1, 4), "call", 100, 1);
     private static final ModeledSegment ci2 = new ModeledSegment(new SimpleInterval("chr1", 5, 12), "call", 200, 0);
@@ -22,10 +26,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
 
     @Test
     public void testReadUncalledSegments() {
-        final File TEST_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/caller");
-        final File TEST_SEGMENTS = new File(TEST_DIR,"segments.tsv");
-
-        List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(TEST_SEGMENTS);
+        final List<SimpleInterval> segments = SegmentUtils.readIntervalsFromSegmentFile(TEST_SEGMENTS);
         Assert.assertEquals(segments.size(), 4);
         Assert.assertEquals(segments.get(0).getContig(), "chr");
         Assert.assertEquals(segments.get(1).getStart(), 300);
@@ -156,7 +157,7 @@ public class SegmentUtilsUnitTest extends BaseTest {
         targets.add(new Target("t6", new SimpleInterval("chr1", 130, 140)));
 
         final RealMatrix zeroCoverageMatrix = new Array2DRowRealMatrix(targets.size(), 1);
-        final ReadCountCollection counts = new ReadCountCollection(targets, Arrays.asList(sampleName), zeroCoverageMatrix);
+        final ReadCountCollection counts = new ReadCountCollection(targets, Collections.singletonList(sampleName), zeroCoverageMatrix);
 
         final AllelicCount snp1 = new AllelicCount(new SimpleInterval("chr1", 5, 5), 0, 1);
         final AllelicCount snp2 = new AllelicCount(new SimpleInterval("chr1", 40, 40), 0, 1);

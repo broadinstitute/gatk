@@ -68,8 +68,15 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
     private static final double MEAN_INITIAL = 5.;
     private static final double MEAN_POSTERIOR_STANDARD_DEVIATION_MEAN_TRUTH = 0.1;     //checked with emcee & analytic result
 
-    private static final int NUM_SAMPLES = 500;
+    private static final int NUM_SAMPLES = 750;
     private static final int NUM_BURN_IN = 250;
+
+    //test specifications
+    private static final double RELATIVE_ERROR_THRESHOLD_FOR_CENTERS = 0.01;
+    private static final double RELATIVE_ERROR_THRESHOLD_FOR_STANDARD_DEVIATIONS = 0.05;
+    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_1_SIGMA = 10;
+    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_2_SIGMA = 5;
+    private static final int DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_3_SIGMA = 2;
 
     //Calculates the exponent for a normal distribution; used in log-likelihood calculation below.
     private static double normalTerm(final double quantity, final double mean, final double variance) {
@@ -259,12 +266,12 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
      * <p>
      *     Recovery of input values for the variance global parameter and the segment-level mean parameters is checked.
      *     In particular, the mean and standard deviation of the posterior for the variance must be recovered to within
-     *     a relative error of 1% and 5%, respectively, in 250 samples (after 250 burn-in samples have been discarded).
+     *     a relative error of 1% and 5%, respectively, in 500 samples (after 250 burn-in samples have been discarded).
      * </p>
      * <p>
      *     Furthermore, the number of truth values for the segment-level means falling outside confidence intervals of
      *     1-sigma, 2-sigma, and 3-sigma given by the posteriors in each segment should be roughly consistent with
-     *     a normal distribution (i.e., ~32, ~5, and ~0, respectively; we allow for errors of 15, 6, and 2).
+     *     a normal distribution (i.e., ~32, ~5, and ~0, respectively; we allow for errors of 10, 5, and 2).
      *     Finally, the mean of the standard deviations of the posteriors for the segment-level means should be
      *     recovered to within a relative error of 5%.
      * </p>
@@ -287,15 +294,15 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         gibbsSampler.runMCMC();
 
         //Check that the statistics---i.e., the mean and standard deviation---of the variance posterior
-        //agree with those found by emcee/analytically to a relative error of 1% and 10%, respectively.
+        //agree with those found by emcee/analytically to a relative error of 1% and 5%, respectively.
         final double[] varianceSamples =
                 Doubles.toArray(gibbsSampler.getSamples(CopyRatioParameter.VARIANCE, Double.class, NUM_BURN_IN));
         final double variancePosteriorCenter = new Mean().evaluate(varianceSamples);
         final double variancePosteriorStandardDeviation = new StandardDeviation().evaluate(varianceSamples);
-        Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH), 0., 0.01);
-        Assert.assertEquals(
-                relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
-                0., 0.1);
+        Assert.assertEquals(relativeError(variancePosteriorCenter, VARIANCE_TRUTH),
+                0., RELATIVE_ERROR_THRESHOLD_FOR_CENTERS);
+        Assert.assertEquals(relativeError(variancePosteriorStandardDeviation, VARIANCE_POSTERIOR_STANDARD_DEVIATION_TRUTH),
+                0., RELATIVE_ERROR_THRESHOLD_FOR_STANDARD_DEVIATIONS);
         //Check statistics---i.e., the mean and standard deviation---of the segment-level mean posteriors.
         //In particular, check that the number of segments where the true mean falls outside confidence intervals
         //is roughly consistent with a normal distribution.
@@ -328,12 +335,12 @@ public final class GibbsSamplerCopyRatioUnitTest extends BaseTest {
         }
         final double meanPosteriorStandardDeviationsMean =
                 new Mean().evaluate(Doubles.toArray(meanPosteriorStandardDeviations));
-        Assert.assertEquals(numMeansOutsideOneSigma, 100 - 68, 15);
-        Assert.assertEquals(numMeansOutsideTwoSigma, 100 - 95, 6);
-        Assert.assertTrue(numMeansOutsideThreeSigma <= 2);
+        Assert.assertEquals(numMeansOutsideOneSigma, 100 - 68, DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_1_SIGMA);
+        Assert.assertEquals(numMeansOutsideTwoSigma, 100 - 95, DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_2_SIGMA);
+        Assert.assertTrue(numMeansOutsideThreeSigma <= DELTA_NUMBER_OF_MEANS_ALLOWED_OUTSIDE_3_SIGMA);
         Assert.assertEquals(
                 relativeError(meanPosteriorStandardDeviationsMean, MEAN_POSTERIOR_STANDARD_DEVIATION_MEAN_TRUTH),
-                0., 0.05);
+                0., RELATIVE_ERROR_THRESHOLD_FOR_STANDARD_DEVIATIONS);
     }
 
     //constants for testing exceptions

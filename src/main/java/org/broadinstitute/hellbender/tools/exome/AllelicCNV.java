@@ -96,7 +96,7 @@ public class AllelicCNV extends SparkCommandLineProgram {
     protected File snpCountsFile;
 
     @Argument(
-            doc = "Input file for tumor-sample tangent-normalized target coverages (.tn.tsv output of GATK CNV tool).",
+            doc = "Input file for tumor-sample tangent-normalized target log_2 coverages (.tn.tsv output of GATK CNV tool).",
             fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
             optional = false

@@ -41,7 +41,7 @@ public final class SliceSampler {
                         final double xMin, final double xMax, final double width) {
         Utils.nonNull(rng);
         Utils.nonNull(logPDF);
-        Utils.validateArg(xMin <= xMax, "Maximum bound must be greater than or equal to minimum bound.");
+        Utils.validateArg(xMin < xMax, "Maximum bound must be greater than minimum bound.");
         ParamUtils.isPositive(width, "Slice-sampling width must be positive.");
         this.rng = rng;
         this.logPDF = logPDF;
@@ -64,11 +64,17 @@ public final class SliceSampler {
 
     /**
      * Generate a single sample from the probability density function, given an initial value to use in slice construction.
-     * @param xInitial      initial value to use in slice construction; if outside [xMin, xMax], forced to be within
+     * @param xInitial      initial value to use in slice construction; must be in [xMin, xMax]
      * @return              sample drawn from the probability density function
      */
     public double sample(final double xInitial) {
+        Utils.validateArg(xMin <= xInitial && xInitial <= xMax, "Initial point in slice sampler is not within specified range.");
+
+        //adjust xInitial if on boundary
         final double xSample = Math.min(Math.max(xInitial, xMin + EPSILON), xMax - EPSILON);
+
+        //follow Neal 2003 procedure to slice sample with doubling of interval (assuming unimodal distribution)
+
         //randomly pick height of slice from uniform distribution under PDF
         //(equivalently, from exponential distribution under logPDF)
         final double logSliceHeight = logPDF.apply(xSample) - exponentialDistribution.sample();
@@ -79,12 +85,15 @@ public final class SliceSampler {
 
         int k = MAXIMUM_NUMBER_OF_DOUBLINGS;
         //expand slice by doubling until it brackets logPDF
-        while (k > 0 && (logPDF.apply(xLeft) > logSliceHeight || logPDF.apply(xRight) > logSliceHeight) &&
-                xLeft > xMin && xRight < xMax) {
+        double logPDFLeft = xLeft > xMin ? logPDF.apply(xLeft) : Double.NEGATIVE_INFINITY;
+        double logPDFRight = xRight < xMax ? logPDF.apply(xRight) : Double.NEGATIVE_INFINITY;
+        while (k > 0 && ((logSliceHeight < logPDFLeft || logSliceHeight < logPDFRight))) {
             if (rng.nextBoolean()) {
-                xLeft = Math.max(xLeft - (xRight - xLeft), xMin);
+                xLeft = xLeft - (xRight - xLeft);
+                logPDFLeft = xLeft > xMin ? logPDF.apply(xLeft) : Double.NEGATIVE_INFINITY;
             } else {
-                xRight = Math.min(xRight + (xRight - xLeft), xMax);
+                xRight = xRight + (xRight - xLeft);
+                logPDFRight = xRight < xMax ? logPDF.apply(xRight) : Double.NEGATIVE_INFINITY;
             }
             k--;
         }
@@ -94,7 +103,11 @@ public final class SliceSampler {
         //(shouldn't happen if width is chosen appropriately)
         int numIterations = 1;
         double xProposed = rng.nextDouble() * (xRight - xLeft) + xLeft;
-        while (logPDF.apply(xProposed) < logSliceHeight && numIterations <= MAXIMUM_NUMBER_OF_SLICE_SAMPLINGS) {
+        while (numIterations <= MAXIMUM_NUMBER_OF_SLICE_SAMPLINGS) {
+            final double logPDFProposed = xMin < xProposed && xProposed < xMax ? logPDF.apply(xProposed) : Double.NEGATIVE_INFINITY;
+            if (logSliceHeight < logPDFProposed) {
+                break;
+            }
             if (xProposed < xSample) {
                 xLeft = xProposed;
             } else {
@@ -103,8 +116,7 @@ public final class SliceSampler {
             xProposed = rng.nextDouble() * (xRight - xLeft) + xLeft;
             numIterations++;
         }
-
-        return xProposed;
+        return Math.min(Math.max(xProposed, xMin + EPSILON), xMax - EPSILON);
     }
 
     /**
@@ -116,7 +128,7 @@ public final class SliceSampler {
     public List<Double> sample(final double xInitial, final int numSamples) {
         ParamUtils.isPositive(numSamples, "Number of samples must be positive.");
         final List<Double> samples = new ArrayList<>(numSamples);
-        double xSample = Math.min(Math.max(xInitial, xMin + EPSILON), xMax - EPSILON);
+        double xSample = xInitial;
         for (int i = 0; i < numSamples; i++) {
             xSample = sample(xSample);
             samples.add(xSample);

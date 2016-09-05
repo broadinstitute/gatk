@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import org.apache.commons.math3.linear.*;
-import org.apache.spark.sql.catalyst.expressions.In;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
+import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
