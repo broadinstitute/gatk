@@ -488,6 +488,8 @@ public final class RecalUtils {
     public static void parsePlatformForRead(final GATKRead read, final SAMFileHeader header, final RecalibrationArgumentCollection RAC) {
         final SAMReadGroupRecord readGroup = ReadUtils.getSAMReadGroupRecord(read, header);
 
+        Utils.nonNull(readGroup, "Missing readGroup for read: " + read);
+
         if (RAC.FORCE_PLATFORM != null && (readGroup.getPlatform() == null || !readGroup.getPlatform().equals(RAC.FORCE_PLATFORM))) {
             readGroup.setPlatform(RAC.FORCE_PLATFORM);
         }

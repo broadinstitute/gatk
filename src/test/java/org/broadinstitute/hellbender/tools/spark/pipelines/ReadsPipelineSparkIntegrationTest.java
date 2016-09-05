@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReferenceTwoBitSource;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.SamAssertionUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -115,5 +117,30 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
         else {
             SamAssertionUtils.assertEqualBamFiles(outFile, new File(params.expectedFileName), true, ValidationStringency.SILENT);
         }
+    }
+
+    @Test
+    public void testWithBwa() throws IOException {
+        //The expected results file was created by
+        // 1) running BwaSpark on the input,
+        // 2) running ReadsPipelineSpark on the result (without bwa parameter)
+
+        final File output = createTempFile("bwa", ".bam");
+        if (!output.delete()) {
+            Assert.fail();
+        }
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        final File input = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam");
+        args.addArgument("knownSites", getResourceDir() + DBSNP_138_B37_CH20_1M_1M1K_VCF);
+        args.addReference(new File(b37_2bit_reference_20_21));
+        args.addBooleanArgument("run_bwa", true);
+        args.addArgument("bwa_reference", b37_reference_20_21);
+        args.addInput(input);
+        args.addOutput(output);
+        this.runCommandLine(args.getArgsArray());
+
+        final File expectedSam = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.ReadsPipelineWithBWA.bam");
+        SamAssertionUtils.assertSamsEqual(output, expectedSam);
     }
 }

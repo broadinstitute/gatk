@@ -52,9 +52,9 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> initialReads = getReads();
         final String referenceFileName = referenceArguments.getReferenceFileName();
-        final BwaSparkEngine engine = new BwaSparkEngine(bwaArgs.numThreads, bwaArgs.fixedChunkSize, referenceFileName);
-        final SAMFileHeader readsHeader = engine.makeHeaderForOutput(getHeaderForReads(), getReferenceSequenceDictionary());
-        final JavaRDD<GATKRead> alignedReads = engine.alignWithBWA(ctx, initialReads, readsHeader);
+        final BwaSparkEngine bwaEngine = new BwaSparkEngine(bwaArgs.numThreads, bwaArgs.fixedChunkSize, referenceFileName);
+        final SAMFileHeader readsHeader = bwaEngine.makeHeaderForOutput(getHeaderForReads(), getReferenceSequenceDictionary());
+        final JavaRDD<GATKRead> alignedReads = bwaEngine.alignWithBWA(ctx, initialReads, readsHeader);
 
         final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
         final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);

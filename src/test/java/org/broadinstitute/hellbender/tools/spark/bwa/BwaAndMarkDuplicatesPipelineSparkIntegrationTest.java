@@ -8,6 +8,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 public final class BwaAndMarkDuplicatesPipelineSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -17,23 +18,27 @@ public final class BwaAndMarkDuplicatesPipelineSparkIntegrationTest extends Comm
     }
 
     @Test
-    public void test() throws Exception {
-        //This file was created by 1) running bwaspark on the input and 2) running picard MarkDuplicates on the result
-        final File expectedSam = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bwa.md.bam");
+    public void test() throws IOException {
+        //The expected results file was created by
+        // 1) running BwaSpark on the input,
+        // 2) running picard SortSam to sort by coordinate
+        // 3) running picard MarkDuplicates on the result
+        // 4) running picard SortSam to sort by queryname
 
-        final File ref = new File(b37_reference_20_21);
-        final File input = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam");
         final File output = createTempFile("bwa", ".bam");
         if (!output.delete()) {
             Assert.fail();
         }
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
+        final File ref = new File(b37_reference_20_21);
         args.addReference(ref);
+        final File input = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam");
         args.addInput(input);
         args.addOutput(output);
         this.runCommandLine(args.getArgsArray());
 
+        final File expectedSam = new File(largeFileTestDir, "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bwa.md.bam");
         SamAssertionUtils.assertSamsEqual(output, expectedSam);
     }
 

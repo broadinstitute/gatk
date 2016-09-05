@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -17,6 +18,8 @@ import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.ApplyBQSRUniqueArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;
+import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.tools.spark.transforms.ApplyBQSRSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.BaseRecalibratorSparkFn;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
@@ -80,6 +83,19 @@ public class ReadsPipelineSpark extends GATKSparkTool {
     @ArgumentCollection
     public ApplyBQSRUniqueArgumentCollection applyBqsrArgs = new ApplyBQSRUniqueArgumentCollection();
 
+    @Argument(shortName = "bwa", fullName = "run_bwa", doc = "run bwa alignment at the beginning of the pipeline", optional = true)
+    public boolean runBWA = false;
+
+    //HACK: this is only needed because BWA cannot use 2bit and this pipeline wants a 2bit reference
+    @Argument(shortName = "bwaRef", fullName = "bwa_reference", doc = "Reference used by bwa", optional = true)
+    public String referenceFileName;
+
+    /**
+     *  command-line arguments to specify the BWA behavior
+     */
+    @ArgumentCollection
+    private BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
+
     @Override
     public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
         return BaseRecalibrationEngine.BQSR_REFERENCE_WINDOW_FUNCTION;
@@ -91,25 +107,41 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             throw new UserException.Require2BitReferenceForBroadcast();
         }
 
-        final JavaRDD<GATKRead> initialReads = getReads();
+        final SAMFileHeader header;
+        final JavaRDD<GATKRead> alignedReads;
+        if (runBWA) {
+            if (referenceFileName == null){
+                throw new UserException.MissingArgument("bwa_reference", "Provide a fasta file for bwa");
+            }
+            final JavaRDD<GATKRead> initialReads = getReads();
 
-        final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(initialReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
+            //HACK: referenceFileName should be referenceArguments.getReferenceFileName(); once the 2bit issue is resolved
+            final BwaSparkEngine bwaEngine = new BwaSparkEngine(bwaArgs.numThreads, bwaArgs.fixedChunkSize, referenceFileName);
+            final SAMFileHeader readsHeader = bwaEngine.makeHeaderForOutput(getHeaderForReads(), getReferenceSequenceDictionary());
+            alignedReads = bwaEngine.alignWithBWA(ctx, initialReads, readsHeader);
+            header = readsHeader;
+        } else {
+            alignedReads = getReads();
+            header = getHeaderForReads();
+        }
+
+        final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, header, duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
         final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
 
         // The markedReads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that MarkDupes and ApplyBQSR want. BQSR itself wants additional
         // filtering performed, so we do that here.
         final ReadFilter bqsrReadFilter = BaseRecalibrator.makeBQSRSpecificReadFilters();
-        final JavaRDD<GATKRead> markedFilteredReadsForBQSR = markedReads.filter(read -> bqsrReadFilter.test(read));
+        final JavaRDD<GATKRead> markedFilteredReadsForBQSR = markedReads.filter(bqsrReadFilter::test);
 
-        VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
-        JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
+        final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
+        final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
-        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
+        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
+        final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, header, getReferenceSequenceDictionary(), bqsrArgs);
 
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);
-        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, getHeaderForReads(), applyBqsrArgs.toApplyBQSRArgumentCollection(bqsrArgs.PRESERVE_QSCORES_LESS_THAN));
+        final JavaRDD<GATKRead> finalReads = ApplyBQSRSparkFn.apply(markedReads, reportBroadcast, header, applyBqsrArgs.toApplyBQSRArgumentCollection(bqsrArgs.PRESERVE_QSCORES_LESS_THAN));
 
         writeReads(ctx, output, finalReads);
     }
