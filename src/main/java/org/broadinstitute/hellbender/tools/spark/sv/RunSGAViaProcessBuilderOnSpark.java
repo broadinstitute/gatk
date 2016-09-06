@@ -168,18 +168,21 @@ public final class RunSGAViaProcessBuilderOnSpark extends GATKSparkTool {
         final JavaPairRDD<Long, SGAAssemblyResult> cachedResults = results.cache(); // cache because Spark doesn't have an efficient RDD.split(predicate) yet
 
         // save fasta file contents or failure message
-        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null);
+        final JavaPairRDD<Long, SGAAssemblyResult> success = cachedResults.filter(entry -> entry._2().assembledContigs!=null).cache();
         final JavaPairRDD<Long, SGAAssemblyResult> failure = cachedResults.filter(entry -> entry._2().assembledContigs==null).cache();
+        cachedResults.unpersist();
 
         if(!success.isEmpty()){
             success.map(entry -> entry._1().toString() + "\t" + entry._2().assembledContigs.toPackedFasta())
                     .saveAsTextFile(outputDir+"_0");
+            success.unpersist();
         }
 
         if(!failure.isEmpty()){
             final long failCnt = failure.count();
             failure.map(entry ->  entry._1().toString() + "\n" + entry._2().collectiveRuntimeInfo.toString())
                     .coalesce((int)failCnt).saveAsTextFile(outputDir+"_1"); // coalesce to produce one file for each failed job
+            failure.unpersist();
             throw new GATKException(failCnt + " jobs failed. Please look at the logging files produced in directory " + outputDir + "_1 for detail.");
         }
     }
