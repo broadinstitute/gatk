@@ -31,5 +31,7 @@
   "case_gatk_acnv_workflow.seg_param_trim": "0.025", 
   "case_gatk_acnv_workflow.seg_param_undoSplits": "$__UNDO_SPLITS__", 
   "case_gatk_acnv_workflow.seg_param_undoPrune": "0.05", 
-  "case_gatk_acnv_workflow.seg_param_undoSD": "$__UNDO_SD__" 
+  "case_gatk_acnv_workflow.seg_param_undoSD": "$__UNDO_SD__",
+  "case_gatk_acnv_workflow.stringency": "30",
+  "case_gatk_acnv_workflow.read_depth_threshold": "15"
 }

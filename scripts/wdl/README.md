@@ -19,7 +19,8 @@ Fields marked as Advanced almost never require a user to adjust the default valu
 Reference used must be the same between PoN and case samples.
 
 - ``pon_gatk_workflow.disable_sequence_dictionary_validation`` -- (Advanced) "true".  For end users, the value should not matter.  Developers leave this as true for debugging on smaller references.
-- ``pon_gatk_workflow.isWGS`` -- Change to "true"" if running WGS samples
+- ``pon_gatk_workflow.isWGS`` -- Change to "true" if running WGS samples
+- ``pon_gatk_workflow.noQC`` -- (Advanced) Change to "true" to disable quality control of samples and targets for PoN creation
 - ``pon_gatk_workflow.max_open_files`` -- (Advanced) "100",  Maximum number of files to combine simultaneously while combining read counts
 - ``pon_gatk_workflow.wgsBinSize`` --  Size of bins (in bp) for WGS read counts CLI.  *This must be the same values used for all case samples*.  Ignored if not running WGS.
 - ``pon_gatk_workflow.enable_gc_correction`` --  "true" is recommended,  This is a true/false option change to false to bypass GC bias correction step.  All case samples must be run with the same value as used in PoN creation.
@@ -59,6 +60,8 @@ Reference used must be the same between PoN and case samples.
 - ``case_gatk_acnv_workflow.enable_gc_correction`` -- "true" is recommended. This is a true/false option change to false to bypass GC bias correction step.  *This must be the same as was used to generate the PoN*
 - ``case_gatk_acnv_workflow.isWGS`` -- Change to true if running WGS samples.  You should also change ``case_gatk_acnv_workflow.seg_param_undoSplits`` and ``case_gatk_acnv_workflow.seg_param_undoSD`` to reduce (not eliminate) hyper-segmentation.
 - ``case_gatk_acnv_workflow.wgsBinSize`` -- "10000" is recommended.  Size of bins (in bp) for WGS read counts CLI.  *This must be the same as was used to generate the PoN*.  Ignored if not running WGS.
+- ``case_gatk_acnv_workflow.stringency`` -- (Advanced) ``GetHetBayesianCoverage`` parameter, default=30. End users should leave this value unchanged.
+- ``case_gatk_acnv_workflow.read_depth_threshold`` -- (Advanced) ``GetHetBayesianCoverage`` parameter, default=15. End users should leave this value unchanged.
 
 *For ``PerformSegmentation`` parameters, see pgs. 11-12 of https://bioconductor.org/packages/release/bioc/manuals/DNAcopy/man/DNAcopy.pdf*
 - ``case_gatk_acnv_workflow.seg_param_alpha`` -- (Advanced)  ``PerformSegmentation`` parameter, default=0.01

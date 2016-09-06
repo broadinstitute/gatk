@@ -52,6 +52,10 @@ workflow case_gatk_acnv_workflow {
     Float seg_param_undoPrune
     Int seg_param_undoSD
 
+    # Input parameters of GetBayesianHetCoverage tool
+    Float stringency
+    Int read_depth_threshold
+
     # Workflow output directories and options
     String plots_dir
     String call_cnloh_dir
@@ -125,7 +129,7 @@ workflow case_gatk_acnv_workflow {
 
     call NormalizeSomaticReadCounts as TumorNormalizeSomaticReadCounts {
       input:
-          entity_id=row[0], 
+          entity_id=row[0],
           coverage_file=TumorCorrectGCBias.gatk_cnv_coverage_file_gcbias,
           padded_target_file=TumorWholeGenomeCoverage.gatk_target_file,
           pon=PoN,
@@ -174,8 +178,9 @@ workflow case_gatk_acnv_workflow {
           normal_bam=row[4],
           normal_bam_idx=row[5],
           common_snp_list=common_snp_list,
-          mem=4,
-          stringency=30
+          stringency=stringency,
+          read_depth_threshold=read_depth_threshold,
+          mem=4
     }
 
     call AllelicCNV {
@@ -585,13 +590,15 @@ task BayesianHetPulldownPaired {
     File normal_bam
     File normal_bam_idx
     File common_snp_list
+    Float stringency
+    Int read_depth_threshold
     Int mem
-    Int stringency
 
     command {
         java -Xmx${mem}g -jar ${gatk_jar} GetBayesianHetCoverage --reference ${ref_fasta} \
          --normal ${normal_bam} --tumor ${tumor_bam} --snpIntervals ${common_snp_list} \
-         --normalHets ${entity_id_normal}.normal.hets.tsv --tumorHets ${entity_id_tumor}.tumor.hets.tsv --hetCallingStringency ${stringency} \
+         --normalHets ${entity_id_normal}.normal.hets.tsv --tumorHets ${entity_id_tumor}.tumor.hets.tsv \
+         --hetCallingStringency ${stringency} --readDepthThreshold ${read_depth_threshold} \
          --help false --version false --verbosity INFO --QUIET false --VALIDATION_STRINGENCY LENIENT
     }
 
