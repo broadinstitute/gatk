@@ -8,11 +8,15 @@ import org.broadinstitute.hellbender.utils.plotter.ACNVPlotter;
 import java.io.File;
 
 @CommandLineProgramProperties(
-        summary = "Create plots of allele fraction data used for finding copy number variants.  Please note that this tool is only supported for hg19 and b37 references.  All other references may fail.",
+        summary = "Create plots of allele fraction data used for finding copy number variants. Please note that this tool is only supported for hg19 and b37 references. All other references may fail.",
         oneLineSummary = "Create plots of allele fraction data",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class PlotACNVResults extends CommandLineProgram {
+
+    //CLI arguments
+    protected static final String OUTPUT_PREFIX_LONG_NAME = "outputPrefix";
+    protected static final String OUTPUT_PREFIX_SHORT_NAME = "pre";
 
     @Argument(
             doc = "File of het SNP positions, ref counts, and alt counts, produced by GetHetCoverage.",
@@ -39,6 +43,14 @@ public final class PlotACNVResults extends CommandLineProgram {
     protected String segmentsFile;
 
     @Argument(
+            doc = "Prefix for output image files.",
+            fullName = OUTPUT_PREFIX_LONG_NAME,
+            shortName = OUTPUT_PREFIX_SHORT_NAME,
+            optional = false
+    )
+    protected String outputPrefix;
+
+    @Argument(
             doc = "Directory to write plots",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -61,9 +73,9 @@ public final class PlotACNVResults extends CommandLineProgram {
         Utils.regularReadableUserFile(new File(coverageFile));
         Utils.regularReadableUserFile(new File(segmentsFile));
         ACNVPlotter.writeSegmentedAlleleFractionPlot(sampleName, snpCountsFile, coverageFile,
-                segmentsFile, outputDir, useSexChromosomes);
+                segmentsFile, outputDir, outputPrefix, useSexChromosomes);
         ACNVPlotter.writeSegmentedAlleleFractionPlotPerSeg(sampleName, snpCountsFile, coverageFile,
-                segmentsFile, outputDir, useSexChromosomes);
+                segmentsFile, outputDir, outputPrefix, useSexChromosomes);
         return "Success";
     }
 }

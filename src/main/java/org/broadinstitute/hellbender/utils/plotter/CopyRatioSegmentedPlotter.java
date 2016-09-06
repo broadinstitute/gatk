@@ -22,7 +22,7 @@ public final class CopyRatioSegmentedPlotter {
      * @param useSexChromosomes plot results for X and Y chromosomes
      */
     public static void writeSegmentedCopyRatioPlot(final String sampleName, final String tnFile, final String preTnFile,
-            final String segmentsFile, final String outputDir, final Boolean log, final Boolean useSexChromosomes) {
+            final String segmentsFile, final String outputDir, final String outputPrefix, final Boolean log, final Boolean useSexChromosomes) {
         String logArg = log ? "TRUE" : "FALSE";
         String schr = useSexChromosomes ? "TRUE" : "FALSE";
         final RScriptExecutor executor = new RScriptExecutor();
@@ -31,7 +31,7 @@ public final class CopyRatioSegmentedPlotter {
         executor.addScript(new Resource(COPY_RATIO_PLOTTING_R_SCRIPT, CopyRatioSegmentedPlotter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
         executor.addArgs("--args", "--sample_name="+sampleName, "--targets_file="+tnFile, "--pre_tn_file="+preTnFile, "--segments_file="+segmentsFile,
-                "--output_dir="+outputDir, "--log2_input="+logArg, "--sex_chrs="+schr);
+                "--output_dir="+outputDir, "--output_prefix="+outputPrefix, "--log2_input="+logArg, "--sex_chrs="+schr);
         executor.exec();
     }
 }

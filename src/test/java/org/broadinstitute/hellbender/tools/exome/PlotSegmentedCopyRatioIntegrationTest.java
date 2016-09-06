@@ -14,8 +14,7 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
     private static final File TN_FILE = new File(testDir, "HCC1143.tn.tsv");
     private static final File PRE_TN_FILE = new File(testDir, "HCC1143.preTN.tsv");
     private static final File SEG_FILE = new File(testDir, "HCC1143.seg");
-
-    private static final String SAMPLE_NAME = "HCC1143";
+    private static final String OUTPUT_PREFIX = "HCC1143";
 
     @Test()
     public void testUnLoggedCommandLine() {
@@ -25,15 +24,16 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
                 "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
+                "-" + PlotSegmentedCopyRatio.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX,
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").exists());
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").length() > 0);
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").exists());
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After_CR_Lim_4.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After_CR_Lim_4.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After.png").length() > 0);
     }
 
     @Test()
@@ -44,15 +44,16 @@ public class PlotSegmentedCopyRatioIntegrationTest extends CommandLineProgramTes
                 "-" + ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, PRE_TN_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, SEG_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, tDir.getAbsolutePath(),
+                "-" + PlotSegmentedCopyRatio.OUTPUT_PREFIX_LONG_NAME, OUTPUT_PREFIX,
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_SHORT_NAME,
         };
         runCommandLine(arguments);
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").exists());
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_FullGenome.png").length() > 0);
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").exists());
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After_CR_Lim_4.png").length() > 0);
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").exists());
-        Assert.assertTrue(new File(tDir, SAMPLE_NAME + "_Before_After.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After_CR_Lim_4.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After_CR_Lim_4.png").length() > 0);
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After.png").exists());
+        Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After.png").length() > 0);
     }
 }

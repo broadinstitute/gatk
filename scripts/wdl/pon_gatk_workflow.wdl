@@ -33,18 +33,28 @@ workflow pon_gatk_workflow {
     File ref_fasta_fai
     File gatk_jar
 
-    # Workflow options 
+    # CalculateTargetCoverage options
+    Boolean disable_all_read_filters
+    Boolean keep_duplicate_reads
+    Boolean disable_sequence_dictionary_validation
+    String transform
+    String grouping
+
+    # Workflow options
     Boolean enable_gc_correction
     Boolean isWGS
-    Boolean disable_sequence_dictionary_validation
-    String combined_entity_id = "combined_read_counts"
-    Int max_open_files
     Int wgsBinSize
+    Int max_open_files
+    String combined_entity_id = "combined_read_counts"
     Boolean noQC
 
     # PoN name
     String pon_entity_id
-    
+
+    # Java maximum memory options
+    Int calculate_target_coverage_memory
+    Int whole_genome_coverage_memory
+
   call PadTargets {
     input:
         target_file=target_file,
@@ -71,8 +81,12 @@ workflow pon_gatk_workflow {
           ref_fasta_dict=ref_fasta_dict,
           gatk_jar=gatk_jar,
           disable_sequence_dictionary_validation=disable_sequence_dictionary_validation,
+          disable_all_read_filters=disable_all_read_filters,
+          keep_duplicate_reads=keep_duplicate_reads,
+          transform=transform,
+          grouping=grouping,
           isWGS=isWGS,
-          mem=2
+          mem=calculate_target_coverage_memory
     }
 
     call WholeGenomeCoverage {
@@ -88,7 +102,7 @@ workflow pon_gatk_workflow {
           gatk_jar=gatk_jar,
           isWGS=isWGS,
           wgsBinSize=wgsBinSize,
-          mem=4
+          mem=whole_genome_coverage_memory
     }
   }
 
@@ -186,10 +200,10 @@ task GetBamFileName {
 task CalculateTargetCoverage {
     String entity_id
     File padded_target_file
-    String transform = "PCOV"
-    String grouping = "SAMPLE"
-    Boolean keep_duplicate_reads = true
-    Boolean disable_all_read_filters = false
+    String grouping
+    Boolean keep_duplicate_reads
+    Boolean disable_all_read_filters
+    String transform
     File input_bam
     File bam_idx
     File ref_fasta
