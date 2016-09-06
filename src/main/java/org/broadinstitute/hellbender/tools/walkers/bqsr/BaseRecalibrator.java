@@ -10,7 +10,8 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -23,6 +24,7 @@ import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCo
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary.*;
@@ -141,23 +143,36 @@ public final class BaseRecalibrator extends ReadWalker {
     }
 
     @Override
-    public CountingReadFilter makeReadFilter() {
+    public List<ReadFilter> getDefaultReadFilters() {
+        //Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
+        //available through {link #getHeaderForReads}.
         //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
-        return makeBQSRSpecificReadFilters().and(super.makeReadFilter());
+        final List<ReadFilter> bqsrFilters = makeBQSRSpecificReadFilters();
+        bqsrFilters.add(new WellformedReadFilter());
+        return bqsrFilters;
     }
 
-    public static CountingReadFilter getStandardBQSRReadFilter( final SAMFileHeader header ) {
+    // This ReadFilter shouldn't be a CountingReadFilter since it is also used in Spark
+    // contexts (shared by BaseRecalibratorSpark and BaseRecalibratorSparkSharded).
+    public static ReadFilter getStandardBQSRReadFilter(final SAMFileHeader header ) {
         //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
-        return makeBQSRSpecificReadFilters().and(new CountingReadFilter("Wellformed", new WellformedReadFilter(header)));
+        List<ReadFilter> bqsrFilters =  makeBQSRSpecificReadFilters();
+        bqsrFilters.add(new WellformedReadFilter(header));
+        return bqsrFilters.stream().reduce(ReadFilterLibrary.ALLOW_ALL_READS, (f1, f2) -> f1.and(f2));
     }
 
-    public static CountingReadFilter makeBQSRSpecificReadFilters() {
-        return new CountingReadFilter("Mapping_Quality_Not_Zero", MAPPING_QUALITY_NOT_ZERO)
-                .and(new CountingReadFilter("Mapping_Quality_Available", MAPPING_QUALITY_AVAILABLE))
-                .and(new CountingReadFilter("Mapped", MAPPED))
-                .and(new CountingReadFilter("Primary_Alignment", PRIMARY_ALIGNMENT))
-                .and(new CountingReadFilter("Not_Duplicate", NOT_DUPLICATE))
-                .and(new CountingReadFilter("Passes_Vendor_Quality_Check", PASSES_VENDOR_QUALITY_CHECK));
+    // Return the list of raw read filters used for BQSR contexts, not including WellFormed.
+    // This ReadFilter shouldn't be a CountingReadFilter as it is also used in Spark
+    // contexts (shared by ReadsPipelineSpark and BQSRPipelineSpark).
+    public static List<ReadFilter> makeBQSRSpecificReadFilters() {
+        List<ReadFilter> filters = new ArrayList<>(6);
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        return filters;
     }
 
     /**

@@ -136,6 +136,7 @@ public final class CommandLineParserTest {
         final int reqIndex = out.indexOf("Required Arguments:");
         Assert.assertTrue(reqIndex < 0);
         Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) > 0);
+        Assert.assertEquals(out.indexOf("Conditional Arguments:", reqIndex), -1);
     }
 
     /**
@@ -148,6 +149,7 @@ public final class CommandLineParserTest {
         final int reqIndex = out.indexOf("Required Arguments:");
         Assert.assertTrue(reqIndex > 0);
         Assert.assertTrue(out.indexOf("Optional Arguments:", reqIndex) > 0);
+        Assert.assertEquals(out.indexOf("Conditional Arguments:", reqIndex), -1);
     }
 
     @Test
@@ -701,6 +703,23 @@ public final class CommandLineParserTest {
 
         Assert.assertTrue(clp.parseArguments(System.err, new String[]{"--help","false"}));
         Assert.assertFalse(clp.parseArguments(System.err, new String[]{"--help", "true"}));
+    }
+
+    class NameCollision{
+        @ArgumentCollection
+        public ArgsCollection argsCollection = new ArgsCollection();
+
+        //this arg name collides with one in ArgsCollection
+        @Argument(fullName = "arg1")
+        public int anArg;
+    }
+
+    @Test(expectedExceptions = GATKException.CommandLineParserInternalException.class)
+    public void testArgumentNameCollision(){
+        final NameCollision collides = new NameCollision();
+        final CommandLineParser clp = new CommandLineParser(collides);
+
+        clp.parseArguments(System.err, new String[]{"--arg1", "101"});
     }
 
     /***************************************************************************************

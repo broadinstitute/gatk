@@ -5,16 +5,16 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.IOUtil;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.*;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * Command line program to read non-duplicate insert sizes, create a Histogram
@@ -28,13 +28,12 @@ import java.io.File;
         programGroup = QCProgramGroup.class
 )
 public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
-    private static final Logger log = LogManager.getLogger(CollectInsertSizeMetrics.class);
 
     @ArgumentCollection
     public InsertSizeMetricsArgumentCollection insertSizeArgs = new InsertSizeMetricsArgumentCollection();
 
     // Calculates InsertSizeMetrics for all METRIC_ACCUMULATION_LEVELs provided
-    private InsertSizeMetricsCollector insertSizeCollector;
+    private InsertSizeMetricsCollector insertSizeCollector = new InsertSizeMetricsCollector();
 
     private ReadFilter insertSizeMetricsReadFilter = null;
 
@@ -67,8 +66,18 @@ public final class CollectInsertSizeMetrics extends SinglePassSamProgram {
         }
 
         //Delegate actual collection to InsertSizeMetricCollector
-        insertSizeCollector = new InsertSizeMetricsCollector(insertSizeArgs, header);
-        insertSizeMetricsReadFilter = insertSizeCollector.getReadFilter(header);
+        insertSizeCollector.initialize(insertSizeArgs, header);
+
+        //TODO: CollectInsertSizeMetrics is currently a SinglePassSamProgram/(Picard) tool
+        //and doesn't benefit from command line access/merging of read filters, so we need
+        //to prepare the read filter manually. When the Picard tools are ported to conform
+        //to the GATK framework, this code should be eliminated in favor of engine-level
+        //read filter processing/merging
+        List<ReadFilter> readFilters = insertSizeCollector.getDefaultReadFilters();
+        readFilters.forEach(f -> f.setHeader(header));
+        insertSizeMetricsReadFilter = readFilters.stream().reduce(
+                ReadFilterLibrary.ALLOW_ALL_READS,
+                (rf1, rf2) -> rf1.and(rf2));
     }
 
     @Override

@@ -9,14 +9,20 @@ import org.testng.annotations.Test;
 
 public final class ReadFilterUnitTest {
 
-    // Mirrors CountedReadFilterUnitTest
+    // Mirrors CountingReadFilterUnitTest
     static final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 10);
     static final GATKRead goodRead = ArtificialReadUtils.createArtificialRead(header, "Zuul", 0, 2,2);
     static final GATKRead endBad = ArtificialReadUtils.createArtificialRead(header, "Peter", 0, 1,100);
     static final GATKRead startBad = ArtificialReadUtils.createArtificialRead(header, "Ray", 0, -1,2);
     static final GATKRead bothBad = ArtificialReadUtils.createArtificialRead(header, "Egon", 0, -1,100);
-    static final ReadFilter startOk = r -> r.getStart() >= 1;
-    static final ReadFilter endOk = r -> r.getEnd() <= 10;
+    static final ReadFilter startOk = new ReadFilter() {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read){return read.getStart() >= 1;}
+    };
+    static final ReadFilter endOk = new ReadFilter() {
+        private static final long serialVersionUID = 1L;
+        @Override public boolean test(final GATKRead read){return read.getEnd() <= 10;}
+    };
 
     @DataProvider(name = "readsStartEnd")
     public Object[][] readsStartEnd(){
@@ -53,6 +59,10 @@ public final class ReadFilterUnitTest {
 
     @Test(dataProvider = "readsAnd")
     public void testAnd(GATKRead read, boolean expected){
+        boolean aTest = startOk.test(read);
+        boolean bTest = endOk.test(read);
+        boolean cTest = endOk.negate().test(read);
+
         ReadFilter startAndEndOk = startOk.and(endOk);
         ReadFilter endAndStartOk = endOk.and(startOk);
         Assert.assertEquals(startAndEndOk.test(read), expected);
@@ -90,7 +100,10 @@ public final class ReadFilterUnitTest {
 
     @Test(dataProvider = "deeper")
     public void testDeeperChaining(GATKRead read, boolean expected){
-        ReadFilter notAMinionOfGozer = r -> !r.getName().equals("Zuul");
+        ReadFilter notAMinionOfGozer = new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read){return !read.getName().equals("Zuul");}
+        };
         ReadFilter readChecksOut = startOk.or(endOk).and(notAMinionOfGozer);
         Assert.assertEquals(readChecksOut.test(read), expected);
         Assert.assertEquals(readChecksOut.and(readChecksOut).test(read), expected);

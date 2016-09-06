@@ -3,9 +3,11 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.io.Serializable;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -13,16 +15,19 @@ import java.util.Set;
  * Keep reads that do not have blacklisted platform unit tags.
  * Matching is done by exact case-sensitive text matching.
  */
-public final class PlatformUnitReadFilter implements ReadFilter {
+public final class PlatformUnitReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "blackListedLanes", shortName = "blackListedLanes", doc="Keep reads with platform units not on the list", optional=true)
+    @Argument(fullName = "blackListedLanes",
+            shortName = "blackListedLanes", doc="Keep reads with platform units not on the list",
+            optional=false)
     public Set<String> blackListedLanes = new LinkedHashSet<>();
 
-    private final SAMFileHeader header;
+    // Command line parser requires a no-arg constructor
+    public PlatformUnitReadFilter( ) {}
 
     public PlatformUnitReadFilter( final SAMFileHeader header ) {
-        this.header = header;
+        super.setHeader(header);
     }
 
     @Override
@@ -40,6 +45,6 @@ public final class PlatformUnitReadFilter implements ReadFilter {
             return pu_attr;
         }
 
-        return ReadUtils.getPlatformUnit(read, header);
+        return ReadUtils.getPlatformUnit(read, samHeader);
     }
 }

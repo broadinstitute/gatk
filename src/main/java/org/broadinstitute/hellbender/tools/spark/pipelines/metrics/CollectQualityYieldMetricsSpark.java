@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.QualityYieldMetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -42,8 +43,8 @@ public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSpark
     }
 
     @Override
-    protected ReadFilter getReadFilter(SAMFileHeader samHeader) {
-        return ReadFilterLibrary.ALLOW_ALL_READS;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     @Override

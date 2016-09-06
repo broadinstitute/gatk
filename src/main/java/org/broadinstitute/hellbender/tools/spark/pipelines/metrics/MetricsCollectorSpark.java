@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -71,10 +72,13 @@ import java.util.List;
  *     CollectorType collector = new CollectorType<CollectorArgType>()
  *     CollectorArgType args = // get metric-specific input arguments
  *
- *     // pass the input arguments to the collector for initialization
- *     collector.initialize(args);
+ *     // NOTE: getDefaultReadFilters is called before the collector's initialize
+ *     // method is called, so the read filters cannot access argument values
+ *     ReadFilter filter == collector.getDefaultReadFilters();
  *
- *     ReadFilter filter == collector.getReadFilter(samFileHeader);
+ *     // pass the input arguments to the collector for initialization
+ *     collector.initialize(args, defaultMetricsHeaders);
+ *
  *     collector.collectMetrics(
  *         getReads().filter(filter),
  *         samFileHeader
@@ -104,6 +108,19 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
     default SortOrder getExpectedSortOrder() { return SortOrder.coordinate; }
 
     /**
+     * Return the read filters used for this collector. The default implementation
+     * returns a no-op read filter that allows all reads. Collectors that have more
+     * specific filter criteria should return a list of the required filters.
+     *
+     * Note that this method is called before the initialize method is called, and
+     * thus before the collector has access to it's argument collection.
+     * @return the list of read filters used for this collector
+     */
+    default List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
+
+    /**
      * Give the collector's input arguments to the collector (if the collector
      * is being driven by a standalone tool. This method will always be called
      * before either getReadFilter (so the collector can use the arguments to
@@ -111,20 +128,9 @@ public interface MetricsCollectorSpark<T extends MetricsArgumentCollection> exte
      * @param inputArgs an object that contains the argument values to be used for
      *                  the collector
      * @param samHeader the SAMFileHeader for the input
-     * @param defaultHeaders default metrics headers from the containing tool
+     * @param defaultMetricsHeaders default metrics headers from the containing tool
      */
-    void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
-
-    /**
-     * Return the read filter required for this collector. The default implementation
-     * returns a no-op read filter that allows all reads. Collectors that require
-     * a more specific filter criteria should return an instance of the required filter.
-     * @param samHeader the SAMFileHeader for the input BAM
-     * @return the read filter required for this collector
-     */
-    default ReadFilter getReadFilter(SAMFileHeader samHeader) {
-        return ReadFilterLibrary.ALLOW_ALL_READS;
-    }
+    void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultMetricsHeaders);
 
     /**
      * Do the actual metrics collection on the provided RDD.

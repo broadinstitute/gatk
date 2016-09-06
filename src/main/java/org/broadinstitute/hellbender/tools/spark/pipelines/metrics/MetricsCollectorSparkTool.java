@@ -20,7 +20,7 @@ import java.util.List;
  *
  * - Declare an instance of a collector that implements the {@link MetricsCollectorSpark} interface
  * - Declare an instance of the input argument collection (of type T) for the collector
- * - Implement or override the {@link #getReadFilter}, {@link #initialize}, {@link #collectMetrics} and {@link #saveMetrics}
+ * - Implement or override the {@link #getDefaultReadFilters}, {@link #initialize}, {@link #collectMetrics} and {@link #saveMetrics}
  *   methods by forwarding to the collector object
  *
  * The {link #runTool} method for this class will automatically put the collector through the
@@ -35,7 +35,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
      * The following {@link MetricsCollectorSpark} methods must be implemented by subclasses
      * and should be forwarded to the embedded collector.
      */
-    abstract protected ReadFilter getReadFilter(SAMFileHeader samHeader);
+    abstract public List<ReadFilter> getDefaultReadFilters();
     abstract protected SortOrder getExpectedSortOrder();
     abstract protected void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);
     abstract protected void collectMetrics(JavaRDD<GATKRead> filteredReads, SAMFileHeader samHeader);
@@ -49,11 +49,6 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
 
     @Override
     public final boolean requiresReads(){ return true; }
-
-    @Override
-    public final ReadFilter makeReadFilter() {
-        return getReadFilter(getHeaderForReads());
-    }
 
     /**
      * The runTool method used when metrics collector tools are run

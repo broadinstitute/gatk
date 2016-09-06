@@ -5,6 +5,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -12,6 +13,8 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
 
 @CommandLineProgramProperties(summary = "Counts variants in the input VCF",
         oneLineSummary = "CountVariants on Spark",
@@ -30,6 +33,16 @@ public final class CountVariantsSpark extends GATKSparkTool {
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             optional = true)
     public String out;
+
+    /**
+     * Return the list of GATKCommandLinePluginDescriptor objects to be used for this CLP.
+     * GATKSparkTool returns the GATKReadFilterPluginDescriptor, but we don't want that
+     * for Variant tools.
+     */
+    @Override
+    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
+        return new ArrayList<>();
+    }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {

@@ -114,11 +114,11 @@ public final class Pileup extends LocusWalker {
 
     @Override
     public CountingReadFilter makeReadFilter(){
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
-            .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
-            .and(new CountingReadFilter("Not duplicate", ReadFilterLibrary.NOT_DUPLICATE))
-            .and(new CountingReadFilter("Passes VQ check", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
-            .and(new CountingReadFilter("Primary alignment", ReadFilterLibrary.PRIMARY_ALIGNMENT));
+        return new CountingReadFilter(new WellformedReadFilter(getHeaderForReads()))
+            .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
+            .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
+            .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
+            .and(new CountingReadFilter(ReadFilterLibrary.PRIMARY_ALIGNMENT));
     }
 
 

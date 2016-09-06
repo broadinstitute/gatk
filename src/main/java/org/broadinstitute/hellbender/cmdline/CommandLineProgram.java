@@ -11,6 +11,7 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -66,7 +67,7 @@ public abstract class CommandLineProgram {
     * Initialized in parseArgs.  Subclasses may want to access this to do their
     * own validation, and then print usage using commandLineParser.
     */
-    private CommandLineParser commandLineParser;
+    protected CommandLineParser commandLineParser;
 
     private final List<Header> defaultHeaders = new ArrayList<>();
 
@@ -203,7 +204,7 @@ public abstract class CommandLineProgram {
     */
     protected boolean parseArgs(final String[] argv) {
 
-        commandLineParser = new CommandLineParser(this);
+        commandLineParser = new CommandLineParser(this, getPluginDescriptors());
         final boolean ret;
         try{
             ret = commandLineParser.parseArguments(System.err, argv);
@@ -230,6 +231,12 @@ public abstract class CommandLineProgram {
         }
         return true;
     }
+
+    /**
+     * Return the list of GATKCommandLinePluginDescriptors to be used for this CLP.
+     * Default implementation returns null. Subclasses can override this to return a custom list.
+     */
+    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() { return new ArrayList<>(); }
 
     /**
      * Prints the given message (may be null) to the provided stream, adding adornments and formatting.

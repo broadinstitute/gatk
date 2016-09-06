@@ -2,11 +2,15 @@ package org.broadinstitute.hellbender.engine;
 
 
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.rnaseq.SplitNCigarReads;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.StreamSupport;
 
 
@@ -27,9 +31,7 @@ public abstract class TwoPassReadWalker extends ReadWalker {
     public void traverse() {
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
-        final CountingReadFilter countedFilter = disable_all_read_filters ?
-                new CountingReadFilter("Allow all", ReadFilterLibrary.ALLOW_ALL_READS ) :
-                makeReadFilter();
+        final CountingReadFilter countedFilter = makeReadFilter();
 
         traverseReads(countedFilter, this::firstPassApply);
         logger.info("Finished First Pass");
@@ -54,6 +56,11 @@ public abstract class TwoPassReadWalker extends ReadWalker {
 
                     progressMeter.update(readInterval);
                 });
+    }
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(new ReadFilterLibrary.AllowAllReadsReadFilter());
     }
 
     @FunctionalInterface

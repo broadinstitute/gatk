@@ -46,11 +46,11 @@ public final class CollectInsertSizeMetricsSpark
     }
 
     /**
-     * Return the read filter required for this collector
+     * Return the read filters required for this collector
      */
     @Override
-    protected ReadFilter getReadFilter(final SAMFileHeader samHeader) {
-        return insertSizeCollector.getReadFilter(samHeader);
+    public List<ReadFilter> getDefaultReadFilters() {
+        return insertSizeCollector.getDefaultReadFilters();
     }
 
     @Override

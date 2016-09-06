@@ -27,7 +27,7 @@ public class InsertSizeMetricsCollectorSpark
     private static final long serialVersionUID = 1L;
 
     private InsertSizeMetricsArgumentCollection inputArgs = null;
-    private InsertSizeMetricsCollector collector = null;
+    private InsertSizeMetricsCollector collector = new InsertSizeMetricsCollector();
 
     private InsertSizeMetricsCollector resultMetrics = null;
     private MetricsFile<InsertSizeMetrics, Integer> metricsFile = null;
@@ -42,7 +42,7 @@ public class InsertSizeMetricsCollectorSpark
             final List<Header> defaultHeaders)
     {
         this.inputArgs = inputArgs;
-        collector = new InsertSizeMetricsCollector(inputArgs, samHeader);
+        collector.initialize(inputArgs, samHeader);
         metricsFile = new MetricsFile<>();
         if (defaultHeaders != null) {
             defaultHeaders.stream().forEach(h -> metricsFile.addHeader(h));
@@ -50,14 +50,12 @@ public class InsertSizeMetricsCollectorSpark
     }
 
     /**
-     * Return a read filter to be used for this collector.
+     * Return the read filters to be used for this collector.
      *
-     * @param samFileHeader
-     * @return ReadFilter
+     * @return List of read filters for this collector
      */
-    @Override
-    public ReadFilter getReadFilter(final SAMFileHeader samFileHeader) {
-        return collector.getReadFilter(samFileHeader);
+    public List<ReadFilter> getDefaultReadFilters() {
+        return collector.getDefaultReadFilters();
     }
 
     @Override

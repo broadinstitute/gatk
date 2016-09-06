@@ -28,7 +28,7 @@ public class OverclippedReadFilterUnitTest extends BaseTest {
     @Test(dataProvider= "OverclippedDataProvider")
     public void testOverclippedFilter(final String cigarString, boolean doNotRequireSoftclipsOnBothEnds, final boolean expectedResult) {
 
-        final OverclippedReadFilter filter = new OverclippedReadFilter();
+        final OverclippedReadFilter filter = new OverclippedReadFilter(30, false);
         filter.doNotRequireSoftclipsOnBothEnds = doNotRequireSoftclipsOnBothEnds;
         final GATKRead read = buildSAMRead(cigarString);
         Assert.assertEquals(filter.test(read), expectedResult, cigarString);

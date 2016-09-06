@@ -17,16 +17,30 @@ import org.broadinstitute.hellbender.cmdline.Argument;
  * </p>
  *
  */
-public final class OverclippedReadFilter implements ReadFilter{
+public final class OverclippedReadFilter extends ReadFilter{
 
     static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "filter_is_too_short_value", shortName = "filterTooShort", doc = "Value for which reads with less than this number of aligned bases is considered too short", optional = true)
-    int minimumSequenceLength = 30;
+    @Argument(fullName = "filterTooShort",
+            shortName = "filterTooShort",
+            doc = "Value for which reads with less than this number of aligned bases is considered too short",
+            optional = true)
+    public int minimumSequenceLength = 30;
 
-    @Argument(fullName = "do_not_require_softclips_both_ends", shortName = "NoRequireSCBothEnds", doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must have a soft-clipped block, setting this flag requires only 1 soft-clipped block.", optional = true)
-    Boolean doNotRequireSoftclipsOnBothEnds = false;
+    @Argument(fullName = "dontRequireSoftClipsBothEnds",
+            shortName = "dontRequireSoftClipsBothEnds",
+            doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
+                    "have a soft-clipped block, setting this flag requires only 1 soft-clipped block.",
+            optional = true)
+    public Boolean doNotRequireSoftclipsOnBothEnds;
 
+    // Command line parser requires a no-arg constructor
+    public OverclippedReadFilter() {}
+
+    public OverclippedReadFilter(final int minimumSequenceLength, final boolean doNotRequireSoftclipsOnBothEnds) {
+        this.minimumSequenceLength = minimumSequenceLength;
+        this.doNotRequireSoftclipsOnBothEnds = doNotRequireSoftclipsOnBothEnds;
+    }
 
     @Override
     public boolean test(final GATKRead read) {

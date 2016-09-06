@@ -27,8 +27,12 @@ public class ReadFilteringIteratorUnitTest extends BaseTest {
 
     @DataProvider(name = "FilteringIteratorTestData")
     public Object[][] filteringIteratorTestData() {
-        final ReadFilter allowNoReadsFilter = read -> false;
-        final ReadFilter allowLongReadsFilter = read -> read.getLength() > 100;
+        final ReadFilter allowNoReadsFilter = new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read){return false;} };
+        final ReadFilter allowLongReadsFilter = new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean test(final GATKRead read){return read.getLength() > 100;} };
 
         return new Object[][] {
                 { makeReadsIterator(), ReadFilterLibrary.ALLOW_ALL_READS, 5 },

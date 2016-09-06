@@ -34,7 +34,7 @@ public class UnmarkDuplicates extends ReadWalker {
 
     @Override
     public CountingReadFilter makeReadFilter() {
-        return new CountingReadFilter("Allow all reads", ReadFilterLibrary.ALLOW_ALL_READS);
+        return new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     @Override
