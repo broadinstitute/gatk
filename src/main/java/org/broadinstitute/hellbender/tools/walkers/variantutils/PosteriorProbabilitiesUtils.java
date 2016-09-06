@@ -322,7 +322,7 @@ public final class PosteriorProbabilitiesUtils {
         final int[] mle = new int[mleList.size()];
 
         if ( ! ( mleList.get(0) instanceof Integer) ) {
-            throw new IllegalStateException("BUG: The AC values should be an Integer, but was "+mleList.get(0).getClass().getCanonicalName());
+            throw new IllegalStateException("BUG: The AC values should be an Integer, but was " + mleList.get(0).getClass().getCanonicalName());
         }
 
         for ( int idx = 0; idx < mle.length; idx++) {

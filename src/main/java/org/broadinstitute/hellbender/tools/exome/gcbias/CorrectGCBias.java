@@ -65,7 +65,7 @@ public class CorrectGCBias extends CommandLineProgram {
         final double[] gcContentByTarget = gcContentsOfTargets(inputCounts, targets);
         final ReadCountCollection outputCounts = GCCorrector.correctCoverage(inputCounts, gcContentByTarget);
         writeOutputCounts(outputCounts);
-        return "Success";
+        return "SUCCESS";
     }
 
     private ReadCountCollection readInputCounts(final TargetCollection<Target> targets) {

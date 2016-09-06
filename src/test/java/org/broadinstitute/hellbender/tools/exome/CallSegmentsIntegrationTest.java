@@ -24,7 +24,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
 
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath()
         };
         runCommandLine(arguments);
@@ -39,7 +39,7 @@ public final class CallSegmentsIntegrationTest extends CommandLineProgramTest{
 
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME, TEST_SEGMENTS_LEGACY.getAbsolutePath(),
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, TEST_TARGETS.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LEGACY_SEG_FILE_SHORT_NAME
         };

@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 
-public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
+public class SegmentedCopyRatioPlotterUnitTest extends BaseTest {
     private static File testDir = new File("src/test/resources/org/broadinstitute/hellbender/utils/plotter");
     private static final File TN_FILE = new File(testDir, "HCC1143.tn.tsv");
     private static final File SEG_FILE = new File(testDir, "HCC1143.seg");
@@ -19,9 +19,9 @@ public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
 
     @Test
     public void testTangentPlotting() throws IOException {
-        File tDir = IOUtils.tempDir("Test", "Plotting");
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, TN_FILE.getAbsolutePath(),
-                TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", OUTPUT_PREFIX, false, false);
+        final File tDir = IOUtils.tempDir("Test", "Plotting");
+        SegmentedCopyRatioPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, TN_FILE, TN_FILE, SEG_FILE,
+                tDir.getAbsolutePath() + "/", OUTPUT_PREFIX, false, false);
         Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").exists());
         Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").length() > 0);
         Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After_CR_Lim_4.png").exists());
@@ -46,9 +46,9 @@ public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
 
     @Test
     public void testTangentPlottingSexChrs() throws IOException {
-        File tDir = IOUtils.tempDir("Test", "Plotting");
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, TN_FILE.getAbsolutePath(),
-                TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", OUTPUT_PREFIX, false, true);
+        final File tDir = IOUtils.tempDir("Test", "Plotting");
+        SegmentedCopyRatioPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, TN_FILE, TN_FILE, SEG_FILE,
+                tDir.getAbsolutePath() + "/", OUTPUT_PREFIX, false, true);
         Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").exists());
         Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_FullGenome.png").length() > 0);
         Assert.assertTrue(new File(tDir, OUTPUT_PREFIX + "_Before_After_CR_Lim_4.png").exists());
@@ -73,8 +73,8 @@ public class CopyRatioSegmentedPlotterUnitTest extends BaseTest {
 
     @Test(expectedExceptions = RScriptExecutorException.class)
     public void testMissingInput() throws IOException {
-        File tDir = IOUtils.tempDir("Test", "Plotting");
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, "Non-existent-file",
-                TN_FILE.getAbsolutePath(), SEG_FILE.getAbsolutePath(), tDir.getAbsolutePath()+"/", OUTPUT_PREFIX, false, false);
+        final File tDir = IOUtils.tempDir("Test", "Plotting");
+        SegmentedCopyRatioPlotter.writeSegmentedCopyRatioPlot(SAMPLE_NAME, new File("Non-existent-file"),
+                TN_FILE, SEG_FILE, tDir.getAbsolutePath() + "/", OUTPUT_PREFIX, false, false);
     }
 }

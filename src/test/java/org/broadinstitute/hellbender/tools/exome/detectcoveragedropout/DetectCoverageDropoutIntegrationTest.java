@@ -36,7 +36,7 @@ public class DetectCoverageDropoutIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(result.getNumSegmentsAfterFiltering() == 4, "This testdata had four segments with min number of targets, but " + result.getNumSegmentsAfterFiltering() + " seen.");
         Assert.assertFalse(result.isCoverageDropout(), "This sample did not have coverage dropout, yet was tagged as such.");
         Assert.assertTrue(result.getNumSegmentsAfterFiltering() < result.getNumSegments(), "This sample should have filtered segments, yet number of filtered and unfiltered segments are equal.");
-        Assert.assertFalse(new File(outputFile.getAbsoluteFile().getParent()+"/"+DetectCoverageDropout.WARNING_FILE+outputFile.getName()).exists(), "Warning file exists, but it should not have been written.");
+        Assert.assertFalse(new File(outputFile.getAbsoluteFile().getParent() + "/" + DetectCoverageDropout.WARNING_FILE + outputFile.getName()).exists(), "Warning file exists, but it should not have been written.");
     }
 
     @Test

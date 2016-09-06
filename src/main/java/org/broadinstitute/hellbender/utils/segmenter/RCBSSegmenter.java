@@ -90,8 +90,8 @@ public final class RCBSSegmenter {
         final RScriptExecutor executor = new RScriptExecutor();
         executor.addScript(new Resource(R_SCRIPT, RCBSSegmenter.class));
         /*--args is needed for Rscript to recognize other arguments properly*/
-        executor.addArgs("--args", "--sample_name="+sampleName, "--targets_file="+tnFile, "--output_file="+outputFile,
-                "--log2_input="+logArg, "--min_width="+String.valueOf(minWidth),
+        executor.addArgs("--args", "--sample_name=" + sampleName, "--targets_file=" + tnFile, "--output_file=" + outputFile,
+                "--log2_input=" + logArg, "--min_width=" + String.valueOf(minWidth),
                 "--alpha=" + String.valueOf(alpha), "--nperm=" + String.valueOf(nperm),
                 "--pmethod=" + pmethod.toString(), "--kmax=" + String.valueOf(kmax),
                 "--nmin=" + String.valueOf(nmin), "--eta=" + String.valueOf(eta),
