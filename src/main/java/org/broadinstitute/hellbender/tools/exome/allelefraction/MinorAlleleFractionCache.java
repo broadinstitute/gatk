@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.allelefraction;
 
+import org.apache.commons.math3.exception.TooManyEvaluationsException;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.OptimizationUtils;
@@ -50,8 +51,11 @@ public final class MinorAlleleFractionCache {
                     r * (logf + logBias) + a * logOneMinusf - (a + r) * logRefMinorDenominatorTerm;
             return GATKProtectedMathUtils.logSumExp(altMinorLogLikelihood, refMinorLogLikelihood);
         };
-
-        return OptimizationUtils.argmax(objective, AlleleFractionState.MIN_MINOR_FRACTION, AlleleFractionState.MAX_MINOR_FRACTION, initialEstimate);
+        try {
+            return OptimizationUtils.argmax(objective, AlleleFractionState.MIN_MINOR_FRACTION, AlleleFractionState.MAX_MINOR_FRACTION, initialEstimate);
+        } catch (final TooManyEvaluationsException ex){
+            return initialEstimate;
+        }
     }
 
     /**
