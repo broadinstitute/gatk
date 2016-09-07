@@ -27,24 +27,24 @@ public final class PadTargets extends CommandLineProgram {
 
     @Argument(
             doc = "File containing the targets for padding.  Should have no existing overlap.",
-            shortName = TARGET_FILE_SHORT_NAME,
             fullName = TARGET_FILE_FULL_NAME,
+            shortName = TARGET_FILE_SHORT_NAME,
             optional = false
     )
     protected File targetFile = null;
 
     @Argument(
             doc = "Output target file name.",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional = false
     )
     protected File outFile = null;
 
     @Argument(
             doc = "Amount of bases to be added on either side of all targets.",
-            shortName = PADDING_SHORT_NAME,
             fullName = PADDING_FULL_NAME,
+            shortName = PADDING_SHORT_NAME,
             optional = true
     )
     protected Integer padding = 250;

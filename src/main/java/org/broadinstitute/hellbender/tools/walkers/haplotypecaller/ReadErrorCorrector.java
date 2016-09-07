@@ -170,12 +170,12 @@ public final class ReadErrorCorrector {
                 }
             }
             if (debug) {
-                logger.info("Number of corrected bases:"+readErrorCorrectionStats.numBasesCorrected);
-                logger.info("Number of corrected reads:"+readErrorCorrectionStats.numReadsCorrected);
-                logger.info("Number of skipped reads:"+readErrorCorrectionStats.numReadsUncorrected);
-                logger.info("Number of solid kmers:"+readErrorCorrectionStats.numSolidKmers);
-                logger.info("Number of corrected kmers:"+readErrorCorrectionStats.numCorrectedKmers);
-                logger.info("Number of uncorrectable kmers:"+readErrorCorrectionStats.numUncorrectableKmers);
+                logger.info("Number of corrected bases:" + readErrorCorrectionStats.numBasesCorrected);
+                logger.info("Number of corrected reads:" + readErrorCorrectionStats.numReadsCorrected);
+                logger.info("Number of skipped reads:" + readErrorCorrectionStats.numReadsUncorrected);
+                logger.info("Number of solid kmers:" + readErrorCorrectionStats.numSolidKmers);
+                logger.info("Number of corrected kmers:" + readErrorCorrectionStats.numCorrectedKmers);
+                logger.info("Number of uncorrectable kmers:" + readErrorCorrectionStats.numUncorrectableKmers);
             }
         }
         return correctedReads;
@@ -311,7 +311,7 @@ public final class ReadErrorCorrector {
                     kmerDifferingBases.put(storedKmer.getKmer(), nearestNeighbor.getRight());
                     readErrorCorrectionStats.numCorrectedKmers++;
 //                    if (debug)
-//                        logger.info("Original kmer:"+storedKmer + "\tCorrected kmer:"+nearestNeighbor.first+"\tDistance:"+dist);
+//                        logger.info("Original kmer:" + storedKmer + "\tCorrected kmer:" + nearestNeighbor.first + "\tDistance:" + dist);
                 }
                 else {
                     readErrorCorrectionStats.numUncorrectableKmers++;

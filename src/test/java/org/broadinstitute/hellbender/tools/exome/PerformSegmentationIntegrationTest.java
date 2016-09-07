@@ -17,51 +17,50 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
+public class PerformSegmentationIntegrationTest extends CommandLineProgramTest {
 
-    private static final String inputTestDir = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/";
-    private static final String outputTestDir = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/";
+    private static final String INPUT_TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/input/";
+    private static final String OUTPUT_TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/utils/segmenter/output/";
+
+    private static final File INPUT_FILE = new File (INPUT_TEST_DIR, "HCC1143_reduced_log.tsv");
+    private static final File EXPECTED_FILE = new File(OUTPUT_TEST_DIR, "HCC1143_reduced_result.seg");
 
     @DataProvider(name="inputFileData")
     public Object[][] inputFileData() {
         return new Object[][] {
-                new Object[] { new File(inputTestDir, "HCC1143_reduced.tsv"), new File(outputTestDir, "HCC1143_reduced_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
-                new Object[] { new File(inputTestDir, "HCC1143_short.tsv"), new File(outputTestDir, "HCC1143_short_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
-                new Object[] { new File(inputTestDir, "Simple.tsv"), new File(outputTestDir, "Simple_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "Simple"},
+                new Object[] { new File(INPUT_TEST_DIR, "HCC1143_reduced.tsv"), new File(OUTPUT_TEST_DIR, "HCC1143_reduced_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
+                new Object[] { new File(INPUT_TEST_DIR, "HCC1143_short.tsv"), new File(OUTPUT_TEST_DIR, "HCC1143_short_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "HCC1143"},
+                new Object[] { new File(INPUT_TEST_DIR, "Simple.tsv"), new File(OUTPUT_TEST_DIR, "Simple_result.seg"), createTempFile("gatkcnv.HCC1143", ".seg"), "Simple"},
         };
     }
 
     @Test(dataProvider = "inputFileData")
-    public void testUnLoggedCommandLine(final File INPUT_FILE, final File EXPECTED, final File output, String sampleName) throws IOException {
-        RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), false);
+    public void testUnLoggedCommandLine(final File inputFile, final File expected, final File output, String sampleName) throws IOException {
+        RCBSSegmenter.writeSegmentFile(sampleName, inputFile.getAbsolutePath(), output.getAbsolutePath(), false);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, inputFile.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
         };
         runCommandLine(arguments);
-        SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
+        SegmenterUnitTest.assertEqualSegments(output, expected);
     }
 
     @Test()
     public void testUnLoggedCommandLine() throws IOException {
-        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
-        final File EXPECTED = new File(outputTestDir, "HCC1143_reduced_result.seg");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
         };
         runCommandLine(arguments);
-        SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
+        SegmenterUnitTest.assertEqualSegments(output, EXPECTED_FILE);
     }
 
     @Test()
     public void testUnLoggedCommandLineWithWeights() throws IOException {
-        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
-        final File EXPECTED = new File(outputTestDir, "HCC1143_reduced_result.seg");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File tmpWeightsFile = IOUtils.createTempFile("integration-weight-file", ".txt");
         final double [] weights = new double[7677];
@@ -70,24 +69,21 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath()
         };
         runCommandLine(arguments);
-        SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
+        SegmenterUnitTest.assertEqualSegments(output, EXPECTED_FILE);
     }
 
     @Test(dataProvider = "parameterTests")
     public void testAlternateParametersActuallyChangeData(String [] newArguments) {
-
         // This test simply tests that if we change the value of the parameter that the output is altered.
 
-        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File outputNewParam = createTempFile("gatkcnv.HCC1143.sdundo", ".seg");
-        final File EXPECTED = new File(outputTestDir, "HCC1143_reduced_result.seg");
         final File tmpWeightsFile = IOUtils.createTempFile("integration-weight-file", ".txt");
         final double [] weights = new double[7677];
         Arrays.fill(weights, 1.0);
@@ -95,13 +91,13 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
         };
         runCommandLine(arguments);
-        SegmenterUnitTest.assertEqualSegments(output, EXPECTED);
+        SegmenterUnitTest.assertEqualSegments(output, EXPECTED_FILE);
 
         final List<String> fullNewArgumentsAsList = Lists.newArrayList(arguments);
         // Change the output file
@@ -117,10 +113,8 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testAlternateSDUndoParametersActuallyChangeData() {
-
         // This test simply tests that if we change the value of the parameter that the output is altered.
 
-        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File outputNewParam = createTempFile("gatkcnv.HCC1143.sdundo", ".seg");
 
@@ -131,7 +125,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
@@ -140,7 +134,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final String[] newArguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputNewParam.getAbsolutePath(),
@@ -154,10 +148,8 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
 
     @Test
     public void testAlternateSDUndoPruneParametersActuallyChangeData() {
-
         // This test simply tests that if we change the value of the parameter that the output is altered.
 
-        final File INPUT_FILE = new File(inputTestDir, "HCC1143_reduced_log.tsv");
         final File output = createTempFile("gatkcnv.HCC1143", ".seg");
         final File outputNewParam = createTempFile("gatkcnv.HCC1143.sdundo", ".seg");
 
@@ -168,7 +160,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         final String sampleName = "HCC1143";
         RCBSSegmenter.writeSegmentFile(sampleName, INPUT_FILE.getAbsolutePath(), output.getAbsolutePath(), true);
         final String[] arguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, output.getAbsolutePath(),
@@ -177,7 +169,7 @@ public class PerformSegmentationIntegrationTest extends CommandLineProgramTest{
         runCommandLine(arguments);
 
         final String[] newArguments = {
-                "-" + ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
+                "-" + ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME, INPUT_FILE.getAbsolutePath(),
                 "-" + ExomeStandardArgumentDefinitions.LOG2_SHORT_NAME,
                 "-" + PerformSegmentation.TARGET_WEIGHT_FILE_SHORT_NAME, tmpWeightsFile.getAbsolutePath(),
                 "-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputNewParam.getAbsolutePath(),

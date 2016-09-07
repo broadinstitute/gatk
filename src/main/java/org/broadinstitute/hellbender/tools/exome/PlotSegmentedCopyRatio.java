@@ -2,7 +2,8 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
-import org.broadinstitute.hellbender.utils.plotter.CopyRatioSegmentedPlotter;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.plotter.SegmentedCopyRatioPlotter;
 
 import java.io.File;
 
@@ -23,7 +24,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
             fullName =  ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             optional = false
     )
-    protected String tangentFile;
+    protected File tangentFile;
 
     @Argument(
             doc = "Genomic targets before tangent normalization file, produced by NormalizeSomaticReadCounts: preTN",
@@ -31,7 +32,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
             fullName =  ExomeStandardArgumentDefinitions.PRE_TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             optional = false
     )
-    protected String preTangentFile;
+    protected File preTangentFile;
 
     @Argument(
             doc = "File of segmented regions of the genome",
@@ -39,7 +40,7 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
             fullName =  ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME,
             optional = false
     )
-    protected String segmentFile;
+    protected File segmentFile;
 
     @Argument(
             doc = "Prefix for output image files.",
@@ -75,12 +76,20 @@ public final class PlotSegmentedCopyRatio extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final String sampleName = ReadCountCollectionUtils.getSampleNameForCLIsFromReadCountsFile(new File(tangentFile));
+        validateArgs();
+        final String sampleName = ReadCountCollectionUtils.getSampleNameForCLIsFromReadCountsFile(tangentFile);
         createPlot(sampleName, tangentFile, preTangentFile, segmentFile, outputDir, outputPrefix, log, sexChrs);
-        return "Success";
+        return "SUCCESS";
     }
 
-    private void createPlot(String sampleName, String tangentFile, String preTangentFile, String segmentFile, String outDir, String outPrefix, boolean log, boolean sexChrs){
-        CopyRatioSegmentedPlotter.writeSegmentedCopyRatioPlot(sampleName, tangentFile, preTangentFile, segmentFile, outDir, outPrefix, log, sexChrs);
+    private void validateArgs() {
+        Utils.regularReadableUserFile(tangentFile);
+        Utils.regularReadableUserFile(preTangentFile);
+        Utils.regularReadableUserFile(segmentFile);
+    }
+
+    private void createPlot(final String sampleName, final File tangentFile, final File preTangentFile, final File segmentFile,
+                            final String outputDir, final String outputPrefix, final boolean log, final boolean sexChrs) {
+        SegmentedCopyRatioPlotter.writeSegmentedCopyRatioPlot(sampleName, tangentFile, preTangentFile, segmentFile, outputDir, outputPrefix, log, sexChrs);
     }
 }

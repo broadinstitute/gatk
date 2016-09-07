@@ -186,8 +186,8 @@ public final class CalculateGenotypePosteriors extends VariantWalker {
      * Do not use the [MLE] allele count from the input samples (the ones for which you're calculating posteriors)
      * in the site frequency distribution; only use the AC and AN calculated from external sources.
      */
-    @Argument(fullName="ignoreInputSamples",shortName="ext",doc="Use external information only; do not inform genotype priors by "+
-          "the discovered allele frequency in the callset whose posteriors are being calculated. Useful for callsets containing "+
+    @Argument(fullName="ignoreInputSamples",shortName="ext",doc="Use external information only; do not inform genotype priors by " +
+          "the discovered allele frequency in the callset whose posteriors are being calculated. Useful for callsets containing " +
           "related individuals.",optional=true)
     public boolean ignoreInputSamples = false;
 

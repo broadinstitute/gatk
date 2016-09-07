@@ -536,7 +536,7 @@ task PerformSegmentation {
     Int mem
 
     command {
-        java -Xmx${mem}g -jar ${gatk_jar} PerformSegmentation --targets ${tn_file} \
+        java -Xmx${mem}g -jar ${gatk_jar} PerformSegmentation --tangentNormalized ${tn_file} \
          --output ${entity_id}.seg --log2Input true  --alpha ${seg_param_alpha} --nperm ${seg_param_nperm} \
          --pmethod ${seg_param_pmethod} --minWidth ${seg_param_minWidth} --kmax ${seg_param_kmax} \
          --nmin ${seg_param_nmin} --eta ${seg_param_eta} --trim ${seg_param_trim} --undoSplits ${seg_param_undoSplits} \
@@ -558,7 +558,7 @@ task Caller {
     Int mem
 
     command {
-        java -Xmx${mem}g -jar ${gatk_jar} CallSegments --targets ${tn_file} \
+        java -Xmx${mem}g -jar ${gatk_jar} CallSegments --tangentNormalized ${tn_file} \
          --segments ${seg_file} --output ${entity_id}.called  --legacy false \
          --help false --version false --verbosity INFO --QUIET false
     }

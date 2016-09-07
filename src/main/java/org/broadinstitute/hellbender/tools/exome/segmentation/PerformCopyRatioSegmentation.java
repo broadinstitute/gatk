@@ -29,8 +29,8 @@ public final class PerformCopyRatioSegmentation extends CommandLineProgram {
 
     @Argument(
             doc = "Tangent-normalized log2 read counts file",
-            shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
-            fullName =  ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
+            fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
             optional = false
     )
     protected String coverageFile;

@@ -19,28 +19,28 @@ public final class PlotACNVResults extends CommandLineProgram {
     protected static final String OUTPUT_PREFIX_SHORT_NAME = "pre";
 
     @Argument(
-            doc = "File of het SNP positions, ref counts, and alt counts, produced by GetHetCoverage.",
-            shortName = ExomeStandardArgumentDefinitions.ALLELIC_COUNTS_FILE_SHORT_NAME,
+            doc = "File of het SNP positions, ref counts, and alt counts, produced by GetHetCoverage/GetBayesianHetCoverage.",
             fullName =  ExomeStandardArgumentDefinitions.ALLELIC_COUNTS_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.ALLELIC_COUNTS_FILE_SHORT_NAME,
             optional = false
     )
-    protected String snpCountsFile;
+    protected File snpCountsFile;
 
     @Argument(
-            doc = "File of tangent-normalized coverage of targets",
+            doc = "File of tangent-normalized coverage of targets.",
             fullName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_LONG_NAME,
             shortName = ExomeStandardArgumentDefinitions.TANGENT_NORMALIZED_COUNTS_FILE_SHORT_NAME,
             optional = false
     )
-    protected String coverageFile;
+    protected File coverageFile;
 
     @Argument(
             doc = "File of segmented regions of the genome, produced by AllelicCNV.",
-            shortName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME,
             fullName =  ExomeStandardArgumentDefinitions.SEGMENT_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.SEGMENT_FILE_SHORT_NAME,
             optional = false
     )
-    protected String segmentsFile;
+    protected File segmentsFile;
 
     @Argument(
             doc = "Prefix for output image files.",
@@ -51,31 +51,31 @@ public final class PlotACNVResults extends CommandLineProgram {
     protected String outputPrefix;
 
     @Argument(
-            doc = "Directory to write plots",
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "Directory to write plots.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional = false
     )
     protected String outputDir;
 
     @Argument(
-            doc = "Plot sex chromosomes",
-            shortName = ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_SHORT_NAME,
+            doc = "Plot sex chromosomes.",
             fullName = ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.INCLUDE_SEX_CHROMOSOMES_SHORT_NAME,
             optional = true
     )
     protected Boolean useSexChromosomes = false;
 
     @Override
     protected Object doWork() {
-        final String sampleName = SegmentUtils.getSampleNameForCLIsFromSegmentFile(new File(segmentsFile));
-        Utils.regularReadableUserFile(new File(snpCountsFile));
-        Utils.regularReadableUserFile(new File(coverageFile));
-        Utils.regularReadableUserFile(new File(segmentsFile));
+        final String sampleName = SegmentUtils.getSampleNameForCLIsFromSegmentFile(segmentsFile);
+        Utils.regularReadableUserFile(snpCountsFile);
+        Utils.regularReadableUserFile(coverageFile);
+        Utils.regularReadableUserFile(segmentsFile);
         ACNVPlotter.writeSegmentedAlleleFractionPlot(sampleName, snpCountsFile, coverageFile,
                 segmentsFile, outputDir, outputPrefix, useSexChromosomes);
         ACNVPlotter.writeSegmentedAlleleFractionPlotPerSeg(sampleName, snpCountsFile, coverageFile,
                 segmentsFile, outputDir, outputPrefix, useSexChromosomes);
-        return "Success";
+        return "SUCCESS";
     }
 }
