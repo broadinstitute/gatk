@@ -32,7 +32,7 @@ public final class OverclippedReadFilter extends ReadFilter{
             doc = "Allow a read to be filtered out based on having only 1 soft-clipped block. By default, both ends must " +
                     "have a soft-clipped block, setting this flag requires only 1 soft-clipped block.",
             optional = true)
-    public Boolean doNotRequireSoftclipsOnBothEnds;
+    public boolean doNotRequireSoftclipsOnBothEnds;
 
     // Command line parser requires a no-arg constructor
     public OverclippedReadFilter() {}

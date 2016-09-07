@@ -9,6 +9,7 @@ import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AuthHolder;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
@@ -16,7 +17,6 @@ import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutorException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.Resource;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.File;
 import java.io.Serializable;
@@ -61,55 +61,15 @@ public final class InsertSizeMetricsCollector
 
         readFilters.add(new WellformedReadFilter());
         readFilters.add(ReadFilterLibrary.MAPPED);
+        readFilters.add(ReadFilterLibrary.PAIRED);
+        readFilters.add(ReadFilterLibrary.NONZERO_FRAGMENT_LENGTH_READ_FILTER);
+        readFilters.add(ReadFilterLibrary.FIRST_OF_PAIR);
+        readFilters.add(ReadFilterLibrary.PROPERLY_PAIRED);
+        readFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        readFilters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
+        readFilters.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
+        readFilters.add(new MappingQualityReadFilter(0));
 
-        readFilters.add(new ReadFilter() {
-            static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read) { return read.isPaired(); }
-        });
-
-        readFilters.add(new ReadFilter() {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read) { return 0!=read.getFragmentLength(); }
-        });
-
-        readFilters.add(new ReadFilter() {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read) {
-                return inputArgs.useEnd == (read.isFirstOfPair() ?
-                    InsertSizeMetricsArgumentCollection.EndToUse.FIRST :
-                    InsertSizeMetricsArgumentCollection.EndToUse.SECOND);
-            }
-        });
-        readFilters.add(new ReadFilter() {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read) { return read.isProperlyPaired();}
-        });
-        readFilters.add(new ReadFilter() {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read){ return !read.isDuplicate(); }
-        });
-        readFilters.add(new ReadFilter() {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read){ return !read.isSecondaryAlignment(); }
-        });
-        readFilters.add(new ReadFilter() {
-            private static final long serialVersionUID = 1L;
-            @Override public boolean test(final GATKRead read) { return !read.isSupplementaryAlignment(); }
-        });
-
-        //TODO: These filters should be replaced with standard ReadFilters with arguments accessible
-        //to the command line.
-        //getDefaultReadFilters is called before the metrics collector has access to (the user-specified)
-        //command line argument values, so argument values can't be used to determine the filters (and
-        //if they could, those values wouldn't be controllable by the user via the command line).
-        //See https://github.com/broadinstitute/gatk/issues/2142
-        // if (0 != inputArgs.MQPassingThreshold) {
-        //     readFilters.add(new ReadFilter() {
-        //         private static final long serialVersionUID = 1L;
-        //         @Override public boolean test(final GATKRead read) {
-        //             return read.getMappingQuality() >= inputArgs.MQPassingThreshold;}
-        //     });
-        // };
         return readFilters;
     }
 

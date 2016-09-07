@@ -67,11 +67,6 @@ public abstract class TwoPassReadWalker extends ReadWalker {
                 });
     }
 
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        return Collections.singletonList(new ReadFilterLibrary.AllowAllReadsReadFilter());
-    }
-
     /**
      * a common abstraction for first and second pass apply functions
      */

@@ -46,6 +46,9 @@ public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescrip
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
     private Map<String, ReadFilter> readFilters = new HashMap<>();
 
+    // List of default filters in the order they were specified by the tool
+    private List<String> toolDefaultReadFilterNamesInOrder = new ArrayList<>();
+
     // Map of read filter (simple) class names to the corresponding default plugin instance
     private Map<String, ReadFilter> toolDefaultReadFilters = new HashMap<>();
 
@@ -68,6 +71,7 @@ public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescrip
                 if (className.length() == 0) {
                     className = rfClass.getName();
                 }
+                toolDefaultReadFilterNamesInOrder.add(className);
                 toolDefaultReadFilters.put(className, f);
             });
         }
@@ -314,11 +318,12 @@ public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescrip
             return wrapperFunction.apply(ReadFilterLibrary.ALLOW_ALL_READS);
         }
 
-        // start with the tool's default filters and remove any that were disabled on the command line
-        final List<ReadFilter> finalFilters = toolDefaultReadFilters
-                .values()
+        // start with the tool's default filters in the order they were specified, and remove any that were disabled
+        // on the command line
+        final List<ReadFilter> finalFilters = toolDefaultReadFilterNamesInOrder
                 .stream()
-                .filter(f -> !isDisabledFilter(f.getClass().getSimpleName()))
+                .filter(s -> !isDisabledFilter(s))
+                .map(s -> toolDefaultReadFilters.get(s))
                 .collect(Collectors.toList());
 
         // now add in any additional filters enabled on the command line (preserving order)

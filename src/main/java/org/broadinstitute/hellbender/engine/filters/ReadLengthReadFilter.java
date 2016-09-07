@@ -24,7 +24,7 @@ public final class ReadLengthReadFilter extends ReadFilter implements Serializab
             shortName = minLengthArg,
             doc="Keep only reads with length at least equal to the specified value",
             optional=true)
-    public Integer minReadLength = 1;
+    public int minReadLength = 1;
 
     @Override
     public boolean test( final GATKRead read ) {

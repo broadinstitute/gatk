@@ -315,6 +315,65 @@ public class ReadFilterPluginUnitTest {
                 WellformedReadFilter.class.getSimpleName()
         };
 
+        int count = verifyAndFilterOrder(rf, expectedOrder);
+        Assert.assertEquals(6, count);
+    }
+
+    @Test
+    public void testPreserveToolDefaultFilterOrder() {
+
+        List<ReadFilter> orderedDefaults = new ArrayList<>();
+        orderedDefaults.add(new WellformedReadFilter());
+        orderedDefaults.add(ReadFilterLibrary.MAPPED);
+        orderedDefaults.add(ReadFilterLibrary.HAS_READ_GROUP);
+        orderedDefaults.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
+        orderedDefaults.add(ReadFilterLibrary.PAIRED);
+        orderedDefaults.add(ReadFilterLibrary.NONZERO_FRAGMENT_LENGTH_READ_FILTER);
+        orderedDefaults.add(ReadFilterLibrary.FIRST_OF_PAIR);
+        orderedDefaults.add(ReadFilterLibrary.PROPERLY_PAIRED);
+        orderedDefaults.add(ReadFilterLibrary.NOT_DUPLICATE);
+        orderedDefaults.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
+        orderedDefaults.add(ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT);
+
+        CommandLineParser clp = new CommandLineParser(new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(orderedDefaults)));
+        clp.parseArguments(System.out, new String[] {
+                //disable one just to mix things up
+                "-disableReadFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                "-readFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
+                "-readFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
+
+        // Now get the final merged read filter and verify the execution order. We need to ensure that
+        // getMergedReadFilter creates a composite filter that honors the filter test execution
+        // order rules (tool defaults first, in order, followed by command line-specified, in order
+        // listed). So reach inside the filter and navigate down the tree. Since these are
+        // "and" filters that are built bottom-up, and we're traversing down, we visit the nodes
+        // in the opposite of the order their tests are executed.
+        ReadFilter rf = instantiateFilter(clp, createHeaderWithReadGroups());
+        String expectedOrder[] = {
+                // this list is in the order we encounter the nodes on the way down, which is the
+                // reverse of the order of test execution
+                ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
+                ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
+                ReadFilterLibrary.NOT_SUPPLEMENTARY_ALIGNMENT.getClass().getSimpleName(),
+                ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT.getClass().getSimpleName(),
+                ReadFilterLibrary.NOT_DUPLICATE.getClass().getSimpleName(),
+                ReadFilterLibrary.PROPERLY_PAIRED.getClass().getSimpleName(),
+                ReadFilterLibrary.FIRST_OF_PAIR.getClass().getSimpleName(),
+                ReadFilterLibrary.NONZERO_FRAGMENT_LENGTH_READ_FILTER.getClass().getSimpleName(),
+                ReadFilterLibrary.PAIRED.getClass().getSimpleName(),
+                ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO.getClass().getSimpleName(),
+                ReadFilterLibrary.HAS_READ_GROUP.getClass().getSimpleName(),
+                WellformedReadFilter.class.getSimpleName()
+        };
+
+        int count = verifyAndFilterOrder(rf, expectedOrder);
+        Assert.assertEquals(12, count);
+    }
+
+    private int verifyAndFilterOrder(final ReadFilter rf,  final String[] expectedOrder) {
+        // Since these are "and" filters that are built bottom-up, and we're traversing down, we
+        // visit the nodes in the opposite of the order their tests are executed.
         int count = 0;
         ReadFilter.ReadFilterAnd rfAnd = (ReadFilter.ReadFilterAnd) rf;
         while(rfAnd != null) {
@@ -330,8 +389,7 @@ public class ReadFilterPluginUnitTest {
             }
             count++;
         }
-
-        Assert.assertEquals(6, count);
+        return count;
     }
 
     @Test
