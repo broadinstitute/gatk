@@ -506,9 +506,14 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
 
         final List<GATKRead> reads = bamBuilder.makeReads();
         final LocusIteratorByState li;
-        li = new LocusIteratorByState(new FakeCloseableIterator<>(reads.iterator()),
-                downsampler, true, keepReads,
-                bamBuilder.getSamples(), bamBuilder.getHeader());
+        li = new LocusIteratorByState(
+                new FakeCloseableIterator<>(reads.iterator()),
+                downsampler,
+                keepReads,
+                bamBuilder.getSamples(),
+                bamBuilder.getHeader(),
+                true
+        );
 
         final Set<GATKRead> seenSoFar = new LinkedHashSet<>();
         final Set<GATKRead> keptReads = new LinkedHashSet<>();
@@ -664,9 +669,14 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         final WeakReadTrackingIterator iterator = new WeakReadTrackingIterator(nReadsPerLocus, readLength, payloadInBytes, header);
 
         final LocusIteratorByState li;
-        li = new LocusIteratorByState(iterator,
-                downsampler, true, false,
-                samples, header);
+        li = new LocusIteratorByState(
+                iterator,
+                downsampler,
+                false,
+                samples,
+                header,
+                true
+        );
 
         while ( li.hasNext() ) {
             final AlignmentContext next = li.next();
@@ -760,9 +770,11 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         li = new LocusIteratorByState(
                 new FakeCloseableIterator<>(Collections.singletonList(read).iterator()),
                 DownsamplingMethod.NONE,
-                true,
                 false,
-                sampleListForSAMWithoutReadGroups(), header);
+                sampleListForSAMWithoutReadGroups(),
+                header,
+                true
+        );
 
         int expectedPos = read.getStart() + nClipsOnLeft;
         int nPileups = 0;

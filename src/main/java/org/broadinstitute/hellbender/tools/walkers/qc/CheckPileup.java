@@ -5,6 +5,8 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.codecs.sampileup.SAMPileupFeature;
@@ -64,6 +66,10 @@ public final class CheckPileup extends LocusWalker {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT).", optional = true)
     public File outFile = null;
 
+    // This is to check for previous versions of samtools without having overlap detection
+    @Argument(fullName = "ignore_overlaps", shortName = "ignore_overlaps", doc = "Disable read-pair overlap detection.", optional = true)
+    public boolean ignoreOverlaps = false;
+
     /**
      * By default the program will quit if it encounters an error (such as missing truth data for a given position).
      * Use this flag to override the default behavior; the program will then simply print an error message and move on
@@ -71,6 +77,16 @@ public final class CheckPileup extends LocusWalker {
      */
     @Argument(fullName="continue_after_error", doc="Continue after encountering an error", optional=true)
     public boolean continueAfterAnError = false;
+
+    // These are the default read filters from samtools
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> defaultFilters = super.getDefaultReadFilters();
+        defaultFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        defaultFilters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        defaultFilters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        return defaultFilters;
+    }
 
     @Override
     public boolean requiresReference() {
@@ -94,6 +110,10 @@ public final class CheckPileup extends LocusWalker {
     public void apply(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
         final ReadPileup pileup = context.getBasePileup();
         final SAMPileupFeature truePileup = getTruePileup(featureContext);
+
+        if (!ignoreOverlaps) {
+            pileup.fixOverlaps();
+        }
 
         if ( truePileup == null ) {
             out.printf("No truth pileup data available at %s%n", pileup.getPileupString((char) ref.getBase()));

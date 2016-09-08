@@ -5,7 +5,9 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -18,10 +20,12 @@ import java.util.stream.Stream;
 /**
  * Represents a pileup of reads at a given position.
  */
-public final class ReadPileup implements Iterable<PileupElement>{
+public final class ReadPileup implements Iterable<PileupElement> {
     private final Locatable loc;
     private final List<PileupElement> pileupElements;
 
+    /** Constant used by samtools to downgrade a quality for overlapping reads that disagrees in their base. */
+    public static final double SAMTOOLS_OVERLAP_LOW_CONFIDENCE = 0.8;
 
     /**
      * Create a new pileup at loc, using the reads and their corresponding
@@ -66,11 +70,12 @@ public final class ReadPileup implements Iterable<PileupElement>{
 
     /**
      * Returns the first element corresponding to the given read or null there is no such element.
+     *
      * @param read or null if elements with no reads are to be retrieved from this pileup.
      * @return the first element corresponding to the given read or null there is no such element.
      */
     @VisibleForTesting
-    PileupElement getElementForRead(final GATKRead read){
+    PileupElement getElementForRead(final GATKRead read) {
         return getElementStream().filter(el -> Objects.equals(el.getRead(), read)).findAny().orElse(null);
     }
 
@@ -104,7 +109,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Make a new pileup consisting of elements of this pileup that satisfy the predicate.
      * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
      */
-    public ReadPileup makeFilteredPileup(final Predicate<PileupElement> filter){
+    public ReadPileup makeFilteredPileup(final Predicate<PileupElement> filter) {
         Utils.nonNull(filter);
         return new ReadPileup(loc, getElementStream().filter(filter).collect(Collectors.toList()));
     }
@@ -120,13 +125,13 @@ public final class ReadPileup implements Iterable<PileupElement>{
         return makeFilteredPileup(p -> {
             final GATKRead read = p.getRead();
             final String readGroupID = read.getReadGroup();
-            if (laneID == null && readGroupID == null){
+            if (laneID == null && readGroupID == null) {
                 return true;
             }
-            if (laneID != null && readGroupID != null){
+            if (laneID != null && readGroupID != null) {
                 final boolean laneSame = readGroupID.startsWith(laneID + "."); // lane is the same, but sample identifier is different
                 final boolean exactlySame = readGroupID.equals(laneID);        // in case there is no sample identifier, they have to be exactly the same
-                if (laneSame || exactlySame){
+                if (laneSame || exactlySame) {
                     return true;
                 }
             }
@@ -162,7 +167,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
     /**
      * Splits the ReadPileup by sample
      *
-     * @param header              the header to retrieve the samples from
+     * @param header            the header to retrieve the samples from
      * @param unknownSampleName the sample name if there is no read group/sample name; {@code null} if lack of RG is not expected
      * @return a Map of sample name to ReadPileup (including empty pileups for a sample)
      * @throws org.broadinstitute.hellbender.exceptions.UserException.ReadMissingReadGroup if unknownSampleName is {@code null} and there are reads without RG/sample name
@@ -237,6 +242,71 @@ public final class ReadPileup implements Iterable<PileupElement>{
         return counts;
     }
 
+    /**
+     * Fixes the quality of all the elements that come from an overlapping pair in the same way as
+     * samtools does {@see tweak_overlap_quality function in
+     * <a href="https://github.com/samtools/htslib/blob/master/sam.c">samtools</a>}.
+     * <p>
+     * Setting the quality of one of the bases to 0 effectively removes the redundant base for
+     * calling. In addition, if the bases overlap we have increased confidence if they agree (or
+     * reduced if they don't). Thus, the algorithm proceeds as following:
+     * <p>
+     * 1. If the bases are the same, the quality of the first element is the sum of both qualities
+     * and the quality of the second is reduced to 0.
+     * 2. If the bases are different, the base with the highest quality is reduced with a factor of
+     * 0.8, and the quality of the lowest is reduced to 0.
+     * <p>
+     * Note: Resulting qualities higher than {@link QualityUtils#MAX_SAM_QUAL_SCORE} are capped.
+     */
+    public void fixOverlaps() {
+        final FragmentCollection<PileupElement> fragments = FragmentCollection.create(this);
+        fragments.getOverlappingPairs().stream()
+                .forEach(
+                        elements -> fixPairOverlappingQualities(elements.get(0), elements.get(1))
+                );
+    }
+
+    /**
+     * Fixes the quality of two elements that come from an overlapping pair in the same way as
+     * samtools does {@see tweak_overlap_quality function in
+     * <a href="https://github.com/samtools/htslib/blob/master/sam.c">samtools</a>}.
+     * The only difference with the samtools API is the cap for high values ({@link QualityUtils#MAX_SAM_QUAL_SCORE}).
+     */
+    @VisibleForTesting
+    static void fixPairOverlappingQualities(final PileupElement firstElement,
+                                            final PileupElement secondElement) {
+        // only if they do not represent deletions
+        if (!secondElement.isDeletion() && !firstElement.isDeletion()) {
+            final byte[] firstQuals = firstElement.getRead().getBaseQualities();
+            final byte[] secondQuals = secondElement.getRead().getBaseQualities();
+            if (firstElement.getBase() == secondElement.getBase()) {
+                // if both have the same base, extra confidence in the firts of them
+                firstQuals[firstElement.getOffset()] =
+                        (byte) (firstQuals[firstElement.getOffset()] + secondQuals[secondElement
+                                .getOffset()]);
+                // cap to maximum byte value
+                if (firstQuals[firstElement.getOffset()] < 0
+                        || firstQuals[firstElement.getOffset()] > QualityUtils.MAX_SAM_QUAL_SCORE) {
+                    firstQuals[firstElement.getOffset()] = QualityUtils.MAX_SAM_QUAL_SCORE;
+                }
+                secondQuals[secondElement.getOffset()] = 0;
+            } else {
+                // if not, we lost confidence in the one with higher quality
+                if (firstElement.getQual() >= secondElement.getQual()) {
+                    firstQuals[firstElement.getOffset()] =
+                            (byte) (SAMTOOLS_OVERLAP_LOW_CONFIDENCE * firstQuals[firstElement.getOffset()]);
+                    secondQuals[secondElement.getOffset()] = 0;
+                } else {
+                    secondQuals[secondElement.getOffset()] =
+                            (byte) (SAMTOOLS_OVERLAP_LOW_CONFIDENCE * secondQuals[secondElement.getOffset()]);
+                    firstQuals[firstElement.getOffset()] = 0;
+                }
+            }
+            firstElement.getRead().setBaseQualities(firstQuals);
+            secondElement.getRead().setBaseQualities(secondQuals);
+        }
+    }
+
     @Override
     public String toString() {
         return String.format("%s %s %s %s",
@@ -250,16 +320,17 @@ public final class ReadPileup implements Iterable<PileupElement>{
      * Format, assuming a single-sample, in a samtools-like string.
      * Each line represents a genomic position, consisting of chromosome name, coordinate,
      * reference base, read bases and read qualities
+     *
      * @param ref the reference base
      * @return pileup line
      */
     public String getPileupString(final char ref) {
         // In the pileup format,
         return String.format("%s %s %c %s %s",
-            getLocation().getContig(), getLocation().getStart(),    // chromosome name and coordinate
-            ref,                                                     // reference base
-            new String(getBases()),
-            getQualsString());
+                getLocation().getContig(), getLocation().getStart(),    // chromosome name and coordinate
+                ref,                                                     // reference base
+                new String(getBases()),
+                getQualsString());
     }
 
     /**
@@ -276,10 +347,10 @@ public final class ReadPileup implements Iterable<PileupElement>{
     /**
      * Returns the number of elements that satisfy the predicate.
      */
-    public int getNumberOfElements(final Predicate<PileupElement> peFilter){
+    public int getNumberOfElements(final Predicate<PileupElement> peFilter) {
         Utils.nonNull(peFilter);
         //Note: pileups are small so int is fine.
-        return (int)getElementStream().filter(peFilter).count();
+        return (int) getElementStream().filter(peFilter).count();
     }
 
     /**
@@ -291,7 +362,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
     }
 
     //Extracts an int array by mapping each element in the pileup to int.
-    private int[] extractIntArray(final ToIntFunction<PileupElement> map){
+    private int[] extractIntArray(final ToIntFunction<PileupElement> map) {
         return getElementStream().mapToInt(map).toArray();
     }
 
@@ -315,7 +386,7 @@ public final class ReadPileup implements Iterable<PileupElement>{
     private byte[] toByteArray(final int[] ints) {
         final byte[] bytes = new byte[ints.length];
         for (int i = 0; i < ints.length; i++) {
-            bytes[i] = (byte)ints[i];
+            bytes[i] = (byte) ints[i];
         }
         return bytes;
     }

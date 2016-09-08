@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -113,14 +114,13 @@ public final class Pileup extends LocusWalker {
     }
 
     @Override
-    public CountingReadFilter makeReadFilter(){
-        return new CountingReadFilter(new WellformedReadFilter(getHeaderForReads()))
-            .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
-            .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
-            .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
-            .and(new CountingReadFilter(ReadFilterLibrary.PRIMARY_ALIGNMENT));
+    public List<ReadFilter> getDefaultReadFilters() {
+        final List<ReadFilter> defaultFilters = super.getDefaultReadFilters();
+        defaultFilters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        defaultFilters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        defaultFilters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        return defaultFilters;
     }
-
 
     @Override
     public void onTraversalStart() {
