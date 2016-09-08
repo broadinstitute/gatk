@@ -773,7 +773,7 @@ public final class Utils {
     }
 
     /**
-     * Skims out positions of an array returning a shorter one with the remaning positions in the same order.
+     * Skims out positions of an array returning a shorter one with the remaining positions in the same order.
      *
      * <p>
      *     If the {@code dest} array provide is not long enough a new one will be created and returned with the
@@ -786,7 +786,7 @@ public final class Utils {
      * @param source the original array to splice.
      * @param sourceOffset the first position to skim.
      * @param dest the destination array.
-     * @param destOffset the first position where to copy the skimed array values.
+     * @param destOffset the first position where to copy the skimmed array values.
      * @param remove for each position in {@code original} indicates whether it should be spliced away ({@code true}),
      *               or retained ({@code false})
      * @param removeOffset the first position in the remove index array to consider.
