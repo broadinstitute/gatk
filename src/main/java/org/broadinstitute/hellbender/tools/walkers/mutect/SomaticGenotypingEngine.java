@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
@@ -35,7 +36,6 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
 
     private final String tumorSampleName;
     private final String matchedNormalSampleName;
-    private final String DEBUG_READ_NAME;
 
     //Mutect2 does not run in GGA mode
     private static final List<VariantContext> NO_GIVEN_ALLELES = Collections.emptyList();
@@ -57,11 +57,8 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
         this.MTAC = MTAC;
         this.tumorSampleName = tumorSampleName;
         this.matchedNormalSampleName = matchedNormalSampleName;
-        this.DEBUG_READ_NAME = DEBUG_READ_NAME;
 
-        // coverage related initialization
-        //TODO: in GATK4, use a QualityUtils method
-        final double errorProbability = Math.pow(10, -MTAC.POWER_CONSTANT_QSCORE/10);
+        final double errorProbability = QualityUtils.qualToErrorProb(MTAC.POWER_CONSTANT_QSCORE);
         strandArtifactPowerCalculator = new TumorPowerCalculator(errorProbability, MTAC.STRAND_ARTIFACT_LOD_THRESHOLD, 0.0f);
     }
 
@@ -214,25 +211,16 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
                 }
             }
 
-            int numPassingAlts = 0;
-            final Set<Allele> allelesThatPassThreshold = new HashSet<>();
-            Allele alleleWithHighestTumorLOD = null;
+            final Set<Allele> allelesThatPassThreshold = mergedVC.getAlternateAlleles().stream()
+                    .filter(allele -> tumorLods.getAlt(allele) >= MTAC.INITIAL_TUMOR_LOD_THRESHOLD)
+                    .filter(allele -> hasNormal ? normalLods.getAlt(allele) >= MTAC.INITIAL_NORMAL_LOD_THRESHOLD : true)
+                    .collect(Collectors.toSet());
 
-            for (final Allele altAllele : mergedVC.getAlternateAlleles()) {
-                final boolean passesTumorLodThreshold = tumorLods.getAlt(altAllele) >= MTAC.INITIAL_TUMOR_LOD_THRESHOLD;
-                final boolean passesNormalLodThreshold = hasNormal ? normalLods.getAlt(altAllele) >= MTAC.INITIAL_NORMAL_LOD_THRESHOLD : true;
-                if (passesTumorLodThreshold && passesNormalLodThreshold) {
-                    numPassingAlts++;
-                    allelesThatPassThreshold.add(altAllele);
-                    if (alleleWithHighestTumorLOD == null || tumorLods.getAlt(altAllele) > tumorLods.getAlt(alleleWithHighestTumorLOD)){
-                        alleleWithHighestTumorLOD = altAllele;
-                    }
-                }
-            }
-
-            if (numPassingAlts == 0) {
+            if (allelesThatPassThreshold.isEmpty()) {
                 continue;
             }
+
+            final Allele alleleWithHighestTumorLOD = Collections.max(allelesThatPassThreshold, (a1, a2) -> Double.compare(tumorLods.getAlt(a1), tumorLods.getAlt(a2)));
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC);
             final int haplotypeCount = alleleMapper.get(alleleWithHighestTumorLOD).size();
@@ -248,7 +236,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
 
             // TODO: this should be a separate method
             // TODO: move code to MuTect2::calculateFilters()
-            if (MTAC.ENABLE_STRAND_ARTIFACT_FILTER && numPassingAlts == 1) {
+            if (MTAC.ENABLE_STRAND_ARTIFACT_FILTER && allelesThatPassThreshold.size() == 1) {
                 final PerReadAlleleLikelihoodMap forwardPRALM = new PerReadAlleleLikelihoodMap();
                 final PerReadAlleleLikelihoodMap reversePRALM = new PerReadAlleleLikelihoodMap();
                 splitPRALMintoForwardAndReverseReads(tumorPRALM, forwardPRALM, reversePRALM);
@@ -284,7 +272,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
             }
 
             // TODO: this probably belongs in M2::calculateFilters()
-            if (numPassingAlts > 1) {
+            if (allelesThatPassThreshold.size() > 1) {
                 callVcb.filter(MuTect2.TRIALLELIC_SITE_FILTER_NAME);
             }
 

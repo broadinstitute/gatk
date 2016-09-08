@@ -1,15 +1,51 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Set of arguments for Assembly Based Callers
  */
 public abstract class AssemblyBasedCallerArgumentCollection extends StandardCallerArgumentCollection {
     private static final long serialVersionUID = 1L;
+
+    @ArgumentCollection
+    public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
+
+    @ArgumentCollection
+    public ReadThreadingAssemblerArgumentCollection assemblerArgs = new ReadThreadingAssemblerArgumentCollection();
+
+    @ArgumentCollection
+    public LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();
+
+    /**
+     * rsIDs from this file are used to populate the ID column of the output. Also, the DB INFO flag will be set when appropriate.
+     * dbSNP is not used in any way for the calculations themselves.
+     */
+    @ArgumentCollection
+    public DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
+
+    /**
+     * If a call overlaps with a record from the provided comp track, the INFO field will be annotated
+     * as such in the output with the track name (e.g. -comp:FOO will have 'FOO' in the INFO field). Records that are
+     * filtered in the comp track will be ignored. Note that 'dbSNP' has been special-cased (see the --dbsnp argument).
+     */
+    @Advanced
+    @Argument(fullName = "comp", shortName = "comp", doc = "Comparison VCF file(s)", optional = true)
+    public List<FeatureInput<VariantContext>> comps = Collections.emptyList();
+
 
     @Advanced
     @Argument(fullName="debug", shortName="debug", doc="Print out very verbose debug information about each triggering active region", optional = true)
@@ -81,5 +117,84 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     @Argument(fullName = "disableOptimizations", shortName="disableOptimizations", doc="Don't skip calculations in ActiveRegions with no variants",
             optional = true)
     public boolean disableOptimizations = false;
+
+    // -----------------------------------------------------------------------------------------------
+    // arguments for debugging / developing
+    // -----------------------------------------------------------------------------------------------
+
+    @Hidden
+    @Argument(fullName = "keepRG", shortName = "keepRG", doc = "Only use reads from this read group when making calls (but use all reads to build the assembly)", optional = true)
+    public String keepRG = null;
+
+    /**
+     * This argument is intended for benchmarking and scalability testing.
+     */
+    @Hidden
+    @Argument(fullName = "justDetermineActiveRegions", shortName = "justDetermineActiveRegions", doc = "Just determine ActiveRegions, don't perform assembly or calling", optional = true)
+    public boolean justDetermineActiveRegions = false;
+
+    /**
+     * This argument is intended for benchmarking and scalability testing.
+     */
+    @Hidden
+    @Argument(fullName = "dontGenotype", shortName = "dontGenotype", doc = "Perform assembly but do not genotype variants", optional = true)
+    public boolean dontGenotype = false;
+
+    @Advanced
+    @Argument(fullName = "dontUseSoftClippedBases", shortName = "dontUseSoftClippedBases", doc = "Do not analyze soft clipped bases in the reads", optional = true)
+    public boolean dontUseSoftClippedBases = false;
+
+    @Hidden
+    @Argument(fullName = "captureAssemblyFailureBAM", shortName = "captureAssemblyFailureBAM", doc = "Write a BAM called assemblyFailure.bam capturing all of the reads that were in the active region when the assembler failed for any reason", optional = true)
+    public boolean captureAssemblyFailureBAM = false;
+
+    // Parameters to control read error correction
+    /**
+     * Enabling this argument may cause fundamental problems with the assembly graph itself.
+     */
+    @Hidden
+    @Argument(fullName = "errorCorrectReads", shortName = "errorCorrectReads", doc = "Use an exploratory algorithm to error correct the kmers used during assembly", optional = true)
+    public boolean errorCorrectReads = false;
+
+    /**
+     * As of GATK 3.3, HaplotypeCaller outputs physical (read-based) information (see version 3.3 release notes and documentation for details). This argument disables that behavior.
+     */
+    @Advanced
+    @Argument(fullName = "doNotRunPhysicalPhasing", shortName = "doNotRunPhysicalPhasing", doc = "Disable physical phasing", optional = true)
+    public boolean doNotRunPhysicalPhasing = false;
+
+    /**
+     * Bases with a quality below this threshold will not be used for calling.
+     */
+    @Argument(fullName = "min_base_quality_score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
+    public byte MIN_BASE_QUALTY_SCORE = 10;
+
+    /**
+     * Reads with mapping qualities below this threshold will be filtered out
+     */
+    @Argument(fullName = "min_mapping_quality_score", shortName = "mmq", doc = "Minimum read mapping quality required to consider a read for analysis with the HaplotypeCaller", optional = true)
+    public int MIN_MAPPING_QUALITY_SCORE = 20;
+
+    //Annotations
+    /**
+     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
+     * the VariantAnnotator -list argument to view available groups. Note that this usage is not recommended because
+     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
+     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     */
+    @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
+    public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{"StandardAnnotation", "StandardHCAnnotation"}));
+
+    /**
+     * Which annotations to exclude from output in the VCF file.  Note that this argument has higher priority than the
+     * -A or -G arguments, so these annotations will be excluded even if they are explicitly included with the other
+     * options. When HaplotypeCaller is run with -ERC GVCF or -ERC BP_RESOLUTION, some annotations are excluded from the
+     * output by default because they will only be meaningful once they have been recalculated by GenotypeGVCFs. As
+     * of version 3.3 this concerns ChromosomeCounts, FisherStrand, StrandOddsRatio and QualByDepth.
+     *
+     */
+    @Advanced
+    @Argument(fullName = "excludeAnnotation", shortName = "XA", doc = "One or more specific annotations to exclude", optional = true)
+    public List<String> annotationsToExclude = new ArrayList<>();
 
 }

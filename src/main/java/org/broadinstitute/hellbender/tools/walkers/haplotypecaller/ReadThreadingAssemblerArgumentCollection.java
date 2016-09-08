@@ -4,7 +4,9 @@ import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
@@ -137,4 +139,21 @@ public final class ReadThreadingAssemblerArgumentCollection implements ArgumentC
     @Hidden
     @Argument(fullName="minObservationsForKmerToBeSolid", shortName="minObservationsForKmerToBeSolid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
+
+    public ReadThreadingAssembler createReadThreadingAssembler(final boolean debug, final byte minBaseQualityScore) {
+        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, kmerSizes, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples);
+        assemblyEngine.setErrorCorrectKmers(errorCorrectKmers);
+        assemblyEngine.setPruneFactor(MIN_PRUNE_FACTOR);
+        assemblyEngine.setDebug(debug);
+        assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
+        assemblyEngine.setRecoverDanglingBranches(!doNotRecoverDanglingBranches);
+        assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
+        assemblyEngine.setMinBaseQualityToUseInAssembly(minBaseQualityScore);
+
+        if ( graphOutput != null ) {
+            assemblyEngine.setGraphWriter(new File(graphOutput));
+        }
+
+        return assemblyEngine;
+    }
 }

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
@@ -27,20 +26,15 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
-import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
-import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
-import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -49,7 +43,6 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.*;
 
 /**
@@ -104,7 +97,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private static final int REFERENCE_PADDING = 500;
 
     private byte minTailQuality;
-    private static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
+    public static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
 
     /**
      * Minimum (exclusive) average number of high quality bases per soft-clip to consider that a set of soft-clips is a
@@ -187,14 +180,15 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (isAlleleSpecficMode(annotationEngine) && isVCFMode()){
            throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
         }
-        initializeReferenceReader();
+
+        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
 
         initializeHaplotypeBamWriter();
 
-        initializeAssemblyEngine();
+        assemblyEngine = hcArgs.assemblerArgs.createReadThreadingAssembler(hcArgs.DEBUG, hcArgs.MIN_BASE_QUALTY_SCORE);
 
         // create our likelihood calculation engine -- must be done after setting log10GlobalReadMismappingRate in validateAndInitializeArgs()
-        likelihoodCalculationEngine = createLikelihoodCalculationEngine();
+        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, log10GlobalReadMismappingRate);
 
         trimmer.initialize(hcArgs.assemblyRegionTrimmerArgs, readsHeader.getSequenceDictionary(), hcArgs.DEBUG,
                 hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
@@ -259,21 +253,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             throw new UserException("HaplotypeCaller cannot be run in both GENOTYPE_GIVEN_ALLELES mode and in consensus mode at the same time. Please choose one or the other.");
         }
 
-        if ( hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ) {
-            hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate = -1;
-        }
+        log10GlobalReadMismappingRate = AssemblyBasedCallerUtils.calculateLog10GlobalReadMismappingRate(hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
-        // configure the global mismapping rate
-        if ( hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ) {
-            log10GlobalReadMismappingRate = - Double.MAX_VALUE;
-        } else {
-            log10GlobalReadMismappingRate = QualityUtils.qualToErrorProbLog10(hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate);
-            logger.info("Using global mismapping rate of " + hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate + " => " + log10GlobalReadMismappingRate + " in log10 likelihood units");
-        }
-
-        if (hcArgs.BASE_QUALITY_SCORE_THRESHOLD < QualityUtils.MIN_USABLE_Q_SCORE) {
-            throw new IllegalArgumentException("BASE_QUALITY_SCORE_THRESHOLD must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
-        }
+        Utils.validateArg(hcArgs.likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD >= QualityUtils.MIN_USABLE_Q_SCORE, "BASE_QUALITY_SCORE_THRESHOLD must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
 
         if ( emitReferenceConfidence() && samplesList.numberOfSamples() != 1 ) {
             throw new UserException.BadArgumentValue("--emitRefConfidence", "Can only be used in single sample mode currently. Use the sample_name argument to run on a single sample out of a multi-sample BAM file.");
@@ -320,14 +302,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         activeRegionEvaluationGenotyperEngine.setLogger(logger);
     }
 
-    private void initializeReferenceReader() {
-        try {
-            // fasta reference reader to supplement the edges of the reference sequence
-            referenceReader = new CachingIndexedFastaSequenceFile(new File(reference));
-        } catch( FileNotFoundException e ) {
-            throw new UserException.CouldNotReadInputFile(new File(reference), e);
-        }
-    }
 
     private void initializeHaplotypeBamWriter() {
         if ( hcArgs.bamOutputPath != null ) {
@@ -335,39 +309,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
     }
 
-    private void initializeAssemblyEngine() {
-        // create and setup the assembler
-        assemblyEngine = new ReadThreadingAssembler(hcArgs.assemblerArgs.maxNumHaplotypesInPopulation, hcArgs.assemblerArgs.kmerSizes, hcArgs.assemblerArgs.dontIncreaseKmerSizesForCycles, hcArgs.assemblerArgs.allowNonUniqueKmersInRef, hcArgs.assemblerArgs.numPruningSamples);
-
-        assemblyEngine.setErrorCorrectKmers(hcArgs.assemblerArgs.errorCorrectKmers);
-        assemblyEngine.setPruneFactor(hcArgs.assemblerArgs.MIN_PRUNE_FACTOR);
-        assemblyEngine.setDebug(hcArgs.DEBUG);
-        assemblyEngine.setDebugGraphTransformations(hcArgs.assemblerArgs.debugGraphTransformations);
-        assemblyEngine.setRecoverDanglingBranches(!hcArgs.assemblerArgs.doNotRecoverDanglingBranches);
-        assemblyEngine.setMinDanglingBranchLength(hcArgs.assemblerArgs.minDanglingBranchLength);
-        assemblyEngine.setMinBaseQualityToUseInAssembly(hcArgs.MIN_BASE_QUALTY_SCORE);
-
-        if ( hcArgs.assemblerArgs.graphOutput != null ) {
-            assemblyEngine.setGraphWriter(new File(hcArgs.assemblerArgs.graphOutput));
-        }
-    }
-
-    /**
-     * Instantiates the appropriate likelihood calculation engine.
-     *
-     * @return never {@code null}.
-     */
-    private ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine() {
-        switch ( hcArgs.likelihoodEngineImplementation) {
-            case PairHMM:
-                return new PairHMMLikelihoodCalculationEngine((byte) hcArgs.likelihoodArgs.gcpHMM, hcArgs.likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, hcArgs.pcrErrorModel, hcArgs.BASE_QUALITY_SCORE_THRESHOLD);
-            case Random:
-                return new RandomLikelihoodCalculationEngine();
-            default:
-                //Note: we do not include in the error message list as it is of no grand public interest.
-                throw new UserException("Unsupported likelihood calculation engine: " + likelihoodCalculationEngine);
-        }
-    }
 
     /**
      * Create the default read filter for use with the HaplotypeCaller
@@ -612,7 +553,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads);
 
         // Realign reads to their best haplotype.
-        final Map<GATKRead, GATKRead> readRealignments = realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc());
+        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc());
         readLikelihoods.changeReads(readRealignments);
 
         // Note: we used to subset down at this point to only the "best" haplotypes in all samples for genotyping, but there
@@ -673,35 +614,10 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
     }
 
-    /**
-     * Returns a map with the original read as a key and the realigned read as the value.
-     * <p>
-     *     Missing keys or equivalent key and value pairs mean that the read was not realigned.
-     * </p>
-     * @return never {@code null}
-     */
-    private Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final ReadLikelihoods<Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc) {
-        final Collection<ReadLikelihoods<Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAlleles();
-        final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
-
-        for (final ReadLikelihoods<Haplotype>.BestAllele bestAllele : bestAlleles) {
-            final GATKRead originalRead = bestAllele.read;
-            final Haplotype bestHaplotype = bestAllele.allele;
-            final boolean isInformative = bestAllele.isInformative();
-            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative);
-            result.put(originalRead, realignedRead);
-        }
-        return result;
-    }
-
     private boolean containsCalls(final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
-        final List<VariantContext> calls = calledHaplotypes.getCalls();
-        if (calls.isEmpty()) return false;
-        for (final VariantContext call : calls)
-            for (final Genotype genotype : call.getGenotypes())
-                if (genotype.isCalled())
-                    return true;
-        return false;
+        return calledHaplotypes.getCalls().stream()
+                .flatMap(call -> call.getGenotypes().stream())
+                .anyMatch(Genotype::isCalled);
     }
 
     /**
@@ -721,8 +637,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         final byte[] fullReferenceWithPadding = region.getAssemblyRegionReference(referenceReader, REFERENCE_PADDING);
-        final SimpleInterval paddedReferenceLoc = getPaddedReferenceLoc(region);
-        final Haplotype referenceHaplotype = createReferenceHaplotype(region, paddedReferenceLoc);
+        final SimpleInterval paddedReferenceLoc = AssemblyBasedCallerUtils.getPaddedReferenceLoc(region, REFERENCE_PADDING, referenceReader);
+        final Haplotype referenceHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedReferenceLoc, referenceReader);
 
         // Create ReadErrorCorrector object if requested - will be used within assembly engine.
         ReadErrorCorrector readErrorCorrector = null;
@@ -748,16 +664,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * Helper function to create the reference haplotype out of the active region and a padded loc
-     * @param region the active region from which to generate the reference haplotype
-     * @param paddedReferenceLoc the interval which includes padding and shows how big the reference haplotype should be
-     * @return a non-null haplotype
-     */
-    private Haplotype createReferenceHaplotype(final AssemblyRegion region, final SimpleInterval paddedReferenceLoc) {
-        return ReferenceConfidenceModel.createReferenceHaplotype(region, region.getAssemblyRegionReference(referenceReader), paddedReferenceLoc);
-    }
-
-    /**
      * Create an ref model result (ref model or no calls depending on mode) for an active region without any variation
      * (not is active, or assembled to just ref)
      *
@@ -775,7 +681,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             filterNonPassingReads(region);
 
             final SimpleInterval paddedLoc = region.getExtendedSpan();
-            final Haplotype refHaplotype = createReferenceHaplotype(region, paddedLoc);
+            final Haplotype refHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedLoc, referenceReader);
             final List<Haplotype> haplotypes = Collections.singletonList(refHaplotype);
             return referenceConfidenceModel.calculateRefConfidence(refHaplotype, haplotypes,
                     paddedLoc, region, createDummyStratifiedReadMap(refHaplotype, samplesList, region),
@@ -811,54 +717,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
     }
 
-    private void finalizeRegion( final AssemblyRegion region ) {
-        if ( region.isFinalized() ) {
-            return;
-        }
-
-        // Loop through the reads hard clipping the adaptor and low quality tails
-        final List<GATKRead> readsToUse = new ArrayList<>(region.getReads().size());
-        for( final GATKRead myRead : region.getReads() ) {
-            GATKRead clippedRead;
-            if ( hcArgs.errorCorrectReads ) {
-                clippedRead = ReadClipper.hardClipLowQualEnds(myRead, MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION);
-            }
-            else { // default case: clip low qual ends of reads
-                clippedRead = ReadClipper.hardClipLowQualEnds(myRead, minTailQuality);
-            }
-
-            if ( hcArgs.dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(clippedRead) ) {
-                // remove soft clips if we cannot reliably clip off adapter sequence or if the user doesn't want to use soft clips at all
-                clippedRead = ReadClipper.hardClipSoftClippedBases(clippedRead);
-            }
-            else {
-                // revert soft clips so that we see the alignment start and end assuming the soft clips are all matches
-                // TODO -- WARNING -- still possibility that unclipping the soft clips will introduce bases that aren't
-                // TODO -- truly in the extended region, as the unclipped bases might actually include a deletion
-                // TODO -- w.r.t. the reference.  What really needs to happen is that kmers that occur before the
-                // TODO -- reference haplotype start must be removed
-                clippedRead = ReadClipper.revertSoftClippedBases(clippedRead);
-            }
-
-            clippedRead = clippedRead.isUnmapped() ? clippedRead : ReadClipper.hardClipAdaptorSequence(clippedRead);
-            if ( ! clippedRead.isEmpty() && clippedRead.getCigar().getReadLength() > 0 ) {
-                clippedRead = ReadClipper.hardClipToRegion( clippedRead, region.getExtendedSpan().getStart(), region.getExtendedSpan().getEnd() );
-                if ( region.readOverlapsRegion(clippedRead) && clippedRead.getLength() > 0 ) {
-                    readsToUse.add(clippedRead);
-                }
-            }
-        }
-
-        // TODO -- Performance optimization: we partition the reads by sample 4 times right now; let's unify that code.
-        // final List<GATKRead> downsampledReads = DownsamplingUtils.levelCoverageByPosition(ReadUtils.sortReadsByCoordinate(readsToUse), maxReadsInRegionPerSample, minReadsPerAlignmentStart);
-        Collections.sort(readsToUse, new ReadCoordinateComparator(readsHeader)); // TODO: sort may be unnecessary here
-
-        // handle overlapping read pairs from the same fragment
-        cleanOverlappingReadPairs(readsToUse);
-
-        region.clearReads();
-        region.addAll(readsToUse);
-        region.setFinalized(true);
+    private void finalizeRegion(final AssemblyRegion region) {
+        AssemblyBasedCallerUtils.finalizeRegion(region, hcArgs.errorCorrectReads, hcArgs.dontUseSoftClippedBases, minTailQuality, readsHeader, samplesList);
     }
 
     private Set<GATKRead> filterNonPassingReads( final AssemblyRegion activeRegion ) {
@@ -874,32 +734,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         return readsToRemove;
     }
 
-    private SimpleInterval getPaddedReferenceLoc( final AssemblyRegion region ) {
-        final int padLeft = Math.max(region.getExtendedSpan().getStart() - REFERENCE_PADDING, 1);
-        final int padRight = Math.min(region.getExtendedSpan().getEnd() + REFERENCE_PADDING, referenceReader.getSequenceDictionary().getSequence(region.getExtendedSpan().getContig()).getSequenceLength());
-        return new SimpleInterval(region.getExtendedSpan().getContig(), padLeft, padRight);
-    }
-
     private Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
         return splitReadsBySample(samplesList, reads);
     }
 
     private Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final Collection<GATKRead> reads ) {
-        return splitReadsBySample(samplesList, readsHeader, reads);
-    }
-
-    public static Map<String, List<GATKRead>> splitReadsBySample( final SampleList samplesList, final SAMFileHeader header, final Collection<GATKRead> reads ) {
-        final Map<String, List<GATKRead>> returnMap = new HashMap<>();
-        final int sampleCount = samplesList.numberOfSamples();
-        for (int i = 0; i < sampleCount; i++) {
-            returnMap.put(samplesList.getSample(i), new ArrayList<>());
-        }
-
-        for ( final GATKRead read : reads ) {
-            returnMap.get(ReadUtils.getSampleName(read, header)).add(read);
-        }
-
-        return returnMap;
+        return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, readsHeader, reads);
     }
 
     /**
@@ -909,20 +749,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public boolean emitReferenceConfidence() {
         return hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
-    }
-
-    /**
-     * Clean up reads/bases that overlap within read pairs
-     *
-     * @param reads the list of reads to consider
-     */
-    private void cleanOverlappingReadPairs(final List<GATKRead> reads) {
-        for ( final List<GATKRead> perSampleReadList : splitReadsBySample(reads).values() ) {
-            final FragmentCollection<GATKRead> fragmentCollection = FragmentCollection.create(perSampleReadList);
-            for ( final List<GATKRead> overlappingPair : fragmentCollection.getOverlappingPairs() ) {
-                FragmentUtils.adjustQualsOfOverlappingPairedFragments(overlappingPair);
-            }
-        }
     }
 
     private void removeReadsFromAllSamplesExcept(final String targetSample, final AssemblyRegion activeRegion) {
