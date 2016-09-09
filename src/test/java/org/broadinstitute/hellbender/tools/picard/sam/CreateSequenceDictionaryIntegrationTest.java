@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.picard.sam;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,9 +27,11 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
         outputDict.delete();
         final String[] argv = {
                 "--reference", BASIC_FASTA.getAbsolutePath(),
-                "--output", outputDict.getAbsolutePath()
+                "--output", outputDict.getAbsolutePath(),
+                "--URI", BASIC_FASTA.getName()
         };
         runCommandLine(argv);
+        IntegrationTestSpec.assertEqualTextFiles(outputDict, new File(BASIC_FASTA.getAbsolutePath() + ".dict"));
     }
 
     /**

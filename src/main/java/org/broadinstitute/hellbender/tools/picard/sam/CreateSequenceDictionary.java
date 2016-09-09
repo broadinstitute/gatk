@@ -29,8 +29,7 @@ import static org.broadinstitute.hellbender.utils.Utils.calcMD5;
         oneLineSummary = "Creates a dict file from reference sequence in fasta format",
         programGroup = FastaProgramGroup.class
 )
-public final class
-CreateSequenceDictionary extends PicardCommandLineProgram {
+public final class CreateSequenceDictionary extends PicardCommandLineProgram {
 
     // The following attributes define the command-line arguments
 
