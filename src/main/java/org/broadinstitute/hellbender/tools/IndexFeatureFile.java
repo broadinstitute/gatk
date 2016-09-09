@@ -110,11 +110,15 @@ public final class IndexFeatureFile extends CommandLineProgram {
             try {
                 // TODO: this could benefit from provided sequence dictionary from reference
                 // TODO: this can be an optional parameter for the tool
-                return IndexFactory.createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
+                return IndexFactory
+                        .createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
+            } catch(TribbleException.MalformedFeatureFile e) {
+                throw e;
             } catch(TribbleException e) {
+                // TODO: this TribbleException should be distinguished at the htsjdk level
                 // this exception is thrown if the codec does not implement getTabixFormat()
-                throw new UserException("This tool does not supports indexing of block-compressed files for"
-                        + codec.getClass().getSimpleName());
+                throw new UserException("This tool does not supports indexing of block-compressed files for "
+                        + codec.getClass().getSimpleName(), e);
             }
         }
         // TODO: detection of GVCF files should not be file-extension-based. Need to come up with canonical
