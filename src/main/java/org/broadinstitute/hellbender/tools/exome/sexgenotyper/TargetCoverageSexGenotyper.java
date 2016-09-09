@@ -2,14 +2,13 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.Target;
+import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
@@ -93,12 +92,6 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
 
     private final Logger logger = LogManager.getLogger(TargetCoverageSexGenotyper.class);
 
-    public static final String INPUT_READ_COUNT_COLLECTION_LONG_NAME = StandardArgumentDefinitions.INPUT_LONG_NAME;
-    public static final String INPUT_READ_COUNT_COLLECTION_SHORT_NAME = StandardArgumentDefinitions.INPUT_SHORT_NAME;
-
-    public static final String OUTPUT_SEX_GENOTYPE_LONG_NAME = StandardArgumentDefinitions.OUTPUT_LONG_NAME;
-    public static final String OUTPUT_SEX_GENOTYPE_SHORT_NAME = StandardArgumentDefinitions.OUTPUT_SHORT_NAME;
-
     public static final String INPUT_CONTIG_ANNOTS_LONG_NAME = "contigAnnotations";
     public static final String INPUT_CONTIG_ANNOTS_SHORT_NAME = "annots";
 
@@ -107,16 +100,16 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
 
     @Argument(
             doc = "Input raw read count collection tab-separated file.",
-            fullName = INPUT_READ_COUNT_COLLECTION_LONG_NAME,
-            shortName = INPUT_READ_COUNT_COLLECTION_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
             optional = false
     )
     protected File inputRawReadCountsFile;
 
     @Argument(
             doc = "Output sample sex genotype tab-separated file.",
-            fullName = OUTPUT_SEX_GENOTYPE_LONG_NAME,
-            shortName = OUTPUT_SEX_GENOTYPE_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             optional = false
     )
     protected File outputSampleGenotypesFile;
@@ -137,6 +130,14 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
     )
     protected double baselineMappingErrorProbability = 1e-4;
 
+    @Argument(
+            doc = "Input target list.",
+            fullName = ExomeStandardArgumentDefinitions.TARGET_FILE_LONG_NAME,
+            shortName = ExomeStandardArgumentDefinitions.TARGET_FILE_SHORT_NAME,
+            optional = true
+    )
+    protected File inputTargetListFile = null;
+
     @Override
     protected Object doWork() {
         /* check args */
@@ -147,15 +148,17 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
                     "range (0, 1) excluding endpoints.");
         }
 
-        /* read input data */
-        ReadCountCollection rawReadCounts;
-        List<ContigGermlinePloidyAnnotation> contigGermlinePloidyAnnotationList;
+        /* read input read counts */
+        final ReadCountCollection rawReadCounts;
         try {
             logger.info("Parsing raw read count collection file...");
             rawReadCounts = ReadCountCollectionUtils.parse(inputRawReadCountsFile);
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile("Could not read raw read count collection file");
         }
+
+        /* parse contig genotype ploidy annotations */
+        final List<ContigGermlinePloidyAnnotation> contigGermlinePloidyAnnotationList;
         try {
             logger.info("Parsing contig genotype ploidy annotations file...");
             contigGermlinePloidyAnnotationList = ContigGermlinePloidyAnnotationTableReader.readContigGermlinePloidyAnnotationsFromFile(inputContigAnnotsFile);
@@ -163,9 +166,18 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
             throw new UserException.CouldNotReadInputFile("Could not read contig genotype ploidy annotations file");
         }
 
+        /* parse target list */
+        final List<Target> inputTargetList;
+        if (inputTargetListFile != null) {
+            inputTargetList = TargetTableReader.readTargetFile(inputTargetListFile);
+        } else {
+            logger.info("Target list was not provided -- getting target list from the read count collection.");
+            inputTargetList = rawReadCounts.targets();
+        }
+
         /* perform genotyping */
         final TargetCoverageSexGenotypeCalculator genotyper = new TargetCoverageSexGenotypeCalculator(rawReadCounts,
-                contigGermlinePloidyAnnotationList, baselineMappingErrorProbability);
+                inputTargetList, contigGermlinePloidyAnnotationList, baselineMappingErrorProbability);
         final SexGenotypeDataCollection sampleSexGenotypeCollection = genotyper.inferSexGenotypes();
 
         /* save results */

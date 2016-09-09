@@ -60,7 +60,8 @@ public class TargetCoverageSexGenotypeCalculatorUnitTest extends BaseTest {
         } catch (final IOException ex) {
             throw new UserException.CouldNotReadInputFile("Could not read test resource files");
         }
-        genotyper = new TargetCoverageSexGenotypeCalculator(readCounts, contigPloidyAnnotsList, DEFAULT_MAPPING_ERROR_PROBABILITY);
+        genotyper = new TargetCoverageSexGenotypeCalculator(readCounts, readCounts.targets(),
+                contigPloidyAnnotsList, DEFAULT_MAPPING_ERROR_PROBABILITY);
     }
 
     /**

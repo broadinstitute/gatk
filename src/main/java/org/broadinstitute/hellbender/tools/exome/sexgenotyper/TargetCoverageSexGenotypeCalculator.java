@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
+import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.logging.log4j.LogManager;
@@ -63,19 +64,31 @@ public final class TargetCoverageSexGenotypeCalculator {
      * Public constructor.
      *
      * @param rawReadCounts raw read count collection
+     * @param targetList list of targets
      * @param contigPloidyAnnotsList list of contig germline ploidy annotations
-     * @param baselineMappingErrorProbability typical mapping error probabilty
+     * @param baselineMappingErrorProbability typical mapping error probability
      */
     public TargetCoverageSexGenotypeCalculator(@Nonnull final ReadCountCollection rawReadCounts,
+                                               @Nonnull final List<Target> targetList,
                                                @Nonnull final List<ContigGermlinePloidyAnnotation> contigPloidyAnnotsList,
                                                final double baselineMappingErrorProbability) {
         this.baselineMappingErrorProbability = ParamUtils.inRange(baselineMappingErrorProbability,
                 0, 1, "The baseline mapping error probability must be a number in [0, 1] interval");
-        processedReadCounts = processReadCounts(rawReadCounts);
+
+        /* check if targetList is a subset of targets in the raw read counts */
+        if (!Sets.difference(new HashSet<>(targetList), new HashSet<>(rawReadCounts.targets())).isEmpty()) {
+            throw new UserException.BadInput("The provided target list must be a subset of targets in the provided" +
+                    " read count collection.");
+        }
+
+        final ImmutablePair<ReadCountCollection, List<Target>> processedReadCountsAndTargets =
+                processReadCountsAndTargets(rawReadCounts, targetList);
+        processedReadCounts = processedReadCountsAndTargets.left;
+        final List<Target> processedTargetList = processedReadCountsAndTargets.right;
 
         /* annotate targets with germline ploidy data */
         final GermlinePloidyAnnotatedTargetCollection ploidyAnnots =
-                new GermlinePloidyAnnotatedTargetCollection(contigPloidyAnnotsList, processedReadCounts.targets());
+                new GermlinePloidyAnnotatedTargetCollection(contigPloidyAnnotsList, processedTargetList);
 
         /* populate lists and maps */
         autosomalTargetList = ploidyAnnots.getAutosomalTargetList();
@@ -125,17 +138,32 @@ public final class TargetCoverageSexGenotypeCalculator {
     }
 
     /**
-     * Processes raw read counts. If more than one sample is present in the collection,
+     * Processes raw read counts and targets:
      * <dl>
-     *     <dt> Filters out fully uncovered targets </dt>
+     *     <dt> If more than one sample is present in the collection, filters out fully uncovered targets
+     *     from read counts and removes the uncovered targets from the target list</dt>
+     *
+     *     <dt> Otherwise, does nothing and warns the user
+     *     </dt>
      * </dl>
+     *
      * @param rawReadCounts raw read count collection
-     * @return processed read count collection
+     * @param targetList user provided target list
+     * @return pair of processed read counts and targets
      */
-    private ReadCountCollection processReadCounts(@Nonnull final ReadCountCollection rawReadCounts) {
+    private ImmutablePair<ReadCountCollection, List<Target>> processReadCountsAndTargets(
+            @Nonnull final ReadCountCollection rawReadCounts,
+            @Nonnull final List<Target> targetList) {
+        final ReadCountCollection finalReadCounts;
+        final List<Target> finalTargetList;
+
         /* remove totally uncovered targets */
         if (rawReadCounts.columnNames().size() > 1) {
-            return ReadCountCollectionUtils.removeTotallyUncoveredTargets(rawReadCounts, logger);
+            finalReadCounts = ReadCountCollectionUtils.removeTotallyUncoveredTargets(rawReadCounts, logger);
+            final Set<Target> targetSetFromProcessedReadCounts = new HashSet<>(finalReadCounts.targets());
+            finalTargetList = targetList.stream()
+                    .filter(targetSetFromProcessedReadCounts::contains)
+                    .collect(Collectors.toList());
         } else {
             final long numUncoveredTargets = rawReadCounts.records().stream()
                     .filter(rec -> (int)rec.getDouble(0) == 0).count();
@@ -143,8 +171,10 @@ public final class TargetCoverageSexGenotypeCalculator {
             logger.info("Since only one sample is given for genotyping, the user is responsible for asserting" +
                     " the aptitude of targets. Fully uncovered (irrelevant) targets can not be automatically" +
                     " identified (total targets: " + numAllTargets + ", uncovered targets: " + numUncoveredTargets + ")");
-            return rawReadCounts;
+            finalReadCounts = rawReadCounts;
+            finalTargetList = targetList;
         }
+        return ImmutablePair.of(finalReadCounts, finalTargetList);
     }
 
     /**
