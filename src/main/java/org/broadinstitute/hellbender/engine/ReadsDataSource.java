@@ -5,6 +5,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.transformers.MisencodedBaseQualityReadTransformer;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -19,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Manages traversals and queries over sources of reads (for now, SAM/BAM/CRAM files only).
@@ -72,6 +74,12 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * Are indices available for all files?
      */
     private boolean indicesAvailable;
+
+
+    /**
+     * Should the base qualities be fixed? By default this should not be performed.
+     */
+    private boolean fixMisencodedQuals = false;
 
     /**
      * Initialize this data source with a single SAM/BAM file without a reference and validation stringency SILENT.
@@ -198,6 +206,14 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         return intervalsForTraversal != null || traverseUnmapped;
     }
 
+    /**
+     * Fix misencoded qualities from reads returned by this data source if set to {@code true}; only check the qualities
+     * otherwise.
+     */
+    public void setFixMisencodedQuals(final boolean fixMisencodedQuals) {
+        this.fixMisencodedQuals = fixMisencodedQuals;
+    }
+
     private void raiseExceptionForMissingIndex(String reason) {
         String commandsToIndex = backingFiles.entrySet().stream()
                 .filter(f -> !f.getKey().hasIndex())
@@ -301,8 +317,11 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         else {
             startingIterator = new MergingSamRecordIterator(headerMerger, readers, true);
         }
-
-        return new SAMRecordToReadIterator(startingIterator);
+        // iterator using a misencoded base qualities
+        final MisencodedBaseQualityReadTransformer checkOrFixQuals = new MisencodedBaseQualityReadTransformer(fixMisencodedQuals);
+        return StreamSupport.stream(new SAMRecordToReadIterator(startingIterator).spliterator(), false)
+                .map(checkOrFixQuals)
+                .iterator();
     }
 
     /**

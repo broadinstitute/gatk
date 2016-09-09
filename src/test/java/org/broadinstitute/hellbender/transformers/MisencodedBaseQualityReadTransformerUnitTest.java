@@ -55,4 +55,32 @@ public final class MisencodedBaseQualityReadTransformerUnitTest extends BaseTest
         final GATKRead read = createRead(fixedQuals);
         tr.apply(read);
     }
+
+    @Test
+    public void testCheckGoodQualities() {
+        final byte[] fixedQuals = { 28, 29, 31, 32, 33, 30, 31, 27, 26, 60 };
+        final ReadTransformer tr = new MisencodedBaseQualityReadTransformer(false);
+        GATKRead read = createRead(fixedQuals);
+        GATKRead newRead = tr.apply(read);
+        Assert.assertEquals(read, newRead);
+    }
+
+    @Test(expectedExceptions = UserException.MisencodedQualityScoresRead.class)
+    public void testCheckBadQualitiesBlowUp() {
+        final byte[] badQuals = { 59, 60, 62, 63, 64, 61, 62, 58, 57, 56 };
+        final MisencodedBaseQualityReadTransformer tr = new MisencodedBaseQualityReadTransformer(false);
+        // set to the sampling frequency and now it should blow up
+        tr.currentReadCounter.set(tr.samplingFrequency);
+        GATKRead read = createRead(badQuals);
+        tr.apply(read);
+    }
+
+    @Test
+    public void testCheckBadQualitiesWhenNoSampling() {
+        final byte[] badQuals = { 59, 60, 62, 63, 64, 61, 62, 58, 57, 56 };
+        final MisencodedBaseQualityReadTransformer tr = new MisencodedBaseQualityReadTransformer(false);
+        GATKRead read = createRead(badQuals);
+        Assert.assertEquals(read, tr.apply(read));
+    }
+
 }
