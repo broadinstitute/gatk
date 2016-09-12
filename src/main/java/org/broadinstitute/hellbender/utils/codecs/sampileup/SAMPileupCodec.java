@@ -2,14 +2,13 @@ package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMUtils;
-import htsjdk.tribble.AsciiFeatureCodec;
-import htsjdk.tribble.Feature;
-import htsjdk.tribble.SimpleFeature;
-import htsjdk.tribble.TribbleException;
+import htsjdk.tribble.*;
 import htsjdk.tribble.exception.CodecLineParsingException;
 import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
+import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -58,7 +57,13 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
      */
     @Override
     public boolean canDecode(final String path) {
-        return SAM_PILEUP_FILE_EXTENSIONS.stream().anyMatch(ext -> path.toLowerCase().endsWith("."+ext));
+        final String noBlockCompressedPath;
+        if (AbstractFeatureReader.hasBlockCompressedExtension(path)) {
+            noBlockCompressedPath = FilenameUtils.removeExtension(path).toLowerCase();
+        } else {
+            noBlockCompressedPath = path.toLowerCase();
+        }
+        return SAM_PILEUP_FILE_EXTENSIONS.stream().anyMatch(ext -> noBlockCompressedPath.endsWith("."+ext));
     }
 
     public SAMPileupFeature decode(String line) {

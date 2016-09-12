@@ -265,6 +265,61 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "4"));
     }
 
+    // TODO: this is not enabled because canDecode returns false for bed.gz extension
+    // TODO: should this be changed at the htsjdk level to return true also for a block-compressed extension?
+    @Test(enabled = false)
+    public void testBedGZIndex() {
+        final File ORIG_FILE = getTestFile("test_bed_for_index.bed.gz");
+        final File outName = BaseTest.createTempFile("test_bed_for_index.bed.", TabixUtils.STANDARD_INDEX_EXTENSION);
+
+        final String[] args = {
+                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "-O" ,  outName.getAbsolutePath()
+        };
+        final Object res = this.runCommandLine(args);
+        Assert.assertEquals(res, outName.getAbsolutePath());
+
+        final Index index = IndexFactory.loadIndex(res.toString());
+        Assert.assertTrue(index instanceof LinearIndex);
+        for (int chr: new int[]{1,2,4}) {  //note: unusual loop
+            Assert.assertTrue(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
+        }
+        for (int chr: new int[]{3,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}) { //note: unusual loop
+            Assert.assertFalse(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
+        }
+        for (final String chr : Arrays.asList("X", "Y", "MT")){
+            Assert.assertFalse(index.containsChromosome(chr), String.valueOf(chr));
+        }
+
+        Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "4"));
+    }
+
+    @Test
+    public void testSAMPileupGZIndex() {
+        final File ORIG_FILE = getTestFile("test_sampileup_for_index.pileup.gz");
+        final File outName = BaseTest.createTempFile(ORIG_FILE.getName(), TabixUtils.STANDARD_INDEX_EXTENSION);
+
+        final String[] args = {
+                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "-O" ,  outName.getAbsolutePath()
+        };
+        final Object res = this.runCommandLine(args);
+        Assert.assertEquals(res, outName.getAbsolutePath());
+
+        final Index index = IndexFactory.loadIndex(res.toString());
+        Assert.assertTrue(index instanceof TabixIndex);
+        for (int chr: new int[]{1,2,3,4}) {  //note: unusual loop
+            Assert.assertTrue(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
+        }
+        for (int chr: new int[]{5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}) { //note: unusual loop
+            Assert.assertFalse(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
+        }
+        for (final String chr : Arrays.asList("X", "Y", "MT")){
+            Assert.assertFalse(index.containsChromosome(chr), String.valueOf(chr));
+        }
+
+        Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
+    }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testVCFIndex_missingFile() {
