@@ -127,7 +127,7 @@ public final class ProgressReportingDelegatingCodec<A extends Feature, B> implem
     @Override
     public TabixFormat getTabixFormat() {
         if (delegatee == null) {
-            throw new IllegalArgumentException("this codec cannot be used without a delegatee.");
+            throw new IllegalStateException("this codec cannot be used without a delegatee.");
         }
         return delegatee.getTabixFormat();
     }
