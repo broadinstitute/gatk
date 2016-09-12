@@ -113,7 +113,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
                 return IndexFactory
                         .createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
             } catch(TribbleException.MalformedFeatureFile e) {
-                throw e;
+                throw new UserException.MalformedFile(featureFile, e.getMessage(), e);
             } catch(TribbleException e) {
                 // TODO: this TribbleException should be distinguished at the htsjdk level
                 // this exception is thrown if the codec does not implement getTabixFormat()
@@ -131,20 +131,5 @@ public final class IndexFeatureFile extends CommandLineProgram {
             // Optimize indices for other kinds of files for seek time / querying
             return IndexFactory.createDynamicIndex(featureFile, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
         }
-    }
-
-    /**
-     * @deprecated because it is not used anymore
-     */
-    // TODO: should be removed?
-    @Deprecated
-    private boolean isVCFCodec( final FeatureCodec<? extends Feature, ?> codec ) {
-        if ( codec.getClass() == VCFCodec.class || codec.getClass() == VCF3Codec.class ) {
-            return true;
-        }
-        if (codec.getClass() == ProgressReportingDelegatingCodec.class){
-            return isVCFCodec(((ProgressReportingDelegatingCodec<?,?>)codec).getDelegatee());
-        }
-        return false;
     }
 }
