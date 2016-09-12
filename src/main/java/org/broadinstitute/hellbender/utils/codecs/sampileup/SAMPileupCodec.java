@@ -8,7 +8,6 @@ import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.readers.LineIterator;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
