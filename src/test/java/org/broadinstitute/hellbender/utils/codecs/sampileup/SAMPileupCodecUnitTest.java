@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.codecs.sampileup;
 
+import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.readers.LineIteratorImpl;
 import htsjdk.tribble.readers.LineReader;
@@ -50,11 +51,19 @@ public class SAMPileupCodecUnitTest extends BaseTest {
     public void testCanDecode() {
         final String EXTRA_CHAR = "1";
         for(final String ext: SAMPileupCodec.SAM_PILEUP_FILE_EXTENSIONS) {
-            Assert.assertTrue(CODEC.canDecode("filename." + ext));
-            Assert.assertTrue(CODEC.canDecode("filename" + EXTRA_CHAR + "." + ext));
-            Assert.assertFalse(CODEC.canDecode("filename." + ext + "1"));
-            Assert.assertFalse(CODEC.canDecode("filename" + ext));
+            testCanDecodeExtension(ext);
+            for (final String bcExt: AbstractFeatureReader.BLOCK_COMPRESSED_EXTENSIONS) {
+                testCanDecodeExtension(ext + bcExt);
+            }
         }
+    }
+
+    private static void testCanDecodeExtension(final String ext) {
+        final String EXTRA_CHAR = "1";
+        Assert.assertTrue(CODEC.canDecode("filename." + ext));
+        Assert.assertTrue(CODEC.canDecode("filename" + EXTRA_CHAR + "." + ext));
+        Assert.assertFalse(CODEC.canDecode("filename." + ext + EXTRA_CHAR));
+        Assert.assertFalse(CODEC.canDecode("filename" + ext));
     }
 
     @DataProvider(name = "stringFeature")

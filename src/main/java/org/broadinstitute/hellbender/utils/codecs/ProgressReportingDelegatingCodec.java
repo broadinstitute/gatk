@@ -4,6 +4,7 @@ import htsjdk.samtools.util.LocationAware;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.tribble.FeatureCodecHeader;
+import htsjdk.tribble.index.tabix.TabixFormat;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 
 import java.io.IOException;
@@ -121,5 +122,13 @@ public final class ProgressReportingDelegatingCodec<A extends Feature, B> implem
 
     public FeatureCodec<A, B> getDelegatee() {
         return delegatee;
+    }
+
+    @Override
+    public TabixFormat getTabixFormat() {
+        if (delegatee == null) {
+            throw new IllegalStateException("this codec cannot be used without a delegatee.");
+        }
+        return delegatee.getTabixFormat();
     }
 }

@@ -9,7 +9,6 @@ import htsjdk.tribble.index.tabix.TabixIndex;
 import htsjdk.tribble.util.TabixUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,7 +22,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testVCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
-        final File outName = BaseTest.createTempFile("test_variants_for_index.vcf", ".idx");
+        final File outName = createTempFile("test_variants_for_index.vcf", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -61,7 +60,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testIndexNonFeatureFileGZ() {
         final File ORIG_FILE = getTestFile("test_nonFeature_file.txt.blockgz.gz"); //made by bgzip
-        final File outName = BaseTest.createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".idx");
+        final File outName = createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".idx");
 
         final String[] args = {
                 "--feature_file", ORIG_FILE.getAbsolutePath(),
@@ -73,7 +72,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testIndexBCFFileGZ() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.bcf.blockgz.gz");  //made by bgzip
-        final File outName = BaseTest.createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".idx");
 
         final String[] args = {
                 "--feature_file", ORIG_FILE.getAbsolutePath(),
@@ -85,7 +84,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.class)
     public void testVCFGZIndex_tabixRequires_tbi_name() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
-        final File outName = BaseTest.createTempFile("test_variants_for_index.blockgz.gz.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.blockgz.gz.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -97,7 +96,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testVCFGZIndex_tabix() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.blockgz.gz"); //made by bgzip
-        final File outName = BaseTest.createTempFile("test_variants_for_index.blockgz.gz.", TabixUtils.STANDARD_INDEX_EXTENSION);
+        final File outName = createTempFile("test_variants_for_index.blockgz.gz.", TabixUtils.STANDARD_INDEX_EXTENSION);
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -132,11 +131,11 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         checkIndex(index, Arrays.asList("1", "2", "3", "4"));
     }
 
-    @Test(expectedExceptions = TribbleException.MalformedFeatureFile.class)
+    @Test(expectedExceptions = UserException.MalformedFile.class)
     public void testVCFGZIPIndex() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
-        final File outName = BaseTest.createTempFile("test_variants_for_index.gzip.gz.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.gzip.gz.", ".idx");
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
@@ -144,7 +143,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         final Object res = this.runCommandLine(args);
     }
 
-    @Test(expectedExceptions = TribbleException.MalformedFeatureFile.class)
+    @Test(expectedExceptions = UserException.MalformedFile.class)
     public void testVCFGZIPIndex_inferredName() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
@@ -157,7 +156,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testBCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.bcf");
-        final File outName = BaseTest.createTempFile("test_variants_for_index.bcf.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.bcf.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -175,7 +174,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = TribbleException.InvalidHeader.class)
     public void testUncompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22uncompressed.bcf");
-        final File outName = BaseTest.createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");
+        final File outName = createTempFile("test_variants_for_index.BCF22uncompressed.bcf", ".idx");
 
         final String[] args = {
                 "--feature_file", ORIG_FILE.getAbsolutePath(),
@@ -187,7 +186,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testCompressedBCF2_2Index() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz"); //made by bgzip
-        final File outName = BaseTest.createTempFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz", ".idx");
+        final File outName = createTempFile("test_variants_for_index.BCF22compressed.bcf.blockgz.gz", ".idx");
 
         final String[] args = {
                 "--feature_file", ORIG_FILE.getAbsolutePath(),
@@ -199,7 +198,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGVCF_VCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.gvcf.vcf");
-        final File outName = BaseTest.createTempFile("test_variants_for_index.gvcf.vcf.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.gvcf.vcf.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -217,7 +216,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test
     public void testGVCFIndex() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.gvcf");
-        final File outName = BaseTest.createTempFile("test_variants_for_index.gvcf.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.gvcf.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -238,11 +237,9 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         }
     }
 
-    @Test
-    public void testBedIndex() {
-        final File ORIG_FILE = getTestFile("test_bed_for_index.bed");
-        final File outName = BaseTest.createTempFile("test_bed_for_index.bed.", ".idx");
-
+    private void testBedIndex(final File ORIG_FILE, final Class<? extends Index> indexClass) {
+        final File outName = createTempFile(ORIG_FILE.getName(), (indexClass == TabixIndex.class) ?
+                TabixUtils.STANDARD_INDEX_EXTENSION : ".idx");
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
@@ -251,7 +248,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(res, outName.getAbsolutePath());
 
         final Index index = IndexFactory.loadIndex(res.toString());
-        Assert.assertTrue(index instanceof LinearIndex);
+        Assert.assertTrue(indexClass.isInstance(index));
         for (int chr: new int[]{1,2,4}) {  //note: unusual loop
             Assert.assertTrue(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
         }
@@ -265,11 +262,50 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
         Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "4"));
     }
 
+    @Test
+    public void testBedIndex() {
+        testBedIndex(getTestFile("test_bed_for_index.bed"), LinearIndex.class);
+    }
+
+    // TODO: this is not enabled because canDecode returns false for bed.gz extension
+    // TODO: enable when using htsjdk with this PR accepted: https://github.com/samtools/htsjdk/pull/704
+    @Test(enabled = false)
+    public void testBedGZIndex() {
+        // made with bgzip
+        testBedIndex(getTestFile("test_bed_for_index.bed.gz"), TabixIndex.class);
+    }
+
+    @Test
+    public void testSAMPileupGZIndex() {
+        final File ORIG_FILE = getTestFile("test_sampileup_for_index.pileup.gz"); // made with bgzip
+        final File outName = createTempFile(ORIG_FILE.getName(), TabixUtils.STANDARD_INDEX_EXTENSION);
+
+        final String[] args = {
+                "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
+                "-O" ,  outName.getAbsolutePath()
+        };
+        final Object res = this.runCommandLine(args);
+        Assert.assertEquals(res, outName.getAbsolutePath());
+
+        final Index index = IndexFactory.loadIndex(res.toString());
+        Assert.assertTrue(index instanceof TabixIndex);
+        for (int chr: new int[]{1,2,3,4}) {  //note: unusual loop
+            Assert.assertTrue(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
+        }
+        for (int chr: new int[]{5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}) { //note: unusual loop
+            Assert.assertFalse(index.containsChromosome(String.valueOf(chr)), String.valueOf(chr));
+        }
+        for (final String chr : Arrays.asList("X", "Y", "MT")){
+            Assert.assertFalse(index.containsChromosome(chr), String.valueOf(chr));
+        }
+
+        Assert.assertEquals(index.getSequenceNames(), Arrays.asList("1", "2", "3", "4"));
+    }
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testVCFIndex_missingFile() {
         final File ORIG_FILE = getTestFile("missing_file.vcf");
-        final File outName = BaseTest.createTempFile("test_variants_for_index.vcf.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.vcf.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -281,7 +317,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.CouldNotCreateOutputFile.class)
     public void testVCFIndex_cannotWrite() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf");
-        final File tempDir = BaseTest.createTempDir("fred");
+        final File tempDir = createTempDir("fred");
         final File doesNotExist = new File(tempDir, "bozo/");
 
         final File outName = new File(doesNotExist, "joe.txt");  //we can't write to this because parent does not exist
