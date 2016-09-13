@@ -1,3 +1,4 @@
+
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.util.BlockCompressedOutputStream;
@@ -50,7 +51,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
     public File outputFile;
 
     public static final int OPTIMAL_GVCF_INDEX_BIN_SIZE = 128000;
-    public static final String GVCF_FILE_EXTENSION = ".gvcf";
+    public static final String GVCF_FILE_EXTENSION = ".g.vcf";
 
     @Override
     protected Object doWork() {

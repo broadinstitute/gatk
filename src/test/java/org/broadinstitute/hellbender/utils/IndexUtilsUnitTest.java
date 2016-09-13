@@ -22,7 +22,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
     public Object[][] okFeatureFiles() {
         return new Object[][] {
                 { new File(getToolTestDataDir(), "test_variants_for_index.vcf")},
-                { new File(getToolTestDataDir(), "test_variants_for_index.gvcf.vcf")},
+                { new File(getToolTestDataDir(), "test_variants_for_index.g.vcf")},
                 { new File(getToolTestDataDir(), "test_bed_for_index.bed")},
         };
     }
@@ -50,7 +50,7 @@ public final class IndexUtilsUnitTest extends BaseTest{
     public Object[][] failTabixIndexFiles() {
         return new Object[][] {
                 { new File(getToolTestDataDir(), "test_variants_for_index.vcf")},
-                { new File(getToolTestDataDir(), "test_variants_for_index.gvcf.vcf")},
+                { new File(getToolTestDataDir(), "test_variants_for_index.g.vcf")},
                 { new File(getToolTestDataDir(), "test_bed_for_index.bed")},
         };
     }
