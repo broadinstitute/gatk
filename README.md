@@ -289,30 +289,31 @@ R
 source("scripts/install_R_packages.R")
 ```
 
-##Creating a GATK project in the IntelliJ IDE:
+##Creating a GATK project in the IntelliJ IDE (last tested with version 2016.2.4):
 
 * Ensure that you have `gradle` and the Java 8 JDK installed
 
-* Install the TestNG plugin (in preferences)
+* You may need to install the TestNG and Gradle plugins (in preferences)
 
 * Clone the GATK repository using git
 
-* In IntelliJ, go to File -> "Import Project"
+* In IntelliJ, click on "Import Project" in the home screen or go to File -> New... -> Project From Existing Sources...
 
-* Select the root directory of your GATK clone, then "Ok"
+* Select the root directory of your GATK clone, then click on "OK"
 
-* Select "Import project from external model", then "Gradle", then "Next"
+* Select "Import project from external model", then "Gradle", then click on "Next"
 
 * Ensure that "Gradle project" points to the build.gradle file in the root of your GATK clone
 
 * Select "Use auto-import" and "Use default gradle wrapper".
 
+* Make sure the Gradle JVM points to Java 1.8 
+
 * Click "Finish"
 
 * After downloading project dependencies, IntelliJ should open a new window with your GATK project
 
-* In File -> "Project Structure" -> "Project", set the "Project SDK" to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
-
+* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
 
 ##Setting up debugging in IntelliJ
 
