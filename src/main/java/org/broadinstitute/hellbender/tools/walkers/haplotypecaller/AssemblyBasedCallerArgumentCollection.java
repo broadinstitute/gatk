@@ -49,7 +49,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
 
     @Advanced
     @Argument(fullName="debug", shortName="debug", doc="Print out very verbose debug information about each triggering active region", optional = true)
-    public boolean DEBUG;
+    public boolean debug;
 
     @Advanced
     @Argument(fullName="useFilteredReadsForAnnotations", shortName="useFilteredReadsForAnnotations", doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
@@ -167,7 +167,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      * Bases with a quality below this threshold will not be used for calling.
      */
     @Argument(fullName = "min_base_quality_score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
-    public byte MIN_BASE_QUALTY_SCORE = 10;
+    public byte minBaseQualityScore = 10;
 
     /**
      * Reads with mapping qualities below this threshold will be filtered out

@@ -246,7 +246,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         final double concordance = calculateConcordance(output, gatk3Output);
-        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS GVCF mode is < 99%");
+        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS GVCF mode is < 99%.");
     }
 
     @Test

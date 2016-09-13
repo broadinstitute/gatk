@@ -69,8 +69,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private ReferenceConfidenceModel referenceConfidenceModel = null;
 
-    private double log10GlobalReadMismappingRate;
-
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
     // the genotyping engine for the isActive() determination
@@ -88,7 +86,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     protected CachingIndexedFastaSequenceFile referenceReader;
 
     // writes Haplotypes to a bam file when the -bamout option is specified
-    private HaplotypeBAMWriter haplotypeBAMWriter;
+    private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
 
     private Set<String> sampleSet;
     private SampleList samplesList;
@@ -147,13 +145,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param reference path to the reference
      */
     public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, final SAMFileHeader readsHeader, final String reference ) {
-        Utils.nonNull(hcArgs);
-        Utils.nonNull(readsHeader);
-        Utils.nonNull(reference);
-
-        this.hcArgs = hcArgs;
-        this.readsHeader = readsHeader;
-        this.reference = reference;
+        this.hcArgs = Utils.nonNull(hcArgs);
+        this.readsHeader = Utils.nonNull(readsHeader);
+        this.reference = Utils.nonNull(reference);
 
         initialize();
     }
@@ -165,7 +159,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         // Must be called after initializeSamples()
         validateAndInitializeArgs();
-        minTailQuality = (byte)(hcArgs.MIN_BASE_QUALTY_SCORE - 1);
+        minTailQuality = (byte)(hcArgs.minBaseQualityScore - 1);
 
         initializeActiveRegionEvaluationGenotyperEngine();
 
@@ -182,15 +176,11 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
+        haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, readsHeader);
+        assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(hcArgs);
+        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);
 
-        initializeHaplotypeBamWriter();
-
-        assemblyEngine = hcArgs.assemblerArgs.createReadThreadingAssembler(hcArgs.DEBUG, hcArgs.MIN_BASE_QUALTY_SCORE);
-
-        // create our likelihood calculation engine -- must be done after setting log10GlobalReadMismappingRate in validateAndInitializeArgs()
-        likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, log10GlobalReadMismappingRate);
-
-        trimmer.initialize(hcArgs.assemblyRegionTrimmerArgs, readsHeader.getSequenceDictionary(), hcArgs.DEBUG,
+        trimmer.initialize(hcArgs.assemblyRegionTrimmerArgs, readsHeader.getSequenceDictionary(), hcArgs.debug,
                 hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, emitReferenceConfidence());
     }
 
@@ -253,8 +243,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             throw new UserException("HaplotypeCaller cannot be run in both GENOTYPE_GIVEN_ALLELES mode and in consensus mode at the same time. Please choose one or the other.");
         }
 
-        log10GlobalReadMismappingRate = AssemblyBasedCallerUtils.calculateLog10GlobalReadMismappingRate(hcArgs.likelihoodArgs.phredScaledGlobalReadMismappingRate);
-
         Utils.validateArg(hcArgs.likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD >= QualityUtils.MIN_USABLE_Q_SCORE, "BASE_QUALITY_SCORE_THRESHOLD must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
 
         if ( emitReferenceConfidence() && samplesList.numberOfSamples() != 1 ) {
@@ -302,14 +290,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         activeRegionEvaluationGenotyperEngine.setLogger(logger);
     }
 
-
-    private void initializeHaplotypeBamWriter() {
-        if ( hcArgs.bamOutputPath != null ) {
-            haplotypeBAMWriter = HaplotypeBAMWriter.create(hcArgs.bamWriterType, new File(hcArgs.bamOutputPath), readsHeader);
-        }
-    }
-
-
     /**
      * Create the default read filter for use with the HaplotypeCaller
      *
@@ -329,7 +309,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 .and(new CountingReadFilter("PASSES_VENDOR_QUALITY_CHECK", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
                 .and(new CountingReadFilter("GOOD_CIGAR", ReadFilterLibrary.GOOD_CIGAR))
                 .and(new CountingReadFilter("WELLFORMED", new WellformedReadFilter(header)));
-
     }
 
     /**
@@ -409,6 +388,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * @param features features overlapping the pileup locus
      * @return probability between 0.0 and 1.0 that the site is active (in practice with this implementation: either 0.0 or 1.0)
      */
+    @Override
     public ActivityProfileState isActive( final AlignmentContext context, final ReferenceContext ref, final FeatureContext features ) {
 
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
@@ -443,7 +423,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         for( final Map.Entry<String, AlignmentContext> sample : splitContexts.entrySet() ) {
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
             final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
-            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.MIN_BASE_QUALTY_SCORE, averageHQSoftClips).getGenotypeLikelihoods();
+            final double[] genotypeLikelihoods = referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(activeRegionDetectionHackishSamplePloidy,sample.getValue().getBasePileup(), ref.getBase(), hcArgs.minBaseQualityScore, averageHQSoftClips).getGenotypeLikelihoods();
             genotypes.add( new GenotypeBuilder(sample.getKey()).alleles(noCall).PL(genotypeLikelihoods).make() );
         }
 
@@ -485,11 +465,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final List<VariantContext> givenAlleles = new ArrayList<>();
         if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES ) {
-            for ( final VariantContext vc : features.getValues(hcArgs.alleles) ) {
-                if ( vc.isNotFiltered() ) {
-                    givenAlleles.add(vc); // do something with these VCs during GGA mode
-                }
-            }
+            features.getValues(hcArgs.alleles).stream().filter(VariantContext::isNotFiltered).forEach(givenAlleles::add);
 
             // No alleles found in this region so nothing to do!
             if ( givenAlleles.isEmpty() ) {
@@ -574,16 +550,16 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 emitReferenceConfidence(),
                 readsHeader);
 
-        if ( haplotypeBAMWriter != null ) {
+        if ( haplotypeBAMWriter.isPresent() ) {
             final Set<Haplotype> calledHaplotypeSet = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
             if ( hcArgs.disableOptimizations ) {
                 calledHaplotypeSet.add(assemblyResult.getReferenceHaplotype());
             }
-            haplotypeBAMWriter.writeReadsAlignedToHaplotypes(haplotypes, assemblyResult.getPaddedReferenceLoc(), haplotypes,
+            haplotypeBAMWriter.get().writeReadsAlignedToHaplotypes(haplotypes, assemblyResult.getPaddedReferenceLoc(), haplotypes,
                                                              calledHaplotypeSet, readLikelihoods);
         }
 
-        if( hcArgs.DEBUG ) {
+        if( hcArgs.debug) {
             logger.info("----------------------------------------------------------------------------------");
         }
 
@@ -632,7 +608,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private AssemblyResultSet assembleReads(final AssemblyRegion region, final List<VariantContext> giveAlleles) {
         // Create the reference haplotype which is the bases from the reference that make up the active region
         finalizeRegion(region); // handle overlapping fragments, clip adapter and low qual tails
-        if( hcArgs.DEBUG ) {
+        if( hcArgs.debug) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
         }
 
@@ -643,7 +619,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // Create ReadErrorCorrector object if requested - will be used within assembly engine.
         ReadErrorCorrector readErrorCorrector = null;
         if ( hcArgs.errorCorrectReads ) {
-            readErrorCorrector = new ReadErrorCorrector(hcArgs.assemblerArgs.kmerLengthForReadErrorCorrection, MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION, hcArgs.assemblerArgs.minObservationsForKmerToBeSolid, hcArgs.DEBUG, fullReferenceWithPadding);
+            readErrorCorrector = new ReadErrorCorrector(hcArgs.assemblerArgs.kmerLengthForReadErrorCorrection, MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION, hcArgs.assemblerArgs.minObservationsForKmerToBeSolid, hcArgs.debug, fullReferenceWithPadding);
         }
 
         try {
@@ -712,8 +688,8 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     public void shutdown() {
         likelihoodCalculationEngine.close();
 
-        if ( haplotypeBAMWriter != null ) {
-            haplotypeBAMWriter.close();
+        if ( haplotypeBAMWriter.isPresent() ) {
+            haplotypeBAMWriter.get().close();
         }
     }
 

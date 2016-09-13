@@ -111,7 +111,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements ArgumentC
      */
     @Advanced
     @Argument(fullName="minPruning", shortName="minPruning", doc = "Minimum support to not prune paths in the graph", optional = true)
-    public int MIN_PRUNE_FACTOR = 2;
+    public int minPruneFactor = 2;
 
     @Hidden
     @Argument(fullName="debugGraphTransformations", shortName="debugGraphTransformations", doc="Write DOT formatted graph files out of the assembler for only this graph size", optional = true)
@@ -139,21 +139,4 @@ public final class ReadThreadingAssemblerArgumentCollection implements ArgumentC
     @Hidden
     @Argument(fullName="minObservationsForKmerToBeSolid", shortName="minObservationsForKmerToBeSolid", doc = "A k-mer must be seen at least these times for it considered to be solid", optional = true)
     public int minObservationsForKmerToBeSolid = 20;
-
-    public ReadThreadingAssembler createReadThreadingAssembler(final boolean debug, final byte minBaseQualityScore) {
-        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, kmerSizes, dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples);
-        assemblyEngine.setErrorCorrectKmers(errorCorrectKmers);
-        assemblyEngine.setPruneFactor(MIN_PRUNE_FACTOR);
-        assemblyEngine.setDebug(debug);
-        assemblyEngine.setDebugGraphTransformations(debugGraphTransformations);
-        assemblyEngine.setRecoverDanglingBranches(!doNotRecoverDanglingBranches);
-        assemblyEngine.setMinDanglingBranchLength(minDanglingBranchLength);
-        assemblyEngine.setMinBaseQualityToUseInAssembly(minBaseQualityScore);
-
-        if ( graphOutput != null ) {
-            assemblyEngine.setGraphWriter(new File(graphOutput));
-        }
-
-        return assemblyEngine;
-    }
 }

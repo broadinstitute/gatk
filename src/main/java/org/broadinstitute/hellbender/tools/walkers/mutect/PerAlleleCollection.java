@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * A container for allele to value mapping.
@@ -51,6 +52,10 @@ public class PerAlleleCollection<X> {
         } else {
             setAlt(allele, value);
         }
+    }
+
+    public void set(final Collection<Allele> alleles, final Function<Allele, X> function) {
+        alleles.forEach(a -> set(a, function.apply(a)));
     }
 
     public void setRef(Allele allele, X value){

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.junit.Ignore;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -10,7 +9,7 @@ import java.io.File;
 /**
  * Created by davidben on 9/1/16.
  */
-public class MuTect2IntegrationTest extends CommandLineProgramTest {
+public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final String TEST_FILES_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/";
 
     private static final File CCLE_MICRO_TUMOR_BAM = new File(TEST_FILES_DIR, "HCC1143.cghub.ccle.micro.bam");
@@ -22,9 +21,9 @@ public class MuTect2IntegrationTest extends CommandLineProgramTest {
 
     //TODO: note this test works if you run it locally and mount /seq/references
     //TODO: it's commented out because Travis will fail, but it's useful to have for development until
-    //TODO: real imntegration tests come
+    //TODO: real integration tests come
     //TODO: currently, results look reasonable on what is admittedly a pretty tiny test
-    @Ignore
+    @Test(enabled = false)
     public void testRunMutect2() throws Exception {
         Utils.resetRandomGenerator();
         final File output = createTempFile("HCC1143_ccle", ".vcf");
