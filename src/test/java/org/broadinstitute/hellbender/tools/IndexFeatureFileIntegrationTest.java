@@ -196,9 +196,11 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     }
 
     @Test
-    public void testGVCF_VCFIndex() {
-        final File ORIG_FILE = getTestFile("test_variants_for_index.gvcf.vcf");
-        final File outName = createTempFile("test_variants_for_index.gvcf.vcf.", ".idx");
+    public void testGVCFTreatedAsVCFIndex() {
+        // Here we're testing what happens when we have a GVCF that is treated by the tool as a
+        // regular VCF due to the lack of a .g.vcf extension
+        final File ORIG_FILE = getTestFile("test_variants_for_index.gvcf_treated_as_vcf.vcf");
+        final File outName = createTempFile("test_variants_for_index.gvcf_treated_as_vcf.vcf.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
@@ -215,8 +217,8 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testGVCFIndex() {
-        final File ORIG_FILE = getTestFile("test_variants_for_index.gvcf");
-        final File outName = createTempFile("test_variants_for_index.gvcf.", ".idx");
+        final File ORIG_FILE = getTestFile("test_variants_for_index.g.vcf");
+        final File outName = createTempFile("test_variants_for_index.g.vcf.", ".idx");
 
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
