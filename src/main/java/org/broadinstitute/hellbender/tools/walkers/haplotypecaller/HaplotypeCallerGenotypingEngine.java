@@ -138,27 +138,14 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBa
                                                       final boolean emitReferenceConfidence,
                                                       final SAMFileHeader header) {
         // sanity check input arguments
-        if (haplotypes == null || haplotypes.isEmpty()) {
-            throw new IllegalArgumentException("haplotypes input should be non-empty and non-null, got " + haplotypes);
-        }
-        if (readLikelihoods == null || readLikelihoods.numberOfSamples() == 0) {
-            throw new IllegalArgumentException("readLikelihoods input should be non-empty and non-null, got " + readLikelihoods);
-        }
-        if (ref == null || ref.length == 0 ) {
-            throw new IllegalArgumentException("ref bytes input should be non-empty and non-null, got " + Arrays.toString(ref));
-        }
-        if (refLoc == null || refLoc.size() != ref.length) {
-            throw new IllegalArgumentException(" refLoc must be non-null and length must match ref bytes, got " + refLoc);
-        }
-        if (activeRegionWindow == null ) {
-            throw new IllegalArgumentException("activeRegionWindow must be non-null");
-        }
-        if (activeAllelesToGenotype == null ) {
-            throw new IllegalArgumentException("activeAllelesToGenotype must be non-null");
-        }
-        if (! refLoc.contains(activeRegionWindow)) {
-            throw new IllegalArgumentException("refLoc must contain activeRegionWindow");
-        }
+        Utils.nonEmpty(haplotypes, "haplotypes input should be non-empty and non-null");
+        Utils.validateArg(readLikelihoods != null && readLikelihoods.numberOfSamples() > 0, "readLikelihoods input should be non-empty and non-null");
+        Utils.validateArg(ref != null && ref.length > 0, "ref bytes input should be non-empty and non-null");
+        Utils.nonNull(refLoc, "refLoc must be non-null");
+        Utils.validateArg(refLoc.size() == ref.length, " refLoc length must match ref bytes");
+        Utils.nonNull(activeRegionWindow, "activeRegionWindow must be non-null");
+        Utils.nonNull(activeAllelesToGenotype, "activeAllelesToGenotype must be non-null");
+        Utils.validateArg(refLoc.contains(activeRegionWindow), "refLoc must contain activeRegionWindow");
 
         // update the haplotypes so we're ready to call, getting the ordered list of positions on the reference
         // that carry events among the haplotypes

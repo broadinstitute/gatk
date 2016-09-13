@@ -3,13 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.Hidden;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyRegionTrimmerArgumentCollection;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -32,17 +31,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal", optional = true)
     public List<FeatureInput<VariantContext>> normalPanelFeatureInput = Collections.emptyList();
-
-
-    /**
-     * rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate.
-     * dbSNP overlap is only used to require more evidence of absence in the normal if the variant in question has been seen before in germline.
-     */
-    @ArgumentCollection
-    protected DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
-
-    @ArgumentCollection
-    public AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs = new AssemblyRegionTrimmerArgumentCollection();
 
     @Advanced
     @Argument(fullName="m2debug", shortName="m2debug", doc="Print out very verbose M2 debug information", optional = true)
@@ -139,4 +127,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = "pir_mad_threshold", optional = true, doc="threshold for clustered read position artifact MAD")
     public double PIR_MAD_THRESHOLD = 3;
+
+    /**
+     * Which annotations to add to the output VCF file. See the VariantAnnotator -list argument to view available annotations.
+     * //TODO: port TandemRepeatAnnotator and put it here
+     */
+    @Advanced
+    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls", optional = true)
+    protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"DepthPerAlleleBySample", "BaseQualitySumPerAlleleBySample", "OxoGReadCounts"}));
 }
