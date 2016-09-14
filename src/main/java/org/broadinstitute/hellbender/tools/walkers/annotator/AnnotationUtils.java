@@ -20,4 +20,14 @@ public final class AnnotationUtils {
         }
         return StringUtils.join(outputList, ",");
     }
+
+    /**
+     * Helper function to convert a List of Strings to a comma-separated String
+     * @param stringList the ArrayList with String data
+     * @return a comma-separated String
+     */
+    public static String encodeStringList( final List<String> stringList) {
+        return StringUtils.join(stringList, ",");
+    }
+
 }

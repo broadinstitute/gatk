@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -256,6 +255,24 @@ public final class MathUtilsUnitTest extends BaseTest {
                 Assert.assertEquals(MathUtils.approximateLog10SumLog10(b, a), log10(exp10(a) + exp10(b)), requiredPrecision);
                 Assert.assertEquals(MathUtils.approximateLog10SumLog10(new double[]{a, b, c}), log10(exp10(a) + exp10(b) + exp10(c)), requiredPrecision);
                 Assert.assertEquals(MathUtils.approximateLog10SumLog10(a, b, c), log10(exp10(a) + exp10(b) + exp10(c)), requiredPrecision);
+            }
+        }
+    }
+
+    @Test
+    public void testNormalDistribution() {
+        final double requiredPrecision = 1E-10;
+
+        for( final double mu : new double[]{-5.0, -3.2, -1.5, 0.0, 1.2, 3.0, 5.8977} ) {
+            for( final double sigma : new double[]{1.2, 3.0, 5.8977} ) {
+                for( final double x : new double[]{-5.0, -3.2, -1.5, 0.0, 1.2, 3.0, 5.8977} ) {
+                    // TODO: GATK3 uses the cern.jet.random Normal implementation to verify this;
+                    // since it was only used for test verification, rather than introducing a new
+                    // GATK4 dependency we just use the apache NormalDistribution
+                    final NormalDistribution n = new NormalDistribution(mu, sigma);
+                    Assert.assertEquals(n.density(x), MathUtils.normalDistribution(mu, sigma, x), requiredPrecision);
+                    Assert.assertEquals(Math.log10(n.density(x)), MathUtils.normalDistributionLog10(mu, sigma, x), requiredPrecision);
+                }
             }
         }
     }
@@ -1007,5 +1024,33 @@ public final class MathUtilsUnitTest extends BaseTest {
             final IntPredicate pred = x -> x > -1;
             Assert.assertEquals(MathUtils.allMatch(array, pred), Arrays.stream(array).allMatch(pred));
         }
+    }
+
+    @DataProvider(name = "distanceSquaredData")
+    public Object[][] getDistanceSquaredData() {
+        return new Object[][] {
+                { new double[]{0.0}, new double[]{0.0}, 0.0},
+                { new double[]{2.0, 3.0, 4.0}, new double[]{2.0, 3.0, 4.0}, 0.0},
+                { new double[]{-2.0, -3.0, -4.0}, new double[]{-2.0, -3.0, -4.0}, 0.0},
+                { new double[]{2.0, 3.0, 4.0}, new double[]{3.0, 4.0, 5.0}, 3.0},
+        };
+    }
+
+    @Test(dataProvider = "distanceSquaredData")
+    public void testDistanceSquared(final double[] v1, final double[] v2, final double expected) {
+        Assert.assertEquals(MathUtils.distanceSquared(v1, v2), expected);
+    }
+
+    @DataProvider(name = "distanceSquaredNegativeData")
+    public Object[][] getDistanceSquaredNegativeData() {
+        return new Object[][] {
+                { new double[]{2.0, 3.0, 4.0}, new double[]{3.0, 4.0, }, Double.NaN},
+        };
+    }
+
+    @Test(dataProvider = "distanceSquaredNegativeData", expectedExceptions = ArrayIndexOutOfBoundsException.class)
+    public void testDistanceSquaredDifferentLengths(final double[] v1, final double[] v2, final double expected) {
+        MathUtils.distanceSquared(v1, v2);
+        Assert.fail("Vectors with unequal lengths should throw");
     }
 }
