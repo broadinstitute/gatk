@@ -29,3 +29,4 @@ K-562.duplicateMarked.chr20.bai filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.20.21.vcf.blockgz.gz filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.20.21.vcf.blockgz.gz.tbi filter=lfs diff=lfs merge=lfs -text
 tiledb_bin filter=lfs diff=lfs merge=lfs -text
+VQSR/** filter=lfs diff=lfs merge=lfs -text

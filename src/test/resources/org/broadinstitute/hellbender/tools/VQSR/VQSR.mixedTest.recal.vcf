@@ -1,0 +1,32 @@
+##fileformat=VCFv4.1
+##INFO=<ID=END,Number=1,Type=Integer,Description="x">
+##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds ratio of being a true variant versus being false under the trained gaussian mixture model">
+##INFO=<ID=culprit,Number=1,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
+##contig=<ID=1,length=249250621,assembly=b37>
+##contig=<ID=10,length=135534747,assembly=b37>
+##contig=<ID=11,length=135006516,assembly=b37>
+##contig=<ID=12,length=133851895,assembly=b37>
+##contig=<ID=13,length=115169878,assembly=b37>
+##contig=<ID=14,length=107349540,assembly=b37>
+##contig=<ID=15,length=102531392,assembly=b37>
+##contig=<ID=16,length=90354753,assembly=b37>
+##contig=<ID=17,length=81195210,assembly=b37>
+##contig=<ID=18,length=78077248,assembly=b37>
+##contig=<ID=19,length=59128983,assembly=b37>
+##contig=<ID=2,length=243199373,assembly=b37>
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##contig=<ID=22,length=51304566,assembly=b37>
+##contig=<ID=3,length=198022430,assembly=b37>
+##contig=<ID=4,length=191154276,assembly=b37>
+##contig=<ID=5,length=180915260,assembly=b37>
+##contig=<ID=6,length=171115067,assembly=b37>
+##contig=<ID=7,length=159138663,assembly=b37>
+##contig=<ID=8,length=146364022,assembly=b37>
+##contig=<ID=9,length=141213431,assembly=b37>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	
+20	1000177	.	N	<VQSR>	.	.	END=1000177;VQSLOD=-1.2345;culprit=FS
+20	1000177	.	N	<VQSR>	.	.	END=1000178;VQSLOD=-1.2377;culprit=HaplotypeScore
+20	1000382	.	N	<VQSR>	.	.	END=1000386;VQSLOD=-0.5534;culprit=HaplotypeScore
+20	1000382	.	N	<VQSR>	.	.	END=1000382;VQSLOD=-0.5678;culprit=FS
+20	1000442	.	N	<VQSR>	.	.	END=1000446;VQSLOD=3.5923;culprit=QD

@@ -1,0 +1,892 @@
+##fileformat=VCFv4.2
+##GATKCommandLine.SelectVariants=<ID=SelectVariants,Version=3.4-230-g2c1e42c,Date="Tue Jan 19 13:24:45 EST 2016",Epoch=1453227885382,CommandLineOptions="analysis_type=SelectVariants input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] disable_read_filter=[] intervals=[3:113005755-195507036] excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 static_quantized_quals=null round_down_quantized=false disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=ALL disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 reference_window_stop=0 logging_level=INFO log_to_file=null help=false version=false variant=(RodBinding name=variant source=/Users/gauthier/workspaces/gsa-unstable/private/gatk-tools-private/src/test/resources//VQSR.AStest.indels.large.recal) discordance=(RodBinding name= source=UNBOUND) concordance=(RodBinding name= source=UNBOUND) out=/Users/gauthier/workspaces/gsa-unstable/private/gatk-tools-private/src/test/resources/VQSR.AStest.indels.recal sample_name=[] sample_expressions=null sample_file=null exclude_sample_name=[] exclude_sample_file=[] exclude_sample_expressions=[] selectexpressions=[] invertselect=false excludeNonVariants=false excludeFiltered=false preserveAlleles=false removeUnusedAlternates=false restrictAllelesTo=ALL keepOriginalAC=false keepOriginalDP=false mendelianViolation=false invertMendelianViolation=false mendelianViolationQualThreshold=0.0 select_random_fraction=0.0 remove_fraction_genotypes=0.0 selectTypeToInclude=[] selectTypeToExclude=[] keepIDs=null excludeIDs=null fullyDecode=false justRead=false maxIndelSize=2147483647 minIndelSize=0 maxFilteredGenotypes=2147483647 minFilteredGenotypes=0 maxFractionFilteredGenotypes=1.0 minFractionFilteredGenotypes=0.0 maxNOCALLnumber=2147483647 maxNOCALLfraction=1.0 setFilteredGtToNocall=false ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES=false forceValidOutput=false filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##GATKCommandLine.VariantRecalibrator=<ID=VariantRecalibrator,Version=3.4-225-ged52ca2,Date="Fri Dec 11 14:52:15 EST 2015",Epoch=1449863535451,CommandLineOptions="analysis_type=VariantRecalibrator input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] disable_read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 static_quantized_quals=null round_down_quantized=false disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=ALL disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 reference_window_stop=0 logging_level=INFO log_to_file=null help=false version=false mode=INDEL useAlleleSpecificAnnotations=true maxGaussians=4 maxNegativeGaussians=2 maxIterations=150 numKMeans=100 stdThreshold=10.0 shrinkage=1.0 dirichlet=0.001 priorCounts=20.0 maxNumTrainingData=2500000 minNumBadVariants=1000 badLodCutoff=-5.0 MQCapForLogitJitterTransform=0 no_MQ_logit=false MQ_jitter=0.05 percentBadVariants=0.03 numBadVariants=1000 input=[(RodBindingCollection [(RodBinding name=input source=/humgen/gsa-hpprojects/dev/gauthier/AS_GTEx/GTEx_AShc.combine.vcf)])] aggregate=null resource=[(RodBinding name=resource source=/humgen/gsa-hpprojects/GATK/bundle/current/b37/Mills_and_1000G_gold_standard.indels.b37.vcf), (RodBinding name=resource2 source=/humgen/gsa-hpprojects/GATK/data/dbsnp_129_b37.vcf)] recal_file=/humgen/gsa-hpprojects/dev/gauthier/AS_GTEx/GTEX_AS.recal.multiallelics.AS.indels.recal tranches_file=/humgen/gsa-hpprojects/dev/gauthier/AS_GTEx/GTEX_AS.recal.multiallelics.AS.indels.tranches target_titv=2.15 use_annotation=[QD, AS_FS, AS_ReadPosRankSum, AS_MQRankSum, AS_SOR] TStranche=[100.0, 99.9, 99.8, 99.7, 99.5, 99.3, 99.0, 90.0] ignore_filter=[] ignore_all_filters=true rscript_file=/humgen/gsa-hpprojects/dev/gauthier/AS_GTEx/GTEX_AS.recal.multiallelics.AS.indels.R replicate=200 trustAllPolymorphic=false filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=NEGATIVE_TRAIN_SITE,Number=0,Type=Flag,Description="This variant was used to build the negative training set of bad variants">
+##INFO=<ID=POSITIVE_TRAIN_SITE,Number=0,Type=Flag,Description="This variant was used to build the positive training set of good variants">
+##INFO=<ID=VQSLOD,Number=1,Type=Float,Description="Log odds of being a true variant versus being false under the trained gaussian mixture model">
+##INFO=<ID=culprit,Number=1,Type=String,Description="The annotation which was the worst performing in the Gaussian mixture model, likely the reason why the variant was filtered out">
+##contig=<ID=1,length=249250621,assembly=b37>
+##contig=<ID=2,length=243199373,assembly=b37>
+##contig=<ID=3,length=198022430,assembly=b37>
+##contig=<ID=4,length=191154276,assembly=b37>
+##contig=<ID=5,length=180915260,assembly=b37>
+##contig=<ID=6,length=171115067,assembly=b37>
+##contig=<ID=7,length=159138663,assembly=b37>
+##contig=<ID=8,length=146364022,assembly=b37>
+##contig=<ID=9,length=141213431,assembly=b37>
+##contig=<ID=10,length=135534747,assembly=b37>
+##contig=<ID=11,length=135006516,assembly=b37>
+##contig=<ID=12,length=133851895,assembly=b37>
+##contig=<ID=13,length=115169878,assembly=b37>
+##contig=<ID=14,length=107349540,assembly=b37>
+##contig=<ID=15,length=102531392,assembly=b37>
+##contig=<ID=16,length=90354753,assembly=b37>
+##contig=<ID=17,length=81195210,assembly=b37>
+##contig=<ID=18,length=78077248,assembly=b37>
+##contig=<ID=19,length=59128983,assembly=b37>
+##contig=<ID=20,length=63025520,assembly=b37>
+##contig=<ID=21,length=48129895,assembly=b37>
+##contig=<ID=22,length=51304566,assembly=b37>
+##contig=<ID=X,length=155270560,assembly=b37>
+##contig=<ID=Y,length=59373566,assembly=b37>
+##contig=<ID=MT,length=16569,assembly=b37>
+##contig=<ID=GL000207.1,length=4262,assembly=b37>
+##contig=<ID=GL000226.1,length=15008,assembly=b37>
+##contig=<ID=GL000229.1,length=19913,assembly=b37>
+##contig=<ID=GL000231.1,length=27386,assembly=b37>
+##contig=<ID=GL000210.1,length=27682,assembly=b37>
+##contig=<ID=GL000239.1,length=33824,assembly=b37>
+##contig=<ID=GL000235.1,length=34474,assembly=b37>
+##contig=<ID=GL000201.1,length=36148,assembly=b37>
+##contig=<ID=GL000247.1,length=36422,assembly=b37>
+##contig=<ID=GL000245.1,length=36651,assembly=b37>
+##contig=<ID=GL000197.1,length=37175,assembly=b37>
+##contig=<ID=GL000203.1,length=37498,assembly=b37>
+##contig=<ID=GL000246.1,length=38154,assembly=b37>
+##contig=<ID=GL000249.1,length=38502,assembly=b37>
+##contig=<ID=GL000196.1,length=38914,assembly=b37>
+##contig=<ID=GL000248.1,length=39786,assembly=b37>
+##contig=<ID=GL000244.1,length=39929,assembly=b37>
+##contig=<ID=GL000238.1,length=39939,assembly=b37>
+##contig=<ID=GL000202.1,length=40103,assembly=b37>
+##contig=<ID=GL000234.1,length=40531,assembly=b37>
+##contig=<ID=GL000232.1,length=40652,assembly=b37>
+##contig=<ID=GL000206.1,length=41001,assembly=b37>
+##contig=<ID=GL000240.1,length=41933,assembly=b37>
+##contig=<ID=GL000236.1,length=41934,assembly=b37>
+##contig=<ID=GL000241.1,length=42152,assembly=b37>
+##contig=<ID=GL000243.1,length=43341,assembly=b37>
+##contig=<ID=GL000242.1,length=43523,assembly=b37>
+##contig=<ID=GL000230.1,length=43691,assembly=b37>
+##contig=<ID=GL000237.1,length=45867,assembly=b37>
+##contig=<ID=GL000233.1,length=45941,assembly=b37>
+##contig=<ID=GL000204.1,length=81310,assembly=b37>
+##contig=<ID=GL000198.1,length=90085,assembly=b37>
+##contig=<ID=GL000208.1,length=92689,assembly=b37>
+##contig=<ID=GL000191.1,length=106433,assembly=b37>
+##contig=<ID=GL000227.1,length=128374,assembly=b37>
+##contig=<ID=GL000228.1,length=129120,assembly=b37>
+##contig=<ID=GL000214.1,length=137718,assembly=b37>
+##contig=<ID=GL000221.1,length=155397,assembly=b37>
+##contig=<ID=GL000209.1,length=159169,assembly=b37>
+##contig=<ID=GL000218.1,length=161147,assembly=b37>
+##contig=<ID=GL000220.1,length=161802,assembly=b37>
+##contig=<ID=GL000213.1,length=164239,assembly=b37>
+##contig=<ID=GL000211.1,length=166566,assembly=b37>
+##contig=<ID=GL000199.1,length=169874,assembly=b37>
+##contig=<ID=GL000217.1,length=172149,assembly=b37>
+##contig=<ID=GL000216.1,length=172294,assembly=b37>
+##contig=<ID=GL000215.1,length=172545,assembly=b37>
+##contig=<ID=GL000205.1,length=174588,assembly=b37>
+##contig=<ID=GL000219.1,length=179198,assembly=b37>
+##contig=<ID=GL000224.1,length=179693,assembly=b37>
+##contig=<ID=GL000223.1,length=180455,assembly=b37>
+##contig=<ID=GL000195.1,length=182896,assembly=b37>
+##contig=<ID=GL000212.1,length=186858,assembly=b37>
+##contig=<ID=GL000222.1,length=186861,assembly=b37>
+##contig=<ID=GL000200.1,length=187035,assembly=b37>
+##contig=<ID=GL000193.1,length=189789,assembly=b37>
+##contig=<ID=GL000194.1,length=191469,assembly=b37>
+##contig=<ID=GL000225.1,length=211173,assembly=b37>
+##contig=<ID=GL000192.1,length=547496,assembly=b37>
+##reference=file:///humgen/1kg/reference/human_g1k_v37.fasta
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+3	113005755	.	A	ATTT	.	.	END=113005755;VQSLOD=-16.7640;culprit=AS_FS;culpritValue=12.34
+3	113060576	.	T	TA	.	.	END=113060576;POSITIVE_TRAIN_SITE;VQSLOD=5.2357;culprit=AS_FS;culpritValue=-4.214e-01
+3	113092238	.	CT	C	.	.	END=113092239;POSITIVE_TRAIN_SITE;VQSLOD=3.1179;culprit=QD;culpritValue=-1.155e+00
+3	113166847	.	AT	A	.	.	END=113166848;VQSLOD=3.6203;culprit=AS_FS;culpritValue=-4.194e-01
+3	113166858	.	T	TA	.	.	END=113166858;VQSLOD=2.1037;culprit=AS_MQRankSum;culpritValue=0.602
+3	113169372	.	GA	GGAA	.	.	END=113169373;VQSLOD=1.2036;culprit=AS_FS;culpritValue=-4.187e-01
+3	113169372	.	GA	G	.	.	END=113169373;VQSLOD=1.2978;culprit=QD;culpritValue=-1.727e+00
+3	113169372	.	GA	GAA	.	.	END=113169373;VQSLOD=3.2589;culprit=AS_FS;culpritValue=-4.195e-01
+3	113175944	.	TA	T	.	.	END=113175945;POSITIVE_TRAIN_SITE;VQSLOD=3.1059;culprit=AS_FS;culpritValue=7.814e-03
+3	113186952	.	TGAAAA	T	.	.	END=113186957;POSITIVE_TRAIN_SITE;VQSLOD=3.6507;culprit=AS_FS;culpritValue=-4.223e-01
+3	113222099	.	TA	T	.	.	END=113222100;VQSLOD=1.1110;culprit=QD;culpritValue=-2.023e+00
+3	113303529	.	A	AT	.	.	END=113303529;POSITIVE_TRAIN_SITE;VQSLOD=2.9974;culprit=AS_MQRankSum;culpritValue=0.826
+3	113376110	.	TTGCTGCTGCTGCTGCTGC	TTGCTGCTGCTGCTGC	.	.	END=113376128;VQSLOD=1.2215;culprit=AS_FS;culpritValue=-4.186e-01
+3	113376110	.	TTGCTGCTGCTGCTGCTGC	TTGC	.	.	END=113376128;POSITIVE_TRAIN_SITE;VQSLOD=1.4823;culprit=AS_FS;culpritValue=0.585
+3	113376110	.	TTGCTGCTGCTGCTGCTGC	TTGCTGC	.	.	END=113376128;POSITIVE_TRAIN_SITE;VQSLOD=1.9305;culprit=AS_FS;culpritValue=0.680
+3	113376110	.	TTGCTGCTGCTGCTGCTGC	TTGCTGCTGC	.	.	END=113376128;VQSLOD=2.9475;culprit=AS_FS;culpritValue=-4.219e-01
+3	113376110	.	TTGCTGCTGCTGCTGCTGC	TTGCTGCTGCTGC	.	.	END=113376128;VQSLOD=3.0661;culprit=AS_FS;culpritValue=-4.204e-01
+3	113376110	.	TTGCTGCTGCTGCTGCTGC	T	.	.	END=113376128;POSITIVE_TRAIN_SITE;VQSLOD=3.3095;culprit=AS_MQRankSum;culpritValue=-9.653e-01
+3	113377481	.	GT	GTT	.	.	END=113377482;NEGATIVE_TRAIN_SITE;VQSLOD=-2.1110;culprit=AS_ReadPosRankSum;culpritValue=-2.765e+00
+3	113377481	.	GT	G	.	.	END=113377482;VQSLOD=0.9842;culprit=QD;culpritValue=-2.333e+00
+3	113441836	.	TAACA	T	.	.	END=113441840;VQSLOD=-0.9956;culprit=AS_ReadPosRankSum;culpritValue=-1.170e+00
+3	113442239	.	TGAA	T	.	.	END=113442242;NEGATIVE_TRAIN_SITE;VQSLOD=-2.1564;culprit=AS_FS;culpritValue=0.771
+3	113442784	.	C	CA	.	.	END=113442784;VQSLOD=0.9671;culprit=QD;culpritValue=-2.197e+00
+3	113557787	.	AGCC	A	.	.	END=113557790;POSITIVE_TRAIN_SITE;VQSLOD=5.7224;culprit=AS_FS;culpritValue=-4.206e-01
+3	113649716	.	G	GT	.	.	END=113649716;POSITIVE_TRAIN_SITE;VQSLOD=3.2594;culprit=AS_SOR;culpritValue=-8.299e-01
+3	113655096	.	G	GT	.	.	END=113655096;VQSLOD=3.1923;culprit=AS_FS;culpritValue=-4.222e-01
+3	113785149	.	ATATGT	A	.	.	END=113785154;POSITIVE_TRAIN_SITE;VQSLOD=1.0284;culprit=AS_FS;culpritValue=1.87
+3	113955055	.	GAA	GA	.	.	END=113955057;VQSLOD=2.0703;culprit=AS_SOR;culpritValue=-5.726e-01
+3	113955055	.	GAA	G	.	.	END=113955057;VQSLOD=4.0907;culprit=AS_FS;culpritValue=-4.224e-01
+3	113955227	.	AG	A	.	.	END=113955228;POSITIVE_TRAIN_SITE;VQSLOD=2.4557;culprit=AS_ReadPosRankSum;culpritValue=1.24
+3	113955405	.	TGTA	T	.	.	END=113955408;VQSLOD=1.6850;culprit=AS_ReadPosRankSum;culpritValue=-6.127e-01
+3	116728168	.	AC	A	.	.	END=116728169;VQSLOD=1.1614;culprit=AS_FS;culpritValue=-6.261e-02
+3	118824042	.	A	ATTC	.	.	END=118824042;POSITIVE_TRAIN_SITE;VQSLOD=1.4881;culprit=AS_FS;culpritValue=0.911
+3	118865126	.	GGAA	G	.	.	END=118865129;POSITIVE_TRAIN_SITE;VQSLOD=1.1023;culprit=AS_FS;culpritValue=1.53
+3	118870025	.	A	AC	.	.	END=118870025;POSITIVE_TRAIN_SITE;VQSLOD=4.0014;culprit=AS_FS;culpritValue=-4.228e-01
+3	118913261	.	T	TC	.	.	END=118913261;POSITIVE_TRAIN_SITE;VQSLOD=3.2589;culprit=AS_FS;culpritValue=-2.981e-01
+3	119101885	.	T	TTG	.	.	END=119101885;POSITIVE_TRAIN_SITE;VQSLOD=2.4450;culprit=AS_FS;culpritValue=0.894
+3	119306293	.	A	AT	.	.	END=119306293;VQSLOD=1.3590;culprit=AS_FS;culpritValue=-1.591e-01
+3	119327604	.	GC	G	.	.	END=119327605;POSITIVE_TRAIN_SITE;VQSLOD=0.7209;culprit=AS_FS;culpritValue=0.715
+3	119328449	.	CAGGCTTT	C	.	.	END=119328456;POSITIVE_TRAIN_SITE;VQSLOD=1.0352;culprit=AS_MQRankSum;culpritValue=-2.111e+00
+3	119348345	.	AT	ATATTT	.	.	END=119348346;NEGATIVE_TRAIN_SITE;VQSLOD=-4.1021;culprit=AS_FS;culpritValue=5.97
+3	119348345	.	AT	A	.	.	END=119348346;VQSLOD=1.3013;culprit=AS_ReadPosRankSum;culpritValue=1.27
+3	119348345	.	AT	ATTTTT	.	.	END=119348346;VQSLOD=1.4576;culprit=AS_SOR;culpritValue=-9.897e-01
+3	119348345	.	AT	ATTT	.	.	END=119348346;VQSLOD=1.7217;culprit=AS_FS;culpritValue=-5.770e-02
+3	119348345	.	AT	ATT	.	.	END=119348346;VQSLOD=3.6525;culprit=AS_FS;culpritValue=-4.185e-01
+3	119348345	.	AT	ATTTTTT	.	.	END=119348346;VQSLOD=3.6911;culprit=AS_FS;culpritValue=-4.232e-01
+3	119348346	.	T	TA	.	.	END=119348346;VQSLOD=2.8019;culprit=AS_FS;culpritValue=-4.190e-01
+3	119428641	.	T	TCATTGCAAAAGTCCCACA	.	.	END=119428641;VQSLOD=3.9000;culprit=AS_FS;culpritValue=-4.204e-01
+3	119459682	.	T	TTG	.	.	END=119459682;VQSLOD=0.7209;culprit=QD;culpritValue=2.08
+3	119459682	.	T	TTGTGTGTGTG	.	.	END=119459682;VQSLOD=3.9848;culprit=AS_FS;culpritValue=-4.214e-01
+3	119459682	.	T	TTGTG	.	.	END=119459682;POSITIVE_TRAIN_SITE;VQSLOD=5.0015;culprit=AS_FS;culpritValue=-4.211e-01
+3	119501580	.	G	GC	.	.	END=119501580;VQSLOD=1.8307;culprit=AS_MQRankSum;culpritValue=0.600
+3	120134720	.	A	AG	.	.	END=120134720;POSITIVE_TRAIN_SITE;VQSLOD=5.4499;culprit=AS_FS;culpritValue=-4.207e-01
+3	120489827	.	G	GT	.	.	END=120489827;POSITIVE_TRAIN_SITE;VQSLOD=4.6841;culprit=AS_FS;culpritValue=-4.225e-01
+3	120975997	.	A	AT	.	.	END=120975997;POSITIVE_TRAIN_SITE;VQSLOD=5.2573;culprit=AS_FS;culpritValue=-4.205e-01
+3	121100116	.	GT	G	.	.	END=121100117;POSITIVE_TRAIN_SITE;VQSLOD=2.6262;culprit=AS_MQRankSum;culpritValue=1.05
+3	121202433	.	TAA	TA	.	.	END=121202435;VQSLOD=0.5688;culprit=AS_ReadPosRankSum;culpritValue=1.35
+3	121202433	.	TAA	T	.	.	END=121202435;VQSLOD=2.8603;culprit=AS_FS;culpritValue=-4.236e-01
+3	121212277	.	AT	A	.	.	END=121212278;POSITIVE_TRAIN_SITE;VQSLOD=5.0888;culprit=AS_FS;culpritValue=-4.231e-01
+3	121351314	.	C	CA	.	.	END=121351314;NEGATIVE_TRAIN_SITE;VQSLOD=-1.6242;culprit=AS_FS;culpritValue=0.778
+3	121351315	.	G	GGGCTCAGGCTCA	.	.	END=121351315;NEGATIVE_TRAIN_SITE;VQSLOD=-1.7747;culprit=AS_FS;culpritValue=-4.208e-01
+3	121351315	.	G	GGCTCGGGCTCAGGCTCGGGCTCAGGCTCA	.	.	END=121351315;VQSLOD=2.8006;culprit=AS_FS;culpritValue=-4.214e-01
+3	121352068	.	CT	C	.	.	END=121352069;VQSLOD=1.2872;culprit=QD;culpritValue=-1.588e+00
+3	121352068	.	CT	CTT	.	.	END=121352069;VQSLOD=3.1978;culprit=AS_FS;culpritValue=-4.188e-01
+3	121396171	.	GGAA	G	.	.	END=121396174;POSITIVE_TRAIN_SITE;VQSLOD=5.4864;culprit=AS_FS;culpritValue=-4.205e-01
+3	121489439	.	TA	T	.	.	END=121489440;POSITIVE_TRAIN_SITE;VQSLOD=3.3541;culprit=QD;culpritValue=-7.685e-01
+3	121514458	.	TAA	T	.	.	END=121514460;VQSLOD=1.0887;culprit=AS_ReadPosRankSum;culpritValue=1.14
+3	121514458	.	TAA	TA	.	.	END=121514460;VQSLOD=1.2855;culprit=AS_FS;culpritValue=-4.224e-01
+3	121514458	.	TAA	TAAA	.	.	END=121514460;VQSLOD=3.8525;culprit=AS_FS;culpritValue=-4.216e-01
+3	121515940	.	A	AT	.	.	END=121515940;POSITIVE_TRAIN_SITE;VQSLOD=1.4404;culprit=QD;culpritValue=-2.218e+00
+3	121526152	.	TA	T	.	.	END=121526153;POSITIVE_TRAIN_SITE;VQSLOD=2.7697;culprit=AS_MQRankSum;culpritValue=0.756
+3	121527903	.	CT	CTT	.	.	END=121527904;VQSLOD=-0.3233;culprit=QD;culpritValue=-1.877e+00
+3	121527903	.	CT	C	.	.	END=121527904;VQSLOD=3.3035;culprit=AS_FS;culpritValue=-4.194e-01
+3	121616216	.	C	CT	.	.	END=121616216;VQSLOD=1.1170;culprit=AS_FS;culpritValue=0.758
+3	121634171	.	A	AT	.	.	END=121634171;POSITIVE_TRAIN_SITE;VQSLOD=5.1105;culprit=AS_FS;culpritValue=-4.188e-01
+3	121810427	.	CT	C	.	.	END=121810428;POSITIVE_TRAIN_SITE;VQSLOD=4.2604;culprit=AS_FS;culpritValue=-4.250e-01
+3	121836850	.	TC	T	.	.	END=121836851;POSITIVE_TRAIN_SITE;VQSLOD=5.3394;culprit=AS_FS;culpritValue=-4.199e-01
+3	121836966	.	TGA	T	.	.	END=121836968;POSITIVE_TRAIN_SITE;VQSLOD=4.1889;culprit=AS_FS;culpritValue=-4.247e-01
+3	122078677	.	TAAAAAAAAAAAA	TAAAAAAAAAAAAAAA	.	.	END=122078689;VQSLOD=1.4591;culprit=AS_FS;culpritValue=-2.779e-02
+3	122078677	.	TAAAAAAAAAAAA	T	.	.	END=122078689;VQSLOD=3.3684;culprit=AS_FS;culpritValue=-4.235e-01
+3	122078677	.	TAAAAAAAAAAAA	TAAAAAAAAAAAAAAAAA	.	.	END=122078689;VQSLOD=4.1889;culprit=AS_FS;culpritValue=-4.201e-01
+3	122081881	.	G	GA	.	.	END=122081881;VQSLOD=0.6931;culprit=QD;culpritValue=-2.370e+00
+3	122121563	.	T	TTTTC	.	.	END=122121563;VQSLOD=0.5590;culprit=AS_FS;culpritValue=1.13
+3	122259738	.	G	GT	.	.	END=122259738;VQSLOD=0.7299;culprit=QD;culpritValue=-1.784e+00
+3	122259738	.	G	GTT	.	.	END=122259738;VQSLOD=3.1986;culprit=AS_FS;culpritValue=-4.209e-01
+3	122259745	.	G	GT	.	.	END=122259745;VQSLOD=1.9110;culprit=AS_FS;culpritValue=-5.976e-02
+3	122274988	.	T	TAAAAA	.	.	END=122274988;VQSLOD=3.9218;culprit=AS_FS;culpritValue=-4.209e-01
+3	122414252	.	CT	C	.	.	END=122414253;VQSLOD=3.2454;culprit=AS_FS;culpritValue=-4.203e-01
+3	122459290	.	G	GAGA	.	.	END=122459290;POSITIVE_TRAIN_SITE;VQSLOD=1.1685;culprit=AS_FS;culpritValue=1.10
+3	122471407	.	TAA	T	.	.	END=122471409;POSITIVE_TRAIN_SITE;VQSLOD=2.3743;culprit=AS_ReadPosRankSum;culpritValue=1.18
+3	122471407	.	TAA	TA	.	.	END=122471409;VQSLOD=3.3758;culprit=AS_FS;culpritValue=-4.204e-01
+3	122471407	.	TAA	TAAA	.	.	END=122471409;VQSLOD=3.6163;culprit=AS_FS;culpritValue=-4.232e-01
+3	122471418	.	A	AC	.	.	END=122471418;NEGATIVE_TRAIN_SITE;POSITIVE_TRAIN_SITE;VQSLOD=-0.7692;culprit=AS_FS;culpritValue=1.45
+3	122474284	.	TA	TAA	.	.	END=122474285;VQSLOD=1.0180;culprit=AS_MQRankSum;culpritValue=0.831
+3	122474284	.	TA	TAAA	.	.	END=122474285;VQSLOD=3.3370;culprit=AS_FS;culpritValue=-4.181e-01
+3	122474284	.	TA	T	.	.	END=122474285;VQSLOD=4.0484;culprit=AS_FS;culpritValue=-4.223e-01
+3	122478032	.	CCA	CCACACACA	.	.	END=122478034;VQSLOD=0.4212;culprit=AS_MQRankSum;culpritValue=-7.825e-01
+3	122478032	.	CCA	CCACACACACA	.	.	END=122478034;VQSLOD=2.0053;culprit=AS_FS;culpritValue=-4.205e-01
+3	122478032	.	CCA	CCACACA	.	.	END=122478034;VQSLOD=2.2437;culprit=AS_FS;culpritValue=-1.428e-01
+3	122478032	.	CCA	CCACA	.	.	END=122478034;POSITIVE_TRAIN_SITE;VQSLOD=3.3265;culprit=AS_FS;culpritValue=-1.667e-01
+3	122478032	.	CCA	C	.	.	END=122478034;VQSLOD=4.0312;culprit=AS_FS;culpritValue=-4.211e-01
+3	122629656	.	CA	C	.	.	END=122629657;VQSLOD=2.8160;culprit=AS_FS;culpritValue=-4.207e-01
+3	122629674	.	AG	A	.	.	END=122629675;VQSLOD=0.3237;culprit=QD;culpritValue=-2.387e+00
+3	122646616	.	CT	C	.	.	END=122646617;POSITIVE_TRAIN_SITE;VQSLOD=4.4619;culprit=AS_FS;culpritValue=-4.233e-01
+3	122811187	.	G	GT	.	.	END=122811187;VQSLOD=0.5930;culprit=QD;culpritValue=-2.263e+00
+3	122880696	.	TTC	T	.	.	END=122880698;NEGATIVE_TRAIN_SITE;VQSLOD=-1.2418;culprit=QD;culpritValue=-2.423e+00
+3	123044336	.	G	GA	.	.	END=123044336;POSITIVE_TRAIN_SITE;VQSLOD=3.3859;culprit=AS_ReadPosRankSum;culpritValue=-8.353e-01
+3	123086698	.	GA	GAA	.	.	END=123086699;VQSLOD=-0.5283;culprit=QD;culpritValue=-2.173e+00
+3	123086698	.	GA	G	.	.	END=123086699;VQSLOD=0.8264;culprit=AS_FS;culpritValue=-1.324e-01
+3	123218524	.	TTAAAA	T	.	.	END=123218529;POSITIVE_TRAIN_SITE;VQSLOD=3.0357;culprit=AS_MQRankSum;culpritValue=-7.738e-01
+3	123339032	.	GGCTGGAGAA	G	.	.	END=123339041;VQSLOD=-0.3374;culprit=AS_MQRankSum;culpritValue=-1.995e+00
+3	123368043	.	T	TG	.	.	END=123368043;POSITIVE_TRAIN_SITE;VQSLOD=2.8256;culprit=QD;culpritValue=-1.251e+00
+3	123419116	.	GTTC	G	.	.	END=123419119;POSITIVE_TRAIN_SITE;VQSLOD=3.5557;culprit=AS_FS;culpritValue=-1.576e-01
+3	123428579	.	CAA	C	.	.	END=123428581;POSITIVE_TRAIN_SITE;VQSLOD=2.9830;culprit=AS_FS;culpritValue=0.780
+3	123633620	.	CT	C	.	.	END=123633621;VQSLOD=2.7509;culprit=AS_FS;culpritValue=-4.179e-01
+3	123674879	.	TA	TAA	.	.	END=123674880;VQSLOD=0.5449;culprit=QD;culpritValue=-2.259e+00
+3	123674879	.	TA	T	.	.	END=123674880;VQSLOD=2.9547;culprit=AS_FS;culpritValue=-4.236e-01
+3	123695867	.	CA	C	.	.	END=123695868;VQSLOD=3.7546;culprit=AS_FS;culpritValue=-4.201e-01
+3	124369640	.	T	TA	.	.	END=124369640;POSITIVE_TRAIN_SITE;VQSLOD=3.1632;culprit=AS_FS;culpritValue=-1.033e-01
+3	124450437	.	ATCT	A	.	.	END=124450440;POSITIVE_TRAIN_SITE;VQSLOD=2.4808;culprit=AS_FS;culpritValue=-8.365e-02
+3	124462986	.	CT	C	.	.	END=124462987;POSITIVE_TRAIN_SITE;VQSLOD=3.7464;culprit=AS_FS;culpritValue=-3.386e-01
+3	124464215	.	ATT	AT	.	.	END=124464217;POSITIVE_TRAIN_SITE;VQSLOD=2.3861;culprit=AS_MQRankSum;culpritValue=0.915
+3	124464215	.	ATT	A	.	.	END=124464217;POSITIVE_TRAIN_SITE;VQSLOD=3.3073;culprit=AS_FS;culpritValue=-3.256e-01
+3	124464215	.	ATT	ATTT	.	.	END=124464217;VQSLOD=3.8398;culprit=AS_FS;culpritValue=-4.220e-01
+3	124465341	.	GAGA	G	.	.	END=124465344;POSITIVE_TRAIN_SITE;VQSLOD=3.4430;culprit=AS_SOR;culpritValue=-4.342e-01
+3	124465602	.	TTGTGTGTGTGTGTGTGTGTG	TTGTGTGTGTGTGTGTGTGTGTGTGTGTG	.	.	END=124465622;VQSLOD=0.3815;culprit=AS_MQRankSum;culpritValue=-2.783e-01
+3	124465602	.	TTGTGTGTGTGTGTGTGTGTG	TTGTG	.	.	END=124465622;VQSLOD=0.7890;culprit=AS_MQRankSum;culpritValue=-3.485e-01
+3	124465602	.	TTGTGTGTGTGTGTGTGTGTG	TTGTGTG	.	.	END=124465622;POSITIVE_TRAIN_SITE;VQSLOD=1.3336;culprit=AS_FS;culpritValue=1.03
+3	124465602	.	TTGTGTGTGTGTGTGTGTGTG	TTGTGTGTGTGTG	.	.	END=124465622;POSITIVE_TRAIN_SITE;VQSLOD=1.5778;culprit=AS_MQRankSum;culpritValue=-7.313e-01
+3	124465602	.	TTGTGTGTGTGTGTGTGTGTG	TTGTGTGTGTGTGTG	.	.	END=124465622;VQSLOD=3.7597;culprit=AS_FS;culpritValue=-4.223e-01
+3	124465602	.	TTGTGTGTGTGTGTGTGTGTG	T	.	.	END=124465622;POSITIVE_TRAIN_SITE;VQSLOD=3.9878;culprit=AS_FS;culpritValue=-4.187e-01
+3	124465860	.	T	TTTTG	.	.	END=124465860;POSITIVE_TRAIN_SITE;VQSLOD=4.1340;culprit=AS_FS;culpritValue=-4.188e-01
+3	124466113	.	C	CA	.	.	END=124466113;POSITIVE_TRAIN_SITE;VQSLOD=0.9065;culprit=AS_FS;culpritValue=1.75
+3	124482494	.	TTTGTTGAAC	T	.	.	END=124482503;POSITIVE_TRAIN_SITE;VQSLOD=1.9326;culprit=AS_MQRankSum;culpritValue=-2.442e+00
+3	124629222	.	TA	TAA	.	.	END=124629223;VQSLOD=1.0237;culprit=AS_FS;culpritValue=-7.400e-02
+3	124629222	.	TA	T	.	.	END=124629223;POSITIVE_TRAIN_SITE;VQSLOD=3.1461;culprit=QD;culpritValue=-1.628e+00
+3	124646705	.	A	AAAG	.	.	END=124646705;POSITIVE_TRAIN_SITE;VQSLOD=4.4924;culprit=AS_FS;culpritValue=-4.215e-01
+3	124696807	.	CA	C	.	.	END=124696808;POSITIVE_TRAIN_SITE;VQSLOD=3.4931;culprit=AS_FS;culpritValue=-2.812e-01
+3	124732416	.	A	AGAAGAGGAGGAGGAG	.	.	END=124732416;VQSLOD=2.5191;culprit=AS_FS;culpritValue=-4.206e-01
+3	124732419	.	A	AGAGGAGGAGGAGGAAGAG	.	.	END=124732419;VQSLOD=-0.3001;culprit=AS_ReadPosRankSum;culpritValue=-1.845e+00
+3	124951171	.	CTTT	CTT	.	.	END=124951174;VQSLOD=2.3016;culprit=AS_MQRankSum;culpritValue=0.579
+3	124951171	.	CTTT	CT	.	.	END=124951174;VQSLOD=4.1756;culprit=AS_FS;culpritValue=-4.215e-01
+3	124951171	.	CTTT	C	.	.	END=124951174;POSITIVE_TRAIN_SITE;VQSLOD=5.4798;culprit=AS_FS;culpritValue=-4.224e-01
+3	124998098	.	C	CAAA	.	.	END=124998098;VQSLOD=1.6581;culprit=AS_FS;culpritValue=-4.190e-01
+3	124998098	.	C	CAA	.	.	END=124998098;VQSLOD=3.7392;culprit=AS_FS;culpritValue=-4.215e-01
+3	124998098	.	C	CAAAA	.	.	END=124998098;VQSLOD=4.2165;culprit=AS_FS;culpritValue=-4.202e-01
+3	125179711	.	TA	T	.	.	END=125179712;VQSLOD=1.0339;culprit=QD;culpritValue=-1.949e+00
+3	125179711	.	TA	TAA	.	.	END=125179712;VQSLOD=1.2940;culprit=QD;culpritValue=-1.949e+00
+3	125179732	.	C	CATAA	.	.	END=125179732;POSITIVE_TRAIN_SITE;VQSLOD=3.1265;culprit=AS_FS;culpritValue=-8.017e-02
+3	125270983	.	GTGTATA	G	.	.	END=125270989;VQSLOD=3.7279;culprit=AS_FS;culpritValue=-4.218e-01
+3	125270985	.	GTATATA	GTA	.	.	END=125270991;VQSLOD=1.2046;culprit=AS_FS;culpritValue=-1.439e-01
+3	125270985	.	GTATATA	GTATA	.	.	END=125270991;VQSLOD=3.2569;culprit=AS_FS;culpritValue=-4.237e-01
+3	125651602	.	C	CT	.	.	END=125651602;VQSLOD=1.4814;culprit=AS_FS;culpritValue=-4.201e-01
+3	125725268	.	TAACA	T	.	.	END=125725272;POSITIVE_TRAIN_SITE;VQSLOD=3.4757;culprit=AS_FS;culpritValue=-3.320e-01
+3	125752493	.	T	TG	.	.	END=125752493;VQSLOD=3.8557;culprit=AS_FS;culpritValue=-4.214e-01
+3	125854311	.	TC	T	.	.	END=125854312;POSITIVE_TRAIN_SITE;VQSLOD=2.0253;culprit=AS_MQRankSum;culpritValue=1.40
+3	125869389	.	ATTTCT	A	.	.	END=125869394;POSITIVE_TRAIN_SITE;VQSLOD=5.1728;culprit=AS_FS;culpritValue=-4.199e-01
+3	126139084	.	CG	C	.	.	END=126139085;POSITIVE_TRAIN_SITE;VQSLOD=0.9511;culprit=AS_FS;culpritValue=1.84
+3	126142433	.	CGGA	C	.	.	END=126142436;VQSLOD=1.9853;culprit=AS_FS;culpritValue=-1.371e-01
+3	126219752	.	ACACAGCCTGGGC	A	.	.	END=126219764;NEGATIVE_TRAIN_SITE;VQSLOD=-1.4657;culprit=AS_FS;culpritValue=0.638
+3	126222936	.	TGAGACATGGGGCCAC	T	.	.	END=126222951;VQSLOD=-0.5628;culprit=AS_FS;culpritValue=1.57
+3	126224504	.	G	GAGGC	.	.	END=126224504;VQSLOD=3.8339;culprit=AS_FS;culpritValue=-4.215e-01
+3	126291218	.	CCT	C	.	.	END=126291220;POSITIVE_TRAIN_SITE;VQSLOD=3.1763;culprit=AS_ReadPosRankSum;culpritValue=1.36
+3	126385090	.	GC	G	.	.	END=126385091;POSITIVE_TRAIN_SITE;VQSLOD=2.0490;culprit=AS_FS;culpritValue=1.09
+3	126710190	.	G	GC	.	.	END=126710190;POSITIVE_TRAIN_SITE;VQSLOD=5.8682;culprit=AS_FS;culpritValue=-4.206e-01
+3	127774490	.	CTG	C	.	.	END=127774492;VQSLOD=2.4253;culprit=AS_FS;culpritValue=-1.368e-01
+3	127820493	.	TA	T	.	.	END=127820494;VQSLOD=2.5509;culprit=AS_FS;culpritValue=-4.233e-01
+3	128292318	.	ATC	A	.	.	END=128292320;VQSLOD=2.9265;culprit=AS_FS;culpritValue=-4.191e-01
+3	128363499	.	GA	GAA	.	.	END=128363500;VQSLOD=0.8733;culprit=AS_FS;culpritValue=-1.283e-01
+3	128363499	.	GA	G	.	.	END=128363500;VQSLOD=1.2914;culprit=AS_FS;culpritValue=-1.542e-01
+3	128598469	.	CGT	C	.	.	END=128598471;POSITIVE_TRAIN_SITE;VQSLOD=3.2930;culprit=AS_MQRankSum;culpritValue=-2.765e-01
+3	128598490	.	C	CTAAG	.	.	END=128598490;POSITIVE_TRAIN_SITE;VQSLOD=2.2494;culprit=AS_FS;culpritValue=0.950
+3	128629039	.	CCTG	C	.	.	END=128629042;POSITIVE_TRAIN_SITE;VQSLOD=2.4821;culprit=AS_FS;culpritValue=0.573
+3	128631672	.	GGA	G	.	.	END=128631674;POSITIVE_TRAIN_SITE;VQSLOD=3.2115;culprit=AS_MQRankSum;culpritValue=0.721
+3	128634311	.	TTTC	T	.	.	END=128634314;POSITIVE_TRAIN_SITE;VQSLOD=3.3882;culprit=AS_FS;culpritValue=-1.798e-02
+3	128809911	.	ACC	A	.	.	END=128809913;VQSLOD=0.6296;culprit=AS_FS;culpritValue=0.654
+3	128859202	.	C	CTTAG	.	.	END=128859202;POSITIVE_TRAIN_SITE;VQSLOD=3.0049;culprit=AS_FS;culpritValue=-1.534e-01
+3	128859361	.	TGTTA	T	.	.	END=128859365;VQSLOD=4.1544;culprit=AS_FS;culpritValue=-4.217e-01
+3	128879780	.	CATCCACTCGCT	CCCACTCGCT	.	.	END=128879791;VQSLOD=-25.4519;culprit=AS_FS;culpritValue=16.64
+3	128879780	.	CATCCACTCGCT	C	.	.	END=128879791;NEGATIVE_TRAIN_SITE;VQSLOD=-2.4749;culprit=AS_FS;culpritValue=3.46
+3	128879782	.	T	TCCCCCCCCCCCCCCC	.	.	END=128879782;NEGATIVE_TRAIN_SITE;VQSLOD=-2.8386;culprit=AS_FS;culpritValue=4.39
+3	128879784	.	CACTCGCT	C	.	.	END=128879791;NEGATIVE_TRAIN_SITE;VQSLOD=-1.6373;culprit=AS_FS;culpritValue=0.915
+3	128993662	.	TC	T	.	.	END=128993663;VQSLOD=1.7127;culprit=AS_SOR;culpritValue=-9.235e-01
+3	129007660	.	AT	A	.	.	END=129007661;VQSLOD=3.4439;culprit=AS_FS;culpritValue=-4.186e-01
+3	129155547	.	CT	C	.	.	END=129155548;VQSLOD=1.1242;culprit=AS_FS;culpritValue=-4.236e-01
+3	129178126	.	TTTTTG	T	.	.	END=129178131;VQSLOD=2.5100;culprit=AS_FS;culpritValue=-4.225e-01
+3	129179651	.	AT	A	.	.	END=129179652;POSITIVE_TRAIN_SITE;VQSLOD=2.6269;culprit=AS_MQRankSum;culpritValue=-1.183e-01
+3	129197108	.	TC	T	.	.	END=129197109;VQSLOD=3.9148;culprit=AS_FS;culpritValue=-4.195e-01
+3	129275551	.	TGGGGAG	T	.	.	END=129275557;VQSLOD=3.5818;culprit=QD;culpritValue=-1.862e+00
+3	129278446	.	GC	G	.	.	END=129278447;VQSLOD=2.0952;culprit=AS_MQRankSum;culpritValue=-1.193e-01
+3	129814847	.	CG	C	.	.	END=129814848;VQSLOD=0.0922;culprit=AS_FS;culpritValue=1.27
+3	129814934	.	GC	G	.	.	END=129814935;VQSLOD=2.3312;culprit=AS_ReadPosRankSum;culpritValue=-7.049e-01
+3	130116853	.	AC	A	.	.	END=130116854;VQSLOD=1.5462;culprit=AS_FS;culpritValue=-6.903e-03
+3	130116962	.	AGTT	A	.	.	END=130116965;VQSLOD=1.7385;culprit=AS_SOR;culpritValue=-6.603e-01
+3	130122409	.	TG	T	.	.	END=130122410;POSITIVE_TRAIN_SITE;VQSLOD=5.7572;culprit=AS_FS;culpritValue=-4.224e-01
+3	130122552	.	TACACAC	TACAC	.	.	END=130122558;VQSLOD=1.5343;culprit=AS_FS;culpritValue=-5.232e-02
+3	130122552	.	TACACAC	T	.	.	END=130122558;VQSLOD=2.9257;culprit=AS_FS;culpritValue=-4.192e-01
+3	130159113	.	TGAGTTTAAG	T	.	.	END=130159122;VQSLOD=1.4232;culprit=AS_FS;culpritValue=-1.653e-01
+3	130190720	.	AT	A	.	.	END=130190721;POSITIVE_TRAIN_SITE;VQSLOD=4.9733;culprit=AS_FS;culpritValue=-4.214e-01
+3	130289949	.	C	CACAT	.	.	END=130289949;VQSLOD=1.4825;culprit=AS_MQRankSum;culpritValue=-2.700e-01
+3	130360600	.	TA	T	.	.	END=130360601;VQSLOD=3.1198;culprit=AS_FS;culpritValue=-4.212e-01
+3	130400300	.	A	AAT	.	.	END=130400300;POSITIVE_TRAIN_SITE;VQSLOD=1.8214;culprit=AS_SOR;culpritValue=1.84
+3	130447530	.	TA	T	.	.	END=130447531;VQSLOD=1.1002;culprit=AS_FS;culpritValue=-1.723e-01
+3	130447530	.	TA	TAA	.	.	END=130447531;VQSLOD=1.2602;culprit=AS_FS;culpritValue=0.574
+3	130447543	.	A	AAAAG	.	.	END=130447543;VQSLOD=3.5110;culprit=AS_FS;culpritValue=-4.186e-01
+3	130454884	.	T	TA	.	.	END=130454884;POSITIVE_TRAIN_SITE;VQSLOD=2.9351;culprit=AS_MQRankSum;culpritValue=0.604
+3	130649190	.	TTTA	T	.	.	END=130649193;POSITIVE_TRAIN_SITE;VQSLOD=3.2761;culprit=AS_FS;culpritValue=0.031
+3	130660392	.	AT	A	.	.	END=130660393;VQSLOD=2.1477;culprit=AS_FS;culpritValue=-4.199e-01
+3	130733046	.	CT	C	.	.	END=130733047;VQSLOD=0.7209;culprit=AS_FS;culpritValue=-4.223e-01
+3	130734887	.	G	GT	.	.	END=130734887;VQSLOD=1.3271;culprit=AS_FS;culpritValue=-4.222e-01
+3	130734887	.	G	GTT	.	.	END=130734887;VQSLOD=3.0879;culprit=AS_FS;culpritValue=-4.213e-01
+3	131186893	.	CAA	CA	.	.	END=131186895;VQSLOD=2.5251;culprit=AS_FS;culpritValue=-4.229e-01
+3	131186893	.	CAA	C	.	.	END=131186895;VQSLOD=4.0582;culprit=AS_FS;culpritValue=-4.228e-01
+3	131186907	.	GA	G	.	.	END=131186908;VQSLOD=3.4224;culprit=AS_FS;culpritValue=-4.193e-01
+3	131261662	.	TG	T	.	.	END=131261663;POSITIVE_TRAIN_SITE;VQSLOD=5.6568;culprit=AS_FS;culpritValue=-4.225e-01
+3	132061495	.	G	GA	.	.	END=132061495;POSITIVE_TRAIN_SITE;VQSLOD=0.6189;culprit=AS_FS;culpritValue=1.57
+3	132166148	.	AT	A	.	.	END=132166149;VQSLOD=-0.0282;culprit=QD;culpritValue=-2.035e+00
+3	132169705	.	TA	TAA	.	.	END=132169706;VQSLOD=2.6214;culprit=AS_FS;culpritValue=-4.180e-01
+3	132169705	.	TA	T	.	.	END=132169706;VQSLOD=3.4524;culprit=AS_FS;culpritValue=-4.213e-01
+3	132173004	.	AT	A	.	.	END=132173005;VQSLOD=1.2209;culprit=QD;culpritValue=-2.061e+00
+3	132173004	.	AT	ATTT	.	.	END=132173005;VQSLOD=2.7403;culprit=AS_FS;culpritValue=-4.191e-01
+3	132179072	.	GT	G	.	.	END=132179073;VQSLOD=3.4823;culprit=AS_FS;culpritValue=-4.197e-01
+3	132179072	.	GT	GTT	.	.	END=132179073;VQSLOD=3.6424;culprit=AS_FS;culpritValue=-4.222e-01
+3	132179084	.	T	TC	.	.	END=132179084;VQSLOD=1.3032;culprit=AS_FS;culpritValue=0.633
+3	132196805	.	C	CT	.	.	END=132196805;VQSLOD=-0.1730;culprit=QD;culpritValue=-2.412e+00
+3	132196815	.	TA	T	.	.	END=132196816;VQSLOD=-0.1280;culprit=QD;culpritValue=-2.390e+00
+3	132349300	.	TTAAAATA	T	.	.	END=132349307;VQSLOD=0.8988;culprit=AS_FS;culpritValue=0.632
+3	132363752	.	TA	T	.	.	END=132363753;VQSLOD=3.1112;culprit=AS_FS;culpritValue=-4.234e-01
+3	132384804	.	CAT	C	.	.	END=132384806;VQSLOD=3.9566;culprit=AS_FS;culpritValue=-4.231e-01
+3	132407481	.	T	TA	.	.	END=132407481;POSITIVE_TRAIN_SITE;VQSLOD=3.3509;culprit=AS_FS;culpritValue=-3.258e-01
+3	132408107	.	CCT	C	.	.	END=132408109;VQSLOD=2.2905;culprit=AS_SOR;culpritValue=-1.077e-01
+3	132436901	.	AT	A	.	.	END=132436902;POSITIVE_TRAIN_SITE;VQSLOD=5.2537;culprit=AS_FS;culpritValue=-4.212e-01
+3	133185848	.	ACT	A	.	.	END=133185850;POSITIVE_TRAIN_SITE;VQSLOD=5.0438;culprit=AS_FS;culpritValue=-4.213e-01
+3	133292939	.	CAAG	C	.	.	END=133292942;VQSLOD=1.2209;culprit=QD;culpritValue=-2.226e+00
+3	133305582	.	AATTG	A	.	.	END=133305586;VQSLOD=4.2363;culprit=AS_FS;culpritValue=-4.216e-01
+3	133305986	.	AAAT	A	.	.	END=133305989;POSITIVE_TRAIN_SITE;VQSLOD=5.1802;culprit=AS_FS;culpritValue=-4.209e-01
+3	133347614	.	AAG	A	.	.	END=133347616;POSITIVE_TRAIN_SITE;VQSLOD=5.0348;culprit=AS_FS;culpritValue=-4.216e-01
+3	133493705	.	GT	G	.	.	END=133493706;POSITIVE_TRAIN_SITE;VQSLOD=1.0410;culprit=AS_FS;culpritValue=1.54
+3	133525497	.	GTTC	G	.	.	END=133525500;VQSLOD=1.4704;culprit=AS_ReadPosRankSum;culpritValue=1.10
+3	133556964	.	ACCGTGCCGGGCC	A	.	.	END=133556976;POSITIVE_TRAIN_SITE;VQSLOD=0.9946;culprit=AS_FS;culpritValue=-4.203e-01
+3	133969437	.	A	AG	.	.	END=133969437;VQSLOD=3.6978;culprit=AS_FS;culpritValue=-4.210e-01
+3	134277195	.	A	AT	.	.	END=134277195;POSITIVE_TRAIN_SITE;VQSLOD=1.8623;culprit=AS_FS;culpritValue=0.689
+3	135742057	.	G	GTGTTT	.	.	END=135742057;VQSLOD=-0.0815;culprit=AS_MQRankSum;culpritValue=-1.799e+00
+3	135742057	.	G	GTGTTTTGTTT	.	.	END=135742057;VQSLOD=1.0137;culprit=AS_FS;culpritValue=-4.211e-01
+3	135742057	.	G	GTGTTTTGTTTTGTTT	.	.	END=135742057;VQSLOD=2.6840;culprit=AS_FS;culpritValue=-4.193e-01
+3	135759669	.	T	TG	.	.	END=135759669;POSITIVE_TRAIN_SITE;VQSLOD=5.5246;culprit=AS_FS;culpritValue=-4.196e-01
+3	135806712	.	T	TTA	.	.	END=135806712;VQSLOD=3.6140;culprit=AS_FS;culpritValue=-4.228e-01
+3	135825050	.	C	CCAAT	.	.	END=135825050;POSITIVE_TRAIN_SITE;VQSLOD=1.6769;culprit=AS_FS;culpritValue=1.13
+3	136057142	.	AATT	A	.	.	END=136057145;POSITIVE_TRAIN_SITE;VQSLOD=3.6051;culprit=AS_FS;culpritValue=-1.433e-01
+3	136310398	.	GA	GAA	.	.	END=136310399;VQSLOD=1.2118;culprit=AS_FS;culpritValue=-2.930e-01
+3	136310398	.	GA	G	.	.	END=136310399;VQSLOD=2.8372;culprit=AS_FS;culpritValue=-4.238e-01
+3	136574578	.	T	TTAA	.	.	END=136574578;VQSLOD=1.7768;culprit=AS_ReadPosRankSum;culpritValue=-1.467e+00
+3	136699133	.	CTT	CT	.	.	END=136699135;VQSLOD=1.3355;culprit=AS_FS;culpritValue=-9.505e-02
+3	136699133	.	CTT	C	.	.	END=136699135;VQSLOD=4.0629;culprit=AS_FS;culpritValue=-4.217e-01
+3	137484349	.	AC	A	.	.	END=137484350;POSITIVE_TRAIN_SITE;VQSLOD=3.0816;culprit=AS_FS;culpritValue=0.470
+3	137880740	.	ATCG	A	.	.	END=137880743;VQSLOD=2.3464;culprit=AS_FS;culpritValue=-4.193e-01
+3	137893401	.	A	AC	.	.	END=137893401;VQSLOD=3.7660;culprit=AS_FS;culpritValue=-4.208e-01
+3	137981439	.	TA	T	.	.	END=137981440;VQSLOD=2.5807;culprit=AS_FS;culpritValue=-4.245e-01
+3	137981454	.	AAT	A	.	.	END=137981456;VQSLOD=0.3251;culprit=QD;culpritValue=-2.184e+00
+3	137981455	.	AT	A	.	.	END=137981456;VQSLOD=1.1786;culprit=QD;culpritValue=-1.608e+00
+3	138192364	.	CTCTT	C	.	.	END=138192368;VQSLOD=2.0369;culprit=AS_FS;culpritValue=0.045
+3	138193025	.	CT	C	.	.	END=138193026;VQSLOD=0.2480;culprit=QD;culpritValue=-2.117e+00
+3	138193025	.	CT	CTT	.	.	END=138193026;VQSLOD=2.5472;culprit=AS_FS;culpritValue=-4.235e-01
+3	138213849	.	ATTTGT	A	.	.	END=138213854;POSITIVE_TRAIN_SITE;VQSLOD=0.8595;culprit=AS_MQRankSum;culpritValue=-2.226e+00
+3	138216173	.	TA	TAA	.	.	END=138216174;VQSLOD=0.5870;culprit=QD;culpritValue=-1.814e+00
+3	138216173	.	TA	T	.	.	END=138216174;VQSLOD=3.2317;culprit=AS_FS;culpritValue=-4.196e-01
+3	138219435	.	AAG	A	.	.	END=138219437;POSITIVE_TRAIN_SITE;VQSLOD=3.3957;culprit=AS_MQRankSum;culpritValue=1.03
+3	138248009	.	GA	G	.	.	END=138248010;VQSLOD=1.1333;culprit=QD;culpritValue=-1.810e+00
+3	138248009	.	GA	GAA	.	.	END=138248010;VQSLOD=3.7558;culprit=AS_FS;culpritValue=-4.216e-01
+3	138251447	.	CGGTAT	C	.	.	END=138251452;POSITIVE_TRAIN_SITE;VQSLOD=1.0870;culprit=AS_ReadPosRankSum;culpritValue=1.40
+3	138341284	.	CTT	CT	.	.	END=138341286;VQSLOD=-1.3946;culprit=AS_FS;culpritValue=1.88
+3	138341284	.	CTT	C	.	.	END=138341286;POSITIVE_TRAIN_SITE;VQSLOD=5.1391;culprit=AS_FS;culpritValue=-4.208e-01
+3	138400782	.	GA	GAA	.	.	END=138400783;VQSLOD=-0.8427;culprit=QD;culpritValue=-2.225e+00
+3	138400782	.	GA	G	.	.	END=138400783;VQSLOD=2.2346;culprit=AS_FS;culpritValue=-4.243e-01
+3	138474832	.	A	AAAT	.	.	END=138474832;POSITIVE_TRAIN_SITE;VQSLOD=4.6890;culprit=AS_FS;culpritValue=-4.223e-01
+3	139068148	.	CT	C	.	.	END=139068149;VQSLOD=0.7185;culprit=QD;culpritValue=-2.281e+00
+3	139068148	.	CT	CTT	.	.	END=139068149;VQSLOD=2.8019;culprit=AS_FS;culpritValue=-4.208e-01
+3	139074638	.	G	GT	.	.	END=139074638;VQSLOD=3.5905;culprit=AS_FS;culpritValue=-4.216e-01
+3	139077674	.	TGATGAAATGA	T	.	.	END=139077684;VQSLOD=0.7458;culprit=AS_MQRankSum;culpritValue=-6.555e-01
+3	139180919	.	ATG	A	.	.	END=139180921;POSITIVE_TRAIN_SITE;VQSLOD=3.1196;culprit=AS_SOR;culpritValue=-7.939e-01
+3	139257545	.	GC	G	.	.	END=139257546;POSITIVE_TRAIN_SITE;VQSLOD=5.6719;culprit=AS_FS;culpritValue=-4.214e-01
+3	140178638	.	CCCT	C	.	.	END=140178641;POSITIVE_TRAIN_SITE;VQSLOD=2.9111;culprit=AS_FS;culpritValue=-4.222e-01
+3	140284996	.	AGAGGAG	A	.	.	END=140285002;VQSLOD=2.0967;culprit=AS_FS;culpritValue=-3.033e-01
+3	140675348	.	CTT	C	.	.	END=140675350;VQSLOD=3.5283;culprit=AS_FS;culpritValue=-4.225e-01
+3	140678384	.	TA	T	.	.	END=140678385;VQSLOD=-0.6020;culprit=AS_FS;culpritValue=1.30
+3	140678384	.	TA	TAA	.	.	END=140678385;VQSLOD=2.5897;culprit=AS_FS;culpritValue=-4.174e-01
+3	140682087	.	TA	T	.	.	END=140682088;VQSLOD=1.3870;culprit=QD;culpritValue=-2.026e+00
+3	140682087	.	TA	TAA	.	.	END=140682088;VQSLOD=2.0021;culprit=AS_FS;culpritValue=-4.212e-01
+3	140851016	.	G	GT	.	.	END=140851016;VQSLOD=0.5158;culprit=QD;culpritValue=-2.092e+00
+3	141328240	.	TA	T	.	.	END=141328241;POSITIVE_TRAIN_SITE;VQSLOD=5.2675;culprit=AS_FS;culpritValue=-4.227e-01
+3	141621075	.	TG	T	.	.	END=141621076;POSITIVE_TRAIN_SITE;VQSLOD=3.3305;culprit=AS_FS;culpritValue=-6.270e-03
+3	141622411	.	TAC	T	.	.	END=141622413;POSITIVE_TRAIN_SITE;VQSLOD=0.3724;culprit=AS_FS;culpritValue=2.05
+3	141622630	.	G	GT	.	.	END=141622630;NEGATIVE_TRAIN_SITE;VQSLOD=-1.2851;culprit=QD;culpritValue=-2.281e+00
+3	141892041	.	TA	T	.	.	END=141892042;VQSLOD=0.3721;culprit=AS_FS;culpritValue=0.893
+3	141892041	.	TA	TAAA	.	.	END=141892042;VQSLOD=1.5704;culprit=QD;culpritValue=-1.461e+00
+3	141905277	.	GA	G	.	.	END=141905278;POSITIVE_TRAIN_SITE;VQSLOD=2.9836;culprit=QD;culpritValue=-1.280e+00
+3	141923491	.	G	GA	.	.	END=141923491;VQSLOD=0.6578;culprit=QD;culpritValue=-2.394e+00
+3	141934393	.	CA	CAA	.	.	END=141934394;VQSLOD=3.3118;culprit=AS_FS;culpritValue=-4.216e-01
+3	141934393	.	CA	C	.	.	END=141934394;VQSLOD=3.5441;culprit=AS_FS;culpritValue=-4.221e-01
+3	142094816	.	GCA	GCACACACA	.	.	END=142094818;VQSLOD=-0.2584;culprit=AS_ReadPosRankSum;culpritValue=-1.264e+00
+3	142094816	.	GCA	GCACACA	.	.	END=142094818;POSITIVE_TRAIN_SITE;VQSLOD=1.6075;culprit=AS_MQRankSum;culpritValue=-5.868e-01
+3	142094816	.	GCA	GCACA	.	.	END=142094818;POSITIVE_TRAIN_SITE;VQSLOD=1.8304;culprit=AS_FS;culpritValue=1.05
+3	142094816	.	GCA	G	.	.	END=142094818;VQSLOD=4.0743;culprit=AS_FS;culpritValue=-4.218e-01
+3	142145721	.	G	GA	.	.	END=142145721;POSITIVE_TRAIN_SITE;VQSLOD=2.3844;culprit=AS_FS;culpritValue=-4.273e-01
+3	142231062	.	T	TA	.	.	END=142231062;VQSLOD=4.2234;culprit=AS_FS;culpritValue=-4.225e-01
+3	142241692	.	GA	GAA	.	.	END=142241693;VQSLOD=-0.1293;culprit=QD;culpritValue=-2.295e+00
+3	142241692	.	GA	G	.	.	END=142241693;VQSLOD=3.1596;culprit=AS_FS;culpritValue=-4.206e-01
+3	142259706	.	CA	C	.	.	END=142259707;VQSLOD=3.0424;culprit=AS_FS;culpritValue=-4.222e-01
+3	142259706	.	CA	CAA	.	.	END=142259707;VQSLOD=3.5324;culprit=AS_FS;culpritValue=-4.205e-01
+3	142272275	.	AACAC	A	.	.	END=142272279;VQSLOD=1.5057;culprit=AS_FS;culpritValue=-5.786e-02
+3	142272275	.	AACAC	AACACAC	.	.	END=142272279;VQSLOD=1.7163;culprit=AS_MQRankSum;culpritValue=1.57
+3	142272275	.	AACAC	AAC	.	.	END=142272279;VQSLOD=2.1428;culprit=AS_FS;culpritValue=-1.772e-01
+3	142277426	.	A	AG	.	.	END=142277426;VQSLOD=2.0326;culprit=AS_FS;culpritValue=-4.205e-01
+3	142277427	.	A	ATAG	.	.	END=142277427;VQSLOD=2.6482;culprit=AS_FS;culpritValue=-4.196e-01
+3	142402827	.	CT	C	.	.	END=142402828;VQSLOD=2.9002;culprit=AS_FS;culpritValue=-4.225e-01
+3	142423451	.	AT	A	.	.	END=142423452;VQSLOD=3.7678;culprit=AS_FS;culpritValue=-4.225e-01
+3	142423477	.	ATTTTTTTTTTTTT	A	.	.	END=142423490;VQSLOD=4.1730;culprit=AS_FS;culpritValue=-4.211e-01
+3	142462309	.	CT	C	.	.	END=142462310;VQSLOD=3.1647;culprit=AS_FS;culpritValue=-4.191e-01
+3	142462309	.	CT	CTT	.	.	END=142462310;VQSLOD=3.5908;culprit=AS_FS;culpritValue=-4.222e-01
+3	142521224	.	C	CT	.	.	END=142521224;VQSLOD=3.8275;culprit=AS_FS;culpritValue=-4.194e-01
+3	142730882	.	GA	G	.	.	END=142730883;POSITIVE_TRAIN_SITE;VQSLOD=2.1503;culprit=AS_FS;culpritValue=1.04
+3	143551065	.	TA	T	.	.	END=143551066;VQSLOD=0.5498;culprit=QD;culpritValue=-2.382e+00
+3	145828256	.	G	GT	.	.	END=145828256;POSITIVE_TRAIN_SITE;VQSLOD=3.2654;culprit=AS_FS;culpritValue=-4.182e-01
+3	145924591	.	A	AT	.	.	END=145924591;POSITIVE_TRAIN_SITE;VQSLOD=3.2614;culprit=AS_FS;culpritValue=-1.254e-01
+3	146167163	.	CA	C	.	.	END=146167164;VQSLOD=0.6187;culprit=QD;culpritValue=-2.063e+00
+3	146167163	.	CA	CAA	.	.	END=146167164;VQSLOD=0.8855;culprit=AS_FS;culpritValue=-4.214e-01
+3	146177594	.	GT	G	.	.	END=146177595;VQSLOD=0.8311;culprit=QD;culpritValue=-1.830e+00
+3	146177594	.	GT	GTT	.	.	END=146177595;VQSLOD=0.9068;culprit=QD;culpritValue=-1.830e+00
+3	146234962	.	GA	G	.	.	END=146234963;VQSLOD=3.3707;culprit=AS_FS;culpritValue=-4.201e-01
+3	146311937	.	CA	C	.	.	END=146311938;VQSLOD=3.5955;culprit=AS_FS;culpritValue=-4.205e-01
+3	148583231	.	CT	CTT	.	.	END=148583232;VQSLOD=0.9811;culprit=QD;culpritValue=-2.197e+00
+3	148583231	.	CT	C	.	.	END=148583232;VQSLOD=3.3745;culprit=AS_FS;culpritValue=-4.223e-01
+3	148601639	.	A	AT	.	.	END=148601639;VQSLOD=4.1891;culprit=AS_FS;culpritValue=-4.200e-01
+3	148711906	.	GT	GTT	.	.	END=148711907;VQSLOD=0.5124;culprit=QD;culpritValue=-2.311e+00
+3	148711906	.	GT	G	.	.	END=148711907;VQSLOD=1.1379;culprit=AS_FS;culpritValue=-4.180e-01
+3	148750169	.	G	GA	.	.	END=148750169;VQSLOD=2.3941;culprit=AS_FS;culpritValue=-4.243e-01
+3	148780854	.	C	CT	.	.	END=148780854;VQSLOD=-0.0264;culprit=QD;culpritValue=-2.404e+00
+3	148802448	.	A	ATTTAG	.	.	END=148802448;VQSLOD=2.1613;culprit=AS_FS;culpritValue=-4.223e-01
+3	148858987	.	CT	CTTTTT	.	.	END=148858988;VQSLOD=-0.8488;culprit=AS_ReadPosRankSum;culpritValue=-2.776e+00
+3	148858987	.	CT	CTTTT	.	.	END=148858988;VQSLOD=-0.8321;culprit=AS_ReadPosRankSum;culpritValue=-2.324e+00
+3	148858987	.	CT	CTTTTTT	.	.	END=148858988;VQSLOD=-0.4839;culprit=AS_ReadPosRankSum;culpritValue=-2.342e+00
+3	148858987	.	CT	CTTTTTTT	.	.	END=148858988;VQSLOD=0.6161;culprit=AS_ReadPosRankSum;culpritValue=-1.408e+00
+3	148858987	.	CT	C	.	.	END=148858988;VQSLOD=2.0109;culprit=AS_FS;culpritValue=-4.188e-02
+3	148858987	.	CT	CTTT	.	.	END=148858988;VQSLOD=2.1118;culprit=AS_FS;culpritValue=-1.140e-01
+3	148859000	.	T	TTTTA	.	.	END=148859000;VQSLOD=1.4361;culprit=AS_MQRankSum;culpritValue=-5.311e-01
+3	148880229	.	CAG	C	.	.	END=148880231;POSITIVE_TRAIN_SITE;VQSLOD=3.4626;culprit=AS_FS;culpritValue=0.069
+3	148885779	.	A	AT	.	.	END=148885779;POSITIVE_TRAIN_SITE;VQSLOD=0.9083;culprit=AS_ReadPosRankSum;culpritValue=-1.780e+00
+3	148897293	.	TTG	T	.	.	END=148897295;POSITIVE_TRAIN_SITE;VQSLOD=5.5466;culprit=AS_FS;culpritValue=-4.224e-01
+3	148897498	.	TACACACAC	TACACACACAC	.	.	END=148897506;VQSLOD=0.8423;culprit=AS_FS;culpritValue=0.957
+3	148897498	.	TACACACAC	T	.	.	END=148897506;VQSLOD=1.8199;culprit=AS_FS;culpritValue=-4.184e-01
+3	148897498	.	TACACACAC	TACAC	.	.	END=148897506;VQSLOD=3.3462;culprit=AS_FS;culpritValue=-4.232e-01
+3	148897498	.	TACACACAC	TACACACACACAC	.	.	END=148897506;VQSLOD=4.1484;culprit=AS_FS;culpritValue=-4.204e-01
+3	148897498	.	TACACACAC	TACACAC	.	.	END=148897506;VQSLOD=4.3030;culprit=AS_FS;culpritValue=-4.212e-01
+3	148899766	.	A	ACCCC	.	.	END=148899766;VQSLOD=-20.2514;culprit=AS_FS;culpritValue=14.90
+3	148899783	.	CGTGAGTA	C	.	.	END=148899790;VQSLOD=-12.5943;culprit=AS_FS;culpritValue=11.40
+3	148901395	.	TA	T	.	.	END=148901396;VQSLOD=2.8687;culprit=AS_FS;culpritValue=-4.189e-01
+3	148901395	.	TA	TAA	.	.	END=148901396;VQSLOD=3.2668;culprit=AS_FS;culpritValue=-4.224e-01
+3	148901406	.	AC	A	.	.	END=148901407;POSITIVE_TRAIN_SITE;VQSLOD=2.6249;culprit=QD;culpritValue=-1.829e+00
+3	149192851	.	G	GC	.	.	END=149192851;POSITIVE_TRAIN_SITE;VQSLOD=2.3565;culprit=AS_MQRankSum;culpritValue=1.53
+3	149238595	.	C	CTTAA	.	.	END=149238595;VQSLOD=4.3909;culprit=AS_FS;culpritValue=-4.215e-01
+3	149290605	.	CA	C	.	.	END=149290606;VQSLOD=2.9902;culprit=AS_FS;culpritValue=-4.204e-01
+3	149481752	.	TG	T	.	.	END=149481753;POSITIVE_TRAIN_SITE;VQSLOD=1.4123;culprit=AS_FS;culpritValue=1.42
+3	149485901	.	T	TG	.	.	END=149485901;VQSLOD=4.0290;culprit=AS_FS;culpritValue=-4.224e-01
+3	149613232	.	ATTTTT	ATT	.	.	END=149613237;VQSLOD=0.8098;culprit=AS_ReadPosRankSum;culpritValue=1.41
+3	149613232	.	ATTTTT	ATTT	.	.	END=149613237;VQSLOD=1.4542;culprit=AS_ReadPosRankSum;culpritValue=1.44
+3	149613232	.	ATTTTT	AT	.	.	END=149613237;VQSLOD=3.3714;culprit=AS_FS;culpritValue=-4.209e-01
+3	149613232	.	ATTTTT	A	.	.	END=149613237;POSITIVE_TRAIN_SITE;VQSLOD=4.0591;culprit=AS_FS;culpritValue=-4.203e-01
+3	149679130	.	GAA	G	.	.	END=149679132;VQSLOD=0.8859;culprit=AS_FS;culpritValue=-1.376e-01
+3	149679148	.	TA	T	.	.	END=149679149;VQSLOD=0.4879;culprit=AS_MQRankSum;culpritValue=1.23
+3	149679148	.	TA	TAA	.	.	END=149679149;VQSLOD=3.7376;culprit=AS_FS;culpritValue=-4.219e-01
+3	149679161	.	A	AT	.	.	END=149679161;VQSLOD=3.9944;culprit=AS_FS;culpritValue=-4.210e-01
+3	149683018	.	ATCAC	A	.	.	END=149683022;VQSLOD=0.8280;culprit=AS_FS;culpritValue=-8.809e-02
+3	149686365	.	AAAC	A	.	.	END=149686368;VQSLOD=1.1351;culprit=AS_FS;culpritValue=-4.187e-01
+3	149686366	.	AAC	A	.	.	END=149686368;POSITIVE_TRAIN_SITE;VQSLOD=0.5712;culprit=AS_ReadPosRankSum;culpritValue=2.31
+3	149686367	.	ACAC	AAC	.	.	END=149686370;VQSLOD=1.0534;culprit=AS_FS;culpritValue=-4.199e-01
+3	149700147	.	TA	T	.	.	END=149700148;VQSLOD=4.1448;culprit=AS_FS;culpritValue=-4.219e-01
+3	149701113	.	CG	C	.	.	END=149701114;POSITIVE_TRAIN_SITE;VQSLOD=2.8785;culprit=AS_MQRankSum;culpritValue=0.640
+3	150263951	.	A	ACC	.	.	END=150263951;POSITIVE_TRAIN_SITE;VQSLOD=5.0700;culprit=AS_FS;culpritValue=-4.238e-01
+3	150275496	.	TA	T	.	.	END=150275497;POSITIVE_TRAIN_SITE;VQSLOD=4.8287;culprit=AS_FS;culpritValue=-4.231e-01
+3	150276151	.	A	AT	.	.	END=150276151;VQSLOD=0.6778;culprit=AS_MQRankSum;culpritValue=2.35
+3	150276153	.	C	CT	.	.	END=150276153;VQSLOD=3.1593;culprit=AS_FS;culpritValue=-4.213e-01
+3	150282061	.	CT	C	.	.	END=150282062;VQSLOD=0.9346;culprit=QD;culpritValue=-1.958e+00
+3	150384548	.	TA	T	.	.	END=150384549;POSITIVE_TRAIN_SITE;VQSLOD=2.8883;culprit=AS_SOR;culpritValue=0.828
+3	150400135	.	T	TCCCCACA	.	.	END=150400135;POSITIVE_TRAIN_SITE;VQSLOD=2.8635;culprit=AS_FS;culpritValue=-4.183e-01
+3	150421542	.	CACCTCT	C	.	.	END=150421548;VQSLOD=-0.6247;culprit=AS_FS;culpritValue=1.03
+3	150588976	.	TGAA	T	.	.	END=150588979;VQSLOD=1.5426;culprit=AS_SOR;culpritValue=0.978
+3	150603248	.	G	GAAAAGAAAAGC	.	.	END=150603248;VQSLOD=0.3215;culprit=AS_MQRankSum;culpritValue=-1.047e+00
+3	150603248	.	G	GAAAAGC	.	.	END=150603248;POSITIVE_TRAIN_SITE;VQSLOD=1.0565;culprit=AS_ReadPosRankSum;culpritValue=-2.856e+00
+3	150645418	.	TACAC	T	.	.	END=150645422;VQSLOD=0.0548;culprit=AS_MQRankSum;culpritValue=-1.002e+00
+3	150645418	.	TACAC	TACACAC	.	.	END=150645422;VQSLOD=2.4500;culprit=AS_FS;culpritValue=-4.226e-01
+3	150645418	.	TACAC	TAC	.	.	END=150645422;VQSLOD=2.9597;culprit=AS_FS;culpritValue=-4.196e-01
+3	150876464	.	TG	T	.	.	END=150876465;POSITIVE_TRAIN_SITE;VQSLOD=2.3699;culprit=AS_FS;culpritValue=0.545
+3	150883613	.	T	TTAA	.	.	END=150883613;VQSLOD=4.3298;culprit=AS_FS;culpritValue=-4.213e-01
+3	150883777	.	A	AT	.	.	END=150883777;POSITIVE_TRAIN_SITE;VQSLOD=2.5746;culprit=AS_ReadPosRankSum;culpritValue=-7.355e-01
+3	151102790	.	ACT	A	.	.	END=151102792;VQSLOD=0.1225;culprit=QD;culpritValue=-2.366e+00
+3	151134223	.	G	GT	.	.	END=151134223;VQSLOD=4.0725;culprit=AS_FS;culpritValue=-4.207e-01
+3	151154435	.	A	AAAT	.	.	END=151154435;VQSLOD=2.9586;culprit=AS_FS;culpritValue=-4.171e-01
+3	151165617	.	TCTTA	T	.	.	END=151165621;POSITIVE_TRAIN_SITE;VQSLOD=3.1322;culprit=AS_FS;culpritValue=-2.845e-01
+3	151542408	.	AAAAC	A	.	.	END=151542412;POSITIVE_TRAIN_SITE;VQSLOD=3.3669;culprit=AS_MQRankSum;culpritValue=-1.607e-01
+3	151545321	.	GT	G	.	.	END=151545322;POSITIVE_TRAIN_SITE;VQSLOD=5.5254;culprit=AS_FS;culpritValue=-4.207e-01
+3	153842161	.	CTT	CTTTTTTTTT	.	.	END=153842163;NEGATIVE_TRAIN_SITE;VQSLOD=-3.2773;culprit=AS_SOR;culpritValue=4.13
+3	153842161	.	CTT	CT	.	.	END=153842163;NEGATIVE_TRAIN_SITE;VQSLOD=-1.4293;culprit=QD;culpritValue=-2.059e+00
+3	153842161	.	CTT	C	.	.	END=153842163;VQSLOD=0.6219;culprit=QD;culpritValue=-2.059e+00
+3	153842161	.	CTT	CTTTTTT	.	.	END=153842163;VQSLOD=3.1399;culprit=AS_FS;culpritValue=-4.219e-01
+3	153842179	.	TAC	T	.	.	END=153842181;VQSLOD=-71.7233;culprit=AS_FS;culpritValue=27.29
+3	153842179	.	TAC	TC	.	.	END=153842181;VQSLOD=-16.9011;culprit=AS_FS;culpritValue=13.88
+3	153842181	.	CT	CTTTTTTTTTT	.	.	END=153842182;NEGATIVE_TRAIN_SITE;VQSLOD=-3.4051;culprit=AS_ReadPosRankSum;culpritValue=-2.490e+00
+3	153842181	.	CT	CTTTT	.	.	END=153842182;NEGATIVE_TRAIN_SITE;VQSLOD=-2.0208;culprit=AS_ReadPosRankSum;culpritValue=-2.419e+00
+3	153842181	.	CT	C	.	.	END=153842182;VQSLOD=0.7975;culprit=QD;culpritValue=-1.882e+00
+3	154002357	.	AT	A	.	.	END=154002358;VQSLOD=0.5380;culprit=AS_FS;culpritValue=0.801
+3	154002357	.	AT	ATT	.	.	END=154002358;VQSLOD=2.8225;culprit=AS_FS;culpritValue=-4.201e-01
+3	154007618	.	T	TA	.	.	END=154007618;VQSLOD=0.6246;culprit=QD;culpritValue=-2.311e+00
+3	154010515	.	AACACACAC	A	.	.	END=154010523;VQSLOD=0.1902;culprit=AS_FS;culpritValue=0.662
+3	154010515	.	AACACACAC	AAC	.	.	END=154010523;VQSLOD=2.7388;culprit=AS_FS;culpritValue=-4.206e-01
+3	154010515	.	AACACACAC	AACACAC	.	.	END=154010523;VQSLOD=3.5126;culprit=AS_FS;culpritValue=-4.186e-01
+3	154010515	.	AACACACAC	AACACACACACACACACAC	.	.	END=154010523;VQSLOD=3.9481;culprit=AS_FS;culpritValue=-4.199e-01
+3	154010515	.	AACACACAC	AACAC	.	.	END=154010523;VQSLOD=4.2568;culprit=AS_FS;culpritValue=-4.210e-01
+3	154013043	.	ACATTTAACAAATGTATC	A	.	.	END=154013060;VQSLOD=3.7196;culprit=AS_FS;culpritValue=-4.217e-01
+3	154834379	.	GTA	GTATATATATATA	.	.	END=154834381;VQSLOD=-1.0819;culprit=AS_ReadPosRankSum;culpritValue=-1.958e+00
+3	154834379	.	GTA	GTATATATATA	.	.	END=154834381;VQSLOD=0.2176;culprit=AS_MQRankSum;culpritValue=-2.531e+00
+3	154834379	.	GTA	GTATATATATATATA	.	.	END=154834381;VQSLOD=1.2530;culprit=AS_FS;culpritValue=-4.239e-01
+3	154834379	.	GTA	GTATA	.	.	END=154834381;VQSLOD=1.8454;culprit=AS_SOR;culpritValue=-5.833e-01
+3	154834379	.	GTA	GTATATATA	.	.	END=154834381;VQSLOD=2.0536;culprit=AS_FS;culpritValue=-4.207e-01
+3	154834379	.	GTA	G	.	.	END=154834381;VQSLOD=4.0856;culprit=AS_FS;culpritValue=-4.220e-01
+3	154878158	.	GA	G	.	.	END=154878159;POSITIVE_TRAIN_SITE;VQSLOD=3.4513;culprit=AS_FS;culpritValue=-3.111e-01
+3	155093571	.	G	GT	.	.	END=155093571;VQSLOD=-0.1968;culprit=AS_ReadPosRankSum;culpritValue=-2.828e+00
+3	155093572	.	CTAGAG	C	.	.	END=155093577;VQSLOD=-0.1904;culprit=AS_ReadPosRankSum;culpritValue=-2.721e+00
+3	155212325	.	G	GA	.	.	END=155212325;POSITIVE_TRAIN_SITE;VQSLOD=2.9735;culprit=AS_FS;culpritValue=-5.121e-02
+3	155311991	.	T	TA	.	.	END=155311991;POSITIVE_TRAIN_SITE;VQSLOD=5.7531;culprit=AS_FS;culpritValue=-4.221e-01
+3	155523375	.	GCGCA	G	.	.	END=155523379;POSITIVE_TRAIN_SITE;VQSLOD=2.4799;culprit=AS_FS;culpritValue=-1.723e-01
+3	155643189	.	CTTT	CTTTT	.	.	END=155643192;VQSLOD=1.2337;culprit=AS_ReadPosRankSum;culpritValue=0.972
+3	155643189	.	CTTT	CTT	.	.	END=155643192;VQSLOD=3.1084;culprit=AS_FS;culpritValue=-4.205e-01
+3	155643189	.	CTTT	C	.	.	END=155643192;VQSLOD=3.9964;culprit=AS_FS;culpritValue=-4.216e-01
+3	156413615	.	C	CT	.	.	END=156413615;VQSLOD=3.3000;culprit=AS_FS;culpritValue=-4.194e-01
+3	156413615	.	C	CTTTT	.	.	END=156413615;VQSLOD=4.3146;culprit=AS_FS;culpritValue=-4.222e-01
+3	156413635	.	TCTG	T	.	.	END=156413638;VQSLOD=2.7403;culprit=AS_FS;culpritValue=-4.221e-01
+3	156570521	.	T	TA	.	.	END=156570521;POSITIVE_TRAIN_SITE;VQSLOD=4.4370;culprit=AS_FS;culpritValue=-4.249e-01
+3	156645196	.	AT	ATT	.	.	END=156645197;VQSLOD=3.9307;culprit=AS_FS;culpritValue=-4.221e-01
+3	156645196	.	AT	A	.	.	END=156645197;VQSLOD=3.9628;culprit=AS_FS;culpritValue=-4.215e-01
+3	156697055	.	A	AT	.	.	END=156697055;VQSLOD=-0.0753;culprit=AS_FS;culpritValue=1.24
+3	156697090	.	TATAAC	T	.	.	END=156697095;POSITIVE_TRAIN_SITE;VQSLOD=1.8893;culprit=AS_FS;culpritValue=-4.212e-01
+3	156864398	.	TAAAAAA	T	.	.	END=156864404;VQSLOD=-0.1494;culprit=AS_MQRankSum;culpritValue=-8.518e-01
+3	156864419	.	TA	T	.	.	END=156864420;VQSLOD=0.5772;culprit=AS_ReadPosRankSum;culpritValue=-2.061e+00
+3	156864419	.	TA	TAA	.	.	END=156864420;VQSLOD=3.7836;culprit=AS_FS;culpritValue=-4.225e-01
+3	156867776	.	G	GAA	.	.	END=156867776;POSITIVE_TRAIN_SITE;VQSLOD=2.6104;culprit=AS_MQRankSum;culpritValue=0.909
+3	156877276	.	CAA	C	.	.	END=156877278;POSITIVE_TRAIN_SITE;VQSLOD=4.4098;culprit=AS_FS;culpritValue=-4.215e-01
+3	156978919	.	A	AT	.	.	END=156978919;POSITIVE_TRAIN_SITE;VQSLOD=1.0881;culprit=AS_FS;culpritValue=0.689
+3	157082082	.	C	CAA	.	.	END=157082082;POSITIVE_TRAIN_SITE;VQSLOD=4.0857;culprit=AS_FS;culpritValue=-4.233e-01
+3	157155262	.	CCTGG	C	.	.	END=157155266;VQSLOD=1.2366;culprit=AS_MQRankSum;culpritValue=-3.620e-01
+3	157820718	.	AAC	A	.	.	END=157820720;VQSLOD=0.2393;culprit=QD;culpritValue=-2.221e+00
+3	157822817	.	CGCCG	C	.	.	END=157822821;VQSLOD=-1.4062;culprit=AS_FS;culpritValue=2.34
+3	157822839	.	CAACACA	C	.	.	END=157822845;VQSLOD=-24.4450;culprit=AS_FS;culpritValue=16.19
+3	157822839	.	CAACACA	CCA	.	.	END=157822845;NEGATIVE_TRAIN_SITE;VQSLOD=-4.4289;culprit=AS_FS;culpritValue=5.84
+3	157823581	.	A	ACACCTCCTC	.	.	END=157823581;VQSLOD=2.8959;culprit=AS_FS;culpritValue=-4.205e-01
+3	157823586	.	T	TCCTCCGCCTCCTCCGCCGCCG	.	.	END=157823586;VQSLOD=3.2701;culprit=AS_FS;culpritValue=-4.241e-01
+3	158072623	.	AT	ATT	.	.	END=158072624;VQSLOD=-0.2159;culprit=AS_FS;culpritValue=1.03
+3	158072623	.	AT	A	.	.	END=158072624;VQSLOD=1.0292;culprit=AS_FS;culpritValue=-2.997e-01
+3	158308947	.	TC	T	.	.	END=158308948;NEGATIVE_TRAIN_SITE;VQSLOD=-9.7368;culprit=AS_SOR;culpritValue=7.39
+3	158308948	.	CTT	CT	.	.	END=158308950;NEGATIVE_TRAIN_SITE;VQSLOD=-4.4967;culprit=AS_SOR;culpritValue=5.70
+3	158308948	.	CTT	C	.	.	END=158308950;NEGATIVE_TRAIN_SITE;POSITIVE_TRAIN_SITE;VQSLOD=-2.5535;culprit=AS_SOR;culpritValue=5.18
+3	158310391	.	CAGTT	C	.	.	END=158310395;POSITIVE_TRAIN_SITE;VQSLOD=3.4998;culprit=AS_MQRankSum;culpritValue=-1.537e+00
+3	158388721	.	C	CAAAGAAA	.	.	END=158388721;VQSLOD=-0.0114;culprit=AS_FS;culpritValue=1.77
+3	158399757	.	A	ATT	.	.	END=158399757;VQSLOD=2.5281;culprit=AS_FS;culpritValue=-4.224e-01
+3	158399757	.	A	AT	.	.	END=158399757;POSITIVE_TRAIN_SITE;VQSLOD=3.2685;culprit=AS_FS;culpritValue=-3.153e-01
+3	158407930	.	CT	C	.	.	END=158407931;VQSLOD=1.9456;culprit=AS_FS;culpritValue=-4.214e-01
+3	158407930	.	CT	CTT	.	.	END=158407931;VQSLOD=2.1651;culprit=AS_FS;culpritValue=-4.219e-01
+3	158409093	.	C	CA	.	.	END=158409093;POSITIVE_TRAIN_SITE;VQSLOD=0.9476;culprit=AS_MQRankSum;culpritValue=2.08
+3	158422727	.	CA	C	.	.	END=158422728;VQSLOD=3.8436;culprit=AS_FS;culpritValue=-4.203e-01
+3	158523119	.	GAAAA	G	.	.	END=158523123;VQSLOD=1.2356;culprit=AS_FS;culpritValue=-1.242e-01
+3	158526942	.	GT	GTT	.	.	END=158526943;VQSLOD=1.0967;culprit=QD;culpritValue=-1.963e+00
+3	158526942	.	GT	G	.	.	END=158526943;VQSLOD=1.4270;culprit=QD;culpritValue=-1.963e+00
+3	158526965	.	TAGGA	T	.	.	END=158526969;VQSLOD=2.4532;culprit=AS_FS;culpritValue=-4.214e-01
+3	158531730	.	G	GT	.	.	END=158531730;VQSLOD=3.3352;culprit=AS_FS;culpritValue=-4.211e-01
+3	158537415	.	CTTTTTT	C	.	.	END=158537421;VQSLOD=-0.0540;culprit=AS_FS;culpritValue=1.06
+3	158537415	.	CTTTTTT	CTTTTT	.	.	END=158537421;VQSLOD=0.8322;culprit=AS_FS;culpritValue=-1.121e-01
+3	158537415	.	CTTTTTT	CT	.	.	END=158537421;VQSLOD=1.0289;culprit=AS_FS;culpritValue=-4.229e-01
+3	158537431	.	TA	T	.	.	END=158537432;VQSLOD=-1.0812;culprit=AS_FS;culpritValue=0.912
+3	158539337	.	CAG	C	.	.	END=158539339;VQSLOD=3.8948;culprit=AS_FS;culpritValue=-4.238e-01
+3	158787632	.	TTGTGTG	T	.	.	END=158787638;VQSLOD=3.2932;culprit=AS_FS;culpritValue=-4.240e-01
+3	158787632	.	TTGTGTG	TTG	.	.	END=158787638;VQSLOD=4.1083;culprit=AS_FS;culpritValue=-4.196e-01
+3	159482271	.	GGCA	G	.	.	END=159482274;POSITIVE_TRAIN_SITE;VQSLOD=1.7950;culprit=QD;culpritValue=-2.151e+00
+3	159976432	.	GA	GAA	.	.	END=159976433;VQSLOD=1.4347;culprit=AS_FS;culpritValue=-1.243e-01
+3	159976432	.	GA	G	.	.	END=159976433;VQSLOD=1.6073;culprit=AS_ReadPosRankSum;culpritValue=0.813
+3	160061620	.	ATTTAT	A	.	.	END=160061625;VQSLOD=4.1878;culprit=AS_FS;culpritValue=-4.233e-01
+3	160083957	.	G	GA	.	.	END=160083957;VQSLOD=2.9242;culprit=AS_FS;culpritValue=-4.201e-01
+3	160131236	.	CT	C	.	.	END=160131237;VQSLOD=2.1661;culprit=AS_FS;culpritValue=-4.242e-01
+3	160131236	.	CT	CTT	.	.	END=160131237;VQSLOD=3.0704;culprit=AS_FS;culpritValue=-4.218e-01
+3	160134208	.	G	GT	.	.	END=160134208;VQSLOD=0.0845;culprit=AS_FS;culpritValue=0.908
+3	160134241	.	CT	C	.	.	END=160134242;VQSLOD=3.5121;culprit=AS_FS;culpritValue=-4.210e-01
+3	160137363	.	C	CT	.	.	END=160137363;VQSLOD=3.6414;culprit=AS_FS;culpritValue=-4.207e-01
+3	160138723	.	AT	A	.	.	END=160138724;VQSLOD=0.4454;culprit=QD;culpritValue=-2.201e+00
+3	160141656	.	CT	C	.	.	END=160141657;VQSLOD=1.0321;culprit=QD;culpritValue=-2.089e+00
+3	160141656	.	CT	CTT	.	.	END=160141657;VQSLOD=1.0613;culprit=QD;culpritValue=-2.089e+00
+3	160142810	.	ATGTG	ATGTGTGTGTGTGTG	.	.	END=160142814;VQSLOD=-0.0629;culprit=AS_MQRankSum;culpritValue=-1.452e+00
+3	160142810	.	ATGTG	ATGTGTGTGTGTG	.	.	END=160142814;VQSLOD=0.3334;culprit=AS_FS;culpritValue=-4.182e-01
+3	160142810	.	ATGTG	ATGTGTGTGTGTGTGTG	.	.	END=160142814;VQSLOD=1.8079;culprit=AS_FS;culpritValue=-4.210e-01
+3	160142810	.	ATGTG	ATGTGTGTGTGTGTGTGTGTG	.	.	END=160142814;VQSLOD=3.8215;culprit=AS_FS;culpritValue=-4.221e-01
+3	160142810	.	ATGTG	A	.	.	END=160142814;POSITIVE_TRAIN_SITE;VQSLOD=4.5271;culprit=AS_FS;culpritValue=-4.231e-01
+3	160143970	.	G	GT	.	.	END=160143970;VQSLOD=3.4408;culprit=AS_FS;culpritValue=-4.206e-01
+3	160144019	.	G	GA	.	.	END=160144019;VQSLOD=1.5771;culprit=AS_FS;culpritValue=-6.925e-02
+3	160156367	.	C	CT	.	.	END=160156367;VQSLOD=0.5504;culprit=QD;culpritValue=-2.400e+00
+3	160233406	.	CT	C	.	.	END=160233407;VQSLOD=-0.7032;culprit=AS_ReadPosRankSum;culpritValue=1.62
+3	160249220	.	TA	TAA	.	.	END=160249221;VQSLOD=2.1530;culprit=AS_FS;culpritValue=-4.186e-01
+3	160249220	.	TA	T	.	.	END=160249221;VQSLOD=3.3098;culprit=AS_FS;culpritValue=-4.207e-01
+3	160253688	.	T	TAA	.	.	END=160253688;VQSLOD=4.3320;culprit=AS_FS;culpritValue=-4.203e-01
+3	160395089	.	GA	G	.	.	END=160395090;VQSLOD=0.0934;culprit=AS_FS;culpritValue=1.14
+3	160474540	.	CGTGTGTGTGT	CGTGTGT	.	.	END=160474550;VQSLOD=1.3774;culprit=AS_FS;culpritValue=0.478
+3	160474540	.	CGTGTGTGTGT	CGTGTGTGT	.	.	END=160474550;VQSLOD=3.8880;culprit=AS_FS;culpritValue=-4.195e-01
+3	160474540	.	CGTGTGTGTGT	C	.	.	END=160474550;VQSLOD=3.9543;culprit=AS_FS;culpritValue=-4.210e-01
+3	160739920	.	AT	ATT	.	.	END=160739921;VQSLOD=1.1451;culprit=QD;culpritValue=-1.802e+00
+3	160739920	.	AT	A	.	.	END=160739921;VQSLOD=3.0849;culprit=AS_FS;culpritValue=-4.203e-01
+3	160955882	.	CTTT	C	.	.	END=160955885;VQSLOD=0.9769;culprit=AS_FS;culpritValue=-9.995e-02
+3	160955882	.	CTTT	CTT	.	.	END=160955885;VQSLOD=1.9226;culprit=AS_FS;culpritValue=-1.197e-02
+3	160955882	.	CTTT	CT	.	.	END=160955885;VQSLOD=2.0997;culprit=AS_FS;culpritValue=-4.211e-01
+3	161146871	.	GAT	G	.	.	END=161146873;VQSLOD=-0.5472;culprit=AS_ReadPosRankSum;culpritValue=1.43
+3	161146871	.	GAT	GATAT	.	.	END=161146873;VQSLOD=3.4158;culprit=AS_FS;culpritValue=-4.223e-01
+3	164748665	.	CA	CAA	.	.	END=164748666;VQSLOD=1.7557;culprit=QD;culpritValue=-1.026e+00
+3	164748665	.	CA	C	.	.	END=164748666;VQSLOD=1.9849;culprit=AS_FS;culpritValue=-8.065e-02
+3	164748687	.	G	GA	.	.	END=164748687;NEGATIVE_TRAIN_SITE;VQSLOD=-1.2878;culprit=QD;culpritValue=-2.229e+00
+3	164776913	.	C	CAT	.	.	END=164776913;POSITIVE_TRAIN_SITE;VQSLOD=2.7513;culprit=AS_FS;culpritValue=-4.220e-01
+3	164783252	.	AATATATAT	AATATAT	.	.	END=164783260;VQSLOD=4.1843;culprit=AS_FS;culpritValue=-4.209e-01
+3	164783252	.	AATATATAT	A	.	.	END=164783260;POSITIVE_TRAIN_SITE;VQSLOD=5.3799;culprit=AS_FS;culpritValue=-4.202e-01
+3	164783258	.	T	TAG	.	.	END=164783258;VQSLOD=2.9144;culprit=AS_FS;culpritValue=-4.244e-01
+3	164786629	.	TA	T	.	.	END=164786630;POSITIVE_TRAIN_SITE;VQSLOD=3.5803;culprit=AS_FS;culpritValue=-1.468e-01
+3	164792509	.	CAG	C	.	.	END=164792511;VQSLOD=3.7961;culprit=AS_FS;culpritValue=-4.237e-01
+3	164905648	.	GA	G	.	.	END=164905649;VQSLOD=1.0966;culprit=AS_MQRankSum;culpritValue=0.773
+3	164905648	.	GA	GAA	.	.	END=164905649;VQSLOD=1.6764;culprit=AS_FS;culpritValue=-4.169e-01
+3	167000006	.	G	GA	.	.	END=167000006;VQSLOD=0.8478;culprit=QD;culpritValue=-2.229e+00
+3	167045701	.	CAA	C	.	.	END=167045703;VQSLOD=3.2229;culprit=AS_FS;culpritValue=-4.208e-01
+3	167045701	.	CAA	CAAA	.	.	END=167045703;VQSLOD=3.4549;culprit=AS_FS;culpritValue=-4.207e-01
+3	167159979	.	G	GA	.	.	END=167159979;VQSLOD=3.7077;culprit=AS_FS;culpritValue=-4.218e-01
+3	167170829	.	TA	T	.	.	END=167170830;VQSLOD=1.8908;culprit=AS_FS;culpritValue=-4.173e-01
+3	167246967	.	T	TTA	.	.	END=167246967;VQSLOD=1.4697;culprit=AS_FS;culpritValue=-1.694e-01
+3	167540741	.	GA	G	.	.	END=167540742;VQSLOD=1.8173;culprit=QD;culpritValue=-1.102e+00
+3	167742353	.	GTCC	G	.	.	END=167742356;POSITIVE_TRAIN_SITE;VQSLOD=3.2149;culprit=QD;culpritValue=-7.339e-01
+3	167762678	.	CA	CAA	.	.	END=167762679;VQSLOD=0.9330;culprit=AS_MQRankSum;culpritValue=0.798
+3	167762678	.	CA	C	.	.	END=167762679;VQSLOD=3.3760;culprit=AS_FS;culpritValue=-4.233e-01
+3	167766197	.	TTAAAAC	T	.	.	END=167766203;POSITIVE_TRAIN_SITE;VQSLOD=3.3151;culprit=AS_FS;culpritValue=-4.219e-01
+3	168810718	.	G	GAGTTTA	.	.	END=168810718;POSITIVE_TRAIN_SITE;VQSLOD=1.4672;culprit=AS_FS;culpritValue=1.05
+3	169501505	.	G	GT	.	.	END=169501505;VQSLOD=0.5647;culprit=QD;culpritValue=-2.384e+00
+3	169514072	.	TAAAGG	T	.	.	END=169514077;POSITIVE_TRAIN_SITE;VQSLOD=2.2878;culprit=AS_MQRankSum;culpritValue=-6.534e-01
+3	169574462	.	C	CT	.	.	END=169574462;VQSLOD=0.5415;culprit=AS_FS;culpritValue=0.716
+3	169687033	.	TA	T	.	.	END=169687034;VQSLOD=0.7430;culprit=QD;culpritValue=-2.335e+00
+3	169985829	.	AT	A	.	.	END=169985830;VQSLOD=3.2998;culprit=AS_FS;culpritValue=-4.230e-01
+3	169992975	.	CTTT	CT	.	.	END=169992978;VQSLOD=0.6474;culprit=AS_ReadPosRankSum;culpritValue=1.12
+3	169992975	.	CTTT	C	.	.	END=169992978;VQSLOD=1.3481;culprit=AS_ReadPosRankSum;culpritValue=2.13
+3	169992975	.	CTTT	CTT	.	.	END=169992978;VQSLOD=2.5712;culprit=AS_FS;culpritValue=-4.231e-01
+3	169998240	.	CT	C	.	.	END=169998241;VQSLOD=-1.0476;culprit=AS_FS;culpritValue=1.78
+3	169998240	.	CT	CTT	.	.	END=169998241;VQSLOD=3.2549;culprit=AS_FS;culpritValue=-4.233e-01
+3	170715683	.	G	GTT	.	.	END=170715683;VQSLOD=4.1492;culprit=AS_FS;culpritValue=-4.223e-01
+3	170727701	.	GGTGT	G	.	.	END=170727705;VQSLOD=0.3429;culprit=AS_ReadPosRankSum;culpritValue=1.51
+3	170727701	.	GGTGT	GGTGTGTGT	.	.	END=170727705;VQSLOD=0.7014;culprit=AS_FS;culpritValue=-7.970e-02
+3	170727701	.	GGTGT	GGTGTGTGTGTGTGTGTGT	.	.	END=170727705;VQSLOD=1.5379;culprit=AS_FS;culpritValue=-4.235e-01
+3	170727701	.	GGTGT	GGTGTGTGTGT	.	.	END=170727705;VQSLOD=2.3147;culprit=AS_FS;culpritValue=-4.221e-01
+3	170727701	.	GGTGT	GGTGTGT	.	.	END=170727705;VQSLOD=2.8922;culprit=AS_FS;culpritValue=-4.234e-01
+3	170727701	.	GGTGT	GGT	.	.	END=170727705;VQSLOD=3.9434;culprit=AS_FS;culpritValue=-4.217e-01
+3	170727702	.	GT	G	.	.	END=170727703;VQSLOD=0.1978;culprit=AS_ReadPosRankSum;culpritValue=-1.363e+00
+3	170727704	.	GTGTGT	GGT	.	.	END=170727709;VQSLOD=0.7933;culprit=AS_MQRankSum;culpritValue=-3.897e-01
+3	170727704	.	GTGTGT	G	.	.	END=170727709;VQSLOD=1.4097;culprit=AS_FS;culpritValue=-1.669e-01
+3	170784256	.	A	AT	.	.	END=170784256;VQSLOD=1.4774;culprit=QD;culpritValue=1.44
+3	170801912	.	TAA	T	.	.	END=170801914;VQSLOD=3.0300;culprit=AS_FS;culpritValue=-4.183e-01
+3	170801912	.	TAA	TA	.	.	END=170801914;VQSLOD=3.5651;culprit=AS_FS;culpritValue=-4.201e-01
+3	171065010	.	G	GAAAA	.	.	END=171065010;VQSLOD=1.6483;culprit=AS_SOR;culpritValue=-8.611e-01
+3	171065010	.	G	GAA	.	.	END=171065010;POSITIVE_TRAIN_SITE;VQSLOD=2.0148;culprit=AS_ReadPosRankSum;culpritValue=-1.383e+00
+3	171065010	.	G	GAAAAA	.	.	END=171065010;VQSLOD=2.0607;culprit=AS_FS;culpritValue=-1.517e-01
+3	171065010	.	G	GA	.	.	END=171065010;POSITIVE_TRAIN_SITE;VQSLOD=3.0310;culprit=AS_ReadPosRankSum;culpritValue=-1.479e+00
+3	171065025	.	AG	A	.	.	END=171065026;NEGATIVE_TRAIN_SITE;VQSLOD=-6.6576;culprit=AS_FS;culpritValue=8.70
+3	171065036	.	ATG	A	.	.	END=171065038;NEGATIVE_TRAIN_SITE;VQSLOD=-8.1236;culprit=AS_FS;culpritValue=9.52
+3	171431855	.	AT	A	.	.	END=171431856;POSITIVE_TRAIN_SITE;VQSLOD=2.8020;culprit=QD;culpritValue=-1.230e+00
+3	171455451	.	TA	T	.	.	END=171455452;VQSLOD=0.8739;culprit=QD;culpritValue=-2.273e+00
+3	172016499	.	GA	G	.	.	END=172016500;POSITIVE_TRAIN_SITE;VQSLOD=4.7578;culprit=AS_FS;culpritValue=-4.224e-01
+3	172034208	.	G	GA	.	.	END=172034208;VQSLOD=0.5768;culprit=QD;culpritValue=-2.438e+00
+3	172034979	.	CT	C	.	.	END=172034980;VQSLOD=0.7736;culprit=QD;culpritValue=-2.166e+00
+3	172034979	.	CT	CTT	.	.	END=172034980;VQSLOD=1.1085;culprit=QD;culpritValue=-2.166e+00
+3	172046695	.	G	GT	.	.	END=172046695;VQSLOD=-0.8303;culprit=AS_FS;culpritValue=1.68
+3	172046695	.	G	GTT	.	.	END=172046695;VQSLOD=1.2704;culprit=QD;culpritValue=-1.420e+00
+3	172052897	.	GT	G	.	.	END=172052898;VQSLOD=0.8582;culprit=AS_MQRankSum;culpritValue=1.02
+3	172052897	.	GT	GTT	.	.	END=172052898;VQSLOD=1.2335;culprit=AS_FS;culpritValue=-1.123e-01
+3	172473059	.	C	CAT	.	.	END=172473059;POSITIVE_TRAIN_SITE;VQSLOD=2.4158;culprit=AS_FS;culpritValue=-9.014e-02
+3	172480173	.	AACTGG	A	.	.	END=172480178;NEGATIVE_TRAIN_SITE;VQSLOD=-1.7501;culprit=AS_ReadPosRankSum;culpritValue=-1.942e+00
+3	172480173	.	AACTGG	ATTACTGG	.	.	END=172480178;VQSLOD=1.1519;culprit=AS_MQRankSum;culpritValue=-8.785e-01
+3	172480174	.	AC	A	.	.	END=172480175;POSITIVE_TRAIN_SITE;VQSLOD=2.9064;culprit=AS_ReadPosRankSum;culpritValue=-1.595e+00
+3	172500037	.	CTTTTT	C	.	.	END=172500042;VQSLOD=3.5798;culprit=AS_FS;culpritValue=-4.200e-01
+3	173518043	.	CT	CTT	.	.	END=173518044;VQSLOD=3.4917;culprit=AS_FS;culpritValue=-4.207e-01
+3	173518043	.	CT	C	.	.	END=173518044;VQSLOD=3.6755;culprit=AS_FS;culpritValue=-4.213e-01
+3	175189406	.	CT	C	.	.	END=175189407;POSITIVE_TRAIN_SITE;VQSLOD=5.7748;culprit=AS_FS;culpritValue=-4.206e-01
+3	178542331	.	AT	A	.	.	END=178542332;VQSLOD=3.8845;culprit=AS_FS;culpritValue=-4.216e-01
+3	178928167	.	AGTC	A	.	.	END=178928170;VQSLOD=3.3406;culprit=AS_FS;culpritValue=-4.226e-01
+3	178957861	.	TA	TAA	.	.	END=178957862;NEGATIVE_TRAIN_SITE;VQSLOD=-1.2062;culprit=QD;culpritValue=-2.277e+00
+3	178957861	.	TA	T	.	.	END=178957862;VQSLOD=0.5823;culprit=QD;culpritValue=-2.277e+00
+3	178960766	.	CT	C	.	.	END=178960767;POSITIVE_TRAIN_SITE;VQSLOD=3.0547;culprit=AS_MQRankSum;culpritValue=0.572
+3	178962491	.	GA	G	.	.	END=178962492;VQSLOD=0.5916;culprit=AS_FS;culpritValue=-4.226e-01
+3	178962491	.	GA	GAA	.	.	END=178962492;VQSLOD=1.1232;culprit=AS_FS;culpritValue=-4.209e-01
+3	178962491	.	GA	GAAA	.	.	END=178962492;VQSLOD=2.7843;culprit=AS_FS;culpritValue=-4.204e-01
+3	179083024	.	AT	A	.	.	END=179083025;VQSLOD=1.1697;culprit=QD;culpritValue=-2.198e+00
+3	179083024	.	AT	ATT	.	.	END=179083025;VQSLOD=1.6666;culprit=AS_FS;culpritValue=-4.211e-01
+3	179096006	.	CAA	CAAA	.	.	END=179096008;VQSLOD=0.1877;culprit=AS_FS;culpritValue=1.22
+3	179096006	.	CAA	C	.	.	END=179096008;VQSLOD=1.0154;culprit=AS_MQRankSum;culpritValue=0.885
+3	179096006	.	CAA	CA	.	.	END=179096008;VQSLOD=3.5968;culprit=AS_FS;culpritValue=-4.195e-01
+3	179103342	.	C	CT	.	.	END=179103342;VQSLOD=1.0363;culprit=AS_MQRankSum;culpritValue=-6.541e-01
+3	179103342	.	C	CTT	.	.	END=179103342;VQSLOD=2.0565;culprit=AS_FS;culpritValue=-7.590e-02
+3	179131433	.	ACTT	A	.	.	END=179131436;VQSLOD=2.0267;culprit=AS_SOR;culpritValue=-7.052e-01
+3	179138722	.	T	TA	.	.	END=179138722;VQSLOD=1.7580;culprit=QD;culpritValue=-1.300e+00
+3	179291295	.	G	GT	.	.	END=179291295;VQSLOD=2.5997;culprit=AS_FS;culpritValue=-4.201e-01
+3	179291308	.	CT	C	.	.	END=179291309;POSITIVE_TRAIN_SITE;VQSLOD=0.6769;culprit=AS_ReadPosRankSum;culpritValue=3.16
+3	179325566	.	G	GCTGT	.	.	END=179325566;VQSLOD=0.5801;culprit=AS_ReadPosRankSum;culpritValue=-1.259e+00
+3	179418763	.	ACTT	A	.	.	END=179418766;VQSLOD=3.7245;culprit=AS_FS;culpritValue=-4.200e-01
+3	179447929	.	GTTC	G	.	.	END=179447932;POSITIVE_TRAIN_SITE;VQSLOD=0.2240;culprit=AS_FS;culpritValue=1.87
+3	179448066	.	AT	A	.	.	END=179448067;POSITIVE_TRAIN_SITE;VQSLOD=5.1680;culprit=AS_FS;culpritValue=-4.218e-01
+3	179481971	.	CTGTG	CTG	.	.	END=179481975;VQSLOD=0.5510;culprit=AS_FS;culpritValue=0.664
+3	179481971	.	CTGTG	CTGTGTG	.	.	END=179481975;POSITIVE_TRAIN_SITE;VQSLOD=1.4724;culprit=AS_FS;culpritValue=0.850
+3	179481971	.	CTGTG	C	.	.	END=179481975;POSITIVE_TRAIN_SITE;VQSLOD=2.5424;culprit=AS_FS;culpritValue=0.637
+3	179501981	.	CA	C	.	.	END=179501982;VQSLOD=3.0754;culprit=AS_FS;culpritValue=-4.196e-01
+3	179501981	.	CA	CAA	.	.	END=179501982;VQSLOD=3.2197;culprit=AS_FS;culpritValue=-4.225e-01
+3	179526234	.	GA	G	.	.	END=179526235;VQSLOD=1.9309;culprit=QD;culpritValue=-1.155e+00
+3	179527459	.	G	GAA	.	.	END=179527459;VQSLOD=2.7420;culprit=AS_FS;culpritValue=-4.240e-01
+3	179527459	.	G	GA	.	.	END=179527459;POSITIVE_TRAIN_SITE;VQSLOD=5.7686;culprit=AS_FS;culpritValue=-4.220e-01
+3	180320897	.	AT	ATT	.	.	END=180320898;VQSLOD=1.0155;culprit=QD;culpritValue=-2.319e+00
+3	180320897	.	AT	A	.	.	END=180320898;VQSLOD=2.9947;culprit=AS_FS;culpritValue=-4.209e-01
+3	180322248	.	CT	C	.	.	END=180322249;VQSLOD=1.1874;culprit=AS_FS;culpritValue=0.565
+3	180322248	.	CT	CTT	.	.	END=180322249;VQSLOD=3.1041;culprit=AS_FS;culpritValue=-4.202e-01
+3	180334045	.	A	AT	.	.	END=180334045;VQSLOD=0.8690;culprit=AS_FS;culpritValue=0.603
+3	180337574	.	T	TA	.	.	END=180337574;VQSLOD=3.2214;culprit=AS_FS;culpritValue=-4.236e-01
+3	180365043	.	TA	TAA	.	.	END=180365044;VQSLOD=3.1863;culprit=AS_FS;culpritValue=-4.223e-01
+3	180365043	.	TA	T	.	.	END=180365044;VQSLOD=3.5480;culprit=AS_FS;culpritValue=-4.197e-01
+3	180666490	.	TAA	T	.	.	END=180666492;POSITIVE_TRAIN_SITE;VQSLOD=2.0797;culprit=AS_FS;culpritValue=0.685
+3	180679235	.	CT	C	.	.	END=180679236;VQSLOD=0.6720;culprit=AS_ReadPosRankSum;culpritValue=1.29
+3	180680889	.	ATT	A	.	.	END=180680891;VQSLOD=2.1479;culprit=AS_FS;culpritValue=-4.231e-01
+3	180680889	.	ATT	AT	.	.	END=180680891;VQSLOD=2.7766;culprit=AS_FS;culpritValue=-4.214e-01
+3	180688171	.	AATATATATATATATATATATATAT	A	.	.	END=180688195;VQSLOD=0.0563;culprit=AS_FS;culpritValue=0.757
+3	180688171	.	AATATATATATATATATATATATAT	AATATATATATATATATATATATATAT	.	.	END=180688195;VQSLOD=1.6931;culprit=AS_SOR;culpritValue=-9.254e-01
+3	180688171	.	AATATATATATATATATATATATAT	AATATATATATATATATATATAT	.	.	END=180688195;VQSLOD=3.5597;culprit=AS_FS;culpritValue=-4.241e-01
+3	180688171	.	AATATATATATATATATATATATAT	AATATATATATATATATAT	.	.	END=180688195;VQSLOD=3.6241;culprit=AS_FS;culpritValue=-4.228e-01
+3	180688171	.	AATATATATATATATATATATATAT	AATATATATATATATATATAT	.	.	END=180688195;VQSLOD=3.9647;culprit=AS_FS;culpritValue=-4.193e-01
+3	180688174	.	AT	A	.	.	END=180688175;VQSLOD=4.3395;culprit=AS_FS;culpritValue=-4.219e-01
+3	180688176	.	ATATATATAT	A	.	.	END=180688185;VQSLOD=4.2462;culprit=AS_FS;culpritValue=-4.221e-01
+3	180693215	.	GT	G	.	.	END=180693216;VQSLOD=0.0185;culprit=AS_FS;culpritValue=1.05
+3	180693215	.	GT	GTT	.	.	END=180693216;VQSLOD=1.2320;culprit=AS_FS;culpritValue=0.555
+3	180701884	.	TAC	T	.	.	END=180701886;POSITIVE_TRAIN_SITE;VQSLOD=2.2147;culprit=AS_FS;culpritValue=-4.221e-01
+3	182912991	.	TA	T	.	.	END=182912992;VQSLOD=1.8660;culprit=AS_FS;culpritValue=-2.156e-03
+3	183028450	.	CA	C	.	.	END=183028451;VQSLOD=4.1199;culprit=AS_FS;culpritValue=-4.210e-01
+3	183107439	.	AC	A	.	.	END=183107440;VQSLOD=3.7183;culprit=AS_FS;culpritValue=-4.227e-01
+3	183217644	.	AG	A	.	.	END=183217645;POSITIVE_TRAIN_SITE;VQSLOD=5.1398;culprit=AS_FS;culpritValue=-4.231e-01
+3	183433079	.	C	CTTTT	.	.	END=183433079;VQSLOD=3.0470;culprit=AS_FS;culpritValue=-4.213e-01
+3	183439972	.	A	AG	.	.	END=183439972;POSITIVE_TRAIN_SITE;VQSLOD=2.8200;culprit=AS_ReadPosRankSum;culpritValue=1.02
+3	183480108	.	ATGT	A	.	.	END=183480111;POSITIVE_TRAIN_SITE;VQSLOD=3.7505;culprit=AS_FS;culpritValue=-3.035e-01
+3	183493743	.	CGGAGGA	CGGAGGAGGA	.	.	END=183493749;VQSLOD=1.1422;culprit=AS_MQRankSum;culpritValue=1.01
+3	183493743	.	CGGAGGA	C	.	.	END=183493749;POSITIVE_TRAIN_SITE;VQSLOD=1.4785;culprit=AS_MQRankSum;culpritValue=-1.014e+00
+3	183493743	.	CGGAGGA	CGGA	.	.	END=183493749;VQSLOD=1.4883;culprit=AS_FS;culpritValue=-3.038e-01
+3	183515888	.	TC	T	.	.	END=183515889;VQSLOD=3.8016;culprit=AS_FS;culpritValue=-4.210e-01
+3	183727781	.	CA	C	.	.	END=183727782;VQSLOD=-0.1851;culprit=AS_FS;culpritValue=1.22
+3	183774872	.	G	GA	.	.	END=183774872;POSITIVE_TRAIN_SITE;VQSLOD=3.6578;culprit=AS_ReadPosRankSum;culpritValue=-8.993e-01
+3	183818221	.	AG	A	.	.	END=183818222;POSITIVE_TRAIN_SITE;VQSLOD=5.5129;culprit=AS_FS;culpritValue=-4.208e-01
+3	183822525	.	A	AAGAG	.	.	END=183822525;VQSLOD=4.2005;culprit=AS_FS;culpritValue=-4.204e-01
+3	184040262	.	GGA	G	.	.	END=184040264;VQSLOD=2.3719;culprit=AS_FS;culpritValue=-3.106e-01
+3	184072294	.	G	GT	.	.	END=184072294;VQSLOD=1.7490;culprit=AS_SOR;culpritValue=0.463
+3	184091383	.	T	TGGAA	.	.	END=184091383;POSITIVE_TRAIN_SITE;VQSLOD=1.1553;culprit=AS_FS;culpritValue=1.43
+3	184099271	.	C	CT	.	.	END=184099271;VQSLOD=1.4253;culprit=QD;culpritValue=-1.408e+00
+3	184100958	.	CG	C	.	.	END=184100959;VQSLOD=0.3313;culprit=AS_FS;culpritValue=0.871
+3	184100958	.	CG	CGG	.	.	END=184100959;VQSLOD=0.5493;culprit=QD;culpritValue=-2.230e+00
+3	184100961	.	G	GT	.	.	END=184100961;POSITIVE_TRAIN_SITE;VQSLOD=2.3316;culprit=AS_ReadPosRankSum;culpritValue=1.36
+3	184429133	.	A	ATCC	.	.	END=184429133;VQSLOD=1.9112;culprit=QD;culpritValue=1.56
+3	184429133	.	A	ATCCTCC	.	.	END=184429133;VQSLOD=2.0790;culprit=AS_FS;culpritValue=-4.224e-01
+3	184542693	.	AT	ATT	.	.	END=184542694;VQSLOD=1.7205;culprit=QD;culpritValue=-9.426e-01
+3	184542693	.	AT	A	.	.	END=184542694;VQSLOD=3.9319;culprit=AS_FS;culpritValue=-4.210e-01
+3	184552422	.	CT	CTT	.	.	END=184552423;VQSLOD=-0.3560;culprit=QD;culpritValue=-2.277e+00
+3	184552422	.	CT	C	.	.	END=184552423;VQSLOD=2.5494;culprit=AS_FS;culpritValue=-4.180e-01
+3	184658058	.	T	TTATATA	.	.	END=184658058;VQSLOD=1.3793;culprit=AS_MQRankSum;culpritValue=-1.875e+00
+3	184658058	.	T	TTATA	.	.	END=184658058;POSITIVE_TRAIN_SITE;VQSLOD=2.2431;culprit=AS_FS;culpritValue=-1.193e-01
+3	184658058	.	T	TTA	.	.	END=184658058;POSITIVE_TRAIN_SITE;VQSLOD=5.5608;culprit=AS_FS;culpritValue=-4.229e-01
+3	184675147	.	CTTTTA	C	.	.	END=184675152;POSITIVE_TRAIN_SITE;VQSLOD=2.7920;culprit=AS_MQRankSum;culpritValue=-1.740e+00
+3	184801363	.	CAA	C	.	.	END=184801365;VQSLOD=3.8911;culprit=AS_FS;culpritValue=-4.209e-01
+3	185155430	.	C	CTT	.	.	END=185155430;POSITIVE_TRAIN_SITE;VQSLOD=3.6124;culprit=AS_ReadPosRankSum;culpritValue=-6.897e-01
+3	185155430	.	C	CTTT	.	.	END=185155430;VQSLOD=3.8295;culprit=AS_FS;culpritValue=-4.187e-01
+3	185155430	.	C	CT	.	.	END=185155430;POSITIVE_TRAIN_SITE;VQSLOD=4.6685;culprit=AS_FS;culpritValue=-4.219e-01
+3	185195227	.	G	GA	.	.	END=185195227;POSITIVE_TRAIN_SITE;VQSLOD=5.0190;culprit=AS_FS;culpritValue=-4.234e-01
+3	185198302	.	GGAA	G	.	.	END=185198305;VQSLOD=3.9905;culprit=AS_FS;culpritValue=-4.195e-01
+3	185252972	.	TCAAG	T	.	.	END=185252976;POSITIVE_TRAIN_SITE;VQSLOD=0.8919;culprit=AS_FS;culpritValue=1.77
+3	185439890	.	CT	C	.	.	END=185439891;VQSLOD=3.4135;culprit=AS_FS;culpritValue=-4.204e-01
+3	185540911	.	C	CA	.	.	END=185540911;VQSLOD=0.6553;culprit=QD;culpritValue=-2.295e+00
+3	185635498	.	A	AT	.	.	END=185635498;POSITIVE_TRAIN_SITE;VQSLOD=3.5829;culprit=QD;culpritValue=-7.778e-01
+3	185637259	.	ATCC	A	.	.	END=185637262;VQSLOD=3.5433;culprit=AS_FS;culpritValue=-4.220e-01
+3	185802071	.	TAAAA	T	.	.	END=185802075;VQSLOD=3.8256;culprit=AS_FS;culpritValue=-4.231e-01
+3	185802071	.	TAAAA	TA	.	.	END=185802075;VQSLOD=4.2998;culprit=AS_FS;culpritValue=-4.218e-01
+3	185993296	.	A	ATAGT	.	.	END=185993296;POSITIVE_TRAIN_SITE;VQSLOD=4.7861;culprit=AS_FS;culpritValue=-4.215e-01
+3	186295417	.	AT	ATT	.	.	END=186295418;POSITIVE_TRAIN_SITE;VQSLOD=2.1163;culprit=AS_FS;culpritValue=0.720
+3	186295417	.	AT	A	.	.	END=186295418;POSITIVE_TRAIN_SITE;VQSLOD=3.1644;culprit=QD;culpritValue=-7.738e-01
+3	186302391	.	A	AGTGTGTGTGTGT	.	.	END=186302391;VQSLOD=-0.7110;culprit=AS_FS;culpritValue=2.22
+3	186302391	.	A	ATTGTGTGTGTGTGTGTGTGT	.	.	END=186302391;VQSLOD=-0.4894;culprit=AS_ReadPosRankSum;culpritValue=-2.408e+00
+3	186302391	.	A	ATTGTGTGTGTGTGT	.	.	END=186302391;VQSLOD=-0.2864;culprit=AS_FS;culpritValue=0.779
+3	186302391	.	A	ATTGTGTGTGTGTGTGTGT	.	.	END=186302391;VQSLOD=-0.1952;culprit=AS_ReadPosRankSum;culpritValue=-1.451e+00
+3	186302391	.	A	ATTGTGTGTGTGTGTGT	.	.	END=186302391;VQSLOD=0.1077;culprit=AS_FS;culpritValue=0.593
+3	186302391	.	A	ATTGTGTGTGTGT	.	.	END=186302391;VQSLOD=0.1606;culprit=AS_FS;culpritValue=0.652
+3	186330745	.	G	GT	.	.	END=186330745;POSITIVE_TRAIN_SITE;VQSLOD=1.5881;culprit=QD;culpritValue=-2.156e+00
+3	186358434	.	TGA	T	.	.	END=186358436;VQSLOD=1.7654;culprit=AS_SOR;culpritValue=0.573
+3	186394947	.	GATC	G	.	.	END=186394950;POSITIVE_TRAIN_SITE;VQSLOD=3.6706;culprit=AS_FS;culpritValue=-3.367e-01
+3	186459791	.	GCA	G	.	.	END=186459793;VQSLOD=1.8403;culprit=QD;culpritValue=-8.815e-01
+3	186505184	.	TCTC	T	.	.	END=186505187;VQSLOD=1.8916;culprit=AS_SOR;culpritValue=0.461
+3	186508247	.	T	TA	.	.	END=186508247;POSITIVE_TRAIN_SITE;VQSLOD=2.9102;culprit=AS_SOR;culpritValue=0.826
+3	186782284	.	A	AT	.	.	END=186782284;POSITIVE_TRAIN_SITE;VQSLOD=5.4119;culprit=AS_FS;culpritValue=-4.213e-01
+3	186952034	.	GA	G	.	.	END=186952035;POSITIVE_TRAIN_SITE;VQSLOD=3.4309;culprit=AS_FS;culpritValue=-8.445e-02
+3	186952037	.	A	AG	.	.	END=186952037;POSITIVE_TRAIN_SITE;VQSLOD=3.3254;culprit=AS_ReadPosRankSum;culpritValue=-1.096e+00
+3	186969371	.	C	CG	.	.	END=186969371;POSITIVE_TRAIN_SITE;VQSLOD=3.4676;culprit=AS_MQRankSum;culpritValue=1.06
+3	186980285	.	GGA	G	.	.	END=186980287;VQSLOD=0.8810;culprit=QD;culpritValue=-2.422e+00
+3	187009801	.	C	CTG	.	.	END=187009801;VQSLOD=3.8248;culprit=AS_FS;culpritValue=-4.192e-01
+3	187009803	.	C	CTG	.	.	END=187009803;VQSLOD=2.1753;culprit=AS_FS;culpritValue=-4.217e-01
+3	187009803	.	C	CTGTG	.	.	END=187009803;VQSLOD=3.3287;culprit=AS_FS;culpritValue=-4.205e-01
+3	187009836	.	TAG	T	.	.	END=187009838;VQSLOD=2.5618;culprit=AS_FS;culpritValue=-4.189e-01
+3	187009836	.	TAG	TG	.	.	END=187009838;VQSLOD=3.4290;culprit=AS_FS;culpritValue=-4.211e-01
+3	187009840	.	GA	G	.	.	END=187009841;VQSLOD=3.5634;culprit=AS_FS;culpritValue=-4.214e-01
+3	187443249	.	TCGCC	T	.	.	END=187443253;VQSLOD=1.7768;culprit=AS_FS;culpritValue=-8.112e-02
+3	187443254	.	TGCCCGCTCCGCTC	T	.	.	END=187443267;VQSLOD=2.5527;culprit=AS_FS;culpritValue=-4.209e-01
+3	188326926	.	C	CT	.	.	END=188326926;VQSLOD=1.4942;culprit=AS_FS;culpritValue=-1.702e-01
+3	188464248	.	G	GT	.	.	END=188464248;POSITIVE_TRAIN_SITE;VQSLOD=3.9176;culprit=AS_MQRankSum;culpritValue=-1.091e-01
+3	189456420	.	CTA	C	.	.	END=189456422;POSITIVE_TRAIN_SITE;VQSLOD=3.5773;culprit=AS_SOR;culpritValue=-5.307e-01
+3	189561962	.	CT	C	.	.	END=189561963;VQSLOD=1.8771;culprit=AS_FS;culpritValue=-1.533e-01
+3	189690816	.	GA	G	.	.	END=189690817;VQSLOD=1.1001;culprit=AS_FS;culpritValue=-1.686e-01
+3	189690816	.	GA	GAA	.	.	END=189690817;VQSLOD=1.6195;culprit=AS_FS;culpritValue=-1.549e-01
+3	189690816	.	GA	GAAA	.	.	END=189690817;VQSLOD=3.7551;culprit=AS_FS;culpritValue=-4.202e-01
+3	189690826	.	A	AC	.	.	END=189690826;POSITIVE_TRAIN_SITE;VQSLOD=2.8989;culprit=AS_FS;culpritValue=-4.207e-01
+3	189702395	.	TAA	TA	.	.	END=189702397;VQSLOD=2.5008;culprit=QD;culpritValue=0.406
+3	189702395	.	TAA	T	.	.	END=189702397;POSITIVE_TRAIN_SITE;VQSLOD=2.5561;culprit=AS_ReadPosRankSum;culpritValue=1.25
+3	189705268	.	TAA	T	.	.	END=189705270;VQSLOD=1.1990;culprit=QD;culpritValue=-1.846e+00
+3	189705268	.	TAA	TA	.	.	END=189705270;VQSLOD=1.3080;culprit=QD;culpritValue=-1.846e+00
+3	189705287	.	AG	A	.	.	END=189705288;VQSLOD=3.5873;culprit=AS_FS;culpritValue=-4.207e-01
+3	189712088	.	CGGG	C	.	.	END=189712091;VQSLOD=2.0149;culprit=QD;culpritValue=-6.555e-01
+3	189712094	.	A	AAAAC	.	.	END=189712094;POSITIVE_TRAIN_SITE;VQSLOD=1.3969;culprit=AS_FS;culpritValue=-1.015e-01
+3	189712094	.	A	AAAACAAAC	.	.	END=189712094;VQSLOD=2.8905;culprit=AS_FS;culpritValue=-4.214e-01
+3	189712097	.	AC	A	.	.	END=189712098;VQSLOD=3.8656;culprit=AS_FS;culpritValue=-4.210e-01
+3	190106071	.	AG	A	.	.	END=190106072;VQSLOD=-0.3805;culprit=AS_FS;culpritValue=0.713
+3	190333162	.	TG	T	.	.	END=190333163;POSITIVE_TRAIN_SITE;VQSLOD=2.6704;culprit=AS_FS;culpritValue=-4.694e-02
+3	190338039	.	C	CTT	.	.	END=190338039;VQSLOD=3.9661;culprit=AS_FS;culpritValue=-4.213e-01
+3	190338039	.	C	CT	.	.	END=190338039;POSITIVE_TRAIN_SITE;VQSLOD=5.6222;culprit=AS_FS;culpritValue=-4.203e-01
+3	190345098	.	GT	G	.	.	END=190345099;POSITIVE_TRAIN_SITE;VQSLOD=5.6132;culprit=AS_FS;culpritValue=-4.213e-01
+3	190573211	.	ATCTCTG	A	.	.	END=190573217;POSITIVE_TRAIN_SITE;VQSLOD=2.8651;culprit=AS_MQRankSum;culpritValue=-9.817e-01
+3	191097928	.	GT	GTT	.	.	END=191097929;VQSLOD=0.7820;culprit=AS_MQRankSum;culpritValue=2.14
+3	191097928	.	GT	G	.	.	END=191097929;VQSLOD=1.7015;culprit=AS_MQRankSum;culpritValue=0.818
+3	191097928	.	GT	GTTT	.	.	END=191097929;VQSLOD=3.3389;culprit=AS_FS;culpritValue=-4.226e-01
+3	191888452	.	GAA	GA	.	.	END=191888454;VQSLOD=1.6016;culprit=AS_MQRankSum;culpritValue=-2.754e-01
+3	191888452	.	GAA	G	.	.	END=191888454;VQSLOD=3.4991;culprit=AS_FS;culpritValue=-4.194e-01
+3	191888452	.	GAA	GAAA	.	.	END=191888454;VQSLOD=3.8459;culprit=AS_FS;culpritValue=-4.212e-01
+3	192516152	.	G	GA	.	.	END=192516152;VQSLOD=1.0372;culprit=AS_FS;culpritValue=0.540
+3	192635374	.	TCA	T	.	.	END=192635376;VQSLOD=3.5260;culprit=AS_FS;culpritValue=-4.213e-01
+3	192988360	.	TG	T	.	.	END=192988361;POSITIVE_TRAIN_SITE;VQSLOD=4.5338;culprit=AS_FS;culpritValue=-4.232e-01
+3	193071888	.	CA	C	.	.	END=193071889;POSITIVE_TRAIN_SITE;VQSLOD=3.8207;culprit=AS_FS;culpritValue=-4.229e-01
+3	193081961	.	TC	T	.	.	END=193081962;VQSLOD=1.9137;culprit=AS_FS;culpritValue=-3.435e-01
+3	193090101	.	A	AGG	.	.	END=193090101;POSITIVE_TRAIN_SITE;VQSLOD=5.7475;culprit=AS_FS;culpritValue=-4.228e-01
+3	193272486	.	TGAG	T	.	.	END=193272489;VQSLOD=1.0705;culprit=AS_MQRankSum;culpritValue=-4.819e-01
+3	193854148	.	TAA	TA	.	.	END=193854150;VQSLOD=-0.2471;culprit=AS_FS;culpritValue=0.741
+3	193854148	.	TAA	T	.	.	END=193854150;VQSLOD=1.2184;culprit=QD;culpritValue=-1.575e+00
+3	193854148	.	TAA	TAAA	.	.	END=193854150;VQSLOD=1.3404;culprit=AS_FS;culpritValue=-1.742e-01
+3	193854148	.	TAA	TAAAA	.	.	END=193854150;VQSLOD=3.5979;culprit=AS_FS;culpritValue=-4.219e-01
+3	193854389	.	CT	C	.	.	END=193854390;VQSLOD=1.1483;culprit=AS_ReadPosRankSum;culpritValue=1.18
+3	194119046	.	CA	C	.	.	END=194119047;POSITIVE_TRAIN_SITE;VQSLOD=5.6850;culprit=AS_FS;culpritValue=-4.209e-01
+3	194159705	.	G	GA	.	.	END=194159705;VQSLOD=0.4751;culprit=QD;culpritValue=-2.362e+00
+3	194219775	.	GA	G	.	.	END=194219776;VQSLOD=1.4773;culprit=QD;culpritValue=-1.323e+00
+3	194222131	.	C	CA	.	.	END=194222131;VQSLOD=1.0095;culprit=AS_SOR;culpritValue=1.23
+3	194313722	.	AGC	A	.	.	END=194313724;POSITIVE_TRAIN_SITE;VQSLOD=2.6709;culprit=AS_FS;culpritValue=0.557
+3	194353772	.	C	CCCGCCCGACAG	.	.	END=194353772;POSITIVE_TRAIN_SITE;VQSLOD=2.7290;culprit=AS_FS;culpritValue=-4.243e-01
+3	194379646	.	T	TC	.	.	END=194379646;POSITIVE_TRAIN_SITE;VQSLOD=3.1407;culprit=AS_ReadPosRankSum;culpritValue=-1.460e+00
+3	194379905	.	TA	T	.	.	END=194379906;POSITIVE_TRAIN_SITE;VQSLOD=5.5994;culprit=AS_FS;culpritValue=-4.210e-01
+3	194390869	.	G	GA	.	.	END=194390869;POSITIVE_TRAIN_SITE;VQSLOD=3.7515;culprit=AS_FS;culpritValue=-1.582e-01
+3	195018019	.	C	CA	.	.	END=195018019;VQSLOD=3.1640;culprit=AS_FS;culpritValue=-4.239e-01
+3	195022919	.	ATTAC	A	.	.	END=195022923;VQSLOD=0.5580;culprit=QD;culpritValue=-1.990e+00
+3	195022926	.	GT	G	.	.	END=195022927;VQSLOD=0.2557;culprit=QD;culpritValue=-1.962e+00
+3	195022931	.	TA	T	.	.	END=195022932;VQSLOD=2.4852;culprit=AS_FS;culpritValue=-4.191e-01
+3	195076825	.	AG	A	.	.	END=195076826;VQSLOD=2.1993;culprit=AS_SOR;culpritValue=-5.415e-02
+3	195102760	.	G	GA	.	.	END=195102760;POSITIVE_TRAIN_SITE;VQSLOD=2.4217;culprit=AS_ReadPosRankSum;culpritValue=-9.614e-01
+3	195254670	.	CT	CTT	.	.	END=195254671;VQSLOD=0.9474;culprit=QD;culpritValue=-2.063e+00
+3	195254670	.	CT	C	.	.	END=195254671;VQSLOD=3.1719;culprit=AS_FS;culpritValue=-4.231e-01
+3	195304057	.	CA	C	.	.	END=195304058;VQSLOD=2.0262;culprit=AS_FS;culpritValue=0.449
+3	195346654	.	T	TA	.	.	END=195346654;VQSLOD=1.6221;culprit=AS_FS;culpritValue=-3.239e-01
+3	195390918	.	TA	T	.	.	END=195390919;POSITIVE_TRAIN_SITE;VQSLOD=1.8781;culprit=QD;culpritValue=-2.204e+00
+3	195395355	.	CTG	C	.	.	END=195395357;VQSLOD=1.4986;culprit=AS_FS;culpritValue=-4.207e-01
+3	195395549	.	C	CAT	.	.	END=195395549;NEGATIVE_TRAIN_SITE;VQSLOD=-2.8053;culprit=AS_FS;culpritValue=-4.232e-01
+3	195400814	.	C	CTT	.	.	END=195400814;NEGATIVE_TRAIN_SITE;VQSLOD=-8.8092;culprit=AS_FS;culpritValue=9.82
+3	195415450	.	CAT	C	.	.	END=195415452;VQSLOD=4.0005;culprit=AS_FS;culpritValue=-4.205e-01
+3	195426383	.	TTC	T	.	.	END=195426385;POSITIVE_TRAIN_SITE;VQSLOD=5.3548;culprit=AS_FS;culpritValue=-4.209e-01
+3	195447911	.	TTTC	T	.	.	END=195447914;POSITIVE_TRAIN_SITE;VQSLOD=2.9448;culprit=QD;culpritValue=-1.469e+00
+3	195453017	.	GC	G	.	.	END=195453018;POSITIVE_TRAIN_SITE;VQSLOD=2.1329;culprit=AS_MQRankSum;culpritValue=-4.624e-01
+3	195477965	.	GGCCGGTGCT	G	.	.	END=195477974;VQSLOD=0.3545;culprit=AS_MQRankSum;culpritValue=-4.624e-01
+3	195492117	.	T	TG	.	.	END=195492117;VQSLOD=1.1102;culprit=AS_FS;culpritValue=-1.113e-01
+3	195506006	.	TGGTGACAGGAAGAGGCGTGGTGTCACCTGTGGATACTGAGGAAAGGCTGGTGACAGGAAGAGGGGTGGCCTGACCTGTGGATGCAGAGGAAGTGTC	T	.	.	END=195506102;VQSLOD=-0.9235;culprit=AS_ReadPosRankSum;culpritValue=-2.168e+00
+3	195506270	.	GACCTGTGGATAATGAGGAAGCATTGGTGACAGGAAGAGGGGTGGTGTC	G	.	.	END=195506318;VQSLOD=1.5945;culprit=AS_FS;culpritValue=-1.406e-01
+3	195506471	.	ATAC	A	.	.	END=195506474;VQSLOD=4.2046;culprit=AS_FS;culpritValue=-4.202e-01
+3	195506476	.	GAGGAAGTGTCGGTGACAGGAAGGGGGGTGGCGTGACCTGTGGATGCTGAGGAACGGCTGGTGACAGGAAGAGAGGTGGCGTGACCTGTGGATA	G	.	.	END=195506569;NEGATIVE_TRAIN_SITE;VQSLOD=-0.9356;culprit=AS_FS;culpritValue=3.24
+3	195506549	.	AGGTGGCGTGACCTGTGGATACTGAGGAAGTGTCGGTGACAGGAAGAGG	A	.	.	END=195506597;VQSLOD=2.3811;culprit=AS_FS;culpritValue=-3.039e-01
+3	195506712	.	AGCTGAGGAAGTGTCGGTGACAGGAAGAGGGGTGGCGTGACGTGTGGAT	A	.	.	END=195506760;VQSLOD=3.8954;culprit=AS_FS;culpritValue=-4.199e-01
+3	195506866	.	G	GCGTC	.	.	END=195506866;VQSLOD=3.8615;culprit=AS_FS;culpritValue=-4.211e-01
+3	195506867	.	GGCTA	G	.	.	END=195506871;VQSLOD=2.2141;culprit=AS_FS;culpritValue=-4.261e-01
+3	195506887	.	ATGGTGTCACCTGTGGATACTGAGGAAGGGATGGTGACAGGAAGAGGGGTGGCGTGACCTGTGGATGCTGAGGAAGCGTCGGTGACAGGAAGAGGGG	A	.	.	END=195506983;VQSLOD=-0.9675;culprit=AS_ReadPosRankSum;culpritValue=-2.691e+00
+3	195507035	.	C	CGTGA	.	.	END=195507035;NEGATIVE_TRAIN_SITE;VQSLOD=-6.3420;culprit=AS_SOR;culpritValue=6.53
+3	195507036	.	C	CCTGTGGATGCTGCGGAAGTGTTGGTGACATGAAGAGGGGTGGCATGACCTGTGGATACTGAGGAAGTGTCGGTGACAGGAAGAGAGGTGGCG	.	.	END=195507036;NEGATIVE_TRAIN_SITE;VQSLOD=-7.8306;culprit=AS_FS;culpritValue=7.88
