@@ -47,7 +47,7 @@ public class GATKSVVCFHeaderLines {
         vcfHeaderLines.put(CONTIG_IDS, new VCFInfoHeaderLine(CONTIG_IDS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "IDs of the contigs that produced each alignment"));
 
         vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Inserted sequence at the breakpoint"));
-        vcfHeaderLines.put(INSERTED_SEQUENCE, new VCFInfoHeaderLine(INSERTED_SEQUENCE_MAPPINGS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Alignments of inserted sequence"));
+        vcfHeaderLines.put(INSERTED_SEQUENCE_MAPPINGS, new VCFInfoHeaderLine(INSERTED_SEQUENCE_MAPPINGS, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Alignments of inserted sequence"));
 
         vcfHeaderLines.put(HOMOLOGY, new VCFInfoHeaderLine(HOMOLOGY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Homologous sequence from contig at the breakpoint"));
         vcfHeaderLines.put(HOMOLOGY_LENGTH, new VCFInfoHeaderLine(HOMOLOGY_LENGTH, 1, VCFHeaderLineType.Integer, "Length of homologous sequence"));

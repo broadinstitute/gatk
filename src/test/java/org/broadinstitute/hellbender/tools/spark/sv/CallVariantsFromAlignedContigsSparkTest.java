@@ -121,7 +121,7 @@ public class CallVariantsFromAlignedContigsSparkTest extends BaseTest {
         Assert.assertEquals(breakpointAlignment.homology, "");
         Assert.assertEquals(breakpointAlignment.insertedSequence, "TGAGAGTTGGCCCGAACACTGCTGGATTCCACTTCA");
         Assert.assertEquals(breakpointAlignment.insertionMappings.size(), 1);
-        Assert.assertEquals(breakpointAlignment.insertionMappings.get(0), "484-525:20,23103196,-,483S42M968S,60,2");
+        Assert.assertEquals(breakpointAlignment.insertionMappings.get(0), "1-contig-1:484-525:20,23103196,-,483S42M968S,60,2");
     }
 
     @Test

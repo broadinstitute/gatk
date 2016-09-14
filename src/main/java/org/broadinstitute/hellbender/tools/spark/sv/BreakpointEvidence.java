@@ -153,7 +153,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         result = mult * result + eventStartPosition;
         result = mult * result + eventWidth;
         result = mult * result + templateName.hashCode();
-        result = mult * result + templateEnd.hashCode();
+        result = mult * result + templateEnd.ordinal();
         result = mult * result + getClass().getSimpleName().hashCode();
         return mult * result;
     }
