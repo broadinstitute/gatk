@@ -95,7 +95,7 @@ script:
     travis_wait 30 ./gradlew jacocoTestReport;
   fi
 after_success:
-- if [[ $CLOUD == false ]]; then ./gradlew coveralls; fi
+- bash <(curl -s https://codecov.io/bash)
 - if [[ $TRAVIS_BRANCH == master && $CLOUD == false ]]; then ./gradlew uploadArchives; fi
 after_failure:
 - dmesg | tail -100
