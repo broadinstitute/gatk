@@ -1,10 +1,16 @@
-##fileformat=VCFv4.1
-##FILTER=<ID=highDP,Description="DP < 8">
-##FORMAT=<ID=DP,Number=1,Type=Integer,Description="read depth">
-##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=lowDP,Description="DP<10">
+##FILTER=<ID=lowGQ,Description="GQ<20">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=FT,Number=1,Type=String,Description="Genotype-level filter">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
-##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
-##contig=<ID=1,length=1000000,assembly=b37>
+##GATKCommandLine.VariantFiltration=<ID=VariantFiltration,Version=3.5-0-g36282e4,Date="Mon Mar 28 11:21:01 EDT 2016",Epoch=1459178461177,CommandLineOptions="analysis_type=VariantFiltration input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] disable_read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/humgen/gsa-hpprojects/GATK/bundle/2.8/b37/human_g1k_v37.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 static_quantized_quals=null round_down_quantized=false disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 reference_window_stop=0 logging_level=INFO log_to_file=null help=false version=false variant=(RodBinding name=variant source=/humgen/gsa-scr1/schandra/xiaolicbs_SelectVariantsNotUpdatingINFOField/SelectVariantsNotUpdateINFO/toy.vcf) mask=(RodBinding name= source=UNBOUND) out=/humgen/gsa-scr1/schandra/xiaolicbs_SelectVariantsNotUpdatingINFOField/SelectVariantsNotUpdateINFO/Sheila.VariantFiltration.vcf filterExpression=[] filterName=[] genotypeFilterExpression=[GQ<20, DP<10] genotypeFilterName=[lowGQ, lowDP] clusterSize=3 clusterWindowSize=0 maskExtension=0 maskName=Mask filterNotInMask=false missingValuesInExpressionsShouldEvaluateAsFailing=false invalidatePreviousFilters=false invertFilterExpression=false invertGenotypeFilterExpression=false setFilteredGtToNocall=false filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##contig=<ID=1,length=249250621,assembly=b37>
 ##contig=<ID=2,length=243199373,assembly=b37>
 ##contig=<ID=3,length=198022430,assembly=b37>
 ##contig=<ID=4,length=191154276,assembly=b37>
@@ -88,7 +94,6 @@
 ##contig=<ID=GL000194.1,length=191469,assembly=b37>
 ##contig=<ID=GL000225.1,length=211173,assembly=b37>
 ##contig=<ID=GL000192.1,length=547496,assembly=b37>
-##reference=file:///humgen/1kg/reference/human_g1k_v37.fasta
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Test1	Test2
-1	13504	.	G	A	93.93	PASS	DP=55	GT:DP:FT	0/0:5:highDP	0/0:50:PASS
-1	13505	.	G	A	93.93	PASS	DP=7	GT:DP:FT	0/0:5:highDP	0/0:2:highDP
+##reference=file:///humgen/gsa-hpprojects/GATK/bundle/2.8/b37/human_g1k_v37.fasta
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Sample1	Sample2	Sample3	Sample4
+1	1000	.	A	T	2000	PASS	AC=3;AF=0.375;AN=8	GT:DP:FT:GQ	0/0:20:PASS:30	0/1:20:PASS:30	0/1:20:PASS:30	0/1:5:lowDP;lowGQ:10
