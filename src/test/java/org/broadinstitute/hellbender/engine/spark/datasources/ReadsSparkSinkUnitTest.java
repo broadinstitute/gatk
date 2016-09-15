@@ -14,11 +14,13 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.seqdoop.hadoop_bam.SplittingBAMIndexer;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -27,6 +29,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -121,6 +124,11 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         SAMFileHeader header = readSource.getHeader(inputBam, referenceFile, null);
 
         ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE);
+
+        // check that a splitting bai file is created
+        if (IOUtils.isBamFileName(outputPath)) {
+            Assert.assertTrue(Files.exists(IOUtils.getPath(outputPath + SplittingBAMIndexer.OUTPUT_FILE_EXTENSION)));
+        }
 
         JavaRDD<GATKRead> rddParallelReads2 = readSource.getParallelReads(outputPath, referenceFile);
         final List<GATKRead> writtenReads = rddParallelReads2.collect();
