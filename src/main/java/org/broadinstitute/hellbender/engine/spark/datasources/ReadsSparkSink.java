@@ -141,7 +141,7 @@ public final class ReadsSparkSink {
         String absoluteReferenceFile = referenceFile != null ?
                                         BucketUtils.makeFilePathAbsolute(referenceFile) :
                                         referenceFile;
-        setHadoopBAMConfigurationProperties(ctx, absoluteOutputFile, absoluteReferenceFile);
+        setHadoopBAMConfigurationProperties(ctx, absoluteOutputFile, absoluteReferenceFile, format);
 
         // The underlying reads are required to be in SAMRecord format in order to be
         // written out, so we convert them to SAMRecord explicitly here. If they're already
@@ -293,11 +293,17 @@ public final class ReadsSparkSink {
      *     from passing a stale value through to htsjdk when multiple calls are made serially
      *     with different outputs but the same Spark context
      */
-    private static void setHadoopBAMConfigurationProperties(final JavaSparkContext ctx, final String outputName, final String referenceName) {
+    private static void setHadoopBAMConfigurationProperties(final JavaSparkContext ctx, final String outputName,
+                                                            final String referenceName, final ReadsWriteFormat format) {
         final Configuration conf = ctx.hadoopConfiguration();
 
         if (!IOUtils.isCramFileName(outputName)) { // only set the reference for CRAM output
             conf.unset(CRAMInputFormat.REFERENCE_SOURCE_PATH_PROPERTY);
+            if (format == ReadsWriteFormat.SINGLE && IOUtils.isBamFileName(outputName)) {
+                conf.setBoolean(BAMOutputFormat.WRITE_SPLITTING_BAI, true);
+            } else {
+                conf.setBoolean(BAMOutputFormat.WRITE_SPLITTING_BAI, false);
+            }
         }
         else {
             if (null == referenceName) {
