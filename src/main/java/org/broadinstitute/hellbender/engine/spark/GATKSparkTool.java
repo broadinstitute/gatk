@@ -97,6 +97,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Return the list of GATKCommandLinePluginDescriptor objects to be used for this CLP.
      * Use the read filter plugin.
      */
+    @Override
     protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
     }
