@@ -400,7 +400,7 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .attribute(GATKSVVCFHeaderLines.ALIGN_LENGTHS, alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
                 .attribute(GATKSVVCFHeaderLines.MAX_ALIGN_LENGTH, maxAlignLength)
                 .attribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS, breakpointIds.stream().collect(Collectors.joining(",")))
-                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, assembledContigIds.stream().map(s -> s.replace(" ", "_")).collect(Collectors.joining(",")));
+                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, assembledContigIds.stream().collect(Collectors.joining(",")));
 
         if (breakpointAllele.insertedSequence.length() > 0) {
             vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, breakpointAllele.insertedSequence);
