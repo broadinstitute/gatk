@@ -28,8 +28,6 @@ env:
   - HELLBENDER_TEST_STAGING=gs://hellbender/test/staging/
   - HELLBENDER_TEST_PROJECT=broad-dsde-dev
   - HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=servicekey.json
-  #coveralls repo token
-  - secure: RA4LKD82cW+0xPayPVAWSpYqJu5uoPcz7oXXYtYNVuilFmS8PGYx0g/BXs4QMvQsGMt6aMLN8m7lMAPN5XTH/8JSeM3VmQ3mdpgNdP+p3CVlwrapZ2lTq27Wb/E8J1CGEHOg76z716t//FUElyC/gdhS+tfBmXk3YanM5fMXEHs=
   #google API key
   - secure: "eHyDxfcfv6pSIkoqQ9PimiYu9I6vmXJOpY/OkXLkc7ZAUfNTfRVytUGG9Xf/bKKF+Wscm5pIfZJ/TMDG6E3Uyngs9nVK/29QWevcEaLDJy8OdI9OgPZb13hlbM2jbVv5AVBGYcbcNBrTvrTs0MOMOFPEJqZ99xWIj5bzZ/AsIfU="
   #for uploading artifacts
