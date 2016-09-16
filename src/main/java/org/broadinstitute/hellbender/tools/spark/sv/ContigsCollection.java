@@ -99,7 +99,7 @@ final class ContigsCollection implements Serializable {
         }
         final List<String> res = new ArrayList<>();
         for(final Tuple2<ContigID, ContigSequence> contig : contents){
-            res.add(contig._1().toString());
+            res.add(">" + contig._1().toString());
             res.add(contig._2().toString());
         }
         return res;
@@ -112,7 +112,9 @@ final class ContigsCollection implements Serializable {
         }else{
             contents = new ArrayList<>();
             for(int i=0; i<fileContents.size(); i+=2){
-                contents.add(new Tuple2<>(new ContigID(fileContents.get(i)), new ContigSequence(fileContents.get(i+1))));
+                final String idLine = fileContents.get(i);
+                final String idString = idLine.substring(idLine.startsWith(">") ? 1 : 0, (!idLine.contains(" ") ? idLine.length() : idLine.indexOf(" ")));
+                contents.add(new Tuple2<>(new ContigID(idString), new ContigSequence(fileContents.get(i+1))));
             }
         }
     }
