@@ -168,12 +168,13 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 alignmentRegionsWithContigSequences.flatMapValues(alignmentRegionsAndSequences ->
                         CallVariantsFromAlignedContigsSpark.assembledBreakpointsFromAlignmentRegions(alignmentRegionsAndSequences._2, alignmentRegionsAndSequences._1, minAlignLength));
 
-        final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String,String>, BreakpointAlignment>> assembled3To5BreakpointsKeyedByPosition =
+        final JavaPairRDD<BreakpointAllele, Tuple2<Tuple2<String,String>, BreakpointAlignment>> inversionBreakpointAlignmentsKeyedByAllele =
                 assembledBreakpointsByBreakpointIdAndContigId
                         .mapToPair(CallVariantsFromAlignedContigsSpark::keyByBreakpointAllele)
                         .filter(pair -> pair._1().isInversion());
 
-        final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, BreakpointAlignment>>> groupedBreakpoints = assembled3To5BreakpointsKeyedByPosition.groupByKey();
+        final JavaPairRDD<BreakpointAllele, Iterable<Tuple2<Tuple2<String,String>, BreakpointAlignment>>> groupedBreakpoints =
+                inversionBreakpointAlignmentsKeyedByAllele.groupByKey();
 
         return groupedBreakpoints.map(breakpoints -> getVariantContextForBreakpointAlleleAlignmentList(breakpoints, broadcastReference));
     }
@@ -347,6 +348,7 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final List<String> breakpointIds = new ArrayList<>(numBreakpoints);
         final List<String> assembledContigIds = new ArrayList<>(numBreakpoints);
 
+        final List<String> insertionMappings = new ArrayList<>(numBreakpoints);
 
         for (final Tuple2<Tuple2<String,String>, BreakpointAlignment> assembledBreakpointPair : assembledBreakpointsList) {
             final BreakpointAlignment breakpointAlignment = assembledBreakpointPair._2;
@@ -363,13 +365,16 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             maxAlignLength = Math.max(maxAlignLength, assembledBreakpointAlignmentLength);
             breakpointIds.add(assembledBreakpointPair._1._1);
             assembledContigIds.add(breakpointAlignment.contigId);
+            insertionMappings.addAll(breakpointAlignment.insertionMappings);
         }
 
-        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue());
+        return createVariant(numAssembledBreakpoints, highMqMappings, mqs, alignLengths, maxAlignLength, breakpointAllele, breakpointIds, assembledContigIds, broadcastReference.getValue(), insertionMappings);
     }
 
     @VisibleForTesting
-    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength, final BreakpointAllele breakpointAllele, final List<String> breakpointIds, final List<String> assembledContigIds, final ReferenceMultiSource reference) throws IOException {
+    private static VariantContext createVariant(final int numAssembledBreakpoints, final int highMqMappings, final List<Integer> mqs, final List<Integer> alignLengths, final int maxAlignLength,
+                                                final BreakpointAllele breakpointAllele, final List<String> breakpointIds, final List<String> assembledContigIds, final ReferenceMultiSource reference,
+                                                final List<String> insertionMappings) throws IOException {
         final String contig = breakpointAllele.leftAlignedLeftBreakpoint.getContig();
         final int start = breakpointAllele.leftAlignedLeftBreakpoint.getStart();
         final int end = breakpointAllele.leftAlignedRightBreakpoint.getStart();
@@ -401,8 +406,8 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
             vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, breakpointAllele.insertedSequence);
         }
 
-        if (breakpointAllele.insertionMappings.size() > 0) {
-            vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE_MAPPINGS, breakpointAllele.insertionMappings.stream().collect(Collectors.joining(";")));
+        if (insertionMappings.size() > 0) {
+            vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE_MAPPINGS, insertionMappings.stream().collect(Collectors.joining("|")));
         }
 
         if (breakpointAllele.homology.length() > 0) {

@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.github.lindenb.jbwa.jni.AlnRgn;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -9,9 +13,11 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 
+@DefaultSerializer(AlignmentRegion.Serializer.class)
 class AlignmentRegion {
 
     final String contigId;
@@ -67,6 +73,19 @@ class AlignmentRegion {
         } else {
             this.mismatches = 0;
         }
+    }
+
+    public AlignmentRegion(final Kryo kryo, final Input input) {
+        this.contigId = input.readString();
+        this.assemblyId = input.readString();
+        this.forwardStrandCigar = TextCigarCodec.decode(input.readString());
+        this.forwardStrand = input.readBoolean();
+        this.referenceInterval = kryo.readObject(input, SimpleInterval.class);
+        this.mapqual = input.readInt();
+        this.startInAssembledContig = input.readInt();
+        this.endInAssembledContig = input.readInt();
+        this.assembledContigLength = input.readInt();
+        this.mismatches = input.readInt();
     }
 
     public int overlapOnContig(final AlignmentRegion other) {
@@ -167,10 +186,10 @@ class AlignmentRegion {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        AlignmentRegion that = (AlignmentRegion) o;
+        final AlignmentRegion that = (AlignmentRegion) o;
         return forwardStrand == that.forwardStrand &&
                 mapqual == that.mapqual &&
                 startInAssembledContig == that.startInAssembledContig &&
@@ -189,6 +208,33 @@ class AlignmentRegion {
     }
 
     public String toPackedString() {
-        return "" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(forwardStrandCigar) + ',' + mapqual + ',' + mismatches;
+        return assemblyId + "-" + contigId + ":" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(forwardStrandCigar) + ',' + mapqual + ',' + mismatches;
     }
+
+    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentRegion> {
+        @Override
+        public void write(final Kryo kryo, final Output output, final AlignmentRegion alignmentRegion ) {
+            alignmentRegion.serialize(kryo, output);
+        }
+
+        @Override
+        public AlignmentRegion read(final Kryo kryo, final Input input, final Class<AlignmentRegion> klass ) {
+            return new AlignmentRegion(kryo, input);
+        }
+    }
+
+    private void serialize(final Kryo kryo, final Output output) {
+        output.writeString(contigId);
+        output.writeString(assemblyId);
+        output.writeString(TextCigarCodec.encode(forwardStrandCigar));
+        output.writeBoolean(forwardStrand);
+        kryo.writeObject(output, referenceInterval);
+        output.writeInt(mapqual);
+        output.writeInt(startInAssembledContig);
+        output.writeInt(endInAssembledContig);
+        output.writeInt(assembledContigLength);
+        output.writeInt(mismatches);
+
+    }
+
 }

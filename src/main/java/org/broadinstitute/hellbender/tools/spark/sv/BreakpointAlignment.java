@@ -1,10 +1,16 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 
+import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -47,7 +53,9 @@ import java.util.List;
  * Homology:
  *  AC
  */
+@DefaultSerializer(BreakpointAlignment.Serializer.class)
 class BreakpointAlignment {
+
     public static final String NO_SEQUENCE = "none";
     String contigId;
     AlignmentRegion region1;
@@ -67,6 +75,17 @@ class BreakpointAlignment {
         this.insertedSequence = insertedSequence;
         this.homology = homology;
         this.insertionMappings = insertionMappings;
+    }
+
+    @SuppressWarnings("unchecked")
+    public BreakpointAlignment(final Kryo kryo, final Input input) {
+        this.contigId = input.readString();
+        this.region1 = kryo.readObject(input, AlignmentRegion.class);
+        this.region2 = kryo.readObject(input, AlignmentRegion.class);
+        this.insertedSequence = input.readString();
+        this.homology = input.readString();
+        this.insertionMappings = (ArrayList<String>) kryo.readObject(input, ArrayList.class);
+
     }
 
     @Override
@@ -170,4 +189,26 @@ class BreakpointAlignment {
             return new BreakpointAllele(leftAlignedRightBreakpointOnAssembledContig, leftAlignedLeftBreakpointOnAssembledContig, insertedSequence, homology, isFiveToThreeInversion, isThreeToFiveInversion, insertionMappings);
         }
     }
+
+    public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BreakpointAlignment> {
+        @Override
+        public void write(final Kryo kryo, final Output output, final BreakpointAlignment breakpointAlignment ) {
+            breakpointAlignment.serialize(kryo, output);
+        }
+
+        @Override
+        public BreakpointAlignment read(final Kryo kryo, final Input input, final Class<BreakpointAlignment> klass ) {
+            return new BreakpointAlignment(kryo, input);
+        }
+    }
+
+    private void serialize(final Kryo kryo, final Output output) {
+        output.writeString(contigId);
+        kryo.writeObject(output, region1);
+        kryo.writeObject(output, region2);
+        output.writeString(insertedSequence);
+        output.writeString(homology);
+        kryo.writeObject(output, insertionMappings);
+    }
+
 }
