@@ -67,6 +67,7 @@ public abstract class LocusWalker extends GATKTool {
      * Return the list of GATKCommandLinePluginDescriptors to be used for this CLP.
      * Uses the read filter plugin.
      */
+    @Override
     protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
     }
