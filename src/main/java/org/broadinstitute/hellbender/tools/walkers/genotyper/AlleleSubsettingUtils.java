@@ -212,13 +212,10 @@ public final class AlleleSubsettingUtils {
                                                              .limit(numAltAllelesToKeep)
                                                              .collect(Collectors.toSet());
 
-        final List<Allele> mostLikelyAlleles = new ArrayList<>();
-        for ( int i = 0; i < numAlleles; i++){
-            if( i == 0 || i == nonRefAltAlleleIndex || properAltIndexesToKeep.contains(i) ){
-                mostLikelyAlleles.add(alleles.get(i));
-            }
-        }
-        return mostLikelyAlleles;
+        return IntStream.range(0, numAlleles)
+                .filter( i ->  i == 0 || i == nonRefAltAlleleIndex || properAltIndexesToKeep.contains(i)  )
+                .mapToObj(alleles::get)
+                .collect(Collectors.toList());
     }
 
     private static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
