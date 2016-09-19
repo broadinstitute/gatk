@@ -210,7 +210,8 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * Returns the default list of CommandLineReadFilters that are used for this tool. The filters
      * returned by this method are subject to selective enabling/disabling and customization by the
      * user via the command line. The default implementation uses the {@link WellformedReadFilter}
-     * filter with all default options. Subclasses can override to provide alternative filters.
+     * filter with all default options, as well as the {@link ReadFilterLibrary.MappedReadFilter}.
+     * Subclasses can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
      * available through {link #getHeaderForReads}.
@@ -218,7 +219,10 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * @return List of default filter instances to be applied for this tool.
      */
     public List<ReadFilter> getDefaultReadFilters() {
-        return Collections.singletonList(new WellformedReadFilter());
+        final List<ReadFilter> defaultFilters = new ArrayList<>(2);
+        defaultFilters.add(new WellformedReadFilter());
+        defaultFilters.add(new ReadFilterLibrary.MappedReadFilter());
+        return defaultFilters;
     }
 
     @Override
