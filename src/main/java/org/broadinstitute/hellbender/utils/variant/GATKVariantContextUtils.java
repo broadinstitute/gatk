@@ -1349,7 +1349,7 @@ public final class GATKVariantContextUtils {
      *
      * @throws IllegalArgumentException if {@code allele} is {@code null}.
      *
-     * @return {@code -1} if there is no such allele that satify those criteria, a value between 0 and the number
+     * @return {@code -1} if there is no such allele that satisfy those criteria, a value between 0 and the number
      *  of alternative alleles - 1.
      */
     public static int indexOfAltAllele(final VariantContext vc, final Allele allele, final boolean useEquals) {

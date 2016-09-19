@@ -4,7 +4,7 @@ codecov:
 coverage:
   precision: 3
   round: nearest
-  range: "0...100"
+  range: "50...100"
 
   status:
     project:
