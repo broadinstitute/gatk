@@ -23,7 +23,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testNoAction.vcf")
         );
 
-        spec.executeTest("test good file", this);
+        spec.executeTest("testNoAction", this);
     }
 
     @Test
@@ -33,7 +33,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testClusteredSnps.vcf")
         );
 
-        spec.executeTest("test testClusteredSnps file", this);
+        spec.executeTest("testClusteredSnps", this);
     }
 
     @DataProvider(name="masks")
@@ -52,7 +52,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + expected)
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testMask", this);
     }
 
     @Test
@@ -62,7 +62,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testMaskReversed.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testMaskReversed", this);
     }
 
     @Test
@@ -73,7 +73,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 UserException.class
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testIllegalFilterName", this);
     }
 
     @Test
@@ -83,7 +83,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilter1.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testFilter1", this);
     }
 
     @Test
@@ -93,7 +93,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilter2.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testFilter2", this);
     }
 
     @Test
@@ -103,7 +103,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilterWithSeparateNames.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testFilterWithSeparateNames", this);
     }
 
     @Test
@@ -113,7 +113,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testInvertFilter.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testInvertFilter", this);
     }
 
     @Test
@@ -125,7 +125,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testInvertJexlFilter.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testInvertJexlFilter", this);
     }
 
     @Test
@@ -135,7 +135,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testGenotypeFilters1.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testGenotypeFilters1", this);
     }
 
     @Test
@@ -145,7 +145,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testGenotypeFilters2.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testGenotypeFilters2", this);
     }
 
     @Test
@@ -155,7 +155,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testDeletions.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testDeletions", this);
     }
 
     @Test
@@ -165,7 +165,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testUnfilteredBecomesFilteredAndPass.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testUnfilteredBecomesFilteredAndPass", this);
     }
 
     @Test
@@ -175,7 +175,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilteringDPfromINFO.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testFilteringDPfromINFO", this);
     }
 
     @Test
@@ -185,7 +185,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilteringDPfromFORMAT.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testFilteringDPfromFORMAT", this);
     }
 
     @Test
@@ -195,7 +195,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testInvertGenotypeFilterExpression.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testInvertGenotypeFilterExpression", this);
     }
 
     @Test
@@ -207,7 +207,7 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testInvertJexlGenotypeFilterExpression.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testInvertJexlGenotypeFilterExpression", this);
     }
 
     @Test
@@ -217,6 +217,26 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
                 Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testSetFilteredGtoNocall.vcf")
         );
 
-        spec.executeTest("test file", this);
+        spec.executeTest("testSetFilteredGtoNocall", this);
+    }
+
+    @Test
+    public void testSetFilteredGtoNocallUpdateInfo()  throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("variantFiltrationInfoField.vcf", " -G_filter 'GQ < 20' -G_filterName lowDP -G_filter 'DP < 10' -G_filterName lowGQ --setFilteredGtToNocall "),
+                Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testSetFilteredGtoNocallUpdateInfo.vcf")
+        );
+
+        spec.executeTest("testSetFilteredGtoNocallUpdateInfo", this);
+    }
+
+    @Test
+    public void testSetVcfFilteredGtoNocall()  throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("filteredSamples.vcf", " --setFilteredGtToNocall "),
+                Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testSetVcfFilteredGtoNocall.vcf")
+        );
+
+        spec.executeTest("testSetVcfFilteredGtoNocall", this);
     }
 }

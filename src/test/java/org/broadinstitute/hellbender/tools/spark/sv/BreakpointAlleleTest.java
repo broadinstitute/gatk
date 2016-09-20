@@ -1,11 +1,17 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.List;
 
 public class BreakpointAlleleTest {
 
@@ -32,4 +38,42 @@ public class BreakpointAlleleTest {
 
     }
 
+
+    @Test
+    public void testEqualsAndHashCode() throws Exception {
+
+        final BreakpointAllele breakpointAllele1 = getTestBreakpointAllele("1", "contig-1", "foo");
+
+        final BreakpointAllele breakpointAllele2 = getTestBreakpointAllele("2", "contig-2", "bar");
+
+
+        Assert.assertEquals(breakpointAllele1, breakpointAllele2);
+        Assert.assertEquals(breakpointAllele1.hashCode(), breakpointAllele2.hashCode());
+    }
+
+    private BreakpointAllele getTestBreakpointAllele(final String assemblyId, final String contigId, final String insertionMapping) {
+        final AlignmentRegion region1 = new AlignmentRegion(assemblyId, contigId, TextCigarCodec.decode("100M"), true, new SimpleInterval("1", 10000, 10100), 60, 1, 100, 0);
+        final AlignmentRegion region2 = new AlignmentRegion(assemblyId, contigId, TextCigarCodec.decode("100M"), false, new SimpleInterval("1", 20100, 20200), 60, 101, 200, 0);
+        final ArrayList<String> insertionMappings = new ArrayList<>();
+        insertionMappings.add(insertionMapping);
+        final BreakpointAlignment breakpoint = new BreakpointAlignment(contigId, region1, region2, "TGTGTGT", "ACAC", insertionMappings);
+        return breakpoint.getBreakpointAllele();
+    }
+
+    @Test(groups = "spark")
+    void serializationTest() {
+        final BreakpointAllele breakpointAllele1 = getTestBreakpointAllele("1", "contig-1", "foo");
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final Output out = new Output(bos);
+        final Kryo kryo = new Kryo();
+        kryo.writeClassAndObject(out, breakpointAllele1);
+        out.flush();
+
+        final ByteArrayInputStream bis = new ByteArrayInputStream(bos.toByteArray());
+        final Input in = new Input(bis);
+        @SuppressWarnings("unchecked")
+        final BreakpointAllele roundTrip = (BreakpointAllele)kryo.readClassAndObject(in);
+        Assert.assertEquals(roundTrip, breakpointAllele1);
+
+    }
 }

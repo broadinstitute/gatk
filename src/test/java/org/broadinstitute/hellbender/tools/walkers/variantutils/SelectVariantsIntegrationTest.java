@@ -745,7 +745,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         spec.executeTest("testTetraDiploid--" + testFile, this);
     }
-
+    
     @Test
     public void testSACSimpleDiploid() throws IOException {
         final String testFile = getToolTestDataDir() + "261_S01_raw_variants_gvcf.vcf";
@@ -780,5 +780,17 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         );
 
         spec.executeTest("testSACNonDiploid" + testFile, this);
+    }
+
+    @Test
+    public void testSetFilteredGtoNocallUpdateInfo() throws IOException {
+        final String testFile = getToolTestDataDir() + "selectVariantsInfoField.vcf";
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(" --setFilteredGtToNocall --removeUnusedAlternates --excludeNonVariants", testFile),
+                Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_SetFilteredGtoNocallUpdateInfo.vcf")
+        );
+
+        spec.executeTest("testSetFilteredGtoNocallUpdateInfo--" + testFile, this);
     }
 }

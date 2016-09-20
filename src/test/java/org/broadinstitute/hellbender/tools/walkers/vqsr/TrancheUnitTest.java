@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class TrancheUnitTest extends BaseTest {
-    private final String testDir = CommandLineProgramTest.getTestDataDir() + "/TrancheManagerUnitTest/";
+    private final String testDir = CommandLineProgramTest.getTestDataDir() + "/walkers/VQSR/TrancheManagerUnitTest/";
     private final File QUAL_DATA = new File(testDir + "tranches.raw.dat");
     private final double[] TRUTH_SENSITIVITY_CUTS = new double[]{99.9, 99.0, 97.0, 95.0};
     private final File EXPECTED_TRANCHES_NEW = new File(testDir + "tranches.6.txt");

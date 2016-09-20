@@ -39,6 +39,7 @@ public abstract class ReadWalker extends GATKTool {
      * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
      * Uses the read filter plugin.
      */
+    @Override
     protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
     }

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -172,6 +173,15 @@ public abstract class AssemblyRegionWalker extends GATKTool {
     }
 
     /**
+     * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
+     * Uses the read filter plugin.
+     */
+    @Override
+    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
+        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+    }
+
+    /**
      * Returns the read filter (simple or composite) that will be applied to the reads.
      *
      * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.WellformedReadFilter} filter with all default options,
@@ -200,7 +210,8 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * Returns the default list of CommandLineReadFilters that are used for this tool. The filters
      * returned by this method are subject to selective enabling/disabling and customization by the
      * user via the command line. The default implementation uses the {@link WellformedReadFilter}
-     * filter with all default options. Subclasses can override to provide alternative filters.
+     * filter with all default options, as well as the {@link ReadFilterLibrary.MappedReadFilter}.
+     * Subclasses can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
      * available through {link #getHeaderForReads}.
@@ -208,7 +219,10 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * @return List of default filter instances to be applied for this tool.
      */
     public List<ReadFilter> getDefaultReadFilters() {
-        return Collections.singletonList(new WellformedReadFilter());
+        final List<ReadFilter> defaultFilters = new ArrayList<>(2);
+        defaultFilters.add(new WellformedReadFilter());
+        defaultFilters.add(new ReadFilterLibrary.MappedReadFilter());
+        return defaultFilters;
     }
 
     @Override

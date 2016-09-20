@@ -7,8 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 /*
@@ -16,6 +15,7 @@ import java.util.*;
  * (Package-private because it's not usable outside.)
  */
 final class Tranche {
+    private static final int CURRENT_VERSION = 5;
 
     private static final String DEFAULT_TRANCHE_NAME = "anonymous";
     private static final String COMMENT_STRING = "#";
@@ -33,12 +33,36 @@ final class Tranche {
     final double novelTiTv;  //titv value of novel sites in this tranche
     final int numKnown;      //number of known sites in this tranche
     final int numNovel;      //number of novel sites in this tranche
+    final VariantRecalibratorArgumentCollection.Mode model;
     final String name;       //Name of the tranche
 
     private final int accessibleTruthSites;
     private final int callsAtTruthSites;
 
-    public Tranche(double targetTruthSensitivity, double minVQSLod, int numKnown, double knownTiTv, int numNovel, double novelTiTv, int accessibleTruthSites, int callsAtTruthSites, VariantRecalibratorArgumentCollection.Mode model, String name) {
+    public Tranche(
+            final double targetTruthSensitivity,
+            final double minVQSLod,
+            final int numKnown,
+            final double knownTiTv,
+            final int numNovel,
+            final double novelTiTv,
+            final int accessibleTruthSites,
+            final int callsAtTruthSites,
+            final VariantRecalibratorArgumentCollection.Mode model) {
+        this(targetTruthSensitivity, minVQSLod, numKnown, knownTiTv, numNovel, novelTiTv, accessibleTruthSites, callsAtTruthSites, model, "anonymous");
+    }
+
+    public Tranche(
+            final double targetTruthSensitivity,
+            final double minVQSLod,
+            final int numKnown,
+            final double knownTiTv,
+            final int numNovel,
+            final double novelTiTv,
+            final int accessibleTruthSites,
+            final int callsAtTruthSites,
+            final VariantRecalibratorArgumentCollection.Mode model,
+            final String name) {
         if ( targetTruthSensitivity < 0.0 || targetTruthSensitivity > 100.0) {
             throw new GATKException("Target FDR is unreasonable " + targetTruthSensitivity);
         }
@@ -57,6 +81,7 @@ final class Tranche {
         this.numNovel = numNovel;
         this.knownTiTv = knownTiTv;
         this.numKnown = numKnown;
+        this.model = model;
         this.name = name;
 
         this.accessibleTruthSites = accessibleTruthSites;
@@ -69,7 +94,49 @@ final class Tranche {
                 targetTruthSensitivity, minVQSLod, numKnown, knownTiTv, numNovel, novelTiTv, accessibleTruthSites, callsAtTruthSites, name);
     }
 
-    private static double getRequiredDouble(Map<String,String> bindings, String key ) {
+    /**
+     * Returns an appropriately formatted string representing the raw tranches file on disk.
+     *
+     * @param tranches
+     * @return
+     */
+    public static String tranchesString( final List<Tranche> tranches ) {
+        try (final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+             final PrintStream stream = new PrintStream(bytes)) {
+            if( tranches.size() > 1 )
+                Collections.sort( tranches, new TrancheTruthSensitivityComparator() );
+
+            stream.println("# Variant quality score tranches file");
+            stream.println("# Version number " + CURRENT_VERSION);
+            stream.println("targetTruthSensitivity,numKnown,numNovel,knownTiTv,novelTiTv,minVQSLod,filterName,model,accessibleTruthSites,callsAtTruthSites,truthSensitivity");
+
+            Tranche prev = null;
+            for ( Tranche t : tranches ) {
+                stream.printf("%.2f,%d,%d,%.4f,%.4f,%.4f,VQSRTranche%s%.2fto%.2f,%s,%d,%d,%.4f%n",
+                        t.targetTruthSensitivity, t.numKnown, t.numNovel, t.knownTiTv, t.novelTiTv, t.minVQSLod, t.model.toString(),
+                        (prev == null ? 0.0 : prev.targetTruthSensitivity), t.targetTruthSensitivity, t.model.toString(), t.accessibleTruthSites, t.callsAtTruthSites, t.getTruthSensitivity());
+                prev = t;
+            }
+
+            return bytes.toString();
+        }
+        catch (IOException e) {
+            throw new GATKException("IOException while converting tranche to a string");
+        }
+    }
+
+    public static class TrancheTruthSensitivityComparator implements Comparator<Tranche> {
+        @Override
+        public int compare(final Tranche tranche1, final Tranche tranche2) {
+            return Double.compare(tranche1.targetTruthSensitivity, tranche2.targetTruthSensitivity);
+        }
+    }
+
+    private double getTruthSensitivity() {
+        return accessibleTruthSites > 0 ? callsAtTruthSites / (1.0*accessibleTruthSites) : 0.0;
+    }
+
+    private static double getRequiredDouble(final Map<String,String> bindings, final String key ) {
         if ( bindings.containsKey(key) ) {
             try {
                 return Double.valueOf(bindings.get(key));
@@ -81,7 +148,7 @@ final class Tranche {
         }
     }
 
-    private static double getOptionalDouble(Map<String,String> bindings, String key, double defaultValue ) {
+    private static double getOptionalDouble(final Map<String,String> bindings, String key, final double defaultValue ) {
         try{
             return Double.valueOf(bindings.getOrDefault(key, String.valueOf(defaultValue)));
         } catch (NumberFormatException e){
@@ -89,7 +156,7 @@ final class Tranche {
         }
     }
 
-    private static int getRequiredInteger(Map<String,String> bindings, String key) {
+    private static int getRequiredInteger(final Map<String,String> bindings, final String key) {
         if ( bindings.containsKey(key) ) {
             try{
                 return Integer.valueOf(bindings.get(key));
@@ -101,7 +168,7 @@ final class Tranche {
         }
     }
 
-    private static int getOptionalInteger(Map<String,String> bindings, String key, int defaultValue) {
+    private static int getOptionalInteger(final Map<String,String> bindings, final String key, final int defaultValue) {
         try{
             return Integer.valueOf(bindings.getOrDefault(key, String.valueOf(defaultValue)));
         } catch (NumberFormatException e){
@@ -113,7 +180,7 @@ final class Tranche {
      * Returns a list of tranches, sorted from most to least specific, read in from file f.
      * @throws IOException if there are problems reading the file.
      */
-    public static List<Tranche> readTranches(File f) throws IOException{
+    public static List<Tranche> readTranches(final File f) throws IOException{
         String[] header = null;
         List<Tranche> tranches = new ArrayList<>();
 
@@ -151,10 +218,10 @@ final class Tranche {
                             bindings.get("filterName")));
                 }
             }
-
-            tranches.sort(TRUTH_SENSITIVITY_ORDER);
-            return tranches;
         }
+
+        tranches.sort(TRUTH_SENSITIVITY_ORDER);
+        return tranches;
     }
 
     @VisibleForTesting
@@ -163,7 +230,7 @@ final class Tranche {
         private double[] runningSensitivity;
         private final int nTrueSites;
 
-        public TruthSensitivityMetric(int nTrueSites) {
+        public TruthSensitivityMetric(final int nTrueSites) {
             this.name = "TruthSensitivity";
             this.nTrueSites = nTrueSites;
         }
@@ -172,11 +239,11 @@ final class Tranche {
             return name;
         }
 
-        public double getThreshold(double tranche) {
+        public double getThreshold(final double tranche) {
             return 1.0 - tranche/100.0; // tranche of 1 => 99% sensitivity target
         }
 
-        public void calculateRunningMetric(List<VariantDatum> data) {
+        public void calculateRunningMetric(final List<VariantDatum> data) {
             int nCalledAtTruth = 0;
             runningSensitivity = new double[data.size()];
 
@@ -187,7 +254,7 @@ final class Tranche {
             }
         }
 
-        public double getRunningMetric(int i) {
+        public double getRunningMetric(final int i) {
             return runningSensitivity[i];
         }
     }

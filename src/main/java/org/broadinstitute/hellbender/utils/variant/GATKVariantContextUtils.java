@@ -10,18 +10,20 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.io.FilenameUtils;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.io.File;
 import java.io.Serializable;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public final class GATKVariantContextUtils {
@@ -1347,7 +1349,7 @@ public final class GATKVariantContextUtils {
      *
      * @throws IllegalArgumentException if {@code allele} is {@code null}.
      *
-     * @return {@code -1} if there is no such allele that satify those criteria, a value between 0 and the number
+     * @return {@code -1} if there is no such allele that satisfy those criteria, a value between 0 and the number
      *  of alternative alleles - 1.
      */
     public static int indexOfAltAllele(final VariantContext vc, final Allele allele, final boolean useEquals) {
@@ -1378,5 +1380,59 @@ public final class GATKVariantContextUtils {
                 i++;
 
         return -1;
+    }
+
+    /**
+     * Add chromosome counts (AC, AN and AF) to the VCF header lines
+     *
+     * @param headerLines the VCF header lines
+     */
+    public static void addChromosomeCountsToHeader(final Set<VCFHeaderLine> headerLines) {
+        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
+        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
+        headerLines.add(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
+    }
+
+    /**
+     * Set the builder's filtered genotypes to no-call and update AC, AN and AF
+     *
+     * @param builder builder for variant context
+     * @param vc the VariantContext record to set filtered genotypes to no-call
+     * @param setFilteredGenotypesToNocall flag to set filtered genotype to NO CALL
+     * @param filters the filters for each genotype
+     */
+    public static void setFilteredGenotypeToNocall(final VariantContextBuilder builder, final VariantContext vc,
+                                                   final boolean setFilteredGenotypesToNocall, BiFunction<VariantContext, Genotype, List<String>> filters) {
+        Utils.nonNull(vc);
+        Utils.nonNull(builder);
+        Utils.nonNull(filters);
+
+        final GenotypesContext genotypes = GenotypesContext.create(vc.getGenotypes().size());
+
+        // update genotypes if filtered genotypes are set to no-call
+        boolean haveFilteredNoCallAlleles = false;
+        for (final Genotype g : vc.getGenotypes()) {
+            if (g.isCalled()) {
+                List<String> filterNames = filters.apply(vc,g);
+                if (!filterNames.isEmpty() && setFilteredGenotypesToNocall) {
+                    haveFilteredNoCallAlleles = true;
+                    genotypes.add(new GenotypeBuilder(g).filters(filterNames).alleles(GATKVariantContextUtils.noCallAlleles((g.getPloidy()))).make());
+                } else {
+                    genotypes.add(new GenotypeBuilder(g).filters(filterNames).make());
+                }
+            } else {
+                genotypes.add(g);
+            }
+        }
+
+        // if filtered genotypes are set to no-call, output recomputed AC, AN, AF
+        if ( haveFilteredNoCallAlleles ) {
+            final Map<String, Object> attributes = new LinkedHashMap<>(vc.getAttributes()); // need to make mutable
+            VariantContextUtils.calculateChromosomeCounts(builder.genotypes(genotypes).make(), attributes, true, vc.getSampleNames());
+            builder.attributes(attributes);
+        }
+
+        // update genotypes
+        builder.genotypes(genotypes);
     }
 }

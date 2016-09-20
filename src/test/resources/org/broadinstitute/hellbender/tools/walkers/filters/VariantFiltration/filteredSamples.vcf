@@ -4,7 +4,7 @@
 ##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
-##contig=<ID=1,length=249250621,assembly=b37>
+##contig=<ID=1,length=1000000,assembly=b37>
 ##contig=<ID=2,length=243199373,assembly=b37>
 ##contig=<ID=3,length=198022430,assembly=b37>
 ##contig=<ID=4,length=191154276,assembly=b37>
