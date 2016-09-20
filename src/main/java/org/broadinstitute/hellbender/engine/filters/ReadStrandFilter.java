@@ -12,7 +12,7 @@ public final class ReadStrandFilter extends ReadFilter {
     @Argument(fullName = "keepReverse",
             shortName = "keepReverse",
             doc="Keep only reads on the reverse strand",
-            optional=true)
+            optional=false)
 	public Boolean keepOnlyReverse;
 
     public ReadStrandFilter() {}

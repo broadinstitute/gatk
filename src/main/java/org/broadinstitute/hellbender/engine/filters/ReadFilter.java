@@ -14,7 +14,12 @@ import java.util.function.Predicate;
  * based on the implementing class's implementation of test().
  *
  * To be accessible from the command line, subclasses must have a zero-arg constructor and contain
- * an ArgumentCollection.
+ * (optional) ArgumentCollection or Argument annotated fields for filter-specific arguments. Arguments
+ * that are optional=true should have an initial value since the command line parser will not require
+ * the user to provide one; arguments that are optional=false should not have an initial value (and
+ * used boxed types with null default/initial values) since otherwise they will be seen by the command
+ * line parser as having been provided, and the user will not be notified that the value must be provided
+ * on the command line).
  */
 public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
 

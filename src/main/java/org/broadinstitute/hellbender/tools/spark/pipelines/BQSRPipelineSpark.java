@@ -81,8 +81,8 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
             throw new UserException.Require2BitReferenceForBroadcast();
         }
         //Should this get the getUnfilteredReads? getReads will merge default and command line filters.
-        // but the code below uses other filters for other parts of the pipline that do not honor
-        // the commandline.
+        //but the code below uses other filters for other parts of the pipeline that do not honor
+        //the commandline.
         final JavaRDD<GATKRead> initialReads = getReads();
 
         // The initial reads have already had the WellformedReadFilter applied to them, which

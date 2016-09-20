@@ -45,59 +45,7 @@ public class InsertSizeMetricsArgumentCollection extends MetricsArgumentCollecti
     @Argument(doc = "Should an output plot be created")
     public boolean producePlot = false;
 
-    // read filtering criteria
-    @Argument(doc = "If set to true, filter pairs of reads that are not properly--as judged by aligner--oriented.",
-            shortName = "PP",
-            fullName = "filterNonProperlyPairedReads",
-            optional = true)
-    public boolean filterNonProperlyPairedReads = false;
-
-    @Argument(doc = "If set to true, include duplicated reads as well.",
-            shortName = "Dup",
-            fullName = "useDuplicateReads",
-            optional = true)
-    public boolean useDuplicateReads = false;
-
-    @Argument(doc = "If set to true, include secondary alignments.",
-            shortName = "S",
-            fullName = "useSecondaryAlignments",
-            optional = true)
-    public boolean useSecondaryAlignments = false;
-
-    @Argument(doc = "If set to true, include supplementary alignments.",
-            shortName = "SS",
-            fullName = "useSupplementaryAlignments",
-            optional = true)
-    public boolean useSupplementaryAlignments = false;
-
-    @Argument(doc = "If set non-zero value, only include reads passing certain mapping quality threshold. " +
-            "If set to zero, reads with zero mapping quality will be included in calculating metrics.",
-            shortName = "MAPQ",
-            fullName = "MAPQThreshold",
-            optional = true)
-    public int MQPassingThreshold = 0;
-
     @ArgumentCollection
     public MetricAccumulationLevelArgumentCollection metricAccumulationLevel = new MetricAccumulationLevelArgumentCollection();
 
-    /**
-     * Which end of a read pair to use for collecting insert size metrics.
-     */
-    public enum EndToUse {
-        FIRST(1), SECOND(2);
-        private final int value;
-        EndToUse(int value){
-            this.value = value;
-        }
-        public int getValue(){
-            return value;
-        }
-    }
-
-    @Argument(doc = "Which end of pairs to use for collecting information. " +
-            "Possible values:{FIRST, SECOND}.",
-            shortName = "E",
-            fullName = "whichEndOfPairToUse",
-            optional = true)
-    public EndToUse useEnd = EndToUse.FIRST;
 }

@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TwoPassReadWalker;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
@@ -101,10 +101,10 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
     SAMFileHeader header;
 
     @Override
-    public CountingReadFilter makeReadFilter() {
-        return new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
-    
+
     @Override
     public void onTraversalStart() {
         header = getHeaderForSAMWriter();

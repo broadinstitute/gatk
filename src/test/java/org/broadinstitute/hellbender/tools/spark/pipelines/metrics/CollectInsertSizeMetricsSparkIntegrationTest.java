@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines.metrics;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.metrics.InsertSizeMetricsArgumentCollection;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -11,9 +11,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
@@ -75,8 +72,10 @@ public final class CollectInsertSizeMetricsSparkIntegrationTest extends CommandL
         }
 
         // some filter options
-        args.add("-" + "E");
-        args.add(InsertSizeMetricsArgumentCollection.EndToUse.SECOND.name());
+        args.add("-DF");
+        args.add(ReadFilterLibrary.FirstOfPairReadFilter.class.getSimpleName());
+        args.add("-RF");
+        args.add(ReadFilterLibrary.SecondOfPairReadFilter.class.getSimpleName());
 
         if (allLevels) {
             // accumulation level options (all included for better test coverage)

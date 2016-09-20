@@ -37,7 +37,7 @@ public final class WellformedReadFilter extends ReadFilter {
                 .and(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS)
                 .and(ReadFilterLibrary.READLENGTH_EQUALS_CIGARLENGTH)
                 .and(ReadFilterLibrary.SEQ_IS_STORED)
-                .and(ReadFilterLibrary.CIGAR_IS_SUPPORTED);
+                .and(ReadFilterLibrary.CIGAR_CONTAINS_NO_N_OPERATOR);
     }
 
     @Override

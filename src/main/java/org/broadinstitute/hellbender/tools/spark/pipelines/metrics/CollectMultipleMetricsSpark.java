@@ -82,8 +82,6 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
                 final InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();
                 isArgs.output = localBaseName + ".txt";
                 isArgs.histogramPlotFile = localBaseName + ".pdf";
-
-                isArgs.useEnd = InsertSizeMetricsArgumentCollection.EndToUse.SECOND;
                 isArgs.metricAccumulationLevel.accumulationLevels = metricAccumulationLevel;
 
                 final InsertSizeMetricsCollectorSpark collector = new InsertSizeMetricsCollectorSpark();

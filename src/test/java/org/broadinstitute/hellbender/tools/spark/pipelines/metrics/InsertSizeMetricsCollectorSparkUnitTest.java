@@ -68,7 +68,6 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
 
         InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();
         isArgs.output = outfile.getAbsolutePath();
-        isArgs.useEnd = InsertSizeMetricsArgumentCollection.EndToUse.SECOND;
         if (allLevels) {
             isArgs.metricAccumulationLevel.accumulationLevels = new HashSet<>();
             isArgs.metricAccumulationLevel.accumulationLevels.add(MetricAccumulationLevel.ALL_READS);
@@ -80,8 +79,13 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         InsertSizeMetricsCollectorSpark isSpark = new InsertSizeMetricsCollectorSpark();
         isSpark.initialize(isArgs, samHeader, null);
 
-        //manually reconcile the read filters for this collector
+        // Since we're bypassing the framework in order to force this test to run on multiple partitions, we
+        // need to make the read filter manually since we don't have the plugin descriptor to do it for us; so
+        // remove the (default) FirstOfPairReadFilter filter and add in the SECOND_IN_PAIR manually since thats
+        // required for our tests to pass
         List<ReadFilter> readFilters = isSpark.getDefaultReadFilters();
+        readFilters.stream().filter(
+                f -> !f.getClass().getSimpleName().equals(ReadFilterLibrary.FirstOfPairReadFilter.class.getSimpleName()));
         readFilters.forEach(f -> f.setHeader(samHeader));
         ReadFilter rf = readFilters.stream().reduce(
                 ReadFilterLibrary.ALLOW_ALL_READS,
