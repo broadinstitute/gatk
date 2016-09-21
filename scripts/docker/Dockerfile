@@ -11,7 +11,7 @@ RUN apt-get update && \
      apt-get upgrade -y && \
      apt-get install -y python && \
      apt-get install -y python3-pip && \
-     apt-get install -y wget curl unzip gcc python-dev python-setuptools emacs git less lynx hdfview
+     apt-get install -y wget curl unzip gcc python-dev python-setuptools git less lynx hdfview
 ##########
 
 # Install some more useful tools
