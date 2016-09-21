@@ -653,30 +653,20 @@ public final class MathUtils {
      *
      * @param array
      * @param takeLog10OfOutput
-     * @param keepInLogSpace
+     * @param keepInLogSpace    if true, we don't normalize in the sense of probabilities summing to one but rather in the
+     *                          sense of numericla stability where we scale entries so that the largest is 0 in log space
      *
      * @return
      */
     public static double[] normalizeFromLog10(final double[] array, final boolean takeLog10OfOutput, final boolean keepInLogSpace) {
-        // for precision purposes, we need to add (or really subtract, since they're
-        // all negative) the largest value; also, we need to convert to normal-space.
-        double maxValue = arrayMax(array);
-
-        // we may decide to just normalize in log space without converting to linear space
         if (keepInLogSpace) {
+            double maxValue = arrayMax(array);
             return applyToArray(array, x -> x - maxValue);
-        }
-
-        // default case: go to linear space
-        final double[] normalized = applyToArray(array, x -> Math.pow(10.0, x - maxValue));
-        final double sum = sum(normalized);
-        if (!takeLog10OfOutput) {
-            return applyToArrayInPlace(normalized, x -> x/sum);
         } else {
-            final double log10Sum = Math.log10(sum);
-            return applyToArray(array, x -> x - maxValue - log10Sum);
+            final double log10Sum = log10SumLog10(array);
+            final double[] result = applyToArray(array, x -> x - log10Sum);
+            return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
         }
-
     }
 
     /**

@@ -92,7 +92,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * *mean* of this distribution; this parameter gives its spread.
      */
     @Argument(fullName = "heterozygosity_stdev", shortName = "heterozygosityStandardDeviation", doc = "Standard deviation of eterozygosity for SNP and indel calling.", optional = true)
-    public double heterozygosityStandardDeviation = 0.1;
+    public double heterozygosityStandardDeviation = 0.01;
 
     /**
      * The minimum phred-scaled Qscore threshold to separate high confidence from low confidence calls. Only genotypes with
