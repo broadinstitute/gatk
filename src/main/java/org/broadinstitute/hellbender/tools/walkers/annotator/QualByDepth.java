@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -8,7 +9,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -52,7 +53,7 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
+                                        final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
         if ( !vc.hasLog10PError() ) {
             return Collections.emptyMap();
@@ -80,11 +81,8 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
                     ADrestrictedDepth += totalADdepth;
                 }
                 depth += totalADdepth;
-            } else if (perReadAlleleLikelihoodMap != null) {
-                final PerReadAlleleLikelihoodMap perReadAlleleLikelihoods = perReadAlleleLikelihoodMap.get(genotype.getSampleName());
-                if (perReadAlleleLikelihoods != null && !perReadAlleleLikelihoods.isEmpty()) {
-                    depth += perReadAlleleLikelihoods.size();
-                }
+            } else if (likelihoods != null) {
+                depth += likelihoods.sampleReadCount(likelihoods.indexOfSample(genotype.getSampleName()));
             } else if ( genotype.hasDP() ) {
                 depth += genotype.getDP();
             }

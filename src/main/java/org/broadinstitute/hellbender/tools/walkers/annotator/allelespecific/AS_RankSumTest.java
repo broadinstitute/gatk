@@ -6,9 +6,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
@@ -34,21 +32,21 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                          final VariantContext vc,
-                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
-        return annotateRawData(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
+                                        final ReadLikelihoods<Allele> likelihoods) {
+        return annotateRawData(ref, vc, likelihoods);
     }
 
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap ) {
-        if ( perReadAlleleLikelihoodMap == null) {
+                                               final ReadLikelihoods<Allele> likelihoods ) {
+        if ( likelihoods == null) {
             return Collections.emptyMap();
         }
 
         final Map<String, Object> annotations = new HashMap<>();
         final AlleleSpecificAnnotationData<CompressedDataList<Integer>> myData = initializeNewAnnotationData(vc.getAlleles());
-        calculateRawData(vc, perReadAlleleLikelihoodMap, myData);
+        calculateRawData(vc, likelihoods, myData);
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), myData.getAttributeMap());
         if (annotationString == null){
             return Collections.emptyMap();
@@ -84,38 +82,19 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
 
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME generics here blow up
     @Override
-    public void calculateRawData(VariantContext vc, Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap, ReducibleAnnotationData myData) {
-        if(stratifiedPerReadAlleleLikelihoodMap == null) {
+    public void calculateRawData(VariantContext vc, final ReadLikelihoods<Allele> likelihoods, ReducibleAnnotationData myData) {
+        if(likelihoods == null) {
             return;
         }
 
+        final int refLoc = vc.getStart();
+
         final Map<Allele, CompressedDataList<Integer>> perAlleleValues = myData.getAttributeMap();
-        for ( final PerReadAlleleLikelihoodMap likelihoodMap : stratifiedPerReadAlleleLikelihoodMap.values() ) {
-            if ( likelihoodMap != null && !likelihoodMap.isEmpty() ) {
-                fillQualsFromLikelihoodMap(vc.getAlleles(), vc.getStart(), likelihoodMap, perAlleleValues);
-            }
-        }
-    }
-
-    private void fillQualsFromLikelihoodMap(final List<Allele> alleles,
-                                            final int refLoc,
-                                            final PerReadAlleleLikelihoodMap likelihoodMap,
-                                            final Map<Allele, CompressedDataList<Integer>> perAlleleValues) {
-        for ( final Map.Entry<GATKRead, Map<Allele,Double>> el : likelihoodMap.getLikelihoodReadMap().entrySet() ) {
-            final MostLikelyAllele a = PerReadAlleleLikelihoodMap.getMostLikelyAllele(el.getValue());
-            if ( ! a.isInformative() ) {
-                continue; // read is non-informative
-            }
-
-            final GATKRead read = el.getKey();
-            if ( isUsableRead(read, refLoc) ) {
-                final OptionalDouble value = getElementForRead(read, refLoc, a);
-                if (! value.isPresent() || value.getAsDouble() == INVALID_ELEMENT_FROM_READ ) {
-                    continue;
-                }
-
-                if(perAlleleValues.containsKey(a.getMostLikelyAllele())) {
-                    perAlleleValues.get(a.getMostLikelyAllele()).add((int)value.getAsDouble());
+        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles() ) {
+            if (bestAllele.isInformative() && isUsableRead(bestAllele.read, refLoc)) {
+                final OptionalDouble value = getElementForRead(bestAllele.read, refLoc, bestAllele);
+                if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ && perAlleleValues.containsKey(bestAllele.allele)) {
+                    perAlleleValues.get(bestAllele.allele).add((int) value.getAsDouble());
                 }
             }
         }

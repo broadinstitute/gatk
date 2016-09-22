@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_MappingQualityRankSumTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -15,13 +15,16 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class MappingQualityRankSumTestUnitTest {
+    private  static final Allele REF = Allele.create("T", true);
+    private static final Allele ALT = Allele.create("A", false);
 
-    private final String sample1 = "NA1";
-    private final String sample2 = "NA2";
+    private static final String sample1 = "NA1";
+    private static final String sample2 = "NA2";
 
     private VariantContext makeVC( final Allele refAllele, final Allele altAllele) {
         final double[] genotypeLikelihoods1 = {30,0,190};
@@ -46,39 +49,19 @@ public final class MappingQualityRankSumTestUnitTest {
     public void testMQ(){
         final InfoFieldAnnotation ann = new MappingQualityRankSumTest();
         final String key = GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY;
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
-        final Allele alleleRef = Allele.create("T", true);
-        final Allele alleleAlt = Allele.create("A", false);
+        final int[] altMappingQualities = {10, 20};
+        final int[] refMappingQualities = {100, 110};
+        final List<GATKRead> refReads = Arrays.stream(refMappingQualities).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
+        final List<GATKRead> altReads = Arrays.stream(altMappingQualities).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
+        final ReadLikelihoods<Allele> likelihoods =
+                AnnotationArtificialData.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
+        final VariantContext vc = makeVC(REF, ALT);
 
-        final int[] hardAlts = {10, 20};
-        final int[] hardRefs = {100, 110};
-        final GATKRead read1 = makeRead(hardAlts[0]);
-        final GATKRead read2 = makeRead(hardAlts[1]);
-        final GATKRead read3 = makeRead(hardRefs[0]);
-        final GATKRead read4 = makeRead(hardRefs[1]);
-        map.add(read1, alleleAlt, -1.0);
-        map.add(read1, alleleRef, -100.0);
+        final Map<String, Object> annotate = ann.annotate(null, vc, likelihoods);
 
-        map.add(read2, alleleAlt, -1.0);
-        map.add(read2, alleleRef, -100.0);
-
-        map.add(read3, alleleAlt, -100.0);
-        map.add(read3, alleleRef, -1.0);
-
-        map.add(read4, alleleAlt, -100.0);
-        map.add(read4, alleleRef, -1.0);
-
-        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
-
-
-        final ReferenceContext ref= null;
-        final VariantContext vc= makeVC(alleleRef, alleleAlt);
-
-        final Map<String, Object> annotate = ann.annotate(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
-
-        final double val= MannWhitneyU.runOneSidedTest(false, Arrays.asList(hardAlts[0], hardAlts[1]),
-                                                              Arrays.asList(hardRefs[0], hardRefs[1])).getLeft();
+        final double val= MannWhitneyU.runOneSidedTest(false, Arrays.asList(altMappingQualities[0], altMappingQualities[1]),
+                                                              Arrays.asList(refMappingQualities[0], refMappingQualities[1])).getLeft();
         final String valStr= String.format("%.3f", val);
         Assert.assertEquals(annotate.get(key), valStr);
 
@@ -93,39 +76,21 @@ public final class MappingQualityRankSumTestUnitTest {
         final AS_RankSumTest ann = new AS_MappingQualityRankSumTest();
         final String key1 = GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY;
         final String key2 = GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY;
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
-        final Allele alleleRef = Allele.create("T", true);
-        final Allele alleleAlt = Allele.create("A", false);
-
-        final int[] hardAlts = {10, 20};
-        final int[] hardRefs = {100, 110};
-        final GATKRead read1 = makeRead(hardAlts[0]);
-        final GATKRead read2 = makeRead(hardAlts[1]);
-        final GATKRead read3 = makeRead(hardRefs[0]);
-        final GATKRead read4 = makeRead(hardRefs[1]);
-        map.add(read1, alleleAlt, -1.0);
-        map.add(read1, alleleRef, -100.0);
-
-        map.add(read2, alleleAlt, -1.0);
-        map.add(read2, alleleRef, -100.0);
-
-        map.add(read3, alleleAlt, -100.0);
-        map.add(read3, alleleRef, -1.0);
-
-        map.add(read4, alleleAlt, -100.0);
-        map.add(read4, alleleRef, -1.0);
-
-        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
-
+        final int[] altMappingQualities = {10, 20};
+        final int[] refMappingQualities = {100, 110};
+        final List<GATKRead> refReads = Arrays.stream(refMappingQualities).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
+        final List<GATKRead> altReads = Arrays.stream(altMappingQualities).mapToObj(i -> makeRead(i)).collect(Collectors.toList());
+        final ReadLikelihoods<Allele> likelihoods =
+                AnnotationArtificialData.makeLikelihoods(sample1, refReads, altReads, -100.0, -100.0, REF, ALT);
 
         final ReferenceContext ref= null;
-        final VariantContext vc= makeVC(alleleRef, alleleAlt);
+        final VariantContext vc= makeVC(REF, ALT);
 
-        final Map<String, Object> annotateRaw = ann.annotateRawData(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
-        final Map<String, Object> annotate = ann.annotate(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotateRaw = ann.annotateRawData(ref, vc, likelihoods);
+        final Map<String, Object> annotate = ann.annotate(ref, vc, likelihoods);
 
-        final String expected = hardRefs[0] + ",1," + hardRefs[1] + ",1" + AS_RankSumTest.PRINT_DELIM + hardAlts[0] + ",1," + hardAlts[1] + ",1";
+        final String expected = refMappingQualities[0] + ",1," + refMappingQualities[1] + ",1" + AS_RankSumTest.PRINT_DELIM + altMappingQualities[0] + ",1," + altMappingQualities[1] + ",1";
         Assert.assertEquals(annotate.get(key1), expected);
         Assert.assertEquals(annotateRaw.get(key1), expected);
 

@@ -10,21 +10,23 @@ import java.util.Map;
 
 public final class GenotypeSummariesUnitTest {
 
+    private static final Allele REF = Allele.create("A", true);
+    private static final Allele ALT = Allele.create("T");
+    private static final String SAMPLE_1 = "NA1";
+    private static final String SAMPLE_2 = "NA2";
+
     @Test
     public void testBasicGenotypeSummaries() {
-        final String sample1 = "NA1";
-        final String sample2 = "NA2";
-        final Allele refAllele = Allele.create("A", true);
-        final Allele altAllele = Allele.create("T");
+
         final Allele noCallAllele = Allele.NO_CALL;
         final double[] genotypeLikelihoods1 = {30,0,190};
         final GenotypesContext testGC = GenotypesContext.create(2);
         // sample1 -> A/T with GQ 30
-        testGC.add(new GenotypeBuilder(sample1).alleles(Arrays.asList(refAllele, altAllele)).PL(genotypeLikelihoods1).GQ(30).make());
+        testGC.add(new GenotypeBuilder(SAMPLE_1).alleles(Arrays.asList(REF, ALT)).PL(genotypeLikelihoods1).GQ(30).make());
         // sample2 -> ./. with missing GQ
-        testGC.add(new GenotypeBuilder(sample2).alleles(Arrays.asList(noCallAllele, noCallAllele)).make());
+        testGC.add(new GenotypeBuilder(SAMPLE_2).alleles(Arrays.asList(noCallAllele, noCallAllele)).make());
         final VariantContext testVC = (new VariantContextBuilder())
-                                        .alleles(Arrays.asList(refAllele, altAllele)).chr("1").start(15L).stop(15L).genotypes(testGC).make();
+                                        .alleles(Arrays.asList(REF, ALT)).chr("1").start(15L).stop(15L).genotypes(testGC).make();
 
         final GenotypeSummaries GS = new GenotypeSummaries();
         final Map<String,Object> resultMap = GS.annotate(null, testVC, null);
@@ -38,18 +40,14 @@ public final class GenotypeSummariesUnitTest {
 
     @Test
     public void testGenotypeSummaries() {
-        final String sample1 = "NA1";
-        final String sample2 = "NA2";
-        final Allele refAllele = Allele.create("A", true);
-        final Allele altAllele = Allele.create("T");
         final double[] genotypeLikelihoods1 = {30,0,190};
         final GenotypesContext testGC = GenotypesContext.create(2);
         // sample1 -> A/T with GQ 30
-        testGC.add(new GenotypeBuilder(sample1).alleles(Arrays.asList(refAllele, altAllele)).PL(genotypeLikelihoods1).GQ(30).make());
+        testGC.add(new GenotypeBuilder(SAMPLE_1).alleles(Arrays.asList(REF, ALT)).PL(genotypeLikelihoods1).GQ(30).make());
         // sample2 -> A/T with GQ 40
-        testGC.add(new GenotypeBuilder(sample2).alleles(Arrays.asList(refAllele, altAllele)).PL(genotypeLikelihoods1).GQ(40).make());
+        testGC.add(new GenotypeBuilder(SAMPLE_2).alleles(Arrays.asList(REF, ALT)).PL(genotypeLikelihoods1).GQ(40).make());
         final VariantContext testVC = (new VariantContextBuilder())
-                .alleles(Arrays.asList(refAllele, altAllele)).chr("1").start(15L).stop(15L).genotypes(testGC).make();
+                .alleles(Arrays.asList(REF, ALT)).chr("1").start(15L).stop(15L).genotypes(testGC).make();
 
         final GenotypeSummaries GS = new GenotypeSummaries();
         final Map<String,Object> resultMap = GS.annotate(null, testVC, null);
@@ -62,19 +60,15 @@ public final class GenotypeSummariesUnitTest {
 
     @Test
     public void testNoGenotypes() {
-        final String sample1 = "NA1";
-        final String sample2 = "NA2";
-        final Allele refAllele = Allele.create("A", true);
-        final Allele altAllele = Allele.create("T");
         final GenotypesContext testGC = GenotypesContext.create(2);
         final Allele noCallAllele = Allele.NO_CALL;
 
         // sample1 -> ./. with missing GQ
-        testGC.add(new GenotypeBuilder(sample1).alleles(Arrays.asList(noCallAllele, noCallAllele)).make());
+        testGC.add(new GenotypeBuilder(SAMPLE_1).alleles(Arrays.asList(noCallAllele, noCallAllele)).make());
         // sample2 -> ./. with missing GQ
-        testGC.add(new GenotypeBuilder(sample2).alleles(Arrays.asList(noCallAllele, noCallAllele)).make());
+        testGC.add(new GenotypeBuilder(SAMPLE_2).alleles(Arrays.asList(noCallAllele, noCallAllele)).make());
         final VariantContext testVC = (new VariantContextBuilder())
-                .alleles(Arrays.asList(refAllele, altAllele)).chr("1").start(15L).stop(15L).make();
+                .alleles(Arrays.asList(REF, ALT)).chr("1").start(15L).stop(15L).make();
 
         final GenotypeSummaries GS = new GenotypeSummaries();
         final Map<String,Object> resultMap = GS.annotate(null, testVC, null);

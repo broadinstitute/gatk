@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandOddsRatio;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
@@ -61,10 +62,10 @@ public final class AS_StrandOddsRatio extends AS_StrandBiasTest implements AS_St
     }
 
     @Override
-    protected Map<String, Object> calculateAnnotationFromLikelihoodMap(final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
-                                                                       final VariantContext vc){
+    protected Map<String, Object> calculateAnnotationFromLikelihoods(final ReadLikelihoods<Allele> likelihoods,
+                                                                     final VariantContext vc){
         // either SNP with no alignment context, or indels: per-read likelihood map needed
-        final int[][] table = getContingencyTable(stratifiedPerReadAlleleLikelihoodMap, vc, MIN_COUNT);
+        final int[][] table = getContingencyTable(likelihoods, vc, MIN_COUNT);
         final double ratio = StrandOddsRatio.calculateSOR(table);
         return Collections.singletonMap(getKeyNames().get(0), StrandOddsRatio.formattedValue(ratio));
     }

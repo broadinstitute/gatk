@@ -7,8 +7,7 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasTest;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -49,24 +48,24 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
-        return annotateRawData(ref, vc, stratifiedPerReadAlleleLikelihoodMap);
+                                        final ReadLikelihoods<Allele> likelihoods) {
+        return annotateRawData(ref, vc, likelihoods);
     }
 
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap ) {
+                                               final ReadLikelihoods<Allele> likelihoods ) {
 
-        //for allele-specific annotations we only call from HC and we only use perReadAlleleLikelihoodMap
-        if ( perReadAlleleLikelihoodMap == null) {
+        //for allele-specific annotations we only call from HC and we only use likelihoods
+        if ( likelihoods == null) {
             return Collections.emptyMap();
         }
-        // calculate the annotation from the stratified per read likelihood map
-        // stratifiedPerReadAllelelikelihoodMap can come from HaplotypeCaller call to VariantAnnotatorEngine
+        // calculate the annotation from the likelihoods
+        // likelihoods can come from HaplotypeCaller call to VariantAnnotatorEngine
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<List<Integer>> myData = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
-        calculateRawData(vc, perReadAlleleLikelihoodMap, myData);
+        calculateRawData(vc, likelihoods, myData);
         final Map<Allele, List<Integer>> perAlleleValues = myData.getAttributeMap();
         final String annotationString = makeRawAnnotationString(vc.getAlleles(), perAlleleValues);
         annotations.put(getRawKeyName(), annotationString);
@@ -102,13 +101,13 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
     public void calculateRawData(final VariantContext vc,
-                                 final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
+                                 final ReadLikelihoods<Allele> likelihoods,
                                  final ReducibleAnnotationData rawAnnotations) {
-        if(stratifiedPerReadAlleleLikelihoodMap == null) {
+        if(likelihoods == null) {
             return;
         }
 
-        getStrandCountsFromLikelihoodMap(vc, stratifiedPerReadAlleleLikelihoodMap, rawAnnotations, MIN_COUNT);
+        getStrandCountsFromLikelihoodMap(vc, likelihoods, rawAnnotations, MIN_COUNT);
     }
 
     /**
@@ -119,25 +118,22 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
      * @return a 2x2 contingency table
      */
     public void getStrandCountsFromLikelihoodMap( final VariantContext vc,
-                                                            final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
-                                                            final ReducibleAnnotationData<List<Integer>> perAlleleValues,
-                                                            final int minCount) {
-        if( stratifiedPerReadAlleleLikelihoodMap == null || vc == null ) {
+                                                  final ReadLikelihoods<Allele> likelihoods,
+                                                  final ReducibleAnnotationData<List<Integer>> perAlleleValues,
+                                                  final int minCount) {
+        if( likelihoods == null || vc == null ) {
             return;
         }
 
         final Allele ref = vc.getReference();
         final List<Allele> allAlts = vc.getAlternateAlleles();
 
-        for (final PerReadAlleleLikelihoodMap maps : stratifiedPerReadAlleleLikelihoodMap.values() ) {
+        for (final String sample : likelihoods.samples()) {
             final ReducibleAnnotationData<List<Integer>> sampleTable = new AlleleSpecificAnnotationData<>(vc.getAlleles(),null);
-            for (final Map.Entry<GATKRead,Map<Allele,Double>> el : maps.getLikelihoodReadMap().entrySet()) {
-                final MostLikelyAllele mostLikelyAllele = PerReadAlleleLikelihoodMap.getMostLikelyAllele(el.getValue());
-                final GATKRead read = el.getKey();
-                updateTable(mostLikelyAllele.getAlleleIfInformative(), read, ref, allAlts, sampleTable);
-            }
-            //for each sample (value in stratified PRALM), only include it if there are >minCount informative reads
-            if ( passesMinimumThreshold(sampleTable, minCount) ) {
+            likelihoods.bestAlleles(sample).stream()
+                    .filter(ba -> ba.isInformative())
+                    .forEach(ba -> updateTable(ba.allele, ba.read, ref, allAlts, sampleTable));
+            if (passesMinimumThreshold(sampleTable, minCount)) {
                 combineAttributeMap(sampleTable, perAlleleValues);
             }
         }
@@ -165,11 +161,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
 
         final boolean matchesRef = bestAllele.equals(ref, true);
         final boolean matchesAnyAlt = allAlts.contains(bestAllele);
-
-        //for uninformative reads
-        if(bestAllele.isNoCall()) {
-            return;
-        }
 
         //can happen if a read's most likely allele has been removed when --max_alternate_alleles is exceeded
         if (!( matchesRef || matchesAnyAlt )) {
@@ -201,15 +192,11 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
      * @return true if it passes the minimum threshold, false otherwise
      */
     protected boolean passesMinimumThreshold(final ReducibleAnnotationData<List<Integer>> sampleTable, final int minCount) {
-        // the read total must be greater than MIN_COUNT
-        int readTotal = 0;
-        for (final List<Integer> alleleValues : sampleTable.getAttributeMap().values()) {
-            if (alleleValues != null) {
-                readTotal += alleleValues.get(FORWARD);
-                readTotal += alleleValues.get(REVERSE);
-            }
-        }
-        return readTotal > minCount;
+        final int readCount = sampleTable.getAttributeMap().values().stream()
+                .filter(alleleValues -> alleleValues != null)
+                .mapToInt(alleleValues -> alleleValues.get(FORWARD) + alleleValues.get(REVERSE))
+                .sum();
+        return readCount > minCount;
     }
 
     @Override
@@ -219,6 +206,6 @@ public abstract class AS_StrandBiasTest extends StrandBiasTest implements Reduci
     }
 
     public static String rawValueAsString(int[][] table) {
-        return table[0][1]+","+table[0][1]+ PRINT_DELIM +table[1][0]+","+table[1][1];
+        return table[0][0]+","+table[0][1]+ PRINT_DELIM +table[1][0]+","+table[1][1];
     }
 }

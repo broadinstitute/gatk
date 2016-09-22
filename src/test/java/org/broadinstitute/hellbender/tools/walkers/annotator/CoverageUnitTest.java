@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
@@ -7,26 +8,32 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class CoverageUnitTest extends BaseTest {
 
+    private static final GATKRead makeRead() {
+        return ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"));
+    }
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testAllNull() throws Exception {
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = null;
         final VariantContext vc= null;
         final ReferenceContext referenceContext= null;
         final InfoFieldAnnotation cov = new Coverage();
-        final Map<String, Object> annotate = cov.annotate(referenceContext, vc, perReadAlleleLikelihoodMap); //vc can't be null
+        final Map<String, Object> annotate = cov.annotate(referenceContext, vc, null); //vc can't be null
     }
 
     @Test
@@ -37,11 +44,16 @@ public final class CoverageUnitTest extends BaseTest {
     }
 
     @Test
-    public void testPerReadAlleleLikelihoodMapEmpty() throws Exception {
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.emptyMap();
+    public void testLikelihoodsEmpty() throws Exception {
+        final List<GATKRead> reads = new ArrayList<>();
+        final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of("sample1", reads);
+        final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList("sample1"));
+        final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(Allele.NO_CALL));
+        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final Map<String, Object> annotate = new Coverage().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
+        final Map<String, Object> annotate = new Coverage().annotate(referenceContext, vc, likelihoods);
         Assert.assertTrue(annotate.isEmpty());
     }
 
@@ -55,33 +67,23 @@ public final class CoverageUnitTest extends BaseTest {
     }
 
     @Test
-    public void testPerReadAlleleLikelihoodMap(){
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
+    public void testLikelihoods(){
+        final Allele REF = Allele.create("T", true);
+        final Allele ALT = Allele.create("A");
 
-        final Allele alleleT = Allele.create("T");
-        final Allele alleleA = Allele.create("A");
-        final double lik= -1.0;
+        final int refDepth= 5;
+        final int altDepth= 3;
+        final List<GATKRead>  refReads = IntStream.range(0, refDepth).mapToObj(n -> makeRead()).collect(Collectors.toList());
+        final List<GATKRead>  altReads = IntStream.range(0, altDepth).mapToObj(n -> makeRead()).collect(Collectors.toList());
+        final ReadLikelihoods<Allele> likelihoods =
+                AnnotationArtificialData.makeLikelihoods("sample1", refReads, altReads, -100.0, -100.0, REF, ALT);
 
-        final int n1A= 3;
-        final int n1T= 5;
-        for (int i = 0; i < n1A; i++) {
-            map.add(ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1A_" + i), alleleA, lik);
-        }
-        for (int i = 0; i < n1T; i++) {
-            //try to fool it - add 2 alleles for same read
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1T_" + i);
-            map.add(read, alleleA, lik);
-            map.add(read, alleleT, lik);
-        }
-
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.singletonMap("sample1", map);
         final VariantContext vc= makeVC();
         final ReferenceContext referenceContext= null;
-        final Map<String, Object> annotate = new Coverage().annotate(referenceContext, vc, perReadAlleleLikelihoodMap);
+        final Map<String, Object> annotate = new Coverage().annotate(referenceContext, vc, likelihoods);
         Assert.assertEquals(annotate.size(), 1, "size");
         Assert.assertEquals(annotate.keySet(), Collections.singleton(VCFConstants.DEPTH_KEY), "annots");
-        final int n= n1A + n1T;
-        Assert.assertEquals(annotate.get(VCFConstants.DEPTH_KEY), String.valueOf(n));
-
+        final int m = altDepth + refDepth;
+        Assert.assertEquals(annotate.get(VCFConstants.DEPTH_KEY), String.valueOf(m));
     }
 }

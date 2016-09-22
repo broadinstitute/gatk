@@ -7,8 +7,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
@@ -26,7 +25,7 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
     //template method for calculating strand bias annotations using the three different methods
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
+                                        final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
         if ( !vc.isVariant() ) {
             return Collections.emptyMap();
@@ -41,16 +40,16 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
             }
         }
 
-        if (stratifiedPerReadAlleleLikelihoodMap != null) {
-            return calculateAnnotationFromLikelihoodMap(stratifiedPerReadAlleleLikelihoodMap, vc);
+        if (likelihoods != null) {
+            return calculateAnnotationFromLikelihoods(likelihoods, vc);
         }
         return Collections.emptyMap();
     }
 
     protected abstract Map<String, Object> calculateAnnotationFromGTfield(final GenotypesContext genotypes);
 
-    protected abstract Map<String, Object> calculateAnnotationFromLikelihoodMap(final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
-                                                                                final VariantContext vc);
+    protected abstract Map<String, Object> calculateAnnotationFromLikelihoods(final ReadLikelihoods<Allele> likelihoods,
+                                                                              final VariantContext vc);
 
     /**
      * Create the contingency table by retrieving the per-sample strand bias annotation and adding them together
@@ -102,26 +101,38 @@ public abstract class StrandBiasTest extends InfoFieldAnnotation {
      *   allele2   #       #
      * @return a 2x2 contingency table
      */
-    public static int[][] getContingencyTable( final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
+    public static int[][] getContingencyTable( final ReadLikelihoods<Allele> likelihoods,
                                                final VariantContext vc,
                                                final int minCount) {
-        if( stratifiedPerReadAlleleLikelihoodMap == null || vc == null) {
+        return getContingencyTable(likelihoods, vc, minCount, likelihoods.samples());
+    }
+
+    /**
+     Allocate and fill a 2x2 strand contingency table.  In the end, it'll look something like this:
+     *             fw      rc
+     *   allele1   #       #
+     *   allele2   #       #
+     * @return a 2x2 contingency table
+     */
+    public static int[][] getContingencyTable( final ReadLikelihoods<Allele> likelihoods,
+                                               final VariantContext vc,
+                                               final int minCount,
+                                               final Collection<String> samples) {
+        if( likelihoods == null || vc == null) {
             return null;
         }
 
         final Allele ref = vc.getReference();
         final List<Allele> allAlts = vc.getAlternateAlleles();
-        final int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
 
-        for (final PerReadAlleleLikelihoodMap maps : stratifiedPerReadAlleleLikelihoodMap.values() ) {
-            final int[] myTable = new int[ARRAY_SIZE];
-            for (final Map.Entry<GATKRead,Map<Allele,Double>> el : maps.getLikelihoodReadMap().entrySet()) {
-                final MostLikelyAllele mostLikelyAllele = PerReadAlleleLikelihoodMap.getMostLikelyAllele(el.getValue());
-                final GATKRead read = el.getKey();
-                updateTable(myTable, mostLikelyAllele.getAlleleIfInformative(), read, ref, allAlts);
-            }
-            if ( passesMinimumThreshold(myTable, minCount) ) {
-                copyToMainTable(myTable, table);
+        final int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
+        for (final String sample : samples) {
+            final int[] sampleTable = new int[ARRAY_SIZE];
+            likelihoods.bestAlleles(sample).stream()
+                    .filter(ba -> ba.isInformative())
+                    .forEach(ba -> updateTable(sampleTable, ba.allele, ba.read, ref, allAlts));
+            if (passesMinimumThreshold(sampleTable, minCount)) {
+                copyToMainTable(sampleTable, table);
             }
         }
 

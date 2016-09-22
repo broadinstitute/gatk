@@ -12,7 +12,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.*;
 import org.broadinstitute.hellbender.utils.*;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -220,7 +220,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                                                     final VariantContext vc,
                                                     final GenotypeLikelihoodsCalculationModel model,
                                                     final boolean inheritAttributesFromInputVC,
-                                                    final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap,
+                                                    final ReadLikelihoods<Allele> likelihoods,
                                                     final SAMFileHeader header) {
         final boolean limitedContext = features == null || refContext == null || rawContext == null || stratifiedContexts == null;
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
@@ -285,7 +285,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(inheritAttributesFromInputVC, vc, rawContext, stratifiedContexts, features, refContext,
-                outputAlternativeAlleles.alternativeAlleleMLECounts(), outputAlternativeAlleles.siteIsMonomorphic, AFresult, outputAlternativeAlleles.outputAlleles(vc.getReference()),genotypes,model,perReadAlleleLikelihoodMap);
+                outputAlternativeAlleles.alternativeAlleleMLECounts(), outputAlternativeAlleles.siteIsMonomorphic, AFresult, outputAlternativeAlleles.outputAlleles(vc.getReference()),genotypes,model,likelihoods);
 
         VariantContext vcCall = builder.genotypes(genotypes).attributes(attributes).make();
 
@@ -294,12 +294,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             final ReadPileup pileup = rawContext.getBasePileup();
             stratifiedContexts = AlignmentContext.splitContextBySampleName(pileup, header);
 
-            vcCall = annotationEngine.annotateContext(vcCall, features, refContext, perReadAlleleLikelihoodMap, a -> true);
+            vcCall = annotationEngine.annotateContext(vcCall, features, refContext, likelihoods, a -> true);
         }
 
         // if we are subsetting alleles (either because there were too many or because some were not polymorphic)
         // then we may need to trim the alleles (because the original VariantContext may have had to pad at the end).
-        if ( outputAlleles.size() != vc.getAlleles().size() && !limitedContext ) // limitedContext callers need to handle allele trimming on their own to keep their perReadAlleleLikelihoodMap alleles in sync
+        if ( outputAlleles.size() != vc.getAlleles().size() && !limitedContext ) // limitedContext callers need to handle allele trimming on their own to keep their alleles in sync
         {
             vcCall = GATKVariantContextUtils.reverseTrimAlleles(vcCall);
         }
@@ -538,7 +538,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     protected Map<String,Object> composeCallAttributes(final boolean inheritAttributesFromInputVC, final VariantContext vc,
                                                        final AlignmentContext rawContext, final Map<String, AlignmentContext> stratifiedContexts, final FeatureContext tracker, final ReferenceContext refContext, final List<Integer> alleleCountsofMLE, final boolean bestGuessIsRef,
                                                        final AFCalculationResult AFresult, final List<Allele> allAllelesToUse, final GenotypesContext genotypes,
-                                                       final GenotypeLikelihoodsCalculationModel model, final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
+                                                       final GenotypeLikelihoodsCalculationModel model, final ReadLikelihoods<Allele> likelihoods) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
 
         final boolean limitedContext = tracker == null || refContext == null || rawContext == null || stratifiedContexts == null;

@@ -11,12 +11,13 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.Redu
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 
 /**
@@ -44,15 +45,15 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap){
+                                               final ReadLikelihoods<Allele> likelihoods){
         Utils.nonNull(vc);
-        if (perReadAlleleLikelihoodMap == null || perReadAlleleLikelihoodMap.isEmpty() ) {
+        if (likelihoods == null || likelihoods.readCount() == 0) {
             return Collections.emptyMap();
         }
 
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
-        calculateRawData(vc, perReadAlleleLikelihoodMap, myData);
+        calculateRawData(vc, likelihoods, myData);
         final String annotationString = formatedValue((double) myData.getAttributeMap().get(Allele.NO_CALL));
         annotations.put(getRawKeyName(), annotationString);
         return annotations;
@@ -61,25 +62,23 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
     public void calculateRawData(final VariantContext vc,
-                                 final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
+                                 final ReadLikelihoods<Allele> likelihoods,
                                  final ReducibleAnnotationData rawAnnotations){
-        if (stratifiedPerReadAlleleLikelihoodMap.isEmpty()) {
-            return;
-        }
-
         //put this as a double, like GATK3.5
-        final double squareSum = stratifiedPerReadAlleleLikelihoodMap.values().stream()
-                .flatMap(likelihoodMap -> likelihoodMap.getReads().stream())
+        final double squareSum = IntStream.range(0, likelihoods.numberOfSamples()).boxed()
+                .flatMap(s -> likelihoods.sampleReads(s).stream())
                 .map(GATKRead::getMappingQuality)
-                .filter(mq -> mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE).mapToDouble(mq -> mq * mq).sum();
+                .filter(mq -> mq != QualityUtils.MAPPING_QUALITY_UNAVAILABLE)
+                .mapToDouble(mq -> mq * mq).sum();
+
         rawAnnotations.putAttribute(Allele.NO_CALL, squareSum);
     }
 
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
-        return annotateRawData(ref, vc, perReadAlleleLikelihoodMap);
+                                        final ReadLikelihoods<Allele> likelihoods) {
+        return annotateRawData(ref, vc, likelihoods);
     }
 
     @VisibleForTesting
