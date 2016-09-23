@@ -167,17 +167,13 @@ public final class ReadThreadingAssembler {
         Utils.nonNull(refHaplotype, "the reference haplotype cannot be null");
         Utils.nonNull(givenHaplotypes, "given haplotypes cannot be null");
         Utils.nonNull(activeRegionWindow, "active region window cannot be null");
-        if (activeRegionWindow.size() != refHaplotype.length()) {
-            throw new IllegalArgumentException("inconsistent reference haplotype and active region window");
-        }
+        Utils.validateArg(activeRegionWindow.size() == refHaplotype.length(), "inconsistent reference haplotype and active region window");
 
         final Set<Haplotype> returnHaplotypes = new LinkedHashSet<>();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
 
         for( final VariantContext compVC : givenHaplotypes ) {
-            if (!GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow)) {
-                throw new IllegalArgumentException(" some variant provided does not overlap with active region window");
-            }
+            Utils.validateArg(GATKVariantContextUtils.overlapsRegion(compVC, activeRegionWindow), " some variant provided does not overlap with active region window");
             for( final Allele compAltAllele : compVC.getAlternateAlleles() ) {
                 final Haplotype insertedRefHaplotype = refHaplotype.insertAllele(compVC.getReference(), compAltAllele, activeRegionStart + compVC.getStart() - activeRegionWindow.getStart(), compVC.getStart());
                 if( insertedRefHaplotype != null ) { // can be null if the requested allele can't be inserted into the haplotype

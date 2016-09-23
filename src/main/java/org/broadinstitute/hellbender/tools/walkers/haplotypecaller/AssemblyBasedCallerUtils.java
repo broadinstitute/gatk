@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
@@ -14,14 +16,17 @@ import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by davidben on 9/8/16.
@@ -151,8 +156,10 @@ public class AssemblyBasedCallerUtils {
      *
      * @return never {@code null}.
      */
-    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs,
-                                                                              final double log10GlobalReadMismappingRate) {
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs) {
+        final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? - Double.MAX_VALUE
+                : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
+
         switch ( likelihoodArgs.likelihoodEngineImplementation) {
             case PairHMM:
                 return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel, likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD);
@@ -163,8 +170,26 @@ public class AssemblyBasedCallerUtils {
         }
     }
 
-    public static double calculateLog10GlobalReadMismappingRate(final int phredScaledGlobalReadMismappingRate) {
-        return phredScaledGlobalReadMismappingRate < 0 ? - Double.MAX_VALUE : QualityUtils.qualToErrorProbLog10(phredScaledGlobalReadMismappingRate);
+    public static ReadThreadingAssembler createReadThreadingAssembler(final AssemblyBasedCallerArgumentCollection args) {
+        final ReadThreadingAssemblerArgumentCollection rtaac = args.assemblerArgs;
+        final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(rtaac.maxNumHaplotypesInPopulation, rtaac.kmerSizes, rtaac.dontIncreaseKmerSizesForCycles, rtaac.allowNonUniqueKmersInRef, rtaac.numPruningSamples);
+        assemblyEngine.setErrorCorrectKmers(rtaac.errorCorrectKmers);
+        assemblyEngine.setPruneFactor(rtaac.minPruneFactor);
+        assemblyEngine.setDebug(args.debug);
+        assemblyEngine.setDebugGraphTransformations(rtaac.debugGraphTransformations);
+        assemblyEngine.setRecoverDanglingBranches(!rtaac.doNotRecoverDanglingBranches);
+        assemblyEngine.setMinDanglingBranchLength(rtaac.minDanglingBranchLength);
+        assemblyEngine.setMinBaseQualityToUseInAssembly(args.minBaseQualityScore);
+
+        if ( rtaac.graphOutput != null ) {
+            assemblyEngine.setGraphWriter(new File(rtaac.graphOutput));
+        }
+
+        return assemblyEngine;
+    }
+
+    public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args, final SAMFileHeader header) {
+        return args.bamOutputPath != null ? Optional.of(HaplotypeBAMWriter.create(args.bamWriterType, new File(args.bamOutputPath), header)) : Optional.empty();
     }
 
     // create the assembly using just high quality reads (eg Q20 or higher).  We may want to use lower
@@ -177,5 +202,17 @@ public class AssemblyBasedCallerUtils {
                 .filter(rec -> rec.getMappingQuality() >= minMappingQuality)
                 .forEach(result::add);
         return result;
+    }
+
+    // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
+    // same order as in the input vcs
+    public static VariantContext makeMergedVariantContext(final List<VariantContext> vcs) {
+        if (vcs.isEmpty()) {
+            return null;
+        }
+        final List<String> haplotypeSources = vcs.stream().map(VariantContext::getSource).collect(Collectors.toList());
+        return GATKVariantContextUtils.simpleMerge(vcs, haplotypeSources,
+                GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
+                GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
     }
 }
