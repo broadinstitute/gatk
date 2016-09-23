@@ -11,7 +11,7 @@ RUN apt-get update && \
      apt-get upgrade -y && \
      apt-get install -y python && \
      apt-get install -y python3-pip && \
-     apt-get install -y wget curl unzip gcc python-dev python-setuptools emacs git less lynx hdfview
+     apt-get install -y wget curl unzip gcc python-dev python-setuptools git less lynx hdfview
 ##########
 
 # Install some more useful tools
@@ -62,14 +62,13 @@ ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Added from GATK4 public (Getting R setup)
-RUN mkdir -p /usr/local/lib/R/
-RUN mkdir -p ~/site-library
-RUN ln -sFv ~/site-library /usr/local/lib/R/site-library
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
-RUN add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/"
-RUN apt-get update
-RUN apt-get install -y --force-yes r-base-dev=3.1.3-1trusty
-RUN apt-get install -y --force-yes r-base-core=3.1.3-1trusty
+RUN mkdir -p /usr/local/lib/R/ && \
+    mkdir -p ~/site-library && \
+    ln -sFv ~/site-library /usr/local/lib/R/site-library
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
+    add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/" && \
+    apt-get update && \
+    apt-get install -y --force-yes r-base-dev=3.1.3-1trusty r-base-core=3.1.3-1trusty
 
 # R setup complete...
 
