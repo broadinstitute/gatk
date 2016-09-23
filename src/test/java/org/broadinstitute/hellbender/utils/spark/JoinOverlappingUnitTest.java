@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.spark;
 
 import com.google.common.collect.*;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -24,6 +26,9 @@ import static org.testng.Assert.assertEquals;
 public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    private SAMSequenceDictionary sequenceDictionary = new SAMSequenceDictionary(
+            ImmutableList.of(new SAMSequenceRecord("1", 100), new SAMSequenceRecord("2", 100)));
 
     @Test
     public void testSingleContig() throws IOException {
@@ -74,8 +79,8 @@ public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
                 new SimpleInterval("1", 8, 12),
                 new SimpleInterval("1", 11, 22));
 
-        JavaPairRDD<Locatable, Integer> readsPerInterval = SparkUtils.joinOverlapping(ctx, reads, TestRead.class, intervals,
-                new CountOverlappingReadsFunction()).mapToPair(t -> t);
+        JavaPairRDD<Locatable, Integer> readsPerInterval = SparkUtils.joinOverlapping(ctx, reads, TestRead.class, sequenceDictionary,
+                intervals, new CountOverlappingReadsFunction()).mapToPair(t -> t);
         assertEquals(readsPerInterval.collectAsMap(), ImmutableMap.of(intervals.get(0), 1, intervals.get(1), 7, intervals.get(2), 4));
 
         JavaPairRDD<Locatable, Integer> readsPerIntervalNaive = SparkUtils.joinOverlappingShuffle(ctx, reads, TestRead.class, intervals,
@@ -112,8 +117,8 @@ public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
                 new SimpleInterval("1", 8, 12),
                 new SimpleInterval("2", 11, 22));
 
-        JavaPairRDD<Locatable, Integer> readsPerInterval = SparkUtils.joinOverlapping(ctx, reads, TestRead.class, intervals,
-                new CountOverlappingReadsFunction()).mapToPair(t -> t);
+        JavaPairRDD<Locatable, Integer> readsPerInterval = SparkUtils.joinOverlapping(ctx, reads, TestRead.class, sequenceDictionary,
+                intervals, new CountOverlappingReadsFunction()).mapToPair(t -> t);
         assertEquals(readsPerInterval.collectAsMap(), ImmutableMap.of(intervals.get(0), 1, intervals.get(1), 1, intervals.get(2), 2));
 
         JavaPairRDD<Locatable, Integer> readsPerIntervalNaive = SparkUtils.joinOverlappingShuffle(ctx, reads, TestRead.class, intervals,

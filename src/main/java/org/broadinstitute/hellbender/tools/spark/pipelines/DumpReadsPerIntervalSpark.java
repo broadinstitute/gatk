@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.spark.api.java.JavaRDD;
@@ -20,7 +21,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import scala.Tuple2;
 
-import javax.annotation.Nullable;
 import java.util.*;
 
 @CommandLineProgramProperties(summary = "Counts reads per interval in the input SAM/BAM",
@@ -43,38 +43,13 @@ public final class DumpReadsPerIntervalSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
         JavaRDD<GATKRead> mappedReads = reads.filter(read -> !read.isUnmapped());
+
         final List<Locatable> intervals = new ArrayList<>();
-        Map<String, Integer> chromosomeSizes = new LinkedHashMap<>();
         int regionSize = 4000;
         int regionRepeat = 3; // fraction of regions 3 = 1/3 etc
-        chromosomeSizes.put("chr1", 248956422);
-        chromosomeSizes.put("chr2", 242193529);
-        chromosomeSizes.put("chr3", 198295559);
-        chromosomeSizes.put("chr4", 190214555);
-        chromosomeSizes.put("chr5", 181538259);
-        chromosomeSizes.put("chr6", 170805979);
-        chromosomeSizes.put("chr7", 159345973);
-        chromosomeSizes.put("chr8", 145138636);
-        chromosomeSizes.put("chr9", 138394717);
-        chromosomeSizes.put("chr10", 133797422);
-        chromosomeSizes.put("chr11", 135086622);
-        chromosomeSizes.put("chr12", 133275309);
-        chromosomeSizes.put("chr13", 114364328);
-        chromosomeSizes.put("chr14", 107043718);
-        chromosomeSizes.put("chr15", 101991189);
-        chromosomeSizes.put("chr16", 90338345);
-        chromosomeSizes.put("chr17", 83257441);
-        chromosomeSizes.put("chr18", 80373285);
-        chromosomeSizes.put("chr19", 58617616);
-        chromosomeSizes.put("chr20", 64444167);
-        chromosomeSizes.put("chr21", 46709983);
-        chromosomeSizes.put("chr22", 50818468);
-        chromosomeSizes.put("chrX", 156040895);
-        chromosomeSizes.put("chrY", 57227415);
-        chromosomeSizes.put("chrM", 16569);
-        for (Map.Entry<String, Integer> e : chromosomeSizes.entrySet()) {
-            String contig = e.getKey();
-            int size = e.getValue();
+        for (SAMSequenceRecord sequenceRecord : getBestAvailableSequenceDictionary().getSequences()) {
+            String contig = sequenceRecord.getSequenceName();
+            int size = sequenceRecord.getSequenceLength();
             for (int i = 0; i <= size/(regionSize * regionRepeat); i++) {
                 int start = i * regionSize * regionRepeat + 1;
                 int end = start + regionSize;
@@ -88,8 +63,8 @@ public final class DumpReadsPerIntervalSpark extends GATKSparkTool {
             collectedReads = SparkUtils.joinOverlappingShuffle(ctx, mappedReads, GATKRead.class, intervals,
                     new DumpOverlappingReadsFlatFunction());
         } else {
-            collectedReads = SparkUtils.joinOverlapping(ctx, mappedReads, GATKRead.class, intervals,
-                    new DumpOverlappingReadsFunction());
+            collectedReads = SparkUtils.joinOverlapping(ctx, mappedReads, GATKRead.class, getBestAvailableSequenceDictionary(),
+                    intervals, new DumpOverlappingReadsFunction());
         }
         shardedOutput = true;
         writeReads(ctx, outputFile, collectedReads);

@@ -92,8 +92,8 @@ public final class CountReadsPerIntervalSpark extends GATKSparkTool {
             intervalCountsRdd = SparkUtils.joinOverlappingShuffle(ctx, mappedReads, GATKRead.class, intervals,
                     new CountOverlappingReadsFlatFunction()).mapToPair(t -> t);
         } else {
-            intervalCountsRdd = SparkUtils.joinOverlapping(ctx, mappedReads, GATKRead.class, intervals,
-                    new CountOverlappingReadsFunction()).mapToPair(t -> t);
+            intervalCountsRdd = SparkUtils.joinOverlapping(ctx, mappedReads, GATKRead.class, getBestAvailableSequenceDictionary(),
+                    intervals, new CountOverlappingReadsFunction()).mapToPair(t -> t);
         }
 
         List<Tuple2<Locatable, Integer>> collect = new ArrayList<>(intervalCountsRdd.collect());
