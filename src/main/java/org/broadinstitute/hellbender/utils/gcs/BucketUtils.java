@@ -361,20 +361,31 @@ public final class BucketUtils {
     }
 
     /**
-     * Given a path of the form "gcs://bucket/folder/folder/file", returns "bucket".
+     * Given a path of the form "gs://bucket/folder/folder/file", returns "bucket".
      */
     public static String getBucket(String path) {
         return path.split("/")[2];
     }
 
     /**
-     * Given a path of the form "gcs://bucket/folder/folder/file", returns "folder/folder/file".
+     * Given a path of the form "gs://bucket/folder/folder/file", returns "folder/folder/file".
      */
     public static String getPathWithoutBucket(String path) {
         final String[] split = path.split("/");
         final String BUCKET = split[2];
         return String.join("/", Arrays.copyOfRange(split, 3, split.length));
 
+    }
+
+    /**
+     * String -> Path. This *should* not be necessary (use Paths.get(URI.create(...)) instead) , but it currently is
+     * on Spark because using the fat, shaded jar breaks the registration of the GCS FilesystemProvider.
+     */
+    public static java.nio.file.Path getPathOnGcs(String gcsUrl) {
+        final String[] split = gcsUrl.split("/");
+        final String BUCKET = split[2];
+        final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
+        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
 
