@@ -367,7 +367,7 @@ public final class ReferenceConfidenceModel {
         final List<GATKRead> reads = activeRegion.getReads();
 
         final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
-                true, samples.asSetOfSamples(), false, activeRegion.getHeader());
+                false, samples.asSetOfSamples(), activeRegion.getHeader(), true);
 
         final int startPos = activeRegionSpan.getStart();
         final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);

@@ -412,17 +412,8 @@ public class EvaluateCopyNumberTriStateCallsIntegrationTest extends CommandLineP
 
     private double callGQ(final Genotype callGenotype) {
         final int[] pls = callGenotype.getPL();
-        final int bestIndex = MathUtils.minElementIndex(pls);
-        final int bestPL = pls[bestIndex];
-        int secondBestPL = bestIndex == 0 ? pls[1] : pls[0];
-        for (int i = 0; i < pls.length; i++) {
-            if (i == bestIndex) {
-                continue;
-            } else if (secondBestPL > pls[i]) {
-                secondBestPL = pls[i];
-            }
-        }
-        return secondBestPL - bestPL;
+        final int[] twoBestPLs = Arrays.stream(pls).sorted().limit(2).toArray();
+        return twoBestPLs[1] - twoBestPLs[0];
     }
 
 

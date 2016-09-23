@@ -75,7 +75,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends BaseTest {
 
     static double[][] normalizeDiploidLikelihoodMatrixFromLog10( final double[][] log10_likelihoodMatrix ) {
         final double[] genotypeLog10Likelihoods = copyLowerTriangleToArray(log10_likelihoodMatrix);
-        final double[] normalizedGenotypeLikelihoods = MathUtils.normalizeFromLog10(genotypeLog10Likelihoods, false, true);
+        final double[] normalizedGenotypeLikelihoods = MathUtils.scaleLogSpaceArrayForNumericalStability(genotypeLog10Likelihoods);
         copyArrayToLowerTriangle(normalizedGenotypeLikelihoods, log10_likelihoodMatrix);
         return log10_likelihoodMatrix;
     }

@@ -280,7 +280,7 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends BaseTest {
             gl[idx] = pl[idx]/(-10.0);
         }
 
-        return MathUtils.normalizeFromLog10(gl,true);
+        return MathUtils.normalizeLog10(gl);
     }
 
     @Test

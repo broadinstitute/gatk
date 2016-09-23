@@ -31,7 +31,7 @@ public final class AllelicCountWithPhasePosteriors extends AllelicCount {
         ParamUtils.isFinite(refMinorLogProb, "Cannot construct AllelicCountWithPhasePosteriors with non-finite ref-minor probability at: " + count.getInterval());
         ParamUtils.isFinite(altMinorLogProb, "Cannot construct AllelicCountWithPhasePosteriors with non-finite alt-minor probability at: " + count.getInterval());
         ParamUtils.isFinite(outlierLogProb, "Cannot construct AllelicCountWithPhasePosteriors with non-finite outlier probability at: " + count.getInterval());
-        final double[] normalizedProbs = MathUtils.normalizeFromLog10(
+        final double[] normalizedProbs = MathUtils.normalizeFromLog10ToLinearSpace(
                 new double[]{MathUtils.logToLog10(refMinorLogProb), MathUtils.logToLog10(altMinorLogProb), MathUtils.logToLog10(outlierLogProb)});
         refMinorProb = normalizedProbs[0];
         altMinorProb = normalizedProbs[1];
