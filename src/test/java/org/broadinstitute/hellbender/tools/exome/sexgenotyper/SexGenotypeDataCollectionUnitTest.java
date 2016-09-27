@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Unit tests for {@link SexGenotypeDataCollection}.
@@ -63,6 +64,20 @@ public class SexGenotypeDataCollectionUnitTest extends BaseTest {
             final SexGenotypeData dat = new SexGenotypeData(SAMPLE_NAMES[index], SAMPLE_GENOTYPES[index], null, null);
             basicSexGenotypeCollection.add(dat);
         }
+    }
+
+    @Test
+    public void testGetSampleSexGenotypeData() {
+        IntStream.range(0, SAMPLE_NAMES.length).forEach(index -> {
+            final String sampleName = SAMPLE_NAMES[index];
+            final SexGenotypeData sexGenotypeData = extendedSexGenotypeCollection.getSampleSexGenotypeData(sampleName);
+            Assert.assertEquals(sexGenotypeData, extendedSexGenotypeCollection.getSexGenotypeDataList().get(index));
+            for (final String gen : ALL_GENOTYPES) {
+                Assert.assertEquals(sexGenotypeData.getLogLikelihoodPerGenotype(gen),
+                        LOG_LIKELIHOOD_MAPS.get(index).get(gen), 1e-12);
+            }
+
+        });
     }
 
     @Test

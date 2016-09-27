@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -44,21 +45,10 @@ public final class TargetCoverageSexGenotypeCalculator {
      * Autosomal target plodies
      */
     private final int[] autosomalTargetPloidies;
-
-    /**
-     * Autosomal target lengths (number of covered bases)
-     */
-    private final int[] autosomalTargetLengths;
-
     /**
      * Map from genotype names to the list of target germline ploidies in the same order as {@code allosomalTargetList}
      */
     private final Map<String, int[]> allosomalTargetPloidies;
-
-    /**
-     * Allosomal target lengths
-     */
-    private final int[] allosomalTargetLengths;
 
     /**
      * Public constructor.
@@ -107,22 +97,21 @@ public final class TargetCoverageSexGenotypeCalculator {
                     "annotated");
         }
 
+        logger.info("Number of autosomal targets: " + autosomalTargetList.size());
+        logger.info("Number of allosomal targets: " + allosomalTargetList.size());
+
         /* autosomal targets have the same ploidy for all ploidy classes (this is asserted earlier); so pick the first one */
         final String somePloidyTag = sexGenotypeIdentifiers.iterator().next();
         autosomalTargetPloidies = autosomalTargetList.stream()
                 .mapToInt(t -> ploidyAnnots.getTargetGermlinePloidyByGenotype(t, somePloidyTag)).toArray();
-        autosomalTargetLengths = autosomalTargetList.stream()
-                .mapToInt(t -> t.getEnd() - t.getStart() + 1).toArray();
 
         /* allosomal targets may have different ploidies for different ploidy classes */
         allosomalTargetPloidies = Collections.unmodifiableMap(sexGenotypeIdentifiers.stream()
-                .map(ploidyTag -> ImmutablePair.of(
-                        ploidyTag,
+                .map(sexGenotype -> ImmutablePair.of(
+                        sexGenotype,
                         allosomalTargetList.stream()
-                                .mapToInt(t -> ploidyAnnots.getTargetGermlinePloidyByGenotype(t, ploidyTag)).toArray()))
+                                .mapToInt(t -> ploidyAnnots.getTargetGermlinePloidyByGenotype(t, sexGenotype)).toArray()))
                 .collect(Collectors.toMap(ImmutablePair::getLeft, ImmutablePair::getRight)));
-        allosomalTargetLengths = allosomalTargetList.stream()
-                .mapToInt(t -> t.getEnd() - t.getStart() + 1).toArray();
     }
 
     /**
@@ -178,20 +167,40 @@ public final class TargetCoverageSexGenotypeCalculator {
     }
 
     /**
-     * Estimates read depth per base per homolog for a given sample index in the collection.
+     * Estimates read depth per target per homolog for a given sample index in the collection.
      *
      * @param sampleIndex integer index of the sample in the read count collection
-     * @return read depth per base per homolog
+     * @return read depth per target per homolog
      */
-    private double getSampleReadDepthDensityFromAutosomalTargets(final int sampleIndex) {
-        final double[] readCounts = processedReadCounts.getColumnOnSpecifiedTargets(sampleIndex, autosomalTargetList, false);
-        final int[] mask = IntStream.range(0, readCounts.length).map(i -> 1).toArray();
-        /* assume copy ratios and multiplicative biases are 1.0 at this stage */
-        final double[] copyRatio = IntStream.range(0, readCounts.length).mapToDouble(i -> 1.0).toArray();
-        final double[] multBias = IntStream.range(0, readCounts.length).mapToDouble(i -> 1.0).toArray();
+    private double getSampleReadDepthFromAutosomalTargets(final int sampleIndex) {
+        final double[] readCounts = processedReadCounts.getColumnOnSpecifiedTargets(sampleIndex,
+                autosomalTargetList, false);
+        final double[] readCountsNormalizedByPloidy = IntStream.range(0, readCounts.length)
+                .mapToDouble(i -> readCounts[i] / (double)autosomalTargetPloidies[i])
+                .toArray();
+        return new Median().evaluate(readCountsNormalizedByPloidy);
 
-        return CoverageModelUtils.estimateReadDepthDensityFromPoissonModel(readCounts, autosomalTargetLengths,
-                multBias, autosomalTargetPloidies, copyRatio, mask);
+        /**
+         * TODO
+         *
+         * Old code:
+         *
+         * (assume copy ratios and multiplicative biases are 1.0 at this stage)
+         *
+         * final int[] mask = IntStream.range(0, readCounts.length).map(i -> 1).toArray();
+         * final double[] copyRatio = IntStream.range(0, readCounts.length).mapToDouble(i -> 1.0).toArray();
+         * final double[] multBias = IntStream.range(0, readCounts.length).mapToDouble(i -> 1.0).toArray();
+         *
+         * return CoverageModelUtils.estimateReadDepthFromPoissonModel(readCounts, multBias, autosomalTargetPloidies,
+         *      copyRatio, mask);
+         *
+         * Note: This is prone to over-estimation because the Gaussian approximation of the Poisson distribution,
+         * which is currently used in CoverageModelUtils.estimateReadDepthFromPoissonModel breaks down
+         * for outlier read counts (if n >> depth). For the time being, we use medians which is a robust
+         * statistic. In the future, we must find a better approximation for the Poisson distribution which
+         * is both analytically tractable and robust.
+         *
+         */
     }
 
     /**
@@ -201,19 +210,20 @@ public final class TargetCoverageSexGenotypeCalculator {
      * @return an instance of {@link SexGenotypeData}
      */
     private SexGenotypeData calculateSexGenotypeData(final int sampleIndex) {
-        final int[] allosomalReadCounts = Arrays.stream(processedReadCounts.getColumnOnSpecifiedTargets(sampleIndex, allosomalTargetList,
-                false)).mapToInt(n -> (int)n).toArray();
-        final double rho = getSampleReadDepthDensityFromAutosomalTargets(sampleIndex);
+        final int[] allosomalReadCounts = Arrays.stream(processedReadCounts.getColumnOnSpecifiedTargets(sampleIndex,
+                allosomalTargetList, true)).mapToInt(n -> (int)n).toArray();
+        final double readDepth = getSampleReadDepthFromAutosomalTargets(sampleIndex);
 
+        logger.debug("Read depth for " + processedReadCounts.columnNames().get(sampleIndex) + ": " + readDepth);
         final List<Double> logLikelihoods = new ArrayList<>();
         final List<String> sexGenotypesList = new ArrayList<>();
-        final int numAllosomalTargets = allosomalTargetLengths.length;
+        final int numAllosomalTargets = allosomalTargetList.size();
 
         for (final String genotypeName : sexGenotypeIdentifiers) {
             /* calculate log likelihood */
             final int[] currentAllosomalTargetPloidies = allosomalTargetPloidies.get(genotypeName);
             final double[] poissonParameters = IntStream.range(0, numAllosomalTargets)
-                    .mapToDouble(i -> rho * allosomalTargetLengths[i] *
+                    .mapToDouble(i -> readDepth *
                             (currentAllosomalTargetPloidies[i] > 0 ? currentAllosomalTargetPloidies[i]
                                     : baselineMappingErrorProbability))
                     .toArray();

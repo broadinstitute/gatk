@@ -14,63 +14,57 @@ import java.util.stream.IntStream;
  */
 public final class CoverageModelUtils {
     /**
-     * Estimate mean read depth density $\rho$ according to a Poisson model for the distribution of read counts.
+     * Estimate mean read depth $d$ according to a Poisson model for the distribution of read counts.
      *
      * The Poisson model is:
      *
-     *     n_t \sim \mathrm{Poisson}(\rho l_t c_t m_t p_t)
+     *     n_t \sim \mathrm{Poisson}(d c_t m_t p_t)
      *
-     * where $n_t$ is the read count, $l_t$ is target length, $c_t$ is copy ratio, $p_t$ is ploidy, and $m_t$ is
+     * where $n_t$ is the read count, $c_t$ is copy ratio, $p_t$ is ploidy, and $m_t$ is
      * the multiplicative bias (the estimation method is described in CNV-methods.pdf).
      *
-     * Note: the mask array is 0 or 1, and targets with 0 mask will be effectively dropped out.
+     * Note: the mask array {@param mask} consists of 0s or 1s, and targets with 0 mask will be
+     * effectively dropped out.
      *
-     * Note: the product $l_t c_t m_t p_t$ must be positive on all targets. Otherwise, they will be automatically
+     * Note: the product $c_t m_t p_t$ must be positive on all targets. Otherwise, they will be automatically
      * masked out (required for stability).
      *
+     * TODO
+     *
+     * Note: This method prone to over-estimation because the Gaussian approximation of the Poisson distribution,
+     * which is currently used in CoverageModelUtils.estimateReadDepthFromPoissonModel breaks down
+     * for outlier read counts (if n >> depth). For the time being, we use medians which is a robust
+     * statistic. In the future, we must find a better approximation for the Poisson distribution which
+     * is both analytically tractable and robust.
+     *
      * @param readCounts read counts
-     * @param targetLengths target lengths
      * @param multiplicativeBiases estimate of total multiplicative bias
      * @param ploidies nominal germline ploidies of targets
      * @param copyRatio estimate of copy ratio
      * @param mask target masks (only 0 and 1 is expected)
      * @return read depth per base per homolog
      */
-    public static double estimateReadDepthDensityFromPoissonModel(final double[] readCounts,
-                                                                  final int[] targetLengths,
-                                                                  final double[] multiplicativeBiases,
-                                                                  final int[] ploidies,
-                                                                  final double[] copyRatio,
-                                                                  final int[] mask) {
+    public static double estimateReadDepthFromPoissonModel(final double[] readCounts,
+                                                           final double[] multiplicativeBiases,
+                                                           final int[] ploidies,
+                                                           final double[] copyRatio,
+                                                           final int[] mask) {
         Utils.nonNull(readCounts, "Read count array must be non-null");
-        Utils.nonNull(targetLengths, "Target length array must be non-null");
         Utils.nonNull(multiplicativeBiases, "Multiplicative bias array must be non-null");
         Utils.nonNull(ploidies, "Ploidy array must be non-null");
         Utils.nonNull(copyRatio, "Copy ratio array must be non-null");
         Utils.nonNull(mask, "Mask array must be non-null");
         final int numTargets = readCounts.length;
-        if (numTargets == 0) {
-            throw new UserException.BadInput("At least one target is required");
-        }
-        if (targetLengths.length != numTargets) {
-            throw new UserException.BadInput("Target lengths array must have the same length as read counts array");
-        }
-        if (multiplicativeBiases.length != numTargets) {
-            throw new UserException.BadInput("Multiplicative bias array must have the same length as read counts array");
-        }
-        if (ploidies.length != numTargets) {
-            throw new UserException.BadInput("Ploidies array must have the same length as read counts array");
-        }
-        if (copyRatio.length != numTargets) {
-            throw new UserException.BadInput("Copy ratio array must have the same length as read counts array");
-        }
-        if (mask.length != numTargets) {
-            throw new UserException.BadInput("Mask array must have the same length as read counts array");
-        }
+        Utils.validateArg(numTargets > 0, "At least one target is required");
+        Utils.validateArg(multiplicativeBiases.length == numTargets, "Multiplicative bias array must have the" +
+                " same length as read counts array");
+        Utils.validateArg(ploidies.length == numTargets, "Ploidies array must have the same length as read counts array");
+        Utils.validateArg(copyRatio.length == numTargets, "Copy ratio array must have the same length as read counts array");
+        Utils.validateArg(mask.length == numTargets, "Mask array must have the same length as read counts array");
 
         /* calculate total multiplicative factor */
         final double[] lambda = IntStream.range(0, numTargets)
-                .mapToDouble(i -> targetLengths[i] * multiplicativeBiases[i] * ploidies[i] * copyRatio[i])
+                .mapToDouble(i -> multiplicativeBiases[i] * ploidies[i] * copyRatio[i])
                 .toArray();
 
         /* mask out targets that have exactly zero Poisson factor to avoid division by zero */
@@ -79,11 +73,11 @@ public final class CoverageModelUtils {
                 .filter(i -> lambda[i] == 0.0)
                 .forEach(i -> { updatedMask[i] = 0; lambda[i] = 1; });
         if (Arrays.stream(updatedMask).filter(m -> m != 0 && m != 1).count() > 0) {
-            throw new UserException.BadInput("Target mask may only have 0 and 1 values");
+            throw new IllegalArgumentException("Target mask may only have 0 and 1 values");
         }
         final long maskSum = Arrays.stream(updatedMask).mapToLong(m -> (long)m).sum();
         if (maskSum == 0) {
-            throw new UserException.BadInput("All of the targets are masked out, can not continue");
+            throw new IllegalArgumentException("All of the targets are masked out, can not continue");
         }
 
         final double readCountsSqrDivLambdaAve = IntStream.range(0, numTargets)

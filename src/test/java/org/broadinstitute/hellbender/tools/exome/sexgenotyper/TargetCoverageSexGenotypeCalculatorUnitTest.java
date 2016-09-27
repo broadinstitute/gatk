@@ -91,7 +91,6 @@ public class TargetCoverageSexGenotypeCalculatorUnitTest extends BaseTest {
         expected = allosomalTargetList.stream().mapToInt(t -> t.getContig().equals("X") ? SEX_XY_PLOIDY_ON_X :
                 SEX_XY_PLOIDY_ON_Y).toArray();
         ArrayAsserts.assertArrayEquals(expected, allosomalTargetPloidies.get("SEX_XY"));
-
     }
 
     /**
