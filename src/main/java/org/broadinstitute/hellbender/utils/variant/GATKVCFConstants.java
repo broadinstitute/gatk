@@ -75,10 +75,8 @@ public final class GATKVCFConstants {
     public static final String ORIGINAL_CONTIG_KEY =                "OriginalChr"; //LiftoverVariants
     public static final String ORIGINAL_START_KEY =                 "OriginalStart"; //LiftoverVariants
     public static final String N_BASE_COUNT_KEY =                   "PercentNBase";
-    public static final String NORMAL_LOD_KEY =                     "NLOD"; //M2
     public static final String RBP_INCONSISTENT_KEY =               "PhasingInconsistent"; //ReadBackedPhasing
     public static final String GENOTYPE_PRIOR_KEY =                 "PG";
-    public static final String PANEL_OF_NORMALS_COUNT_KEY =         "PON"; //M2
     public static final String POSITIVE_LABEL_KEY =                 "POSITIVE_TRAIN_SITE";
     public static final String QUAL_BY_DEPTH_KEY =                  "QD";
     public static final String AS_QUAL_BY_DEPTH_KEY =               "AS_QD";
@@ -94,7 +92,6 @@ public final class GATKVCFConstants {
     public static final String AS_STRAND_ODDS_RATIO_KEY =           "AS_SOR";
     public static final String STR_PRESENT_KEY =                    "STR";
     public static final String TRANSMISSION_DISEQUILIBRIUM_KEY =    "TDT";
-    public static final String TUMOR_LOD_KEY =                      "TLOD"; //M2
     public static final String VARIANT_TYPE_KEY =                   "VariantType";
     public static final String VQS_LOD_KEY =                        "VQSLOD";
     public static final String OXOG_ALT_F1R2_KEY =                  "ALT_F1R2";
@@ -102,6 +99,19 @@ public final class GATKVCFConstants {
     public static final String OXOG_REF_F1R2_KEY =                  "REF_F1R2";
     public static final String OXOG_REF_F2R1_KEY =                  "REF_F2R1";
     public static final String OXOG_FRACTION_KEY =                  "FOXOG";
+
+    // Mutect2-specific INFO keys
+    public static final String TUMOR_LOD_KEY =                      "TLOD";
+    public static final String NORMAL_LOD_KEY =                     "NLOD";
+    public static final String PANEL_OF_NORMALS_COUNT_KEY =         "PON";
+    public static final String TUMOR_SB_POWER_FWD_KEY =             "TUMOR_SB_POWER_FWD";
+    public static final String TLOD_FWD_KEY =                       "TLOD_FWD";
+    public static final String TLOD_REV_KEY =                       "TLOD_REV";
+    public static final String TUMOR_SB_POWER_REV_KEY =             "TUMOR_SB_POWER_REV";
+    public static final String MEDIAN_LEFT_OFFSET_KEY =             "MEDIAN_LEFT_OFFSET";
+    public static final String MEDIAN_RIGHT_OFFSET_KEY =            "MEDIAN_RIGHT_OFFSET";
+    public static final String MAD_MEDIAN_LEFT_OFFSET_KEY =         "MAD_LEFT_OFFSET";
+    public static final String MAD_MEDIAN_RIGHT_OFFSET_KEY =        "MAD_RIGHT_OFFSET";
 
     //FORMAT keys
     public static final String ALLELE_BALANCE_KEY =                 "AB";
@@ -137,6 +147,9 @@ public final class GATKVCFConstants {
     public static final String PON_FILTER_NAME =                              "panel_of_normals"; //M2
     public static final String STR_CONTRACTION_FILTER_NAME =                  "str_contraction"; //M2
     public static final String TUMOR_LOD_FILTER_NAME =                        "t_lod_fstar"; //M2
+    public static final String TRIALLELIC_SITE_FILTER_NAME =                  "triallelic_site"; //M2
+    public static final String STRAND_ARTIFACT_FILTER_NAME =                  "strand_artifact"; // M2
+    public static final String CLUSTERED_READ_POSITION_FILTER_NAME =          "clustered_read_position"; // M2
 
     // Symbolic alleles
     public final static String SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG = "ALT";
