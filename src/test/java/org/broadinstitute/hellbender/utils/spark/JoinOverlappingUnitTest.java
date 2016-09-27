@@ -22,6 +22,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
 
@@ -223,6 +225,67 @@ public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
                 ));
     }
 
+    @Test
+    public void testReadsPerShard() throws IOException {
+        //                      1                   2
+        //    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+        //   [-----]
+        //           [-----]
+        //               [-----]
+        // ---------------------------------------------------------
+        //               [-----]
+        //               [-----]
+        //               [-----]
+        // ---------------------------------------------------------
+        //               [-----]
+        //                       [-----]
+        //                         [-----]
+        // ---------------------------------------------------------
+        //                                   [-----]
+        //                                           [-----]
+        //                                                   [-----]
+        // ---------------------------------------------------------
+        //
+        //     [-----]                                                 <- intervals
+        //                 [---------]
+        //                       [-----------------------]
+        //
+        //                      1                   2
+        //    1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7
+
+        // maxEndPartitionIndexes: [2, 1, 3, 3]
+
+        List<TestRead> reads = ImmutableList.of(
+                new TestRead(1, 3), new TestRead(5, 7), new TestRead(7, 9),
+                new TestRead(7, 9), new TestRead(7, 9), new TestRead(7, 9),
+                new TestRead(7, 9), new TestRead(11, 13), new TestRead(12, 14),
+                new TestRead(17, 19), new TestRead(21, 23), new TestRead(25, 27)
+        );
+
+        List<SimpleInterval> intervals = ImmutableList.of(
+                new SimpleInterval("1", 2, 4),
+                new SimpleInterval("1", 8, 12),
+                new SimpleInterval("1", 11, 22));
+
+        Iterator<Tuple2<SimpleInterval, Iterable<TestRead>>> it = SparkUtils.readsPerShard(reads.iterator(), intervals.iterator());
+        assertTrue(it.hasNext());
+        Tuple2<SimpleInterval, Iterable<TestRead>> next = it.next();
+        assertEquals(next._1(), intervals.get(0));
+        assertEquals(next._2(), ImmutableList.of(reads.get(0)));
+
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertEquals(next._1(), intervals.get(1));
+        assertEquals(next._2(), ImmutableList.of(reads.get(2), reads.get(3), reads.get(4), reads.get(5), reads.get(6), reads.get(7), reads.get(8)));
+
+        assertTrue(it.hasNext());
+        next = it.next();
+        assertEquals(next._1(), intervals.get(2));
+        assertEquals(next._2(), ImmutableList.of(reads.get(7), reads.get(8), reads.get(9), reads.get(10)));
+
+        assertFalse(it.hasNext());
+    }
+
     static class TestRead implements Locatable {
         private static final long serialVersionUID = 1L;
         private final String contig;
@@ -252,6 +315,15 @@ public class JoinOverlappingUnitTest extends BaseTest implements Serializable {
         @Override
         public int getEnd() {
             return end;
+        }
+
+        @Override
+        public String toString() {
+            return "TestRead{" +
+                    "contig='" + contig + '\'' +
+                    ", start=" + start +
+                    ", end=" + end +
+                    '}';
         }
     }
 

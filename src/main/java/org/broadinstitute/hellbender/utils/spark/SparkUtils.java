@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.utils.spark;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.base.Function;
+import com.google.common.collect.*;
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.Iterables;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
@@ -28,9 +31,12 @@ import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
 
+import javax.annotation.Nullable;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.broadinstitute.hellbender.utils.IntervalUtils.overlaps;
 
 /**
  * Miscellaneous Spark-related utilities
@@ -170,6 +176,67 @@ public final class SparkUtils {
 
         // zipPartitions on coalesced read partitions and intervals, and apply the function f
         return coalescedRdd.zipPartitions(intervalsRdd, f);
+    }
+
+    public static <R extends Locatable, I extends Locatable, T> JavaRDD<T> joinOverlapping(JavaSparkContext ctx, JavaRDD<R> reads, Class<R> readClass,
+                                                                                           SAMSequenceDictionary sequenceDictionary, List<I> intervals,
+                                                                                           FlatMapFunction<Tuple2<I,Iterable<R>>, T> f) {
+        return joinOverlapping(ctx, reads, readClass, sequenceDictionary, intervals,
+                (FlatMapFunction2<Iterator<R>, Iterator<I>, T>) (iterator, iIterator) -> {
+                    Iterator<Iterator<T>> transform = Iterators.transform(readsPerShard(iterator, iIterator), new Function<Tuple2<I, Iterable<R>>, Iterator<T>>() {
+                        @Nullable
+                        @Override
+                        public Iterator<T> apply(@Nullable Tuple2<I, Iterable<R>> input) {
+                            try {
+                                return f.call(input).iterator();
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    });
+                    return () -> Iterators.concat(transform);
+                });
+    }
+
+    public static <R extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<R>>> readsPerShard(Iterator<R> reads, Iterator<I> shards) {
+        PeekingIterator<R> peekingReads = Iterators.peekingIterator(reads);
+        PeekingIterator<I> peekingShards = Iterators.peekingIterator(shards);
+        return new AbstractIterator<Tuple2<I, Iterable<R>>>() {
+            // keep track of current and next, since reads can overlap two shards
+            I currentShard = peekingShards.next();
+            I nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
+            List<R> currentReads = Lists.newArrayList();
+            List<R> nextReads = Lists.newArrayList();
+            @Override
+            protected Tuple2<I, Iterable<R>> computeNext() {
+                if (currentShard == null) {
+                    return endOfData();
+                }
+                while (peekingReads.hasNext()) {
+                    if (toRightOf(currentShard, peekingReads.peek())) {
+                        break;
+                    }
+                    R read = peekingReads.next();
+                    if (overlaps(currentShard, read)) {
+                        currentReads.add(read);
+                    }
+                    if (nextShard != null && overlaps(nextShard, read)) {
+                        nextReads.add(read);
+                    }
+                }
+                // current shard is finished, either because the current read is to the right of it, or there are no more reads
+                Tuple2<I, Iterable<R>> tuple = new Tuple2<>(currentShard, currentReads);
+                currentShard = nextShard;
+                nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
+                currentReads = nextReads;
+                nextReads = Lists.newArrayList();
+                return tuple;
+            }
+        };
+    }
+
+    private static <I extends Locatable, R extends Locatable> boolean toRightOf(I currentShard, R read) {
+        return currentShard.getEnd() < read.getStart();
     }
 
     static <R extends Locatable> List<PartitionLocatable<SimpleInterval>> computePartitionReadExtents(JavaRDD<R> reads, SAMSequenceDictionary sequenceDictionary) {
