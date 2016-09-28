@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.spark;
 
+import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.*;
@@ -13,7 +15,6 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
-import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.rdd.RDD;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -127,38 +128,10 @@ public final class SparkUtils {
      * @return
      */
     public static <R extends Locatable, I extends Locatable, T> JavaRDD<T> joinOverlapping(JavaSparkContext ctx, JavaRDD<R> reads, Class<R> readClass,
-                                                                                           List<I> intervals,
+                                                                                           SAMSequenceDictionary sequenceDictionary, List<I> intervals,
                                                                                            FlatMapFunction2<Iterator<R>, Iterator<I>, T> f) {
-        // Find the total extent of all reads in each partition. This requires that the input reads
-        // are scanned over (to find end points). This should be faster than shuffling though.
-        List<PartitionLocatable<SimpleInterval>> partitionReadExtents = reads.mapPartitionsWithIndex(new Function2<Integer, Iterator<R>, Iterator<PartitionLocatable<SimpleInterval>>>() {
-            private static final long serialVersionUID = 1L;
 
-            @Override
-            public Iterator<PartitionLocatable<SimpleInterval>> call(Integer index, Iterator<R> it) throws Exception {
-                if (!it.hasNext()) {
-                    return Collections.emptyIterator();
-                }
-                List<PartitionLocatable<SimpleInterval>> extents = new ArrayList<>();
-                R read = it.next();
-                String contig = read.getContig();
-                int minStart = read.getStart();
-                int maxEnd = read.getEnd();
-                while (it.hasNext()) {
-                    R next = it.next();
-                    if (!contig.equals(next.getContig())) {
-                        extents.add(new PartitionLocatable<>(index, new SimpleInterval(contig, minStart, maxEnd)));
-                        contig = next.getContig();
-                        minStart = next.getStart();
-                        maxEnd = next.getEnd();
-                        continue;
-                    }
-                    maxEnd = Math.max(maxEnd, next.getEnd());
-                }
-                extents.add(new PartitionLocatable<>(index, new SimpleInterval(contig, minStart, maxEnd)));
-                return extents.iterator();
-            }
-        }, true).collect();
+        List<PartitionLocatable<SimpleInterval>> partitionReadExtents = computePartitionReadExtents(reads, sequenceDictionary);
 
         // For each interval find which partition it starts and ends in.
         // An interval is processed in the partition it starts in. However, we need to make sure that
@@ -199,6 +172,47 @@ public final class SparkUtils {
         return coalescedRdd.zipPartitions(intervalsRdd, f);
     }
 
+    static <R extends Locatable> List<PartitionLocatable<SimpleInterval>> computePartitionReadExtents(JavaRDD<R> reads, SAMSequenceDictionary sequenceDictionary) {
+        // Find the first read in each partition. This is very efficient since only the first record in each partition is read.
+        List<R> splitPoints = reads.mapPartitions((FlatMapFunction<Iterator<R>, R>) it -> ImmutableList.of(it.next())).collect();
+        List<PartitionLocatable<SimpleInterval>> extents = new ArrayList<>();
+        for (int i = 0; i < splitPoints.size(); i++) {
+            Locatable current = splitPoints.get(i);
+            int intervalContigIndex = sequenceDictionary.getSequenceIndex(current.getContig());
+            final Locatable next;
+            final int nextContigIndex;
+            if (i < splitPoints.size() - 1) {
+                next = splitPoints.get(i + 1);
+                nextContigIndex = sequenceDictionary.getSequenceIndex(next.getContig());
+            } else {
+                next = null;
+                nextContigIndex = sequenceDictionary.getSequences().size();
+            }
+            if (intervalContigIndex == nextContigIndex) { // same contig
+                addPartitionReadExtent(extents, i, current.getContig(), current.getStart(), next.getEnd()); // assumes reads are same size
+            } else {
+                // complete current contig
+                int contigEnd = sequenceDictionary.getSequence(current.getContig()).getSequenceLength();
+                addPartitionReadExtent(extents, i, current.getContig(), current.getStart(), contigEnd);
+                // add any whole contigs up to next (exclusive)
+                for (int contigIndex = intervalContigIndex + 1; contigIndex < nextContigIndex; contigIndex++) {
+                    SAMSequenceRecord sequence = sequenceDictionary.getSequence(contigIndex);
+                    addPartitionReadExtent(extents, i, sequence.getSequenceName(), 1, sequence.getSequenceLength());
+                }
+                // add start of next contig
+                if (next != null) {
+                    addPartitionReadExtent(extents, i, next.getContig(), 1, next.getEnd()); // assumes reads are same size
+                }
+            }
+        }
+        return extents;
+    }
+
+    private static void addPartitionReadExtent(List<PartitionLocatable<SimpleInterval>> extents, int partitionIndex, String contig, int start, int end) {
+        SimpleInterval extent = new SimpleInterval(contig, start, end);
+        extents.add(new PartitionLocatable<>(partitionIndex, extent));
+    }
+
     private static <T> JavaRDD<T> coalesce(JavaRDD<T> rdd, Class<T> cls, PartitionCoalescer partitionCoalescer) {
         RDD<T> coalescedRdd = new CoalescedRDD<>(rdd.rdd(), rdd.getNumPartitions(), partitionCoalescer, cls);
         ClassTag<T> tag = ClassTag$.MODULE$.apply(cls);
@@ -227,7 +241,7 @@ public final class SparkUtils {
 
     }
 
-    private static class PartitionLocatable<L extends Locatable> implements Locatable {
+    static class PartitionLocatable<L extends Locatable> implements Locatable {
         private static final long serialVersionUID = 1L;
 
         private final int partitionIndex;
@@ -268,6 +282,25 @@ public final class SparkUtils {
                     "partitionIndex=" + partitionIndex +
                     ", interval='" + interval + '\'' +
                     '}';
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            PartitionLocatable<?> that = (PartitionLocatable<?>) o;
+
+            if (partitionIndex != that.partitionIndex) return false;
+            return interval.equals(that.interval);
+
+        }
+
+        @Override
+        public int hashCode() {
+            int result = partitionIndex;
+            result = 31 * result + interval.hashCode();
+            return result;
         }
     }
 
