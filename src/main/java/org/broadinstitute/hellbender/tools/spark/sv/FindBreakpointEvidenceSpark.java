@@ -421,7 +421,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final String disposition;
         if ( fastqSize > maxFastqSize ) disposition = "FASTQ not written -- too big (" + fastqSize + " bytes).";
         else {
-            final String fileName = outputDir + "/assembly" + intervalAndFastqs._1() + ".fastq";
+            final String fileName = outputDir + "/" + SVConstants.FASTQ_OUT_PREFIX + intervalAndFastqs._1() + ".fastq";
             SVFastqUtils.writeFastqFile(fileName, null, fastqsList);
             disposition = fileName;
         }

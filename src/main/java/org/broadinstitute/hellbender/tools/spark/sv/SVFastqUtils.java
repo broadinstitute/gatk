@@ -1,6 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import org.apache.hadoop.fs.ContentSummary;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -64,5 +68,22 @@ public class SVFastqUtils {
             if ( result != 0 ) return result;
         }
         return Integer.compare(arr1.length, arr2.length);
+    }
+
+    /**
+     * Load the FASTQ files in the user specified directory and returns an RDD that satisfies the same requirement
+     * as described in {@link JavaSparkContext#wholeTextFiles(String, int)}.
+     * @param pathToAllInterleavedFASTQFiles path to the directory where all FASTQ files to perform local assembly upon are located
+     * @throws GATKException when getting the file count in the specified directory
+     */
+    public static JavaPairRDD<String, String> loadFASTQFiles(final JavaSparkContext ctx, final String pathToAllInterleavedFASTQFiles){
+        try{
+            final FileSystem hadoopFileSystem = FileSystem.get(ctx.hadoopConfiguration());
+            final ContentSummary cs = hadoopFileSystem.getContentSummary(new org.apache.hadoop.fs.Path(pathToAllInterleavedFASTQFiles));
+            final int fileCount = (int) cs.getFileCount();
+            return ctx.wholeTextFiles(pathToAllInterleavedFASTQFiles, fileCount);
+        }catch (final IOException e){
+            throw new GATKException(e.getMessage());
+        }
     }
 }

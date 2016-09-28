@@ -88,8 +88,6 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final Integer minAlignLengthFinal = this.minAlignLength;
         callVariantsFromAlignmentRegionsAndWriteVariants(broadcastReference, alignmentRegionsWithContigSequences, minAlignLengthFinal, fastaReference, getAuthenticatedGCSOptions(), outputPath);
-
-
     }
 
     /**
@@ -106,7 +104,7 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final JavaPairRDD<Tuple2<String, String>, byte[]> contigSequences = assemblyIdsToContigCollections.flatMapToPair(assemblyIdAndContigsCollection -> {
             final String assemblyId = assemblyIdAndContigsCollection._1;
             final ContigsCollection contigsCollection = assemblyIdAndContigsCollection._2;
-            return contigsCollection.getContents().stream().map(pair -> new Tuple2<>(new Tuple2<>(assemblyId, pair._1.toString()), pair._2.toString().getBytes())).collect(Collectors.toList());
+            return contigsCollection.getContents().stream().map(contig -> new Tuple2<>(new Tuple2<>(assemblyId, contig.contigID), contig.seq.getBytes())).collect(Collectors.toList());
         });
 
         return alignmentRegionsKeyedByBreakpointAndContig.join(contigSequences);

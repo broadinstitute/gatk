@@ -10,15 +10,15 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.utils.bwa.BWANativeLibrary;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
-import scala.Tuple2;
 
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.ContigID;
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.ContigSequence;
 
 public class ContigAligner implements Closeable {
 
@@ -59,9 +59,9 @@ public class ContigAligner implements Closeable {
     public List<AlignmentRegion> alignContigs(final String assemblyId, final ContigsCollection contigsCollection) {
         final List<AlignmentRegion> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
         try {
-            for(final Tuple2<ContigID, ContigSequence> contigInfo : contigsCollection.getContents()) {
-                final String contigId = contigInfo._1.toString();
-                final byte[] sequence = contigInfo._2.toString().getBytes();
+            for(final LocalAssemblyContig contigInfo : contigsCollection.getContents()) {
+                final String contigId = contigInfo.contigID;
+                final byte[] sequence = contigInfo.seq.getBytes();
                 final AlnRgn[] alnRgns = bwaAlignSequence(bwaMem, contigId, sequence);
 
                 // filter out secondary alignments, convert to AlignmentRegion objects and sort by alignment start pos
