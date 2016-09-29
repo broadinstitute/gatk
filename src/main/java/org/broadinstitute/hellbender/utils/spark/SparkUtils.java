@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.spark;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.*;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
@@ -234,13 +235,15 @@ public final class SparkUtils {
                         ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, paddedShard);
                         List<GATKVariant> overlappingVariants = variantsBroadcast.getValue().getOverlapping(shard);
                         ReadContextData readContextData = new ReadContextData(referenceBases, overlappingVariants);
-                        return Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
+                        Iterable<Tuple2<GATKRead, ReadContextData>> transform = Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
                             @Nullable
                             @Override
                             public Tuple2<GATKRead, ReadContextData> apply(@Nullable GATKRead r) {
                                 return new Tuple2<>(r, readContextData);
                             }
                         });
+                        // only include reads that start in the shard
+                        return Iterables.filter(transform, r -> r._1().getStart() >= shard.getStart());
                     }
                 }).mapToPair(t -> t);
 
