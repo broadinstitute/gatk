@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.spark;
 
 import com.google.common.base.Function;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.Iterables;
@@ -20,12 +21,16 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.rdd.RDD;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
@@ -196,6 +201,31 @@ public final class SparkUtils {
                     });
                     return () -> Iterators.concat(transform);
                 });
+    }
+
+    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(JavaSparkContext ctx, final ReferenceMultiSource referenceSource,
+                                                                                final JavaPairRDD<GATKRead, T> keyedByRead,
+                                                                                final SAMSequenceDictionary sequenceDictionary) {
+        List<PartitionLocatable<SimpleInterval>> partitionReadExtents = computePartitionReadExtents(keyedByRead.map(t -> t._1()), sequenceDictionary);
+
+        Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
+        JavaRDD<ReferenceBases> referenceBasesRDD = ctx.parallelize(partitionReadExtents)
+                .mapToPair(interval ->
+                        new Tuple2<>(interval.getPartitionIndex(), interval.getLocatable()))
+                .partitionBy(new KeyPartitioner(keyedByRead.getNumPartitions()))
+                .values()
+                .map(interval -> bReferenceSource.getValue().getReferenceBases(null, interval)); // get bases for partition on executor
+
+        return keyedByRead.zipPartitions(referenceBasesRDD, (FlatMapFunction2<Iterator<Tuple2<GATKRead, T>>, Iterator<ReferenceBases>, Tuple2<GATKRead, Tuple2<T, ReferenceBases>>>) (readTupleIterator, referenceBasesIterator) -> () -> {
+            ReferenceBases refBases = Iterators.getOnlyElement(referenceBasesIterator);
+            return Iterators.transform(readTupleIterator, new Function<Tuple2<GATKRead, T>, Tuple2<GATKRead, Tuple2<T, ReferenceBases>>>() {
+                @Nullable
+                @Override
+                public Tuple2<GATKRead, Tuple2<T, ReferenceBases>> apply(@Nullable Tuple2<GATKRead, T> input) {
+                    return new Tuple2<>(input._1(), new Tuple2<>(input._2(), refBases));
+                }
+            });
+        }).mapToPair(t -> t);
     }
 
     public static <R extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<R>>> readsPerShard(Iterator<R> reads, Iterator<I> shards) {

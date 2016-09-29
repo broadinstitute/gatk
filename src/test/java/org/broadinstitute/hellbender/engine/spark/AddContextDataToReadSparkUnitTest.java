@@ -66,7 +66,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         }
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(rddReads, mockSource, rddVariants, joinStrategy);
+        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(ctx, rddReads, mockSource, rddVariants, joinStrategy, null);
         Map<GATKRead, ReadContextData> actual = rddActual.collectAsMap();
 
         Assert.assertEquals(actual.size(), expectedReadContextData.size());
