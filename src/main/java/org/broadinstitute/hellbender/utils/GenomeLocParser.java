@@ -317,8 +317,10 @@ public final class GenomeLocParser {
             }
 
             return createGenomeLoc(contig, getContigIndex(contig), start, stop, true);
-        } catch (IllegalArgumentException | UserException e){
-            throw new UserException.MalformedGenomeLoc("Failed to parse Genome Location string: " + str, e);
+        } catch (UserException.MalformedGenomeLoc e) {
+            throw e;
+        } catch (IllegalArgumentException | UserException e) {
+            throw new UserException.MalformedGenomeLoc("Failed to parse Genome Location string: " + str + ": " + e.getMessage(), e);
         }
     }
 
