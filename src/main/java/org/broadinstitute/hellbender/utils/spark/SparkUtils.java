@@ -255,23 +255,13 @@ public final class SparkUtils {
                         SimpleInterval shard = tuple._1();
                         // get reference bases for this shard
                         ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, shard);
-
-                        final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
-
+                        List<GATKVariant> overlappingVariants = variantsBroadcast.getValue().getOverlapping(shard);
+                        ReadContextData readContextData = new ReadContextData(referenceBases, overlappingVariants);
                         return Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
                             @Nullable
                             @Override
                             public Tuple2<GATKRead, ReadContextData> apply(@Nullable GATKRead r) {
-
-                                List<GATKVariant> overlappingVariants;
-                                if (SimpleInterval.isValid(r.getContig(), r.getStart(), r.getEnd())) {
-                                    overlappingVariants = intervalsSkipList.getOverlapping(new SimpleInterval(r));
-                                } else {
-                                    //Sometimes we have reads that do not form valid intervals (reads that do not consume any ref bases, eg CIGAR 61S90I
-                                    //In those cases, we'll just say that nothing overlaps the read
-                                    overlappingVariants = Collections.emptyList();
-                                }
-                                return new Tuple2<>(r, new ReadContextData(referenceBases, overlappingVariants));
+                                return new Tuple2<>(r, readContextData);
                             }
                         });
                     }
