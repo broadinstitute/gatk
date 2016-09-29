@@ -208,33 +208,6 @@ public final class SparkUtils {
                 });
     }
 
-    public static JavaPairRDD<GATKRead, ReferenceBases> addBases(JavaSparkContext ctx, final ReferenceMultiSource referenceSource,
-                                                                                final JavaRDD<GATKRead> reads,
-                                                                                final SAMSequenceDictionary sequenceDictionary) {
-        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
-
-        final List<SimpleInterval> intervalShards = getIntervalShards(intervals, 10000);
-
-        Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
-        return joinOverlapping(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards,
-                new FlatMapFunction<Tuple2<SimpleInterval, Iterable<GATKRead>>, Tuple2<GATKRead, ReferenceBases>>() {
-                    private static final long serialVersionUID = 1L;
-                    @Override
-                    public Iterable<Tuple2<GATKRead, ReferenceBases>> call(Tuple2<SimpleInterval, Iterable<GATKRead>> tuple) throws Exception {
-                        SimpleInterval shard = tuple._1();
-                        // get reference bases for this shard
-                        ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, shard);
-                        return Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReferenceBases>>() {
-                            @Nullable
-                            @Override
-                            public Tuple2<GATKRead, ReferenceBases> apply(@Nullable GATKRead input) {
-                                return new Tuple2<>(input, referenceBases);
-                            }
-                        });
-                    }
-                }).mapToPair(t -> t);
-    }
-
     public static JavaPairRDD<GATKRead, ReadContextData> add(final JavaSparkContext ctx,
                                                              final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceSource,
                                                              final JavaRDD<GATKVariant> variants, final SAMSequenceDictionary sequenceDictionary) {
@@ -246,10 +219,6 @@ public final class SparkUtils {
 
         final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
         final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
-
-        System.out.println("tw: # read partitions: " + reads.getNumPartitions());
-        System.out.println("tw: # intervals: " + intervals.size());
-        System.out.println("tw: # intervalShards: " + intervalShards.size());
 
         return joinOverlapping(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards,
                 new FlatMapFunction<Tuple2<SimpleInterval, Iterable<GATKRead>>, Tuple2<GATKRead, ReadContextData>>() {
