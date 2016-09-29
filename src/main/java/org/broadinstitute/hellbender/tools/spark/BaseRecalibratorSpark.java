@@ -86,30 +86,30 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContextOrig = AddContextDataToReadSpark.add(initialReads, getReference(), bqsrKnownVariants, joinStrategy);
+        //JavaPairRDD<GATKRead, ReadContextData> rddReadContextOrig = AddContextDataToReadSpark.add(initialReads, getReference(), bqsrKnownVariants, joinStrategy);
 
         JavaPairRDD<GATKRead, ReadContextData> rddReadContext = SparkUtils.add(ctx, initialReads, getReference(), bqsrKnownVariants, getReferenceSequenceDictionary());
 
-        Map<GATKRead, ReadContextData> mapOrig = rddReadContextOrig.collectAsMap();
-        Map<GATKRead, ReadContextData> map1 = rddReadContext.collectAsMap();
-
-        int count = 0;
-        for (Map.Entry<GATKRead, ReadContextData> e : mapOrig.entrySet()) {
-            ReadContextData data = map1.get(e.getKey());
-
-            if (!data.getOverlappingVariants().equals(e.getValue().getOverlappingVariants())) {
-                System.out.println("count" + count);
-                System.out.println(e.getKey());
-                dumpVariants(data.getOverlappingVariants());
-                System.out.println("---");
-                dumpVariants(e.getValue().getOverlappingVariants());
-                break;
-            }
-            count++;
-        }
-
-        System.out.println("tw: #reads:" + rddReadContext.count());
-        System.out.println("tw: #reads (orig):" + rddReadContextOrig.count());
+//        Map<GATKRead, ReadContextData> mapOrig = rddReadContextOrig.collectAsMap();
+//        Map<GATKRead, ReadContextData> map1 = rddReadContext.collectAsMap();
+//
+//        int count = 0;
+//        for (Map.Entry<GATKRead, ReadContextData> e : mapOrig.entrySet()) {
+//            ReadContextData data = map1.get(e.getKey());
+//
+//            if (!data.getOverlappingVariants().equals(e.getValue().getOverlappingVariants())) {
+//                System.out.println("count" + count);
+//                System.out.println(e.getKey());
+//                dumpVariants(data.getOverlappingVariants());
+//                System.out.println("---");
+//                dumpVariants(e.getValue().getOverlappingVariants());
+//                break;
+//            }
+//            count++;
+//        }
+//
+//        System.out.println("tw: #reads:" + rddReadContext.count());
+//        System.out.println("tw: #reads (orig):" + rddReadContextOrig.count());
 
         // TODO: broadcast the reads header?
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
