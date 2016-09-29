@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
@@ -203,29 +204,47 @@ public final class SparkUtils {
                 });
     }
 
-    public static <T> JavaPairRDD<GATKRead, Tuple2<T, ReferenceBases>> addBases(JavaSparkContext ctx, final ReferenceMultiSource referenceSource,
-                                                                                final JavaPairRDD<GATKRead, T> keyedByRead,
+    public static JavaPairRDD<GATKRead, ReferenceBases> addBases(JavaSparkContext ctx, final ReferenceMultiSource referenceSource,
+                                                                                final JavaRDD<GATKRead> reads,
                                                                                 final SAMSequenceDictionary sequenceDictionary) {
-        List<PartitionLocatable<SimpleInterval>> partitionReadExtents = computePartitionReadExtents(keyedByRead.map(t -> t._1()), sequenceDictionary);
+        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+
+        final List<SimpleInterval> intervalShards = getIntervalShards(intervals, 10000);
 
         Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
-        JavaRDD<ReferenceBases> referenceBasesRDD = ctx.parallelize(partitionReadExtents)
-                .mapToPair(interval ->
-                        new Tuple2<>(interval.getPartitionIndex(), interval.getLocatable()))
-                .partitionBy(new KeyPartitioner(keyedByRead.getNumPartitions()))
-                .values()
-                .map(interval -> bReferenceSource.getValue().getReferenceBases(null, interval)); // get bases for partition on executor
+        return joinOverlapping(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards,
+                new FlatMapFunction<Tuple2<SimpleInterval, Iterable<GATKRead>>, Tuple2<GATKRead, ReferenceBases>>() {
+                    @Override
+                    public Iterable<Tuple2<GATKRead, ReferenceBases>> call(Tuple2<SimpleInterval, Iterable<GATKRead>> tuple) throws Exception {
+                        SimpleInterval shard = tuple._1();
+                        // get reference bases for this shard
+                        ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, shard);
+                        return Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReferenceBases>>() {
+                            @Nullable
+                            @Override
+                            public Tuple2<GATKRead, ReferenceBases> apply(@Nullable GATKRead input) {
+                                return new Tuple2<>(input, referenceBases);
+                            }
+                        });
+                    }
+                }).mapToPair(t -> t);
+    }
 
-        return keyedByRead.zipPartitions(referenceBasesRDD, (FlatMapFunction2<Iterator<Tuple2<GATKRead, T>>, Iterator<ReferenceBases>, Tuple2<GATKRead, Tuple2<T, ReferenceBases>>>) (readTupleIterator, referenceBasesIterator) -> () -> {
-            ReferenceBases refBases = Iterators.getOnlyElement(referenceBasesIterator);
-            return Iterators.transform(readTupleIterator, new Function<Tuple2<GATKRead, T>, Tuple2<GATKRead, Tuple2<T, ReferenceBases>>>() {
-                @Nullable
-                @Override
-                public Tuple2<GATKRead, Tuple2<T, ReferenceBases>> apply(@Nullable Tuple2<GATKRead, T> input) {
-                    return new Tuple2<>(input._1(), new Tuple2<>(input._2(), refBases));
-                }
-            });
-        }).mapToPair(t -> t);
+    // similar to ReadShard, except there is no underlying ReadSource
+    private static List<SimpleInterval> getIntervalShards(List<SimpleInterval> intervals, int intervalShardSize) {
+        final List<SimpleInterval> shards = new ArrayList<>();
+        for (SimpleInterval interval : intervals) {
+            int start = interval.getStart();
+            while (start <= interval.getEnd()) {
+                int end = Math.min(start + intervalShardSize - 1, interval.getEnd());
+
+                final SimpleInterval nextShardInterval = new SimpleInterval(interval.getContig(), start, end);
+                shards.add(nextShardInterval);
+
+                start += intervalShardSize;
+            }
+        }
+        return shards;
     }
 
     public static <R extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<R>>> readsPerShard(Iterator<R> reads, Iterator<I> shards) {
