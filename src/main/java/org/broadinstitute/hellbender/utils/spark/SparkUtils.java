@@ -233,13 +233,20 @@ public final class SparkUtils {
                         // get reference bases for this shard (padded)
                         SimpleInterval paddedShard = shard.expandWithinContig(1000, sequenceDictionary);
                         ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, paddedShard);
-                        List<GATKVariant> overlappingVariants = variantsBroadcast.getValue().getOverlapping(shard);
-                        ReadContextData readContextData = new ReadContextData(referenceBases, overlappingVariants);
+                        final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
                         Iterable<Tuple2<GATKRead, ReadContextData>> transform = Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
                             @Nullable
                             @Override
                             public Tuple2<GATKRead, ReadContextData> apply(@Nullable GATKRead r) {
-                                return new Tuple2<>(r, readContextData);
+                                List<GATKVariant> overlappingVariants;
+                                if (SimpleInterval.isValid(r.getContig(), r.getStart(), r.getEnd())) {
+                                    overlappingVariants = intervalsSkipList.getOverlapping(new SimpleInterval(r));
+                                } else {
+                                    //Sometimes we have reads that do not form valid intervals (reads that do not consume any ref bases, eg CIGAR 61S90I
+                                    //In those cases, we'll just say that nothing overlaps the read
+                                    overlappingVariants = Collections.emptyList();
+                                }
+                                return new Tuple2<>(r, new ReadContextData(referenceBases, overlappingVariants));
                             }
                         });
                         // only include reads that start in the shard
