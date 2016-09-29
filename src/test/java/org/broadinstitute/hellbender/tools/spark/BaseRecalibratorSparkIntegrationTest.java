@@ -107,9 +107,9 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
 //                // multiple known sites  with BROADCAST; entire test case shared with walker version
 //                {new BQSRTest(hg19Chr171Mb_2bit, HiSeqBam_chr17, dbSNPb37_chr17, "-indelBQSR -enableBAQ " +" --joinStrategy BROADCAST -knownSites " + more17Sites, getResourceDir() + "expected.NA12878.chr17_69k_70k.2inputs.txt")},
 
-                // local input/computation, 2Bit Reference, BROADCAST
-                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_1read, dbSNPb37_chr2021, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
-//                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
+//                // local input/computation, 2Bit Reference, BROADCAST
+//                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_1read, dbSNPb37_chr2021, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1READ_RECAL)},
+                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_RECAL)},
 //                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "--joinStrategy BROADCAST", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_NOINDEL_NOBAQ_RECAL)},
 //                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST --indels_context_size 4", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_INDELS_CONTEXT_SIZE_4_RECAL)},
 //                {new BQSRTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, dbSNPb37_chr20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST --low_quality_tail 5", getResourceDir() + BQSRTestData.EXPECTED_WGS_B37_CH20_1M_1M1K_LOW_QUALITY_TAIL_5_RECAL)},
@@ -180,7 +180,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
         spec.executeTest("testBQSRSparkCloud-" + params.args, this);
     }
 
-    @Test(groups = "spark")
+    //@Test(groups = "spark")
     public void testBlowUpOnBroadcastIncompatibleReference() throws IOException {
         //this should blow up because broadcast requires a 2bit reference
         final String hiSeqBam_chr20 = getResourceDir() + WGS_B37_CH20_1M_1M1K_BAM;
