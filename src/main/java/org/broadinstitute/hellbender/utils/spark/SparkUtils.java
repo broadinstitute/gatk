@@ -247,11 +247,18 @@ public final class SparkUtils {
         final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
         final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
 
+        System.out.println("tw: # read partitions: " + reads.getNumPartitions());
+        System.out.println("tw: # intervals: " + intervals.size());
+        System.out.println("tw: # intervalShards: " + intervalShards.size());
+
         return joinOverlapping(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards,
                 new FlatMapFunction<Tuple2<SimpleInterval, Iterable<GATKRead>>, Tuple2<GATKRead, ReadContextData>>() {
                     private static final long serialVersionUID = 1L;
                     @Override
                     public Iterable<Tuple2<GATKRead, ReadContextData>> call(Tuple2<SimpleInterval, Iterable<GATKRead>> tuple) throws Exception {
+                        if (!tuple._2().iterator().hasNext()) {
+                            return Collections.emptyList();
+                        }
                         SimpleInterval shard = tuple._1();
                         // get reference bases for this shard
                         ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, shard);
