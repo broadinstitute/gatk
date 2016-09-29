@@ -1,46 +1,63 @@
 #!/usr/bin/env bash
 
+# example to run this script
+# ./sv_spark_pipeline_launch.sh svdev-1 8020 /user/svshare/NA12878_PCR-_30X/experiments/pipeline
+
 if [[ -z ${1+x} ]]; then
+    echo "please provide cluster name to run these jobs on..."
+    exit 1
+else
+    CLUSTER=$1
+fi
+
+if [[ -z ${2+x} ]]; then
+    echo "please provide port number to connect to the cluster"
+    exit 1
+else
+    MASTER=$CLUSTER"-m:"$2
+fi
+
+if [[ -z ${3+x} ]]; then
     echo "please provide address for output directory you have write access to"
     exit 1
 else
-    OUTPUT=$1
-    echo "output directory is set by user to '$1'"
+    OUTPUT="hdfs://"$MASTER"/"$3
+    echo "output directory is set by user to "
+    echo $OUTPUT
 fi
 
+# SHARED args
+REFERENCE="hdfs://"$MASTER"/reference/Homo_sapiens_assembly19.fasta"
+TWOBITREF="hdfs://"$MASTER"/reference/Homo_sapiens_assembly19.2bit"
+BAM="hdfs://"$MASTER"/data/NA12878_PCR-_30X.bam"
+
 # STAGE 1 args
-ONE_MEGA_BYTE=1000000
-TEN_MEGA_BYTES=10000000
-EXCLUSIONINTERVALS=hdfs://svdev-1-m:8020/reference/GRCh37.kill.intervals
-KMERSTOIGNORE=hdfs://svdev-1-m:8020/reference/Homo_sapiens_assembly38.k51.dups
-FASTQDIR=$OUTPUT/fastq
-EVIDENCE=$OUTPUT/evidence
-INTERVAL=$OUTPUT/intervals
-KMERINTERVALS=$OUTPUT/kmerIntervals
-QNAMEINTERVALSMAPPED=$OUTPUT/qnameIntervalsMapped
-QNAMEINTERVALSFORASSEMBLY=$OUTPUT/qnameIntervalsForAssembly
-MAXFASTQSIZE=$TEN_MEGA_BYTES
+EXCLUSIONINTERVALS="hdfs://"$MASTER"/reference/GRCh37.kill.intervals"
+KMERSTOIGNORE="hdfs://"$MASTER"/reference/Homo_sapiens_assembly38.k51.dups"
+FASTQDIR=$OUTPUT"/fastq"
+EVIDENCE=$OUTPUT"/evidence"
+INTERVAL=$OUTPUT"/intervals"
+KMERINTERVALS=$OUTPUT"/kmerIntervals"
+QNAMEINTERVALSMAPPED=$OUTPUT"/qnameIntervalsMapped"
+QNAMEINTERVALSFORASSEMBLY=$OUTPUT"/qnameIntervalsForAssembly"
+MAXFASTQSIZE=10000000
 
 # STAGE 2 args
 SGA=/usr/local/bin/sga
-ASSEMBLY=$OUTPUT/assembly
+ASSEMBLY=$OUTPUT"/assembly"
 ASSEMBLY_SUCC=$ASSEMBLY"_0"
 # STAGE 3 and 4 args
-ALIGNMENTS=$OUTPUT/aligned_assemblies
-SITEVCFDIR=$OUTPUT/variants
+ALIGNMENTS=$OUTPUT"/aligned_assemblies"
+SITEVCFDIR=$OUTPUT"/variants"
 SITEVCF=$SITEVCFDIR"/inversions.vcf"
 
-# STAGE 5 args
-GENOTYPEDVCF=$OUTPUT"/genotype/inversions.vcf"
-GENOTYPEDEBUG=$OUTPUT"/genotype/rlldebug"
+# Spark args
+SPARKARGS_COMM="--sparkRunner GCS --cluster "$CLUSTER" --driver-memory 30G"
+SPARKARGS_LOW=$SPARKARGS_COMM" --executor-memory 8G --conf spark.yarn.executor.memoryOverhead=5000"
+SPARKARGS_HIGH=$SPARKARGS_COMM" --num-executors 20 --executor-memory 30G --conf spark.yarn.executor.memoryOverhead=5000"
+SPARKARGS_MEMHOG=$SPARKARGS_COMM" --num-executors 20 --executor-memory 30G --conf spark.yarn.executor.memoryOverhead=16000"
 
-# SHARED args
-REFERENCE=hdfs://svdev-1-m:8020/reference/Homo_sapiens_assembly19.fasta
-TWOBITREF=hdfs://svdev-1-m:8020/reference/Homo_sapiens_assembly19.2bit
-BAM=hdfs://svdev-1-m:8020/data/NA12878_PCR-_30X.bam
-
-SPARKARGS_HIGH="--sparkRunner GCS --cluster svdev-1 --driver-memory 30G --num-executors 20 --executor-memory 30G --conf spark.yarn.executor.memoryOverhead=5000"
-SPARKARGS_LOW="--sparkRunner GCS --cluster svdev-1 --driver-memory 30G --executor-memory 8G --conf spark.yarn.executor.memoryOverhead=5000"
+ cd ..
 
 ./gatk-launch FindBreakpointEvidenceSpark \
     -R $REFERENCE \
@@ -57,10 +74,12 @@ SPARKARGS_LOW="--sparkRunner GCS --cluster svdev-1 --driver-memory 30G --executo
     -- \
     $SPARKARGS_HIGH
 
+# arg "subStringToStrip" will be removed once the tool is cleaned up in a PR
 ./gatk-launch RunSGAViaProcessBuilderOnSpark \
     --fullPathToSGA $SGA \
     --inDir $FASTQDIR \
     --outDirPrefix $ASSEMBLY \
+    --subStringToStrip assembly \
     -- \
     $SPARKARGS_LOW
 
@@ -69,12 +88,7 @@ SPARKARGS_LOW="--sparkRunner GCS --cluster svdev-1 --driver-memory 30G --executo
     -R $REFERENCE \
     -O $ALIGNMENTS \
     -- \
-    --sparkRunner GCS \
-    --cluster svdev-1 \
-    --driver-memory 30G \
-    --executor-memory 30G \
-    --num-executors 20 \
-    --conf spark.yarn.executor.memoryOverhead=16000
+    $SPARKARGS_MEMHOG
 
 ./gatk-launch CallVariantsFromAlignedContigsSpark \
     -R $TWOBITREF \
@@ -84,20 +98,3 @@ SPARKARGS_LOW="--sparkRunner GCS --cluster svdev-1 --driver-memory 30G --executo
     --outputPath $SITEVCFDIR \
     -- \
     $SPARKARGS_LOW
-
-./gatk-launch SingleDiploidSampleBiallelicInversionGenotyperSpark \
-    -I $BAM \
-    -R $REFERENCE \
-    -fastaReference $REFERENCE \
-    -V $SITEVCF \
-    -fastq $FASTQDIR \
-    -assembly $ASSEMBLY_SUCC \
-    -aln $ALIGNMENTS \
-    -O $GENOTYPEDVCF \
-    -dso $GENOTYPEDEBUG \
-    -- \
-    --sparkRunner GCS \
-    --cluster svdev-1 \
-    --driver-memory 30G \
-    --num-executors 20 --executor-cores 8 --executor-memory 30G \
-    --conf spark.yarn.executor.memoryOverhead=1000
