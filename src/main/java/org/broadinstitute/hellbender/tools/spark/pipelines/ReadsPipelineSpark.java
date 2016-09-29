@@ -112,7 +112,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
 
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy, getBestAvailableSequenceDictionary());
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(markedFilteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
 
         final Broadcast<RecalibrationReport> reportBroadcast = ctx.broadcast(bqsrReport);

@@ -1,16 +1,13 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
-import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
@@ -27,9 +24,9 @@ import scala.Tuple2;
  * {@link org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions} for examples.
  */
 public class AddContextDataToReadSpark {
-    public static JavaPairRDD<GATKRead, ReadContextData> add(final JavaSparkContext ctx,
-                                                             final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceDataflowSource,
-                                                             final JavaRDD<GATKVariant> variants, final JoinStrategy joinStrategy, final SAMSequenceDictionary sequenceDictionary) {
+    public static JavaPairRDD<GATKRead, ReadContextData> add(
+            final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceDataflowSource,
+            final JavaRDD<GATKVariant> variants, final JoinStrategy joinStrategy) {
         // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
         JavaRDD<GATKRead> mappedReads = reads.filter(read -> ReadFilterLibrary.MAPPED.test(read));
         JavaPairRDD<GATKRead, Tuple2<Iterable<GATKVariant>, ReferenceBases>> withVariantsWithRef;
@@ -42,7 +39,7 @@ public class AddContextDataToReadSpark {
             // Join Reads and Variants
             JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);
             // Join Reads with ReferenceBases
-            withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
+            withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         } else {
             throw new UserException("Unknown JoinStrategy");
         }

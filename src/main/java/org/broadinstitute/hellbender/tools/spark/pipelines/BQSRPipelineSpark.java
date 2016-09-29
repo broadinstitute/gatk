@@ -98,7 +98,7 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         final VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         final JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(baseRecalibrationKnownVariants, getIntervals());
 
-        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, filteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy, getBestAvailableSequenceDictionary());
+        final JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(filteredReadsForBQSR, getReference(), bqsrKnownVariants, joinStrategy);
         //note: we use the reference dictionary from the reads themselves.
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getHeaderForReads().getSequenceDictionary(), bqsrArgs);
 
