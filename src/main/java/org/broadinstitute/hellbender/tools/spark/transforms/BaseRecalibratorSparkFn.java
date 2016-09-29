@@ -30,12 +30,6 @@ public final class BaseRecalibratorSparkFn {
                 final ReferenceBases refBases = readWithData._2().getOverlappingReferenceBases();
                 ReferenceDataSource refDS = new ReferenceMemorySource(refBases, referenceDictionary);
 
-                GATKRead gatkRead = readWithData._1();
-                int startIndex = (int)(gatkRead.getStart() - refBases.getInterval().getStart());
-                if (startIndex < 0) {
-                    throw new IllegalArgumentException("tw: " + startIndex + ", contig: " + gatkRead.getContig() + ", ref interval " + refBases.getInterval());
-                }
-
                 bqsr.processRead(readWithData._1(), refDS, variants);
             }
             // Need to wrap in ArrayList due to our current inability to serialize the return value of Arrays.asList() directly

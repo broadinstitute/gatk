@@ -260,8 +260,9 @@ public final class SparkUtils {
                             return Collections.emptyList();
                         }
                         SimpleInterval shard = tuple._1();
-                        // get reference bases for this shard
-                        ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, shard);
+                        // get reference bases for this shard (padded)
+                        SimpleInterval paddedShard = shard.expandWithinContig(1000, sequenceDictionary);
+                        ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, paddedShard);
                         List<GATKVariant> overlappingVariants = variantsBroadcast.getValue().getOverlapping(shard);
                         ReadContextData readContextData = new ReadContextData(referenceBases, overlappingVariants);
                         return Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
