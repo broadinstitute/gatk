@@ -30,7 +30,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected final AFCalculator newAFCalculator;
 
-    protected final AFCalculatorProvider afCalculatorProvider   ;
+    protected final AFCalculatorProvider afCalculatorProvider;
 
     protected final Config configuration;
 
@@ -45,6 +45,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     private final AFPriorProvider log10AlleleFrequencyPriorsSNPs;
 
     private final AFPriorProvider log10AlleleFrequencyPriorsIndels;
+
+    private final List<GenomeLoc> upstreamDeletionsLoc = new LinkedList<>();
+
+    GenomeLocParser genomeLocParser;
 
     /**
      * Construct a new genotyper engine, on a specific subset of samples.
@@ -190,6 +194,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
      *
      * @param vc variant-context to complete.
      * @param model model name.
+     * @param header SAM file header.
      *
      * @throws IllegalArgumentException if {@code model} or {@code vc} is {@code null}.
      *
@@ -198,6 +203,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     public VariantCallContext calculateGenotypes(final VariantContext vc, final GenotypeLikelihoodsCalculationModel model, final SAMFileHeader header) {
         Utils.nonNull(vc, "vc cannot be null");
         Utils.nonNull(model, "the model cannot be null");
+        Utils.nonNull(header, "the header cannot be null");
         return calculateGenotypes(null,null,null,null,vc,model,false,null,header);
     }
 
@@ -223,6 +229,9 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
                                                     final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap,
                                                     final SAMFileHeader header) {
         final boolean limitedContext = features == null || refContext == null || rawContext == null || stratifiedContexts == null;
+
+        genomeLocParser = new GenomeLocParser(header.getSequenceDictionary());
+
         // if input VC can't be genotyped, exit with either null VCC or, in case where we need to emit all sites, an empty call
         if (hasTooManyAlternativeAlleles(vc) || vc.getNSamples() == 0) {
             return emptyCallContext(features, refContext, rawContext, header);
@@ -244,7 +253,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final AFCalculator afCalculator = configuration.genotypeArgs.USE_NEW_AF_CALCULATOR ? newAFCalculator
                 : afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles);
         final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy,maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
-        final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult);
+        final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc);
 
         // posterior probability that at least one alt allele exists in the samples
         final double probOfAtLeastOneAltAllele = Math.pow(10, AFresult.getLog10PosteriorOfAFGT0());
@@ -343,26 +352,70 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
     /**
      * Provided the exact mode computations it returns the appropriate subset of alleles that progress to genotyping.
      * @param afCalculationResult the allele fraction calculation result.
-     * @return never {@code null}.
+     * @param  vc the input variant context
+     * @return @return information about the alternative allele subsetting {@code null}.
      */
-    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult) {
+    private OutputAlleleSubset calculateOutputAlleleSubset(final AFCalculationResult afCalculationResult, final VariantContext vc) {
         final List<Allele> outputAlleles = new ArrayList<>();
         final List<Integer> mleCounts = new ArrayList<>();
         boolean siteIsMonomorphic = true;
-        for (final Allele alternativeAllele : afCalculationResult.getAllelesUsedInGenotyping()) {
-            if (alternativeAllele.isReference()) {
-                continue;
+        int referenceAlleleSize = 0;
+        for (final Allele allele : afCalculationResult.getAllelesUsedInGenotyping()) {
+            if (allele.isReference()) {
+                referenceAlleleSize = allele.length();
             }
-            final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(alternativeAllele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING);
+            final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(allele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING);
 
             siteIsMonomorphic &= ! isPlausible;
-            if (isPlausible || forceKeepAllele(alternativeAllele)) {
-                outputAlleles.add(alternativeAllele);
-                mleCounts.add(afCalculationResult.getAlleleCountAtMLE(alternativeAllele));
+            if (isPlausible & coveredByDeletion(vc) || forceKeepAllele(allele)) {
+                outputAlleles.add(allele);
+                mleCounts.add(afCalculationResult.getAlleleCountAtMLE(allele));
+                recordDeletion(referenceAlleleSize, allele, vc);
             }
         }
 
         return new OutputAlleleSubset(outputAlleles,mleCounts,siteIsMonomorphic);
+    }
+
+    /**
+     *  Record deletion to keep
+     *  Add deletions to a list.
+     *
+     * @param referenceAlleleSize   reference allele length
+     * @param allele                allele of interest
+     * @param vc                    variant context
+     */
+    private void recordDeletion(final int referenceAlleleSize, final Allele allele, final VariantContext vc) {
+        final int deletionSize = referenceAlleleSize - allele.length();
+
+        // Allele ia a deletion
+        if (deletionSize > 0) {
+            final GenomeLoc genomeLoc = genomeLocParser.createGenomeLocOnContig(vc.getContig(), vc.getStart(), vc.getStart() + deletionSize);
+            upstreamDeletionsLoc.add(genomeLoc);
+        }
+    }
+
+    /**
+     * Is the variant context covered by an upstream deletion?
+     *
+     * @param vc    variant context
+     * @return  true if the location is covered by an upstream deletion, false otherwise
+     */
+    private boolean coveredByDeletion(final VariantContext vc) {
+        for (Iterator<GenomeLoc> it = upstreamDeletionsLoc.iterator(); it.hasNext(); ) {
+            final GenomeLoc loc = it.next();
+            if (!loc.getContig().equals(vc.getContig())) { // past contig deletion.
+                it.remove();
+            } else if (loc.getStop() < vc.getStart()) { // past position in current contig deletion.
+                it.remove();
+            } else if (loc.getStart() == vc.getStart()) {
+                // ignore this deletion, the symbolic one does not make reference to it.
+            } else { // deletion covers.
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
