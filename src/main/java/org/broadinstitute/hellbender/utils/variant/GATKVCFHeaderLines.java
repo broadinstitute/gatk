@@ -55,6 +55,9 @@ public class GATKVCFHeaderLines {
         addFilterLine(new VCFFilterHeaderLine(PON_FILTER_NAME, "Seen in at least 2 samples in the panel of normals"));
         addFilterLine(new VCFFilterHeaderLine(TUMOR_LOD_FILTER_NAME, "Tumor does not meet likelihood threshold"));
         addFilterLine(new VCFFilterHeaderLine(STR_CONTRACTION_FILTER_NAME, "Site filtered due to contraction of short tandem repeat region"));
+        addFilterLine(new VCFFilterHeaderLine(TRIALLELIC_SITE_FILTER_NAME, "Site filtered because more than two alt alleles pass tumor LOD"));
+        addFilterLine(new VCFFilterHeaderLine(STRAND_ARTIFACT_FILTER_NAME, "Evidence for alt allele comes from one read direction only"));
+        addFilterLine(new VCFFilterHeaderLine(CLUSTERED_READ_POSITION_FILTER_NAME, "Evidence for somatic variant clusters near the ends of reads"));
 
         addFormatLine(new VCFFormatHeaderLine(ALLELE_BALANCE_KEY, 1, VCFHeaderLineType.Float, "Allele balance for each het genotype"));
         addFormatLine(new VCFFormatHeaderLine(MAPPING_QUALITY_ZERO_BY_SAMPLE_KEY, 1, VCFHeaderLineType.Integer, "Number of Mapping Quality Zero Reads per sample"));
@@ -171,5 +174,15 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(NORMAL_LOD_KEY, 1, VCFHeaderLineType.String, "Normal LOD score"));
         addInfoLine(new VCFInfoHeaderLine(PANEL_OF_NORMALS_COUNT_KEY, 1, VCFHeaderLineType.String, "Count from Panel of Normals"));
         addInfoLine(new VCFInfoHeaderLine(TUMOR_LOD_KEY, 1, VCFHeaderLineType.String, "Tumor LOD score"));
+        addInfoLine(new VCFInfoHeaderLine(TLOD_FWD_KEY,1,VCFHeaderLineType.Float, "Tumor LOD from forward reads only"));
+        addInfoLine(new VCFInfoHeaderLine(TLOD_REV_KEY,1,VCFHeaderLineType.Float, "Tumor LOD from reverse reads only"));
+        addInfoLine(new VCFInfoHeaderLine(TUMOR_SB_POWER_FWD_KEY,1,VCFHeaderLineType.Float, "Power to detect a variant with forward reads"));
+        addInfoLine(new VCFInfoHeaderLine(TUMOR_SB_POWER_REV_KEY,1,VCFHeaderLineType.Float, "Power to detect a variant with reverse reads"));
+        addInfoLine(new VCFInfoHeaderLine(MEDIAN_LEFT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median of the numbers of bases between the left end and the variant in ALT reads"));
+        addInfoLine(new VCFInfoHeaderLine(MEDIAN_RIGHT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median of the numbers of bases between the variant and the right end in ALT reads"));
+        addInfoLine(new VCFInfoHeaderLine(MAD_MEDIAN_LEFT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median absolute deviation of the numbers of bases between the left end and the variant in ALT reads"));
+        addInfoLine(new VCFInfoHeaderLine(MAD_MEDIAN_RIGHT_OFFSET_KEY, 1, VCFHeaderLineType.Float, "Median absolute deviation of the numbers of bases between the variant and the right end in ALT reads"));
+
+
     }
 }
