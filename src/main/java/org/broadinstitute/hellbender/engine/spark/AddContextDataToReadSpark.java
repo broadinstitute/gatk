@@ -37,7 +37,7 @@ public class AddContextDataToReadSpark {
             // Join Reads and Variants
             JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = BroadcastJoinReadsWithVariants.join(mappedReads, variants);
             // Join Reads with ReferenceBases
-            withVariantsWithRef = SparkUtils.addBases(ctx, referenceDataflowSource, withVariants, sequenceDictionary);
+            withVariantsWithRef = BroadcastJoinReadsWithRefBases.addBases(referenceDataflowSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.SHUFFLE)) {
             // Join Reads and Variants
             JavaPairRDD<GATKRead, Iterable<GATKVariant>> withVariants = ShuffleJoinReadsWithVariants.join(mappedReads, variants);

@@ -26,6 +26,7 @@ import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.PrintStream;
@@ -83,7 +84,7 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
 
         // TODO: Look into broadcasting the reference to all of the workers. This would make AddContextDataToReadSpark
         // TODO: and ApplyBQSRStub simpler (#855).
-        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = AddContextDataToReadSpark.add(ctx, initialReads, getReference(), bqsrKnownVariants, joinStrategy, getBestAvailableSequenceDictionary());
+        JavaPairRDD<GATKRead, ReadContextData> rddReadContext = SparkUtils.add(ctx, initialReads, getReference(), bqsrKnownVariants, getReferenceSequenceDictionary());
         // TODO: broadcast the reads header?
         final RecalibrationReport bqsrReport = BaseRecalibratorSparkFn.apply(rddReadContext, getHeaderForReads(), getReferenceSequenceDictionary(), bqsrArgs);
 

@@ -21,17 +21,21 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.rdd.RDD;
+import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
+import org.broadinstitute.hellbender.engine.spark.JoinStrategy;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
@@ -214,6 +218,7 @@ public final class SparkUtils {
         Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
         return joinOverlapping(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards,
                 new FlatMapFunction<Tuple2<SimpleInterval, Iterable<GATKRead>>, Tuple2<GATKRead, ReferenceBases>>() {
+                    private static final long serialVersionUID = 1L;
                     @Override
                     public Iterable<Tuple2<GATKRead, ReferenceBases>> call(Tuple2<SimpleInterval, Iterable<GATKRead>> tuple) throws Exception {
                         SimpleInterval shard = tuple._1();
@@ -228,6 +233,50 @@ public final class SparkUtils {
                         });
                     }
                 }).mapToPair(t -> t);
+    }
+
+    public static JavaPairRDD<GATKRead, ReadContextData> add(final JavaSparkContext ctx,
+                                                             final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceSource,
+                                                             final JavaRDD<GATKVariant> variants, final SAMSequenceDictionary sequenceDictionary) {
+        final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+
+        final List<SimpleInterval> intervalShards = getIntervalShards(intervals, 10000);
+
+        Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
+
+        final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
+        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
+
+        return joinOverlapping(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards,
+                new FlatMapFunction<Tuple2<SimpleInterval, Iterable<GATKRead>>, Tuple2<GATKRead, ReadContextData>>() {
+                    private static final long serialVersionUID = 1L;
+                    @Override
+                    public Iterable<Tuple2<GATKRead, ReadContextData>> call(Tuple2<SimpleInterval, Iterable<GATKRead>> tuple) throws Exception {
+                        SimpleInterval shard = tuple._1();
+                        // get reference bases for this shard
+                        ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, shard);
+
+                        final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
+
+                        return Iterables.transform(tuple._2(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
+                            @Nullable
+                            @Override
+                            public Tuple2<GATKRead, ReadContextData> apply(@Nullable GATKRead r) {
+
+                                List<GATKVariant> overlappingVariants;
+                                if (SimpleInterval.isValid(r.getContig(), r.getStart(), r.getEnd())) {
+                                    overlappingVariants = intervalsSkipList.getOverlapping(new SimpleInterval(r));
+                                } else {
+                                    //Sometimes we have reads that do not form valid intervals (reads that do not consume any ref bases, eg CIGAR 61S90I
+                                    //In those cases, we'll just say that nothing overlaps the read
+                                    overlappingVariants = Collections.emptyList();
+                                }
+                                return new Tuple2<>(r, new ReadContextData(referenceBases, overlappingVariants));
+                            }
+                        });
+                    }
+                }).mapToPair(t -> t);
+
     }
 
     // similar to ReadShard, except there is no underlying ReadSource
