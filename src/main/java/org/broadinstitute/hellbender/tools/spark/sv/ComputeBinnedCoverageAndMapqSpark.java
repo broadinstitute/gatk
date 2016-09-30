@@ -22,6 +22,14 @@ public class ComputeBinnedCoverageAndMapqSpark extends GATKSparkTool {
             fullName = "outputPath", optional = false)
     private String outputPath;
 
+    @Argument(doc = "Bin size", shortName = "binSize",
+            fullName = "binSize", optional = true)
+    private Integer binSize = 100;
+
+    @Argument(doc = "Min Mapq", shortName = "minMapq",
+            fullName = "minMapq", optional = true)
+    private Integer minMapq = 0;
+
     @Override
     public boolean requiresReads() {
         return true;
@@ -36,11 +44,10 @@ public class ComputeBinnedCoverageAndMapqSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final SAMSequenceDictionary referenceSequenceDictionary = getReferenceSequenceDictionary();
         final JavaPairRDD<Tuple2<Integer, Integer>, Tuple2<Integer, Integer>> readCountAndTotalQualByBin = getReads().
-                filter(r -> !r.isSecondaryAlignment() && !r.isSupplementaryAlignment() && !r.failsVendorQualityCheck() && !r.isUnmapped()).
+                filter(r -> !r.isSecondaryAlignment() && !r.isSupplementaryAlignment() && !r.failsVendorQualityCheck() && !r.isUnmapped() && r.getMappingQuality() > minMapq && ! r.isDuplicate()).
                 flatMapToPair(gatkRead -> {
                     Integer contig = referenceSequenceDictionary.getSequenceIndex(gatkRead.getContig());
                     List<Tuple2<Tuple2<Integer, Integer>, Tuple2<Integer, Integer>>> results = new ArrayList<>();
-                    int binSize = 100;
                     for (int i = gatkRead.getStart(); i < gatkRead.getStart() + gatkRead.getLength(); i = i + binSize) {
                         results.add(new Tuple2<>(new Tuple2<>(contig, i - i % binSize), new Tuple2<>(1, gatkRead.getMappingQuality())));
                     }
