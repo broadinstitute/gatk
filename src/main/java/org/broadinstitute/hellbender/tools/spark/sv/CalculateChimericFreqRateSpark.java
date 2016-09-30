@@ -48,6 +48,6 @@ public class CalculateChimericFreqRateSpark extends GATKSparkTool {
         final int contigIndex = referenceSequenceDictionary.getSequenceIndex(contig);
         final int mateContigIndex = referenceSequenceDictionary.getSequenceIndex(r.getMateContig());
 
-        return new Tuple2<>(contigIndex * 1000000 + r.getStart() % 2000,  mateContigIndex * 1000000 + r.getMateStart() % 2000);
+        return new Tuple2<>(contigIndex * 10000000 + r.getStart() / 500,  mateContigIndex * 10000000 + r.getMateStart() / 500);
     }
 }
