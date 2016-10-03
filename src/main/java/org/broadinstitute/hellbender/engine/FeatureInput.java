@@ -3,11 +3,15 @@ package org.broadinstitute.hellbender.engine;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -97,8 +101,8 @@ public final class FeatureInput<T extends Feature> implements Serializable {
         public static ParsedArgument of(final String rawArgumentValue) {
             //Use negative look ahead to avoid splitting URIs into multiple tokens
             //i.e. someName:file://somefile -> ["someName", "file://somefile"]
-            final String MATCH_NAME_BUT_NOT_URI = FEATURE_ARGUMENT_TAG_DELIMITER + "(?!" + URI_SCHEME_SEPARATOR + ")";
-            final String[] tokens = rawArgumentValue.split(MATCH_NAME_BUT_NOT_URI, -1);
+            final String MATCH_NAME_BUT_NOT_URI_OR_PORT = FEATURE_ARGUMENT_TAG_DELIMITER + "(?!" + URI_SCHEME_SEPARATOR + "|\\d+)";
+            final String[] tokens = rawArgumentValue.split(MATCH_NAME_BUT_NOT_URI_OR_PORT, -1);
 
             if ( Arrays.stream(tokens).anyMatch(String::isEmpty)) {
                 throw new CommandLineException.BadArgumentValue("", rawArgumentValue, "Empty name/file encountered. " + USAGE);
@@ -217,6 +221,8 @@ public final class FeatureInput<T extends Feature> implements Serializable {
     private static String makeIntoAbsolutePath(final String filePath){
         if(FeatureDataSource.isGenomicsDBPath(filePath)){
             return FeatureDataSource.GENOMIC_DB_URI_SCHEME + new File(filePath.replace(FeatureDataSource.GENOMIC_DB_URI_SCHEME,"")).getAbsolutePath();
+        } else if (URI.create(filePath).getScheme() != null) {
+            return IOUtils.getPath(filePath).toAbsolutePath().toUri().toString();
         } else {
             return new File(filePath).getAbsolutePath();
         }

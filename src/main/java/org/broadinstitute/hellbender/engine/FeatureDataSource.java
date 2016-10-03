@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 
@@ -218,24 +219,23 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
                 throw new UserException("GenomicsDB inputs can only be used to provide VariantContexts.", e);
             }
         } else {
-            final File featureFile = new File(featureInput.getFeaturePath());
-            IOUtils.assertFileIsReadable(featureFile);
-            final FeatureCodec<T, ?> codec = (FeatureCodec<T, ?>)FeatureManager.getCodecForFile(featureFile, targetFeatureType);
+            final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
+            IOUtils.assertFileIsReadable(featurePath);
+            final FeatureCodec<T, ?> codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
             return getTribbleFeatureReader(featureInput, codec);
         }
     }
 
     private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec) {
         Utils.nonNull(codec);
-        final File featureFile = new File(featureInput.getFeaturePath());
-        final String absolutePath = featureFile.getAbsolutePath();
         try {
+            final String absolutePath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
             // a query by interval is attempted.
             return AbstractFeatureReader.getFeatureReader(absolutePath, codec, false);
         }
         catch ( final TribbleException e ) {
-            throw new GATKException("Error initializing feature reader for file " +  absolutePath, e);
+            throw new GATKException("Error initializing feature reader for path " +  featureInput.getFeaturePath(), e);
         }
     }
 

@@ -10,7 +10,8 @@ import java.io.File;
 public class ExampleAssemblyRegionWalkerSparkIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/examples/";
 
-    @Test
+    // DISABLED until https://github.com/broadinstitute/gatk/issues/2349 is resolved
+    @Test(enabled = false)
     public void testExampleAssemblyRegionWalker() throws Exception {
         final File out = File.createTempFile("out", ".txt");
         out.delete();

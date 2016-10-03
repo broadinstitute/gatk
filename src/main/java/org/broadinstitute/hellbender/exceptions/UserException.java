@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -59,8 +60,16 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file %s", file.getAbsolutePath()));
         }
 
+        public CouldNotReadInputFile(Path file) {
+            super(String.format("Couldn't read file %s", file.toAbsolutePath().toUri()));
+        }
+
         public CouldNotReadInputFile(File file, String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file.getAbsolutePath(), message));
+        }
+
+        public CouldNotReadInputFile(Path file, String message) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), message));
         }
 
         public CouldNotReadInputFile(String file, String message) {
@@ -343,7 +352,7 @@ public class UserException extends RuntimeException {
     public static final class NoSuitableCodecs extends  UserException {
         private static final long serialVersionUID = 0L;
 
-        public NoSuitableCodecs(final File file) {
+        public NoSuitableCodecs(final Path file) {
             super("Cannot read " + file + " because no suitable codecs found");
         }
     }
@@ -356,10 +365,10 @@ public class UserException extends RuntimeException {
                                 featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName()));
         }
 
-        public WrongFeatureType( final File featureFile, final Class<? extends Feature> requiredFeatureType, final List<String> actualFeatureTypes ) {
+        public WrongFeatureType( final Path featureFile, final Class<? extends Feature> requiredFeatureType, final List<String> actualFeatureTypes ) {
             super(String.format("File %s is of the wrong type. It should contain Features of type %s, but instead contains Features of type(s): %s",
-                                featureFile.getAbsolutePath(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
-	    }
+                    featureFile.toAbsolutePath().toUri(), requiredFeatureType.getSimpleName(), actualFeatureTypes));
+        }
     }
 
     public static final class ReadMissingReadGroup extends MalformedBAM {
