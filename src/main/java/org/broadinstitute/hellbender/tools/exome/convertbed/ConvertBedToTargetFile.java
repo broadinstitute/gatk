@@ -51,13 +51,10 @@ public class ConvertBedToTargetFile extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-
         final FeatureCodec<? extends Feature, ?> codec = FeatureManager.getCodecForFile(inputBedFile);
         final Class<? extends Feature> featureType = codec.getFeatureType();
         if (BEDFeature.class.isAssignableFrom(featureType)) {
-            @SuppressWarnings("unchecked")
-            final FeatureCodec<? extends BEDFeature, ?> bedFeatureCodec = (FeatureCodec<? extends BEDFeature, ?>) codec;
-            final FeatureDataSource<? extends BEDFeature> source = new FeatureDataSource<>(inputBedFile, bedFeatureCodec);
+            final FeatureDataSource<? extends BEDFeature> source = new FeatureDataSource<>(inputBedFile);
             final List<Target> targets = StreamSupport.stream(source.spliterator(), false).map(ConvertBedToTargetFile::createTargetFromBEDFeature)
                     .collect(Collectors.toList());
             TargetWriter.writeTargetsToFile(outFile, targets);

@@ -45,10 +45,10 @@ Reference used must be the same between PoN and case samples.
 - ``case_gatk_acnv_workflow.target_file`` --  Same target file (NOT bed format) as was used for the PoN creation.  *This must be the same as was used to generate the PoN*.  Please run ``ConvertBedToTargetFile`` to convert a BED file to a target file.
 - ``case_gatk_acnv_workflow.gatk_jar`` --  Absolute path to gatk-protected.jar
 - ``case_gatk_acnv_workflow.PadTargets.mem`` -- (Advanced) Number of GB RAM to use when running PadTargets.  Always use 1, unless your target file is really large
-- ``case_gatk_acnv_workflow.CalculateTargetCoverage.disable_all_read_filters`` -- (Advanced) Disables all read filters when making coverage profile.  This will probably have unexpected results.  Always use "false".
+- ``case_gatk_acnv_workflow.keep_duplicate_reads`` -- (Advanced) Whether coverage calculations should count duplicate reads.  Setting this to "true" has been shown (empirically) to improve performance.  "false" is also supported.
+- ``case_gatk_acnv_workflow.disable_all_read_filters`` -- (Advanced) Disables all read filters when making coverage profile.  This will probably have unexpected results.  Always use "false".
 - ``case_gatk_acnv_workflow.CalculateTargetCoverage.mem`` -- Number of GB RAM to use when running CalculateTargetCoverage.  Most exome files do not need more than 4. 
 - ``case_gatk_acnv_workflow.ref_fasta_dict`` --  Path to reference dict file.  Broad internal: /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.dict 
-- ``case_gatk_acnv_workflow.CalculateTargetCoverage.keepduplicatereads`` -- (Advanced) Whether coverage calculations should count duplicate reads.  Setting this to "true" has been shown (empirically) to improve performance.  "false" is also supported.
 - ``case_gatk_acnv_workflow.PoN`` --  Path to GATK PoN file
 - ``case_gatk_acnv_workflow.CalculateTargetCoverage.transform `` -- (Advanced) Always "PCOV"
 - ``case_gatk_acnv_workflow.ref_fasta`` -- Path to reference fasta file.  Broad internal: ``/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta`` 

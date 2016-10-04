@@ -389,10 +389,10 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
     }
 
     private static CountingReadFilter makeBasicReadFilter(final SAMFileHeader header) {
-        return new CountingReadFilter("Wellformed", new WellformedReadFilter(header))
-                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
-                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
-                .and(new CountingReadFilter("Non_Zero_Reference_Length", ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
+        return new CountingReadFilter(new WellformedReadFilter(header))
+                .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
+                .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
+                .and(new CountingReadFilter(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
     }
 
     /**

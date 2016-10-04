@@ -390,17 +390,20 @@ task CalculateTargetCoverage {
     # Note that when isWGS is true, this task is still called by the workflow.
     # In that case, an empty coverage file is created and passed to the WholeGenomeCoverage
     # task to satisfy input and output requirements.
-    command {
-        if [ ${isWGS} = false ]; \
-          then java -Xmx${mem}g -jar ${gatk_jar} CalculateTargetCoverage --output ${entity_id}.coverage.tsv \
+    command <<<
+        if [ ${isWGS} = false ]
+          then
+              java -Xmx${mem}g -jar ${gatk_jar} CalculateTargetCoverage --output ${entity_id}.coverage.tsv \
                 --groupBy ${grouping} --transform ${transform} --targets ${padded_target_file} --targetInformationColumns FULL \
-                --keepduplicatereads ${keep_duplicate_reads} --input ${input_bam} --reference ${ref_fasta} \
-                --disable_all_read_filters ${disable_all_read_filters} --interval_set_rule UNION --interval_padding 0 \
+                --input ${input_bam} --reference ${ref_fasta} --disableAllReadFilters ${disable_all_read_filters} \
+                $(if [ ${keep_duplicate_reads} = true ]; then echo " --disableReadFilter NOT_DUPLICATE "; else echo ""; fi) \
+                --interval_set_rule UNION --interval_padding 0 \
                 --secondsBetweenProgressUpdates 10.0 --disableSequenceDictionaryValidation ${disable_sequence_dictionary_validation} \
-                --createOutputBamIndex true --help false --version false --verbosity INFO --QUIET false; \
-          else touch ${entity_id}.coverage.tsv; \
+                --createOutputBamIndex true --help false --version false --verbosity INFO --QUIET false
+          else
+              touch ${entity_id}.coverage.tsv
         fi
-    }
+    >>>
 
     output {
         File gatk_coverage_file = "${entity_id}.coverage.tsv"

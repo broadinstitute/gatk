@@ -145,6 +145,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public double PIR_MAD_THRESHOLD = 3;
 
     /**
+     * Reads with mapping qualities below this threshold will be filtered out
+     */
+    @Argument(fullName = "min_mapping_quality_score", shortName = "mmq", doc = "Minimum read mapping quality required to consider a read for analysis", optional = true)
+    public int MIN_MAPPING_QUALITY_SCORE = 20;
+
+    /**
      * Which annotations to add to the output VCF file. See the VariantAnnotator -list argument to view available annotations.
      * //TODO: port TandemRepeatAnnotator and put it here
      */

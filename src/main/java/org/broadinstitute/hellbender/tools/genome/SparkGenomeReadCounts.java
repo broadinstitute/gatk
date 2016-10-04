@@ -102,7 +102,7 @@ public class SparkGenomeReadCounts extends GATKSparkTool {
     }
 
     private void collectReads() {
-        if ( readArguments.getReadFileNames().size() != 1 ) {
+        if ( readArguments.getReadFilesNames().size() != 1 ) {
             throw new UserException("This tool only accepts a single bam/sam/cram as input");
         }
 
