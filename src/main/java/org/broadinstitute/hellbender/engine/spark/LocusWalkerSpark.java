@@ -52,19 +52,9 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
     @Argument(doc = "whether to use the shuffle implementation or overlaps partitioning (the default)", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
-    private FeatureManager features; // TODO: move up to GATKSparkTool?
-
     @Override
-    protected void runPipeline(JavaSparkContext sparkContext) {
-        initializeFeatures();
-        super.runPipeline(sparkContext);
-    }
-
-    void initializeFeatures() {
-        features = new FeatureManager(this);
-        if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
-            features = null;
-        }
+    public boolean requiresReads() {
+        return true;
     }
 
     /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */
@@ -82,7 +72,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
      *
      * If no intervals were specified, returns all the alignments.
      *
-     * @return all alignments from as a {@link JavaRDD}, bounded by intervals if specified.
+     * @return all alignments as a {@link JavaRDD}, bounded by intervals if specified.
      */
     public JavaRDD<Tuple3<AlignmentContext, ReferenceContext, FeatureContext>> getAlignments(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();

@@ -20,6 +20,7 @@ import java.util.Iterator;
 public final class ReadsContext implements Iterable<GATKRead> {
 
     private final ReadsDataSource dataSource;
+    private final Iterable<GATKRead>  iterable;
 
     private final SimpleInterval interval;
 
@@ -41,7 +42,14 @@ public final class ReadsContext implements Iterable<GATKRead> {
      */
     public ReadsContext( final ReadsDataSource dataSource, final SimpleInterval interval ) {
         this.dataSource = dataSource;
+        this.iterable = null;
         this.interval = interval;
+    }
+
+    public ReadsContext( Shard<GATKRead> shard ) {
+        this.dataSource = null;
+        this.iterable = shard;
+        this.interval = shard.getInterval();
     }
 
     /**
@@ -50,7 +58,7 @@ public final class ReadsContext implements Iterable<GATKRead> {
      * @return true if there is a backing ReadsDataSource, otherwise false
      */
     public boolean hasBackingDataSource() {
-        return dataSource != null;
+        return dataSource != null || iterable != null;
     }
 
     /**
@@ -71,6 +79,9 @@ public final class ReadsContext implements Iterable<GATKRead> {
      */
     @Override
     public Iterator<GATKRead> iterator() {
+        if (iterable != null && interval != null) {
+            return iterable.iterator();
+        }
         // We can't perform a query if we lack either a dataSource or an interval to query on
         if ( dataSource == null || interval == null ) {
             return Collections.<GATKRead>emptyList().iterator();

@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
+import htsjdk.samtools.seekablestream.SeekableStreamFactory;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import org.broadinstitute.hellbender.utils.variant.VariantContextVariantAdapter;
@@ -13,7 +16,9 @@ import org.seqdoop.hadoop_bam.VCFInputFormat;
 import org.seqdoop.hadoop_bam.VariantContextWritable;
 import org.seqdoop.hadoop_bam.util.BGZFCodec;
 import org.seqdoop.hadoop_bam.util.BGZFEnhancedGzipCodec;
+import org.seqdoop.hadoop_bam.util.VCFHeaderReader;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -72,4 +77,11 @@ public final class VariantsSparkSource {
         return rdd2.map(v1 -> v1._2().get());
     }
 
+    public static VCFHeader getHeader(String filePath) {
+        try {
+            return VCFHeaderReader.readHeaderFrom(SeekableStreamFactory.getInstance().getStreamFor(filePath));
+        } catch (IOException e) {
+            throw new UserException("Failed to read VCF header from " + filePath + "\n Caused by:" + e.getMessage(), e);
+        }
+    }
 }
