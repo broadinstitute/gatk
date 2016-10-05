@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -32,6 +34,9 @@ import java.util.stream.Collectors;
  * Created by davidben on 9/8/16.
  */
 public class AssemblyBasedCallerUtils {
+
+    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+
     /**
      * Returns a map with the original read as a key and the realigned read as the value.
      * <p>
@@ -214,5 +219,54 @@ public class AssemblyBasedCallerUtils {
         return GATKVariantContextUtils.simpleMerge(vcs, haplotypeSources,
                 GATKVariantContextUtils.FilteredRecordMergeType.KEEP_IF_ANY_UNFILTERED,
                 GATKVariantContextUtils.GenotypeMergeType.PRIORITIZE, false, false, null, false, false);
+    }
+
+
+    /**
+     * High-level function that runs the assembler on the given region's reads,
+     * returning a data structure with the resulting information needed
+     * for further HC steps
+     */
+    public static AssemblyResultSet assembleReads(final AssemblyRegion region,
+                                                  final List<VariantContext> givenAlleles,
+                                                  final AssemblyBasedCallerArgumentCollection argumentCollection,
+                                                  final SAMFileHeader header,
+                                                  final SampleList sampleList,
+                                                  final Logger logger,
+                                                  final CachingIndexedFastaSequenceFile referenceReader,
+                                                  final ReadThreadingAssembler assemblyEngine){
+        finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList);
+        if( argumentCollection.debug) {
+            logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
+        }
+
+        final byte[] fullReferenceWithPadding = region.getAssemblyRegionReference(referenceReader, REFERENCE_PADDING_FOR_ASSEMBLY);
+        final SimpleInterval paddedReferenceLoc = getPaddedReferenceLoc(region, REFERENCE_PADDING_FOR_ASSEMBLY, referenceReader);
+        final Haplotype referenceHaplotype = createReferenceHaplotype(region, paddedReferenceLoc, referenceReader);
+
+        final ReadErrorCorrector readErrorCorrector = argumentCollection.errorCorrectReads ?
+                new ReadErrorCorrector(argumentCollection.assemblerArgs.kmerLengthForReadErrorCorrection,
+                        HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
+                        argumentCollection.assemblerArgs.minObservationsForKmerToBeSolid,
+                        argumentCollection.debug,
+                        fullReferenceWithPadding) :
+                null;
+
+        try {
+            final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding,
+                    paddedReferenceLoc, givenAlleles, readErrorCorrector, header);
+            assemblyResultSet.debugDump(logger);
+            return assemblyResultSet;
+        } catch (final Exception e){
+            // Capture any exception that might be thrown, and write out the assembly failure BAM if requested
+            if (argumentCollection.captureAssemblyFailureBAM){
+                try (final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(new File("assemblyFailure.bam"), null, header, false, false, false)){
+                    for (final GATKRead read : region.getReads()) {
+                        writer.addAlignment(read.convertToSAMRecord(header));
+                    }
+                }
+            }
+            throw e;
+        }
     }
 }
