@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -278,7 +279,7 @@ public final class CalculateTargetCoverageIntegrationTest extends CommandLinePro
                 CalculateTargetCoverage.Transform.RAW,
                 CalculateTargetCoverage.TargetOutInfo.FULL,
                 new String[] { "-" + CalculateTargetCoverage.TARGET_FILE_SHORT_NAME, INTERVALS_BED_DUPS.getAbsolutePath(),
-                        "-" + CalculateTargetCoverage.KEEP_DUPLICATE_READS_SHORT_NAME},
+                        "-" + StandardArgumentDefinitions.DISABLE_READ_FILTER_SHORT_NAME, ReadFilterLibrary.NOT_DUPLICATE.getClass().getSimpleName() },
         }
         };
     }

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
@@ -44,7 +45,15 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
               final ReferenceDataSource ref = new ReferenceFileSource(reference) ) {
 
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, reads.getHeader(), reference.getAbsolutePath());
-            final Iterator<GATKRead> readIter = new ReadFilteringIterator(reads.query(paddedShardInterval), HaplotypeCallerEngine.makeStandardHCReadFilter(hcArgs, reads.getHeader()));
+
+            List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
+            hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));
+            ReadFilter hcCombinedFilter = hcFilters.get(0);
+            for ( int i = 1; i < hcFilters.size(); ++i ) {
+                hcCombinedFilter = hcCombinedFilter.and(hcFilters.get(i));
+            }
+            final Iterator<GATKRead> readIter = new ReadFilteringIterator(reads.query(paddedShardInterval), hcCombinedFilter);
+
             final LocusIteratorByState libs = new LocusIteratorByState(readIter, DownsamplingMethod.NONE, false, false, ReadUtils.getSamplesFromHeader(reads.getHeader()), reads.getHeader());
 
             for ( final AlignmentContext pileup : libs ) {

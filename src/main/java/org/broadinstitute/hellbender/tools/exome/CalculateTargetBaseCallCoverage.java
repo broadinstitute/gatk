@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.TargetWalker;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -380,16 +381,16 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
      * @return never {@code null}.
      */
     private CountingReadFilter makeReadFilter() {
-        final CountingReadFilter baseFilter = new CountingReadFilter("Wellformed", new WellformedReadFilter(getHeaderForReads()))
-                .and(new CountingReadFilter("Mapped", ReadFilterLibrary.MAPPED))
-                .and(new CountingReadFilter("Primary", ReadFilterLibrary.PRIMARY_ALIGNMENT))
-                .and(new CountingReadFilter("VendorQuality", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
-                .and(new CountingReadFilter("Not_Duplicate", ReadFilterLibrary.NOT_DUPLICATE))
-                .and(new CountingReadFilter("Non_Zero_Reference_Length", ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
+        final CountingReadFilter baseFilter = new CountingReadFilter(new WellformedReadFilter(getHeaderForReads()))
+                .and(new CountingReadFilter(ReadFilterLibrary.MAPPED))
+                .and(new CountingReadFilter(ReadFilterLibrary.PRIMARY_ALIGNMENT))
+                .and(new CountingReadFilter(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
+                .and(new CountingReadFilter(ReadFilterLibrary.NOT_DUPLICATE))
+                .and(new CountingReadFilter(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT));
 
         // Adds the MQ filter only if it applies, i.e minMQ > 0:
         return minimumMappingQuality <= 0 ? baseFilter :
-                baseFilter.and(new CountingReadFilter("MinMQ_" + minimumMappingQuality, read -> read.getMappingQuality() >= minimumMappingQuality));
+                baseFilter.and(new CountingReadFilter(new MappingQualityReadFilter(minimumMappingQuality)));
     }
 
     @Override

@@ -297,8 +297,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         int concordant = 0;
         int discordant = 0;
 
-        try ( final FeatureDataSource<VariantContext> actualSource = new FeatureDataSource<>(actual, new VCFCodec());
-              final FeatureDataSource<VariantContext> expectedSource = new FeatureDataSource<>(expected, new VCFCodec()) ) {
+        try ( final FeatureDataSource<VariantContext> actualSource = new FeatureDataSource<>(actual);
+              final FeatureDataSource<VariantContext> expectedSource = new FeatureDataSource<>(expected) ) {
 
             for ( final VariantContext vc : actualSource ) {
                 actualVCFKeys.add(keyForVariant(vc));

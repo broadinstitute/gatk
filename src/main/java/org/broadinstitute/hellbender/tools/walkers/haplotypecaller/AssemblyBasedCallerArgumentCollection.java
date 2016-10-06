@@ -169,12 +169,6 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     @Argument(fullName = "min_base_quality_score", shortName = "mbq", doc = "Minimum base quality required to consider a base for calling", optional = true)
     public byte minBaseQualityScore = 10;
 
-    /**
-     * Reads with mapping qualities below this threshold will be filtered out
-     */
-    @Argument(fullName = "min_mapping_quality_score", shortName = "mmq", doc = "Minimum read mapping quality required to consider a read for analysis with the HaplotypeCaller", optional = true)
-    public int MIN_MAPPING_QUALITY_SCORE = 20;
-
     //Annotations
     /**
      * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See

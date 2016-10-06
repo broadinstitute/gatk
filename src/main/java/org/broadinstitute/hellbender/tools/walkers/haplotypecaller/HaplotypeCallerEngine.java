@@ -12,10 +12,7 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
-import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
@@ -291,24 +288,20 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * Create the default read filter for use with the HaplotypeCaller
-     *
-     * @param hcArgs HaplotypeCaller arguments
-     * @param header reads header
-     * @return the default read filter for use with the HaplotypeCaller
+     * @return the default set of read filters for use with the HaplotypeCaller
      */
-    public static CountingReadFilter makeStandardHCReadFilter( final HaplotypeCallerArgumentCollection hcArgs, final SAMFileHeader header ) {
-        Utils.nonNull(hcArgs);
-        Utils.nonNull(header);
+    public static List<ReadFilter> makeStandardHCReadFilters() {
+        List<ReadFilter> filters = new ArrayList<>();
+        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        filters.add(ReadFilterLibrary.GOOD_CIGAR);
+        filters.add(new WellformedReadFilter());
 
-        return new CountingReadFilter("MAPPING_QUALITY", new MappingQualityReadFilter(hcArgs.MIN_MAPPING_QUALITY_SCORE))
-                .and(new CountingReadFilter("MAPPING_QUALITY_AVAILABLE", ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE))
-                .and(new CountingReadFilter("MAPPED", ReadFilterLibrary.MAPPED))
-                .and(new CountingReadFilter("PRIMARY_ALIGNMENT", ReadFilterLibrary.PRIMARY_ALIGNMENT))
-                .and(new CountingReadFilter("NOT_DUPLICATE", ReadFilterLibrary.NOT_DUPLICATE))
-                .and(new CountingReadFilter("PASSES_VENDOR_QUALITY_CHECK", ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK))
-                .and(new CountingReadFilter("GOOD_CIGAR", ReadFilterLibrary.GOOD_CIGAR))
-                .and(new CountingReadFilter("WELLFORMED", new WellformedReadFilter(header)));
+        return filters;
     }
 
     /**

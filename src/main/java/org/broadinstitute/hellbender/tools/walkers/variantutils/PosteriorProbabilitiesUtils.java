@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -113,8 +114,8 @@ public final class PosteriorProbabilitiesUtils {
             final GenotypeBuilder builder = new GenotypeBuilder(vc1.getGenotype(genoIdx));
             builder.phased(vc1.getGenotype(genoIdx).isPhased());
             if ( posteriors.get(genoIdx) != null ) {
-                GATKVariantContextUtils.updateGenotypeAfterSubsetting(vc1.getAlleles(), vc1.getMaxPloidy(2), builder,
-                        GATKVariantContextUtils.GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, posteriors.get(genoIdx), vc1.getAlleles());
+                GATKVariantContextUtils.makeGenotypeCall(vc1.getMaxPloidy(2), builder,
+                        GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, posteriors.get(genoIdx), vc1.getAlleles());
                 builder.attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY,
                         Utils.listFromPrimitives(GenotypeLikelihoods.fromLog10Likelihoods(posteriors.get(genoIdx)).getAsPLs()));
             }
@@ -213,7 +214,7 @@ public final class PosteriorProbabilitiesUtils {
                     final int[] counts = new int[knownCountsByAllele.length];
                     counts[allele1] += 1;
                     counts[allele2] += 1;
-                    priors[priorIndex++] = MathUtils.dirichletMultinomial(knownCountsByAllele,sumOfKnownCounts,counts,ploidy);
+                    priors[priorIndex++] = MathUtils.dirichletMultinomial(knownCountsByAllele,counts);
                 }
             }
         }
