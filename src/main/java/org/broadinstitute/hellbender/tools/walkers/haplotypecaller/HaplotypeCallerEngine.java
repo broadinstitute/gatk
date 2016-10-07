@@ -88,9 +88,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private Set<String> sampleSet;
     private SampleList samplesList;
 
-    // reference base padding size
-    private static final int REFERENCE_PADDING = 500;
-
     private byte minTailQuality;
     public static final byte MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION = 6;
 
@@ -470,7 +467,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult = assembleReads(region, givenAlleles);
+        final AssemblyResultSet untrimmedAssemblyResult =  AssemblyBasedCallerUtils.assembleReads(region, givenAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine);
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         // TODO - line bellow might be unnecessary : it might be that assemblyResult will always have those alleles anyway
@@ -587,49 +584,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         return calledHaplotypes.getCalls().stream()
                 .flatMap(call -> call.getGenotypes().stream())
                 .anyMatch(Genotype::isCalled);
-    }
-
-    /**
-     * High-level function that runs the assembler on the given region's reads,
-     * returning a data structure with the resulting information needed
-     * for further HC steps
-     *
-     * @param region the region we should assemble
-     * @param giveAlleles additional alleles we might need to genotype (can be empty)
-     * @return the AssemblyResult describing how to proceed with genotyping
-     */
-    private AssemblyResultSet assembleReads(final AssemblyRegion region, final List<VariantContext> giveAlleles) {
-        // Create the reference haplotype which is the bases from the reference that make up the active region
-        finalizeRegion(region); // handle overlapping fragments, clip adapter and low qual tails
-        if( hcArgs.debug) {
-            logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getExtendedSpan() + ")");
-        }
-
-        final byte[] fullReferenceWithPadding = region.getAssemblyRegionReference(referenceReader, REFERENCE_PADDING);
-        final SimpleInterval paddedReferenceLoc = AssemblyBasedCallerUtils.getPaddedReferenceLoc(region, REFERENCE_PADDING, referenceReader);
-        final Haplotype referenceHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(region, paddedReferenceLoc, referenceReader);
-
-        // Create ReadErrorCorrector object if requested - will be used within assembly engine.
-        ReadErrorCorrector readErrorCorrector = null;
-        if ( hcArgs.errorCorrectReads ) {
-            readErrorCorrector = new ReadErrorCorrector(hcArgs.assemblerArgs.kmerLengthForReadErrorCorrection, MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION, hcArgs.assemblerArgs.minObservationsForKmerToBeSolid, hcArgs.debug, fullReferenceWithPadding);
-        }
-
-        try {
-            final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, referenceHaplotype, fullReferenceWithPadding, paddedReferenceLoc, giveAlleles, readErrorCorrector, readsHeader);
-            assemblyResultSet.debugDump(logger);
-            return assemblyResultSet;
-        } catch ( final Exception e ) {
-            // Capture any exception that might be thrown, and write out the assembly failure BAM if requested
-            if ( hcArgs.captureAssemblyFailureBAM ) {
-                try ( final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(new File("assemblyFailure.bam"), null, readsHeader, false, false, false) ) {
-                    for ( final GATKRead read : region.getReads() ) {
-                        writer.addAlignment(read.convertToSAMRecord(readsHeader));
-                    }
-                }
-            }
-            throw e;
-        }
     }
 
     /**

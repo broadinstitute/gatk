@@ -61,7 +61,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final String MAD_MEDIAN_RIGHT_OFFSET_KEY =         "MAD_RIGHT_OFFSET";
     private static final Logger logger = LogManager.getLogger(Mutect2Engine.class);
     private final static List<VariantContext> NO_CALLS = Collections.emptyList();
-    private static final int REFERENCE_PADDING = 500;
 
     private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
@@ -238,7 +237,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         logReadInfo(MTAC.DEBUG_READ_NAME, assemblyActiveRegion.getReads(), "Present in assembly active region");
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult = assembleReads(assemblyActiveRegion, Collections.emptyList());
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine);
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
         if (!trimmingResult.isVariationPresent()) {
@@ -456,45 +455,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
     }
 
-    /**
-     * High-level function that runs the assembler on the active region reads,
-     * returning a data structure with the resulting information needed
-     * for further HC steps
-     *
-     * @param assemblyRegion the region we should assemble
-     * @param giveAlleles additional alleles we might need to genotype (can be empty)
-     * @return the AssemblyResult describing how to proceed with genotyping
-     */
-    protected AssemblyResultSet assembleReads(final AssemblyRegion assemblyRegion, final List<VariantContext> giveAlleles) {
-        // Create the reference haplotype which is the bases from the reference that make up the active region
-
-        AssemblyBasedCallerUtils.finalizeRegion(assemblyRegion, MTAC.errorCorrectReads, MTAC.dontUseSoftClippedBases, MIN_TAIL_QUALITY, header, samplesList);
-
-        final byte[] fullReferenceWithPadding = assemblyRegion.getAssemblyRegionReference(referenceReader, REFERENCE_PADDING);
-        final SimpleInterval paddedReferenceLoc = AssemblyBasedCallerUtils.getPaddedReferenceLoc(assemblyRegion, REFERENCE_PADDING, referenceReader);
-        final Haplotype referenceHaplotype = AssemblyBasedCallerUtils.createReferenceHaplotype(assemblyRegion, paddedReferenceLoc, referenceReader);
-
-        // Create ReadErrorCorrector object if requested - will be used within assembly engine.
-        final ReadErrorCorrector readErrorCorrector = MTAC.errorCorrectReads ? new ReadErrorCorrector(MTAC.assemblerArgs.kmerLengthForReadErrorCorrection, HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION,
-                MTAC.assemblerArgs.minObservationsForKmerToBeSolid, MTAC.debug, fullReferenceWithPadding) : null;
-        try {
-            final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly( assemblyRegion, referenceHaplotype, fullReferenceWithPadding, paddedReferenceLoc, giveAlleles,readErrorCorrector, header );
-            assemblyResultSet.debugDump(logger);
-            return assemblyResultSet;
-        } catch ( final Exception e ) {
-            //TODO: code duplication: copied from HaplotypeCallerEngine
-            // Capture any exception that might be thrown, and write out the assembly failure BAM if requested
-            if ( MTAC.captureAssemblyFailureBAM ) {
-                try ( final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(new File("assemblyFailure.bam"), null, header, false, false, false) ) {
-                    for ( final GATKRead read : assemblyRegion.getReads() ) {
-                        writer.addAlignment(read.convertToSAMRecord(header));
-                    }
-                }
-            }
-            throw e;
-        }
-    }
-
     public static void logReadInfo(final String readName, final Collection<GATKRead> records, final String message) {
         if (readName != null) {
             for (final GATKRead rec : records) {
@@ -589,6 +549,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             // TODO: should we even do this performance optimization?
             // in any case, we have to handle the case where there is no normal (and thus no normal context) which is
             // different than having a normal but having no reads (where we should not enter the active region)
+            // TODO: as mentioned above, when we provide the normal bam but there are no normal reads in the region, we call it active. This does not seem right to me.
             if (hasNormal() && normalContext != null) {
                 final int nonRefInNormal = getCountOfNonRefEvents(normalContext.getBasePileup(), ref.getBase(), MTAC.minBaseQualityScore);
 
