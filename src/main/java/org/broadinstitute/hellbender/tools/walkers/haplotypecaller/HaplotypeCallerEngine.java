@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -330,7 +329,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      *
      * @param vcfWriter writer to which the header should be written
      */
-    public void writeHeader( final VariantContextWriter vcfWriter ) {
+    public void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary ) {
         Utils.nonNull(vcfWriter);
 
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
@@ -362,7 +361,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             headerInfo.addAll(referenceConfidenceModel.getVCFHeaderLines());
         }
 
-        vcfWriter.writeHeader(new VCFHeader(headerInfo, sampleSet));
+        final VCFHeader vcfHeader = new VCFHeader(headerInfo, sampleSet);
+        vcfHeader.setSequenceDictionary(sequenceDictionary);
+        vcfWriter.writeHeader(vcfHeader);
     }
 
 

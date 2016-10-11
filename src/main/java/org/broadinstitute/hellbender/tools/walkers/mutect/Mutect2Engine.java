@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -18,7 +18,6 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMod
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
@@ -35,7 +34,6 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -143,7 +141,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
     }
 
-    public void writeHeader(final VariantContextWriter vcfWriter) {
+    public void writeHeader(final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
 
         // all annotation fields from VariantAnnotatorEngine
@@ -167,7 +165,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         //TODO: this hack removes nulls due to the aforementioned problem with M2 header lines
         final Set<VCFHeaderLine> nonNullHeaderInfo = headerInfo.stream()
                 .filter(line -> line != null).collect(Collectors.toSet());
-        vcfWriter.writeHeader(new VCFHeader(nonNullHeaderInfo, outputSampleNames));
+        final VCFHeader vcfHeader = new VCFHeader(nonNullHeaderInfo, outputSampleNames);
+        vcfHeader.setSequenceDictionary(sequenceDictionary);
+        vcfWriter.writeHeader(vcfHeader);
     }
 
     private Set<VCFHeaderLine> getM2HeaderLines(){
