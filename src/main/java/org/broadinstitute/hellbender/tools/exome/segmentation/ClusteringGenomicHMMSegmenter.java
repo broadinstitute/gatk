@@ -176,8 +176,10 @@ public abstract class ClusteringGenomicHMMSegmenter<T> {
     protected abstract void relearnAdditionalParameters(final ExpectationStep eStep);
 
     private void relearnWeights(final ExpectationStep expectationStep) {
-        final Dirichlet priorOnWeights = Dirichlet.symmetricDirichlet(weights.length, concentration);
-        weights =  new Dirichlet(priorOnWeights, expectationStep.transitionCounts()).effectiveMultinomialWeights();
+        final double symmetricPriorWeight = concentration / weights.length;
+        final double[] transitionCounts = expectationStep.transitionCounts();
+        final double[] posteriorDirichletParameters = Arrays.stream(transitionCounts).map(x -> x + symmetricPriorWeight).toArray();
+        weights =  new Dirichlet(posteriorDirichletParameters).effectiveMultinomialWeights();
     }
 
     // filter out components that have low weight and are too close to another component -- these will
