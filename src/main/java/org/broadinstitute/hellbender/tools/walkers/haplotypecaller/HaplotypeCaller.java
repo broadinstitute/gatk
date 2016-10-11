@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
@@ -8,9 +8,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.List;
 
@@ -204,8 +202,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
         hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), referenceArguments.getReferenceFileName());
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
-        vcfWriter = hcEngine.makeVCFWriter(outputVCF, getHeaderForReads().getSequenceDictionary());
-        hcEngine.writeHeader(vcfWriter);
+        final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
+        vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary);
+        hcEngine.writeHeader(vcfWriter, sequenceDictionary);
     }
 
     @Override

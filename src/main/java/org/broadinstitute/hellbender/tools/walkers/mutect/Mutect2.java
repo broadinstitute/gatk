@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
@@ -125,8 +126,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Override
     public void onTraversalStart() {
         m2Engine = new Mutect2Engine(MTAC, getHeaderForReads(), referenceArguments.getReferenceFileName());
-        vcfWriter = GATKVariantContextUtils.createVCFWriter(new File(outputVCF), getHeaderForReads().getSequenceDictionary(), false);
-        m2Engine.writeHeader(vcfWriter);
+        final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
+        vcfWriter = GATKVariantContextUtils.createVCFWriter(new File(outputVCF), sequenceDictionary, false);
+        m2Engine.writeHeader(vcfWriter, sequenceDictionary);
     }
 
     @Override
