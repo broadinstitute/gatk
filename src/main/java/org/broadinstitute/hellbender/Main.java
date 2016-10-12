@@ -16,8 +16,8 @@ import java.util.*;
  *
  * CommandLinePrograms are listed in a single command line interface based on the java package specified to instanceMain.
  *
- * If you want your own single command line program, extend this class and give instanceMain a new list of java packages in which to
- * search for classes that extend CommandLineProgram.
+ * If you want your own single command line program, extend this class and give instanceMain a new list of java packages
+ * in which to search for classes that extend CommandLineProgram and/or a list of single classes.
  *
  */
 public class Main {
@@ -61,14 +61,14 @@ public class Main {
     /**
      * The main method.
      * <p/>
-     * Give a list of java packages in which to search for classes that extend CommandLineProgram.  Those will be included
-     * on the command line.
+     * Give a list of java packages in which to search for classes that extend CommandLineProgram and a list of single CommandLineProgram classes.
+     * Those will be included on the command line.
      *
      * This method is not intended to be used outside of the GATK framework and tests.
      *
      */
-    public Object instanceMain(final String[] args, final List<String> packageList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, commandLineName);
+    public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
+        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
         if (null == program) return null; // no program found!
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
@@ -80,7 +80,7 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      */
     public Object instanceMain(final String[] args) {
-        return instanceMain(args, getPackageList(), "");
+        return instanceMain(args, getPackageList(), Collections.emptyList(), "");
     }
 
     /**
@@ -89,7 +89,7 @@ public class Main {
      */
     public static void main(final String[] args) {
         try {
-            final Object result = new Main().instanceMain(args, getPackageList(), "");
+            final Object result = new Main().instanceMain(args, getPackageList(), Collections.emptyList(), "");
             if (result != null) {
               System.out.println("Tool returned:\n" + result);
             }
@@ -119,16 +119,17 @@ public class Main {
     /**
      * Returns the command line program specified, or prints the usage and exits with exit code 1 *
      */
-    private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final String commandLineName) {
+    private static CommandLineProgram extractCommandLineProgram(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
         /** Get the set of classes that are our command line programs **/
         final ClassFinder classFinder = new ClassFinder();
         for (final String pkg : packageList) {
             classFinder.find(pkg, CommandLineProgram.class);
         }
         String missingAnnotationClasses = "";
-
+        final Set<Class<?>> toCheck = classFinder.getClasses();
+        toCheck.addAll(classList);
         final Map<String, Class<?>> simpleNameToClass = new LinkedHashMap<>();
-        for (final Class<?> clazz : classFinder.getClasses()) {
+        for (final Class<?> clazz : toCheck) {
             // No interfaces, synthetic, primitive, local, or abstract classes.
             if (ClassUtils.canMakeInstances(clazz)) {
                 final CommandLineProgramProperties property = getProgramProperty(clazz);
