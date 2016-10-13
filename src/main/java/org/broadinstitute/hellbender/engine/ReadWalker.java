@@ -1,15 +1,32 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Iterators;
+import htsjdk.samtools.SAMSequenceDictionary;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.broadcast.Broadcast;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.spark.SparkSharder;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import scala.Tuple3;
 
+import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
@@ -102,11 +119,53 @@ public abstract class ReadWalker extends GATKTool {
     }
 
     /**
+     * Get a {@link Stream} of reads, for custom processing using the Java Streams API.
+     *
+     * Subclasses should override {@link #traverse()} and call this method to provide their own custom processing
+     * of the stream.
+     *
+     * @return all reads from in a {@link Stream}, bounded by intervals if specified.
+     */
+    protected Stream<GATKRead> getReadsStream() {
+        // Process each read in the input stream.
+        // Supply reference bases spanning each read, if a reference is available.
+        final CountingReadFilter countedFilter = makeReadFilter();
+
+        return StreamSupport.stream(reads.spliterator(), false)
+                .filter(countedFilter);
+    }
+
+    /**
+     * Get a {@link Stream} of reads, (along with additional contextual information, if present, such as reference
+     * bases), for custom processing using the Java Streams API.
+     *
+     * Subclasses should override {@link #traverse()} and call this method to provide their own custom processing
+     * of the stream.
+     *
+     * @return all reads from in a {@link Stream}, bounded by intervals if specified.
+     */
+    protected Stream<Tuple3<GATKRead, ReferenceContext, FeatureContext>> getReadsWithContextStream() {
+        // Process each read in the input stream.
+        // Supply reference bases spanning each read, if a reference is available.
+        final CountingReadFilter countedFilter = makeReadFilter();
+
+        return StreamSupport.stream(reads.spliterator(), false)
+                .filter(countedFilter)
+                .map(read -> {
+                    final SimpleInterval readInterval = getReadInterval(read);
+                    progressMeter.update(readInterval);
+                    return new Tuple3<>(read,
+                            new ReferenceContext(reference, readInterval), // Will create an empty ReferenceContext if reference or readInterval == null
+                            new FeatureContext(features, readInterval));   // Will create an empty FeatureContext if features or readInterval == null)
+                });
+    }
+
+    /**
      * Returns an interval for the read.
      * Note: some walkers must be able to work on any read, including those whose coordinates do not form a valid SimpleInterval.
      * So here we check this condition and create null intervals for such reads.
      */
-    SimpleInterval getReadInterval(final GATKRead read) {
+    static SimpleInterval getReadInterval(final GATKRead read) {
         return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
     }
 
@@ -173,5 +232,110 @@ public abstract class ReadWalker extends GATKTool {
     protected final void onShutdown() {
         // Overridden only to make final so that concrete tool implementations don't override
         super.onShutdown();
+    }
+
+    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases.", optional = true)
+    public int readShardSize = 10000;
+
+    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side.", optional = true)
+    public int readShardPadding = 1000;
+
+    @Argument(doc = "whether to use the shuffle implementation or not", shortName = "shuffle", fullName = "shuffle", optional = true)
+    public boolean shuffle = false;
+
+    /**
+     * Loads reads into a {@link JavaRDD} for the intervals specified.
+     * If no intervals were specified, returns all the reads.
+     *
+     * Subclasses should override {@link #traverse()} and call this method to provide their own custom processing
+     * of the RDD.
+     *
+     * @return all reads from as a {@link JavaRDD}, bounded by intervals if specified.
+     */
+    protected JavaRDD<GATKRead> getReadsRdd() {
+        final ReadFilter filter = makeReadFilter();
+        return getUnfilteredReads().filter(read -> filter.test(read));
+    }
+
+    /**
+     * Loads reads and the corresponding reference and features into a {@link JavaRDD} for the intervals specified.
+     * If no intervals were specified, returns all the reads.
+     *
+     * Subclasses should override {@link #traverse()} and call this method to provide their own custom processing
+     * of the RDD.
+     *
+     * @return all reads from as a {@link JavaRDD}, bounded by intervals if specified.
+     */
+    protected JavaRDD<Tuple3<GATKRead, ReferenceContext, FeatureContext>> getReadsWithContextRdd() {
+        SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+        List<SimpleInterval> intervals = hasIntervals() ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
+        // use unpadded shards (padding is only needed for reference bases)
+        final List<ShardBoundary> intervalShards = intervals.stream()
+                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, 0, sequenceDictionary).stream())
+                .collect(Collectors.toList());
+        final ReadFilter filter = makeReadFilter();
+        JavaRDD<GATKRead> reads = getUnfilteredReads().filter(read -> filter.test(read));
+        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, reads, GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
+        Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
+        Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
+        return shardedReads.flatMap(getReadsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, readShardPadding));
+    }
+
+    private static FlatMapFunction<Shard<GATKRead>, Tuple3<GATKRead, ReferenceContext, FeatureContext>> getReadsFunction(
+            Broadcast<ReferenceMultiSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
+            SAMSequenceDictionary sequenceDictionary, int readShardPadding) {
+        return (FlatMapFunction<Shard<GATKRead>, Tuple3<GATKRead, ReferenceContext, FeatureContext>>) shard -> {
+            // get reference bases for this shard (padded)
+            SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(readShardPadding, sequenceDictionary);
+            ReferenceDataSource reference = bReferenceSource == null ? null :
+                    new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
+            FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
+
+            Iterator<Tuple3<GATKRead, ReferenceContext, FeatureContext>> transform = Iterators.transform(shard.iterator(), new Function<GATKRead, Tuple3<GATKRead, ReferenceContext, FeatureContext>>() {
+                @Nullable
+                @Override
+                public Tuple3<GATKRead, ReferenceContext, FeatureContext> apply(@Nullable GATKRead read) {
+                    final SimpleInterval readInterval = getReadInterval(read);
+                    return new Tuple3<>(read, new ReferenceContext(reference, readInterval), new FeatureContext(features, readInterval));
+                }
+            });
+            // only include reads that start in the shard
+            return () -> Iterators.filter(transform, r -> r._1().getStart() >= shard.getStart()
+                    && r._1().getStart() <= shard.getEnd());
+        };
+    }
+
+    /**
+     * Loads the reads into a {@link JavaRDD} using the intervals specified, and returns them
+     * without applying any filtering.
+     *
+     * If no intervals were specified, returns all the reads (both mapped and unmapped).
+     *
+     * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified, and unfiltered.
+     */
+    JavaRDD<GATKRead> getUnfilteredReads() {
+        // TODO: This if statement is a temporary hack until #959 gets resolved.
+        if (readInput.endsWith(".adam")) {
+            try {
+                return readsSource.getADAMReads(readInput, intervalsForTraversal, getHeaderForReads());
+            } catch (IOException e) {
+                throw new UserException("Failed to read ADAM file " + readInput, e);
+            }
+
+        } else {
+            if (hasCramInput() && !hasReference()){
+                throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+            }
+            final String refPath = hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null;
+            // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
+            return readsSource.getParallelReads(readInput, refPath, intervalsForTraversal, 0 /* TODO bamPartitionSplitSize */);
+        }
+    }
+
+    /**
+     * @return our reference source, or null if no reference is present
+     */
+    public ReferenceMultiSource getReference() {
+        return referenceSource;
     }
 }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -8,16 +9,24 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.spark.SparkCommandLineArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -97,6 +106,19 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     ReadsDataSource reads;
 
+    @ArgumentCollection
+    public SparkCommandLineArgumentCollection sparkArgs = new SparkCommandLineArgumentCollection();
+
+    /**
+     * Spark-related data structures. Only initialized if Spark is being used.
+     */
+    JavaSparkContext ctx;
+    ReadsSparkSource readsSource;
+    SAMFileHeader readsHeader;
+    String readInput;
+    ReferenceMultiSource referenceSource;
+    SAMSequenceDictionary referenceDictionary;
+
     /**
      * Our source of Feature data (null if no source of Features was provided)
      */
@@ -124,7 +146,19 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reference data source.
      */
     void initializeReference() {
-        reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
+        if (!sparkArgs.useSpark) {
+            reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
+        } else {
+            final GCSOptions gcsOptions = null; //getAuthenticatedGCSOptions(); // null if we have no api key
+            final String referenceURL = referenceArguments.getReferenceFileName();
+            if ( referenceURL != null ) {
+                referenceSource = new ReferenceMultiSource(gcsOptions, referenceURL, getReferenceWindowFunction());
+                referenceDictionary = referenceSource.getReferenceSequenceDictionary(readsHeader != null ? readsHeader.getSequenceDictionary() : null);
+                if (referenceDictionary == null) {
+                    throw new UserException.MissingReferenceDictFile(referenceURL);
+                }
+            }
+        }
     }
 
     /**
@@ -134,25 +168,37 @@ public abstract class GATKTool extends CommandLineProgram {
      * May be overridden by traversals that require custom initialization of the reads data source.
      */
     void initializeReads() {
-        if (! readArguments.getReadFiles().isEmpty()) {
-            SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
-            if (hasReference()) { // pass in reference if available, because CRAM files need it
-                factory = factory.referenceSequence(referenceArguments.getReferenceFile());
+        if (!readArguments.getReadFiles().isEmpty()) {
+            if (!sparkArgs.useSpark) {
+                SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
+                if (hasReference()) { // pass in reference if available, because CRAM files need it
+                    factory = factory.referenceSequence(referenceArguments.getReferenceFile());
+                } else if (hasCramInput()) {
+                    throw new UserException.MissingReference("A reference file is required when using CRAM files.");
+                }
+                reads = new ReadsDataSource(readArguments.getReadFiles(), factory);
+            } else {
+                if (readArguments.getReadFilesNames().size() != 1) {
+                    throw new UserException("Sorry, we only support a single reads input for spark tools for now.");
+                }
+                readInput = readArguments.getReadFilesNames().get(0);
+                readsSource = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency());
+                readsHeader = readsSource.getHeader(
+                        readInput,
+                        hasReference() ? referenceArguments.getReferenceFile().getAbsolutePath() : null,
+                        null);
             }
-            else if (hasCramInput()) {
-                throw new UserException.MissingReference("A reference file is required when using CRAM files.");
-            }
-            reads = new ReadsDataSource(readArguments.getReadFiles(), factory);
         }
-        else {
-            reads = null;
-        }
+    }
+
+    public SerializableFunction<GATKRead, SimpleInterval> getReferenceWindowFunction() {
+        return ReferenceWindowFunctions.IDENTITY_FUNCTION;
     }
 
     /**
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
-    private boolean hasCramInput() {
+    boolean hasCramInput() {
         return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
     }
 
@@ -291,6 +337,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return best available sequence dictionary given our inputs or {@code null} if no one dictionary is the best one.
      */
     public SAMSequenceDictionary getBestAvailableSequenceDictionary() {
+        if (sparkArgs.useSpark) {
+            return hasReference() ? referenceDictionary : (hasReads() ? readsHeader.getSequenceDictionary() : null);
+        }
         if (hasReference()){
             return reference.getSequenceDictionary();
         } else if (hasReads()){
@@ -312,6 +361,9 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAM header for our source of reads (null if there are no reads)
      */
     public final SAMFileHeader getHeaderForReads() {
+        if (sparkArgs.useSpark) {
+            return readsHeader;
+        }
         return hasReads() ? reads.getHeader() : null;
     }
 
@@ -344,6 +396,10 @@ public abstract class GATKTool extends CommandLineProgram {
     @Override
     protected void onStartup() {
         super.onStartup();
+
+        if (sparkArgs.useSpark) {
+            ctx = SparkContextFactory.getSparkContext(getToolName(), sparkArgs.getSparkProperties(), sparkArgs.getSparkMaster());
+        }
 
         initializeReference();
 

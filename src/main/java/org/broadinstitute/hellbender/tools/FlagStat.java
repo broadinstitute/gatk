@@ -19,11 +19,20 @@ import java.text.NumberFormat;
 )
 public final class FlagStat extends ReadWalker {
 
-    private final FlagStatus sum = new FlagStatus();
+    private FlagStatus sum;
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        sum.add(read);
+        // not used
+    }
+
+    @Override
+    public void traverse() {
+        if (sparkArgs.useSpark) {
+            sum = getReadsRdd().aggregate(new FlagStatus(), FlagStatus::add, FlagStatus::merge);
+        } else {
+            sum = getReadsStream().collect(FlagStatus::new, FlagStatus::add, FlagStatus::merge);
+        }
     }
 
     @Override

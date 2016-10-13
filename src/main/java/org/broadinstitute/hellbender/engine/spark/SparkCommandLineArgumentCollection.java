@@ -17,6 +17,9 @@ import java.util.Map;
 public final class SparkCommandLineArgumentCollection implements ArgumentCollectionDefinition {
     private static final long serialVersionUID = 1L;
 
+    @Argument(doc = "whether to use the Spark implementation (default is not to use Spark)", shortName = "spark", fullName = "spark", optional = true)
+    public boolean useSpark = false;
+
     @Argument(fullName = "sparkMaster", doc="URL of the Spark Master to submit jobs to when using the Spark pipeline runner.", optional = true)
     private String sparkMaster = SparkContextFactory.DEFAULT_SPARK_MASTER;
 

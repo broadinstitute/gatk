@@ -10,10 +10,11 @@ import java.io.File;
 public final class FlagStatIntegrationTest extends CommandLineProgramTest{
 
     @Test(dataProvider = "filenames")
-    public void testSamCount(String fileIn) throws Exception {
+    public void testSamCount(String fileIn, boolean useSpark) throws Exception {
         final File ORIG_BAM = new File(getTestDataDir(), fileIn);
         final String[] args = new String[]{
                 "--input" , ORIG_BAM.getAbsolutePath(),
+                "--spark" , Boolean.toString(useSpark),
         };
         final Object res = this.runCommandLine(args);
 
@@ -36,9 +37,11 @@ public final class FlagStatIntegrationTest extends CommandLineProgramTest{
 
     @DataProvider(name="filenames")
     public Object[][] filenames() {
-        return new String[][]{
-                {"flag_stat.sam"},
-                {"flag_stat.bam"},
+        return new Object[][]{
+                {"flag_stat.sam", false},
+                {"flag_stat.sam", true},
+                {"flag_stat.bam", false},
+                {"flag_stat.bam", true},
         };
     }
 
