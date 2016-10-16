@@ -6,13 +6,11 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -1262,8 +1260,8 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         }
     }*/
 
-    @DataProvider(name = "UpdateGenotypeAfterSubsettingData")
-    public Object[][] makeUpdateGenotypeAfterSubsettingData() {
+    @DataProvider(name = "MakeGenotypeCallData")
+    public Object[][] makeGenotypeCallData() {
         final List<Object[]> tests = new ArrayList<>();
 
         final List<Allele> AA = Arrays.asList(Aref,Aref);
@@ -1313,11 +1311,8 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         final double[] uninformativeTriploid = new double[]{0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1};
         final List<double[]> allTriploidPLs = Arrays.asList(homRefPL, hetPL, homVarPL, uninformativeTriploid);
 
-
         for ( final List<Allele> alleles : allHaploidSubsetAlleles ) {
             tests.add(new Object[]{1, GenotypeAssignmentMethod.SET_TO_NO_CALL, allHaploidPLs.get(0), Collections.singletonList(Aref), alleles, GATKVariantContextUtils.noCallAlleles(1)});
-
-
         }
 
         for ( final List<Allele> alleles : allDiploidSubsetAlleles ) {
@@ -1356,16 +1351,14 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         return tests.toArray(new Object[][]{});
     }
 
-    @Test(dataProvider = "UpdateGenotypeAfterSubsettingData")
-    public void testUpdateGenotypeAfterSubsetting(final int ploidy,
-                                                  final GenotypeAssignmentMethod mode,
-                                                  final double[] likelihoods,
-                                                  final List<Allele> originalGT,
-                                                  final List<Allele> allelesToUse,
-                                                  final List<Allele> expectedAlleles) {
+    @Test(dataProvider = "MakeGenotypeCallData")
+    public void testMakeGenotypeCall(final int ploidy,
+                                     final GenotypeAssignmentMethod mode,
+                                     final double[] likelihoods,
+                                     final List<Allele> originalGT,
+                                     final List<Allele> allelesToUse,
+                                     final List<Allele> expectedAlleles) {
         Utils.validateArg(originalGT.size() == ploidy, "original call must be consistent with ploidy");
-        int numAltAlleles = allelesToUse.size() > 1 ? allelesToUse.size() - 1 : 1;
-        GenotypeLikelihoods.initializeAnyploidPLIndexToAlleleIndices(numAltAlleles, ploidy);
 
         final GenotypeBuilder gb = new GenotypeBuilder("test");
         final double[] logLikelhoods = MathUtils.normalizeFromLog10(likelihoods, true, false);

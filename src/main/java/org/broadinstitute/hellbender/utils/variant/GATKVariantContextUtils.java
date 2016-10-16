@@ -17,7 +17,10 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.io.File;
@@ -36,6 +39,8 @@ public final class GATKVariantContextUtils {
     public static final String MERGE_INTERSECTION = "Intersection";
 
     public static final int DEFAULT_PLOIDY = HomoSapiensConstants.DEFAULT_PLOIDY;
+
+    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
     public static final double SUM_GL_THRESH_NOCALL = -0.1; // if sum(gl) is bigger than this threshold, we treat GL's as non-informative and will force a no-call.
 
@@ -274,9 +279,10 @@ public final class GATKVariantContextUtils {
                 gb.alleles(noCallAlleles(ploidy)).noGQ();
             } else {
                 final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-                final List<Allele> maxLikelihoodAlleles = GenotypeLikelihoods.getAlleles(maxLikelihoodIndex, ploidy).stream()
-                        .map(allelesToUse::get).collect(Collectors.toList());
-                gb.alleles(maxLikelihoodAlleles);
+                final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
+                final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
+
+                gb.alleles(alleleCounts.asAlleleList(allelesToUse));
                 final int numAltAlleles = allelesToUse.size() - 1;
                 if ( numAltAlleles > 0 ) {
                     gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
