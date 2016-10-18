@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.cnlohcaller;
+package org.broadinstitute.hellbender.tools.exome.allelicbalancecaller;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.analysis.UnivariateFunction;
@@ -39,9 +39,12 @@ import java.util.stream.IntStream;
 
 
 /**
- * <p>This class makes calls for each segment on whether the segment is CNLoH and/or balanced (MAF=0.5).  Please see the
+ * <p>This class makes calls for each segment on whether the segment is balanced (MAF=0.5) or CNLoH.  Please see the
  *  docs for detailed information.
  * </p>
+ *
+ * <p>Important note:  The CNLoH calls are not evaluated and preliminary performance indicated low sensitivity and low
+ * precision.</p>
  *
  * <p>Throughout this class, rho is the CCF * purity.  M is the copy number of one allele and N is the copy number of the other allele.
  * There is no assumption about the relative relationship of M and N, though typically, we try to maintain M >= N,
@@ -276,7 +279,7 @@ public class CNLOHCaller implements Serializable {
      * @param ctx This call requires Spark, so not {@code null}
      * @return Never {@code null}
      */
-    public List<CNLOHCall> makeCalls(final List<ACNVModeledSegment> segments, final int numIterations, final JavaSparkContext ctx) {
+    public List<AllelicSplitCall> makeCalls(final List<ACNVModeledSegment> segments, final int numIterations, final JavaSparkContext ctx) {
         ParamUtils.isPositive(numIterations, "Must be more than zero iterations.");
         Utils.nonNull(segments);
         Utils.nonNull(ctx, "Java SparkContext can't be null when attempting to make CNLOH and balance calls.");
@@ -284,13 +287,13 @@ public class CNLOHCaller implements Serializable {
         segmentMeanBiasInCR = calculateSegmentMeanBiasInCRSpace(segments);
         segmentMeanVarianceInCR = calculateVarianceOfCopyNeutralSegmentMeans(segments, segmentMeanBiasInCR);
 
-        final CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(rhoThreshold, segments,
+        final AllelicBalanceCallerModelState state = AllelicBalanceCallerModelState.createInitialCNLOHCallerModelState(rhoThreshold, segments,
                 normalNumCopies, NUM_RHOS);
 
         // Create a Spark RDD for the segments.
         final JavaRDD<ACNVModeledSegment> segs = ctx.parallelize(segments);
 
-        List<CNLOHCall> cnlohCalls = null;
+        List<AllelicSplitCall> allelicSplitCalls = null;
 
         // for each iteration
         for (int i = 1; i <= numIterations; i++) {
@@ -345,16 +348,16 @@ public class CNLOHCaller implements Serializable {
             // This only really needs to  be done once, but is necessary here due to scoping issues that will cause
             //  compiler issues.
             logger.info("Updating calls (iteration " + i + " of " + numIterations +  ") ... ");
-            cnlohCalls = createCNLoHCalls(segments, state, responsibilitiesForSegsAsList);
+            allelicSplitCalls = createCNLoHCalls(segments, state, responsibilitiesForSegsAsList);
         }
         logger.info("ACNV segments bias, variance (around copy neutral only): " + segmentMeanBiasInCR + ", " + segmentMeanVarianceInCR);
         logger.info("Output file is not adjusted for the bias and variance.  No user action required.");
-        return cnlohCalls;
+        return allelicSplitCalls;
     }
 
-    private List<CNLOHCall> createCNLoHCalls(final List<ACNVModeledSegment> segments, final CNLOHCallerModelState state, final List<double[][][]> responsibilitiesForSegs) {
+    private List<AllelicSplitCall> createCNLoHCalls(final List<ACNVModeledSegment> segments, final AllelicBalanceCallerModelState state, final List<double[][][]> responsibilitiesForSegs) {
 
-        final List<CNLOHCall> cnlohCalls = segments.stream().map(CNLOHCall::new).collect(Collectors.toList());
+        final List<AllelicSplitCall> allelicSplitCalls = segments.stream().map(AllelicSplitCall::new).collect(Collectors.toList());
 
         final List<Pair<Integer, Integer>> maxMIdxNIdxPerSeg = IntStream.range(0, segments.size()).boxed()
                 .map(s -> max2dIndices(sumOverFirstDimension(responsibilitiesForSegs.get(s))))
@@ -369,48 +372,48 @@ public class CNLOHCaller implements Serializable {
         final int[] calledNPerSeg = maxMIdxNIdxPerSeg.stream().mapToInt(p -> state.getnVals()[p.getSecond()]).toArray();
 
         // Set the rho, M, N, FCr, and FMaf for the call
-        for (int s = 0; s < cnlohCalls.size(); s ++) {
-            final CNLOHCall cnlohCallForSeg = cnlohCalls.get(s);
-            cnlohCallForSeg.setRho(calledRhoPerSeg[s]);
-            cnlohCallForSeg.setM(calledMPerSeg[s]);
-            cnlohCallForSeg.setN(calledNPerSeg[s]);
-            cnlohCallForSeg.setfCr(
+        for (int s = 0; s < allelicSplitCalls.size(); s ++) {
+            final AllelicSplitCall allelicSplitCallForSeg = allelicSplitCalls.get(s);
+            allelicSplitCallForSeg.setRho(calledRhoPerSeg[s]);
+            allelicSplitCallForSeg.setM(calledMPerSeg[s]);
+            allelicSplitCallForSeg.setN(calledNPerSeg[s]);
+            allelicSplitCallForSeg.setfCr(
                     calculateFcr(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], state.getLambda(),
-                            Math.pow(2, cnlohCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getCenter()),
-                            Math.pow(2, cnlohCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getLower()),
-                            Math.pow(2, cnlohCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getUpper()),
+                            Math.pow(2, allelicSplitCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getCenter()),
+                            Math.pow(2, allelicSplitCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getLower()),
+                            Math.pow(2, allelicSplitCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getUpper()),
                             segmentMeanVarianceInCR, normalNumCopies
                     ));
-            cnlohCallForSeg.setfMaf(
+            allelicSplitCallForSeg.setfMaf(
                     calculateFmaf(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s],
-                            cnlohCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getCenter(),
-                            cnlohCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getLower(),
-                            cnlohCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getUpper(),
+                            allelicSplitCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getCenter(),
+                            allelicSplitCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getLower(),
+                            allelicSplitCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getUpper(),
                             normalNumCopies)
             );
 
             // Set the balanced call
-            cnlohCallForSeg.setBalancedCall(isBalanced(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s]));
+            allelicSplitCallForSeg.setBalancedCall(isBalanced(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s]));
 
             // Set the CNLoH call
-            cnlohCallForSeg.setCnlohCall(isCNLoH(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], cnlohCallForSeg.getAcnvSegment()));
+            allelicSplitCallForSeg.setCnlohCall(isCNLoH(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], allelicSplitCallForSeg.getAcnvSegment()));
         }
 
-        return cnlohCalls;
+        return allelicSplitCalls;
     }
 
-    private CNLOHBalancedCall isBalanced(final double rho, final int m, final int n) {
-        return ( (m == n) || (rho <= getRhoThreshold()) ? CNLOHBalancedCall.BALANCED : CNLOHBalancedCall.NOT_BALANCED);
+    private AllelicBalanceCall isBalanced(final double rho, final int m, final int n) {
+        return ( (m == n) || (rho <= getRhoThreshold()) ? AllelicBalanceCall.BALANCED : AllelicBalanceCall.NOT_BALANCED);
     }
 
-    private CNLOHLoHCall isCNLoH(final double rho, final int m, final int n, final ACNVModeledSegment segment) {
+    private CNLoHCall isCNLoH(final double rho, final int m, final int n, final ACNVModeledSegment segment) {
         if (Double.isNaN(segment.getMinorAlleleFractionPosteriorSummary().getCenter())) {
-            return CNLOHLoHCall.NO_CALL;
+            return CNLoHCall.NO_CALL;
         } else if (((m == getNormalNumCopies()) && (n == 0)) || ((n == getNormalNumCopies()) && (m == 0))
             && (rho > getRhoThreshold())) {
-            return CNLOHLoHCall.CNLOH;
+            return CNLoHCall.CNLOH;
         } else {
-            return CNLOHLoHCall.NOT_CNLOH;
+            return CNLoHCall.NOT_CNLOH;
         }
     }
 

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.cnlohcaller;
+package org.broadinstitute.hellbender.tools.exome.allelicbalancecaller;
 
 import org.apache.commons.math3.util.Pair;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -16,9 +16,9 @@ import java.io.File;
 import java.util.List;
 
 
-public class CNLOHCallerUnitTest extends BaseTest {
+public class AllelicSplitCallerUnitTest extends BaseTest {
 
-    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/cnlohcaller/";
+    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/allelicbalancecaller/";
     private static final File ACNV_SEG_FILE = new File(TEST_DIR, "cell_line-sim-final.seg");
 
     @Test
@@ -34,7 +34,7 @@ public class CNLOHCallerUnitTest extends BaseTest {
         // Make sure the CNLOH Caller is serializable before making calls.
         SerializationTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
 
-        final List<CNLOHCall> calls = cnlohCaller.makeCalls(segs, 2, ctx);
+        final List<AllelicSplitCall> calls = cnlohCaller.makeCalls(segs, 2, ctx);
         Assert.assertNotNull(calls);
         Assert.assertTrue(calls.size() > 0);
         Assert.assertTrue(calls.stream().allMatch(c -> c.getBalancedCall() != null));
@@ -43,7 +43,7 @@ public class CNLOHCallerUnitTest extends BaseTest {
 
         // Make sure the CNLOH Caller is serializable after making calls.
         SerializationTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
-        SerializationTestUtils.roundTripInKryo(calls.get(0), CNLOHCall.class, ctx.getConf());
+        SerializationTestUtils.roundTripInKryo(calls.get(0), AllelicSplitCall.class, ctx.getConf());
     }
 
     @Test(dataProvider = "mafValues")
@@ -175,7 +175,7 @@ public class CNLOHCallerUnitTest extends BaseTest {
                                       final double crMode, final double crLow, final double crHigh,
                                       final double lambda, final double gt) {
         final List<ACNVModeledSegment> segments = SegmentUtils.readACNVModeledSegmentFile(ACNV_SEG_FILE);
-        CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(0.2, segments,
+        AllelicBalanceCallerModelState state = AllelicBalanceCallerModelState.createInitialCNLOHCallerModelState(0.2, segments,
                 HomoSapiensConstants.DEFAULT_PLOIDY, CNLOHCaller.NUM_RHOS);
 
         final CNLOHCaller cnlohCaller = new CNLOHCaller();

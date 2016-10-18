@@ -17,7 +17,7 @@
   "case_gatk_acnv_workflow.PadTargets.padding": "250",
   "case_gatk_acnv_workflow.disable_sequence_dictionary_validation": "true",
   "case_gatk_acnv_workflow.plots_dir": "/tmp/plots/",
-  "case_gatk_acnv_workflow.call_cnloh_dir": "/tmp/cnloh/",
+  "case_gatk_acnv_workflow.call_balanced_dir": "/tmp/cnloh/",
   "case_gatk_acnv_workflow.enable_gc_correction": "true",
   "case_gatk_acnv_workflow.isWGS": "true",
   "case_gatk_acnv_workflow.wgsBinSize": "10000",
