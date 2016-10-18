@@ -151,7 +151,8 @@ public final class ReadFilterLibrary {
 
     public static class ValidAlignmentStartReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
-        @Override public boolean test(final GATKRead read){return read.isUnmapped() || read.getStart() > 0;}}
+        @Override public boolean test(final GATKRead read){
+            return read.isUnmapped() || read.getStart() > 0;}}
 
     // Alignment doesn't align to a negative number of bases in the reference.
     //Note: to match gatk3 we must keep reads that align to zero bases in the reference.

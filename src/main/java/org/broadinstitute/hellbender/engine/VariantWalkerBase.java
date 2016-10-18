@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.utils.IndexUtils;
@@ -93,14 +94,15 @@ public abstract class VariantWalkerBase extends GATKTool {
      */
     @Override
     public void traverse() {
-        final VariantFilter filter = makeVariantFilter();
+        final VariantFilter variantfilter = makeVariantFilter();
+        final CountingReadFilter readFilter = makeReadFilter();
         // Process each variant in the input stream.
         StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
-                .filter(filter)
+                .filter(variantfilter)
                 .forEach(variant -> {
                     final SimpleInterval variantInterval = new SimpleInterval(variant);
                     apply(variant,
-                            new ReadsContext(reads, variantInterval),
+                            new ReadsContext(reads, variantInterval, readFilter),
                             new ReferenceContext(reference, variantInterval),
                             new FeatureContext(features, variantInterval));
 

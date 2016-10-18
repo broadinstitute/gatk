@@ -14,6 +14,9 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import scala.Tuple2;
 
+import java.util.Collections;
+import java.util.List;
+
 @CommandLineProgramProperties(summary = "Sorts the input SAM/BAM/CRAM",
         oneLineSummary = "SortSam on Spark (works on SAM/BAM/CRAM)",
         programGroup = SparkProgramGroup.class)
@@ -27,8 +30,8 @@ public final class SortReadFileSpark extends GATKSparkTool {
     protected String outputFile;
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return ReadFilterLibrary.ALLOW_ALL_READS;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     @Override

@@ -1,15 +1,18 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.ReadNameReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
+import java.util.Arrays;
+import java.util.Iterator;
 
 public final class ReadsContextUnitTest extends BaseTest {
 
@@ -30,6 +33,36 @@ public final class ReadsContextUnitTest extends BaseTest {
         Assert.assertFalse(readsContext.hasBackingDataSource() && readsContext.getInterval() != null,
                            "Empty ReadsContext reports having both a backing data source and an interval");
         Assert.assertFalse(readsContext.iterator().hasNext(), "Empty ReadsContext should have returned an empty iterator from iterator()");
+    }
+
+    @DataProvider(name = "ReadsContextFilteringDataProvider")
+    public Object[][] getValidReadsContextData() {
+        // Default-constructed ReadsContexts and ReadsContexts constructed from null ReadsDataSources/intervals
+        // should behave as empty context objects.
+        ReadNameReadFilter readNameFilter = new ReadNameReadFilter();
+        readNameFilter.readName = "d";
+        return new Object[][]{
+                {new ReadsContext(
+                        new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new SimpleInterval("1", 200, 210), // query over small interval, with no read filter
+                        ReadFilterLibrary.ALLOW_ALL_READS), new String[] { "a", "b", "c" },
+                },
+                {new ReadsContext(
+                        new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new SimpleInterval("1", 200, 1000), // query over larger interval with readNameFilter on "d"
+                        readNameFilter), new String[] { "d" }
+                }
+        };
+    }
+
+    @Test(dataProvider = "ReadsContextFilteringDataProvider")
+    public void testReadsContextFiltering(final ReadsContext readsContext, String[] expectedReads ) {
+        Assert.assertTrue(readsContext.hasBackingDataSource() && readsContext.getInterval() != null,
+                "Valid ReadsContext reports having no backing data source or interval");
+        Iterator<GATKRead> it = readsContext.iterator();
+        while (it.hasNext()) {
+            Assert.assertTrue(Arrays.asList(expectedReads).contains(it.next().getName()));
+        }
     }
 
 }

@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.StreamSupport;
 
 /**
  * A ReadWalker is a tool that processes a single read at a time from one or multiple sources of reads, with
@@ -34,15 +33,6 @@ public abstract class ReadWalker extends GATKTool {
      * (specifically, the number of additional bases worth of overlapping records to cache when querying feature sources).
      */
     public static final int FEATURE_CACHE_LOOKAHEAD = 1_000;
-
-    /**
-     * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
-     * Uses the read filter plugin.
-     */
-    @Override
-    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
-    }
 
     /**
      * Initialize data sources for traversal.
@@ -109,26 +99,6 @@ public abstract class ReadWalker extends GATKTool {
      */
     SimpleInterval getReadInterval(final GATKRead read) {
         return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
-    }
-
-    /**
-     * Returns the read filter (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation combines the default read filters for this tool (returned by
-     * {@link org.broadinstitute.hellbender.engine.ReadWalker#getDefaultReadFilters} with any read filter command
-     * line arguments specified by the user; wraps each filter in the resulting list with a CountingReadFilter;
-     * and returns a single composite filter resulting from the list by and'ing them together.
-     *
-     * Default tool implementation of {@link #traverse()} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter
-     * objects is strongly discouraged.
-     *
-     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
-     * composition methods.
-     */
-    public CountingReadFilter makeReadFilter(){
-        final GATKReadFilterPluginDescriptor readFilterPlugin =
-                commandLineParser.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        return readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads());
     }
 
     /**

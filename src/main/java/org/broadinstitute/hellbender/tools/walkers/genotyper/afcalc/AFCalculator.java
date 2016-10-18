@@ -1,15 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.Utils;
-
-import java.util.List;
-
 
 /**
  * Generic interface for calculating the probability of alleles segregating given priors and genotype likelihoods

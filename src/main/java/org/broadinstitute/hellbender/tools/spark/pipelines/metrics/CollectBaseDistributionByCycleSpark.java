@@ -51,8 +51,8 @@ public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
     public boolean pfReadsOnly = false;
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return ReadFilterLibrary.ALLOW_ALL_READS;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Arrays.asList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     private static final class HistogramGenerator implements Serializable{

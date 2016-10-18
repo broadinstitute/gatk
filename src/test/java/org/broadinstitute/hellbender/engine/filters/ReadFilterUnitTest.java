@@ -7,6 +7,10 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public final class ReadFilterUnitTest {
 
     // Mirrors CountingReadFilterUnitTest
@@ -110,4 +114,68 @@ public final class ReadFilterUnitTest {
         Assert.assertEquals(readChecksOut.and(r -> false).test(read), false);
         Assert.assertEquals(readChecksOut.or(r -> true).test(read), true);
     }
+
+    @Test
+    public void testFromListNull() {
+        ReadFilter rf = ReadFilter.fromList(null, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
+        Assert.assertTrue(rf.getClass() == ReadFilterLibrary.AllowAllReadsReadFilter.class);
+    }
+    @Test
+    public void testFromListEmpty() {
+        ReadFilter rf = ReadFilter.fromList(Collections.emptyList(), ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
+        Assert.assertTrue(rf.getClass() == ReadFilterLibrary.AllowAllReadsReadFilter.class);
+    }
+
+    @Test
+    public void testFromListSingle() {
+        List<ReadFilter> filters = new ArrayList<>();
+        filters.add(ReadFilterLibrary.MAPPED);
+        ReadFilter rf = ReadFilter.fromList(filters, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
+        Assert.assertTrue(rf.getClass() == ReadFilterLibrary.MAPPED.getClass());
+    }
+
+    @Test
+    public void testFromListMultiOrdered() {
+        List<ReadFilter> filters = new ArrayList<>();
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.GOOD_CIGAR);
+        filters.add(ReadFilterLibrary.FIRST_OF_PAIR);
+
+        // Since we want to ensure that order of the input is honored, we need to test the
+        // structure of the filter rather than the result
+        ReadFilter rf = ReadFilter.fromList(filters, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
+
+        int count = verifyAndFilterOrder(
+                rf,
+                new String[] {
+                        ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE.getClass().getSimpleName(),
+                        ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                        ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
+                        ReadFilterLibrary.FIRST_OF_PAIR.getClass().getSimpleName()
+                }
+        );
+        Assert.assertEquals(count, 4);
+    }
+
+    public static int verifyAndFilterOrder(final ReadFilter rf, final String[] expectedOrder) {
+        Assert.assertEquals(rf.getClass(), ReadFilter.ReadFilterAnd.class);
+        return verifyAndFilterOrder((ReadFilter.ReadFilterAnd) rf, expectedOrder);
+    }
+
+    public static int verifyAndFilterOrder(final ReadFilter.ReadFilterAnd rf, final String[] expectedOrder) {
+        if (rf.lhs instanceof ReadFilter.ReadFilterAnd) {
+            int count = verifyAndFilterOrder((ReadFilter.ReadFilterAnd) rf.lhs, expectedOrder);
+            Assert.assertEquals(expectedOrder[count], rf.rhs.getClass().getSimpleName());
+            return ++count;
+        } else {
+            int count = 0;
+            Assert.assertEquals(expectedOrder[count], rf.lhs.getClass().getSimpleName());
+            count++;
+            Assert.assertEquals(expectedOrder[count], rf.rhs.getClass().getSimpleName());
+            count++;
+            return count;
+        }
+    }
+
 }

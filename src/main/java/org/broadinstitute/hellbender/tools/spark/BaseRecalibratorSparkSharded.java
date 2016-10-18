@@ -91,7 +91,7 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         SAMFileHeader readsHeader = new ReadsSparkSource(ctx, readArguments.getReadValidationStringency()).getHeader(bam, referenceURL, auth);
         final SAMSequenceDictionary readsDictionary = readsHeader.getSequenceDictionary();
         final SAMSequenceDictionary refDictionary = rds.getReferenceSequenceDictionary(readsDictionary);
-        final ReadFilter readFilterToApply = BaseRecalibrator.getStandardBQSRReadFilter(readsHeader);
+        final ReadFilter readFilterToApply = ReadFilter.fromList(BaseRecalibrator.getStandardBQSRReadFilterList(), readsHeader);
 
         SequenceDictionaryUtils.validateDictionaries("reference", refDictionary, "reads", readsDictionary);
 

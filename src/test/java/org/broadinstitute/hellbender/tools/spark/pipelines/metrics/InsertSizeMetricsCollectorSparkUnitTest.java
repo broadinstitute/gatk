@@ -87,10 +87,7 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         List<ReadFilter> readFilters = isSpark.getDefaultReadFilters();
         readFilters.stream().filter(
                 f -> !f.getClass().getSimpleName().equals(ReadFilterLibrary.FirstOfPairReadFilter.class.getSimpleName()));
-        readFilters.forEach(f -> f.setHeader(samHeader));
-        ReadFilter rf = readFilters.stream().reduce(
-                ReadFilterLibrary.ALLOW_ALL_READS,
-                (rf1, rf2) -> rf1.and(rf2));
+        ReadFilter rf = ReadFilter.fromList(readFilters, samHeader);
 
         // Force the input RDD to be split into two partitions to ensure that the
         // reduce/combiners run

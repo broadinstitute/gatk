@@ -69,12 +69,14 @@ public final class PileupSpark extends LocusWalkerSpark {
     public boolean outputInsertLength = false;
 
     @Override
-    public ReadFilter makeReadFilter(){
-        return ReadFilterLibrary.MAPPED
-                .and(ReadFilterLibrary.NOT_DUPLICATE)
-                .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
-                .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
-                .and(new WellformedReadFilter(getHeaderForReads()));
+    public List<ReadFilter> getDefaultReadFilters() {
+        List<ReadFilter> filterList = new ArrayList<>(5);
+        filterList.add(ReadFilterLibrary.MAPPED);
+        filterList.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filterList.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        filterList.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filterList.add(new WellformedReadFilter());
+        return filterList;
     }
 
     @Override

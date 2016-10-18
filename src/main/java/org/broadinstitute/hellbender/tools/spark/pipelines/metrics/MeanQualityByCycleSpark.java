@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.io.File;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -62,8 +63,8 @@ public final class MeanQualityByCycleSpark extends GATKSparkTool {
     public boolean pfReadsOnly = false;
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return ReadFilterLibrary.ALLOW_ALL_READS;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     @VisibleForTesting
