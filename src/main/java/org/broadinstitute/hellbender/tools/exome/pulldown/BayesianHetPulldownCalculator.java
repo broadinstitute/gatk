@@ -55,7 +55,7 @@ public final class BayesianHetPulldownCalculator {
 
     private final HeterozygousPileupPriorModel hetPrior;
 
-    private static final Nucleotide[] BASES = {Nucleotide.A, Nucleotide.C, Nucleotide.T, Nucleotide.G};
+    private static final Nucleotide[] PROPER_BASES = {Nucleotide.A, Nucleotide.C, Nucleotide.T, Nucleotide.G};
 
     private final File refFile;
     private final IntervalList snpIntervals;
@@ -67,9 +67,6 @@ public final class BayesianHetPulldownCalculator {
 
     /* experimental */
     private final double errorProbabilityAdjustmentFactor;
-
-    /* interval threshold for indexing for SamLocusIterator */
-    private static final int MAX_INTERVALS_FOR_INDEX = 25000;
 
     /* default priors */
     private static final double DEFAULT_PRIOR_REF_HOM = 0.5; /* a homozygous site being the ref allele */
@@ -184,6 +181,20 @@ public final class BayesianHetPulldownCalculator {
     }
 
     /**
+     * Checks of a given base is in PROPER_BASES
+     * @param base a nucleotide
+     * @return boolean
+     */
+    private boolean isProperBase(final Nucleotide base) {
+        for (final Nucleotide properBase : PROPER_BASES) {
+            if (base.equals(properBase)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Returns map of base-pair to error probabilities at a given locus. All reads are considered (not just ACTG)
      * @param locus locus
      * @return map of base-pair to error probabilities
@@ -196,13 +207,15 @@ public final class BayesianHetPulldownCalculator {
                                 errorProbabilityAdjustmentFactor * QualityUtils.qualToErrorProb(rp.getBaseQuality()),
                                 errorProbabilityAdjustmentFactor * QualityUtils.qualToErrorProb(rp.getRecord().getMappingQuality())
                         )
-                )).collect(Collectors.groupingBy(
+                ))
+                .filter(rp -> isProperBase(rp.getLeft()))
+                .collect(Collectors.groupingBy(
                         ImmutablePair::getLeft,
                         Collectors.mapping(ImmutablePair::getRight, Collectors.toList()))
                 );
 
         /* make sure that the main bases {A, C, T, G} are included in the map */
-        for (final Nucleotide base : BASES) {
+        for (final Nucleotide base : PROPER_BASES) {
             if (!baseQualities.containsKey(base)) {
                 baseQualities.put(base, new ArrayList<>());
             }
@@ -253,7 +266,7 @@ public final class BayesianHetPulldownCalculator {
     static Nucleotide inferAltFromPileup(final Map<Nucleotide, List<BaseQuality>> baseQualities,
                                                 final Nucleotide refBase) {
         /* sort the bases in the descending order by their frequency */
-        final Nucleotide[] bases = BASES.clone();
+        final Nucleotide[] bases = PROPER_BASES.clone();
         Arrays.sort(bases, (L, R) -> Integer.compare(baseQualities.get(R).size(), baseQualities.get(L).size()));
         /* pick the base with highest frequency, skip over ref */
         for (Nucleotide base : bases) {
@@ -275,7 +288,7 @@ public final class BayesianHetPulldownCalculator {
      * @return a SamLocusIterator object
      */
     private SamLocusIterator getSamLocusIteratorWithDefaultFilters(final SamReader samReader) {
-        final SamLocusIterator locusIterator = new SamLocusIterator(samReader, snpIntervals, true);
+        final SamLocusIterator locusIterator = new SamLocusIterator(samReader, snpIntervals, false);
 
         /* set read and locus filters */
         final List<SamRecordFilter> samFilters = Arrays.asList(new NotPrimaryAlignmentFilter(),
@@ -333,10 +346,16 @@ public final class BayesianHetPulldownCalculator {
                 if (totalReadCount <= readDepthThreshold) {
                     continue;
                 }
-
-                final Map<Nucleotide, List<BaseQuality>> baseQualities = getPileupBaseQualities(locus);
                 final Nucleotide refBase = Nucleotide.valueOf(refWalker.get(locus.getSequenceIndex())
                         .getBases()[locus.getPosition() - 1]);
+                if (!isProperBase(refBase)) {
+                    logger.warn(String.format("The reference position at %d has an unknown base call (value: %s). Even though" +
+                            " this position is indicated to be a possible heterozygous SNP in the provided SNP interval list," +
+                            " no inference can be made. Continuing ...", locus.getPosition(), refBase.toString()));
+                    continue;
+                }
+
+                final Map<Nucleotide, List<BaseQuality>> baseQualities = getPileupBaseQualities(locus);
                 final Nucleotide altBase = inferAltFromPileup(baseQualities, refBase);
 
                 /* calculate Het log odds */
