@@ -11,6 +11,7 @@ import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
 import htsjdk.samtools.util.CloseableIterator;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -40,7 +41,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
         private boolean done = false;
 
         public ReadsIterator() throws IOException {
-            Path fpath = BucketUtils.getPathOnGcs(path);
+            Path fpath = IOUtils.getPath(path);
             byte[] indexData = index;
             SeekableStream indexInMemory = new ByteArraySeekableStream(indexData);
             SeekableByteChannelPrefetcher chan = new SeekableByteChannelPrefetcher(Files.newByteChannel(fpath), BUFSIZE);

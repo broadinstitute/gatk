@@ -12,6 +12,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -178,4 +180,17 @@ public final class IOUtilsUnitTest extends BaseTest {
         IOUtils.assertFileIsReadable(new File(publicTestDir + "foo/bar/NON_EXISTENT_FILE_FOR_IOUTILS_AssertFileIsReadableNonExistentFile"));
     }
 
+
+    @Test(groups={"bucket"})
+    public void testGetPath() throws IOException {
+        innerTestGetPath(getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
+        innerTestGetPath("file://" + NA12878_20_21_WGS_bam);
+        innerTestGetPath(NA12878_20_21_WGS_bam);
+    }
+
+    private void innerTestGetPath(String s) throws IOException {
+        Path p = IOUtils.getPath(s);
+        long size = Files.size(p);
+        Assert.assertTrue(size>0);
+    }
 }

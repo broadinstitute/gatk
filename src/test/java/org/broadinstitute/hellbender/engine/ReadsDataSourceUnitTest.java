@@ -6,31 +6,33 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.*;
 
 public final class ReadsDataSourceUnitTest extends BaseTest {
     private static final String READS_DATA_SOURCE_TEST_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/engine/";
-    private static final File FIRST_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
-    private static final File SECOND_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
-    private static final File THIRD_TEST_BAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
-    private static final File FIRST_TEST_SAM = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "invalid_coord_sort_order.sam");
+    private final Path FIRST_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test1.bam");
+    private final Path SECOND_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test2.bam");
+    private final Path THIRD_TEST_BAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "reads_data_source_test3.bam");
+    private final Path FIRST_TEST_SAM = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "invalid_coord_sort_order.sam");
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFile() {
-        File nullFile = null;
+        Path nullFile = null;
         ReadsDataSource readsSource = new ReadsDataSource(nullFile);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testHandleNullFileList() {
-        List<File> nullList = null;
+        List<Path> nullList = null;
         ReadsDataSource readsSource = new ReadsDataSource(nullList);
     }
 
@@ -41,14 +43,14 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.CouldNotReadInputFile.class)
     public void testHandleNonExistentFile() {
-        new ReadsDataSource(BaseTest.getSafeNonExistentFile("nonexistent.bam"));
+        new ReadsDataSource(BaseTest.getSafeNonExistentPath("nonexistent.bam"));
     }
 
     @Test(expectedExceptions = UserException.class)
     public void testHandleUnindexedFileWithIntervals() {
         // Cannot initialize a reads source with intervals unless all files are indexed
-        final File unindexed = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
-        Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file. " + unindexed.getAbsolutePath());
+        final Path unindexed = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
+        Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file. " + unindexed.toAbsolutePath());
         ReadsDataSource readsSource = new ReadsDataSource(unindexed);
         readsSource.setTraversalBounds(Arrays.asList(new SimpleInterval("1", 1, 5)));
     }
@@ -56,8 +58,8 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(expectedExceptions = UserException.class)
     public void testHandleUnindexedFileQuery() {
         // Construction should succeed, since we don't pass in any intervals, but the query should throw.
-        final File unindexed = new File(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
-        Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file" + unindexed.getAbsolutePath());
+        final Path unindexed = IOUtils.getPath(READS_DATA_SOURCE_TEST_DIRECTORY + "unindexed.bam");
+        Assert.assertNull(SamFiles.findIndex(unindexed), "Expected file to have no index, but found an index file" + unindexed.toAbsolutePath());
         ReadsDataSource readsSource = new ReadsDataSource(unindexed);
         readsSource.query(new SimpleInterval("1", 1, 5));
     }
@@ -93,7 +95,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "SingleFileCompleteTraversalData")
-    public void testSingleFileCompleteTraversal( final File samFile, final List<String> expectedReadNames ) {
+    public void testSingleFileCompleteTraversal( final Path samFile, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
             List<GATKRead> reads = new ArrayList<>();
             for ( GATKRead read : readsSource ) {
@@ -101,11 +103,11 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             }
     
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.getAbsolutePath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in complete traversal of " + samFile.toAbsolutePath());
     
             // Make sure we got the reads we expected in the right order
             for ( int readIndex = 0; readIndex < reads.size(); ++readIndex ) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.getAbsolutePath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in complete traversal of " + samFile.toAbsolutePath() + " not equal to expected read");
             }
         }
     }
@@ -142,7 +144,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
-    public void testSingleFileTraversalWithIntervals( final File samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
+    public void testSingleFileTraversalWithIntervals( final Path samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
             readsSource.setTraversalBounds(intervals);
 
@@ -152,11 +154,11 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             }
 
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.getAbsolutePath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.toAbsolutePath());
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.getAbsolutePath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.toAbsolutePath() + " not equal to expected read");
             }
         }
     }
@@ -193,7 +195,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "SingleFileQueryByIntervalData")
-    public void testSingleFileQueryByInterval( final File samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
+    public void testSingleFileQueryByInterval( final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
 
             List<GATKRead> reads = new ArrayList<>();
@@ -203,11 +205,11 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             }
 
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.getAbsolutePath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in query by interval of " + samFile.toAbsolutePath());
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.getAbsolutePath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in query by interval of " + samFile.toAbsolutePath() + " not equal to expected read");
             }
         }
     }
@@ -216,15 +218,15 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     public Object[][] getMultipleFilesCompleteTraversalData() {
         // Files, with expected read names in the expected order
         return new Object[][] {
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM), Arrays.<String>asList("a", "b", "l", "c", "m", "n", "d", "e", "o", "f", "p", "g", "h", "q", "r", "s", "t", "i", "j", "u", "v", "k") },
-                { Arrays.<File>asList(SECOND_TEST_BAM, THIRD_TEST_BAM), Arrays.<String>asList("l", "m", "n", "o", "p", "q", "r", "s", "w", "t", "x", "u", "v", "y", "z") },
-                { Arrays.<File>asList(FIRST_TEST_BAM, THIRD_TEST_BAM), Arrays.<String>asList("a", "b", "c", "d", "e", "f", "g", "h", "w", "x", "i", "j", "y", "k", "z") },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM), Arrays.<String>asList("a", "b", "l", "c", "m", "n", "d", "e", "o", "f", "p", "g", "h", "q", "r", "s", "w", "t", "x", "i", "j", "u", "v", "y", "k", "z") }
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM), Arrays.<String>asList("a", "b", "l", "c", "m", "n", "d", "e", "o", "f", "p", "g", "h", "q", "r", "s", "t", "i", "j", "u", "v", "k") },
+                { Arrays.<Path>asList(SECOND_TEST_BAM, THIRD_TEST_BAM), Arrays.<String>asList("l", "m", "n", "o", "p", "q", "r", "s", "w", "t", "x", "u", "v", "y", "z") },
+                { Arrays.<Path>asList(FIRST_TEST_BAM, THIRD_TEST_BAM), Arrays.<String>asList("a", "b", "c", "d", "e", "f", "g", "h", "w", "x", "i", "j", "y", "k", "z") },
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM), Arrays.<String>asList("a", "b", "l", "c", "m", "n", "d", "e", "o", "f", "p", "g", "h", "q", "r", "s", "w", "t", "x", "i", "j", "u", "v", "y", "k", "z") }
         };
     }
 
     @Test(dataProvider = "MultipleFilesCompleteTraversalData")
-    public void testMultipleFilesCompleteTraversal(final List<File> samFiles, final List<String> expectedReadNames) {
+    public void testMultipleFilesCompleteTraversal(final List<Path> samFiles, final List<String> expectedReadNames) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
             List<GATKRead> reads = new ArrayList<>();
 
@@ -246,27 +248,27 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     public Object[][] getMultipleFilesTraversalWithIntervalsData() {
         // Files, with intervals, and expected read names in the expected order
         return new Object[][] {
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   Arrays.<SimpleInterval>asList(new SimpleInterval("1", 205, 207), new SimpleInterval("1", 400, 1000), new SimpleInterval("4", 500, 704)),
                   Arrays.<String>asList("a", "b", "l", "n", "d", "y", "k")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   Arrays.<SimpleInterval>asList(new SimpleInterval("4", 500, 704), new SimpleInterval("1", 400, 1000), new SimpleInterval("1", 205, 207)),
                   Arrays.<String>asList("a", "b", "l", "n", "d", "y", "k")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   Arrays.<SimpleInterval>asList(new SimpleInterval("2", 500, 600), new SimpleInterval("2", 2099, 2200), new SimpleInterval("3", 50, 100), new SimpleInterval("3", 300, 500)),
                   Arrays.<String>asList("f", "p", "g", "s", "w", "i", "j", "u")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   Arrays.<SimpleInterval>asList(new SimpleInterval("1", 1, 300), new SimpleInterval("1", 100, 500), new SimpleInterval("1", 200, 600)),
                   Arrays.<String>asList("a", "b", "l", "c", "m", "n")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   Arrays.<SimpleInterval>asList(new SimpleInterval("1", 11000, 12000), new SimpleInterval("3", 1000, 2000)),
                   Arrays.<String>asList()
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   Arrays.<SimpleInterval>asList(new SimpleInterval("1", 1, 16000), new SimpleInterval("2", 1, 16000), new SimpleInterval("3", 1, 16000), new SimpleInterval("4", 1, 16000)),
                   Arrays.<String>asList("a", "b", "l", "c", "m", "n", "d", "e", "o", "f", "p", "g", "h", "q", "r", "s", "w", "t", "x", "i", "j", "u", "v", "y", "k", "z")
                 }
@@ -274,7 +276,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
-    public void testMultipleFilesTraversalWithIntervals( final List<File> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
+    public void testMultipleFilesTraversalWithIntervals( final List<Path> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
             readsSource.setTraversalBounds(intervals);
 
@@ -297,23 +299,23 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     public Object[][] getMultipleFilesQueryByIntervalData() {
         // Files, with a single query interval, and expected read names in the expected order
         return new Object[][] {
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   new SimpleInterval("1", 285, 1000),
                   Arrays.<String>asList("c", "m", "n", "d")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   new SimpleInterval("3", 200, 300),
                   Arrays.<String>asList("t", "x", "i")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   new SimpleInterval("1", 9000, 11000),
                   Arrays.<String>asList("o")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   new SimpleInterval("3", 1, 16000),
                   Arrays.<String>asList("w", "t", "x", "i", "j", "u", "v")
                 },
-                { Arrays.<File>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
+                { Arrays.<Path>asList(FIRST_TEST_BAM, SECOND_TEST_BAM, THIRD_TEST_BAM),
                   new SimpleInterval("2", 10000, 12000),
                   Arrays.<String>asList()
                 }
@@ -321,7 +323,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "MultipleFilesQueryByIntervalData")
-    public void testMultipleFilesQueryByInterval( final List<File> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
+    public void testMultipleFilesQueryByInterval( final List<Path> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
 
             List<GATKRead> reads = new ArrayList<>();
@@ -343,15 +345,15 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @DataProvider(name = "TraversalWithUnmappedReadsTestData")
     public Object[][] traversalWithUnmappedReadsTestData() {
         // This bam has only mapped reads
-        final File mappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
+        final Path mappedBam = IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam");
 
         // This bam has mapped reads from various contigs, plus a few unmapped reads with no mapped mate
-        final File unmappedBam = new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
+        final Path unmappedBam = IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam");
 
         // This is a snippet of the CEUTrio.HiSeq.WGS.b37.NA12878 bam from large, with mapped reads
         // from chromosome 20 (with one mapped read having an unmapped mate), plus several unmapped
         // reads with no mapped mate.
-        final File ceuSnippet = new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
+        final Path ceuSnippet = IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam");
 
         return new Object[][] {
                 // One interval, no unmapped
@@ -394,7 +396,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "TraversalWithUnmappedReadsTestData")
-    public void testTraversalWithUnmappedReads( final File samFile, final List<SimpleInterval> queryIntervals, final boolean queryUnmapped, final List<String> expectedReadNames ) {
+    public void testTraversalWithUnmappedReads( final Path samFile, final List<SimpleInterval> queryIntervals, final boolean queryUnmapped, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
             readsSource.setTraversalBounds(queryIntervals, queryUnmapped);
 
@@ -411,11 +413,11 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             }
 
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.getAbsolutePath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in traversal by intervals of " + samFile.toAbsolutePath());
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.getAbsolutePath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in traversal by intervals of " + samFile.toAbsolutePath() + " not equal to expected read");
             }
         }
     }
@@ -423,13 +425,13 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @DataProvider(name = "QueryUnmappedTestData")
     public Object[][] queryUnmappedTestData() {
         return new Object[][] {
-                { new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
-                { new File(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam"), Arrays.asList("g", "h", "h", "i", "i") }
+                { IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1_with_unmapped.bam"), Arrays.asList("u1", "u2", "u3", "u4", "u5") },
+                { IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/CEUTrio.HiSeq.WGS.b37.NA12878.snippet_with_unmapped.bam"), Arrays.asList("g", "h", "h", "i", "i") }
         };
     }
 
     @Test(dataProvider = "QueryUnmappedTestData")
-    public void testQueryUnmapped( final File samFile, final List<String> expectedReadNames ) {
+    public void testQueryUnmapped( final Path samFile, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
             List<GATKRead> reads = new ArrayList<>();
             Iterator<GATKRead> queryIterator = readsSource.queryUnmapped();
@@ -438,11 +440,11 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             }
 
             // Make sure we got the right number of reads
-            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in queryUnmapped on " + samFile.getAbsolutePath());
+            Assert.assertEquals(reads.size(), expectedReadNames.size(), "Wrong number of reads returned in queryUnmapped on " + samFile.toAbsolutePath());
 
             // Make sure we got the reads we expected in the right order
             for (int readIndex = 0; readIndex < reads.size(); ++readIndex) {
-                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in queryUnmapped on " + samFile.getAbsolutePath() + " not equal to expected read");
+                Assert.assertEquals(reads.get(readIndex).getName(), expectedReadNames.get(readIndex), "Read #" + (readIndex + 1) + " in queryUnmapped on " + samFile.toAbsolutePath() + " not equal to expected read");
             }
         }
     }

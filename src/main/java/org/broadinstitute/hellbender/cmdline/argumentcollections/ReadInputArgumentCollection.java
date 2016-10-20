@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 
 
@@ -25,6 +26,12 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
             common=true,
             optional=true)
     public ValidationStringency readValidationStringency = ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY;
+
+    /**
+     * Get the list of BAM/SAM/CRAM files specified at the command line.
+     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     */
+    public abstract List<Path> getReadPaths();
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line

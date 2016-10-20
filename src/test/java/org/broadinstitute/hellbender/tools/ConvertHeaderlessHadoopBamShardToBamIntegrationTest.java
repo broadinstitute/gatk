@@ -27,7 +27,7 @@ public class ConvertHeaderlessHadoopBamShardToBamIntegrationTest extends Command
         runCommandLine(args);
 
         int actualCount = 0;
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(output) ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(output.toPath()) ) {
             for ( final GATKRead read : readsSource ) { ++actualCount; }
         }
 

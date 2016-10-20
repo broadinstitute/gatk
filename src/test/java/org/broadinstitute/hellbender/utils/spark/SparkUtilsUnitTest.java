@@ -27,7 +27,7 @@ public class SparkUtilsUnitTest extends BaseTest {
         final int expectedReadCount = 11;
 
         boolean shardIsNotValidBam = false;
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(bamShard) ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bamShard.toPath()) ) {
             for ( final GATKRead read : readsSource ) {}
         }
         catch ( SAMFormatException e ) {
@@ -47,7 +47,7 @@ public class SparkUtilsUnitTest extends BaseTest {
         SparkUtils.convertHeaderlessHadoopBamShardToBam(bamShard, header, output);
 
         int actualCount = 0;
-        try ( final ReadsDataSource readsSource = new ReadsDataSource(output) ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(output.toPath()) ) {
             for ( final GATKRead read : readsSource ) { ++actualCount; }
         }
 

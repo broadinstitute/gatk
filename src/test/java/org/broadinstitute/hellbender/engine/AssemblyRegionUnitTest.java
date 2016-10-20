@@ -11,6 +11,8 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -21,6 +23,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 
 
@@ -394,7 +398,7 @@ public final class AssemblyRegionUnitTest extends BaseTest {
 
     @Test
     public void testCreateFromReadShard() {
-        final File testBam = new File(NA12878_20_21_WGS_bam);
+        final Path testBam = IOUtils.getPath(NA12878_20_21_WGS_bam);
         final File reference = new File(b37_reference_20_21);
         final SimpleInterval shardInterval = new SimpleInterval("20", 10000000, 10001000);
         final SimpleInterval paddedShardInterval = new SimpleInterval(shardInterval.getContig(), shardInterval.getStart() - 100, shardInterval.getEnd() + 100);
