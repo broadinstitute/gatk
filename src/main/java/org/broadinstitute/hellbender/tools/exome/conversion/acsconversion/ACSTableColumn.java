@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.acsconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.acsconversion;
 
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 

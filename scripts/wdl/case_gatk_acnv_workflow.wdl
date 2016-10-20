@@ -65,7 +65,7 @@ workflow case_gatk_acnv_workflow {
 
     # Workflow output directories and other options
     String plots_dir
-    String call_balanced_dir
+    String conversion_dir
     Boolean enable_gc_correction
     Boolean isWGS
     Int wgsBinSize
@@ -230,14 +230,14 @@ workflow case_gatk_acnv_workflow {
           mem=4
     }
 
-    call AllelicBalanceCaller {
+    call ConvertACNVResults {
       input:
           entity_id=row[0],
           gatk_jar=gatk_jar,
           tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           acnv_segments=AllelicCNV.acnv_final_segs,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
-          output_dir="${call_balanced_dir}CallBalanced/${row[0]}",
+          output_dir="${conversion_dir}CallBalanced/${row[0]}",
           mem=4
     }
 
@@ -700,8 +700,7 @@ task PlotACNVResults {
     }
 }
 
-# Call ACNV segments as balanced
-task AllelicBalanceCaller {
+task ConvertACNVResults {
     String entity_id
     String gatk_jar
     File tumor_hets
@@ -712,7 +711,7 @@ task AllelicBalanceCaller {
 
     command {
         mkdir -p ${output_dir} && \
-        java -Xmx${mem}g -jar ${gatk_jar} CallAllelicSplits --tumorHets ${tumor_hets} \
+        java -Xmx${mem}g -jar ${gatk_jar} ConvertACNVResults --tumorHets ${tumor_hets} \
          --segments ${acnv_segments} --tangentNormalized ${tn_file} \
          --outputDir ${output_dir}
     }

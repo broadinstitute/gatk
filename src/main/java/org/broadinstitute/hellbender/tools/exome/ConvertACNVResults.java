@@ -9,36 +9,27 @@ import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.acnvconversion.ACNVModeledSegmentConversionUtils;
-import org.broadinstitute.hellbender.tools.exome.acsconversion.ACSModeledSegmentUtils;
-import org.broadinstitute.hellbender.tools.exome.allelicbalancecaller.AllelicSplitCall;
-import org.broadinstitute.hellbender.tools.exome.allelicbalancecaller.CNLOHCaller;
-import org.broadinstitute.hellbender.tools.exome.titanconversion.TitanFileConverter;
+import org.broadinstitute.hellbender.tools.exome.conversion.acnvconversion.ACNVModeledSegmentConversionUtils;
+import org.broadinstitute.hellbender.tools.exome.conversion.acsconversion.ACSModeledSegmentUtils;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicSplitCall;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.CNLOHCaller;
+import org.broadinstitute.hellbender.tools.exome.conversion.titanconversion.TitanFileConverter;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * CLI for calling ACNV segments as CNLoH and Balanced.  Additionally, provides some useful conversions of the ACNV
- * output file:
- *  - GATK CNV (total copy ratio)
- *  - Broad CGA Allelic CapSeg
- *  - TITAN
- * REQUIRES Apache Spark
- *
- */
 @CommandLineProgramProperties(
 
-        summary = "Call whether the segments are balanced (MAF = 0.5).  For detailed explanation, please see the docs.  " +
-                "NOTE: This tool only works with diploid organisms.  This tool also converts files into TITAN and " +
-                "Broad CGA Allelic CapSeg formats.  This tool uses spark, though running locally is fine.\n" +
+        summary = "Convert files into TITAN and " +
+                "Broad CGA Allelic CapSeg (ACS) formats.  This tool uses spark, though running locally is fine.\n" +
+                "As part of this process, this tool generates calls whether a particular segment is balanced (MAF=0.5)" +
                 "\nIMPORTANT:  The additional CNLoH calls from this tool should be treated with a lot of skepticism.  Preliminary results " +
                 "indicated very poor performance.",
-        oneLineSummary = "Call whether segments are balanced (i.e. MAF=0.5) and write ACS and TITAN files converted from ACNV.",
+        oneLineSummary = "Convert ACNV results to Broad CGA Allelic CapSeg (ACS) and TITAN files.",
         programGroup = CopyNumberProgramGroup.class
 )
-public class CallAllelicSplits extends SparkCommandLineProgram {
+public class ConvertACNVResults extends SparkCommandLineProgram {
 
     static final long serialVersionUID = 42123132L;
 
@@ -74,24 +65,24 @@ public class CallAllelicSplits extends SparkCommandLineProgram {
 
     @Argument(
             doc = "(Advanced) Minimum rho (CCF*purity) to allow in calls.  Decreasing this value can yield false positives for CN LoH and false negatives for balanced segments.",
-            shortName = CallAllelicSplits.RHO_SHORT_NAME,
-            fullName =  CallAllelicSplits.RHO_LONG_NAME,
+            shortName = ConvertACNVResults.RHO_SHORT_NAME,
+            fullName =  ConvertACNVResults.RHO_LONG_NAME,
             optional = true
     )
     protected double rhoThreshold = CNLOHCaller.RHO_THRESHOLD_DEFAULT;
 
     @Argument(
             doc = "(Advanced) Number of iterations to perform for EM step in calling..",
-            shortName = CallAllelicSplits.NUM_ITERATIONS_SHORT_NAME,
-            fullName =  CallAllelicSplits.NUM_ITERATIONS_LONG_NAME,
+            shortName = ConvertACNVResults.NUM_ITERATIONS_SHORT_NAME,
+            fullName =  ConvertACNVResults.NUM_ITERATIONS_LONG_NAME,
             optional = true
     )
     protected int numIterations = DEFAULT_NUM_ITERATIONS;
 
     @Argument(
             doc = "Output directory to save all files.  This will be created if it does not already exist.",
-            shortName = CallAllelicSplits.OUTPUT_DIR_SHORT_NAME,
-            fullName =  CallAllelicSplits.OUTPUT_DIR_LONG_NAME,
+            shortName = ConvertACNVResults.OUTPUT_DIR_SHORT_NAME,
+            fullName =  ConvertACNVResults.OUTPUT_DIR_LONG_NAME,
             optional = false
     )
     protected File outputDir;
@@ -170,6 +161,4 @@ public class CallAllelicSplits extends SparkCommandLineProgram {
     private String getSegmentsBaseFilename() {
         return FilenameUtils.removeExtension(new File(segmentsFile).getAbsoluteFile().getName());
     }
-
-
 }

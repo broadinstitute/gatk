@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.allelicbalancecaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.acnvconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.acnvconversion;
 
 import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.tools.pon.coverage.pca.PCATangentNormalizationUtils;

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.allelicbalancecaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;

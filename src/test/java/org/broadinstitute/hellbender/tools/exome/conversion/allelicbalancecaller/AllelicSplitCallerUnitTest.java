@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.allelicbalancecaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import org.apache.commons.math3.util.Pair;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -18,7 +18,7 @@ import java.util.List;
 
 public class AllelicSplitCallerUnitTest extends BaseTest {
 
-    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/allelicbalancecaller/";
+    private static final String TEST_DIR = "src/test/resources/org/broadinstitute/hellbender/tools/exome/conversion/allelicbalancecaller/";
     private static final File ACNV_SEG_FILE = new File(TEST_DIR, "cell_line-sim-final.seg");
 
     @Test

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.allelicbalancecaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.math3.analysis.UnivariateFunction;

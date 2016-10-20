@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.titanconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.titanconversion;
 
 import java.util.Arrays;
 import java.util.Collections;

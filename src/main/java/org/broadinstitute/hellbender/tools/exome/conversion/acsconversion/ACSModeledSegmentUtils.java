@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.acsconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.acsconversion;
 
 
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -6,8 +6,8 @@ import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.Genome;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
-import org.broadinstitute.hellbender.tools.exome.allelicbalancecaller.AllelicBalanceCall;
-import org.broadinstitute.hellbender.tools.exome.allelicbalancecaller.AllelicSplitCall;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicBalanceCall;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicSplitCall;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
