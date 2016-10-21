@@ -279,7 +279,7 @@ public class CNLOHCaller implements Serializable {
      * @param ctx This call requires Spark, so not {@code null}
      * @return Never {@code null}
      */
-    public List<AllelicSplitCall> makeCalls(final List<ACNVModeledSegment> segments, final int numIterations, final JavaSparkContext ctx) {
+    public List<AllelicCalls> makeCalls(final List<ACNVModeledSegment> segments, final int numIterations, final JavaSparkContext ctx) {
         ParamUtils.isPositive(numIterations, "Must be more than zero iterations.");
         Utils.nonNull(segments);
         Utils.nonNull(ctx, "Java SparkContext can't be null when attempting to make CNLOH and balance calls.");
@@ -293,7 +293,7 @@ public class CNLOHCaller implements Serializable {
         // Create a Spark RDD for the segments.
         final JavaRDD<ACNVModeledSegment> segs = ctx.parallelize(segments);
 
-        List<AllelicSplitCall> allelicSplitCalls = null;
+        List<AllelicCalls> allelicCallses = null;
 
         // for each iteration
         for (int i = 1; i <= numIterations; i++) {
@@ -348,16 +348,16 @@ public class CNLOHCaller implements Serializable {
             // This only really needs to  be done once, but is necessary here due to scoping issues that will cause
             //  compiler issues.
             logger.info("Updating calls (iteration " + i + " of " + numIterations +  ") ... ");
-            allelicSplitCalls = createCNLoHCalls(segments, state, responsibilitiesForSegsAsList);
+            allelicCallses = createCNLoHCalls(segments, state, responsibilitiesForSegsAsList);
         }
         logger.info("ACNV segments bias, variance (around copy neutral only): " + segmentMeanBiasInCR + ", " + segmentMeanVarianceInCR);
         logger.info("Output file is not adjusted for the bias and variance.  No user action required.");
-        return allelicSplitCalls;
+        return allelicCallses;
     }
 
-    private List<AllelicSplitCall> createCNLoHCalls(final List<ACNVModeledSegment> segments, final AllelicBalanceCallerModelState state, final List<double[][][]> responsibilitiesForSegs) {
+    private List<AllelicCalls> createCNLoHCalls(final List<ACNVModeledSegment> segments, final AllelicBalanceCallerModelState state, final List<double[][][]> responsibilitiesForSegs) {
 
-        final List<AllelicSplitCall> allelicSplitCalls = segments.stream().map(AllelicSplitCall::new).collect(Collectors.toList());
+        final List<AllelicCalls> allelicCallses = segments.stream().map(AllelicCalls::new).collect(Collectors.toList());
 
         final List<Pair<Integer, Integer>> maxMIdxNIdxPerSeg = IntStream.range(0, segments.size()).boxed()
                 .map(s -> max2dIndices(sumOverFirstDimension(responsibilitiesForSegs.get(s))))
@@ -372,34 +372,34 @@ public class CNLOHCaller implements Serializable {
         final int[] calledNPerSeg = maxMIdxNIdxPerSeg.stream().mapToInt(p -> state.getnVals()[p.getSecond()]).toArray();
 
         // Set the rho, M, N, FCr, and FMaf for the call
-        for (int s = 0; s < allelicSplitCalls.size(); s ++) {
-            final AllelicSplitCall allelicSplitCallForSeg = allelicSplitCalls.get(s);
-            allelicSplitCallForSeg.setRho(calledRhoPerSeg[s]);
-            allelicSplitCallForSeg.setM(calledMPerSeg[s]);
-            allelicSplitCallForSeg.setN(calledNPerSeg[s]);
-            allelicSplitCallForSeg.setfCr(
+        for (int s = 0; s < allelicCallses.size(); s ++) {
+            final AllelicCalls allelicCallsForSeg = allelicCallses.get(s);
+            allelicCallsForSeg.setRho(calledRhoPerSeg[s]);
+            allelicCallsForSeg.setM(calledMPerSeg[s]);
+            allelicCallsForSeg.setN(calledNPerSeg[s]);
+            allelicCallsForSeg.setfCr(
                     calculateFcr(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], state.getLambda(),
-                            Math.pow(2, allelicSplitCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getCenter()),
-                            Math.pow(2, allelicSplitCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getLower()),
-                            Math.pow(2, allelicSplitCallForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getUpper()),
+                            Math.pow(2, allelicCallsForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getCenter()),
+                            Math.pow(2, allelicCallsForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getLower()),
+                            Math.pow(2, allelicCallsForSeg.getAcnvSegment().getSegmentMeanPosteriorSummary().getUpper()),
                             segmentMeanVarianceInCR, normalNumCopies
                     ));
-            allelicSplitCallForSeg.setfMaf(
+            allelicCallsForSeg.setfMaf(
                     calculateFmaf(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s],
-                            allelicSplitCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getCenter(),
-                            allelicSplitCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getLower(),
-                            allelicSplitCallForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getUpper(),
+                            allelicCallsForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getCenter(),
+                            allelicCallsForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getLower(),
+                            allelicCallsForSeg.getAcnvSegment().getMinorAlleleFractionPosteriorSummary().getUpper(),
                             normalNumCopies)
             );
 
             // Set the balanced call
-            allelicSplitCallForSeg.setBalancedCall(isBalanced(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s]));
+            allelicCallsForSeg.setBalancedCall(isBalanced(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s]));
 
             // Set the CNLoH call
-            allelicSplitCallForSeg.setCnlohCall(isCNLoH(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], allelicSplitCallForSeg.getAcnvSegment()));
+            allelicCallsForSeg.setCnlohCall(isCNLoH(calledRhoPerSeg[s], calledMPerSeg[s], calledNPerSeg[s], allelicCallsForSeg.getAcnvSegment()));
         }
 
-        return allelicSplitCalls;
+        return allelicCallses;
     }
 
     private AllelicBalanceCall isBalanced(final double rho, final int m, final int n) {

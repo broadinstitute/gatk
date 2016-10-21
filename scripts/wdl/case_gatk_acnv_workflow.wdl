@@ -237,7 +237,7 @@ workflow case_gatk_acnv_workflow {
           tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           acnv_segments=AllelicCNV.acnv_final_segs,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
-          output_dir="${conversion_dir}CallBalanced/${row[0]}",
+          output_dir="${conversion_dir}conversion/${row[0]}",
           mem=4
     }
 

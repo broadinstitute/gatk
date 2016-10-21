@@ -34,7 +34,7 @@ public class AllelicSplitCallerUnitTest extends BaseTest {
         // Make sure the CNLOH Caller is serializable before making calls.
         SerializationTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
 
-        final List<AllelicSplitCall> calls = cnlohCaller.makeCalls(segs, 2, ctx);
+        final List<AllelicCalls> calls = cnlohCaller.makeCalls(segs, 2, ctx);
         Assert.assertNotNull(calls);
         Assert.assertTrue(calls.size() > 0);
         Assert.assertTrue(calls.stream().allMatch(c -> c.getBalancedCall() != null));
@@ -43,7 +43,7 @@ public class AllelicSplitCallerUnitTest extends BaseTest {
 
         // Make sure the CNLOH Caller is serializable after making calls.
         SerializationTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
-        SerializationTestUtils.roundTripInKryo(calls.get(0), AllelicSplitCall.class, ctx.getConf());
+        SerializationTestUtils.roundTripInKryo(calls.get(0), AllelicCalls.class, ctx.getConf());
     }
 
     @Test(dataProvider = "mafValues")

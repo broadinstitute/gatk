@@ -7,7 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
-import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicSplitCall;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicCalls;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -356,7 +356,7 @@ public final class SegmentUtils {
      * </p>
      */
     public static void writeCnLoHACNVModeledSegmentFile(final File outFile,
-                                                   final List<AllelicSplitCall> calls,
+                                                   final List<AllelicCalls> calls,
                                                    final Genome genome) {
         Utils.nonNull(genome, "The genome cannot be null.");
 
@@ -599,7 +599,7 @@ public final class SegmentUtils {
         }
     }
 
-    private static BiConsumer<AllelicSplitCall, DataLine> createDataLineFromBalancedCallsFunction
+    private static BiConsumer<AllelicCalls, DataLine> createDataLineFromBalancedCallsFunction
             (final TargetCollection<ReadCountRecord.SingleSampleRecord> targets,
              final TargetCollection<AllelicCount> snps) {
         return (AllelicBalancedCall, dataLine) -> {

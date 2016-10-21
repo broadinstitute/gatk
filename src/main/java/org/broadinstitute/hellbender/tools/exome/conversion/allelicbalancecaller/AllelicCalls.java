@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 
 import java.io.Serializable;
 
-public class AllelicSplitCall implements Serializable, Locatable {
+public class AllelicCalls implements Serializable, Locatable {
 
     static final long serialVersionUID = 337337337L;
 
@@ -20,7 +20,7 @@ public class AllelicSplitCall implements Serializable, Locatable {
     private int n;
 
 
-    public AllelicSplitCall(final ACNVModeledSegment acnvSegment) {
+    public AllelicCalls(final ACNVModeledSegment acnvSegment) {
         this.acnvSegment = acnvSegment;
         balancedCall = AllelicBalanceCall.NO_CALL;
         cnlohCall = CNLoHCall.NO_CALL;

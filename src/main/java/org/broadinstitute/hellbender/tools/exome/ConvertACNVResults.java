@@ -11,7 +11,7 @@ import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.conversion.acnvconversion.ACNVModeledSegmentConversionUtils;
 import org.broadinstitute.hellbender.tools.exome.conversion.acsconversion.ACSModeledSegmentUtils;
-import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicSplitCall;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicCalls;
 import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.CNLOHCaller;
 import org.broadinstitute.hellbender.tools.exome.conversion.titanconversion.TitanFileConverter;
 
@@ -119,7 +119,7 @@ public class ConvertACNVResults extends SparkCommandLineProgram {
 
         // Make the calls
         logger.info("Making the balanced-segment (and CNLoH) calls...");
-        final List<AllelicSplitCall> calls = cnlohCaller.makeCalls(segments, numIterations, ctx);
+        final List<AllelicCalls> calls = cnlohCaller.makeCalls(segments, numIterations, ctx);
 
         // Write updated ACNV file with calls
         logger.info("Writing updated ACNV file with calls ...");
