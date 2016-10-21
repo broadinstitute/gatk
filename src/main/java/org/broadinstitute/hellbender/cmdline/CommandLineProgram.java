@@ -205,9 +205,21 @@ public abstract class CommandLineProgram {
     protected boolean parseArgs(final String[] argv) {
 
         commandLineParser = new CommandLineParser(this, getPluginDescriptors());
-        final boolean ret;
         try{
-            ret = commandLineParser.parseArguments(System.err, argv);
+            final boolean ret = commandLineParser.parseArguments(System.err, argv);
+            commandLine = commandLineParser.getCommandLine();
+            if (!ret) {
+                return false;
+            }
+            final String[] customErrorMessages = customCommandLineValidation();
+            if (customErrorMessages != null) {
+                for (final String msg : customErrorMessages) {
+                    System.err.println(msg);
+                }
+                commandLineParser.usage(System.err, false);
+                return false;
+            }
+            return true;
         } catch (final UserException.CommandLineException e){
             //The CommandLineException is treated specially - we display help and no blow up
             commandLineParser.usage(System.err, true);
@@ -216,20 +228,6 @@ public abstract class CommandLineProgram {
             //we don't exit here though - only Main.main is allowed to call System.exit.
             throw e;
         }
-
-        commandLine = commandLineParser.getCommandLine();
-        if (!ret) {
-            return false;
-        }
-        final String[] customErrorMessages = customCommandLineValidation();
-        if (customErrorMessages != null) {
-            for (final String msg : customErrorMessages) {
-                System.err.println(msg);
-            }
-            commandLineParser.usage(System.err, false);
-            return false;
-        }
-        return true;
     }
 
     /**
