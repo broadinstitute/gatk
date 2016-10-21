@@ -20,8 +20,10 @@ public final class ReadEndsForMarkDuplicatesCodec implements SortingCollection.C
         return new ReadEndsForMarkDuplicatesCodec();
     }
 
+    @Override
     public void setOutputStream(final OutputStream os) { this.out = new DataOutputStream(os); }
 
+    @Override
     public void setInputStream(final InputStream is) { this.in = new DataInputStream(is); }
 
     public DataInputStream getInputStream() {
@@ -32,6 +34,7 @@ public final class ReadEndsForMarkDuplicatesCodec implements SortingCollection.C
         return out;
     }
 
+    @Override
     public void encode(final ReadEndsForMarkDuplicates read) {
         try {
             this.out.writeShort(read.score);
@@ -57,6 +60,7 @@ public final class ReadEndsForMarkDuplicatesCodec implements SortingCollection.C
         }
     }
 
+    @Override
     public ReadEndsForMarkDuplicates decode() {
         final ReadEndsForMarkDuplicates read = new ReadEndsForMarkDuplicates();
         try {

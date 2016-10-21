@@ -219,6 +219,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * @throws IllegalArgumentException if {@code sample} is {@code null}.
      * @return -1 if the allele is not included, 0 or greater otherwise.
      */
+    @Override
     public int indexOfSample(final String sample) {
         return samples.indexOfSample(sample);
     }
@@ -227,6 +228,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * Number of samples included in the likelihood collection.
      * @return 0 or greater.
      */
+    @Override
     public int numberOfSamples() {
         return samples.numberOfSamples();
     }
@@ -240,6 +242,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @return never {@code null}.
      */
+    @Override
     public String getSample(final int sampleIndex) {
         return samples.getSample(sampleIndex);
     }
@@ -253,6 +256,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @return -1 if the allele is not included, 0 or greater otherwise.
      */
+    @Override
     public int indexOfAllele(final A allele) {
         return alleles.indexOfAllele(allele);
     }
@@ -261,6 +265,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      * Returns number of alleles in the collection.
      * @return 0 or greater.
      */
+    @Override
     public int numberOfAlleles() {
         return alleles.numberOfAlleles();
     }
@@ -274,6 +279,7 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
      *
      * @return never {@code null}.
      */
+    @Override
     public A getAllele(final int alleleIndex) {
         return alleles.getAllele(alleleIndex);
     }

@@ -324,6 +324,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     /**
      * Shut down this data source permanently, closing all iterations and readers.
      */
+    @Override
     public void close() {
         closePreviousIterationsIfNecessary();
 

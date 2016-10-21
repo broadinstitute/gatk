@@ -23,6 +23,7 @@ public final class AddOrReplaceReadGroupsIntegrationTest extends CommandLineProg
         };
     }
 
+    @Override
     public String getTestedClassName() {
         return AddOrReplaceReadGroups.class.getSimpleName();
     }

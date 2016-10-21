@@ -47,12 +47,15 @@ public class TrancheManager {
             this.nTrueSites = nTrueSites;
         }
 
+        @Override
         public double getThreshold(final double tranche) {
             return 1.0 - tranche/100.0; // tranche of 1 => 99% sensitivity target
         }
 
+        @Override
         public double getTarget() { return 1.0; }
 
+        @Override
         public void calculateRunningMetric(final List<VariantDatum> data) {
             int nCalledAtTruth = 0;
             runningSensitivity = new double[data.size()];
@@ -64,10 +67,12 @@ public class TrancheManager {
             }
         }
 
+        @Override
         public double getRunningMetric(final int i) {
             return runningSensitivity[i];
         }
 
+        @Override
         public int datumValue(final VariantDatum d) {
             return d.atTruthSite ? 1 : 0;
         }

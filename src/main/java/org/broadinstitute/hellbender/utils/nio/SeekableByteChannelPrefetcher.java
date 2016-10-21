@@ -112,6 +112,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
         }
 
 
+        @Override
         public void close() throws IOException {
             chan.close();
         }

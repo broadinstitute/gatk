@@ -39,6 +39,7 @@ public final class CollectQualityYieldMetrics extends PicardCommandLineProgram {
      * readable and that the output file can be written to.  Then iterates through
      * all the records accumulating metrics.  Finally writes metrics file
      */
+    @Override
     protected Object doWork() {
         final ProgressLogger progress = new ProgressLogger(logger);
 

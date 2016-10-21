@@ -34,6 +34,7 @@ public final class AlleleSpecificAnnotationData<T> extends ReducibleAnnotationDa
      */
     public Allele getRefAllele() {return refAllele;}
 
+    @Override
     public void setAttributeMap(final Map<Allele, T> inputMap) {
         super.setAttributeMap(inputMap);
     }

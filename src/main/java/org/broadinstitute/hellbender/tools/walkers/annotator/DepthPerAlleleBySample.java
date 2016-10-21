@@ -35,6 +35,7 @@ import java.util.*;
  */
 public final class DepthPerAlleleBySample extends GenotypeAnnotation implements StandardAnnotation {
 
+    @Override
     public void annotate(final ReferenceContext ref,
                          final VariantContext vc,
                          final Genotype g,
@@ -71,8 +72,10 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         gb.AD(counts);
     }
 
+    @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.GENOTYPE_ALLELE_DEPTHS); }
 
+    @Override
     public List<VCFFormatHeaderLine> getDescriptions() {
         return Collections.singletonList(VCFStandardHeaderLines.getFormatLine(getKeyNames().get(0)));
     }

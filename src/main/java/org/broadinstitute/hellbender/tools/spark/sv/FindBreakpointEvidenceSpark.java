@@ -822,6 +822,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.reportableEntries = new ArrayList<>(2*minEvidenceCount);
         }
 
+        @Override
         public Iterator<BreakpointEvidence> apply( final BreakpointEvidence evidence ) {
             if ( evidence.getContigIndex() != currentContig ) {
                 currentContig = evidence.getContigIndex();
@@ -871,6 +872,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.windowSize = windowSize;
         }
 
+        @Override
         public Iterator<BreakpointEvidence> apply( final BreakpointEvidence evidence ) {
             reportableEvidence.clear();
             if ( evidence.getContigIndex() != currentContig ) {
@@ -906,7 +908,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.gapSize = gapSize;
         }
 
-        public Iterator<SVInterval> apply(final BreakpointEvidence evidence ) {
+        @Override
+        public Iterator<SVInterval> apply( final BreakpointEvidence evidence ) {
             Iterator<SVInterval> result = noInterval;
             if ( evidence.getContigIndex() != contig ) {
                 if ( contig != -1 ) {
@@ -955,6 +958,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             }
         }
 
+        @Override
         public Iterator<Tuple2<Integer, Integer>> iterator() {
             return IntStream
                     .range(0, basesInInterval.length)
@@ -1073,16 +1077,17 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @VisibleForTesting final static class KmerAndInterval extends SVKmer implements Map.Entry<SVKmer, Integer> {
         private final int intervalId;
 
-        KmerAndInterval(final SVKmer kmer, final int intervalId ) {
+        KmerAndInterval( final SVKmer kmer, final int intervalId ) {
             super(kmer);
             this.intervalId = intervalId;
         }
 
-        private KmerAndInterval(final Kryo kryo, final Input input ) {
+        private KmerAndInterval( final Kryo kryo, final Input input ) {
             super(kryo, input);
             intervalId = input.readInt();
         }
 
+        @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
             output.writeInt(intervalId);
@@ -1141,6 +1146,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.minEntropy = minEntropy;
         }
 
+        @Override
         public Iterator<Tuple2<KmerAndInterval, Integer>> apply( final GATKRead read ) {
             final String qName = read.getName();
             final Iterator<QNameAndInterval> names = qNameAndIntervalMultiMap.findEach(qName);
@@ -1185,6 +1191,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                     .forEach(kmerMultiMap::removeEach);
          }
 
+        @Override
         public Iterator<KmerAndInterval> iterator() { return kmerMultiMap.iterator(); }
     }
 
@@ -1204,7 +1211,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             this.kmerMultiMap = kmerMultiMap;
         }
 
-        public Iterator<Tuple2<SVKmer, String>> apply( final GATKRead read ) {
+        @Override
+        public Iterator<Tuple2<SVKmer, String>> apply(final GATKRead read ) {
             List<Tuple2<SVKmer, String>> results = new ArrayList<>();
             SVKmerizerWithLowComplexityFilter.stream(read.getBases(), kSize, minEntropy)
                     .map( kmer -> kmer.canonical(kSize) )

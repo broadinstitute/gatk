@@ -20,6 +20,7 @@ public class HopscotchMultiMap<K, V, T extends Map.Entry<K, V>>  extends Hopscot
     protected HopscotchMultiMap( final Kryo kryo, final Input input ) { super(kryo, input); }
 
     /** getKey returns the key part of a Map.Entry */
+    @Override
     protected Function<T, Object> toKey() { return T::getKey; }
 
     @SuppressWarnings("rawtypes")

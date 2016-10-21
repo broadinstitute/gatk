@@ -73,6 +73,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
      * Then makes a pass through those determining duplicates before re-reading the
      * input file and writing it out with duplication flags set correctly.
      */
+    @Override
     protected Object doWork() {
         IOUtil.assertFilesAreReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
@@ -491,6 +492,7 @@ public final class MarkDuplicates extends AbstractMarkDuplicatesCommandLineProgr
     /** Comparator for ReadEndsForMarkDuplicates that orders by read1 position then pair orientation then read2 position. */
     static class ReadEndsMDComparator implements Comparator<ReadEndsForMarkDuplicates>, Serializable {
         private static final long serialVersionUID = 1L;
+        @Override
         public int compare(final ReadEndsForMarkDuplicates lhs, final ReadEndsForMarkDuplicates rhs) {
             int retval = lhs.libraryId - rhs.libraryId;
             if (retval == 0) retval = lhs.read1ReferenceIndex - rhs.read1ReferenceIndex;

@@ -58,6 +58,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         return annotations;
     }
 
+    @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME
     public void calculateRawData(final VariantContext vc,
                                  final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,

@@ -452,6 +452,7 @@ public class OverhangFixingManager {
             readComparator = new ReadCoordinateComparator(header);
         }
 
+        @Override
         public int compare(final List<SplitRead> readgroup1, final List<SplitRead> readgroup2) {
             return readComparator.compare(readgroup1.get(0).read, readgroup2.get(0).read);
         }
@@ -487,6 +488,7 @@ public class OverhangFixingManager {
     private final class SpliceComparator implements Comparator<Splice>, Serializable {
         private static final long serialVersionUID = -7783679773557594065L;
 
+        @Override
         public int compare(final Splice position1, final Splice position2) {
             return position1.loc.compareTo(position2.loc);
         }

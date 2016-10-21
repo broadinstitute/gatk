@@ -1082,6 +1082,7 @@ public final class CommandLineParser {
          * Comparator for sorting ArgumentDefinitions in alphabetical order b y longName
          */
         public static Comparator<ArgumentDefinition> sortByLongName = new Comparator<ArgumentDefinition>() {
+            @Override
             public int compare(ArgumentDefinition argDef1, ArgumentDefinition argDef2) {
                 return String.CASE_INSENSITIVE_ORDER.compare(argDef1.getLongName(), argDef2.getLongName());
             }

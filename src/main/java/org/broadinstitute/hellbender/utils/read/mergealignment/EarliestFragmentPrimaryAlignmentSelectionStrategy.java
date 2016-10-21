@@ -19,6 +19,7 @@ public final class EarliestFragmentPrimaryAlignmentSelectionStrategy implements 
     // multiple alignments with equal mapping quality.
     private final Random random = new Random(1);
 
+    @Override
     public void pickPrimaryAlignment(final HitsForInsert hitsForInsert) {
 
         if (hitsForInsert.numHits() == 0) throw new IllegalArgumentException("No alignments to pick from");

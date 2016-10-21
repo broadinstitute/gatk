@@ -182,6 +182,7 @@ public final class SplitNCigarReadsUnitTest extends BaseTest {
 
     private static class DummyTestWriter implements GATKReadWriter {
         public List<GATKRead> writtenReads = new ArrayList<>();
+        @Override
         public void close() {}
         @Override
         public void addRead(GATKRead read) {

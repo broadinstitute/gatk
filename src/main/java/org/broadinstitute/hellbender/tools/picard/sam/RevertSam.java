@@ -200,10 +200,12 @@ public final class RevertSam extends PicardCommandLineProgram {
             for (final SAMReadGroupRecord rg : inHeader.getReadGroups()) {
                 final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).validationStringency(VALIDATION_STRINGENCY).open(INPUT);
                 final SamRecordFilter filter = new SamRecordFilter() {
+                    @Override
                     public boolean filterOut(final SAMRecord rec) {
                         return !rec.getReadGroup().getId().equals(rg.getId());
                     }
 
+                    @Override
                     public boolean filterOut(final SAMRecord first, final SAMRecord second) {
                         throw new UnsupportedOperationException();
                     }

@@ -36,6 +36,7 @@ public class SVKmerizerWithLowComplexityFilter extends SVKmerizer {
                 new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy)).spliterator(), false);
     }
 
+    @Override
     protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
         final double[] entropies = getEntropies(kSize);
         final int len = seq.length();

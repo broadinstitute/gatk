@@ -23,6 +23,7 @@ public final class AddCommentsToBamIntegrationTest extends CommandLineProgramTes
 
     private static final String[] commentList = new String[]{"test1", "test2", "test3"};
 
+    @Override
     public String getTestedClassName() {
         return AddCommentsToBam.class.getSimpleName();
     }

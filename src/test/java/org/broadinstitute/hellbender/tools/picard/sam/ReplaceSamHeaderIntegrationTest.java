@@ -21,6 +21,7 @@ public final class ReplaceSamHeaderIntegrationTest extends CommandLineProgramTes
     private static final File SAM_FILE2 = new File(TEST_DATA_DIR, "picard/sam/ReplaceSamHeader/file2.sam");
     private static final File SAM_FILE2_QUERYSORT = new File(TEST_DATA_DIR, "picard/sam/ReplaceSamHeader/file2NameSorted.sam");
 
+    @Override
     public String getTestedClassName() {
         return ReplaceSamHeader.class.getSimpleName();
     }

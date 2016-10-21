@@ -17,6 +17,7 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
     public static File BASIC_FASTA = new File(TEST_DATA_DIR, "basic.fasta");
     public static File DUPLICATE_FASTA = new File(TEST_DATA_DIR, "duplicate_sequence_names.fasta");
 
+    @Override
     public String getTestedClassName() {
         return CreateSequenceDictionary.class.getSimpleName();
     }

@@ -73,6 +73,7 @@ public abstract class CollectTargetedMetrics<METRIC extends MultiLevelMetrics, C
      * Asserts that files are readable and writable and then fires off an
      * HsMetricsCalculator instance to do the real work.
      */
+    @Override
     protected Object doWork() {
         for (final File targetInterval : TARGET_INTERVALS) IOUtil.assertFileIsReadable(targetInterval);
         IOUtil.assertFileIsReadable(INPUT);
@@ -140,6 +141,7 @@ public abstract class CollectTargetedMetrics<METRIC extends MultiLevelMetrics, C
         }
     }
 
+    @Override
     protected String[] customCommandLineValidation() {
         if (PER_TARGET_COVERAGE != null && (METRIC_ACCUMULATION_LEVEL.size() != 1 ||
                 METRIC_ACCUMULATION_LEVEL.iterator().next() != MetricAccumulationLevel.ALL_READS)) {

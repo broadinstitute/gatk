@@ -91,6 +91,7 @@ public final class MathUtils {
             return obs_count;
         }
 
+        @Override
         public RunningAverage clone() {
             RunningAverage ra = new RunningAverage();
             ra.mean = this.mean;

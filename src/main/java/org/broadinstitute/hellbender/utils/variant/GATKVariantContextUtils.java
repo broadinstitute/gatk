@@ -1213,6 +1213,7 @@ public final class GATKVariantContextUtils {
             return Utils.validIndex(priorityListOfVCs.indexOf(vc.getSource()), priorityListOfVCs.size());
         }
 
+        @Override
         public int compare(VariantContext vc1, VariantContext vc2) {
             return Integer.valueOf(getIndex(vc1)).compareTo(getIndex(vc2));
         }

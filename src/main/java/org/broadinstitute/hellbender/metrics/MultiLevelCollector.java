@@ -159,6 +159,7 @@ public abstract class MultiLevelCollector<METRIC_TYPE extends MetricBase, HISTOG
             return null;
         }
 
+        @Override
         public void acceptRecord(final ARGTYPE args, final SAMReadGroupRecord rg) {
             allReadCollector.acceptRecord(args);
         }

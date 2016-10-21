@@ -64,6 +64,7 @@ public final class RevertOriginalBaseQualitiesAndAddMateCigar extends PicardComm
         this.CREATE_MD5_FILE = true;
     }
 
+    @Override
     public Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);

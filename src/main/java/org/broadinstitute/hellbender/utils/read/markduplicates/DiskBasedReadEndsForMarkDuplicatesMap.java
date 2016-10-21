@@ -38,18 +38,22 @@ public final class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForM
         pairInfoMap = new CoordinateSortedPairInfoMap<>(maxOpenFiles, new Codec());
     }
 
+    @Override
     public ReadEndsForMarkDuplicates remove(int mateSequenceIndex, String key) {
         return pairInfoMap.remove(mateSequenceIndex, key);
     }
 
+    @Override
     public void put(int mateSequenceIndex, String key, ReadEndsForMarkDuplicates readEnds) {
         pairInfoMap.put(mateSequenceIndex, key, readEnds);
     }
 
+    @Override
     public int size() {
         return pairInfoMap.size();
     }
 
+    @Override
     public int sizeInRam() {
         return pairInfoMap.sizeInRam();
     }
@@ -57,14 +61,17 @@ public final class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForM
     private static class Codec implements CoordinateSortedPairInfoMap.Codec<String, ReadEndsForMarkDuplicates> {
         private final ReadEndsForMarkDuplicatesCodec readEndsForMarkDuplicatesCodec = new ReadEndsForMarkDuplicatesCodec();
 
+        @Override
         public void setInputStream(final InputStream is) {
             readEndsForMarkDuplicatesCodec.setInputStream(is);
         }
 
+        @Override
         public void setOutputStream(final OutputStream os) {
             readEndsForMarkDuplicatesCodec.setOutputStream(os);
         }
 
+        @Override
         public Map.Entry<String, ReadEndsForMarkDuplicates> decode() {
             try {
                 final String key = readEndsForMarkDuplicatesCodec.getInputStream().readUTF();
@@ -75,6 +82,7 @@ public final class DiskBasedReadEndsForMarkDuplicatesMap implements ReadEndsForM
             }
         }
 
+        @Override
         public void encode(final String key, final ReadEndsForMarkDuplicates readEnds) {
             try {
                 readEndsForMarkDuplicatesCodec.getOutputStream().writeUTF(key);

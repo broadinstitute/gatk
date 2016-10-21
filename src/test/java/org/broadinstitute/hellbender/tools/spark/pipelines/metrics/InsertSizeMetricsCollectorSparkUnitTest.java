@@ -31,6 +31,7 @@ import java.util.List;
 public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
+    @Override
     public String getTestedClassName() {
         return InsertSizeMetricsCollectorSpark.class.getSimpleName();
     }

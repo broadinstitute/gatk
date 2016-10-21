@@ -8,6 +8,7 @@ import joptsimple.ValueConverter;
  * throws {@link ValueConversionException} otherwise
  */
 public final class StrictBooleanConverter implements ValueConverter<String> {
+    @Override
     public String convert( String value ) {
         if ( value.equalsIgnoreCase("true") || value.equalsIgnoreCase("t")) {
             return "true";
@@ -17,10 +18,12 @@ public final class StrictBooleanConverter implements ValueConverter<String> {
             throw new ValueConversionException(value + " does not match one of T|True|F|False");
         }
     }
+    @Override
     public final Class<? extends String> valueType() {
         return String.class;
     }
 
+    @Override
     public String valuePattern() {
         return "[T|True|F|False]";
     }

@@ -82,10 +82,12 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * I'm an iterator too...
      * @return an iterator
      */
+    @Override
     public Iterator<String> iterator() {
         return this;
     }
 
+    @Override
     public boolean hasNext() {
         return this.nextLine != null;
     }
@@ -115,6 +117,7 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
      * Returns the next line (optionally minus whitespace)
      * @return the next line
      */
+    @Override
     public String next() {
         try {
             String result = this.nextLine;
@@ -133,10 +136,12 @@ public final class XReadLines implements Iterator<String>, Iterable<String>, Aut
     }
 
     // The file is read-only; we don't allow lines to be removed.
+    @Override
     public void remove() {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public void close() throws IOException {
         this.in.close();
     }

@@ -25,6 +25,7 @@ import java.util.stream.Stream;
  */
 public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
 
+    @Override
     public String getToolTestDataDir(){
         return publicTestDir + "org/broadinstitute/hellbender/tools/walkers/VQSR/";
     }

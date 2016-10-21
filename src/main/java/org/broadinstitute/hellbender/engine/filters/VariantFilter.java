@@ -14,6 +14,7 @@ public interface VariantFilter extends Predicate<VariantContext>{
         return Predicate.super.or(filter)::test;
     }
 
+    @Override
     default VariantFilter negate(){
         return Predicate.super.negate()::test;
     }}

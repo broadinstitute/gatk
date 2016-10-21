@@ -28,6 +28,7 @@ import java.util.Set;
 public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLineProgramTest{
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
+    @Override
     public String getTestedClassName() {
         return CollectMultipleMetricsSpark.class.getSimpleName();
     }
@@ -149,6 +150,7 @@ public final class CollectMultipleMetricsSparkIntegrationTest extends CommandLin
         // collector
         CollectMultipleMetricsSpark.SparkCollectorProvider customProvider =
             new CollectMultipleMetricsSpark.SparkCollectorProvider() {
+                @Override
                 public MetricsCollectorSpark<? extends MetricsArgumentCollection> createCollector(
                     final String outputBaseName,
                     final Set<MetricAccumulationLevel> metricAccumulationLevel,

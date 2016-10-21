@@ -648,6 +648,7 @@ public final class SelectVariants extends VariantWalker {
     /**
      * Create filters for variant types, ids, and genomic intervals.
      */
+    @Override
     protected VariantFilter makeVariantFilter() {
         VariantFilter compositeFilter = VariantFilterLibrary.ALLOW_ALL_VARIANTS;
 

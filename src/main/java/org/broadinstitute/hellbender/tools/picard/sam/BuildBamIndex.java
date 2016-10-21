@@ -51,6 +51,7 @@ public final class BuildBamIndex extends PicardCommandLineProgram {
      * readable and that the output file can be written to.  Then iterates through
      * all the records generating a BAM Index, then writes the bai file.
      */
+    @Override
     protected Object doWork() {
         try {
             inputUrl = new URL(INPUT);

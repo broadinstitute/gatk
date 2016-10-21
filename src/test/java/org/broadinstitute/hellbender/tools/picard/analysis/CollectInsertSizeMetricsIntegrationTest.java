@@ -21,6 +21,7 @@ import java.io.IOException;
 public final class CollectInsertSizeMetricsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
+    @Override
     public String getTestedClassName() {
         return CollectInsertSizeMetrics.class.getSimpleName();
     }

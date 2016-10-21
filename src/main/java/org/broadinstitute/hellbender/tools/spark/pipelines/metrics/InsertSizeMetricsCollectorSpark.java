@@ -54,6 +54,7 @@ public class InsertSizeMetricsCollectorSpark
      *
      * @return List of read filters for this collector
      */
+    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         return collector.getDefaultReadFilters();
     }
@@ -76,6 +77,7 @@ public class InsertSizeMetricsCollectorSpark
                 .reduce(collector::combine);
     }
 
+    @Override
     public void saveMetrics(final String inputName, final AuthHolder authHolder) {
         resultMetrics.finish(metricsFile, inputName, authHolder);
     }

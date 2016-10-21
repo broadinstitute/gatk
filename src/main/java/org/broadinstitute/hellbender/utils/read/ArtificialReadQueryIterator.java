@@ -163,6 +163,7 @@ public final class ArtificialReadQueryIterator extends ArtificialReadIterator {
      *
      * @return
      */
+    @Override
     public boolean hasNext() {
         boolean res = super.hasNext();
         if (!seeked) {

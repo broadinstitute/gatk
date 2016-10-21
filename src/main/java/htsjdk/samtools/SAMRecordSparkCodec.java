@@ -27,6 +27,7 @@ public class SAMRecordSparkCodec implements SortingCollection.Codec<SAMRecord> {
         this.samRecordFactory = factory;
     }
 
+    @Override
     public SAMRecordSparkCodec clone() {
         // Do not clone the references to codecs, as they must be distinct for each instance.
         return new SAMRecordSparkCodec(this.samRecordFactory);
@@ -34,6 +35,7 @@ public class SAMRecordSparkCodec implements SortingCollection.Codec<SAMRecord> {
 
 
     /** Sets the output stream that records will be written to. */
+    @Override
     public void setOutputStream(final OutputStream os) {
         this.binaryCodec.setOutputStream(os);
     }
@@ -45,6 +47,7 @@ public class SAMRecordSparkCodec implements SortingCollection.Codec<SAMRecord> {
     }
 
     /** Sets the input stream that records will be read from. */
+    @Override
     public void setInputStream(final InputStream is) {
         this.binaryCodec.setInputStream(is);
     }
@@ -60,6 +63,7 @@ public class SAMRecordSparkCodec implements SortingCollection.Codec<SAMRecord> {
      *
      * @param alignment Record to be written.
      */
+    @Override
     public void encode(final SAMRecord alignment) {
         // Compute block size, as it is the first element of the file representation of SAMRecord
         final int readLength = alignment.getReadLength();
@@ -137,6 +141,7 @@ public class SAMRecordSparkCodec implements SortingCollection.Codec<SAMRecord> {
      * @return null if no more records.  Should throw exception if EOF is encountered in the middle of
      *         a record.
      */
+    @Override
     public SAMRecord decode() {
         int recordLength = 0;
         try {

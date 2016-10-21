@@ -56,6 +56,7 @@ public class ProgressLogger extends AbstractProgressLogger {
      *
      * @param message a message to be logged by the logger (recommended output level is INFO or the equivalent)
      */
+    @Override
     protected void log(String... message) {
         StringBuilder stringBuilder = new StringBuilder();
         for (String s : message) {

@@ -49,6 +49,7 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
     static final double IDEAL_HIGH_QD = 30;
     private static final double JITTER_SIGMA = 3;
 
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
@@ -124,8 +125,10 @@ public final class QualByDepth extends InfoFieldAnnotation implements StandardAn
         }
     }
 
+    @Override
     public List<String> getKeyNames() { return Collections.singletonList(GATKVCFConstants.QUAL_BY_DEPTH_KEY); }
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0)));
     }

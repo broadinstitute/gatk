@@ -18,6 +18,7 @@ import java.util.Arrays;
 public final class CleanSamIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/CleanSam");
 
+    @Override
     public String getTestedClassName() {
         return CleanSam.class.getSimpleName();
     }

@@ -117,24 +117,34 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
         byte[] read2;
         short libraryId;
 
+        @Override
         public short getReadGroup() { return this.readGroup; }
 
+        @Override
         public void setReadGroup(final short readGroup) { this.readGroup = readGroup; }
 
+        @Override
         public short getTile() { return this.tile; }
 
+        @Override
         public void setTile(final short tile) { this.tile = tile; }
 
+        @Override
         public short getX() { return this.x; }
 
+        @Override
         public void setX(final short x) { this.x = x; }
 
+        @Override
         public short getY() { return this.y; }
 
+        @Override
         public void setY(final short y) { this.y = y; }
 
+        @Override
         public short getLibraryId() { return this.libraryId; }
 
+        @Override
         public void setLibraryId(final short libraryId) { this.libraryId = libraryId; }
     }
 
@@ -145,14 +155,17 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
         private DataOutputStream out;
         private DataInputStream in;
 
+        @Override
         public void setOutputStream(final OutputStream out) {
             this.out = new DataOutputStream(out);
         }
 
+        @Override
         public void setInputStream(final InputStream in) {
             this.in = new DataInputStream(in);
         }
 
+        @Override
         public void encode(final PairedReadSequence val) {
             try {
                 this.out.writeShort(val.readGroup);
@@ -168,6 +181,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
             }
         }
 
+        @Override
         public PairedReadSequence decode() {
             try {
                 final PairedReadSequence val = new PairedReadSequence();
@@ -215,6 +229,7 @@ public final class EstimateLibraryComplexity extends AbstractOpticalDuplicateFin
 
         final int BASES = EstimateLibraryComplexity.this.MIN_IDENTICAL_BASES;
 
+        @Override
         public int compare(final PairedReadSequence lhs, final PairedReadSequence rhs) {
             // First compare the first N bases of the first read
             for (int i = 0; i < BASES; ++i) {

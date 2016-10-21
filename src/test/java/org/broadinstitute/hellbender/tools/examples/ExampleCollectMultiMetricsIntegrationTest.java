@@ -19,6 +19,7 @@ import java.io.IOException;
 public final class ExampleCollectMultiMetricsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "/examples/metrics");
 
+    @Override
     public String getTestedClassName() {
         return ExampleCollectMultiMetricsSpark.class.getSimpleName();
     }

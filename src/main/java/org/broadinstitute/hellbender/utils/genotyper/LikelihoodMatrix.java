@@ -57,6 +57,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @throws IllegalArgumentException if {@code allele} is {@code null}.
      * @return -1 if such allele does not exist, otherwise its index which 0 or greater.
      */
+    @Override
     public int indexOfAllele(final A allele);
 
     /**
@@ -75,6 +76,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * Number of allele in the matrix.
      * @return never negative.
      */
+    @Override
     public int numberOfAlleles();
 
     /**
@@ -91,6 +93,7 @@ public interface LikelihoodMatrix<A extends Allele> extends AlleleList<A> {
      * @throws IllegalArgumentException if {@code alleleIndex} is not a valid allele index.
      * @return never {@code null}.
      */
+    @Override
     public A getAllele(final int alleleIndex);
 
     /**

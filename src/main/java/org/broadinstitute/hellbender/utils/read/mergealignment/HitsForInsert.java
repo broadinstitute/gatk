@@ -226,6 +226,7 @@ public final class HitsForInsert {
     private static class HitIndexComparator implements Comparator<SAMRecord>, Serializable {
         private static final long serialVersionUID = 6543097107370587679L;
 
+        @Override
         public int compare(final SAMRecord rec1, final SAMRecord rec2) {
             final Integer hi1 = rec1.getIntegerAttribute(SAMTag.HI.name());
             final Integer hi2 = rec2.getIntegerAttribute(SAMTag.HI.name());

@@ -65,6 +65,7 @@ public class SAMPileupCodec extends AsciiFeatureCodec<SAMPileupFeature> {
         return SAM_PILEUP_FILE_EXTENSIONS.stream().anyMatch(ext -> noBlockCompressedPath.endsWith("."+ext));
     }
 
+    @Override
     public SAMPileupFeature decode(String line) {
         // Split the line
         final String[] tokens = SPLIT_PATTERN.split(line.trim(), -1);

@@ -121,6 +121,7 @@ public final class InsertSizeMetricsCollector
      * @param collector2 target PerUnitInsertSizeMetricsCollector. May not be null.
      * @return single PerUnitInsertSizeMetricsCollector object representing the combined source and target objects
      */
+    @Override
     public PerUnitInsertSizeMetricsCollector combineUnit(
             PerUnitInsertSizeMetricsCollector collector1,
             PerUnitInsertSizeMetricsCollector collector2) {

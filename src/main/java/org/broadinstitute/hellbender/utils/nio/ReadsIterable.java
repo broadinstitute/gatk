@@ -107,6 +107,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
             return null;
         }
 
+        @Override
         public void close() {
             if (null==query) return;
             try {
@@ -126,6 +127,7 @@ public class ReadsIterable implements Iterable<SAMRecord>, Serializable {
         this.interval = in;
     }
 
+    @Override
     public Iterator<SAMRecord> iterator() {
         try {
             return new ReadsIterator();

@@ -96,6 +96,7 @@ public class ContigAligner implements Closeable {
         return quals;
     }
 
+    @Override
     public void close() {
         log.info("closing BWA mem and index");
         bwaMem.dispose();

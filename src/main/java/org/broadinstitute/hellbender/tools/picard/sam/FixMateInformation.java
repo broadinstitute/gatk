@@ -66,6 +66,7 @@ public final class FixMateInformation extends PicardCommandLineProgram {
     @Argument(shortName = "MC", optional = true, doc = "Adds the mate CIGAR tag (MC) if true, does not if false.")
     public Boolean ADD_MATE_CIGAR = true;
 
+    @Override
     protected Object doWork() {
         // Open up the input
         boolean allQueryNameSorted = true;

@@ -22,6 +22,7 @@ public abstract class AS_RankSumTest extends RankSumTest implements ReducibleAnn
     public static final String PRINT_DELIM = "|";
     public static final String REDUCED_DELIM = ",";
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         //TODO only raw for now
 //        if (AnnotationUtils.walkerRequiresRawData(callingWalker))

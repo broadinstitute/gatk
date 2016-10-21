@@ -31,12 +31,15 @@ public final class CollectInsertSizeMetricsSpark
 
     private InsertSizeMetricsCollectorSpark insertSizeCollector = new InsertSizeMetricsCollectorSpark();
 
+    @Override
     public InsertSizeMetricsArgumentCollection getInputArguments() {
         return insertSizeArgs;
     }
 
+    @Override
     protected SortOrder getExpectedSortOrder() { return insertSizeCollector.getExpectedSortOrder(); }
 
+    @Override
     protected void initialize(
             final InsertSizeMetricsArgumentCollection inputArgs,
             final SAMFileHeader samHeader,

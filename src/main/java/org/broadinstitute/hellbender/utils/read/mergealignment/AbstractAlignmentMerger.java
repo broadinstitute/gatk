@@ -69,10 +69,12 @@ public abstract class AbstractAlignmentMerger {
     private boolean addMateCigar = false;
 
     private final SamRecordFilter alignmentFilter = new SamRecordFilter() {
+        @Override
         public boolean filterOut(final SAMRecord record) {
             return ignoreAlignment(record);
         }
 
+        @Override
         public boolean filterOut(final SAMRecord first, final SAMRecord second) {
             throw new UnsupportedOperationException("Paired SamRecordFilter not implemented!");
         }

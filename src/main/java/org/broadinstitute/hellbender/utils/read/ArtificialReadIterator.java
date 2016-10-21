@@ -86,6 +86,7 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
         return header;
     }
 
+    @Override
     public boolean hasNext() {
         open = true;
 
@@ -124,6 +125,7 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
     }
 
 
+    @Override
     public GATKRead next() {
         open = true;
 
@@ -132,6 +134,7 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
         return ret;
     }
 
+    @Override
     public void remove() {
         throw new UnsupportedOperationException("You've tried to remove on a GATKSAMIterator (unsupported), not to mention that this is a fake iterator.");
     }
@@ -139,6 +142,7 @@ public class ArtificialReadIterator implements Iterator<GATKRead>, Iterable<GATK
     /**
      * return this iterator, for the iterable interface
      */
+    @Override
     public Iterator<GATKRead> iterator() {
         return this;
     }

@@ -209,6 +209,7 @@ public final class OpticalDuplicateFinder implements Serializable {
         final boolean[] opticalDuplicateFlags = new boolean[length];
 
         Collections.sort(list, new Comparator<PhysicalLocation>() {
+            @Override
             public int compare(final PhysicalLocation lhs, final PhysicalLocation rhs) {
                 int retval = lhs.getReadGroup() - rhs.getReadGroup();
                 if (retval == 0) retval = lhs.getTile() - rhs.getTile();

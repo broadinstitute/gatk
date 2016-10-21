@@ -33,10 +33,12 @@ public final class ByteArrayIterator implements Iterator<Byte> {
         this.stopIndex = stopIndex;
     }
 
+    @Override
     public boolean hasNext() {
         return currentPosition < stopIndex;
     }
 
+    @Override
     public Byte next() {
         if (currentPosition >= stopIndex) {
             throw new NoSuchElementException("No more elements in byte array");
