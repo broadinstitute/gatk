@@ -193,6 +193,7 @@ public abstract class CommandLineProgram {
      * Any arguments set by command-line parser can be validated.
     * @return null if command line is valid.  If command line is invalid, returns an array of error message
     * to be written to the appropriate place.
+    * @throws UserException.CommandLineException if command line is invalid and handling as exception is preferred.
     */
     protected String[] customCommandLineValidation() {
         return null;
