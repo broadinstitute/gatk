@@ -88,7 +88,7 @@ public class GATKVCFHeaderLines {
         addFormatLine(new VCFFormatHeaderLine(OXOG_REF_F1R2_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F1R2 pair orientation supporting the reference allele"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_REF_F2R1_KEY, 1, VCFHeaderLineType.Integer, "Count of reads in F2R1 pair orientation supporting the reference allele"));
         addFormatLine(new VCFFormatHeaderLine(OXOG_FRACTION_KEY, 1, VCFHeaderLineType.Float, "Fraction of alt reads indicating OxoG error"));
-        addFormatLine(new VCFFormatHeaderLine(QUALITY_SCORE_SUM_KEY, 1, VCFHeaderLineType.Integer, "Sum of base quality scores for each allele"));
+        addFormatLine(new VCFFormatHeaderLine(QUALITY_SCORE_SUM_KEY, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Sum of base quality scores for each allele"));
 
 
         addInfoLine(new VCFInfoHeaderLine(MLE_ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed"));
