@@ -62,6 +62,7 @@ public abstract class SparkToggleCommandLineProgram extends SparkCommandLineProg
      *
      * Subclasses can override if desired.
      */
+    @Override
     protected String getProgramName(){
         return programName == null ? getClass().getSimpleName() : programName;
     }

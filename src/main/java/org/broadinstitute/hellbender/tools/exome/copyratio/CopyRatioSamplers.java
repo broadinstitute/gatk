@@ -37,6 +37,7 @@ final class CopyRatioSamplers {
             this.varianceSliceSamplingWidth = varianceSliceSamplingWidth;
         }
 
+        @Override
         public Double sample(final RandomGenerator rng, final CopyRatioState state, final CopyRatioData dataCollection) {
             final Function<Double, Double> logConditionalPDF = newVariance -> {
                 final double gaussianLogNormalization = 0.5 * Math.log(newVariance);
@@ -68,6 +69,7 @@ final class CopyRatioSamplers {
             this.outlierProbabilityPriorBeta = outlierProbabilityPriorBeta;
         }
 
+        @Override
         public Double sample(final RandomGenerator rng, final CopyRatioState state, final CopyRatioData dataCollection) {
             final int numOutliers = (int) IntStream.range(0, dataCollection.getNumTargets()).filter(state::targetOutlierIndicator).count();
             return new BetaDistribution(rng,
@@ -90,6 +92,7 @@ final class CopyRatioSamplers {
             this.meanSliceSamplingWidth = meanSliceSamplingWidth;
         }
 
+        @Override
         public CopyRatioState.SegmentMeans sample(final RandomGenerator rng, final CopyRatioState state, final CopyRatioData dataCollection) {
             final List<Double> means = new ArrayList<>(dataCollection.getNumSegments());
             for (int segment = 0; segment < dataCollection.getNumSegments(); segment++) {
@@ -126,6 +129,7 @@ final class CopyRatioSamplers {
             this.outlierUniformLogLikelihood = outlierUniformLogLikelihood;
         }
 
+        @Override
         public CopyRatioState.OutlierIndicators sample(final RandomGenerator rng, final CopyRatioState state, final CopyRatioData dataCollection) {
             final double outlierUnnormalizedLogProbability =
                     Math.log(state.outlierProbability()) + outlierUniformLogLikelihood;
