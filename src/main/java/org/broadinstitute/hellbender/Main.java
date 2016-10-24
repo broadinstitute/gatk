@@ -16,9 +16,9 @@ import java.util.*;
  *
  * CommandLinePrograms are listed in a single command line interface based on the java package specified to instanceMain.
  *
- * If you want your own single command line program, extend this class and give instanceMain a new list of java packages
- * in which to search for classes that extend CommandLineProgram and/or a list of single classes.
- *
+ * If you want your own single command line program, extend this class and override {@link #getPackageList()}
+ * to return a list of java packages in which to search for classes that extend CommandLineProgram
+ * and/or {@link #getClassList()} to return a list of classes to include.
  */
 public class Main {
 
@@ -50,12 +50,19 @@ public class Main {
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
     /**
-     * The packages we wish to include in our command line *
+     * The packages we wish to include in our command line.
      */
-    protected static List<String> getPackageList() {
+    protected List<String> getPackageList() {
         final List<String> packageList = new ArrayList<>();
         packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
         return packageList;
+    }
+
+    /**
+     * The single classes we wish to include in our command line.
+     */
+    protected List<Class<? extends CommandLineProgram>> getClassList() {
+        return Collections.emptyList();
     }
 
     /**
@@ -80,7 +87,7 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      */
     public Object instanceMain(final String[] args) {
-        return instanceMain(args, getPackageList(), Collections.emptyList(), "");
+        return instanceMain(args, getPackageList(), getClassList(), "");
     }
 
     /**
@@ -89,7 +96,7 @@ public class Main {
      */
     public static void main(final String[] args) {
         try {
-            final Object result = new Main().instanceMain(args, getPackageList(), Collections.emptyList(), "");
+            final Object result = new Main().instanceMain(args);
             if (result != null) {
               System.out.println("Tool returned:\n" + result);
             }
