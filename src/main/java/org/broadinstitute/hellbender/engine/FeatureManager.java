@@ -435,6 +435,7 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * Permanently closes this manager by closing all backing data sources
      */
+    @Override
     public void close() {
         featureSources.values().forEach(ds -> ds.close());
     }

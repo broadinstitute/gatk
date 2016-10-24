@@ -24,6 +24,7 @@ public final class CleanSamTester extends SamFileTester {
     }
 
 
+    @Override
     protected void test() {
         try {
             final SamFileValidator validator = new SamFileValidator(new PrintWriter(System.out), 8000);

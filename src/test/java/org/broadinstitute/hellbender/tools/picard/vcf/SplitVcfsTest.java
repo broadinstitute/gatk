@@ -16,6 +16,7 @@ public final class SplitVcfsTest extends CommandLineProgramTest {
 	private static final File OUTPUT_DATA_PATH = IOUtil.createTempDir("SplitVcfsTest", null);
 	private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/vcf/trio");
 
+    @Override
     public String getTestedClassName() {
         return SplitVcfs.class.getSimpleName();
     }

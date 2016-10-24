@@ -704,8 +704,10 @@ public final class MathUtilsUnitTest extends BaseTest {
             this.state = 0;
         }
 
+        @Override
         public void remove()  { /* do nothing */ }
 
+        @Override
         public boolean hasNext() { return ! ( this.k == 0 && state == 0 ); }
 
         private String dataStr()  {
@@ -713,6 +715,7 @@ public final class MathUtilsUnitTest extends BaseTest {
                     Utils.join(",",a), k, y, state, x, l);
         }
 
+        @Override
         public List<Integer> next() {
             if ( this.state == 0 ) {
                 this.x = a.get(k-1)+1;
@@ -789,10 +792,13 @@ public final class MathUtilsUnitTest extends BaseTest {
             next = nextFromPartitioner();
         }
 
+        @Override
         public void remove() { /* do nothing */ }
 
+        @Override
         public boolean hasNext() { return next != null; }
 
+        @Override
         public int[] next() {
             int[] toReturn = clone(next);
             next = nextPermutation();

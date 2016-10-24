@@ -45,6 +45,7 @@ public class QualityYieldMetricsCollectorSpark
      * @param filteredReads The reads to be analyzed for this collector.
      * @param samHeader The SAMFileHeader associated with the reads in the input RDD.
      */
+    @Override
     public void collectMetrics(
             final JavaRDD<GATKRead> filteredReads,
             final SAMFileHeader samHeader)
@@ -63,6 +64,7 @@ public class QualityYieldMetricsCollectorSpark
      * @param inputBaseName base name of the input file
      * @param authHolder
      */
+    @Override
     public void saveMetrics(final String inputBaseName, final AuthHolder authHolder) {
         MetricsUtils.saveMetrics(metricsFile, args.output, authHolder);
     }

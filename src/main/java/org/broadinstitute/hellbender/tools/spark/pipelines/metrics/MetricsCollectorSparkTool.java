@@ -35,6 +35,7 @@ public abstract class MetricsCollectorSparkTool<T extends MetricsArgumentCollect
      * The following {@link MetricsCollectorSpark} methods must be implemented by subclasses
      * and should be forwarded to the embedded collector.
      */
+    @Override
     abstract public List<ReadFilter> getDefaultReadFilters();
     abstract protected SortOrder getExpectedSortOrder();
     abstract protected void initialize(T inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders);

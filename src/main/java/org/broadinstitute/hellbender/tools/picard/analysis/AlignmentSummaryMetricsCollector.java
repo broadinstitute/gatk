@@ -145,6 +145,7 @@ public final class AlignmentSummaryMetricsCollector extends SAMRecordAndReferenc
             pairCollector         = new IndividualAlignmentSummaryMetricsCollector(AlignmentSummaryMetrics.Category.PAIR, sample, library, readGroup);
         }
 
+        @Override
         public void acceptRecord(final SAMRecordAndReference args) {
             final SAMRecord rec         = args.getSamRecord();
             final ReferenceSequence ref = args.getReferenceSequence();

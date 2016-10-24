@@ -32,6 +32,7 @@ import java.util.Map;
  */
 public final class Coverage extends InfoFieldAnnotation implements StandardAnnotation {
 
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
@@ -44,8 +45,10 @@ public final class Coverage extends InfoFieldAnnotation implements StandardAnnot
         return Collections.singletonMap(getKeyNames().get(0), String.format("%d", depth));
     }
 
+    @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.DEPTH_KEY); }
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
     }

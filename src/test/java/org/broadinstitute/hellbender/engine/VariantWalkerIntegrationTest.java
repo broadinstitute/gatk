@@ -67,6 +67,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
             return true;
         }
 
+        @Override
         public void apply(
                 VariantContext variant,
                 ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext ) {

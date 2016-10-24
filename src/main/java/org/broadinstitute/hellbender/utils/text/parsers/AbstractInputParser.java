@@ -31,6 +31,7 @@ implements Iterable<String[]>, CloseableIterator<String[]> {
     /**
      * Closes this stream and releases any system resources associated with it.
      */
+    @Override
     public abstract void close();
 
     /**
@@ -46,6 +47,7 @@ implements Iterable<String[]>, CloseableIterator<String[]> {
     /**
      * @return an iterator over a set of elements of type String[]
      */
+    @Override
     public Iterator<String[]> iterator() {
         if (isIterating()) {
             throw new IllegalStateException("iterator() method can only be called once, before the" +

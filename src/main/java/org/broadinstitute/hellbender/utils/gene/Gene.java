@@ -28,6 +28,7 @@ public final class Gene extends Interval implements Iterable<Gene.Transcript> {
         }
     }
 
+    @Override
     public Iterator<Transcript> iterator() {
         return transcripts.values().iterator();
     }

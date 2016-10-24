@@ -64,6 +64,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     //
     // Accessors
     //
+    @Override
     public final GenomeLoc getLocation() { return this; }
 
     public final GenomeLoc getStartLocation() { return new GenomeLoc(getContig(),getContigIndex(),getStart(),getStart()); }
@@ -73,11 +74,13 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
     /**
      * @return the name of the contig of this GenomeLoc
      */
+    @Override
     public final String getContig() {
         return this.contigName;
     }
 
     public final int getContigIndex() { return this.contigIndex; }
+    @Override
     public final int getStart()    { return this.start; }
 
     @Override
@@ -360,6 +363,7 @@ public class GenomeLoc implements Comparable<GenomeLoc>, Serializable, HasGenome
         return -1;
     }
 
+    @Override
     public int compareTo( final GenomeLoc that ) {
         int result = 0;
 

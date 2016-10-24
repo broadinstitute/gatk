@@ -54,6 +54,7 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
             }
         },
         QualityScoreDistribution {
+            @Override
             public SinglePassSamProgram makeInstance(final String outbase) {
                 final QualityScoreDistribution program = new QualityScoreDistribution();
                 program.OUTPUT = new File(outbase + ".quality_distribution_metrics");
@@ -62,6 +63,7 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
             }
         },
         MeanQualityByCycle {
+            @Override
             public SinglePassSamProgram makeInstance(final String outbase) {
                 final MeanQualityByCycle program = new MeanQualityByCycle();
                 program.OUTPUT = new File(outbase + ".quality_by_cycle_metrics");
@@ -70,6 +72,7 @@ public final class CollectMultipleMetrics extends PicardCommandLineProgram {
             }
         },
         CollectBaseDistributionByCycle {
+            @Override
             public SinglePassSamProgram makeInstance(final String outbase) {
                 final CollectBaseDistributionByCycle program = new CollectBaseDistributionByCycle();
                 program.OUTPUT = new File(outbase + ".base_distribution_by_cycle_metrics");

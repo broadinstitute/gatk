@@ -24,6 +24,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/conversion/bam2fastq/paired");
     private static final String CLIPPING_TEST_DATA = "ok/clipping_test.sam";
 
+    @Override
     public String getTestedClassName() {
         return SamToFastq.class.getSimpleName();
     }

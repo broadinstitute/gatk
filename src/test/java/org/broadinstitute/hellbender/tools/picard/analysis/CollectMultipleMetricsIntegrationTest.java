@@ -26,6 +26,7 @@ import java.util.Set;
 public final class CollectMultipleMetricsIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectInsertSizeMetrics");
 
+    @Override
     public String getTestedClassName() {
         return CollectMultipleMetrics.class.getSimpleName();
     }
@@ -103,10 +104,13 @@ public final class CollectMultipleMetricsIntegrationTest extends CommandLineProg
         long count = 0;
         public void initialize(
                 MetricsArgumentCollection inputArgs, SAMFileHeader samHeader, List<Header> defaultHeaders) {}
+        @Override
         protected void setup(final SAMFileHeader header, final File samFile) {}
+        @Override
         protected void acceptRead(final SAMRecord rec, final ReferenceSequence ref) {
             count++;
         };
+        @Override
         public void finish() {}
     }
 
@@ -124,6 +128,7 @@ public final class CollectMultipleMetricsIntegrationTest extends CommandLineProg
 
             // CollectMultipleMetrics provider that creates an initializes a custom collector
             CollectMultipleMetrics.ProgramInterface customProvider = new CollectMultipleMetrics.ProgramInterface() {
+                @Override
                 public SinglePassSamProgram makeInstance(final String outbase) {
                     return testCollector;
                 }

@@ -247,6 +247,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
     /**
      * Is there another pileup available?
      */
+    @Override
     public boolean hasNext() {
         lazyLoadNextAlignmentContext();
         return nextAlignmentContext != null;
@@ -258,6 +259,7 @@ public final class LocusIteratorByState implements Iterable<AlignmentContext>, I
      * @return a non-null AlignmentContext of the pileup after to the next genomic position covered by
      * at least one read.
      */
+    @Override
     public AlignmentContext next() {
         lazyLoadNextAlignmentContext();
         if (!hasNext()) {

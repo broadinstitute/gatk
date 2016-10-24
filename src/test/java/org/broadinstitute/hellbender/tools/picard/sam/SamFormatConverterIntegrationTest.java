@@ -17,6 +17,7 @@ public final class SamFormatConverterIntegrationTest extends CommandLineProgramT
     private static final File unmappedCram = new File(TEST_DATA_DIR, "unmapped.cram");
     private static final File referenceFile = new File(TEST_DATA_DIR, "basic.fasta");
 
+    @Override
     public String getTestedClassName() {
         return SamFormatConverter.class.getSimpleName();
     }

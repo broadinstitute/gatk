@@ -55,6 +55,7 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
     /**
      * Use reference filename to create URI to go into header if URI was not passed on cmd line.
      */
+    @Override
     protected String[] customCommandLineValidation() {
         if (REFERENCE_SEQUENCE == null) {
             return new String[]{"********************************\nUSER ERROR: No reference file was specified\n********************************"};
@@ -69,6 +70,7 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
      * Do the work after command line has been parsed.
      * RuntimeException may be thrown by this method, and are reported appropriately.
      */
+    @Override
     protected Object doWork() {
         if (OUTPUT.exists()) {
             throw new UserException(OUTPUT.getAbsolutePath() + " already exists.  Delete this file and try again, or specify a different output file.");

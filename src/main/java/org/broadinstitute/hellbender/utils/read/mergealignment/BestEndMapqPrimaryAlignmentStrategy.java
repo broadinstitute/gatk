@@ -24,6 +24,7 @@ public final class BestEndMapqPrimaryAlignmentStrategy implements PrimaryAlignme
     /**
      * Primary alignment was filtered out.  Need to select a new one.
      */
+    @Override
     public void pickPrimaryAlignment(final HitsForInsert hits) {
 
         if (hits.numHits() == 0) throw new IllegalArgumentException("No alignments to pick from");
@@ -69,6 +70,7 @@ public final class BestEndMapqPrimaryAlignmentStrategy implements PrimaryAlignme
     private static class MapqComparator implements Comparator<SAMRecord>, Serializable {
         private static final long serialVersionUID = 6763153425070516820L;
 
+        @Override
         public int compare(final SAMRecord rec1, final SAMRecord rec2) {
             if (rec1.getReadUnmappedFlag()) {
                 if (rec2.getReadUnmappedFlag()) return 0;

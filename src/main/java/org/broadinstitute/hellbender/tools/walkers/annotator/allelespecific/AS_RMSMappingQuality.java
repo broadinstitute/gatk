@@ -48,6 +48,7 @@ public final class AS_RMSMappingQuality extends InfoFieldAnnotation implements A
     public static final String SPLIT_DELIM = "\\|"; //String.split takes a regex, so we need to escape the pipe
     public static final String PRINT_DELIM = "|";
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         //TODO I'm just going to ignore this for now
 //        if (AnnotationUtils.walkerRequiresRawData(callingWalker))

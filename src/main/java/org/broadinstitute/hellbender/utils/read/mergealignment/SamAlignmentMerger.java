@@ -116,6 +116,7 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
      * that the alignment records are pre-sorted.  If not, catches the exception, forces a sort, and
      * tries again.
      */
+    @Override
     public void mergeAlignment(final File referenceFasta) {
         try {
             super.mergeAlignment(referenceFasta);
@@ -130,6 +131,7 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
     /**
      * Reads the aligned SAM records into a SortingCollection and returns an iterator over that collection
      */
+    @Override
     protected CloseableIterator<SAMRecord> getQuerynameSortedAlignedRecords() {
 
         final CloseableIterator<SAMRecord> mergingIterator;
@@ -264,15 +266,18 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
             header = headerMerger.getMergedHeader();
         }
 
+        @Override
         public void close() {
             read1Iterator.close();
             read2Iterator.close();
         }
 
+        @Override
         public boolean hasNext() {
             return read1Iterator.hasNext() || read2Iterator.hasNext();
         }
 
+        @Override
         public SAMRecord next() {
             if (read1Iterator.hasNext()) {
                 if (read2Iterator.hasNext()) {
@@ -287,6 +292,7 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
             }
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException("remove() not supported");
         }
@@ -305,6 +311,7 @@ public final class SamAlignmentMerger extends AbstractAlignmentMerger {
      * For now, we only ignore those alignments that have more than <code>maxGaps</code> insertions
      * or deletions.
      */
+    @Override
     protected boolean ignoreAlignment(final SAMRecord sam) {
         if (maxGaps == -1) return false;
         int gaps = 0;

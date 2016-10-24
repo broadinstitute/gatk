@@ -23,6 +23,7 @@ public final class BestMapqPrimaryAlignmentSelectionStrategy implements PrimaryA
     /**
      * Primary alignment was filtered out.  Need to select a new one.
      */
+    @Override
     public void pickPrimaryAlignment(final HitsForInsert hits) {
 
         if (hits.numHits() == 0) throw new IllegalArgumentException("No alignments to pick from");

@@ -34,6 +34,7 @@ public class MapPartitioner<I,O> implements Iterable<O>
         this.sentinel = sentinel;
     }
 
+    @Override
     public Iterator<O> iterator() { return new FunctionApplicator(); }
 
     private class FunctionApplicator implements Iterator<O> {

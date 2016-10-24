@@ -12,6 +12,7 @@ public final class NormalizeFastaIntegrationTest extends CommandLineProgramTest 
 
     private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/fastq/NormalizeFasta");
 
+    @Override
     public String getTestedClassName() {
         return NormalizeFasta.class.getSimpleName();
     }

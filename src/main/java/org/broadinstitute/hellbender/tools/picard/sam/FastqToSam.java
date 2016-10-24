@@ -132,6 +132,7 @@ public final class FastqToSam extends PicardCommandLineProgram {
     }
 
     /* Simply invokes the right method for unpaired or paired data. */
+    @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(FASTQ);
         IOUtil.assertFileIsWritable(OUTPUT);

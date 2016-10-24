@@ -67,6 +67,7 @@ public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelC
 			this.readGroup = readGroup;
 		}
 
+		@Override
 		public void acceptRecord(final SAMRecordAndReference args) {
 			mappedRecordCount++;
 
@@ -141,6 +142,7 @@ public final class RrbsMetricsCollector extends SAMRecordAndReferenceMultiLevelC
 			}
 		}
 
+		@Override
 		public void finish() {
 			cytoConversionRate = nCytoTotal == 0 ? 0 : nCytoConverted / (double)nCytoTotal;
 			nCpgSeen = (int)cpgTotal.getSumOfValues();

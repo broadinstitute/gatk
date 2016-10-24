@@ -16,6 +16,7 @@ public abstract class ConcurrentAFCalculatorProvider extends AFCalculatorProvide
      */
     public ConcurrentAFCalculatorProvider() {
         threadLocal = new ThreadLocal<AFCalculatorProvider>() {
+            @Override
             public AFCalculatorProvider initialValue() {
                 return createProvider();
             }

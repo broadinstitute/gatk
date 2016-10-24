@@ -31,6 +31,7 @@ import java.util.Map;
  */
 public final class MappingQualityZero extends InfoFieldAnnotation {
 
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
@@ -48,8 +49,10 @@ public final class MappingQualityZero extends InfoFieldAnnotation {
         return String.format("%d", mq0);
     }
 
+    @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.MAPPING_QUALITY_ZERO_KEY); }
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
     }

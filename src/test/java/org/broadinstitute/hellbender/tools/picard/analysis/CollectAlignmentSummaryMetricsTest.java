@@ -20,6 +20,7 @@ import java.text.NumberFormat;
 public final class CollectAlignmentSummaryMetricsTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/analysis/CollectAlignmentSummaryMetrics");
 
+    @Override
     public String getTestedClassName() {
         return CollectAlignmentSummaryMetrics.class.getSimpleName();
     }

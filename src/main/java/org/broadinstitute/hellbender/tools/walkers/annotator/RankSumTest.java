@@ -30,6 +30,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
         this(false);
     }
 
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {

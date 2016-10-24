@@ -21,6 +21,7 @@ import java.util.*;
 public final class FastqToSamIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_DATA_DIR = new File(getTestDataDir(), "picard/sam/conversion/fastq2bam");
 
+    @Override
     public String getTestedClassName() {
         return FastqToSam.class.getSimpleName();
     }

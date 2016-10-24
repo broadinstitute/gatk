@@ -91,6 +91,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
      *
      * @return the size of the collection
      */
+    @Override
     public int size() {
         return mArray.size();
     }
@@ -132,6 +133,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
      *
      * @return true if we have no elements
      */
+    @Override
     public boolean isEmpty() {
         return mArray.isEmpty();
     }
@@ -245,6 +247,7 @@ public final class GenomeLocSortedSet extends AbstractSet<GenomeLoc> {
      *
      * @return true if the loc was added or false otherwise (if the loc was null)
      */
+    @Override
     public boolean add(final GenomeLoc loc) {
         return add(loc, false);
     }

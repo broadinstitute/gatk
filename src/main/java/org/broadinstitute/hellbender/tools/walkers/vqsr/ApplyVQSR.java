@@ -193,6 +193,7 @@ public class ApplyVQSR extends VariantWalker {
     //
     //---------------------------------------------------------------------------------------------------------------
 
+    @Override
     public void onTraversalStart() {
         if( TS_FILTER_LEVEL != null ) {
             try {

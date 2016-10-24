@@ -174,11 +174,13 @@ public final class SimpleInterval implements Locatable, Serializable {
     /**
      * @return name of the contig this is mapped to
      */
+    @Override
     public String getContig(){
         return contig;
     }
 
     /** Gets the 1-based start position of the interval on the contig. */
+    @Override
     public int getStart(){
         return start;
     }
@@ -191,6 +193,7 @@ public final class SimpleInterval implements Locatable, Serializable {
     /**
      * @return the 1-based closed-ended end position of the interval on the contig.
      */
+    @Override
     public int getEnd(){
         return end;
     }

@@ -41,6 +41,7 @@ public final class ChromosomeCounts extends InfoFieldAnnotation implements Stand
             VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY) };
 
 
+    @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
                                         final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
@@ -52,9 +53,11 @@ public final class ChromosomeCounts extends InfoFieldAnnotation implements Stand
         return VariantContextUtils.calculateChromosomeCounts(vc, new LinkedHashMap<>(), true, Collections.emptySet());
     }
 
+    @Override
     public List<String> getKeyNames() {
         return Arrays.asList(keyNames);
     }
 
+    @Override
     public List<VCFInfoHeaderLine> getDescriptions() { return Arrays.asList(descriptions); }
 }

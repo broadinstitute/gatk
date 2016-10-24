@@ -12,6 +12,7 @@ public final class RenameSampleInVcfIntegrationTest extends CommandLineProgramTe
 
     private static final File TEST_DATA_PATH = new File(getTestDataDir(), "picard/vcf/RenameSampleInVcf");
 
+    @Override
     public String getTestedClassName() {
         return RenameSampleInVcf.class.getSimpleName();
     }

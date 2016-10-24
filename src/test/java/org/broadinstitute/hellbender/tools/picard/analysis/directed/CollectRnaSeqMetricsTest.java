@@ -21,6 +21,7 @@ import java.io.FileReader;
 import java.io.PrintStream;
 
 public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
+    @Override
     public String getTestedClassName() {
         return CollectRnaSeqMetrics.class.getSimpleName();
     }

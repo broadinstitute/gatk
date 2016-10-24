@@ -108,6 +108,7 @@ public abstract class HaplotypeBAMWriter implements AutoCloseable {
     /**
      * Close any output resource associated with this writer.
      */
+    @Override
     public void close() {
         output.close();
     }

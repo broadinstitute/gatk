@@ -22,6 +22,7 @@ public class ExpandingArrayList<E> extends ArrayList<E> {
      * @return
      * @throws IndexOutOfBoundsException in index < 0
      */
+    @Override
     public E get(int index) throws IndexOutOfBoundsException {
         if ( index < size() )
             return super.get(index);
@@ -34,6 +35,7 @@ public class ExpandingArrayList<E> extends ArrayList<E> {
         return super.get(index);
     }
 
+    @Override
     public E set(int index, E element) {
         maybeExpand(index, null);
         return super.set(index, element);

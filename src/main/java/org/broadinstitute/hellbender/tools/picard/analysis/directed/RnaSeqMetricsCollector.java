@@ -106,6 +106,7 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
             
         }
 
+        @Override
         public void acceptRecord(SAMRecord rec) {
             // Filter out some reads, and collect the total number of PF bases
             if (rec.getReadFailsVendorQualityCheckFlag() || rec.isSecondaryOrSupplementary()) return;
@@ -232,6 +233,7 @@ public final class RnaSeqMetricsCollector extends SAMRecordMultiLevelCollector<R
 
         }
 
+        @Override
         public void finish() {
             if (metrics.PF_ALIGNED_BASES > 0) {
                 if (metrics.RIBOSOMAL_BASES != null) {

@@ -336,6 +336,7 @@ public final class SamToFastq extends PicardCommandLineProgram {
      * @return null if command line is valid.  If command line is invalid, returns an array of error
      * messages to be written to the appropriate place.
      */
+    @Override
     protected String[] customCommandLineValidation() {
         if (INTERLEAVE && SECOND_END_FASTQ != null) {
             return new String[]{

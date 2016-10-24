@@ -66,6 +66,7 @@ public final class AlignmentContext implements Locatable, HasGenomeLocation {
 
     public long getPosition() { return getStart(); }
 
+    @Override
     public Locatable getLocation() { return loc; }
 
     /**

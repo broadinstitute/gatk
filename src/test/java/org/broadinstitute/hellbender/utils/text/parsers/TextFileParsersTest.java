@@ -275,6 +275,7 @@ public final class TextFileParsersTest {
             delimiters = delim.toCharArray();
         }
 
+        @Override
         protected boolean isDelimiter(final byte b) {
             for (int i = 0; i < delimiters.length; i++) {
                 if (b == delimiters[i]) {
@@ -284,8 +285,11 @@ public final class TextFileParsersTest {
             return false;
         }
 
+        @Override
         protected byte[] readNextLine() {  return new byte[0]; }
+        @Override
         public String getFileName() { return null; }
+        @Override
         public void close() {}
     }
 }

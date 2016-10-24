@@ -31,6 +31,7 @@ public final class MarkDuplicatesIntegrationTest extends AbstractMarkDuplicatesC
         TEST_BASE_NAME = "MarkDuplicates";
     }
 
+    @Override
     protected AbstractMarkDuplicatesTester getTester() {
         return new MarkDuplicatesTester();
     }

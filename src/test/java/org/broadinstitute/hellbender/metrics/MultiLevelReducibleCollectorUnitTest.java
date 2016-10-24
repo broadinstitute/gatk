@@ -161,6 +161,7 @@ public final class MultiLevelReducibleCollectorUnitTest {
             this.setUnitsToMetrics(combinedUnitsToMetrics);
         }
 
+        @Override
         public RecordCountPerUnitCollector combineUnit(RecordCountPerUnitCollector c1, RecordCountPerUnitCollector c2) {
            return c1.combine(c2);
         }

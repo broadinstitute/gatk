@@ -18,10 +18,12 @@ public abstract class CommandLineProgramTest extends BaseTest implements Command
         return new File("src/test/resources/org/broadinstitute/hellbender/tools/");
     }
 
+    @Override
     public String getTestedToolName() {
         return getTestedClassName();
     }
 
+    @Override
     public Object runCommandLine(final List<String> args) {
         return new Main().instanceMain(makeCommandLineArgs(args));
     }

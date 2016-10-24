@@ -73,6 +73,7 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
     @Argument(shortName = "PM", doc = "Read Group platform model", optional = true)
     public String RGPM;
 
+    @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
         IOUtil.assertFileIsWritable(OUTPUT);
