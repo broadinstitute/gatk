@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.SVKmer.Base;
+import static org.broadinstitute.hellbender.tools.spark.sv.SVKmerLong.Base;
 
 /** iterator over kmers with a specified minimum base-wise shannon entropy */
 public class SVKmerizerWithLowComplexityFilter extends SVKmerizer {
@@ -23,21 +23,21 @@ public class SVKmerizerWithLowComplexityFilter extends SVKmerizer {
         this.minEntropy = minEntropy;
         baseCounts = new int[Base.values().length];
         baseCounts[(int)Base.A.value] = kSize;
-        this.nextKmer = nextKmer(new SVKmer(kSize), 0);
+        this.nextKmer = nextKmer(new SVKmerLong(kSize), 0);
     }
 
-    public static Stream<SVKmer> stream( final CharSequence seq, final int kSize, final double minEntropy ) {
+    public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, final double minEntropy ) {
         return StreamSupport.stream(((Iterable<SVKmer>)() ->
                 new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy)).spliterator(), false);
     }
 
-    public static Stream<SVKmer> stream( final byte[] seq, final int kSize, final double minEntropy ) {
+    public static Stream<SVKmer> stream(final byte[] seq, final int kSize, final double minEntropy ) {
         return StreamSupport.stream(((Iterable<SVKmer>)() ->
                 new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy)).spliterator(), false);
     }
 
     @Override
-    protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
+    protected SVKmer nextKmer(SVKmer tmpKmer, int validBaseCount ) {
         final double[] entropies = getEntropies(kSize);
         final int len = seq.length();
         while ( idx < len ) {

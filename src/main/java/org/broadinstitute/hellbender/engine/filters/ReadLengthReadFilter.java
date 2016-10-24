@@ -26,6 +26,14 @@ public final class ReadLengthReadFilter extends ReadFilter implements Serializab
             optional=true)
     public int minReadLength = 1;
 
+    // Command line parser requires a no-arg constructor
+    public ReadLengthReadFilter() {}
+
+    public ReadLengthReadFilter( final int minLength, final int maxLength ) {
+        this.minReadLength = minLength;
+        this.maxReadLength = maxLength;
+    }
+
     @Override
     public boolean test( final GATKRead read ) {
         return read.getLength() >= minReadLength && read.getLength() <= maxReadLength;
