@@ -193,6 +193,7 @@ public abstract class CommandLineProgram {
      * Any arguments set by command-line parser can be validated.
     * @return null if command line is valid.  If command line is invalid, returns an array of error message
     * to be written to the appropriate place.
+    * @throws UserException.CommandLineException if command line is invalid and handling as exception is preferred.
     */
     protected String[] customCommandLineValidation() {
         return null;
@@ -205,9 +206,21 @@ public abstract class CommandLineProgram {
     protected boolean parseArgs(final String[] argv) {
 
         commandLineParser = new CommandLineParser(this, getPluginDescriptors());
-        final boolean ret;
         try{
-            ret = commandLineParser.parseArguments(System.err, argv);
+            final boolean ret = commandLineParser.parseArguments(System.err, argv);
+            commandLine = commandLineParser.getCommandLine();
+            if (!ret) {
+                return false;
+            }
+            final String[] customErrorMessages = customCommandLineValidation();
+            if (customErrorMessages != null) {
+                for (final String msg : customErrorMessages) {
+                    System.err.println(msg);
+                }
+                commandLineParser.usage(System.err, false);
+                return false;
+            }
+            return true;
         } catch (final UserException.CommandLineException e){
             //The CommandLineException is treated specially - we display help and no blow up
             commandLineParser.usage(System.err, true);
@@ -216,20 +229,6 @@ public abstract class CommandLineProgram {
             //we don't exit here though - only Main.main is allowed to call System.exit.
             throw e;
         }
-
-        commandLine = commandLineParser.getCommandLine();
-        if (!ret) {
-            return false;
-        }
-        final String[] customErrorMessages = customCommandLineValidation();
-        if (customErrorMessages != null) {
-            for (final String msg : customErrorMessages) {
-                System.err.println(msg);
-            }
-            commandLineParser.usage(System.err, false);
-            return false;
-        }
-        return true;
     }
 
     /**
