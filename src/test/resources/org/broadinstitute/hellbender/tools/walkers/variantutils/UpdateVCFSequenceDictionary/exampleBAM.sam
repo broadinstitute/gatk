@@ -1,0 +1,5 @@
+@HD	VN:1.0	SO:unsorted
+@SQ	SN:1	LN:1200	M5:606540b3279e72326d82d2d770f9e9d3	UR:file:///Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/AddSequenceDictionary/exampleFASTA.fasta
+@SQ	SN:2	LN:1200	M5:606540b3279e72326d82d2d770f9e9d3	UR:file:///Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/AddSequenceDictionary/exampleFASTA.fasta
+@SQ	SN:3	LN:1200	M5:606540b3279e72326d82d2d770f9e9d3	UR:file:///Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/AddSequenceDictionary/exampleFASTA.fasta
+@SQ	SN:4	LN:1200	M5:606540b3279e72326d82d2d770f9e9d3	UR:file:///Users/cmn/projects/hellbender/src/test/resources/org/broadinstitute/hellbender/tools/walkers/variantutils/AddSequenceDictionary/exampleFASTA.fasta
