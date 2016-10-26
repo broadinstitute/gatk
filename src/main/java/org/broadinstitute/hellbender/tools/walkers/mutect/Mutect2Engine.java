@@ -12,6 +12,9 @@ import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
@@ -425,14 +428,16 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     protected Set<GATKRead> filterNonPassingReads( final AssemblyRegion assemblyRegion) {
         final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
         for( final GATKRead rec : assemblyRegion.getReads() ) {
-            //TODO: Takuto points out that this is questionable.  Let's think hard abut it.
+            // TODO: Takuto points out that this is questionable.  Let's think hard abut it.
             // KCIBUL: only perform read quality filtering on tumor reads...
+            // Takuto: Reason we filter only the tumor is because we want to get any evidence for ALT alleles in the normal, even if the MQ is poor, to improve specificity.
+            // TODO: If we decide to filter the tumor and normal uniformly, move the method to the util class and share code with the method of the same name in HC
+
             if (isReadFromNormal(rec)) {
                 if( rec.getLength() < MIN_READ_LENGTH ) {
                     readsToRemove.add(rec);
                 }
-            } else if( rec.getLength() < MIN_READ_LENGTH || rec.getMappingQuality() < MTAC.MIN_MAPPING_QUALITY_SCORE || hasBadMate(rec) ||
-                    (MTAC.keepRG != null && !rec.getReadGroup().equals(MTAC.keepRG)) ) {
+            } else if( rec.getLength() < MIN_READ_LENGTH || rec.getMappingQuality() < MTAC.MIN_MAPPING_QUALITY_SCORE || (MTAC.keepRG != null && !rec.getReadGroup().equals(MTAC.keepRG)) ) {
                 readsToRemove.add(rec);
             }
         }

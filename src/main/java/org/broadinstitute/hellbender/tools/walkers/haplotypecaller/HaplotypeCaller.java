@@ -189,7 +189,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        return HaplotypeCallerEngine.makeStandardHCReadFilters();
+        return AssemblyBasedCallerUtils.makeStandardReadFilterList(true);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import ch.epfl.lamp.compiler.msil.Assembly;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -46,7 +47,7 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
 
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, reads.getHeader(), reference.getAbsolutePath());
 
-            List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
+            List<ReadFilter> hcFilters = AssemblyBasedCallerUtils.makeStandardReadFilterList(true);
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));
             ReadFilter hcCombinedFilter = hcFilters.get(0);
             for ( int i = 1; i < hcFilters.size(); ++i ) {
