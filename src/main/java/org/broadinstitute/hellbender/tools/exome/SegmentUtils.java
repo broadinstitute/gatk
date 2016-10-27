@@ -7,7 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
-import org.broadinstitute.hellbender.tools.exome.cnlohcaller.CNLOHCall;
+import org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller.AllelicCalls;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -356,7 +356,7 @@ public final class SegmentUtils {
      * </p>
      */
     public static void writeCnLoHACNVModeledSegmentFile(final File outFile,
-                                                   final List<CNLOHCall> calls,
+                                                   final List<AllelicCalls> calls,
                                                    final Genome genome) {
         Utils.nonNull(genome, "The genome cannot be null.");
 
@@ -365,7 +365,7 @@ public final class SegmentUtils {
         final String sampleName = genome.getSampleName();
 
         writeSegmentFile(outFile, calls, sampleName, SegmentTableColumn.CNLOH_ACNV_MODELED_SEGMENT_COLUMNS,
-                createDataLineFromCNLoHCallsFunction(targets, snps));
+                createDataLineFromBalancedCallsFunction(targets, snps));
     }
 
     /**
@@ -599,18 +599,18 @@ public final class SegmentUtils {
         }
     }
 
-    private static BiConsumer<CNLOHCall, DataLine> createDataLineFromCNLoHCallsFunction
+    private static BiConsumer<AllelicCalls, DataLine> createDataLineFromBalancedCallsFunction
             (final TargetCollection<ReadCountRecord.SingleSampleRecord> targets,
              final TargetCollection<AllelicCount> snps) {
-        return (cnlohCall, dataLine) -> {
-            createDataLineFromACNVModeledSegmentFunction(targets,snps).accept(cnlohCall.getAcnvSegment(), dataLine);
-            dataLine.append(cnlohCall.getBalancedCall().toString())
-                    .append(cnlohCall.getCnlohCall().toString())
-                    .append(cnlohCall.getRho())
-                    .append(cnlohCall.getM())
-                    .append(cnlohCall.getN())
-                    .append(cnlohCall.getfCr())
-                    .append(cnlohCall.getfMaf());
+        return (AllelicBalancedCall, dataLine) -> {
+            createDataLineFromACNVModeledSegmentFunction(targets,snps).accept(AllelicBalancedCall.getAcnvSegment(), dataLine);
+            dataLine.append(AllelicBalancedCall.getBalancedCall().toString())
+                    .append(AllelicBalancedCall.getCnlohCall().toString())
+                    .append(AllelicBalancedCall.getRho())
+                    .append(AllelicBalancedCall.getM())
+                    .append(AllelicBalancedCall.getN())
+                    .append(AllelicBalancedCall.getfCr())
+                    .append(AllelicBalancedCall.getfMaf());
         };
     }
 

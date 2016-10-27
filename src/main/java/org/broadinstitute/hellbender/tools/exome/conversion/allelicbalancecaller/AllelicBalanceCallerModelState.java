@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.cnlohcaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
@@ -12,8 +12,8 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class CNLOHCallerModelState implements Serializable {
-    private CNLOHCallerModelState() {}
+public class AllelicBalanceCallerModelState implements Serializable {
+    private AllelicBalanceCallerModelState() {}
 
     static final long serialVersionUID = 33733733712L;
 
@@ -135,13 +135,13 @@ public class CNLOHCallerModelState implements Serializable {
      * @param normalPloidy ploidy for a normal sample
      * @return Never {@code null}
      */
-    public static CNLOHCallerModelState createInitialCNLOHCallerModelState(final double rhoThreshold, final List<ACNVModeledSegment> segments,
+    public static AllelicBalanceCallerModelState createInitialCNLOHCallerModelState(final double rhoThreshold, final List<ACNVModeledSegment> segments,
                                                                            final double normalPloidy, final int numRhos) {
         ParamUtils.inRange(rhoThreshold, Math.ulp(0.0), 1.0 - Double.MIN_VALUE, "rho must be (0.0, 1.0)");
         Utils.nonNull(segments);
         ParamUtils.isPositive(numRhos, "Must have at least one rho.");
 
-        CNLOHCallerModelState result = new CNLOHCallerModelState();
+        AllelicBalanceCallerModelState result = new AllelicBalanceCallerModelState();
         result.setSegments(segments);
 
         // initialize variables

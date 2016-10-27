@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.acnvconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.acnvconversion;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.hellbender.tools.exome.*;

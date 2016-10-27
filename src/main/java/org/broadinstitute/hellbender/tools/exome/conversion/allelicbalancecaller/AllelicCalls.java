@@ -1,18 +1,18 @@
-package org.broadinstitute.hellbender.tools.exome.cnlohcaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 
 import java.io.Serializable;
 
-public class CNLOHCall implements Serializable, Locatable{
+public class AllelicCalls implements Serializable, Locatable {
 
     static final long serialVersionUID = 337337337L;
 
 
     private ACNVModeledSegment acnvSegment;
-    private CNLOHBalancedCall balancedCall;
-    private CNLOHLoHCall cnlohCall;
+    private AllelicBalanceCall balancedCall;
+    private CNLoHCall cnlohCall;
     private double fCr;
     private double fMaf;
     private double rho;
@@ -20,10 +20,10 @@ public class CNLOHCall implements Serializable, Locatable{
     private int n;
 
 
-    public CNLOHCall(final ACNVModeledSegment acnvSegment) {
+    public AllelicCalls(final ACNVModeledSegment acnvSegment) {
         this.acnvSegment = acnvSegment;
-        balancedCall = CNLOHBalancedCall.NO_CALL;
-        cnlohCall = CNLOHLoHCall.NO_CALL;
+        balancedCall = AllelicBalanceCall.NO_CALL;
+        cnlohCall = CNLoHCall.NO_CALL;
     }
 
     public ACNVModeledSegment getAcnvSegment() {
@@ -34,19 +34,19 @@ public class CNLOHCall implements Serializable, Locatable{
         this.acnvSegment = acnvSegment;
     }
 
-    public CNLOHBalancedCall getBalancedCall() {
+    public AllelicBalanceCall getBalancedCall() {
         return balancedCall;
     }
 
-    public void setBalancedCall(final CNLOHBalancedCall balancedCall) {
+    public void setBalancedCall(final AllelicBalanceCall balancedCall) {
         this.balancedCall = balancedCall;
     }
 
-    public CNLOHLoHCall getCnlohCall() {
+    public CNLoHCall getCnlohCall() {
         return cnlohCall;
     }
 
-    public void setCnlohCall(final CNLOHLoHCall cnlohCall) {
+    public void setCnlohCall(final CNLoHCall cnlohCall) {
         this.cnlohCall = cnlohCall;
     }
 

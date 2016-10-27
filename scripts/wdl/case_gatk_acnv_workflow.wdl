@@ -65,7 +65,7 @@ workflow case_gatk_acnv_workflow {
 
     # Workflow output directories and other options
     String plots_dir
-    String call_cnloh_dir
+    String conversion_dir
     Boolean enable_gc_correction
     Boolean isWGS
     Int wgsBinSize
@@ -230,14 +230,14 @@ workflow case_gatk_acnv_workflow {
           mem=4
     }
 
-    call CNLoHAndSplitsCaller {
+    call ConvertACNVResults {
       input:
           entity_id=row[0],
           gatk_jar=gatk_jar,
           tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           acnv_segments=AllelicCNV.acnv_final_segs,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
-          output_dir="${call_cnloh_dir}CallCNLoH/${row[0]}",
+          output_dir="${conversion_dir}conversion/${row[0]}",
           mem=4
     }
 
@@ -700,8 +700,7 @@ task PlotACNVResults {
     }
 }
 
-# Call ACNV segments as CNLoH and balanced
-task CNLoHAndSplitsCaller {
+task ConvertACNVResults {
     String entity_id
     String gatk_jar
     File tumor_hets
@@ -712,16 +711,16 @@ task CNLoHAndSplitsCaller {
 
     command {
         mkdir -p ${output_dir} && \
-        java -Xmx${mem}g -jar ${gatk_jar} CallCNLoHAndSplits --tumorHets ${tumor_hets} \
+        java -Xmx${mem}g -jar ${gatk_jar} ConvertACNVResults --tumorHets ${tumor_hets} \
          --segments ${acnv_segments} --tangentNormalized ${tn_file} \
          --outputDir ${output_dir}
     }
 
     output {
-        File cnloh_final_acs_segs="${output_dir}/${entity_id}-sim-final.acs.seg" 
-        File cnloh_final_cnb_called_segs="${output_dir}/${entity_id}-sim-final.cnb_called.seg"
-        File cnloh_final_cnv_segs="${output_dir}/${entity_id}-sim-final.cnv.seg"
-        File cnloh_final_titan_hets="${output_dir}/${entity_id}-sim-final.titan.het.tsv"
-        File cnloh_final_titan_tn="${output_dir}/${entity_id}-sim-final.titan.tn.tsv"
+        File allelic_calls_final_acs_segs="${output_dir}/${entity_id}-sim-final.acs.seg"
+        File allelic_calls_final_cnb_called_segs="${output_dir}/${entity_id}-sim-final.cnb_called.seg"
+        File allelic_calls_final_cnv_segs="${output_dir}/${entity_id}-sim-final.cnv.seg"
+        File allelic_calls_final_titan_hets="${output_dir}/${entity_id}-sim-final.titan.het.tsv"
+        File allelic_calls_final_titan_tn="${output_dir}/${entity_id}-sim-final.titan.tn.tsv"
     }
 }

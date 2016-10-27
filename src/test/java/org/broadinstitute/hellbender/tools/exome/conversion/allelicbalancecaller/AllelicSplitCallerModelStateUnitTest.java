@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.cnlohcaller;
+package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecaller;
 
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
@@ -14,7 +14,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CNLOHCallerModelStateUnitTest extends BaseTest {
+public class AllelicSplitCallerModelStateUnitTest extends BaseTest {
 
     @Test
     public void testBasicInit() {
@@ -24,7 +24,7 @@ public class CNLOHCallerModelStateUnitTest extends BaseTest {
         final List<ACNVModeledSegment> tempList = new ArrayList<>();
         tempList.add(acnvModeledSegment);
 
-        final CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(0.2, tempList,
+        final AllelicBalanceCallerModelState state = AllelicBalanceCallerModelState.createInitialCNLOHCallerModelState(0.2, tempList,
                 HomoSapiensConstants.DEFAULT_PLOIDY, CNLOHCaller.NUM_RHOS);
         Assert.assertNotNull(state);
         Assert.assertNotNull(state.getEffectivePis());
@@ -42,9 +42,9 @@ public class CNLOHCallerModelStateUnitTest extends BaseTest {
         final List<ACNVModeledSegment> tempList = new ArrayList<>();
         tempList.add(acnvModeledSegment);
 
-        final CNLOHCallerModelState state = CNLOHCallerModelState.createInitialCNLOHCallerModelState(0.2, tempList,
+        final AllelicBalanceCallerModelState state = AllelicBalanceCallerModelState.createInitialCNLOHCallerModelState(0.2, tempList,
                 HomoSapiensConstants.DEFAULT_PLOIDY, CNLOHCaller.NUM_RHOS);
-        SerializationTestUtils.roundTripInKryo(state, CNLOHCallerModelState.class,
+        SerializationTestUtils.roundTripInKryo(state, AllelicBalanceCallerModelState.class,
                 SparkContextFactory.getTestSparkContext().getConf());
     }
 }

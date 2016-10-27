@@ -68,7 +68,9 @@ RUN mkdir -p /usr/local/lib/R/ && \
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
     add-apt-repository "deb http://cran.rstudio.com/bin/linux/ubuntu trusty/" && \
     apt-get update && \
-    apt-get install -y --force-yes r-base-dev=3.1.3-1trusty r-base-core=3.1.3-1trusty
+    apt-get install -y --force-yes \
+        r-base-dev=3.1.3-1trusty \
+        r-base-core=3.1.3-1trusty
 
 # R setup complete...
 

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.titanconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.titanconversion;
 
 
 import org.apache.logging.log4j.LogManager;

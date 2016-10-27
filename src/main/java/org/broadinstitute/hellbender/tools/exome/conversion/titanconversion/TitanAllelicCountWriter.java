@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.titanconversion;
+package org.broadinstitute.hellbender.tools.exome.conversion.titanconversion;
 
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
