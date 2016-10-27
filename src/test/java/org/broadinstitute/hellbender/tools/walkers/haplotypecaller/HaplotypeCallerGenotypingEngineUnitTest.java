@@ -369,12 +369,12 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends BaseTest {
 
     @Test(dataProvider="ConstructPhaseSetMappingProvider")
     public void testConstructPhaseSetMapping(final List<VariantContext> calls,
-                                         final Map<VariantContext, Set<Haplotype>> haplotypeMap,
-                                         final int totalHaplotypes,
-                                         final int expectedMapSize,
-                                         final int expectedNumGroups,
-                                         final int expectedNum01,
-                                         final int expectedNum10) {
+                                             final Map<VariantContext, Set<Haplotype>> haplotypeMap,
+                                             final int totalHaplotypes,
+                                             final int expectedMapSize,
+                                             final int expectedNumGroups,
+                                             final int expectedNum01,
+                                             final int expectedNum10) {
         final Map<VariantContext, Pair<Integer, String>> actualPhaseSetMapping = new HashMap<>();
         final int actualNumGroups = HaplotypeCallerGenotypingEngine.constructPhaseSetMapping(calls, haplotypeMap, totalHaplotypes, actualPhaseSetMapping);
         Assert.assertEquals(actualNumGroups, expectedNumGroups);
@@ -460,5 +460,92 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends BaseTest {
 
         Assert.assertEquals(uniqueGroups.size(), expectedNumGroups);
         Assert.assertEquals(counter, expectedGroupSize);
+    }
+
+    @Test
+    public void testReduceNumberOfAlternativeAllelesBasedOnHaplotypesScores(){
+
+        // first have a list of alleles, one ref, several alt
+        final Allele ref = Allele.create("A", true);
+        final Allele altC = Allele.create("C", false);
+        final Allele altT = Allele.create("T", false);
+        final Allele altT2 = Allele.create("TT", false);
+        final Allele altG = Allele.create("G", false);
+
+        // then create several haplotypes, assign ad-hoc scores
+        final Haplotype hapRef = new Haplotype("AAAAA".getBytes());
+        hapRef.setScore(Double.MAX_VALUE);
+
+        // test case when both same best score and second best score are the same
+        final Haplotype hapT = new Haplotype("TAAAA".getBytes());
+        hapT.setScore(-2.0);
+        final Haplotype hapTAnother = new Haplotype("TAAAT".getBytes());
+        hapTAnother.setScore(-3.0);
+        final Haplotype hapT2 = new Haplotype("TTAAA".getBytes());
+        hapT2.setScore(-2.0);
+        final Haplotype hapT2Another = new Haplotype("TTAAT".getBytes());
+        hapT2Another.setScore(-3.0);
+
+        final Haplotype hapC = new Haplotype("CAAAA".getBytes());
+        hapC.setScore(-3.0);
+
+        // for case when there's tie in highest haplotype score
+        final Haplotype hapG = new Haplotype("GAAAA".getBytes());
+        hapG.setScore(-3.0);
+        final Haplotype hapGAnother = new Haplotype("GAAAG".getBytes());
+        hapGAnother.setScore(-5.0);
+
+        final Map<Allele, List<Haplotype>> alleleMapper = new LinkedHashMap<>();
+        alleleMapper.put(ref, Arrays.asList(hapRef));
+        alleleMapper.put(altC, Arrays.asList(hapC));
+        alleleMapper.put(altT, Arrays.asList(hapT, hapTAnother));
+        alleleMapper.put(altT2, Arrays.asList(hapT2, hapT2Another));
+        alleleMapper.put(altG, Arrays.asList(hapG, hapGAnother));
+
+        List<Allele> allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 5);
+        Assert.assertEquals(allelesToKeep.size(), 5);
+
+        Iterator<Allele> it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
+        Assert.assertEquals(it.next(), altC);
+        Assert.assertEquals(it.next(), altT);
+        Assert.assertEquals(it.next(), altT2);
+        Assert.assertEquals(it.next(), altG);
+
+        allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 4);
+        Assert.assertEquals(allelesToKeep.size(), 4);
+        it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
+        Assert.assertEquals(it.next(), altT);
+        Assert.assertEquals(it.next(), altT2);
+        Assert.assertEquals(it.next(), altG);
+
+        allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 3);
+        Assert.assertEquals(allelesToKeep.size(), 3);
+        it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
+        Assert.assertEquals(it.next(), altT);
+        Assert.assertEquals(it.next(), altT2);
+
+        allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 2);
+        Assert.assertEquals(allelesToKeep.size(), 2);
+        it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
+        Assert.assertEquals(it.next(), altT);
+
+        allelesToKeep = HaplotypeCallerGenotypingEngine.whichAllelesToKeepBasedonHapScores(alleleMapper, 1);
+        Assert.assertEquals(allelesToKeep.size(), 1);
+        it = allelesToKeep.iterator();
+        Assert.assertEquals(it.next(), ref);
+    }
+
+    @Test
+    public void testRemoveExcessiveAltAlleleFromVC(){
+        final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000000, Arrays.asList(Allele.create("A", true), Allele.create("T", false), Allele.create("C", false), Allele.create("G", false))).make();
+
+        final VariantContext reducedVC = HaplotypeCallerGenotypingEngine.removeExcessAltAllelesFromVC(originalVC, Arrays.asList(Allele.create("A", true), Allele.create("T", false), Allele.create("C", false)));
+
+        Assert.assertEquals(reducedVC.getNAlleles(), 3);
+        Assert.assertTrue(reducedVC.getAlleles().containsAll(Arrays.asList(Allele.create("A", true), Allele.create("T", false), Allele.create("C", false))));
     }
 }

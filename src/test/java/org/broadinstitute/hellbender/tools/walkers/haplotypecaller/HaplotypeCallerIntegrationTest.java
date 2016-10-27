@@ -13,6 +13,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -286,6 +287,25 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             Assert.assertTrue(((double)readCountDifference / gatk3BamoutNumReads) < 0.10,
                                "-bamout produced a bam with over 10% fewer/more reads than expected");
         }
+    }
+
+    @Test
+    public void testHaplotypeCallerRemoveAltAlleleBasedOnHaptypeScores() throws IOException{
+        final File testBAM = new File(TEST_FILES_DIR + "pretendTobeTetraPloidTetraAllelicSite.bam");
+        final File output = createTempFile("testHaplotypeCallerRemoveAltAlleleBasedOnHaptypeScoresResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testHaplotypeCallerRemoveAltAlleleBasedOnHaptypeScores.gatk4.vcf");
+
+        final String[] args = {
+                "-I", testBAM.getAbsolutePath(),
+                "-R", b37_reference_20_21,
+                "-L", "20:11363580-11363600",
+                "-O", output.getAbsolutePath(),
+                "-ploidy", "4",
+                "-maxGT", "15"
+        };
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
     /*

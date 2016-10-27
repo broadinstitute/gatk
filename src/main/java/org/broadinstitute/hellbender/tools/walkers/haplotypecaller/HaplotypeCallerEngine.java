@@ -164,7 +164,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         referenceConfidenceModel = new ReferenceConfidenceModel(samplesList, readsHeader, hcArgs.indelSizeToEliminateInRefModel);
 
         //Allele-specific annotations are not yet supported in the VCF mode
-        if (isAlleleSpecficMode(annotationEngine) && isVCFMode()){
+        if (isAlleleSpecificMode(annotationEngine) && isVCFMode()){
            throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
         }
 
@@ -181,7 +181,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         return hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.NONE;
     }
 
-    private boolean isAlleleSpecficMode(final VariantAnnotatorEngine annotationEngine) {
+    private boolean isAlleleSpecificMode(final VariantAnnotatorEngine annotationEngine) {
         //HACK. Note: we can't use subclass information from ReducibleAnnotation (which would be the obvious choice)
         // because RMSMappingQuality is both a reducible annotation and a standard annotation.
         final boolean infoAnnAlleleSpefic = annotationEngine.getInfoAnnotations().stream().anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().startsWith("AS_"));
