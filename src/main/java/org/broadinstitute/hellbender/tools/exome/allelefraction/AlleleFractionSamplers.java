@@ -30,6 +30,7 @@ final class AlleleFractionSamplers {
             this.meanBiasSliceSamplingWidth = meanBiasSliceSamplingWidth;
         }
 
+        @Override
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             final AllelicPanelOfNormals allelicPoN = data.getPoN();
             if (allelicPoN.equals(AllelicPanelOfNormals.EMPTY_PON)) {
@@ -54,6 +55,7 @@ final class AlleleFractionSamplers {
             this.biasVarianceSliceSamplingWidth = biasVarianceSliceSamplingWidth;
         }
 
+        @Override
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             final AllelicPanelOfNormals allelicPoN = data.getPoN();
             if (allelicPoN.equals(AllelicPanelOfNormals.EMPTY_PON)) {
@@ -77,6 +79,7 @@ final class AlleleFractionSamplers {
             this.outlierProbabilitySliceSamplingWidth = outlierProbabilitySliceSamplingWidth;
         }
 
+        @Override
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             return new SliceSampler(rng, x -> AlleleFractionLikelihoods.logLikelihood(
                     state.globalParameters().copyWithNewOutlierProbability(x), state.minorFractions(), data),
@@ -98,6 +101,7 @@ final class AlleleFractionSamplers {
             this.sliceSamplingWidth = sliceSamplingWidth;
         }
 
+        @Override
         public Double sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             if (data.getNumHetsInSegment(segmentIndex) == 0) {
                 return Double.NaN;
@@ -120,6 +124,7 @@ final class AlleleFractionSamplers {
             }
         }
 
+        @Override
         public AlleleFractionState.MinorFractions sample(final RandomGenerator rng, final AlleleFractionState state, final AlleleFractionData data) {
             return new AlleleFractionState.MinorFractions(perSegmentSamplers.stream()
                     .map(sampler -> sampler.sample(rng, state, data)).collect(Collectors.toList()));

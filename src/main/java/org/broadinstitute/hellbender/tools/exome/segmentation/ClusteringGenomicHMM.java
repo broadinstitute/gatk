@@ -49,10 +49,12 @@ public abstract class ClusteringGenomicHMM<T> implements HiddenMarkovModel<T, Si
     }
 
     // The following methods implement the HiddenMarkovModel interface -------------------------------------------------
+    @Override
     public List<Integer> hiddenStates() {
         return IntStream.range(0, hiddenStateValues.length).boxed().collect(Collectors.toList());
     }
 
+    @Override
     public double logPriorProbability(final Integer state, final SimpleInterval position) {
         return Math.log(weights[state]);
     }
@@ -60,9 +62,11 @@ public abstract class ClusteringGenomicHMM<T> implements HiddenMarkovModel<T, Si
     // TODO: it's awkward that these are both required -- reason is that copy ratio emission is stored
     // TODO: by hidden state (Integer)
     // Child classes must specify their own emission likelihoods
+    @Override
     public abstract double logEmissionProbability(final T data, final Integer state, final SimpleInterval position);
     public abstract double logEmissionProbability(final T data, final double hiddenStateValue);
 
+    @Override
     public double logTransitionProbability(final Integer currentState, final SimpleInterval currentPosition,
                                            final Integer nextState, final SimpleInterval nextPosition) {
         return logTransitionProbability(currentState, nextState, calculateDistance(currentPosition, nextPosition));

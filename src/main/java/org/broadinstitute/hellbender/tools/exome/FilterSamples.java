@@ -254,6 +254,7 @@ public class FilterSamples extends CommandLineProgram {
             }
         }
 
+        @Override
         public void close() {
             if (fileWriter != null) {
                 try {

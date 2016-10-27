@@ -39,6 +39,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
 
     // {@link GenotypingEngine} requires a non-null {@link AFCalculatorProvider} but this class doesn't need it.  Thus we make a dummy
     private static AFCalculatorProvider DUMMY_AF_CALCULATOR_PROVIDER = new AFCalculatorProvider() {
+        @Override
         public AFCalculator getInstance(final int ploidy, final int maximumAltAlleles) { return null; }
     };
 

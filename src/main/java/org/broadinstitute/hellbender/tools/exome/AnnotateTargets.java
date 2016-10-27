@@ -91,6 +91,7 @@ public class AnnotateTargets extends TargetWalker {
 
     private Map<TargetAnnotation, TargetAnnotator> annotators;
 
+    @Override
     public void onTraversalStart() {
         super.onTraversalStart();
         annotators = new LinkedHashMap<>(2);

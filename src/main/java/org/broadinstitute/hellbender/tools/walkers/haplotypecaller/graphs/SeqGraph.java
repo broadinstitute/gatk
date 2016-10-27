@@ -20,6 +20,7 @@ public final class SeqGraph extends BaseGraph<SeqVertex, BaseEdge> {
 
     private static final long serialVersionUID = 1l;
 
+    @Override
     public SeqGraph clone() {
         return (SeqGraph) super.clone();
     }

@@ -191,6 +191,7 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
         return result;
     }
 
+    @Override
     public TestingReadThreadingGraph clone() {
         return (TestingReadThreadingGraph) super.clone();
     }

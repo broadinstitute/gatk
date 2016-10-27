@@ -12,6 +12,7 @@ import java.util.Map;
 public final class TestGraph extends BaseGraph<MultiDeBruijnVertex, BaseEdge> {
     private static final long serialVersionUID = 1L;
 
+    @Override
     public TestGraph clone() {
         return (TestGraph) super.clone();
     }
@@ -69,6 +70,7 @@ public final class TestGraph extends BaseGraph<MultiDeBruijnVertex, BaseEdge> {
      *
      * @return a newly allocated SequenceGraph
      */
+    @Override
     public SeqGraph toSequenceGraph() {
         final SeqGraph seqGraph = new SeqGraph(getKmerSize());
         final Map<MultiDeBruijnVertex, SeqVertex> vertexMap = new HashMap<>();
