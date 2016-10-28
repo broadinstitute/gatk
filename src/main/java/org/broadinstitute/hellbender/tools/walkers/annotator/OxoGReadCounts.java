@@ -8,15 +8,13 @@ import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.broadinstitute.hellbender.utils.BaseUtils.Base.A;
 import static org.broadinstitute.hellbender.utils.BaseUtils.Base.C;
@@ -63,11 +61,11 @@ public final class OxoGReadCounts extends GenotypeAnnotation {
                                   final VariantContext vc,
                                   final Genotype g,
                                   final GenotypeBuilder gb,
-                                  final PerReadAlleleLikelihoodMap alleleLikelihoodMap){
+                                  final ReadLikelihoods<Allele> likelihoods){
         Utils.nonNull(gb, "gb is null");
         Utils.nonNull(vc, "vc is null");
 
-        if (g == null || !g.isCalled() || alleleLikelihoodMap == null || !vc.isSNP()) {
+        if (g == null || !g.isCalled() || likelihoods == null || !vc.isSNP()) {
             return;
         }
 
@@ -79,18 +77,17 @@ public final class OxoGReadCounts extends GenotypeAnnotation {
         int ref_F1R2 = 0;
         int ref_F2R1 = 0;
 
-        for ( final Map.Entry<GATKRead, Map<Allele,Double>> el : alleleLikelihoodMap.getLikelihoodReadMap().entrySet() ) {
-            final MostLikelyAllele a = PerReadAlleleLikelihoodMap.getMostLikelyAllele(el.getValue());
-            final GATKRead read = el.getKey();
-
-            if ( a.isInformative() && isUsableRead(read)) {
-                if (a.getAlleleIfInformative().equals(ref, true) && read.isPaired()) {
+        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles(g.getSampleName())) {
+            final GATKRead read = bestAllele.read;
+            if (bestAllele.isInformative() && isUsableRead(read) && read.isPaired()) {
+                final Allele allele = bestAllele.allele;
+                if (allele.equals(ref, true)) {
                     if (read.isReverseStrand() == read.isFirstOfPair()) {
                         ref_F2R1++;
                     } else {
                         ref_F1R2++;
                     }
-                } else if (a.getAlleleIfInformative().equals(alt, true) && read.isPaired()) {
+                } else if (allele.equals(alt, true)) {
                     if (read.isReverseStrand() == read.isFirstOfPair()) {
                         alt_F2R1++;
                     } else {

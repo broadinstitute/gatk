@@ -1,17 +1,19 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 
 /**
@@ -34,13 +36,17 @@ public final class MappingQualityZero extends InfoFieldAnnotation {
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
+                                        final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc);
-        if (!vc.isVariant() || stratifiedPerReadAlleleLikelihoodMap == null){
+        if (!vc.isVariant() || likelihoods == null){
             return Collections.emptyMap();
         }
-        //NOTE: unlike other annotations, this one returns 0 if stratifiedPerReadAlleleLikelihoodMap is empty
-        final long mq0 = stratifiedPerReadAlleleLikelihoodMap.values().stream().flatMap(llm -> llm.getLikelihoodReadMap().keySet().stream()).filter(r -> r.getMappingQuality() == 0).count();
+        //NOTE: unlike other annotations, this one returns 0 if likelihoods are empty
+        final long mq0 = IntStream.range(0, likelihoods.numberOfSamples()).boxed()
+                .flatMap(s -> likelihoods.sampleReads(s).stream())
+                .filter(r -> r.getMappingQuality() == 0)
+                .count();
+
         return Collections.singletonMap(getKeyNames().get(0), formattedValue(mq0));
     }
 

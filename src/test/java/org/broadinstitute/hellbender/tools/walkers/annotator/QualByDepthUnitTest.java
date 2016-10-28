@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.math3.stat.StatUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -15,8 +16,12 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class QualByDepthUnitTest extends BaseTest {
+    private static final Allele REF = Allele.create("A", true);
+    private static final Allele ALT = Allele.create("C");
 
     @DataProvider(name = "UsingAD")
     public Object[][] makeUsingADData() {
@@ -65,10 +70,7 @@ public class QualByDepthUnitTest extends BaseTest {
 
     @Test
     public void testUsingDP() {
-        final Allele A = Allele.create("A", true);
-        final Allele C = Allele.create("C");
-
-        final List<Allele> AC = Arrays.asList(A, C);
+        final List<Allele> AC = Arrays.asList(REF, ALT);
         final int depth = 20;
         final Genotype gAC = new GenotypeBuilder("1", AC).DP(depth).make();
 
@@ -87,44 +89,33 @@ public class QualByDepthUnitTest extends BaseTest {
 
     @Test
     public void testUsingReads(){
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
-
-        final Allele A = Allele.create("A", true);
-        final Allele C = Allele.create("C");
-        final Allele G = Allele.create("G");
-
-        final List<Allele> AC = Arrays.asList(A, C);
-        final int readDepth = 20;
+        final List<Allele> ALLELES = Arrays.asList(REF, ALT);
+        final int depth = 20;
         final String sample1 = "sample1";
         final int dpDepth = 30; //Note: using a different value on purpose so that we can check that reads are preferred over DP
-        final Genotype gAC = new GenotypeBuilder(sample1, AC).DP(dpDepth).make();
+        final Genotype gAC = new GenotypeBuilder(sample1, ALLELES).DP(dpDepth).make();
 
         final double log10PError = -5;
         final double qual = -10.0 * log10PError;
 
-        final int n1A= readDepth;
-        for (int i = 0; i < n1A; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1A_" + i);
-            read.setMappingQuality(20);
-            map.add(read, A, -1.0);
-            map.add(read, C, -100.0);  //try to fool it - add another likelihood to same read
-            map.add(read, G, -1000.0);  //and a third one
-        }
+        final List<GATKRead> reads = IntStream.range(0, depth)
+                .mapToObj(n -> ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"))).collect(Collectors.toList());
 
-        final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
-        final Map<String, Object> annotatedMap = new QualByDepth().annotate(null, vc, perReadAlleleLikelihoodMap);
+        final ReadLikelihoods<Allele> likelihoods =
+                AnnotationArtificialData.makeLikelihoods(sample1, reads, -100.0, REF, ALT);
+
+        final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
+        final Map<String, Object> annotatedMap = new QualByDepth().annotate(null, vc, likelihoods);
         Assert.assertNotNull(annotatedMap, vc.toString());
         final String QD = (String)annotatedMap.get(GATKVCFConstants.QUAL_BY_DEPTH_KEY);
 
-        final double expectedQD = qual/readDepth;
+        final double expectedQD = qual/depth;
         Assert.assertEquals(Double.valueOf(QD), expectedQD, 0.0001);
 
         //Now we test that when AD is present, it trumps everything
-        final Genotype gAC_withAD = new GenotypeBuilder("1", AC).DP(dpDepth).AD(new int[]{5,5}).make();
-        final VariantContext vc_withAD = new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAC_withAD)).make();
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap_withAD = Collections.singletonMap(sample1, map);
-        final Map<String, Object> annotatedMap_withAD = new QualByDepth().annotate(null, vc_withAD, perReadAlleleLikelihoodMap_withAD);
+        final Genotype gAC_withAD = new GenotypeBuilder("1", ALLELES).DP(dpDepth).AD(new int[]{5,5}).make();
+        final VariantContext vc_withAD = new VariantContextBuilder("test", "20", 10, 10, ALLELES).log10PError(log10PError).genotypes(Arrays.asList(gAC_withAD)).make();
+        final Map<String, Object> annotatedMap_withAD = new QualByDepth().annotate(null, vc_withAD, likelihoods);
         final String QD_withAD = (String)annotatedMap_withAD.get(GATKVCFConstants.QUAL_BY_DEPTH_KEY);
         final double expectedQD_withAD = qual/(5+5);//two AD fields
         Assert.assertEquals(Double.valueOf(QD_withAD), expectedQD_withAD, 0.0001);
@@ -182,35 +173,41 @@ public class QualByDepthUnitTest extends BaseTest {
 
     @Test
     public void testAnnotate_AS() throws Exception {
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
 
         final Allele A = Allele.create("A", true);
         final Allele C = Allele.create("C");
         final Allele G = Allele.create("G");
 
         final List<Allele> AC = Arrays.asList(A, C);
-        final int readDepth = 20;
+        final int depth = 20;
         final String sample1 = "sample1";
         final int dpDepth = 30; //Note: using a different value on purpose so that we can check that reads are preferred over DP
         final Genotype gAC = new GenotypeBuilder(sample1, AC).DP(dpDepth).make();
 
         final double log10PError = -5;
 
-        final int n1A= readDepth;
-        for (int i = 0; i < n1A; i++) {
-            final GATKRead read = ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"), "n1A_" + i);
-            read.setMappingQuality(20);
-            map.add(read, A, -1.0);
-            map.add(read, C, -100.0);  //try to fool it - add another likelihood to same read
-            map.add(read, G, -1000.0);  //and a third one
+        final List<GATKRead> reads = IntStream.range(0, depth)
+                .mapToObj(n -> ArtificialReadUtils.createArtificialRead(TextCigarCodec.decode("10M"))).collect(Collectors.toList());
+
+        final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of(sample1, reads);
+        final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList(sample1));
+        final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(A, C, G));
+        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+
+        // modify likelihoods in-place
+        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(0);
+
+        for (int n = 0; n < depth; n++) {
+            matrix.set(0, n, -1.0);
+            matrix.set(1, n, -100.0);
+            matrix.set(2, n, -1000.0);
         }
 
         final VariantContext vc = new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make();
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
-        final Map<String, Object> annotatedMap = new AS_QualByDepth().annotate(null, vc, perReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMap = new AS_QualByDepth().annotate(null, vc, likelihoods);
         Assert.assertTrue(annotatedMap.isEmpty());
 
-        final Map<String, Object> annotatedMapRaw = new AS_QualByDepth().annotateRawData(null, vc, perReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMapRaw = new AS_QualByDepth().annotateRawData(null, vc, likelihoods);
         Assert.assertTrue(annotatedMapRaw.isEmpty());
     }
 

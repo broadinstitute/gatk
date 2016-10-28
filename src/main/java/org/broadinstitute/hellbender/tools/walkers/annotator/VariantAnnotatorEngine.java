@@ -10,7 +10,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException.BadArgumentValue;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.reflections.ReflectionUtils;
 
 import java.util.*;
@@ -141,26 +141,26 @@ public final class VariantAnnotatorEngine {
      * @param vc the variant context to annotate
      * @param features context containing the features that overlap the given variant
      * @param ref the reference context of the variant to annotate or null if there is none
-     * @param stratifiedPerReadAlleleLikelihoodMap per-sample map of likelihoods per read. May be null
+     * @param likelihoods likelihoods indexed by sample, allele, and read within sample. May be null
      * @param addAnnot function that indicates if the given annotation type should be added to the variant
      */
     public VariantContext annotateContext(final VariantContext vc,
                                           final FeatureContext features,
                                           final ReferenceContext ref,
-                                          final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
+                                          final ReadLikelihoods<Allele> likelihoods,
                                           final Predicate<VariantAnnotation> addAnnot) {
         Utils.nonNull(vc, "vc cannot be null");
         Utils.nonNull(features, "features cannot be null");
 
         // annotate genotypes, creating another new VC in the process
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        builder.genotypes(annotateGenotypes(ref, vc, stratifiedPerReadAlleleLikelihoodMap, addAnnot));
+        builder.genotypes(annotateGenotypes(ref, vc, likelihoods, addAnnot));
         final VariantContext newGenotypeAnnotatedVC = builder.make();
 
         final Map<String, Object> infoAnnotMap = new LinkedHashMap<>(newGenotypeAnnotatedVC.getAttributes());
         for ( final InfoFieldAnnotation annotationType : this.infoAnnotations) {
             if (addAnnot.test(annotationType)){
-                final Map<String, Object> annotationsFromCurrentType = annotationType.annotate(ref, newGenotypeAnnotatedVC, stratifiedPerReadAlleleLikelihoodMap);
+                final Map<String, Object> annotationsFromCurrentType = annotationType.annotate(ref, newGenotypeAnnotatedVC, likelihoods);
                 if ( annotationsFromCurrentType != null ) {
                     infoAnnotMap.putAll(annotationsFromCurrentType);
                 }
@@ -176,7 +176,7 @@ public final class VariantAnnotatorEngine {
 
     private GenotypesContext annotateGenotypes(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap,
+                                               final ReadLikelihoods<Allele> likelihoods,
                                                final Predicate<VariantAnnotation> addAnnot) {
         if ( genotypeAnnotations.isEmpty() ) {
             return vc.getGenotypes();
@@ -184,15 +184,10 @@ public final class VariantAnnotatorEngine {
 
         final GenotypesContext genotypes = GenotypesContext.create(vc.getNSamples());
         for ( final Genotype genotype : vc.getGenotypes() ) {
-            PerReadAlleleLikelihoodMap perReadAlleleLikelihoodMap = null;
-            if (stratifiedPerReadAlleleLikelihoodMap != null) {
-                perReadAlleleLikelihoodMap = stratifiedPerReadAlleleLikelihoodMap.get(genotype.getSampleName());
-            }
-
             final GenotypeBuilder gb = new GenotypeBuilder(genotype);
             for ( final GenotypeAnnotation annotation : genotypeAnnotations) {
                 if (addAnnot.test(annotation)) {
-                    annotation.annotate(ref, vc, genotype, gb, perReadAlleleLikelihoodMap);
+                    annotation.annotate(ref, vc, genotype, gb, likelihoods);
                 }
             }
             genotypes.add(gb.make());

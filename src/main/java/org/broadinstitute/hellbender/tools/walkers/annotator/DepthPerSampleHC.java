@@ -9,13 +9,9 @@ import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
 import java.util.*;
 
@@ -47,40 +43,35 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
                           final VariantContext vc,
                           final Genotype g,
                           final GenotypeBuilder gb,
-                          final PerReadAlleleLikelihoodMap alleleLikelihoodMap ) {
+                          final ReadLikelihoods<Allele> likelihoods ) {
         Utils.nonNull(vc);
         Utils.nonNull(g);
         Utils.nonNull(gb);
 
-        if ( alleleLikelihoodMap == null || !g.isCalled() ) {
+        if ( likelihoods == null || !g.isCalled() ) {
             logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null");
+            return;
+        }
+
+        // check that there are reads
+        final String sample = g.getSampleName();
+        if (likelihoods.sampleReadCount(likelihoods.indexOfSample(sample)) == 0) {
+            return;
+        }
+
+        final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
+
+        // make sure that there's a meaningful relationship between the alleles in the likelihoods and our VariantContext
+        if ( !likelihoods.alleles().containsAll(alleles) ) {
+            logger.warn("VC alleles " + alleles + " not a strict subset of per read allele map alleles " + likelihoods.alleles());
             return;
         }
 
         // the depth for the HC is the sum of the informative alleles at this site.  It's not perfect (as we cannot
         // differentiate between reads that align over the event but aren't informative vs. those that aren't even
         // close) but it's a pretty good proxy and it matches with the AD field (i.e., sum(AD) = DP).
-        int dp = 0;
-
-        // there are reads
-        if ( !alleleLikelihoodMap.isEmpty() ) {
-            final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
-
-            // make sure that there's a meaningful relationship between the alleles in the perReadAlleleLikelihoodMap and our VariantContext
-            if ( !alleleLikelihoodMap.getAllelesSet().containsAll(alleles) ) {
-                logger.warn("VC alleles " + alleles + " not a strict subset of per read allele map alleles " + alleleLikelihoodMap.getAllelesSet());
-                return;
-            }
-
-            for ( Map.Entry<GATKRead, Map<Allele, Double>> el : alleleLikelihoodMap.getLikelihoodReadMap().entrySet() ) {
-                final MostLikelyAllele a = PerReadAlleleLikelihoodMap.getMostLikelyAllele(el.getValue(), alleles);
-                if ( a.isInformative() ) {
-                    dp++;
-                }
-            }
-
-            gb.DP(dp);
-        }
+        final int depth = (int) likelihoods.bestAlleles(sample).stream().filter(ba -> ba.isInformative()).count();
+        gb.DP(depth);
     }
 
     @Override

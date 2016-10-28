@@ -639,67 +639,9 @@ public final class ReadLikelihoodsUnitTest {
         Assert.assertEquals(totalLikelihoodsSet, expectedLikelihoodsSet);
     }
 
-    @Test(dependsOnMethods={"testLikelihoodWriting","testInstantiationAndBasicQueries"},
-            dataProvider="readCountsAndnumberOfAllelesDataSkippingNoAlleleAndWithReference")
-    public void testMapConversion(final int[] readCounts, final int numberOfAlleles, final boolean hasReference) {
-        final SampleList sampleList = sampleList(readCounts);
-
-        final AlleleList<Allele> alleleList = alleleList(numberOfAlleles,hasReference);
-        final Map<String,List<GATKRead>> sampleToReads = ReadLikelihoodsUnitTester.sampleToReads(sampleList, readCounts);
-
-        final Set<Allele> alleleWithLikelihoodsSet = new LinkedHashSet<>();
-        final Set<GATKRead> readsWithLikelihoodsSet = new LinkedHashSet<>();
-        final Map<String,PerReadAlleleLikelihoodMap> map = new LinkedHashMap<>(sampleList.numberOfSamples());
-        final int numberOfSamples = sampleList.numberOfSamples();
-        for (int s = 0; s < numberOfSamples; s++) {
-            final String sample = sampleList.getSample(s);
-            final PerReadAlleleLikelihoodMap perSampleMap = new PerReadAlleleLikelihoodMap();
-            final List<GATKRead> reads = sampleToReads.get(sample);
-            for (int a = 0; a < numberOfAlleles; a++)
-                for (int r = 0; r < reads.size(); r++) {
-                    perSampleMap.add(reads.get(r), alleleList.getAllele(a), testLikelihood(s, a, r));
-                    alleleWithLikelihoodsSet.add(alleleList.getAllele(a));
-                    readsWithLikelihoodsSet.add(reads.get(r));
-                }
-            map.put(sample,perSampleMap);
-
-        }
-
-        ReadLikelihoods<Allele> subject = ReadLikelihoods.fromPerAlleleReadLikelihoodsMap(map);
-
-        for (int s = 0; s < numberOfSamples; s++) {
-            final String sample = sampleList.getSample(s);
-            final int sIndex = subject.indexOfSample(sample);
-            Assert.assertTrue(sIndex >= 0);
-            Assert.assertTrue(sIndex < numberOfSamples);
-            final int sampleReadCount = sampleToReads.get(sample).size();
-            final LikelihoodMatrix<Allele> sampleLikelihoods = subject.sampleMatrix(sIndex);
-            for (int a = 0; a < numberOfAlleles; a++) {
-                final Allele allele = alleleList.getAllele(a);
-                final int aIndex = subject.indexOfAllele(allele);
-                Assert.assertEquals(aIndex >= 0, alleleWithLikelihoodsSet.contains(allele));
-                Assert.assertTrue(aIndex < numberOfAlleles);
-                if (aIndex == -1) continue;
-                for (int r = 0; r < sampleReadCount; r++) {
-                    final GATKRead read = sampleToReads.get(sample).get(r);
-                    final int rIndex = subject.readIndex(sIndex,read);
-                    final int rIndex2 = sampleLikelihoods.indexOfRead(read);
-                    Assert.assertEquals(rIndex, rIndex2);
-                    Assert.assertEquals(rIndex >= 0, readsWithLikelihoodsSet.contains(read));
-                    Assert.assertTrue(rIndex < sampleReadCount);
-                    if (rIndex == -1)
-                        continue;
-                    final double likelihood = sampleLikelihoods.get(aIndex,rIndex);
-                    Assert.assertEquals(likelihood, testLikelihood(s, a, r));
-                }
-            }
-        }
-    }
-
     private double testLikelihood(final int indexOfSample, final int indexOfAllele, final int readIndex) {
         return - Math.abs(31 * (indexOfSample + 1) + 101 * indexOfAllele + 1009 * readIndex);
     }
-
 
     private final Random rnd = Utils.getRandomGenerator();
 

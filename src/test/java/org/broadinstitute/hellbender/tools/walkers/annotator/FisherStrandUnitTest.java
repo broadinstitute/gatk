@@ -2,16 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_FisherStrand;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StrandBiasTest;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -20,19 +15,18 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 
 public final class FisherStrandUnitTest {
-    public static final double DELTA_PRECISION = 10e-8;
-    public static final double DELTA_PRECISION_FOR_PHRED = 0.001;
+    private static final double DELTA_PRECISION = 10e-8;
+    private static final double DELTA_PRECISION_FOR_PHRED = 0.001;
+
+    private static final Allele REF = Allele.create("T", true);
+    private static final Allele ALT = Allele.create("A", false);
 
     @DataProvider(name = "UsingTable")
     public Object[][] makeUsingTable() {
@@ -171,39 +165,21 @@ public final class FisherStrandUnitTest {
     }
 
     @Test
-    public void testUsingMap() {
+    public void testUsingLikelihoods() {
         final InfoFieldAnnotation ann = new FisherStrand();
         final String key = GATKVCFConstants.FISHER_STRAND_KEY;
-        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
-
-        final Allele alleleRef = Allele.create("T", true);
-        final Allele alleleAlt = Allele.create("A", false);
 
         final int[][] table = {{1, 1},  // alt: one read in each direction,
                 {2, 0}}; //ref: 2 reads fwd, 0 reads back
 
-        final GATKRead read1 = makeRead(true);
-        final GATKRead read2 = makeRead(true);
-        final GATKRead read3 = makeRead(false);
-        final GATKRead read4 = makeRead(true);
-        map.add(read1, alleleAlt, -1.0);
-        map.add(read1, alleleRef, -100.0);
+        final List<GATKRead> refReads = Arrays.asList(makeRead(true), makeRead(true));
+        final List<GATKRead> altReads = Arrays.asList(makeRead(false), makeRead(true));
+        final ReadLikelihoods<Allele> likelihoods =
+                AnnotationArtificialData.makeLikelihoods("SAMPLE", refReads, altReads, -100.0, -100.0, REF, ALT);
 
-        map.add(read2, alleleAlt, -1.0);
-        map.add(read2, alleleRef, -100.0);
+        final VariantContext vc = makeVC(REF, ALT);
 
-        map.add(read3, alleleAlt, -100.0);
-        map.add(read3, alleleRef, -1.0);
-
-        map.add(read4, alleleAlt, -100.0);
-        map.add(read4, alleleRef, -1.0);
-
-        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
-
-
-        final VariantContext vc = makeVC(alleleRef, alleleAlt);
-
-        final Map<String, Object> annotatedMap = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMap = ann.annotate(null, vc, likelihoods);
         Assert.assertNotNull(annotatedMap, vc.toString());
         final String pPhredStr = (String) annotatedMap.get(key);
 
@@ -217,53 +193,22 @@ public final class FisherStrandUnitTest {
     }
 
     @Test
-    public void testUsingMap_Raw() {
+    public void testUsingLikelihoods_Raw() {
         final AS_StrandBiasTest ann = new AS_FisherStrand();
         final String key = GATKVCFConstants.AS_SB_TABLE_KEY;
-        final PerReadAlleleLikelihoodMap map = new PerReadAlleleLikelihoodMap();
 
-        final Allele alleleRef = Allele.create("T", true);
-        final Allele alleleAlt = Allele.create("A", false);
+        final int[][] table = {{4, 0},  // ref: 4 reads fwd, 0 reads back
+                {2, 2}}; // alt: two reads in each direction
 
-        final int[][] table = {{2, 2},  // alt: two reads in each direction,
-                {4, 0}}; // ref: 4 reads fwd, 0 reads back
+        final List<GATKRead> refReads = Arrays.asList(makeRead(true), makeRead(true), makeRead(true), makeRead(true));
+        final List<GATKRead> altReads = Arrays.asList(makeRead(false), makeRead(true), makeRead(false), makeRead(true));
+        final ReadLikelihoods<Allele> likelihoods =
+                AnnotationArtificialData.makeLikelihoods("SAMPLE", refReads, altReads, -100.0, -100.0, REF, ALT);
 
-        final GATKRead read1 = makeRead(true);
-        final GATKRead read2 = makeRead(true);
-        final GATKRead read1a = makeRead(true);
-        final GATKRead read2a = makeRead(true);
+        final VariantContext vc = makeVC(REF, ALT);
 
-        final GATKRead read3 = makeRead(false);
-        final GATKRead read4 = makeRead(true);
-        final GATKRead read3a = makeRead(false);
-        final GATKRead read4a = makeRead(true);
-        map.add(read1, alleleAlt, -1.0);
-        map.add(read1, alleleRef, -100.0);
-        map.add(read1a, alleleAlt, -1.0);
-        map.add(read1a, alleleRef, -100.0);
-
-        map.add(read2, alleleAlt, -1.0);
-        map.add(read2, alleleRef, -100.0);
-        map.add(read2a, alleleAlt, -1.0);
-        map.add(read2a, alleleRef, -100.0);
-
-        map.add(read3, alleleAlt, -100.0);
-        map.add(read3, alleleRef, -1.0);
-        map.add(read3a, alleleAlt, -100.0);
-        map.add(read3a, alleleRef, -1.0);
-
-        map.add(read4, alleleAlt, -100.0);
-        map.add(read4, alleleRef, -1.0);
-        map.add(read4a, alleleAlt, -100.0);
-        map.add(read4a, alleleRef, -1.0);
-
-        final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap = Collections.singletonMap(sample1, map);
-
-
-        final VariantContext vc = makeVC(alleleRef, alleleAlt);
-
-        final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, stratifiedPerReadAlleleLikelihoodMap);
-        final Map<String, Object> annotatedMapNonRaw = ann.annotate(null, vc, stratifiedPerReadAlleleLikelihoodMap);
+        final Map<String, Object> annotatedMapRaw = ann.annotateRawData(null, vc, likelihoods);
+        final Map<String, Object> annotatedMapNonRaw = ann.annotate(null, vc, likelihoods);
         Assert.assertNotNull(annotatedMapRaw, vc.toString());
         final String actualStringRaw = (String) annotatedMapRaw.get(key);
         Assert.assertNotNull(annotatedMapNonRaw, vc.toString());

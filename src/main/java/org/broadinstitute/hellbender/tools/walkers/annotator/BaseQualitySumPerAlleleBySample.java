@@ -9,8 +9,7 @@ import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -18,7 +17,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 
 /**
@@ -45,31 +43,25 @@ public final class BaseQualitySumPerAlleleBySample extends GenotypeAnnotation im
 
     @Override
     public void annotate(final ReferenceContext ref,
-                                  final VariantContext vc,
-                                  final Genotype g,
-                                  final GenotypeBuilder gb,
-                                  final PerReadAlleleLikelihoodMap alleleLikelihoodMap) {
+                         final VariantContext vc,
+                         final Genotype g,
+                         final GenotypeBuilder gb,
+                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(gb, "gb is null");
         Utils.nonNull(vc, "vc is null");
-        if ( g == null || !g.isCalled() || alleleLikelihoodMap == null ) {
+        if ( g == null || !g.isCalled() || likelihoods == null ) {
             return;
         }
 
         double refQualSum= 0.0;
         double altQualSum= 0.0;
 
-        for ( final Map.Entry<GATKRead, Map<Allele,Double>> el : alleleLikelihoodMap.getLikelihoodReadMap().entrySet() ) {
-            final MostLikelyAllele a = PerReadAlleleLikelihoodMap.getMostLikelyAllele(el.getValue());
-            if ( ! a.isInformative() ) {
-                continue; // read is non-informative
-            }
-
-            final GATKRead read = el.getKey();
-            if ( isUsableRead(read) ) {
-                final double baseQual = getBaseQualityForRead(read, vc.getStart());
-                if ( a.getMostLikelyAllele().isReference() ) {
+        for ( final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles(g.getSampleName()) ) {
+            if ( bestAllele.isInformative() && isUsableRead(bestAllele.read)) {
+                final double baseQual = getBaseQualityForRead(bestAllele.read, vc.getStart());
+                if (bestAllele.allele.isReference()) {
                     refQualSum += baseQual;
-                } else if ( vc.getAlleles().contains(a.getMostLikelyAllele()) ) {
+                } else if (vc.getAlleles().contains(bestAllele.allele)) {
                     altQualSum += baseQual;
                 }
             }

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
@@ -10,7 +11,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -161,32 +162,49 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
                 .alleles(Arrays.asList(refAllele, altAllele)).chr(loc.getContig()).start(loc.getStart()).stop(loc.getEnd()).genotypes(g).make();
     }
 
-    private Map<String, PerReadAlleleLikelihoodMap> makeReadMap(final int ref, final int alt, final Allele refAllele, final Allele altAllele) {
-        return makeReadMap(ref, alt, refAllele, altAllele, "1", 10000);
+    private ReadLikelihoods<Allele> makeReadLikelihoods(final int ref, final int alt, final Allele refAllele, final Allele altAllele) {
+        return makeReadLikelihoods(ref, alt, refAllele, altAllele, "1", 10000);
     }
 
-    private Map<String, PerReadAlleleLikelihoodMap> makeReadMap(final int ref,
-                                                                final int alt,
-                                                                final Allele refAllele,
-                                                                final Allele altAllele,
-                                                                final String contig,
-                                                                final int position) {
-        final PerReadAlleleLikelihoodMap map= new PerReadAlleleLikelihoodMap();
-
+    private ReadLikelihoods<Allele> makeReadLikelihoods(final int ref,
+                                                        final int alt,
+                                                        final Allele refAllele,
+                                                        final Allele altAllele,
+                                                        final String contig,
+                                                        final int position) {
+        final List<GATKRead> reads = new ArrayList<>();
         for (int i = 0; i < alt; i++) {
             final GATKRead read = ArtificialReadUtils.createUniqueArtificialRead("10M");
             read.setPosition(contig, position);
-            map.add(read, altAllele, -1.0);
-            map.add(read, refAllele, -100.0);
+            reads.add(read);
         }
         for (int i = 0; i < ref; i++) {
             final GATKRead read = ArtificialReadUtils.createUniqueArtificialRead("10M");
             read.setPosition(contig, position);
-            map.add(read, altAllele, -100.0);
-            map.add(read, refAllele, -1.0);
+            reads.add(read);
         }
 
-        return Collections.singletonMap("sample1", map);
+        final Map<String, List<GATKRead>> readsBySample = ImmutableMap.of("sample1", reads);
+        final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList(Arrays.asList("sample1"));
+        final AlleleList<Allele> alleleList = new IndexedAlleleList<>(Arrays.asList(refAllele, altAllele));
+        final ReadLikelihoods<Allele> likelihoods = new ReadLikelihoods<>(sampleList, alleleList, readsBySample);
+
+        // modify likelihoods in-place
+        final LikelihoodMatrix<Allele> matrix = likelihoods.sampleMatrix(0);
+
+        int n = 0;
+        for (int i = 0; i < alt; i++) {
+            matrix.set(0, n, -100.0);
+            matrix.set(1, n, -1.0);
+            n++;
+        }
+        for (int i = 0; i < ref; i++) {
+            matrix.set(0, n, -1.0);
+            matrix.set(1, n, -100.0);
+            n++;
+        }
+
+        return likelihoods;
     }
 
     @Test
@@ -202,8 +220,8 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("T");
 
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = makeReadMap(ref, alt, refAllele, altAllele);
-        final VariantContext resultVC = vae.annotateContext(makeVC(refAllele, altAllele), new FeatureContext(), null, perReadAlleleLikelihoodMap, a->true);
+        final ReadLikelihoods<Allele> likelihoods = makeReadLikelihoods(ref, alt, refAllele, altAllele);
+        final VariantContext resultVC = vae.annotateContext(makeVC(refAllele, altAllele), new FeatureContext(), null, likelihoods, a->true);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.DEPTH_KEY), String.valueOf(ref+alt));
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.ALLELE_COUNT_KEY), 1);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY), 1.0/2);
@@ -231,8 +249,8 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("T");
 
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = makeReadMap(ref, alt, refAllele, altAllele);
-        final VariantContext resultVC = vae.annotateContext(makeVC(refAllele, altAllele), new FeatureContext(), null, perReadAlleleLikelihoodMap, a->true);
+        final ReadLikelihoods<Allele> likelihoods = makeReadLikelihoods(ref, alt, refAllele, altAllele);
+        final VariantContext resultVC = vae.annotateContext(makeVC(refAllele, altAllele), new FeatureContext(), null, likelihoods, a->true);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.DEPTH_KEY), String.valueOf(ref+alt));
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(GATKVCFConstants.FISHER_STRAND_KEY), FisherStrand.makeValueObjectForAnnotation(new int[][]{{ref,0},{alt,0}}));
         Assert.assertNull(resultVC.getCommonInfo().getAttribute(VCFConstants.ALLELE_COUNT_KEY));
@@ -269,10 +287,10 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final Allele altAllele = vcRS.getAlternateAllele(0);
 
         final VariantContext vcToAnnotate = makeVC(refAllele, altAllele, loc);
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = makeReadMap(ref, alt, refAllele, altAllele, loc.getContig(), loc.getStart() - 5);
+        final ReadLikelihoods<Allele> likelihoods = makeReadLikelihoods(ref, alt, refAllele, altAllele, loc.getContig(), loc.getStart() - 5);
 
         final FeatureContext featureContext= when(mock(FeatureContext.class).getValues(dbSNPBinding, loc.getStart())).thenReturn(Arrays.<VariantContext>asList(vcRS)).getMock();
-        final VariantContext resultVC = vae.annotateContext(vcToAnnotate, featureContext, null, perReadAlleleLikelihoodMap, a->true);
+        final VariantContext resultVC = vae.annotateContext(vcToAnnotate, featureContext, null, likelihoods, a->true);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.DEPTH_KEY), String.valueOf(ref+alt));
         Assert.assertEquals(resultVC.getID(), vcRS.getID());
     }
@@ -306,11 +324,11 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final Allele altAllele = vcRS.getAlternateAllele(0);
 
         final VariantContext vcToAnnotate = makeVC(refAllele, altAllele, loc);
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = makeReadMap(ref, alt, refAllele, altAllele, loc.getContig(), loc.getStart() - 5);
+        final ReadLikelihoods<Allele> likelihoods = makeReadLikelihoods(ref, alt, refAllele, altAllele, loc.getContig(), loc.getStart() - 5);
 
         final FeatureContext featureContext = when(mock(FeatureContext.class).getValues(fredInput, loc.getStart())).thenReturn(Arrays.<VariantContext>asList(vcRS)).getMock();
 
-        final VariantContext resultVC = vae.annotateContext(vcToAnnotate, featureContext, null, perReadAlleleLikelihoodMap, a->true);
+        final VariantContext resultVC = vae.annotateContext(vcToAnnotate, featureContext, null, likelihoods, a->true);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.DEPTH_KEY), String.valueOf(ref+alt));
 
         Assert.assertEquals(resultVC.getID(), VCFConstants.EMPTY_ID_FIELD);
@@ -351,13 +369,13 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final Allele altAllele = vcDbSNP.getAlternateAllele(0);
 
         final VariantContext vcToAnnotate = makeVC(refAllele, altAllele, loc);
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = makeReadMap(ref, alt, refAllele, altAllele, loc.getContig(), loc.getStart() - 5);
+        final ReadLikelihoods<Allele> likelihoods = makeReadLikelihoods(ref, alt, refAllele, altAllele, loc.getContig(), loc.getStart() - 5);
 
         //both features
         final FeatureContext featureContext0 = when(mock(FeatureContext.class).getValues(dbSNPBinding, loc.getStart())).thenReturn(Arrays.<VariantContext>asList(vcDbSNP)).getMock();
         final FeatureContext featureContext = when(featureContext0.getValues(fredInput, loc.getStart())).thenReturn(Arrays.<VariantContext>asList(vcFred)).getMock();
 
-        final VariantContext resultVC = vae.annotateContext(vcToAnnotate, featureContext, null, perReadAlleleLikelihoodMap, a->true);
+        final VariantContext resultVC = vae.annotateContext(vcToAnnotate, featureContext, null, likelihoods, a->true);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.DEPTH_KEY), String.valueOf(ref+alt));
 
         //Check that if has both the DBSNP and Fred annotations
@@ -399,8 +417,8 @@ public final class VariantAnnotatorEngineUnitTest extends BaseTest {
         final Allele refAllele = Allele.create("A", true);
         final Allele altAllele = Allele.create("T");
 
-        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap = makeReadMap(ref, alt, refAllele, altAllele);
-        final VariantContext resultVC = vae.annotateContext(makeVC(refAllele, altAllele), new FeatureContext(), null, perReadAlleleLikelihoodMap,
+        final ReadLikelihoods<Allele> likelihoods = makeReadLikelihoods(ref, alt, refAllele, altAllele);
+        final VariantContext resultVC = vae.annotateContext(makeVC(refAllele, altAllele), new FeatureContext(), null, likelihoods,
                                             ann -> ann instanceof Coverage || ann instanceof DepthPerAlleleBySample);
         Assert.assertEquals(resultVC.getCommonInfo().getAttribute(VCFConstants.DEPTH_KEY), String.valueOf(ref+alt));
 

@@ -1,8 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.MostLikelyAllele;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -32,15 +33,15 @@ public final class LikelihoodRankSumTest extends RankSumTest {
     public List<VCFInfoHeaderLine> getDescriptions() { return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(getKeyNames().get(0))); }
 
     @Override
-    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final MostLikelyAllele mostLikelyAllele) {
+    protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc, final ReadLikelihoods<Allele>.BestAllele bestAllele) {
         Utils.nonNull(read, "read is null");
-        Utils.nonNull(mostLikelyAllele, "mostLikelyAllele is null");
-        if ( ! mostLikelyAllele.isInformative() ) {
-            throw new IllegalStateException("Should never see a non-informative allele for read " + read + " MostLikelyAllele " + mostLikelyAllele);
+        Utils.nonNull(bestAllele, "mostLikelyAllele is null");
+        if ( ! bestAllele.isInformative() ) {
+            throw new IllegalStateException("Should never see a non-informative allele for read " + read + " BestAllele " + bestAllele);
         }
-        return OptionalDouble.of(mostLikelyAllele.getLog10LikelihoodOfMostLikely());
+        return OptionalDouble.of(bestAllele.likelihood);
     }
-
+    
     @Override
     protected OptionalDouble getElementForRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);

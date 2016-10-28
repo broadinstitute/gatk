@@ -15,9 +15,9 @@ import static org.mockito.Mockito.when;
 
 public final class InbreedingCoeffUnitTest {
     private static final double DELTA_PRECISION = 0.001;
-    private final Allele Aref = Allele.create("A", true);
-    private final Allele T = Allele.create("T");
-    private final Allele C = Allele.create("C");
+    private static final Allele Aref = Allele.create("A", true);
+    private static final Allele T = Allele.create("T");
+    private static final Allele C = Allele.create("C");
 
     // simulating 20 reads with Q30 base qualities
     private final int[] hetPLs = {240, 0, 240};

@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
-import org.broadinstitute.hellbender.utils.genotyper.PerReadAlleleLikelihoodMap;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -56,20 +57,20 @@ public class AS_QualByDepth extends InfoFieldAnnotation implements ReducibleAnno
     @Override
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
-                                        final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap ) {
+                                        final ReadLikelihoods<Allele> likelihoods ) {
         return Collections.emptyMap();
     }
 
     @Override
     public Map<String, Object> annotateRawData(final ReferenceContext ref,
                                                final VariantContext vc,
-                                               final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap) {
+                                               final ReadLikelihoods<Allele> likelihoods) {
         return Collections.emptyMap();
     }
 
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})//FIXME: there's no way to properly use generics here because of method overriding
-    public void calculateRawData(final VariantContext vc, final Map<String, PerReadAlleleLikelihoodMap> stratifiedPerReadAlleleLikelihoodMap, final ReducibleAnnotationData rawAnnotations) {
+    public void calculateRawData(final VariantContext vc, final ReadLikelihoods<Allele> likelihoods, final ReducibleAnnotationData rawAnnotations) {
         //note that the "raw data" used here is calculated by the GenotypingEngine in GenotypeGVCFs and stored in the AS_QUAL info field
     }
 }
