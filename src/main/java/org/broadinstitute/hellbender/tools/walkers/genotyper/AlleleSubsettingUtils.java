@@ -64,8 +64,8 @@ public final class AlleleSubsettingUtils {
             if (g.hasLikelihoods()) {
                 final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
                 newLikelihoods = originalLikelihoods.length == expectedNumLikelihoods ?
-                        MathUtils.normalizeFromLog10(Arrays.stream(subsettedLikelihoodIndices)
-                                .mapToDouble(idx -> originalLikelihoods[idx]).toArray(), false, true) : null;
+                        MathUtils.scaleLogSpaceArrayForNumericalStability(Arrays.stream(subsettedLikelihoodIndices)
+                                .mapToDouble(idx -> originalLikelihoods[idx]).toArray()) : null;
             }
 
             final boolean useNewLikelihoods = newLikelihoods != null && GATKVariantContextUtils.isInformative(newLikelihoods);

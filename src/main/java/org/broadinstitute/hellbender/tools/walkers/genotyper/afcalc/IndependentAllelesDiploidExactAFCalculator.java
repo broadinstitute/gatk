@@ -319,7 +319,7 @@ import java.util.*;
             final double[] thetaTONPriors = new double[] { log10PriorAFEq0, log10PriorAFGt0 };
 
             // bind pNonRef for allele to the posterior value of the AF > 0 with the new adjusted prior
-            sorted.set(i, sorted.get(i).copyWithNewPriors(MathUtils.normalizeFromLog10(thetaTONPriors, true)));
+            sorted.set(i, sorted.get(i).copyWithNewPriors(MathUtils.normalizeLog10(thetaTONPriors)));
         }
 
         return sorted;
@@ -362,9 +362,9 @@ import java.util.*;
 
         return new AFCalculationResult(alleleCountsOfMLE, vc.getAlleles(),
                 // necessary to ensure all values < 0
-                MathUtils.normalizeFromLog10(new double[] { combinedAltAllelesResult.getLog10LikelihoodOfAFEq0(), combinedAltAllelesResult.getLog10LikelihoodOfAFGT0() }, true),
+                MathUtils.normalizeLog10(new double[] { combinedAltAllelesResult.getLog10LikelihoodOfAFEq0(), combinedAltAllelesResult.getLog10LikelihoodOfAFGT0() }),
                 // priors incorporate multiple alt alleles, must be normalized
-                MathUtils.normalizeFromLog10(new double[] { combinedAltAllelesResult.getLog10PriorOfAFEq0(), combinedAltAllelesResult.getLog10PriorOfAFGT0() }, true),
+                MathUtils.normalizeLog10(new double[] { combinedAltAllelesResult.getLog10PriorOfAFEq0(), combinedAltAllelesResult.getLog10PriorOfAFGT0() }),
                 log10pRefByAllele);
     }
 

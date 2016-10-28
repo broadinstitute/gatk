@@ -10,7 +10,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class AFCalculationResultUnitTest extends BaseTest {
     private static class MyTest {
@@ -36,7 +35,7 @@ public final class AFCalculationResultUnitTest extends BaseTest {
         for ( double L0 = -1e9; L0 < 0.0; L0 /= 10.0 ) {
             for ( double L1 = -1e2; L1 < 0.0; L1 /= 100.0 ) {
                 final double[] input = new double[]{L0, L1};
-                final double[] expected = MathUtils.normalizeFromLog10(input, true);
+                final double[] expected = MathUtils.normalizeLog10(input);
                 tests.add(new Object[]{new MyTest(input, expected)});
             }
         }
@@ -64,7 +63,7 @@ public final class AFCalculationResultUnitTest extends BaseTest {
     }
 
 
-    static final double[] log10Even = MathUtils.normalizeFromLog10(new double[]{0.5, 0.5}, true);
+    static final double[] log10Even = MathUtils.normalizeLog10(new double[]{0.5, 0.5});
     private static final Allele C = Allele.create("C");
     private static final Allele A = Allele.create("A", true);
     static final List<Allele> alleles = Arrays.asList(A, C);
@@ -122,7 +121,7 @@ public final class AFCalculationResultUnitTest extends BaseTest {
         return new AFCalculationResult(
                 new int[]{0},
                 alleles,
-                MathUtils.normalizeFromLog10(new double[]{1 - pNonRef, pNonRef}, true, false),
+                MathUtils.normalizeLog10(new double[]{1 - pNonRef, pNonRef}),
                 log10Even,
                 Collections.singletonMap(C, Math.log10(1 - pNonRef)));
     }

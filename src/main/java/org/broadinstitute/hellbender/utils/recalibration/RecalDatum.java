@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.recalibration;
 
 import htsjdk.samtools.SAMUtils;
 import org.apache.commons.math3.analysis.function.Gaussian;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 
@@ -256,20 +257,12 @@ public final class RecalDatum implements Serializable {
 
         final int numBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1) * (int)RESOLUTION_BINS_PER_QUAL;
 
-        final double[] log10Posteriors = new double[numBins];
-
-        for ( int bin = 0; bin < numBins; bin++ ) {
-
+        final double[] log10Posteriors = new IndexRange(0, numBins).mapToDouble(bin -> {
             final double QEmpOfBin = bin / RESOLUTION_BINS_PER_QUAL;
-
-            log10Posteriors[bin] = log10QempPrior(QEmpOfBin, QReported) + log10QempLikelihood(QEmpOfBin, nObservations, nErrors);
-        }
-
-        final double[] normalizedPosteriors = MathUtils.normalizeFromLog10(log10Posteriors);
-        final int MLEbin = MathUtils.maxElementIndex(normalizedPosteriors);
-
-        final double Qemp = MLEbin / RESOLUTION_BINS_PER_QUAL;
-        return Qemp;
+            return log10QempPrior(QEmpOfBin, QReported) + log10QempLikelihood(QEmpOfBin, nObservations, nErrors);
+        });
+        final int MLEbin = MathUtils.maxElementIndex(log10Posteriors);
+        return MLEbin / RESOLUTION_BINS_PER_QUAL;
     }
 
     /**

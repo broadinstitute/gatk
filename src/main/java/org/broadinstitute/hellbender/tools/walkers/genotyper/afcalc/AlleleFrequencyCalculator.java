@@ -104,7 +104,7 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
                 final double log10GenotypePosterior = log10GenotypePosteriors[genotype];
                 glCalc.genotypeAlleleCountsAt(genotype).forEachAlleleIndexAndCount((alleleIndex, count) ->
                         log10ProbabilityOfNonZeroAltAlleles[alleleIndex] =
-                                MathUtils.approximateLog10SumLog10(log10ProbabilityOfNonZeroAltAlleles[alleleIndex], log10GenotypePosterior));
+                                MathUtils.log10SumLog10(log10ProbabilityOfNonZeroAltAlleles[alleleIndex], log10GenotypePosterior));
             }
 
             for (int allele = 0; allele < numAlleles; allele++) {
@@ -153,19 +153,19 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
 
             new IndexRange(0, glCalc.genotypeCount()).forEach(genotypeIndex ->
                 glCalc.genotypeAlleleCountsAt(genotypeIndex).forEachAlleleIndexAndCount((alleleIndex, count) ->
-                        log10Result[alleleIndex] = MathUtils.approximateLog10SumLog10(log10Result[alleleIndex], log10GenotypePosteriors[genotypeIndex] + MathUtils.log10(count))));
+                        log10Result[alleleIndex] = MathUtils.log10SumLog10(log10Result[alleleIndex], log10GenotypePosteriors[genotypeIndex] + MathUtils.log10(count))));
         }
         return MathUtils.applyToArrayInPlace(log10Result, x -> Math.pow(10.0, x));
     }
 
     private static double[] log10NormalizedGenotypePosteriors(final Genotype g, final GenotypeLikelihoodCalculator glCalc, final double[] log10AlleleFrequencies) {
         final double[] log10Likelihoods = g.getLikelihoods().getAsVector();
-        final double[] unnormalizedLog10Posteriors = new IndexRange(0, glCalc.genotypeCount()).mapToDouble(genotypeIndex -> {
+        final double[] log10Posteriors = new IndexRange(0, glCalc.genotypeCount()).mapToDouble(genotypeIndex -> {
             final GenotypeAlleleCounts gac = glCalc.genotypeAlleleCountsAt(genotypeIndex);
             return gac.log10CombinationCount() + log10Likelihoods[genotypeIndex]
                     + gac.sumOverAlleleIndicesAndCounts((index, count) -> count * log10AlleleFrequencies[index]);
         });
-        return MathUtils.normalizeFromLog10(unnormalizedLog10Posteriors, true);
+        return MathUtils.normalizeLog10(log10Posteriors);
     }
 
     @Override   //Note: unused

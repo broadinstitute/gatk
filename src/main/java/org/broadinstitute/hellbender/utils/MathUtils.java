@@ -592,6 +592,17 @@ public final class MathUtils {
         return maxValue + (sum != 1.0 ? Math.log10(sum) : 0.0);
     }
 
+    public static double log10SumLog10(final double a, final double b) {
+        // below, we'll assume a >= b
+        if (a < b) {
+            return log10SumLog10(b, a);
+        } else if(a == Double.NEGATIVE_INFINITY) {
+            return Double.NEGATIVE_INFINITY;
+        } else {
+            return a + Math.log10(1 + Math.pow(10.0, b - a));
+        }
+    }
+
     /**
      * Calculate f(x) = log10 ( Normal(x | mu = mean, sigma = sd) )
      * @param mean the desired mean of the Normal distribution
@@ -600,8 +611,7 @@ public final class MathUtils {
      * @return a well-formed double
      */
     public static double normalDistributionLog10(final double mean, final double sd, final double x) {
-        if( sd < 0 )
-            throw new IllegalArgumentException("sd: Standard deviation of normal must be >0");
+        Utils.validateArg( sd >= 0, "sd: Standard deviation of normal must be > 0");
         if ( ! wellFormedDouble(mean) || ! wellFormedDouble(sd) || ! wellFormedDouble(x) )
             throw new IllegalArgumentException("mean, sd, or, x : Normal parameters must be well formatted (non-INF, non-NAN)");
         final double a = -1.0 * Math.log10(sd * SQUARE_ROOT_OF_TWO_TIMES_PI);
@@ -619,32 +629,27 @@ public final class MathUtils {
     }
 
     public static double distanceSquared(final double[] x, final double[] y) {
-        double dist = 0.0;
-        for (int iii = 0; iii < x.length; iii++) {
-            dist += (x[iii] - y[iii]) * (x[iii] - y[iii]);
-        }
-        return dist;
+        return new IndexRange(0, x.length).sum(n -> square(x[n] - y[n]));
     }
 
     /**
-     * normalizes the log-probability array.  ASSUMES THAT ALL ARRAY ENTRIES ARE <= 0 (<= 1 IN REAL-SPACE).
+     * normalizes the log-probability array in-place.
      *
      * @param array the array to be normalized
-     * @return a newly allocated array corresponding the normalized values in array
+     * @return the normalized-in-place array
      */
-    public static double[] normalizeFromLog10(final double[] array) {
-        return normalizeFromLog10(array, false);
+    public static double[] normalizeFromLog10ToLinearSpace(final double[] array) {
+        return normalizeLog10(array, false, true);
     }
 
     /**
-     * normalizes the log-probability array.  ASSUMES THAT ALL ARRAY ENTRIES ARE <= 0 (<= 1 IN REAL-SPACE).
+     * normalizes the log-probability array in-place.
      *
      * @param array             the array to be normalized
-     * @param takeLog10OfOutput if true, the output will be transformed back into log units
-     * @return a newly allocated array corresponding the normalized values in array, maybe log transformed
+     * @return the normalized-in-place array, maybe log transformed
      */
-    public static double[] normalizeFromLog10(final double[] array, final boolean takeLog10OfOutput) {
-        return normalizeFromLog10(array, takeLog10OfOutput, false);
+    public static double[] normalizeLog10(final double[] array) {
+        return normalizeLog10(array, true, true);
     }
 
 
@@ -653,20 +658,27 @@ public final class MathUtils {
      *
      * @param array
      * @param takeLog10OfOutput
-     * @param keepInLogSpace    if true, we don't normalize in the sense of probabilities summing to one but rather in the
-     *                          sense of numericla stability where we scale entries so that the largest is 0 in log space
+     * @param inPlace           if true, modify the input array in-place
      *
      * @return
      */
-    public static double[] normalizeFromLog10(final double[] array, final boolean takeLog10OfOutput, final boolean keepInLogSpace) {
-        if (keepInLogSpace) {
-            double maxValue = arrayMax(array);
-            return applyToArray(array, x -> x - maxValue);
-        } else {
-            final double log10Sum = log10SumLog10(array);
-            final double[] result = applyToArray(array, x -> x - log10Sum);
-            return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
-        }
+    public static double[] normalizeLog10(final double[] array, final boolean takeLog10OfOutput, final boolean inPlace) {
+        final double log10Sum = log10SumLog10(array);
+        final double[] result = inPlace ? applyToArrayInPlace(array, x -> x - log10Sum) : applyToArray(array, x -> x - log10Sum);
+        return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
+    }
+
+    /**
+     * Given an array of log space (log or log10) values, subtract all values by the array maximum so that the max element in log space
+     * is zero.  This is equivalent to dividing by the maximum element in real space and is useful for avoiding underflow/overflow
+     * when the array's values matter only up to an arbitrary normalizing factor, for example, an array of likelihoods.
+     *
+     * @param array
+     * @return the scaled-in-place array
+     */
+    public static double[] scaleLogSpaceArrayForNumericalStability(final double[] array) {
+        final double maxValue = arrayMax(array);
+        return applyToArrayInPlace(array, x -> x - maxValue);
     }
 
     /**
@@ -685,23 +697,6 @@ public final class MathUtils {
         final double sum = sum(array);
         Utils.validateArg(sum >= 0.0, () -> "Values in probability array sum to a negative number " + sum);
         return applyToArray(array, x -> x/sum);
-    }
-
-    public static int minElementIndex(final int[] array) {
-        Utils.nonNull(array);
-        Utils.validateArg(array.length != 0, "Array cannot be empty");
-
-        int minI = 0;
-        for (int i = 1; i < array.length; i++) {
-            if (array[i] < array[minI])
-                minI = i;
-        }
-
-        return minI;
-    }
-
-    public static int arrayMin(final int[] array) {
-        return array[minElementIndex(array)];
     }
 
     public static int maxElementIndex(final double[] array) {
@@ -732,23 +727,11 @@ public final class MathUtils {
     /**
      * Checks that the result is a well-formed log10 probability
      *
-     * @param result a supposedly well-formed log10 probability value.  By default allows
-     *               -Infinity values, as log(0.0) == -Infinity.
+     * @param result a supposedly well-formed log10 probability value
      * @return true if result is really well formed
      */
     public static boolean goodLog10Probability(final double result) {
-        return goodLog10Probability(result, true);
-    }
-
-    /**
-     * Checks that the result is a well-formed log10 probability
-     *
-     * @param result a supposedly well-formed log10 probability value
-     * @param allowNegativeInfinity should we consider a -Infinity value ok?
-     * @return true if result is really well formed
-     */
-    public static boolean goodLog10Probability(final double result, final boolean allowNegativeInfinity) {
-        return result <= 0.0 && result != Double.POSITIVE_INFINITY && (allowNegativeInfinity || result != Double.NEGATIVE_INFINITY) && ! Double.isNaN(result);
+        return result <= 0.0 && result != Double.POSITIVE_INFINITY && !Double.isNaN(result);
     }
 
     /**

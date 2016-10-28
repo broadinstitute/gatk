@@ -41,8 +41,8 @@ final class OriginalDiploidExactAFCalculator extends ExactAFCalculator {
         final Map<Allele, Double> log10pRefByAllele = Collections.singletonMap(vc.getAlternateAllele(0), log10PRef);
 
         return new AFCalculationResult(new int[]{mleK}, vc.getAlleles(),
-                MathUtils.normalizeFromLog10(log10Likelihoods, true),
-                MathUtils.normalizeFromLog10(log10Priors, true),
+                MathUtils.normalizeLog10(log10Likelihoods),
+                MathUtils.normalizeLog10(log10Priors),
                 log10pRefByAllele);
     }
 

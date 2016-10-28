@@ -164,8 +164,8 @@ final class StateTracker {
      */
     AFCalculationResult toAFCalculationResult(final double[] log10PriorsByAC) {
         final int [] subACOfMLE = Arrays.copyOf(alleleCountsOfMLE, allelesUsedInGenotyping.size() - 1);
-        final double[] log10Likelihoods = MathUtils.normalizeFromLog10(new double[]{getLog10LikelihoodOfAFzero(), getLog10LikelihoodOfAFNotZero()}, true);
-        final double[] log10Priors = MathUtils.normalizeFromLog10(new double[]{log10PriorsByAC[0], MathUtils.log10SumLog10(log10PriorsByAC, 1)}, true);
+        final double[] log10Likelihoods = MathUtils.normalizeLog10(new double[]{getLog10LikelihoodOfAFzero(), getLog10LikelihoodOfAFNotZero()});
+        final double[] log10Priors = MathUtils.normalizeLog10(new double[]{log10PriorsByAC[0], MathUtils.log10SumLog10(log10PriorsByAC, 1)});
 
         final Map<Allele, Double> log10pRefByAllele = new LinkedHashMap<>(allelesUsedInGenotyping.size());
         for ( int i = 0; i < subACOfMLE.length; i++ ) {

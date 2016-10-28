@@ -2,12 +2,12 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
@@ -24,7 +24,7 @@ public final class AFCalculationUnitTest extends BaseTest {
     static int sampleNameCounter = 0;
     static Genotype AA1, AB1, BB1, NON_INFORMATIVE1;
     static Genotype AA2, AB2, AC2, BB2, BC2, CC2, NON_INFORMATIVE2;
-    final double[] FLAT_3SAMPLE_PRIORS = MathUtils.normalizeFromLog10(new double[2 * 3 + 1], true);  // flat priors
+    final double[] FLAT_3SAMPLE_PRIORS = MathUtils.normalizeLog10(new double[2 * 3 + 1]);  // flat priors
 
     final private static boolean INCLUDE_BIALLELIC = true;
     final private static boolean INCLUDE_TRIALLELIC = true;
@@ -81,7 +81,7 @@ public final class AFCalculationUnitTest extends BaseTest {
             List<AFCalculator> calcs = createAFCalculators(Arrays.asList(AFCalculatorImplementation.values()), MAX_ALT_ALLELES, PLOIDY);
 
             final int nPriorValues = 2*nSamples+1;
-            final double[] flatPriors = MathUtils.normalizeFromLog10(new double[nPriorValues], true);  // flat priors
+            final double[] flatPriors = MathUtils.normalizeLog10(new double[nPriorValues]);  // flat priors
             final double[] humanPriors = new double[nPriorValues];
             GenotypingEngine.computeAlleleFrequencyPriors(nPriorValues - 1, humanPriors, 0.001, new ArrayList<>());
 
@@ -147,7 +147,7 @@ public final class AFCalculationUnitTest extends BaseTest {
                 final int nSamples = samples.size();
                 List<AFCalculator> calcs = createAFCalculators(Arrays.asList(AFCalculatorImplementation.values()), MAX_ALT_ALLELES, PLOIDY);
 
-                final double[] priors = MathUtils.normalizeFromLog10(new double[2*nSamples+1], true);  // flat priors
+                final double[] priors = MathUtils.normalizeLog10(new double[2*nSamples+1]);  // flat priors
 
                 for ( AFCalculator model : calcs ) {
                     if ( testData.nAltAlleles > 1 && model instanceof OriginalDiploidExactAFCalculator)
@@ -417,7 +417,7 @@ public final class AFCalculationUnitTest extends BaseTest {
 
         for ( final List<Integer> PLs : PLsPerSample ) {
             final int[] pls = ArrayUtils.toPrimitive(PLs.toArray(new Integer[3]));
-            final int min = MathUtils.arrayMin(pls);
+            final int min = NumberUtils.min(pls);
             for ( int i = 0; i < pls.length; i++ ) pls[i] -= min;
             genotypes.add(makePL(nocall, pls));
         }
@@ -504,7 +504,7 @@ public final class AFCalculationUnitTest extends BaseTest {
             for ( int log10NonRefPrior = 1; log10NonRefPrior < 10*REF_PL; log10NonRefPrior += 1 ) {
                 final double refPrior = 1 - QualityUtils.qualToErrorProb(log10NonRefPrior);
                 final double nonRefPrior = (1-refPrior) / 2;
-                final double[] priors = MathUtils.normalizeFromLog10(MathUtils.toLog10(new double[]{refPrior, nonRefPrior, nonRefPrior}), true);
+                final double[] priors = MathUtils.normalizeLog10(MathUtils.toLog10(new double[]{refPrior, nonRefPrior, nonRefPrior}));
                 if ( ! Double.isInfinite(priors[1]) ) {
                     GetGLsTest cfg = new GetGLsTest(model, 1, Arrays.asList(AB), priors, "pNonRef" + log10NonRefPrior);
                     final AFCalculationResult resultTracker = cfg.execute();

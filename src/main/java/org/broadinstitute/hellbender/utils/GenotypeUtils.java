@@ -34,12 +34,9 @@ public final class GenotypeUtils {
                 continue;
             }
 
-            //Need to round the likelihoods to deal with small numerical deviations due to normalizing
-            final double[] normalizedLikelihoodsUnrounded = MathUtils.normalizeFromLog10(g.getLikelihoods().getAsVector());
-            final int[] normalizedLikelihoods = new int[normalizedLikelihoodsUnrounded.length];
-            for (int i = 0; i < normalizedLikelihoodsUnrounded.length; i++) {
-                normalizedLikelihoods[i] = (int) Math.round(normalizedLikelihoodsUnrounded[i]);
-            }
+            // Genotype::getLikelihoods returns a new array, so modification in-palce is safe
+            final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
+
 
             if (doMultiallelicMapping) {
                 if (g.isHetNonRef()) {
@@ -66,9 +63,9 @@ public final class GenotypeUtils {
                 }
             }
 
-            refCount += normalizedLikelihoods[idxAA];
-            hetCount += normalizedLikelihoods[idxAB];
-            homCount += normalizedLikelihoods[idxBB];
+            refCount += MathUtils.fastRound(normalizedLikelihoods[idxAA]);
+            hetCount += MathUtils.fastRound(normalizedLikelihoods[idxAB]);
+            homCount += MathUtils.fastRound(normalizedLikelihoods[idxBB]);
         }
 
         /*

@@ -11,7 +11,6 @@ import org.testng.annotations.Test;
 import java.util.*;
 import java.util.function.DoublePredicate;
 import java.util.function.DoubleUnaryOperator;
-import java.util.function.Function;
 import java.util.function.IntPredicate;
 
 import static java.lang.Math.exp;
@@ -143,14 +142,10 @@ public final class MathUtilsUnitTest extends BaseTest {
         for (final double good : Arrays.asList(0.1, 1.0)) {
             Assert.assertTrue(MathUtils.goodProbability(good));
             Assert.assertTrue(MathUtils.goodLog10Probability(log10(good)));
-            Assert.assertTrue(MathUtils.goodLog10Probability(log10(good), true));
-            Assert.assertTrue(MathUtils.goodLog10Probability(log10(good), false));
         }
 
         Assert.assertTrue(MathUtils.goodProbability(0.0));
         Assert.assertTrue(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY));
-        Assert.assertTrue(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY, true));
-        Assert.assertFalse(MathUtils.goodLog10Probability(Double.NEGATIVE_INFINITY, false));
 
         for (final double bad : Arrays.asList(-1.0, 2.0, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)) {
             Assert.assertFalse(MathUtils.goodProbability(bad));
@@ -324,9 +319,9 @@ public final class MathUtilsUnitTest extends BaseTest {
     public void testNormalize(){
         final double error = 1e-6;
 
-        final double[] normalized      = MathUtils.normalizeFromLog10(new double[]{log10(3.0), log10(2.0), log10(1.0)});
-        final double[] normalizedLog10 = MathUtils.normalizeFromLog10(new double[]{log10(3.0), log10(2.0), log10(1.0)}, true);
-        final double[] normalizedLogInLog10 = MathUtils.normalizeFromLog10(new double[]{3.0, 2.0, 1.0}, true, true);
+        final double[] normalized      = MathUtils.normalizeFromLog10ToLinearSpace(new double[]{log10(3.0), log10(2.0), log10(1.0)});
+        final double[] normalizedLog10 = MathUtils.normalizeLog10(new double[]{log10(3.0), log10(2.0), log10(1.0)});
+        final double[] normalizedLogInLog10 = MathUtils.scaleLogSpaceArrayForNumericalStability(new double[]{3.0, 2.0, 1.0});
         final double[] normalizedExpected    = {3.0/6.0, 2.0/6.0, 1.0/6.0};  //sum of those is 1
         final double[] normalizedLog10Expected = {log10(3.0 / 6.0), log10(2.0 / 6.0), log10(1.0 / 6.0)}; //sum of 10^ of those is 1
         final double[] normalizedLogInLogExpected = {0.0, -1.0, -2.0};
