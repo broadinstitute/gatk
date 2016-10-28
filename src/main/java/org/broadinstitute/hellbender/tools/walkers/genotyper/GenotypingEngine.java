@@ -285,7 +285,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // calculating strand bias involves overwriting data structures, so we do it last
         final Map<String, Object> attributes = composeCallAttributes(inheritAttributesFromInputVC, vc, rawContext, stratifiedContexts, features, refContext,
-                outputAlternativeAlleles.alternativeAlleleMLECounts(), outputAlternativeAlleles.siteIsMonomorphic, AFresult, outputAlternativeAlleles.outputAlleles(vc.getReference()),genotypes,model,perReadAlleleLikelihoodMap);
+                outputAlternativeAlleles.alternativeAlleleMLECounts(), genotypes);
 
         VariantContext vcCall = builder.genotypes(genotypes).attributes(attributes).make();
 
@@ -353,7 +353,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
             if (alternativeAllele.isReference()) {
                 continue;
             }
-            final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(alternativeAllele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING);
+            final boolean isPlausible = afCalculationResult.isPolymorphicPhredScaledQual(alternativeAllele, configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING/3);
 
             siteIsMonomorphic &= ! isPlausible;
             if (isPlausible || forceKeepAllele(alternativeAllele)) {
@@ -527,18 +527,15 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     protected final boolean passesEmitThreshold(final double conf, final boolean bestGuessIsRef) {
         return (configuration.outputMode == OutputMode.EMIT_ALL_CONFIDENT_SITES || !bestGuessIsRef) &&
-                conf >= Math.min(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING,
-                        configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING);
+                conf >= configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING;
     }
 
     protected final boolean passesCallThreshold(final double conf) {
         return conf >= configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING;
     }
 
-    protected Map<String,Object> composeCallAttributes(final boolean inheritAttributesFromInputVC, final VariantContext vc,
-                                                       final AlignmentContext rawContext, final Map<String, AlignmentContext> stratifiedContexts, final FeatureContext tracker, final ReferenceContext refContext, final List<Integer> alleleCountsofMLE, final boolean bestGuessIsRef,
-                                                       final AFCalculationResult AFresult, final List<Allele> allAllelesToUse, final GenotypesContext genotypes,
-                                                       final GenotypeLikelihoodsCalculationModel model, final Map<String, PerReadAlleleLikelihoodMap> perReadAlleleLikelihoodMap) {
+    protected Map<String,Object> composeCallAttributes(final boolean inheritAttributesFromInputVC, final VariantContext vc, final AlignmentContext rawContext, final Map<String, AlignmentContext> stratifiedContexts,
+                                                       final FeatureContext tracker, final ReferenceContext refContext, final List<Integer> alleleCountsofMLE, final GenotypesContext genotypes) {
         final Map<String, Object> attributes = new LinkedHashMap<>();
 
         final boolean limitedContext = tracker == null || refContext == null || rawContext == null || stratifiedContexts == null;
@@ -611,7 +608,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         final double normalizedLog10ACeq0Posterior = log10ACeq0Posterior - log10PosteriorNormalizationConstant;
         // This is another condition to return a 0.0 also present in AFCalculator code as well.
-        if (normalizedLog10ACeq0Posterior >= QualityUtils.qualToErrorProbLog10(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING)) {
+        if (normalizedLog10ACeq0Posterior >= QualityUtils.qualToErrorProbLog10(configuration.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING/3)) {
             return 0.0;
         }
 

@@ -31,7 +31,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
         this.snpHeterozygosity = other.snpHeterozygosity;
         this.indelHeterozygosity = other.indelHeterozygosity;
         this.STANDARD_CONFIDENCE_FOR_CALLING = other.STANDARD_CONFIDENCE_FOR_CALLING;
-        this.STANDARD_CONFIDENCE_FOR_EMITTING = other.STANDARD_CONFIDENCE_FOR_EMITTING;
         this.MAX_ALTERNATE_ALLELES = other.MAX_ALTERNATE_ALLELES;
         this.inputPrior = new ArrayList<>(other.inputPrior);
         this.samplePloidy = other.samplePloidy;
@@ -101,12 +100,6 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      */
     @Argument(fullName = "standard_min_confidence_threshold_for_calling", shortName = "stand_call_conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
     public double STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
-
-    /**
-     * This argument allows you to emit low quality calls as filtered records.
-     */
-    @Argument(fullName = "standard_min_confidence_threshold_for_emitting", shortName = "stand_emit_conf", doc = "The minimum phred-scaled confidence threshold at which variants should be emitted (and filtered with LowQual if less than the calling threshold)", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_EMITTING = 30.0;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
