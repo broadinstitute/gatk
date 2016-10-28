@@ -2,16 +2,19 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
+import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
 import java.util.*;
@@ -29,6 +32,9 @@ import java.util.stream.StreamSupport;
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public abstract class LocusWalker extends GATKTool {
+
+    @Argument(fullName = "maxDepthPerSample", shortName = "maxDepthPerSample", doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
+    protected int maxDepthPerSample = defaultMaxDepthPerSample();
 
     /**
      * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
@@ -61,6 +67,14 @@ public abstract class LocusWalker extends GATKTool {
      */
     public boolean includeNs() {
         return false;
+    }
+
+    /**
+     * Returns default value for the {@link #maxDepthPerSample} parameter, if none is provided on the command line.
+     * Default implementation returns 0 (no downsampling by default).
+     */
+    protected int defaultMaxDepthPerSample() {
+        return 0;
     }
 
     /**
@@ -112,15 +126,14 @@ public abstract class LocusWalker extends GATKTool {
         return defaultFilters;
     }
 
-    /**
-     * Get the information about how to downsample the reads. By default {@link DownsamplingMethod#NONE} is returned.
-     * Subclasses should override it to provide their own downsampling methods.
-     *
-     * @return the downsampling method for the reads
-     */
-    public DownsamplingMethod getDownsamplingMethod() {
-        // TODO: change when downsampling command line options are implemented
-        return DownsamplingMethod.NONE;
+    /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */
+    protected final LIBSDownsamplingInfo getDownsamplingInfo() {
+        if (maxDepthPerSample < 0) {
+            throw new UserException.BadArgumentValue("maxDepthPerSample",
+                    String.valueOf(maxDepthPerSample),
+                    "should be a positive number");
+        }
+        return (maxDepthPerSample == 0) ? LocusIteratorByState.NO_DOWNSAMPLING : new LIBSDownsamplingInfo(true, maxDepthPerSample);
     }
 
     /**
@@ -139,7 +152,7 @@ public abstract class LocusWalker extends GATKTool {
      * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
      *
      * The default implementation iterates over all positions in the reference covered by reads for all samples in the read groups, using
-     * the downsampling method provided by {@link #getDownsamplingMethod()}
+     * the downsampling method provided by {@link #getDownsamplingInfo()}
      * and including deletions only if {@link #includeDeletions()} returns {@code true}.
      */
     @Override
@@ -149,9 +162,9 @@ public abstract class LocusWalker extends GATKTool {
         final Set<String> samples = header.getReadGroups().stream()
                                           .map(SAMReadGroupRecord::getSample)
                                           .collect(Collectors.toSet());
-        CountingReadFilter countedFilter = makeReadFilter();
+        final CountingReadFilter countedFilter = makeReadFilter();
         // get the LIBS
-        LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingMethod(), includeDeletions(), includeNs(), keepUniqueReadListInLibs(), samples, header);
+        final LocusIteratorByState libs = new LocusIteratorByState(new ReadFilteringIterator(reads.iterator(), countedFilter), getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
         // prepare the iterator
         Spliterator<AlignmentContext> iterator = (hasIntervals()) ? new IntervalOverlappingIterator<>(libs, intervalsForTraversal, header.getSequenceDictionary()).spliterator() : libs.spliterator();
         // iterate over each alignment, and apply the function
