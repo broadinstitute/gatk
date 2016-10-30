@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Depth of coverage of each allele per sample
@@ -50,15 +51,15 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
 
         // make sure that there's a meaningful relationship between the alleles in the likelihoods and our VariantContext
-        if ( ! likelihoods.alleles().containsAll(alleles) ) {
-            throw new IllegalStateException("VC alleles " + alleles + " not a strict subset of per read allele map alleles " + likelihoods.alleles());
-        }
+        Utils.validateArg(likelihoods.alleles().containsAll(alleles), () -> "VC alleles " + alleles + " not a  subset of ReadLikelihoods alleles " + likelihoods.alleles());
 
         final Map<Allele, Integer> alleleCounts = new LinkedHashMap<>();
         for ( final Allele allele : vc.getAlleles() ) {
             alleleCounts.put(allele, 0);
         }
-        likelihoods.bestAlleles(g.getSampleName()).stream()
+        final Map<Allele, List<Allele>> alleleSubset = alleles.stream().collect(Collectors.toMap(a -> a, Arrays::asList));
+        final ReadLikelihoods<Allele> subsettedLikelihoods = likelihoods.marginalize(alleleSubset);
+        subsettedLikelihoods.bestAlleles(g.getSampleName()).stream()
                 .filter(ba -> ba.isInformative())
                 .forEach(ba -> alleleCounts.compute(ba.allele, (allele,prevCount) -> prevCount + 1));
 

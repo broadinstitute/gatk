@@ -68,7 +68,7 @@ public final class DepthPerAlleleBySampleUnitTest extends BaseTest {
         Assert.assertFalse(gb1.make().hasAD());
     }
 
-    @Test(expectedExceptions = IllegalStateException.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBlowUp(){
         final int dpDepth = 30; //Note: using a different value on purpose so that we can check that reads are preferred over DP
         final Genotype gAC = new GenotypeBuilder(SAMPLE, ALLELES).DP(dpDepth).make();
