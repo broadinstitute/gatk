@@ -593,14 +593,7 @@ public final class MathUtils {
     }
 
     public static double log10SumLog10(final double a, final double b) {
-        // below, we'll assume a >= b
-        if (a < b) {
-            return log10SumLog10(b, a);
-        } else if(a == Double.NEGATIVE_INFINITY) {
-            return Double.NEGATIVE_INFINITY;
-        } else {
-            return a + Math.log10(1 + Math.pow(10.0, b - a));
-        }
+        return a > b ? a + Math.log10(1 + Math.pow(10.0, b - a)) : b + Math.log10(1 + Math.pow(10.0, a - b));
     }
 
     /**
@@ -731,7 +724,7 @@ public final class MathUtils {
      * @return true if result is really well formed
      */
     public static boolean goodLog10Probability(final double result) {
-        return result <= 0.0 && result != Double.POSITIVE_INFINITY && !Double.isNaN(result);
+        return result <= 0.0;
     }
 
     /**
@@ -741,14 +734,14 @@ public final class MathUtils {
      * @return true if result is really well formed
      */
     public static boolean goodProbability(final double result) {
-        return result >= 0.0 && result <= 1.0 && ! Double.isInfinite(result) && ! Double.isNaN(result);
+        return result >= 0.0 && result <= 1.0;
     }
 
     public static double log10ToLog(final double log10){
         return log10 * LN_10;
     }
 
-    /**
+    /**r
      * Converts LN to LOG10
      * @param ln log(x)
      * @return log10(x)

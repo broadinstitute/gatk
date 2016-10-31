@@ -151,9 +151,10 @@ class GaussianMixtureModel {
 
     public double normalizePMixtureLog10() {
         double sumDiff = 0.0;
-        double sumPK = gaussians.stream().mapToDouble(g -> g.sumProb).sum();
+        final double sumPK = gaussians.stream().mapToDouble(g -> g.sumProb).sum();
 
-        final double[] pGaussianLog10 = gaussians.stream().mapToDouble(g -> Math.log10(g.sumProb / sumPK)).toArray();
+        final double log10SumPK = Math.log10(sumPK);
+        final double[] pGaussianLog10 = gaussians.stream().mapToDouble(g -> Math.log10(g.sumProb) - log10SumPK).toArray();
         MathUtils.normalizeLog10( pGaussianLog10);
 
         int gaussianIndex = 0;
