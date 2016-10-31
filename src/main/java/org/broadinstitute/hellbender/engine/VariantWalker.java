@@ -5,13 +5,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.filters.VariantFilter;
-import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.IndexUtils;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.util.stream.StreamSupport;
+import java.util.Spliterator;
 
 /**
  * A VariantWalker is a tool that processes a variant at a time from a source of variants, with
@@ -21,18 +17,12 @@ import java.util.stream.StreamSupport;
  * VariantWalker authors must implement the {@link #apply} method to process each variant, and may optionally implement
  * {@link #onTraversalStart}, {@link #onTraversalSuccess} and/or {@link #closeTool}.
  */
-public abstract class VariantWalker extends GATKTool {
+public abstract class VariantWalker extends VariantWalkerBase {
 
     // NOTE: using File rather than FeatureInput<VariantContext> here so that we can keep this driving source
     //       of variants separate from any other potential sources of Features
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", common = false, optional = false)
     public String drivingVariantFile;
-
-    /**
-     * This number controls the size of the cache for our primary and auxiliary FeatureInputs
-     * (specifically, the number of additional bases worth of overlapping records to cache when querying feature sources).
-     */
-    public static final int FEATURE_CACHE_LOOKAHEAD = 100_000;
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager in GATKTool
     //we do add the driving source to the Feature manager but we do need to treat it differently and thus this field.
@@ -40,37 +30,10 @@ public abstract class VariantWalker extends GATKTool {
     private FeatureInput<VariantContext> drivingVariantsFeatureInput;
 
     @Override
-    public boolean requiresFeatures() { return true; }
+    protected SAMSequenceDictionary getSequenceDictionaryForDrivingVariants() { return drivingVariants.getSequenceDictionary(); }
 
     @Override
-    void initializeFeatures() {
-        //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
-        //This is because we have at least 1 source of features (namely the driving dataset).
-        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD);
-        initializeDrivingVariants();
-    }
-
-    /**
-     * Overriding the superclass method to preferentially
-     * choose the sequence dictionary from the driving source of variants.
-     */
-    @Override
-    public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
-        final SAMSequenceDictionary dictFromDrivingVariants = drivingVariants.getSequenceDictionary();
-        if (dictFromDrivingVariants != null){
-            //If this dictionary looks like it was synthesized from a feature index, see
-            //if there is a better dictionary available from another source (i.e., the reference)
-            if (IndexUtils.isSequenceDictionaryFromIndex(dictFromDrivingVariants)) {
-                final SAMSequenceDictionary otherDictionary = super.getBestAvailableSequenceDictionary();
-                return otherDictionary != null ?
-                        otherDictionary :
-                        dictFromDrivingVariants;
-            } else {
-                return dictFromDrivingVariants;
-            }
-        }
-        return super.getBestAvailableSequenceDictionary();
-    }
+    protected Spliterator<VariantContext> getSpliteratorForDrivingVariants() { return drivingVariants.spliterator(); }
 
     /**
      * Marked final so that tool authors don't override it. Tool authors should override {@link #onTraversalStart} instead.
@@ -83,9 +46,8 @@ public abstract class VariantWalker extends GATKTool {
         }
     }
 
-
-    @SuppressWarnings("unchecked")
-    private void initializeDrivingVariants() {
+    @Override
+    protected void initializeDrivingVariants() {
         drivingVariantsFeatureInput = new FeatureInput<>(drivingVariantFile, "drivingVariantFile");
 
         //This is the data source for the driving source of variants, which uses a cache lookahead of FEATURE_CACHE_LOOKAHEAD
@@ -106,27 +68,6 @@ public abstract class VariantWalker extends GATKTool {
     }
 
     /**
-     * Implementation of variant-based traversal.
-     * Subclasses can override to provide their own behavior but default implementation should be suitable for most uses.
-     */
-    @Override
-    public void traverse() {
-        final VariantFilter filter = makeVariantFilter();
-        // Process each variant in the input stream.
-        StreamSupport.stream(drivingVariants.spliterator(), false)
-                .filter(filter)
-                .forEach(variant -> {
-                    final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    apply(variant,
-                          new ReadsContext(reads, variantInterval),
-                          new ReferenceContext(reference, variantInterval),
-                          new FeatureContext(features, variantInterval));
-
-                    progressMeter.update(variantInterval);
-                });
-    }
-
-    /**
      * Gets the header associated with our driving source of variants as a VCFHeader.
      *
      * @return VCFHeader for our driving source of variants
@@ -140,39 +81,6 @@ public abstract class VariantWalker extends GATKTool {
 
         return (VCFHeader)header;
     }
-
-    /**
-     * Returns the variant filter (simple or composite) that will be applied to the variants before calling {@link #apply}.
-     * The default implementation filters nothing.
-     * Default implementation of {@link #traverse()} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
-     *
-     * Subclasses can extend to provide own filters (ie override and call super).
-     * Multiple filters can be composed by using {@link VariantFilter} composition methods.
-     */
-    protected VariantFilter makeVariantFilter() {
-        return VariantFilterLibrary.ALLOW_ALL_VARIANTS;
-    }
-
-    /**
-     * Process an individual variant. Must be implemented by tool authors.
-     * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
-     * as possible.
-     *
-     * @param variant Current variant being processed.
-     * @param readsContext Reads overlapping the current variant. Will be an empty, but non-null, context object
-     *                     if there is no backing source of reads data (in which case all queries on it will return
-     *                     an empty array/iterator)
-     * @param referenceContext Reference bases spanning the current variant. Will be an empty, but non-null, context object
-     *                         if there is no backing source of reference data (in which case all queries on it will return
-     *                         an empty array/iterator). Can request extra bases of context around the current variant's interval
-     *                         by invoking {@link ReferenceContext#setWindow}
-     *                         on this object before calling {@link ReferenceContext#getBases}
-     * @param featureContext Features spanning the current variant. Will be an empty, but non-null, context object
-     *                       if there is no backing source of Feature data (in which case all queries on it will return an
-     *                       empty List).
-     */
-    public abstract void apply( VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext );
 
     /**
      * Close all data sources.

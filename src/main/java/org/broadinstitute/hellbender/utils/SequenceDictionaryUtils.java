@@ -324,8 +324,7 @@ public final class SequenceDictionaryUtils {
      * @param second second sequence record to compare
      * @return true if first and second have the same names and lengths, otherwise false
      */
-    @VisibleForTesting
-    static boolean sequenceRecordsAreEquivalent(final SAMSequenceRecord first, final SAMSequenceRecord second) {
+    public static boolean sequenceRecordsAreEquivalent(final SAMSequenceRecord first, final SAMSequenceRecord second) {
         if ( first == second ) {
             return true;
         }

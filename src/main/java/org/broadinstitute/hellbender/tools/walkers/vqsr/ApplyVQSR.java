@@ -15,7 +15,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
+import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -116,7 +116,7 @@ import java.util.regex.Pattern;
         oneLineSummary = " Apply a score cutoff to filter variants based on a recalibration table",
         programGroup = VariantProgramGroup.class
 )
-public class ApplyVQSR extends VariantWalker {
+public class ApplyVQSR extends MultiVariantWalker {
 
     protected static final String LOW_VQSLOD_FILTER_NAME = "LOW_VQSLOD";
     private final double DEFAULT_VQSLOD_CUTOFF = 0.0;
@@ -215,7 +215,7 @@ public class ApplyVQSR extends VariantWalker {
         }
 
         // setup the header fields
-        VCFHeader inputHeader = (VCFHeader) this.getHeaderForFeatures(getDrivingVariantsFeatureInput());
+        VCFHeader inputHeader = getHeaderForVariants();
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);

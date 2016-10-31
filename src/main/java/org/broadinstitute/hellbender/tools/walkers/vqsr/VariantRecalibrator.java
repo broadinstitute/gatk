@@ -11,7 +11,11 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.MultiVariantWalker;
 import org.broadinstitute.hellbender.utils.R.RScriptExecutor;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.ExpandingArrayList;
@@ -142,7 +146,7 @@ import java.util.*;
         oneLineSummary = "Build a recalibration model to score variant quality for filtering purposes",
         programGroup = VariantProgramGroup.class
 )
-public class VariantRecalibrator extends VariantWalker {
+public class VariantRecalibrator extends MultiVariantWalker {
 
     private static final String PLOT_TRANCHES_RSCRIPT = "plot_Tranches.R";
 
@@ -294,7 +298,14 @@ public class VariantRecalibrator extends VariantWalker {
             shortName = "allPoly",
             doc = "Trust that all the input training sets' unfiltered records contain only polymorphic sites to drastically speed up the computation.",
             optional=true)
-    private Boolean TRUST_ALL_POLYMORPHIC = false;
+    private boolean TRUST_ALL_POLYMORPHIC = false;
+
+    // Temporary argument for validation of GATK4 implementation against GATKs results:
+    @Advanced
+    @Argument(fullName="gatk3Compatibility", shortName="gatk3",
+            doc="Set initial random number generator state for an exact match against GATK3 results.",
+            optional=true)
+    private boolean gatk3Compatibility = false;
 
     /////////////////////////////
     // Private Member Variables
@@ -316,6 +327,14 @@ public class VariantRecalibrator extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+
+        if (gatk3Compatibility) {
+            // Temporary argument for validation of GATK4 implementation against GATK3 results:
+            // Reset the RNG and draw a single int to align the RNG initial state with that used
+            // by GATK3 to allow comparison of results with GATK3
+            Utils.resetRandomGenerator();
+            Utils.getRandomGenerator().nextInt();
+        }
         dataManager = new VariantDataManager( new ArrayList<>(USE_ANNOTATIONS), VRAC );
 
         if (RSCRIPT_FILE != null && !RScriptExecutor.RSCRIPT_EXISTS)
