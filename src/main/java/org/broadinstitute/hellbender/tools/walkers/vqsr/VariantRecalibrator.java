@@ -313,10 +313,10 @@ public class VariantRecalibrator extends MultiVariantWalker {
     private VariantDataManager dataManager;
     private VariantContextWriter recalWriter;
     private PrintStream tranchesStream;
-    private ArrayList<Double> replicate = new ArrayList<>();
+    private ArrayList<Double> replicate = new ArrayList<>(REPLICATE * 2);
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     private final VariantRecalibratorEngine engine = new VariantRecalibratorEngine( VRAC );
-    private ExpandingArrayList<VariantDatum> reduceSum = new ExpandingArrayList<>();
+    private ExpandingArrayList<VariantDatum> reduceSum = new ExpandingArrayList<>(2000);
     private List<ImmutablePair<VariantContext, FeatureContext>> variantsAtLocus = new ArrayList<>();
 
     //---------------------------------------------------------------------------------------------------------------
@@ -382,8 +382,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
         }
 
-        //TODO: integrate lenient argument
-        recalWriter = GATKVariantContextUtils.createVCFWriter(new File(output), sequenceDictionary, true);
+        recalWriter = createVCFWriter(new File(output));
         recalWriter.writeHeader( new VCFHeader(hInfo) );
 
         for( int iii = 0; iii < REPLICATE * 2; iii++ ) {
