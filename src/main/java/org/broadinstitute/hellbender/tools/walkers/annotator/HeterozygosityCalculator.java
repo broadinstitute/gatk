@@ -67,15 +67,11 @@ public final class HeterozygosityCalculator {
                     //for each alt allele index from 1 to N
                     altIndex++;
 
-                        final double[] normalizedLikelihoodsUnrounded = MathUtils.normalizeFromLog10(g.getLikelihoods().getAsVector());
-                        double[] normalizedLikelihoods = new double[normalizedLikelihoodsUnrounded.length];
+                        final double[] normalizedLikelihoods = MathUtils.normalizeFromLog10ToLinearSpace(g.getLikelihoods().getAsVector());
                         if (returnRounded) {
-                            for (int i = 0; i < normalizedLikelihoodsUnrounded.length; i++) {
-                                normalizedLikelihoods[i] = Math.round(normalizedLikelihoodsUnrounded[i]);
-                            }
-                        } else {
-                            normalizedLikelihoods = normalizedLikelihoodsUnrounded;
+                            MathUtils.applyToArrayInPlace(normalizedLikelihoods, Math::round);
                         }
+
                         //iterate over the other alleles
                         for (int i = 0; i < numAlleles; i++) {
                             //only add homozygotes to alleleCounts, not hetCounts

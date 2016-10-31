@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -257,11 +258,8 @@ public final class AFCalculationResult {
      * @return freshly allocated log10 normalized posteriors vector
      */
     private static double[] computePosteriors(final double[] log10LikelihoodsOfAC, final double[] log10PriorsOfAC) {
-        final double[] log10UnnormalizedPosteriors = new double[log10LikelihoodsOfAC.length];
-        for ( int i = 0; i < log10LikelihoodsOfAC.length; i++ ) {
-            log10UnnormalizedPosteriors[i] = log10LikelihoodsOfAC[i] + log10PriorsOfAC[i];
-        }
-        return MathUtils.normalizeFromLog10(log10UnnormalizedPosteriors, true, false);
+        final double[] log10UnnormalizedPosteriors = MathArrays.ebeAdd(log10LikelihoodsOfAC, log10PriorsOfAC);
+        return MathUtils.normalizeLog10(log10UnnormalizedPosteriors);
     }
 
     /**

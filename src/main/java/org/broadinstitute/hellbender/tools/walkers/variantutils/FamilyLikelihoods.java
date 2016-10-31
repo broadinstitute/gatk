@@ -191,7 +191,7 @@ public final class FamilyLikelihoods {
         recalcPosteriors[1] = MathUtils.log10sumLog10(marginalOverChangedHET,0);
         recalcPosteriors[2] = MathUtils.log10sumLog10(marginalOverChangedHV,0);
 
-        return MathUtils.normalizeFromLog10(recalcPosteriors,true,true);
+        return MathUtils.scaleLogSpaceArrayForNumericalStability(recalcPosteriors);
     }
 
     /**

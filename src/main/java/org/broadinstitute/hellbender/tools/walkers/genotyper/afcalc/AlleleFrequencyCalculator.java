@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
@@ -14,7 +13,6 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -91,23 +89,31 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
             }
             final int ploidy = g.getPloidy() == 0 ? defaultPloidy : g.getPloidy();
             final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, numAlleles);
-            final double[] genotypePosteriors = normalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
+
+            final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
 
             //the total probability
-            log10PNoVariant += Math.log10(genotypePosteriors[HOM_REF_GENOTYPE_INDEX]);
+            log10PNoVariant += log10GenotypePosteriors[HOM_REF_GENOTYPE_INDEX];
 
             // per allele non-log space probabilities of zero counts for this sample
             // for each allele calculate the total probability of genotypes containing at least one copy of the allele
-            final double[] pOfNonZeroAltAlleles = new double[numAlleles];
+            final double[] log10ProbabilityOfNonZeroAltAlleles = new double[numAlleles];
+            Arrays.fill(log10ProbabilityOfNonZeroAltAlleles, Double.NEGATIVE_INFINITY);
 
             for (int genotype = 0; genotype < glCalc.genotypeCount(); genotype++) {
-                final double genotypePosterior = genotypePosteriors[genotype];
+                final double log10GenotypePosterior = log10GenotypePosteriors[genotype];
                 glCalc.genotypeAlleleCountsAt(genotype).forEachAlleleIndexAndCount((alleleIndex, count) ->
-                        pOfNonZeroAltAlleles[alleleIndex] += genotypePosterior);
+                        log10ProbabilityOfNonZeroAltAlleles[alleleIndex] =
+                                MathUtils.log10SumLog10(log10ProbabilityOfNonZeroAltAlleles[alleleIndex], log10GenotypePosterior));
             }
 
             for (int allele = 0; allele < numAlleles; allele++) {
-                log10POfZeroCountsByAllele[allele] += Math.log10(1 - pOfNonZeroAltAlleles[allele]);
+                // if prob of non hom ref == 1 up to numerical precision, short-circuit to avoid NaN
+                if (log10ProbabilityOfNonZeroAltAlleles[allele] >= 0) {
+                    log10POfZeroCountsByAllele[allele] = Double.NEGATIVE_INFINITY;
+                } else {
+                    log10POfZeroCountsByAllele[allele] += MathUtils.log10OneMinusPow10(log10ProbabilityOfNonZeroAltAlleles[allele]);
+                }
             }
         }
 
@@ -123,37 +129,43 @@ public final class AlleleFrequencyCalculator extends AFCalculator {
         // we compute posteriors here and don't have the same prior that AFCalculationResult expects.  Therefore, we
         // give it our posterior as its "likelihood" along with a flat dummy prior
         final double[] dummyFlatPrior = {-1e-10, -1e-10};   //TODO: HACK must be negative for AFCalcResult
-        final double[] log10PosteriorOfNoVariantYesVariant = {log10PNoVariant, Math.log10(1 - Math.pow(10, log10PNoVariant))};
+        final double[] log10PosteriorOfNoVariantYesVariant = {log10PNoVariant, MathUtils.log10OneMinusPow10(log10PNoVariant)};
 
         return new AFCalculationResult(integerAltAlleleCounts, alleles, log10PosteriorOfNoVariantYesVariant, dummyFlatPrior, log10PRefByAllele);
     }
 
+    // effectiveAlleleCounts[allele a] = SUM_{genotypes g} (posterior_probability(g) * num_copies of a in g), which we denote as SUM [n_g p_g]
+    // for numerical stability we will do this in log space:
+    // count = SUM 10^(log (n_g p_g)) = SUM 10^(log n_g + log p_g)
+    // thanks to the log-sum-exp trick this lets us work with log posteriors alone
     private double[] effectiveAlleleCounts(final VariantContext vc, final double[] log10AlleleFrequencies) {
         final int numAlleles = vc.getNAlleles();
         Utils.validateArg(numAlleles == log10AlleleFrequencies.length, "number of alleles inconsistent");
-        final double[] result = new double[numAlleles];
+        final double[] log10Result = new double[numAlleles];
+        Arrays.fill(log10Result, Double.NEGATIVE_INFINITY);
         for (final Genotype g : vc.getGenotypes()) {
             if (!g.hasLikelihoods()) {
                 continue;
             }
             final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(g.getPloidy(), numAlleles);
-            final double[] genotypePosteriors = normalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
+
+            final double[] log10GenotypePosteriors = log10NormalizedGenotypePosteriors(g, glCalc, log10AlleleFrequencies);
 
             new IndexRange(0, glCalc.genotypeCount()).forEach(genotypeIndex ->
                 glCalc.genotypeAlleleCountsAt(genotypeIndex).forEachAlleleIndexAndCount((alleleIndex, count) ->
-                        result[alleleIndex] += genotypePosteriors[genotypeIndex] * count));
+                        log10Result[alleleIndex] = MathUtils.log10SumLog10(log10Result[alleleIndex], log10GenotypePosteriors[genotypeIndex] + MathUtils.log10(count))));
         }
-        return result;
+        return MathUtils.applyToArrayInPlace(log10Result, x -> Math.pow(10.0, x));
     }
 
-    private static double[] normalizedGenotypePosteriors(final Genotype g, final GenotypeLikelihoodCalculator glCalc, final double[] log10AlleleFrequencies) {
+    private static double[] log10NormalizedGenotypePosteriors(final Genotype g, final GenotypeLikelihoodCalculator glCalc, final double[] log10AlleleFrequencies) {
         final double[] log10Likelihoods = g.getLikelihoods().getAsVector();
-        final double[] unnormalizedLog10Likelihoods = new IndexRange(0, glCalc.genotypeCount()).mapToDouble(genotypeIndex -> {
+        final double[] log10Posteriors = new IndexRange(0, glCalc.genotypeCount()).mapToDouble(genotypeIndex -> {
             final GenotypeAlleleCounts gac = glCalc.genotypeAlleleCountsAt(genotypeIndex);
             return gac.log10CombinationCount() + log10Likelihoods[genotypeIndex]
                     + gac.sumOverAlleleIndicesAndCounts((index, count) -> count * log10AlleleFrequencies[index]);
         });
-        return MathUtils.normalizeFromLog10(unnormalizedLog10Likelihoods);
+        return MathUtils.normalizeLog10(log10Posteriors);
     }
 
     @Override   //Note: unused

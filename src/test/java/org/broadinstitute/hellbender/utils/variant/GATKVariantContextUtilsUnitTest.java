@@ -1361,7 +1361,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         Utils.validateArg(originalGT.size() == ploidy, "original call must be consistent with ploidy");
 
         final GenotypeBuilder gb = new GenotypeBuilder("test");
-        final double[] logLikelhoods = MathUtils.normalizeFromLog10(likelihoods, true, false);
+        final double[] logLikelhoods = MathUtils.normalizeLog10(likelihoods);
 
         GATKVariantContextUtils.makeGenotypeCall(originalGT.size(), gb, mode, logLikelhoods, allelesToUse);
 

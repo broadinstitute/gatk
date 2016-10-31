@@ -127,14 +127,9 @@ class GaussianMixtureModel {
         }
 
         for( final VariantDatum datum : data ) {
-            final double[] pVarInGaussianLog10 = new double[gaussians.size()];
+            final double[] pVarInGaussianLog10 = gaussians.stream().mapToDouble(g -> g.evaluateDatumLog10(datum)).toArray();
+            final double[] pVarInGaussianNormalized = MathUtils.normalizeFromLog10ToLinearSpace( pVarInGaussianLog10);
             int gaussianIndex = 0;
-            for( final MultivariateGaussian gaussian : gaussians ) {
-                final double pVarLog10 = gaussian.evaluateDatumLog10( datum );
-                pVarInGaussianLog10[gaussianIndex++] = pVarLog10;
-            }
-            final double[] pVarInGaussianNormalized = MathUtils.normalizeFromLog10( pVarInGaussianLog10, false );
-            gaussianIndex = 0;
             for( final MultivariateGaussian gaussian : gaussians ) {
                 gaussian.assignPVarInGaussian( pVarInGaussianNormalized[gaussianIndex++] );
             }
@@ -142,41 +137,27 @@ class GaussianMixtureModel {
     }
 
     public void maximizationStep( final List<VariantDatum> data ) {
-        for( final MultivariateGaussian gaussian : gaussians ) {
-            gaussian.maximizeGaussian( data, empiricalMu, empiricalSigma, shrinkage, dirichletParameter, priorCounts);
-        }
+        gaussians.forEach(g -> g.maximizeGaussian( data, empiricalMu, empiricalSigma, shrinkage, dirichletParameter, priorCounts));
     }
 
     private double getSumHyperParameterLambda() {
-        double sum = 0.0;
-        for( final MultivariateGaussian gaussian : gaussians ) {
-            sum += gaussian.hyperParameter_lambda;
-        }
-        return sum;
+        return gaussians.stream().mapToDouble(g -> g.hyperParameter_lambda).sum();
     }
 
     public void evaluateFinalModelParameters( final List<VariantDatum> data ) {
-        for( final MultivariateGaussian gaussian : gaussians ) {
-            gaussian.evaluateFinalModelParameters(data);
-        }
+        gaussians.forEach(g -> g.evaluateFinalModelParameters(data));
         normalizePMixtureLog10();
     }
 
     public double normalizePMixtureLog10() {
         double sumDiff = 0.0;
-        double sumPK = 0.0;
-        for( final MultivariateGaussian gaussian : gaussians ) {
-            sumPK += gaussian.sumProb;
-        }
+        final double sumPK = gaussians.stream().mapToDouble(g -> g.sumProb).sum();
+
+        final double log10SumPK = Math.log10(sumPK);
+        final double[] pGaussianLog10 = gaussians.stream().mapToDouble(g -> Math.log10(g.sumProb) - log10SumPK).toArray();
+        MathUtils.normalizeLog10( pGaussianLog10);
 
         int gaussianIndex = 0;
-        double[] pGaussianLog10 = new double[gaussians.size()];
-        for( final MultivariateGaussian gaussian : gaussians ) {
-            pGaussianLog10[gaussianIndex++] = Math.log10( gaussian.sumProb / sumPK );
-        }
-        pGaussianLog10 = MathUtils.normalizeFromLog10( pGaussianLog10, true );
-
-        gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
             sumDiff += Math.abs( pGaussianLog10[gaussianIndex] - gaussian.pMixtureLog10 );
             gaussian.pMixtureLog10 = pGaussianLog10[gaussianIndex++];

@@ -94,7 +94,7 @@ public final class AFCalculatorTestBuilder {
 
         switch ( priorType ) {
             case flat:
-                return MathUtils.normalizeFromLog10(new double[nPriorValues], true);  // flat priors
+                return MathUtils.normalizeLog10(new double[nPriorValues]);  // flat priors
 
             //TODO break dependency with human... avoid special reference to this species.
             case human:

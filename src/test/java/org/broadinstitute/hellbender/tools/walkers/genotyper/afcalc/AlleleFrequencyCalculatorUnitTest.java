@@ -17,15 +17,13 @@ import java.util.stream.IntStream;
  * Created by davidben on 7/28/16.
  */
 public class AlleleFrequencyCalculatorUnitTest extends BaseTest {
-    private static final double EPS = 1.0e-8;
+    private static final double EPS = 1.0e-3;
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
     private static final Allele A = Allele.create("A", true);
     private static final Allele B = Allele.create("C");
     private static final Allele C = Allele.create("G");
-    private static final Allele indel1 = Allele.create("AA");
 
-    private static final int HAPLOID = 1;
     private static final int DIPLOID = 2;
     private static final int TRIPLOID = 3;
 
@@ -34,7 +32,6 @@ public class AlleleFrequencyCalculatorUnitTest extends BaseTest {
 
     private static final int EXTREMELY_CONFIDENT_PL = 1000;
     private static final int FAIRLY_CONFIDENT_PL = 20;
-    private static final int LOW_CONFIDENCE_PL = 10;
 
     private static final int DEFAULT_PLOIDY = 2;
 
