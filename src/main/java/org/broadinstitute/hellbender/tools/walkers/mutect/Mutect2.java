@@ -8,9 +8,11 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
+import java.util.List;
 
 /**
  * Call somatic SNPs and indels via local re-assembly of haplotypes
@@ -124,15 +126,20 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected int defaultMaxProbPropagationDistance() { return 50; }
 
     @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Mutect2Engine.makeStandardMutect2ReadFilters();
+    }
+
+    @Override
+    public AssemblyRegionEvaluator assemblyRegionEvaluator() { return m2Engine; }
+
+    @Override
     public void onTraversalStart() {
         m2Engine = new Mutect2Engine(MTAC, getHeaderForReads(), referenceArguments.getReferenceFileName());
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = GATKVariantContextUtils.createVCFWriter(new File(outputVCF), sequenceDictionary, false);
         m2Engine.writeHeader(vcfWriter, sequenceDictionary);
     }
-
-    @Override
-    public AssemblyRegionEvaluator assemblyRegionEvaluator() { return m2Engine; }
 
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
