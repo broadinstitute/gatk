@@ -661,6 +661,20 @@ public final class MathUtils {
         return takeLog10OfOutput ? result : applyToArrayInPlace(result, x -> Math.pow(10.0, x));
     }
 
+
+    //TODO: delete after we are satisfied with the concordance of VQSR with GATK3
+    public static double[] normalizeLog10DeleteMePlease(final double[] array, final boolean takeLog10OfOutput) {
+        final double maxValue = arrayMax(array);
+        final double[] normalized = applyToArray(array, x -> Math.pow(10.0, x - maxValue));
+        final double sum = sum(normalized);
+        if (!takeLog10OfOutput) {
+            return applyToArrayInPlace(normalized, x -> x/sum);
+        } else {
+            final double log10Sum = Math.log10(sum);
+            return applyToArrayInPlace(array, x -> x - maxValue - log10Sum);
+        }
+    }
+
     /**
      * Given an array of log space (log or log10) values, subtract all values by the array maximum so that the max element in log space
      * is zero.  This is equivalent to dividing by the maximum element in real space and is useful for avoiding underflow/overflow
