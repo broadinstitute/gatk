@@ -128,7 +128,7 @@ class GaussianMixtureModel {
 
         for( final VariantDatum datum : data ) {
             final double[] pVarInGaussianLog10 = gaussians.stream().mapToDouble(g -> g.evaluateDatumLog10(datum)).toArray();
-            final double[] pVarInGaussianNormalized = MathUtils.normalizeFromLog10ToLinearSpace( pVarInGaussianLog10);
+            final double[] pVarInGaussianNormalized = MathUtils.normalizeLog10DeleteMePlease( pVarInGaussianLog10, false);
             int gaussianIndex = 0;
             for( final MultivariateGaussian gaussian : gaussians ) {
                 gaussian.assignPVarInGaussian( pVarInGaussianNormalized[gaussianIndex++] );
@@ -155,7 +155,7 @@ class GaussianMixtureModel {
 
         final double log10SumPK = Math.log10(sumPK);
         final double[] pGaussianLog10 = gaussians.stream().mapToDouble(g -> Math.log10(g.sumProb) - log10SumPK).toArray();
-        MathUtils.normalizeLog10( pGaussianLog10);
+        MathUtils.normalizeLog10DeleteMePlease( pGaussianLog10, true);
 
         int gaussianIndex = 0;
         for( final MultivariateGaussian gaussian : gaussians ) {
