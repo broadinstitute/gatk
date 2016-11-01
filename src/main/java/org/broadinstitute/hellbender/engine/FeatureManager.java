@@ -44,9 +44,9 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * We will search these packages at startup to look for FeatureCodecs
      */
-    private static final List<String> CODEC_PACKAGES = Arrays.asList("htsjdk.variant",
+    private static final List<String> CODEC_PACKAGES = new ArrayList<>(Arrays.asList("htsjdk.variant",
                                                                      "htsjdk.tribble",
-                                                                     "org.broadinstitute.hellbender.utils.codecs");
+                                                                     "org.broadinstitute.hellbender.utils.codecs"));
 
     /**
      * All codecs descend from this class
@@ -56,7 +56,7 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * The codec classes we locate when searching CODEC_PACKAGES
      */
-    private static final Set<Class<?>> DISCOVERED_CODECS;
+    private static Set<Class<?>> DISCOVERED_CODECS = null;
 
     /**
      * Feature arguments in tools are of this type
@@ -64,16 +64,18 @@ public final class FeatureManager implements AutoCloseable {
     private static final Class<FeatureInput> FEATURE_ARGUMENT_CLASS = FeatureInput.class;
 
     /**
-     * At startup, walk through the packages in CODEC_PACKAGES, and save any (concrete) FeatureCodecs discovered
-     * in DISCOVERED_CODECS
+     * Walk through the packages in CODEC_PACKAGES, and save any (concrete) FeatureCodecs discovered
+     * in DISCOVERED_CODECS. It will be only initialized once.
      */
-    static {
-        final ClassFinder finder = new ClassFinder();
-        for ( final String codecPackage : CODEC_PACKAGES ) {
-            finder.find(codecPackage, CODEC_BASE_CLASS);
+    private static void initializeFeatureManager() {
+        if (DISCOVERED_CODECS == null) {
+            final ClassFinder finder = new ClassFinder();
+            for (final String codecPackage : CODEC_PACKAGES) {
+                finder.find(codecPackage, CODEC_BASE_CLASS);
+            }
+            // Exclude abstract classes and interfaces from the list of discovered codec classes
+            DISCOVERED_CODECS = Collections.unmodifiableSet(finder.getConcreteClasses());
         }
-        // Exclude abstract classes and interfaces from the list of discovered codec classes
-        DISCOVERED_CODECS = Collections.unmodifiableSet(finder.getConcreteClasses());
     }
 
     /**
@@ -113,6 +115,7 @@ public final class FeatureManager implements AutoCloseable {
         this.toolInstance = toolInstance;
         featureSources = new LinkedHashMap<>();
 
+        initializeFeatureManager();
         initializeFeatureSources(featureQueryLookahead);
     }
 
@@ -323,6 +326,18 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
+     * Add a codec package to be used by the FeatureManager. This method should be called before any FeatureManager
+     * is initialized.
+     * @throws IllegalStateException if a FeatureManager was already initialized.
+     */
+    public static void addCodecPackage(final String codecPackage) {
+        if (DISCOVERED_CODECS != null) {
+            throw new IllegalStateException("Can't add a new package after FeatureManager was used.");
+        }
+        CODEC_PACKAGES.add(codecPackage);
+    }
+
+    /**
      * Utility method that determines the correct codec to use to read Features from the provided file.
      *
      * Codecs MUST correctly implement the {@link FeatureCodec#canDecode(String)} method
@@ -407,6 +422,9 @@ public final class FeatureManager implements AutoCloseable {
      * @return A List of all codecs in DISCOVERED_CODECS for which {@link FeatureCodec#canDecode(String)} returns true on the specified file
      */
     private static List<FeatureCodec<? extends Feature, ?>> getCandidateCodecsForFile( final File featureFile )  {
+        // initialize if required
+        initializeFeatureManager();
+
         final List<FeatureCodec<? extends Feature, ?>> candidateCodecs = new ArrayList<>();
 
         for ( final Class<?> codecClass : DISCOVERED_CODECS ) {
