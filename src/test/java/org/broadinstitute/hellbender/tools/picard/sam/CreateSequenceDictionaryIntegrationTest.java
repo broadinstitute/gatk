@@ -36,6 +36,22 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
         IntegrationTestSpec.assertEqualTextFiles(outputDict, new File(BASIC_FASTA.getAbsolutePath() + ".dict"));
     }
 
+    @Test
+    public void testNoOutput() throws Exception {
+        final File expectedDict = new File(TEST_DATA_DIR, "basic.dict");
+        Assert.assertFalse(expectedDict.exists());
+        final String[] argv = {
+                "--reference", BASIC_FASTA.getAbsolutePath(),
+                "--URI", BASIC_FASTA.getName()
+        };
+        runCommandLine(argv);
+        Assert.assertTrue(expectedDict.exists());
+        // mark as delete on exit
+        expectedDict.deleteOnExit();
+        // and compare if it is the same as the expected
+        IntegrationTestSpec.assertEqualTextFiles(expectedDict, new File(BASIC_FASTA.getAbsolutePath() + ".dict"));
+    }
+
     /**
      * Should throw an exception because sequence names are not unique.
      */

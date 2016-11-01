@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -36,7 +37,7 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
     @Argument(
 	    shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output a dict file containing only the sequence dictionary")
+            doc = "Output a dict file containing only the sequence dictionary. By default it will use the base name of the input reference with the .dict extension", optional = true)
     public File OUTPUT;
 
     @Argument(doc = "Put into AS field of sequence dictionary entry if supplied", optional = true)
@@ -54,6 +55,8 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
 
     /**
      * Use reference filename to create URI to go into header if URI was not passed on cmd line.
+     * Use default name for output if not specified, being the same as the input but with
+     * {@link IOUtil#DICT_FILE_EXTENSION} extension instead of the FASTA ones (.fa or .fasta).
      */
     @Override
     protected String[] customCommandLineValidation() {
@@ -62,6 +65,11 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
         }
         if (URI == null) {
             URI = "file:" + REFERENCE_SEQUENCE.getAbsolutePath();
+        }
+        if (OUTPUT == null) {
+            // determine the name for the dict file in the same way as CachingIndexedFastaSequenceFile.checkAndCreate
+            final String fastaExt = REFERENCE_SEQUENCE.getAbsolutePath().endsWith("fa") ? "\\.fa$" : "\\.fasta$";
+            OUTPUT = new File(REFERENCE_SEQUENCE.getAbsolutePath().replaceAll(fastaExt, IOUtil.DICT_FILE_EXTENSION));
         }
         return null;
     }
