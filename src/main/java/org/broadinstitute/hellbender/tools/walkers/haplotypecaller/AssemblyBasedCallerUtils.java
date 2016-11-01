@@ -7,10 +7,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -273,27 +269,4 @@ public class AssemblyBasedCallerUtils {
             throw e;
         }
     }
-
-    /**
-     * @return the default set of read filters for HC (includes the MQ threshold filter) or M2 (does not include the MQ filter)
-     */
-    public static List<ReadFilter> makeStandardReadFilterList(final boolean includeMQThresholdFilter) {
-        List<ReadFilter> filters = new ArrayList<>();
-
-        // The order of filters is important. Cheap filters come first so we fail fast
-        if (includeMQThresholdFilter) {
-            filters.add(new MappingQualityReadFilter(HaplotypeCallerEngine.READ_QUALITY_FILTER_THRESHOLD));
-        }
-
-        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
-        filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
-        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
-        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
-        filters.add(ReadFilterLibrary.GOOD_CIGAR);
-        filters.add(new WellformedReadFilter());
-
-        return filters;
-    }
-
 }

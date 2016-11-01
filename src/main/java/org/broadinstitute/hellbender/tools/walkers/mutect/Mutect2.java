@@ -8,13 +8,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Call somatic SNPs and indels via local re-assembly of haplotypes
@@ -126,12 +122,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     protected int defaultMaxProbPropagationDistance() { return 50; }
-
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        // For Mutect2 we intentionally keep poorly mapped reads for reassembly
-        return AssemblyBasedCallerUtils.makeStandardReadFilterList(false);
-    }
 
     @Override
     public void onTraversalStart() {

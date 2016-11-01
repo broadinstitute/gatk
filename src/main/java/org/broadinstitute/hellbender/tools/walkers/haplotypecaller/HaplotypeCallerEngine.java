@@ -122,7 +122,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      * Reads with mapping quality lower than this number won't be considered for genotyping, even if they have
      * passed earlier filters (e.g. the walkers' own min MQ filter).
      */
-    public static final int READ_QUALITY_FILTER_THRESHOLD = 20;
+    private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
 
     private static final List<VariantContext> NO_CALLS = Collections.emptyList();
 
@@ -281,6 +281,23 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         activeRegionEvaluationGenotyperEngine = new MinimalGenotypingEngine(simpleUAC, samplesList,
                 FixedAFCalculatorProvider.createThreadSafeProvider(simpleUAC));
         activeRegionEvaluationGenotyperEngine.setLogger(logger);
+    }
+
+    /**
+     * @return the default set of read filters for use with the HaplotypeCaller
+     */
+    public static List<ReadFilter> makeStandardHCReadFilters() {
+        List<ReadFilter> filters = new ArrayList<>();
+        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        filters.add(ReadFilterLibrary.GOOD_CIGAR);
+        filters.add(new WellformedReadFilter());
+
+        return filters;
     }
 
     /**
@@ -627,7 +644,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private void finalizeRegion(final AssemblyRegion region) {
         AssemblyBasedCallerUtils.finalizeRegion(region, hcArgs.errorCorrectReads, hcArgs.dontUseSoftClippedBases, minTailQuality, readsHeader, samplesList);
     }
-
 
     private Set<GATKRead> filterNonPassingReads( final AssemblyRegion activeRegion ) {
         // TODO: can we unify this additional filtering with makeStandardHCReadFilter()?
