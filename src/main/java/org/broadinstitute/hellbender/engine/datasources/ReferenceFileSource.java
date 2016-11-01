@@ -35,9 +35,10 @@ public class ReferenceFileSource implements ReferenceSource, Serializable {
 
     @Override
     public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) throws IOException {
-        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath));
-        ReferenceSequence sequence = referenceSequenceFile.getSubsequenceAt(interval.getContig(), interval.getStart(), interval.getEnd());
-        return new ReferenceBases(sequence.getBases(), interval);
+        try (ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath))) {
+            ReferenceSequence sequence = referenceSequenceFile.getSubsequenceAt(interval.getContig(), interval.getStart(), interval.getEnd());
+            return new ReferenceBases(sequence.getBases(), interval);
+        }
     }
 
     public Map<String, ReferenceBases> getAllReferenceBases() throws IOException {
