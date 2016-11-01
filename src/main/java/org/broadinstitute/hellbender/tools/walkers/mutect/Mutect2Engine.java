@@ -13,6 +13,9 @@ import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
@@ -141,6 +144,26 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             MTAC.setSampleContamination(AlleleBiasedDownsamplingUtils.loadContaminationFile(MTAC.CONTAMINATION_FRACTION_FILE, MTAC.CONTAMINATION_FRACTION, samplesList.asSetOfSamples(), logger));
         }
     }
+
+    /**
+     * @return the default set of read filters for use with Mutect2
+     */
+    public static List<ReadFilter> makeStandardMutect2ReadFilters() {
+        // The order in which we apply filters is important. Cheap filters come first so we fail fast
+        // In Mutect2 we intentionally keep poorly mapped reads for reassembly
+
+        List<ReadFilter> filters = new ArrayList<>();
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPED);
+        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_DUPLICATE);
+        filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
+        filters.add(ReadFilterLibrary.GOOD_CIGAR);
+        filters.add(new WellformedReadFilter());
+
+        return filters;
+    }
+
 
     public void writeHeader(final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
@@ -430,6 +453,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         for( final GATKRead rec : assemblyRegion.getReads() ) {
             //TODO: Takuto points out that this is questionable.  Let's think hard abut it.
             // KCIBUL: only perform read quality filtering on tumor reads...
+            // The reason we filter only the tumor is because we want to get any evidence for ALT alleles in the normal, even if the MQ is poor, to improve specificity.
+            // TODO: If we decide to filter the tumor and normal uniformly, move the method to the util class and share code with the method of the same name in HC
             if (isReadFromNormal(rec)) {
                 if( rec.getLength() < MIN_READ_LENGTH ) {
                     readsToRemove.add(rec);
