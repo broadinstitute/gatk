@@ -35,25 +35,28 @@ public class ReferenceFileSource implements ReferenceSource, Serializable {
 
     @Override
     public ReferenceBases getReferenceBases(final PipelineOptions pipelineOptions, final SimpleInterval interval) throws IOException {
-        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath));
-        ReferenceSequence sequence = referenceSequenceFile.getSubsequenceAt(interval.getContig(), interval.getStart(), interval.getEnd());
-        return new ReferenceBases(sequence.getBases(), interval);
+        try ( ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath)) ) {
+            ReferenceSequence sequence = referenceSequenceFile.getSubsequenceAt(interval.getContig(), interval.getStart(), interval.getEnd());
+            return new ReferenceBases(sequence.getBases(), interval);
+        }
     }
 
     public Map<String, ReferenceBases> getAllReferenceBases() throws IOException {
-        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath));
-        Map<String, ReferenceBases> bases = new LinkedHashMap<>();
-        ReferenceSequence seq;
-        while ((seq = referenceSequenceFile.nextSequence()) != null) {
-            String name = seq.getName();
-            bases.put(name, new ReferenceBases(seq.getBases(), new SimpleInterval(name, 1, seq.length())));
+        try ( ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath)) ) {
+            Map<String, ReferenceBases> bases = new LinkedHashMap<>();
+            ReferenceSequence seq;
+            while ( (seq = referenceSequenceFile.nextSequence()) != null ) {
+                String name = seq.getName();
+                bases.put(name, new ReferenceBases(seq.getBases(), new SimpleInterval(name, 1, seq.length())));
+            }
+            return bases;
         }
-        return bases;
     }
 
     @Override
     public SAMSequenceDictionary getReferenceSequenceDictionary(final SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-        ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath));
-        return referenceSequenceFile.getSequenceDictionary();
+        try ( ReferenceSequenceFile referenceSequenceFile = ReferenceSequenceFileFactory.getReferenceSequenceFile(new File(referencePath)) ) {
+            return referenceSequenceFile.getSequenceDictionary();
+        }
     }
 }
