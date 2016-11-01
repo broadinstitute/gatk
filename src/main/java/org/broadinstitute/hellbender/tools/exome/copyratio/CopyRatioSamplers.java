@@ -144,7 +144,7 @@ final class CopyRatioSamplers {
                                     - normalTerm(c.getCoverage(), state.segmentMean(segment), state.variance());
                     //note: we are working in natural log space, so we divide by ln(10) before using normalizeFromLog10
                     final double conditionalProbability =
-                            MathUtils.normalizeFromLog10(new double[]{
+                            MathUtils.normalizeFromLog10ToLinearSpace(new double[]{
                                     MathUtils.logToLog10(outlierUnnormalizedLogProbability),
                                     MathUtils.logToLog10(notOutlierUnnormalizedLogProbability)})[0];
                     indicators.add(rng.nextDouble() < conditionalProbability);

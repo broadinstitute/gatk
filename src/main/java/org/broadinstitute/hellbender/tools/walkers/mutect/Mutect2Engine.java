@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import autovalue.shaded.org.apache.commons.lang.math.NumberUtils;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -261,6 +262,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         //TODO - on the originalAssemblyRegion?
         final Collection<GATKRead> filteredReads = filterNonPassingReads(regionForGenotyping);
 
+        // TODO: this quantity and all downstream uses of it seems like it can be obtained from
+        // TODO: ReadLikelihoods<Allele>::sampelReads
         final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(filteredReads);
         logReadInfo(MTAC.DEBUG_READ_NAME, regionForGenotyping.getReads(), "Present in region for genotyping after filtering reads");
 
@@ -484,7 +487,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 eventDistances[n] = Math.abs(calledHaplotypes.getCalls().get(n + 1).getStart() - lastPosition);
             }
             final int maxEventDistance = calledHaplotypes.getCalls().get(eventCount - 1).getStart() - calledHaplotypes.getCalls().get(0).getStart();
-            eventDistanceAttributes.put(GATKVCFConstants.EVENT_DISTANCE_MIN_KEY, MathUtils.arrayMin(eventDistances));
+            eventDistanceAttributes.put(GATKVCFConstants.EVENT_DISTANCE_MIN_KEY, NumberUtils.min(eventDistances));
             eventDistanceAttributes.put(GATKVCFConstants.EVENT_DISTANCE_MAX_KEY, maxEventDistance);
         }
 

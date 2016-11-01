@@ -350,7 +350,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBa
         final SimpleInterval refLocInterval= new SimpleInterval(refLoc);
         final ReferenceDataSource refData = new ReferenceMemorySource(new ReferenceBases(ref, refLocInterval), header.getSequenceDictionary());
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
-        final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods.toPerReadAlleleLikelihoodMap(), a -> true);
+
+        final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
         return call.getAlleles().size() == mergedVC.getAlleles().size() ? untrimmedResult
                 : GATKVariantContextUtils.reverseTrimAlleles(untrimmedResult);
     }

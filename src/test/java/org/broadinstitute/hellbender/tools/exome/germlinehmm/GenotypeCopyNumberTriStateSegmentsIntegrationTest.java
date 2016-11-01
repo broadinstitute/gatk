@@ -135,13 +135,16 @@ public class GenotypeCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
             for (final Genotype gt : vc.getGenotypes()) {
                 final int[] PL = gt.getPL();
                 Assert.assertNotNull(PL);
-                final int minPLIndex = MathUtils.minElementIndex(PL);
-                Assert.assertEquals(vc.getAlleles().indexOf(gt.getAlleles().get(0)), minPLIndex);
-                final int secondPLIndex = IntStream.range(0, PL.length)
-                        .filter(i -> i != minPLIndex)
+
+                final int[] twoLowestPLIndices = IntStream.range(0, PL.length)
                         .boxed()
                         .sorted((a, b) -> Integer.compare(PL[a], PL[b]))
-                        .findFirst().get();
+                        .limit(2)
+                        .mapToInt(n -> n)
+                        .toArray();
+                final int minPLIndex = twoLowestPLIndices[0];
+                final int secondPLIndex = twoLowestPLIndices[1];
+                Assert.assertEquals(vc.getAlleles().indexOf(gt.getAlleles().get(0)), minPLIndex);
                 final int expectedGQ = Math.min(GenotypeCopyNumberTriStateSegments.MAX_GQ, PL[secondPLIndex] - PL[minPLIndex]);
                 Assert.assertEquals(gt.getGQ(), expectedGQ);
             }

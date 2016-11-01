@@ -164,7 +164,7 @@ public final class PosteriorProbabilitiesUtils {
                     posteriorProbabilities[genoIdx] = likelihoods[genoIdx] + genotypePriorByAllele[genoIdx];
                 }
 
-                posteriorProbabilities = MathUtils.normalizeFromLog10(posteriorProbabilities, true);
+                posteriorProbabilities = MathUtils.normalizeLog10(posteriorProbabilities);
 
             }
 
