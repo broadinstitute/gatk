@@ -177,10 +177,6 @@ task PadTargets {
     output {
         File padded_target_file = "targets.padded.tsv"
     }
-
-    #runtime {
-    #    docker: "gatk-protected/a1"
-    #}
 }
 
 # Helper task to get the name of the given bam file
