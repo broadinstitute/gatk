@@ -16,9 +16,15 @@ import java.util.*;
  *
  * CommandLinePrograms are listed in a single command line interface based on the java package specified to instanceMain.
  *
- * If you want your own single command line program, extend this class and override {@link #getPackageList()}
- * to return a list of java packages in which to search for classes that extend CommandLineProgram
- * and/or {@link #getClassList()} to return a list of classes to include.
+ * If you want your own single command line program, extend this class and override if required:
+ *
+ * - {@link #getPackageList()} to return a list of java packages in which to search for classes that extend CommandLineProgram.
+ * - {@link #getClassList()} to return a list of single classes to include (e.g. required input pre-processing tools).
+ * - {@link #getCommandLineName()} for the name of the toolkit.
+ * - {@link #handleResult(Object)} for handle the result of the tool.
+ *
+ * Note: If any of the previous methods was overrided, {@link #main(String[])} should be implemented to instantiate your class
+ * and call {@link #mainEntry(String[])} to make the changes effective.
  */
 public class Main {
 
@@ -65,6 +71,11 @@ public class Main {
         return Collections.emptyList();
     }
 
+    /** Returns the command line that will appear in the usage. */
+    protected String getCommandLineName() {
+        return "";
+    }
+
     /**
      * The main method.
      * <p/>
@@ -87,19 +98,21 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      */
     public Object instanceMain(final String[] args) {
-        return instanceMain(args, getPackageList(), getClassList(), "");
+        return instanceMain(args, getPackageList(), getClassList(), getCommandLineName());
     }
 
     /**
-     * The entry point to GATK from commandline.
+     * The entry point to the toolkit from commandline: it uses {@link #instanceMain(String[])} to run the command line
+     * program and handle the returned object with {@link #handleResult(Object)}, and exit with 0.
+     * If any error occurs, it handles the exception and exit with the concrete error exit value.
+     *
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
-    public static void main(final String[] args) {
+    protected final void mainEntry(final String[] args) {
         try {
-            final Object result = new Main().instanceMain(args);
-            if (result != null) {
-              System.out.println("Tool returned:\n" + result);
-            }
+            final Object result = instanceMain(args);
+            handleResult(result);
+            System.exit(0);
         } catch (final UserException.CommandLineException e){
             //the usage has already been printed so don't print it here.
             if(printStackTraceOnUserExceptions()) {
@@ -117,6 +130,21 @@ public class Main {
             e.printStackTrace();
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
+    }
+
+    /**
+     * Handle the result returned for a tool. Default implementation prints a message with the string value of the object if it is not null.
+     * @param result the result of the tool (may be null)
+     */
+    protected void handleResult(final Object result) {
+        if (result != null) {
+            System.out.println("Tool returned:\n" + result);
+        }
+    }
+
+    /** The entry point to GATK from commandline. It calls {@link #mainEntry(String[])} from this instance. */
+    public static void main(final String[] args) {
+        new Main().mainEntry(args);
     }
 
     private static boolean printStackTraceOnUserExceptions() {
