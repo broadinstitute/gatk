@@ -48,7 +48,7 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
     @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
             fullName = "minAlignLength", optional = true)
-    private Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
+    private Integer minAlignLength = SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
 
     @Override
     public boolean requiresReference() {
@@ -73,7 +73,8 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
         final Integer minAlignLengthFinal = minAlignLength;
 
-        callVariantsFromAlignmentRegionsAndWriteVariants(broadcastReference, alignmentRegionsIterable, minAlignLengthFinal, fastaReference, getAuthenticatedGCSOptions(), outputPath);
+        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(broadcastReference, alignmentRegionsIterable);
+        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputPath, SVConstants.INVERSIONS_OUTPUT_VCF, fastaReference, variants);
     }
 
     @VisibleForTesting
