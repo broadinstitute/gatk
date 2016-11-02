@@ -1,16 +1,11 @@
 
 package org.broadinstitute.hellbender.tools;
 
-import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.tribble.*;
 import htsjdk.tribble.index.Index;
 import htsjdk.tribble.index.IndexFactory;
-import htsjdk.tribble.index.tabix.TabixFormat;
 import htsjdk.tribble.index.tabix.TabixIndex;
-import htsjdk.tribble.util.LittleEndianOutputStream;
 import htsjdk.tribble.util.TabixUtils;
-import htsjdk.variant.vcf.VCF3Codec;
-import htsjdk.variant.vcf.VCFCodec;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -23,14 +18,13 @@ import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.codecs.ProgressReportingDelegatingCodec;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
 
 /**
  * Tool to create an appropriate index file for the various kinds of Feature-containing files
  * we support. These include VCF, and BED files.
- *
+ * 
  * Such files must have an index in order to be queried by interval.
  */
 @CommandLineProgramProperties(
@@ -55,7 +49,7 @@ public final class IndexFeatureFile extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        if ( ! featureFile.canRead() ) {
+        if (!featureFile.canRead()) {
             throw new UserException.CouldNotReadInputFile(featureFile);
         }
 
@@ -66,18 +60,9 @@ public final class IndexFeatureFile extends CommandLineProgram {
         final Index index = createAppropriateIndexInMemory(codec);
         final File indexFile = determineFileName(index);
 
-        try{
-            /*
-             * Note: IndexFactory.writeIndex is incorrect for tabix indexes (does not use BlockCompressedOutputStream)
-             * The workaround is to use the BlockCompressedOutputStream ourselves.
-             */
-            // TODO: this will be fixed after https://github.com/samtools/htsjdk/pull/683 is accepted
-            if (index instanceof TabixIndex) {
-                writeTabixIndex((TabixIndex) index, indexFile);
-            } else {
-                IndexFactory.writeIndex(index, indexFile);
-            }
-        } catch ( final IOException e ) {
+        try {
+            index.write(indexFile);
+        } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Could not write index to file " + indexFile.getAbsolutePath(), e);
         }
 
@@ -85,37 +70,31 @@ public final class IndexFeatureFile extends CommandLineProgram {
         return indexFile.getAbsolutePath();
     }
 
-    private void writeTabixIndex(final TabixIndex idx, final File idxFile) throws IOException {
-        if (!idxFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
-            //Creating tabix indices with a non standard extensions can cause problems so we disable it
-            throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");
-        }
-        try (final LittleEndianOutputStream stream = new LittleEndianOutputStream(new BufferedOutputStream(new BlockCompressedOutputStream(idxFile)))){
-            idx.write(stream);
-        } //auto closing
-    }
-
     private File determineFileName(final Index index) {
-        if (outputFile != null){
+        if (outputFile != null) {
             return outputFile;
-        } else if (index instanceof TabixIndex){
-            return new File(featureFile.getAbsolutePath() + TabixUtils.STANDARD_INDEX_EXTENSION);
+        } else if (index instanceof TabixIndex) {
+            return Tribble.tabixIndexFile(featureFile);
         } else {
             return Tribble.indexFile(featureFile);
         }
     }
 
-    private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec ) {
+    private Index createAppropriateIndexInMemory(final FeatureCodec<? extends Feature, ?> codec) {
         // For block-compression files, write a Tabix index
-        if ( AbstractFeatureReader.hasBlockCompressedExtension(featureFile) ) {
+        if (AbstractFeatureReader.hasBlockCompressedExtension(featureFile)) {
+            // Creating tabix indices with a non standard extensions can cause problems so we disable it
+            if (outputFile != null && !outputFile.getAbsolutePath().endsWith(TabixUtils.STANDARD_INDEX_EXTENSION)) {
+                throw new UserException("The index for " + featureFile + " must be written to a file with a \"" + TabixUtils.STANDARD_INDEX_EXTENSION + "\" extension");
+            }
             try {
                 // TODO: this could benefit from provided sequence dictionary from reference
                 // TODO: this can be an optional parameter for the tool
                 return IndexFactory
                         .createIndex(featureFile, codec, IndexFactory.IndexType.TABIX, null);
-            } catch(TribbleException.MalformedFeatureFile e) {
+            } catch (TribbleException.MalformedFeatureFile e) {
                 throw new UserException.MalformedFile(featureFile, e.getMessage(), e);
-            } catch(TribbleException e) {
+            } catch (TribbleException e) {
                 // TODO: this TribbleException should be distinguished at the htsjdk level
                 // this exception is thrown if the codec does not implement getTabixFormat()
                 throw new UserException("This tool does not supports indexing of block-compressed files for "
@@ -124,11 +103,10 @@ public final class IndexFeatureFile extends CommandLineProgram {
         }
         // TODO: detection of GVCF files should not be file-extension-based. Need to come up with canonical
         // TODO: way of detecting GVCFs based on the contents (may require changes to the spec!)
-        else if ( featureFile.getName().endsWith(GVCF_FILE_EXTENSION) ) {
+        else if (featureFile.getName().endsWith(GVCF_FILE_EXTENSION)) {
             // Optimize GVCF indices for the use case of having a large number of GVCFs open simultaneously
             return IndexFactory.createLinearIndex(featureFile, codec, OPTIMAL_GVCF_INDEX_BIN_SIZE);
-        }
-        else {
+        } else {
             // Optimize indices for other kinds of files for seek time / querying
             return IndexFactory.createDynamicIndex(featureFile, codec, IndexFactory.IndexBalanceApproach.FOR_SEEK_TIME);
         }
