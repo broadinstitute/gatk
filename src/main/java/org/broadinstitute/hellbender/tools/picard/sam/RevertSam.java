@@ -330,7 +330,7 @@ public final class RevertSam extends PicardCommandLineProgram {
 
         if (REMOVE_ALIGNMENT_INFORMATION) {
             if (rec.getReadNegativeStrandFlag()) {
-                rec.reverseComplement();
+                rec.reverseComplement(true);
                 rec.setReadNegativeStrandFlag(false);
             }
 
