@@ -22,12 +22,14 @@ class MultivariateGaussian {
     public double hyperParameter_lambda;
     private double cachedDenomLog10;
     private Matrix cachedSigmaInverse;
-    final private ExpandingArrayList<Double> pVarInGaussian;
+    final private double[] pVarInGaussian;
+    int pVarInGaussianIndex;
 
-    public MultivariateGaussian( final int numAnnotations ) {
+    public MultivariateGaussian( final int numVariants, final int numAnnotations  ) {
         mu = new double[numAnnotations];
         sigma = new Matrix(numAnnotations, numAnnotations);
-        pVarInGaussian = new ExpandingArrayList<>();
+        pVarInGaussian = new double[numVariants];
+        pVarInGaussianIndex = 0;
     }
 
     public void zeroOutMu() {
@@ -139,11 +141,12 @@ class MultivariateGaussian {
     }
 
     public void assignPVarInGaussian( final double pVar ) {
-        pVarInGaussian.add( pVar );
+        pVarInGaussian[pVarInGaussianIndex++] = pVar;
     }
 
     public void resetPVarInGaussian() {
-        pVarInGaussian.clear();
+        Arrays.fill(pVarInGaussian, 0.0);
+        pVarInGaussianIndex = 0;
     }
 
     public void maximizeGaussian(final List<VariantDatum> data, final double[] empiricalMu, final Matrix empiricalSigma,
@@ -155,7 +158,7 @@ class MultivariateGaussian {
 
         int datumIndex = 0;
         for( final VariantDatum datum : data ) {
-            final double prob = pVarInGaussian.get(datumIndex++);
+            final double prob = pVarInGaussian[datumIndex++];
             sumProb += prob;
             incrementMu( datum, prob );
         }
@@ -163,18 +166,20 @@ class MultivariateGaussian {
 
         final double shrinkageFactor = (SHRINKAGE * sumProb) / (SHRINKAGE + sumProb);
         for( int iii = 0; iii < mu.length; iii++ ) {
+            double deltaMu = shrinkageFactor * (mu[iii] - empiricalMu[iii]);
             for( int jjj = 0; jjj < mu.length; jjj++ ) {
-                wishart.set(iii, jjj, shrinkageFactor * (mu[iii] - empiricalMu[iii]) * (mu[jjj] - empiricalMu[jjj]));
+                wishart.set(iii, jjj, deltaMu * (mu[jjj] - empiricalMu[jjj]));
             }
         }
 
         datumIndex = 0;
         final Matrix pVarSigma = new Matrix(mu.length, mu.length);
         for( final VariantDatum datum : data ) {
-            final double prob = pVarInGaussian.get(datumIndex++);
+            final double prob = pVarInGaussian[datumIndex++];
             for( int iii = 0; iii < mu.length; iii++ ) {
+                double deltaMu = prob * (datum.annotations[iii]-mu[iii]);
                 for( int jjj = 0; jjj < mu.length; jjj++ ) {
-                    pVarSigma.set(iii, jjj, prob * (datum.annotations[iii]-mu[iii]) * (datum.annotations[jjj]-mu[jjj]));
+                    pVarSigma.set(iii, jjj, deltaMu * (datum.annotations[jjj]-mu[jjj]));
                 }
             }
             sigma.plusEquals( pVarSigma );
@@ -201,7 +206,7 @@ class MultivariateGaussian {
 
         int datumIndex = 0;
         for( final VariantDatum datum : data ) {
-            final double prob = pVarInGaussian.get(datumIndex++);
+            final double prob = pVarInGaussian[datumIndex++];
             sumProb += prob;
             incrementMu( datum, prob );
         }
@@ -210,7 +215,7 @@ class MultivariateGaussian {
         datumIndex = 0;
         final Matrix pVarSigma = new Matrix(mu.length, mu.length);
         for( final VariantDatum datum : data ) {
-            final double prob = pVarInGaussian.get(datumIndex++);
+            final double prob = pVarInGaussian[datumIndex++];
             for( int iii = 0; iii < mu.length; iii++ ) {
                 for( int jjj = 0; jjj < mu.length; jjj++ ) {
                     pVarSigma.set(iii, jjj, prob * (datum.annotations[iii]-mu[iii]) * (datum.annotations[jjj]-mu[jjj]));

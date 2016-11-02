@@ -25,15 +25,15 @@ public class VariantRecalibratorModelOutputUnitTest {
         final double epsilon = 1e-6;
 
         Random rand = new Random(12878);
-        MultivariateGaussian goodGaussian1 = new MultivariateGaussian(numAnnotations);
+        MultivariateGaussian goodGaussian1 = new MultivariateGaussian(1, numAnnotations);
         goodGaussian1.initializeRandomMu(rand);
         goodGaussian1.initializeRandomSigma(rand);
 
-        MultivariateGaussian goodGaussian2 = new MultivariateGaussian(numAnnotations);
+        MultivariateGaussian goodGaussian2 = new MultivariateGaussian(1, numAnnotations);
         goodGaussian2.initializeRandomMu(rand);
         goodGaussian2.initializeRandomSigma(rand);
 
-        MultivariateGaussian badGaussian1 = new MultivariateGaussian(numAnnotations);
+        MultivariateGaussian badGaussian1 = new MultivariateGaussian(1, numAnnotations);
         badGaussian1.initializeRandomMu(rand);
         badGaussian1.initializeRandomSigma(rand);
 

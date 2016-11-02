@@ -39,6 +39,7 @@ public class VariantRecalibratorEngine {
 
         final GaussianMixtureModel model = new GaussianMixtureModel(
                 maxGaussians,
+                data.size(),
                 data.get(0).annotations.length,
                 VRAC.SHRINKAGE,
                 VRAC.DIRICHLET_PARAMETER,
