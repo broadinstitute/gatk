@@ -132,16 +132,6 @@ final class ContigsCollection implements Serializable {
     }
 
     /**
-     * input format is the text representation of an alignment region
-     * @param alignedAssembledContigLine An input line with the tab-separated fields of an alignment region
-     * @return A tuple with the breakpoint ID and string representation of an BreakpointAlignment, or an empty iterator if the line did not have two comma-separated values
-     */
-    static AlignmentRegion parseAlignedAssembledContigLine(final String alignedAssembledContigLine) {
-        final String[] split = alignedAssembledContigLine.split("\t", -1);
-        return AlignmentRegion.fromString(split);
-    }
-
-    /**
      * input format is tab separated BreakpointId, PackedFastaFile
      * @param assemblyLine An input line with a breakpoint ID and packed FASTA line
      * @return A tuple with the breakpoint ID and packed FASTA line, or an empty iterator if the line did not have two tab-separated values

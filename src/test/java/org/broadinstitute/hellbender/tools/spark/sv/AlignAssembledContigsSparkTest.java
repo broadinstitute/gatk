@@ -24,27 +24,4 @@ public class AlignAssembledContigsSparkTest extends BaseTest {
 
         Assert.assertEquals(contigsCollection.getContents().size(), 3);
     }
-
-    @Test
-    public void testParseAlignedAssembledContigLine() throws Exception {
-        final String line = "100\t>contig-0 2498 0\t1\t7043012\t7044153\t+\t1141M1357S\t60\t1\t1141\t1";
-        final AlignmentRegion region1 = ContigsCollection.parseAlignedAssembledContigLine(line);
-        Assert.assertEquals(region1.referenceInterval, new SimpleInterval("1", 7043012, 7044153));
-        Assert.assertTrue(region1.forwardStrand);
-        Assert.assertEquals(region1.forwardStrandCigar.toString(), "1141M1357S");
-        Assert.assertEquals(region1.mapqual, 60);
-        Assert.assertEquals(region1.startInAssembledContig, 1);
-        Assert.assertEquals(region1.endInAssembledContig, 1141);
-        Assert.assertEquals(region1.mismatches, 1);
-
-        final String line2 = "100\tcontig-0\t1\t7044151\t7045306\t+\t1343S1155M\t60\t1344\t2498\t3";
-        final AlignmentRegion region2 = ContigsCollection.parseAlignedAssembledContigLine(line2);
-        Assert.assertEquals(region2.referenceInterval, new SimpleInterval("1", 7044151, 7045306));
-        Assert.assertTrue(region2.forwardStrand);
-        Assert.assertEquals(region2.forwardStrandCigar.toString(), "1343S1155M");
-        Assert.assertEquals(region2.mapqual, 60);
-        Assert.assertEquals(region2.startInAssembledContig, 1344);
-        Assert.assertEquals(region2.endInAssembledContig, 2498);
-        Assert.assertEquals(region2.mismatches, 3);
-    }
 }

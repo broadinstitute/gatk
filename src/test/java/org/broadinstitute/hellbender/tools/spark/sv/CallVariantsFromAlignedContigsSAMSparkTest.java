@@ -58,7 +58,7 @@ public class CallVariantsFromAlignedContigsSAMSparkTest extends BaseTest {
         final List<AlignmentRegion> alignmentRegions = IterableUtils.toList(alignmentRegionResults._1);
         assertEquals(alignmentRegions.size(), 3);
 
-        final byte[] read4Bytes = CallVariantsFromAlignedContigsSparkTest.LONG_CONTIG1.getBytes();
+        final byte[] read4Bytes = SVVariantCallerInternalUnitTest.LONG_CONTIG1.getBytes();
         final String read4Seq = new String(read4Bytes);
         final byte[] read4Quals = new byte[read4Seq.length()];
         Arrays.fill(read4Quals, (byte)'A');
