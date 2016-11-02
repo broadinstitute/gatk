@@ -136,8 +136,15 @@ public abstract class PairHMM implements Closeable{
      * @param haplotypeMaxLength the max length of haplotypes we want to use with this PairHMM
      * @param readMaxLength the max length of reads we want to use with this PairHMM
      */
-    public void initialize( final List<Haplotype> haplotypes, final Map<String, List<GATKRead>> perSampleReadList, final int readMaxLength, final int haplotypeMaxLength ) {
+    public void initialize( final List<Haplotype> haplotypes,
+                            final Map<String, List<GATKRead>> perSampleReadList,
+                            final int readMaxLength,
+                            final int haplotypeMaxLength ) {
         initialize(readMaxLength, haplotypeMaxLength);
+    }
+
+    public boolean isInitialized() {
+        return initialized;
     }
 
     private static int findMaxAlleleLength(final List<? extends Allele> alleles) {
@@ -173,8 +180,8 @@ public abstract class PairHMM implements Closeable{
      *
      */
     public void computeLog10Likelihoods(final LikelihoodMatrix<Haplotype> logLikelihoods,
-                                      final List<GATKRead> processedReads,
-                                      final Map<GATKRead, byte[]> gcp) {
+                                        final List<GATKRead> processedReads,
+                                        final Map<GATKRead, byte[]> gcp) {
         if (processedReads.isEmpty()) {
             return;
         }
@@ -247,14 +254,16 @@ public abstract class PairHMM implements Closeable{
      * @return the log10 probability of read coming from the haplotype under the provided error model
      */
     @VisibleForTesting
+    public
     double computeReadLikelihoodGivenHaplotypeLog10( final byte[] haplotypeBases,
-                                                                  final byte[] readBases,
-                                                                  final byte[] readQuals,
-                                                                  final byte[] insertionGOP,
-                                                                  final byte[] deletionGOP,
-                                                                  final byte[] overallGCP,
-                                                                  final boolean recacheReadValues,
-                                                                  final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
+                                                     final byte[] readBases,
+                                                     final byte[] readQuals,
+                                                     final byte[] insertionGOP,
+                                                     final byte[] deletionGOP,
+                                                     final byte[] overallGCP,
+                                                     final boolean recacheReadValues,
+                                                     final byte[] nextHaplotypeBases)
+            throws IllegalStateException, IllegalArgumentException {
 
         if ( ! initialized ) throw new IllegalStateException("Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
         Utils.nonNull(haplotypeBases, "haplotypeBases may not be null");

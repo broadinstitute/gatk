@@ -14,7 +14,7 @@ import java.util.*;
 //Note: Names in this interface are unusual because of name clash in a subclass.
 // For example the name of SampleList.numberOfSamples() cannot be simply size(), as would be usual,
 // because {@link ReadLikelihoods} implements AlleleList and SampleList and then size() would be ambiguous.
-public interface SampleList  {
+public interface SampleList {
 
     static final SampleList EMPTY_LIST = new SampleList() {
         @Override

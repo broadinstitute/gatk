@@ -118,7 +118,7 @@ class BreakpointAlignment {
 
     private static BreakpointAlignment fromFields(final String[] fields) {
         try {
-            final String contigId = fields[0].replaceFirst("^>","");
+            final String contigId = fields[0];
             final String[] alignmentRegion1Fields = Arrays.copyOfRange(fields, 1, 10);
             final AlignmentRegion alignmentRegion1 = AlignmentRegion.fromString(alignmentRegion1Fields);
             final String[] alignmentRegion2Fields = Arrays.copyOfRange(fields, 10, 19);

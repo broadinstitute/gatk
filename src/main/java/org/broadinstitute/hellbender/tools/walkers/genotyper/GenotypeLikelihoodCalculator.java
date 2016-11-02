@@ -253,7 +253,7 @@ public final class GenotypeLikelihoodCalculator {
      */
     public <A extends Allele> GenotypeLikelihoods genotypeLikelihoods(final LikelihoodMatrix<A> likelihoods) {
         Utils.nonNull(likelihoods);
-        Utils.validateArg(likelihoods.numberOfAlleles() == alleleCount, "mismatch between allele list and alleleCount");
+        Utils.validateArg(likelihoods.numberOfAlleles() == alleleCount, String.format("mismatch between allele list size %d and alleleCount %d", likelihoods.numberOfAlleles(), alleleCount));
         final int readCount = likelihoods.numberOfReads();
         ensureReadCapacity(readCount);
 

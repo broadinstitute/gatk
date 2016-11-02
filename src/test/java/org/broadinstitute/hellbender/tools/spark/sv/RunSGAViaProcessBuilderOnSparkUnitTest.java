@@ -92,7 +92,7 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
         final File originalFASTQFile = rawFASTQFiles.get(0)._2();
         final String pathToFile = originalFASTQFile.toURI().toString();
         final String fileContents = StringUtils.join(FileUtils.readLines(originalFASTQFile, StandardCharsets.UTF_8), "\n");
-        final Tuple2<Long, File> copied = RunSGAViaProcessBuilderOnSpark.writeToLocal(new Tuple2<>(pathToFile, fileContents), ".raw");
+        final Tuple2<Long, File> copied = RunSGAViaProcessBuilderOnSpark.writeToLocal(new Tuple2<>(pathToFile, fileContents));
         Assert.assertTrue( FileUtils.contentEqualsIgnoreEOL(copied._2(), originalFASTQFile, StandardCharsets.UTF_8.name()) );
     }
 
@@ -159,7 +159,7 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
 
         for(final Tuple2<Long, File> breakpoint : rawFASTQFiles){
 
-            final RunSGAViaProcessBuilderOnSpark.SGAAssemblyResult result = RunSGAViaProcessBuilderOnSpark.runSGAModulesInSerial(sgaPath.toAbsolutePath().toString(), breakpoint._2(), true, false);
+            final RunSGAViaProcessBuilderOnSpark.SGAAssemblyResult result = RunSGAViaProcessBuilderOnSpark.runSGAModulesInSerial(sgaPath.toAbsolutePath().toString(), breakpoint, true, false);
 
             Assert.assertTrue(result.assembledContigs!=null);
 
@@ -216,7 +216,7 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
 
         editDistancesBetweenSeq = new ArrayList<>();
         moduleArgs.clear();
-        moduleArgs.add("--kmer-threshold");         moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.FILTER_STEP_KMER_FREQUENCY_THREASHOLD));
+        moduleArgs.add("--kmer-threshold");         moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.FILTER_STEP_KMER_FREQUENCY_THRESHOLD));
         moduleArgs.add("--homopolymer-check");
         moduleArgs.add("--low-complexity-check");
         final File correctedFile = new File(workingDir, correctedFileName);

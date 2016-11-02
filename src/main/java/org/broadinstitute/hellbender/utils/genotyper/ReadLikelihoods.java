@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Read-likelihoods container implementation based on integer indexed arrays.
@@ -1301,6 +1302,11 @@ public final class ReadLikelihoods<A extends Allele> implements SampleList, Alle
             Utils.validIndex(alleleIndex, valuesBySampleIndex[sampleIndex].length);
             Utils.validIndex(readIndex, valuesBySampleIndex[sampleIndex][alleleIndex].length);
             return valuesBySampleIndex[sampleIndex][alleleIndex][readIndex];
+        }
+
+        @Override
+        public String toString(){
+            return Stream.of(valuesBySampleIndex[sampleIndex]).map(Arrays::toString).collect(Collectors.joining("\n"));
         }
 
         @Override

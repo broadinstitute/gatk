@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.github.lindenb.jbwa.jni.AlnRgn;
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
+import java.util.Arrays;
 
 public class AlignmentRegionTest {
 
@@ -49,4 +52,44 @@ public class AlignmentRegionTest {
 
     }
 
+    @Test
+    public void testGetTotalHardClipping(){
+        //"10H10S10D10M10I10S10H"
+        final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(10, CigarOperator.H), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.D), new CigarElement(10, CigarOperator.M),
+                new CigarElement(10, CigarOperator.I), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.H)));
+        Assert.assertEquals(AlignmentRegion.getTotalHardClipping(cigar), 20);
+    }
+
+    @Test
+    public void testStartOfAlignmentInContig(){
+        //"10H10S10D10M10I10S10H"
+        final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(10, CigarOperator.H), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.D), new CigarElement(10, CigarOperator.M),
+                new CigarElement(10, CigarOperator.I), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.H)));
+        Assert.assertEquals(AlignmentRegion.startOfAlignmentInContig(cigar), 21);
+    }
+
+    @Test
+    public void testEndOfAlignmentInContig(){
+        //"10H10S10D10M10I10S10H"
+        final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(10, CigarOperator.H), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.D), new CigarElement(10, CigarOperator.M),
+                new CigarElement(10, CigarOperator.I), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.H)));
+        Assert.assertEquals(AlignmentRegion.endOfAlignmentInContig(70, cigar), 50);
+    }
+
+    @Test
+    public void testGetNumClippedBases(){
+        //"10H10S10D10M10I10S10H"
+        final Cigar cigar = new Cigar(Arrays.asList(new CigarElement(10, CigarOperator.H), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.D), new CigarElement(10, CigarOperator.M),
+                new CigarElement(10, CigarOperator.I), new CigarElement(10, CigarOperator.S),
+                new CigarElement(10, CigarOperator.H)));
+        Assert.assertEquals(AlignmentRegion.getNumClippedBases(true, cigar), 20);
+        Assert.assertEquals(AlignmentRegion.getNumClippedBases(false, cigar), 20);
+    }
 }

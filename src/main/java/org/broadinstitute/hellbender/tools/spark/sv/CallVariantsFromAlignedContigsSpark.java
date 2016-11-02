@@ -38,7 +38,8 @@ import java.io.OutputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.InversionType.*;
+import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.InversionType.INV_3_TO_5;
+import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.InversionType.INV_5_TO_3;
 import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.loadContigsCollectionKeyedByAssemblyId;
 
 @CommandLineProgramProperties(summary="Filter breakpoint alignments and call variants.",
@@ -88,8 +89,6 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final Integer minAlignLengthFinal = this.minAlignLength;
         callVariantsFromAlignmentRegionsAndWriteVariants(broadcastReference, alignmentRegionsWithContigSequences, minAlignLengthFinal, fastaReference, getAuthenticatedGCSOptions(), outputPath);
-
-
     }
 
     /**
@@ -106,7 +105,7 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
         final JavaPairRDD<Tuple2<String, String>, byte[]> contigSequences = assemblyIdsToContigCollections.flatMapToPair(assemblyIdAndContigsCollection -> {
             final String assemblyId = assemblyIdAndContigsCollection._1;
             final ContigsCollection contigsCollection = assemblyIdAndContigsCollection._2;
-            return contigsCollection.getContents().stream().map(pair -> new Tuple2<>(new Tuple2<>(assemblyId, pair._1.toString()), pair._2.toString().getBytes())).collect(Collectors.toList());
+            return contigsCollection.getContents().stream().map(contig -> new Tuple2<>(new Tuple2<>(assemblyId, contig.contigID), contig.seq.getBytes())).collect(Collectors.toList());
         });
 
         return alignmentRegionsKeyedByBreakpointAndContig.join(contigSequences);
@@ -400,7 +399,7 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .attribute(GATKSVVCFHeaderLines.ALIGN_LENGTHS, alignLengths.stream().map(String::valueOf).collect(Collectors.joining(",")))
                 .attribute(GATKSVVCFHeaderLines.MAX_ALIGN_LENGTH, maxAlignLength)
                 .attribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS, breakpointIds.stream().collect(Collectors.joining(",")))
-                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, assembledContigIds.stream().map(s -> s.replace(" ", "_")).collect(Collectors.joining(",")));
+                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, assembledContigIds.stream().collect(Collectors.joining(",")));
 
         if (breakpointAllele.insertedSequence.length() > 0) {
             vcBuilder = vcBuilder.attribute(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, breakpointAllele.insertedSequence);

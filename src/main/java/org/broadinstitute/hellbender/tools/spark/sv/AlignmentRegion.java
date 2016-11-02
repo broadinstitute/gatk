@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.github.lindenb.jbwa.jni.AlnRgn;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -31,7 +32,7 @@ class AlignmentRegion {
     final int assembledContigLength;
     final int mismatches;
 
-    public AlignmentRegion(final String assemblyId, final String contigId, final AlnRgn alnRgn) {
+    AlignmentRegion(final String assemblyId, final String contigId, final AlnRgn alnRgn) {
         this.contigId = contigId;
         this.assemblyId = assemblyId;
         this.forwardStrand = alnRgn.getStrand() == '+';
@@ -45,7 +46,9 @@ class AlignmentRegion {
         this.mismatches = alnRgn.getNm();
     }
 
-    public AlignmentRegion(final String assemblyId, final String contigId, final Cigar forwardStrandCigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mapqual, final int startInAssembledContig, final int endInAssembledContig, final int mismatches) {
+    AlignmentRegion(final String assemblyId, final String contigId,
+                    final Cigar forwardStrandCigar, final boolean forwardStrand, final SimpleInterval referenceInterval,
+                    final int mapqual, final int startInAssembledContig, final int endInAssembledContig, final int mismatches) {
         this.contigId = contigId;
         this.assemblyId = assemblyId;
         this.forwardStrandCigar = forwardStrandCigar;
@@ -58,7 +61,7 @@ class AlignmentRegion {
         this.mismatches = mismatches;
     }
 
-    public AlignmentRegion(final GATKRead read) {
+    AlignmentRegion(final GATKRead read) {
         this.assemblyId = null;
         this.contigId = read.getName();
         this.forwardStrand = ! read.isReverseStrand();
@@ -75,7 +78,7 @@ class AlignmentRegion {
         }
     }
 
-    public AlignmentRegion(final Kryo kryo, final Input input) {
+    AlignmentRegion(final Kryo kryo, final Input input) {
         this.contigId = input.readString();
         this.assemblyId = input.readString();
         this.forwardStrandCigar = TextCigarCodec.decode(input.readString());
@@ -88,11 +91,12 @@ class AlignmentRegion {
         this.mismatches = input.readInt();
     }
 
-    public int overlapOnContig(final AlignmentRegion other) {
+    int overlapOnContig(final AlignmentRegion other) {
         return Math.max(0, Math.min(endInAssembledContig + 1, other.endInAssembledContig + 1) - Math.max(startInAssembledContig, other.startInAssembledContig));
     }
 
-    private static int getTotalHardClipping(final Cigar cigar) {
+    @VisibleForTesting
+    static int getTotalHardClipping(final Cigar cigar) {
         final List<CigarElement> cigarElements = cigar.getCigarElements();
         if (cigarElements.size() == 0) {
             return 0;
@@ -104,15 +108,18 @@ class AlignmentRegion {
                 (cigarElements.get(cigarElements.size() - 1).getOperator() == CigarOperator.HARD_CLIP ? cigarElements.get(cigarElements.size() - 1).getLength() : 0);
     }
 
-    private static int startOfAlignmentInContig(final Cigar cigar) {
+    @VisibleForTesting
+    static int startOfAlignmentInContig(final Cigar cigar) {
         return getNumClippedBases(true, cigar) + 1;
     }
 
-    private static int endOfAlignmentInContig(final int assembledContigLength, final Cigar cigar) {
+    @VisibleForTesting
+    static int endOfAlignmentInContig(final int assembledContigLength, final Cigar cigar) {
         return assembledContigLength - getNumClippedBases(false, cigar);
     }
 
-    private static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
+    @VisibleForTesting
+    static int getNumClippedBases(final boolean fromStart, final Cigar cigar) {
         int result = 0;
         int j = fromStart ? 0 : cigar.getCigarElements().size() - 1;
         final int offset = fromStart ? 1 : -1;
@@ -169,7 +176,7 @@ class AlignmentRegion {
      * @param fields
      * @return
      */
-    public static AlignmentRegion fromString(final String[] fields) {
+    static AlignmentRegion fromString(final String[] fields) {
         final String breakpointId = fields[0];
         final String contigId = fields[1];
         final String refContig = fields[2];
@@ -185,6 +192,7 @@ class AlignmentRegion {
         return new AlignmentRegion(breakpointId, contigId, cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
     }
 
+    @VisibleForTesting
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -202,23 +210,24 @@ class AlignmentRegion {
                 Objects.equals(referenceInterval, that.referenceInterval);
     }
 
+    @VisibleForTesting
     @Override
     public int hashCode() {
         return Objects.hash(contigId, assemblyId, forwardStrandCigar, forwardStrand, referenceInterval, mapqual, startInAssembledContig, endInAssembledContig, assembledContigLength, mismatches);
     }
 
-    public String toPackedString() {
+    String toPackedString() {
         return assemblyId + "-" + contigId + ":" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(forwardStrandCigar) + ',' + mapqual + ',' + mismatches;
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentRegion> {
         @Override
-        public void write(final Kryo kryo, final Output output, final AlignmentRegion alignmentRegion ) {
+        public void write(final Kryo kryo, final Output output, final AlignmentRegion alignmentRegion) {
             alignmentRegion.serialize(kryo, output);
         }
 
         @Override
-        public AlignmentRegion read(final Kryo kryo, final Input input, final Class<AlignmentRegion> klass ) {
+        public AlignmentRegion read(final Kryo kryo, final Input input, final Class<AlignmentRegion> klass) {
             return new AlignmentRegion(kryo, input);
         }
     }
@@ -234,7 +243,6 @@ class AlignmentRegion {
         output.writeInt(endInAssembledContig);
         output.writeInt(assembledContigLength);
         output.writeInt(mismatches);
-
     }
 
 }
