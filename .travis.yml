@@ -52,7 +52,7 @@ before_install:
     scripts/install_gcloud.sh;
     printf 'y\n' | $GCLOUD/gcloud components update app;
     $GCLOUD/gcloud config set project broad-dsde-dev;
-    $GCLOUD/gcloud auth activate-service-account --key servicekey.json;
+    $GCLOUD/gcloud auth activate-service-account --key-file servicekey.json;
   fi
 #install R
 - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9
