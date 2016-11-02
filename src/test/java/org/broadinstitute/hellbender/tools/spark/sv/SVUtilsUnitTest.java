@@ -4,9 +4,6 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-
 /**
  * Unit tests for SVUtils.
  */
