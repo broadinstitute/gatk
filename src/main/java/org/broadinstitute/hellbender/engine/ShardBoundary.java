@@ -10,7 +10,7 @@ import java.util.Objects;
 /**
  * Holds the bounds of a {@link Shard}, both with and without padding
  */
-public final class ShardBoundary implements Locatable, Serializable {
+public class ShardBoundary implements Locatable, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final SimpleInterval interval;

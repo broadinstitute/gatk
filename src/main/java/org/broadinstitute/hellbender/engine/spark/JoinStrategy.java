@@ -10,6 +10,11 @@ public enum JoinStrategy {
     BROADCAST,
 
     /**
+     * Use an overlaps partitioner strategy, where one side of the join is sharded in partitions and the other side is broadcast.
+     */
+    OVERLAPS_PARTITIONER,
+
+    /**
      * Use a shuffle join strategy, where both sides of join are shuffled across the workers.
      */
     SHUFFLE

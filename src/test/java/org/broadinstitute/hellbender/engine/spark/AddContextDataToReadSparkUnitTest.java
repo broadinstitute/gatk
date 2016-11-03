@@ -5,6 +5,8 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.values.KV;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -14,20 +16,23 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.FakeReferenceSource;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 public class AddContextDataToReadSparkUnitTest extends BaseTest {
@@ -41,11 +46,10 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
             ReadsPreprocessingPipelineSparkTestData testData = new ReadsPreprocessingPipelineSparkTestData(c);
 
             List<GATKRead> reads = testData.getReads();
-            List<SimpleInterval> intervals = testData.getAllIntervals();
             List<GATKVariant> variantList = testData.getVariants();
             List<KV<GATKRead, ReadContextData>> expectedReadContextData = testData.getKvReadContextData();
             for (int j = 0; j < strategies.length; j++) {
-                data[i * strategies.length + j] = new Object[]{reads, variantList, expectedReadContextData, intervals, strategies[j]};
+                data[i * strategies.length + j] = new Object[]{reads, variantList, expectedReadContextData, strategies[j]};
             }
         }
         return data;
@@ -54,19 +58,20 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
     @Test(dataProvider = "bases", groups = "spark")
     public void addContextDataTest(List<GATKRead> reads, List<GATKVariant> variantList,
                                    List<KV<GATKRead, ReadContextData>> expectedReadContextData,
-                                   List<SimpleInterval> intervals, JoinStrategy joinStrategy) throws IOException {
+                                   JoinStrategy joinStrategy) throws IOException {
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         JavaRDD<GATKRead> rddReads = ctx.parallelize(reads);
         JavaRDD<GATKVariant> rddVariants = ctx.parallelize(variantList);
 
         ReferenceMultiSource mockSource = mock(ReferenceMultiSource.class, withSettings().serializable());
-        for (SimpleInterval i : intervals) {
-            when(mockSource.getReferenceBases(any(PipelineOptions.class), eq(i))).thenReturn(FakeReferenceSource.bases(i));
-        }
+        when(mockSource.getReferenceBases(any(PipelineOptions.class), any())).then(new ReferenceBasesAnswer());
         when(mockSource.getReferenceWindowFunction()).thenReturn(ReferenceWindowFunctions.IDENTITY_FUNCTION);
+        SAMSequenceDictionary sd = new SAMSequenceDictionary(Lists.newArrayList(new SAMSequenceRecord("1", 100000), new SAMSequenceRecord("2", 100000)));
+        when(mockSource.getReferenceSequenceDictionary(null)).thenReturn(sd);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(rddReads, mockSource, rddVariants, joinStrategy);
+        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(ctx, rddReads, mockSource, rddVariants, joinStrategy,
+                sd, 10000, 1000);
         Map<GATKRead, ReadContextData> actual = rddActual.collectAsMap();
 
         Assert.assertEquals(actual.size(), expectedReadContextData.size());
@@ -75,7 +80,17 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
             Assert.assertNotNull(readContextData);
             Assert.assertTrue(CollectionUtils.isEqualCollection(Lists.newArrayList(readContextData.getOverlappingVariants()),
                     Lists.newArrayList(kv.getValue().getOverlappingVariants())));
-            Assert.assertEquals(readContextData.getOverlappingReferenceBases(), kv.getValue().getOverlappingReferenceBases());
+            SimpleInterval minimalInterval = kv.getValue().getOverlappingReferenceBases().getInterval();
+            ReferenceBases subset = readContextData.getOverlappingReferenceBases().getSubset(minimalInterval);
+            Assert.assertEquals(subset, kv.getValue().getOverlappingReferenceBases());
+        }
+    }
+
+    static class ReferenceBasesAnswer implements Answer<ReferenceBases>, Serializable {
+        private static final long serialVersionUID = 1L;
+        @Override
+        public ReferenceBases answer(InvocationOnMock invocation) throws Throwable {
+            return FakeReferenceSource.bases(invocation.getArgumentAt(1, SimpleInterval.class));
         }
     }
 }
