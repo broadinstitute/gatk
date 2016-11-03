@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
 
+import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -486,5 +487,50 @@ public final class VariantContextTestUtils {
         lines.addAll(GATKVCFHeaderLines.getAllFilterLines());
 
         return new VCFHeader(lines);
+    }
+
+
+    /*
+     * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
+     */
+    public static double calculateConcordance(final File actual, final File expected) {
+        final Set<String> actualVCFKeys = new HashSet<>();
+        final Set<String> expectedVCFKeys = new HashSet<>();
+        int concordant = 0;
+        int discordant = 0;
+
+        try (final FeatureDataSource<VariantContext> actualSource = new FeatureDataSource<>(actual);
+             final FeatureDataSource<VariantContext> expectedSource = new FeatureDataSource<>(expected) ) {
+
+            for ( final VariantContext vc : actualSource ) {
+                actualVCFKeys.add(keyForVariant(vc));
+            }
+
+            for ( final VariantContext vc : expectedSource ) {
+                expectedVCFKeys.add(keyForVariant(vc));
+            }
+
+            for ( final String vcKey : actualVCFKeys ) {
+                if ( ! expectedVCFKeys.contains(vcKey) ) {
+                    ++discordant;
+                }
+                else {
+                    ++concordant;
+                }
+            }
+
+            for ( final String vcKey : expectedVCFKeys ) {
+                if ( ! actualVCFKeys.contains(vcKey) ) {
+                    ++discordant;
+                }
+            }
+        }
+
+        return (double)concordant / (double)(concordant + discordant);
+    }
+
+    private static String keyForVariant(final VariantContext variant ) {
+        return String.format("%s:%d-%d %s %s", variant.getContig(), variant.getStart(), variant.getEnd(),
+                variant.getAlleles(), variant.getGenotype(0).getGenotypeString(false));
     }
 }

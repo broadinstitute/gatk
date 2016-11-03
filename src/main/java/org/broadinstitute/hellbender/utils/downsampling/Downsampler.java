@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.downsampling;
 
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
 
 import java.util.Collection;
 import java.util.List;
@@ -8,7 +9,7 @@ import java.util.List;
 /**
  * The basic downsampler API, with no reads-specific operations.
  */
-public abstract class Downsampler<T> {
+public abstract class Downsampler<T> implements PushPullTransformer<T> {
 
     /**
      * Number of items discarded by this downsampler since the last call to resetStats()
@@ -22,6 +23,7 @@ public abstract class Downsampler<T> {
      *
      * @param item the individual item to submit to the downsampler for consideration
      */
+    @Override
     public abstract void submit( final T item );
 
     /**
@@ -30,7 +32,8 @@ public abstract class Downsampler<T> {
      *
      * @param items the collection of items to submit to the downsampler for consideration
      */
-    public void submit( final Collection<T> items ) {
+    @Override
+    public void submit(final Collection<T> items) {
         Utils.nonNull(items, "submitted items must not be null");
 
         for ( final T item : items ) {
@@ -43,6 +46,7 @@ public abstract class Downsampler<T> {
      *
      * @return true if this downsampler has > 0 finalized items, otherwise false
      */
+    @Override
     public abstract boolean hasFinalizedItems();
 
     /**
@@ -50,6 +54,7 @@ public abstract class Downsampler<T> {
      *
      * @return a list of all finalized items this downsampler contains, or an empty list if there are none
      */
+    @Override
     public abstract List<T> consumeFinalizedItems();
 
     /**
@@ -112,6 +117,7 @@ public abstract class Downsampler<T> {
      * Used to tell the downsampler that no more items will be submitted to it, and that it should
      * finalize any pending items.
      */
+    @Override
     public abstract void signalEndOfInput();
 
     /**
