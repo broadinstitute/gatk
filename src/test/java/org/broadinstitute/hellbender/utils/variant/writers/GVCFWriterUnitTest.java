@@ -103,6 +103,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, HomoSapiensConstants.DEFAULT_PLOIDY);
         writer.close();
         Assert.assertTrue(mockWriter.closed);
+        writer.close();
     }
 
     public static VariantContext makeHomRef(int start) {
@@ -437,8 +438,9 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "GoodBandPartitionData")
     public void testGoodPartitions(final List<Integer> partitions, List<Range<Integer>> expected) {
-        final RangeMap<Integer, Range<Integer>> ranges = GVCFWriter.parsePartitions(partitions);
+        final RangeMap<Integer, Range<Integer>> ranges = GVCFBlockCombiner.parsePartitions(partitions);
         Assert.assertEquals(new ArrayList<>(ranges.asMapOfRanges().values()), expected);
+        Assert.assertEquals(new ArrayList<>(ranges.asMapOfRanges().keySet()), expected);
     }
 
     @DataProvider(name = "BadBandPartitionData")
@@ -456,7 +458,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "BadBandPartitionData", expectedExceptions = IllegalArgumentException.class)
     public void testBadPartitionsThrowException(final List<Integer> partitions){
-        GVCFWriter.parsePartitions(partitions); // we should explode here
+        GVCFBlockCombiner.parsePartitions(partitions); // we should explode here
     }
 
     @Test
@@ -472,8 +474,8 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
     @Test
     public void testToVCFHeaderLine() {
         final Range<Integer> band = Range.closedOpen(10,20);
-        Assert.assertEquals(GVCFWriter.rangeToVCFHeaderLine(band).getKey(), "GVCFBlock10-20", "Wrong key for " + band);
-        Assert.assertEquals(GVCFWriter.rangeToVCFHeaderLine(band).getValue(), "minGQ=10(inclusive),maxGQ=20(exclusive)", "Wrong value for" + band);
+        Assert.assertEquals(GVCFBlockCombiner.rangeToVCFHeaderLine(band).getKey(), "GVCFBlock10-20", "Wrong key for " + band);
+        Assert.assertEquals(GVCFBlockCombiner.rangeToVCFHeaderLine(band).getValue(), "minGQ=10(inclusive),maxGQ=20(exclusive)", "Wrong value for" + band);
     }
 
     @DataProvider(name = "toWriteToDisk")
