@@ -29,11 +29,8 @@ public final class TargetAnnotationCollection {
      */
     public TargetAnnotationCollection(final Map<TargetAnnotation, String> annotationMap) {
         Utils.nonNull(annotationMap);
-        if (annotationMap.containsValue(null)) {
-            throw new IllegalArgumentException("the input map cannot contain a null value");
-        } else if (annotationMap.containsKey(null)) {
-            throw new IllegalArgumentException("the input map cannot contain a null key");
-        }
+        Utils.validateArg(!annotationMap.containsValue(null), "the input map cannot contain a null value");
+        Utils.validateArg(!annotationMap.containsKey(null), "the input map cannot contain a null key");
 
         for (final Map.Entry<TargetAnnotation, String> entry : annotationMap.entrySet()) {
             put(entry.getKey(), entry.getValue());

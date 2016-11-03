@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
@@ -23,9 +24,7 @@ public final class KMerCounter {
      * @param kmerLength the length of kmers we'll be counting to error correct, must be >= 1
      */
     public KMerCounter(final int kmerLength) {
-        if ( kmerLength < 1 ) {
-            throw new IllegalArgumentException("kmerLength must be > 0 but got " + kmerLength);
-        }
+        Utils.validateArg( kmerLength > 0, () -> "kmerLength must be > 0 but got " + kmerLength);
         this.kmerLength = kmerLength;
     }
 
@@ -35,9 +34,7 @@ public final class KMerCounter {
      * @return a positive integer
      */
     public int getKmerCount(final Kmer kmer) {
-        if ( kmer == null ) {
-            throw new IllegalArgumentException("kmer cannot be null");
-        }
+        Utils.nonNull(kmer, "kmer cannot be null");
         final CountedKmer counted = countsByKMer.get(kmer);
         return counted == null ? 0 : counted.count;
     }
@@ -79,12 +76,8 @@ public final class KMerCounter {
      * @param kmerCount the number of occurrences
      */
     public void addKmer(final Kmer kmer, final int kmerCount) {
-        if ( kmer.length() != kmerLength ) {
-            throw new IllegalArgumentException("bad kmer length " + kmer + " expected size " + kmerLength);
-        }
-        if ( kmerCount < 0 ) {
-            throw new IllegalArgumentException("bad kmerCount " + kmerCount);
-        }
+        Utils.validateArg(kmer.length() == kmerLength, () -> "bad kmer length " + kmer + " expected size " + kmerLength);
+        Utils.validateArg( kmerCount >= 0, () -> "bad kmerCount " + kmerCount);
 
         CountedKmer countFromMap = countsByKMer.get(kmer);
         if ( countFromMap == null ) {

@@ -8,6 +8,7 @@ import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -61,9 +62,7 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
 
     @Test(dataProvider ="correctInstantiationData", expectedExceptions = IllegalArgumentException.class)
     public void testNormalizeBySampleAverageWithweightingNoTargetIntervals(final ReadCountCollectionInfo info) {
-        if (info.intervals != null) {
-            throw new IllegalArgumentException("this instance given by the DataProvider has intervals and is thus irrelevant");
-        }
+        Utils.validateArg(info.intervals == null, "this instance given by the DataProvider has intervals and is thus irrelevant");
         final boolean weightByTargetSize = true;
         final ReadCountCollection counts = info.newInstance();
         final ReadCountCollection normalizedCounts = counts.normalizeByColumnAverages(weightByTargetSize);

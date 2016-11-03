@@ -97,15 +97,10 @@ public final class ReadErrorCorrector {
                               final byte minTailQuality,
                               final boolean debug,
                               final byte[] fullReferenceWithPadding) {
-        if ( kmerLength < 1 ) {
-            throw new IllegalArgumentException("kmerLength must be > 0 but got " + kmerLength);
-        }
-        if ( maxMismatchesToCorrect < 1 ) {
-            throw new IllegalArgumentException("maxMismatchesToCorrect must be >= 1 but got " + maxMismatchesToCorrect);
-        }
-        if ( qualityOfCorrectedBases < 2 || qualityOfCorrectedBases > QualityUtils.MAX_REASONABLE_Q_SCORE) {
-            throw new IllegalArgumentException("qualityOfCorrectedBases must be >= 2 and <= MAX_REASONABLE_Q_SCORE but got " + qualityOfCorrectedBases);
-        }
+        Utils.validateArg( kmerLength > 0, () -> "kmerLength must be > 0 but got " + kmerLength);
+        Utils.validateArg(maxMismatchesToCorrect > 0, () -> "maxMismatchesToCorrect must be >= 1 but got " + maxMismatchesToCorrect);
+        Utils.validateArg(qualityOfCorrectedBases >= 2 && qualityOfCorrectedBases <= QualityUtils.MAX_REASONABLE_Q_SCORE,
+                () -> "qualityOfCorrectedBases must be >= 2 and <= MAX_REASONABLE_Q_SCORE but got " + qualityOfCorrectedBases);
 
         countsByKMer = new KMerCounter(kmerLength);
         this.kmerLength = kmerLength;
@@ -454,9 +449,7 @@ public final class ReadErrorCorrector {
          * @return                                  List of bases representing possible corrections at this offset
          */
         public List<Byte> get(final int offset) {
-            if (offset >= size || offset < 0) {
-                throw new IllegalArgumentException("Illegal call of CorrectionSet.get(): offset must be < size");
-            }
+            Utils.validateArg(offset >= 0 && offset < size, "Illegal call of CorrectionSet.get(): offset must be < size");
             return corrections.get(offset);
         }
 
@@ -467,9 +460,7 @@ public final class ReadErrorCorrector {
          * @return                                 Consensus base, or null if no consensus possible.
          */
         public Byte getConsensusCorrection(final int offset) {
-            if (offset >= size || offset < 0) {
-                throw new IllegalArgumentException("Illegal call of CorrectionSet.getConsensusCorrection(): offset must be < size");
-            }
+            Utils.validateArg(offset >= 0 && offset < size, "Illegal call of CorrectionSet.getConsensusCorrection(): offset must be < size");
             final List<Byte> storedBytes = corrections.get(offset);
             if (storedBytes.isEmpty()) {
                 return null;

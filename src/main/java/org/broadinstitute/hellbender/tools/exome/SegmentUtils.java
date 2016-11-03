@@ -70,12 +70,8 @@ public final class SegmentUtils {
         for (final SimpleInterval segment : targetSegments) {
             try {
                 final Locatable firstTarget = targets.targets(segment).get(0);
-                if (firstTarget.getEnd() == segment.getStart() || firstTarget.getStart() == segment.getStart()) {
-                    targetSegmentsFixed.add(
-                            new SimpleInterval(segment.getContig(), firstTarget.getStart(), segment.getEnd()));
-                } else {
-                    throw new IllegalArgumentException("List of targets and segments do not correspond.");
-                }
+                Utils.validateArg(firstTarget.getEnd() == segment.getStart() || firstTarget.getStart() == segment.getStart(), "List of targets and segments do not correspond.");
+                targetSegmentsFixed.add(new SimpleInterval(segment.getContig(), firstTarget.getStart(), segment.getEnd()));
             } catch (final IndexOutOfBoundsException ex) {
                 throw new IllegalArgumentException("List of targets and segments do not correspond.");
             }

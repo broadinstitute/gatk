@@ -119,9 +119,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     @VisibleForTesting
     Set<MultiDeBruijnVertex> getNextVertices(final MultiDeBruijnVertex v, final byte b) {
         Utils.nonNull(v, "the input vertex cannot be null");
-        if (!vertexSet().contains(v)) {
-            throw new IllegalArgumentException("the vertex must be present in the graph");
-        }
+        Utils.validateArg(vertexSet().contains(v), "the vertex must be present in the graph");
         final List<MultiDeBruijnVertex> result = new LinkedList<>();
         for (final MultiDeBruijnVertex w : outgoingVerticesOf(v)) {
             if (w.getSuffix() == b) {
@@ -143,9 +141,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
     ReadThreadingGraph(final int kmerSize, final boolean debugGraphTransformations, final byte minBaseQualityToUseInAssembly, final int numPruningSamples) {
         super(kmerSize, new MyEdgeFactory(numPruningSamples));
 
-        if ( kmerSize < 1 ) {
-            throw new IllegalArgumentException("bad minkKmerSize " + kmerSize);
-        }
+        Utils.validateArg( kmerSize > 0, () -> "bad minkKmerSize " + kmerSize);
+
         this.debugGraphTransformations = debugGraphTransformations;
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
 
@@ -454,15 +451,9 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
          */
         SequenceForKmers(final String name, final byte[] sequence, final int start, final int stop, final int count, final boolean ref) {
             Utils.nonNull(sequence, "Sequence is null ");
-            if ( start < 0 ) {
-                throw new IllegalArgumentException("Invalid start " + start);
-            }
-            if ( stop < start ) {
-                throw new IllegalArgumentException("Invalid stop " + stop);
-            }
-            if ( count < 1 ) {
-                throw new IllegalArgumentException("Invalid count " + count);
-            }
+            Utils.validateArg( start >= 0, () -> "Invalid start " + start);
+            Utils.validateArg( stop >= start, () -> "Invalid stop " + stop);
+            Utils.validateArg( count > 0, "Invalid count " + count);
 
             this.name = name;
             this.sequence = sequence;
@@ -480,12 +471,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
      */
     public void recoverDanglingTails(final int pruneFactor, final int minDanglingBranchLength) {
-        if (pruneFactor < 0 ){
-            throw new IllegalArgumentException("pruneFactor must be non-negative but was " + pruneFactor);
-        }
-        if (minDanglingBranchLength < 0 ){
-            throw new IllegalArgumentException("minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
-        }
+        Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
+        Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
 
         if ( ! alreadyBuilt ) {
             throw new IllegalStateException("recoverDanglingTails requires the graph be already built");
@@ -511,12 +498,8 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
      * @param minDanglingBranchLength the minimum length of a dangling branch for us to try to merge it
      */
     public void recoverDanglingHeads(final int pruneFactor, final int minDanglingBranchLength) {
-        if (pruneFactor < 0 ){
-            throw new IllegalArgumentException("pruneFactor must be non-negative but was " + pruneFactor);
-        }
-        if (minDanglingBranchLength < 0 ){
-            throw new IllegalArgumentException("minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
-        }
+        Utils.validateArg(pruneFactor >= 0, () -> "pruneFactor must be non-negative but was " + pruneFactor);
+        Utils.validateArg(minDanglingBranchLength >= 0, () -> "minDanglingBranchLength must be non-negative but was " + minDanglingBranchLength);
         if ( ! alreadyBuilt ) {
             throw new IllegalStateException("recoverDanglingHeads requires the graph be already built");
         }
@@ -632,9 +615,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
 
         final List<CigarElement> elements = danglingTailMergeResult.cigar.getCigarElements();
         final CigarElement lastElement = elements.get(elements.size() - 1);
-        if ( lastElement.getOperator() != CigarOperator.M ) {
-            throw new IllegalArgumentException("The last Cigar element must be an M");
-        }
+        Utils.validateArg( lastElement.getOperator() == CigarOperator.M, "The last Cigar element must be an M");
 
         final int lastRefIndex = danglingTailMergeResult.cigar.getReferenceLength() - 1;
         final int matchingSuffix = Math.min(longestSuffixMatch(danglingTailMergeResult.referencePathString, danglingTailMergeResult.danglingPathString, lastRefIndex), lastElement.getLength());
@@ -696,9 +677,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
 
         final List<CigarElement> elements = danglingHeadMergeResult.cigar.getCigarElements();
         final CigarElement firstElement = elements.get(0);
-        if ( firstElement.getOperator() != CigarOperator.M ) {
-            throw new IllegalArgumentException("The first Cigar element must be an M");
-        }
+        Utils.validateArg( firstElement.getOperator() == CigarOperator.M, "The first Cigar element must be an M");
 
         final int indexesToMerge = bestPrefixMatch(danglingHeadMergeResult.referencePathString, danglingHeadMergeResult.danglingPathString, firstElement.getLength());
         if ( indexesToMerge <= 0 ) {

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.coveragemodel;
 
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
@@ -72,13 +73,10 @@ public final class CoverageModelUtils {
         IntStream.range(0, numTargets)
                 .filter(i -> lambda[i] == 0.0)
                 .forEach(i -> { updatedMask[i] = 0; lambda[i] = 1; });
-        if (Arrays.stream(updatedMask).filter(m -> m != 0 && m != 1).count() > 0) {
-            throw new IllegalArgumentException("Target mask may only have 0 and 1 values");
-        }
+        Utils.validateArg(MathUtils.allMatch(updatedMask, m -> m == 0 || m == 1), "Target mask may only have 0 and 1 values");
+
         final long maskSum = Arrays.stream(updatedMask).mapToLong(m -> (long)m).sum();
-        if (maskSum == 0) {
-            throw new IllegalArgumentException("All of the targets are masked out, can not continue");
-        }
+        Utils.validateArg(maskSum > 0, "All of the targets are masked out, can not continue");
 
         final double readCountsSqrDivLambdaAve = IntStream.range(0, numTargets)
                 .mapToDouble(i -> updatedMask[i] * readCounts[i] * readCounts[i] / lambda[i]).sum() / maskSum;

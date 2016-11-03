@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 
@@ -172,10 +174,8 @@ public final class Civar {
 
         int sequenceLength = sequence.length();
         int minSeqLen = minimumTemplateSequenceSize();
-        if (!expands() && sequenceLength != minSeqLen)
-            throw new IllegalArgumentException("the sequence provided does not match this Civar size " + sequence.length() + " != " + minSeqLen);
-        if (sequenceLength < minSeqLen)
-            throw new IllegalArgumentException("the sequence provided is too small for this Civar " + sequence.length() + " < " + minSeqLen);
+        Utils.validateArg(expands() || sequenceLength == minSeqLen, () -> "the sequence provided does not match this Civar size " + sequence.length() + " != " + minSeqLen);
+        Utils.validateArg(sequenceLength >= minSeqLen, () -> "the sequence provided is too small for this Civar " + sequence.length() + " < " + minSeqLen);
         int starCount = starCount();
         int paddingTotal = sequenceLength - minSeqLen;
         int starPadding = starCount == 0 ? 0 : paddingTotal / starCount;
@@ -230,10 +230,8 @@ public final class Civar {
 
         int referenceLength = sequence.length();
         int minSeqLen = minimumTemplateSequenceSize();
-        if (!expands() && referenceLength != minSeqLen)
-            throw new IllegalArgumentException("the sequence provided does not match this Civar size " + sequence.length() + " != " + minSeqLen);
-        if (referenceLength < minSeqLen)
-            throw new IllegalArgumentException("the sequence provided is too small for this Civar " + sequence.length() + " < " + minSeqLen);
+        Utils.validateArg(expands() || referenceLength == minSeqLen, () -> "the sequence provided does not match this Civar size " + sequence.length() + " != " + minSeqLen);
+        Utils.validateArg(referenceLength >= minSeqLen, () -> "the sequence provided is too small for this Civar " + sequence.length() + " < " + minSeqLen);
         int starCount = starCount();
         int paddingTotal = referenceLength - minSeqLen;
         int starPadding = starCount == 0 ? 0 : paddingTotal / starCount;
@@ -650,11 +648,8 @@ public final class Civar {
         }
 
         protected Element(final Operator o, final int size, final boolean expands, final boolean optional) {
-            if (o == null)
-                throw new IllegalArgumentException("operator cannot be null");
-            if (size < 0)
-                throw new IllegalArgumentException("element size cannot be negative");
-            this.o = o;
+            ParamUtils.isPositiveOrZero(size, "element size cannot be negative");
+            this.o = Utils.nonNull(o, "operator cannot be null");;
             this.optional = optional;
             this.expands = expands;
             this.size = size;
@@ -670,10 +665,8 @@ public final class Civar {
          */
         public Element(final Operator o, final int size, final boolean expands, final boolean optional, final String xmer) {
             this(o,size,expands,optional);
-            if ((xmer == null || xmer.length() == 0) && o.requiresXmer())
-                throw new IllegalArgumentException("operator  " + o + " requires a x-mer");
-            if (xmer != null && !o.acceptsXmer())
-                throw new IllegalArgumentException("operator  " + o + " does not accept a x-mer");
+            Utils.validateArg(!o.requiresXmer() || (xmer != null && xmer.length() > 0), () -> "operator  " + o + " requires a x-mer");
+            Utils.validateArg(o.acceptsXmer() || xmer == null, () -> "operator  " + o + " does not accept a x-mer");
             this.xmer = xmer;
         }
 
@@ -741,17 +734,9 @@ public final class Civar {
     protected static class Parser {
 
         public static Civar parse(final CharSequence cs, final int from, final int to) {
-            if (cs == null)
-                throw new IllegalArgumentException("the input char-sequence cannot be null");
-            if (from < 0)
-                throw new IndexOutOfBoundsException("the from index cannot be negative");
-            if (to < from)
-                throw new IllegalArgumentException("the to index cannot less than the from index");
-            if (to > cs.length())
-                throw new IllegalArgumentException("the to index cannot be greater than the end of the sequence");
-            if (cs == null)
-                throw new IllegalArgumentException("cs cannot be null");
-
+            Utils.nonNull(cs, "the input char-sequence cannot be null");
+            ParamUtils.isPositiveOrZero(from, "the from index cannot be negative");
+            ParamUtils.inRange(to, from, cs.length(), "the to index cannot less than the from index or greater than the end of the sequence");
             final String s = cs.subSequence(from, to).toString();
             final LinkedList<Token> tokens = tokenize(s, 0, s.length());
             final LinkedList<Element> elements = elementize(tokens, s);
@@ -837,16 +822,13 @@ public final class Civar {
         }
 
         private static Element popOperation(final Stack<Token> stack, final String xmer, final CharSequence cs) {
-            if (stack.isEmpty()) {
-                throw new IllegalArgumentException("Invalid Civar string: " + cs);
-            }
+            Utils.validateArg(!stack.isEmpty(), () -> "Invalid Civar string: " + cs);
             Token operator = stack.pop();
             if (operator.type == TokenType.ELEMENT) {
                 return operator.asElement();
             }
-            if (operator.type != TokenType.OPERATOR) {
-                throw new IllegalArgumentException("Invalid Civar string:" + operator.type +  " " + cs);
-            }
+            Utils.validateArg(operator.type == TokenType.OPERATOR, () -> "Invalid Civar string:" + operator.type +  " " + cs);
+
             if (stack.isEmpty()) {
                 return new Element(operator.asOperator(), 1, false, false, xmer);
             } else {
@@ -916,8 +898,7 @@ public final class Civar {
 
 
         public Civar parse(final CharSequence cs) {
-            if (cs == null)
-                throw new IllegalArgumentException("cs cannot be null");
+            Utils.nonNull(cs, "cs cannot be null");
             return parse(cs, 0, cs.length());
         }
 
@@ -931,10 +912,8 @@ public final class Civar {
     public Cigar toCigar(final int templateLength) {
 
         int minSeqLen = minimumTemplateSequenceSize();
-        if (!expands() && templateLength != minSeqLen)
-            throw new IllegalArgumentException("the sequence provided does not match this Civar size " + templateLength + " != " + minSeqLen);
-        if (templateLength < minSeqLen)
-            throw new IllegalArgumentException("the sequence provided is too small for this Civar " + templateLength + " < " + minSeqLen);
+        Utils.validateArg(expands() || templateLength == minSeqLen, "the sequence provided does not match this Civar size " + templateLength + " != " + minSeqLen);
+        Utils.validateArg(templateLength >= minSeqLen, "the sequence provided is too small for this Civar " + templateLength + " < " + minSeqLen);
         int starCount = starCount();
         int paddingTotal = templateLength - minSeqLen;
         int starPadding = starCount == 0 ? 0 : paddingTotal / starCount;

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class PosteriorProbabilitiesUtils {
 
@@ -26,25 +27,14 @@ public final class PosteriorProbabilitiesUtils {
                                                          final boolean useInputSamples,
                                                          final boolean useAC,
                                                          final boolean useACoff) {
-
+        Utils.nonNull(vc1, "VariantContext vc1 is null");
         final Map<Allele,Integer> totalAlleleCounts = new HashMap<>();
-        boolean nonSNPprior = false;
-        if (vc1 == null) {
-            throw new IllegalArgumentException("VariantContext vc1 is null");
-        }
-        final boolean nonSNPeval = !vc1.isSNP();
-        final double[] alleleCounts = new double[vc1.getNAlleles()];
         //only use discovered allele count if there are at least 10 samples
         final boolean useDiscoveredAC = !useACoff && vc1.getNSamples() >= 10;
 
         if(vc1.isSNP()) {
             //store the allele counts for each allele in the variant priors
-            for ( final VariantContext resource : resources ) {
-                if( !resource.isSNP()) {
-                    nonSNPprior = true;
-                }
-                addAlleleCounts(totalAlleleCounts,resource,useAC);
-            }
+            resources.forEach(r -> addAlleleCounts(totalAlleleCounts, r, useAC));
 
             //add the allele counts from the input samples (if applicable)
             if ( useInputSamples ) {
@@ -52,60 +42,18 @@ public final class PosteriorProbabilitiesUtils {
             }
 
             //add zero allele counts for any reference alleles not seen in priors (if applicable)
-            int existingRefCounts = 0;
-            if (totalAlleleCounts.containsKey(vc1.getReference())) {
-                existingRefCounts += totalAlleleCounts.get(vc1.getReference());
-            }
-            totalAlleleCounts.put(vc1.getReference(),existingRefCounts+numRefSamplesFromMissingResources);
+            final int existingRefCounts = totalAlleleCounts.getOrDefault(vc1.getReference(), 0);
+            totalAlleleCounts.put(vc1.getReference(), existingRefCounts + numRefSamplesFromMissingResources);
         }
 
-        // now extract the counts of the alleles present within vc1, and in order
-        int alleleIndex = 0;
-        for ( final Allele allele : vc1.getAlleles() ) {
+        // now extract the counts of the alleles in vc1 in order
+        final double[] alleleCounts = vc1.getAlleles().stream()
+                .mapToDouble(a -> globalFrequencyPriorDirichlet + totalAlleleCounts.getOrDefault(a, 0)).toArray();
 
-            alleleCounts[alleleIndex++] = globalFrequencyPriorDirichlet + ( totalAlleleCounts.containsKey(allele) ?
-                    totalAlleleCounts.get(allele) : 0 );
-        }
-
-
-        //parse the likelihoods for each sample's genotype
-        final List<double[]> likelihoods = new ArrayList<>(vc1.getNSamples());
-        for ( final Genotype genotype : vc1.getGenotypes() ) {
-            if (!genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)){
-                likelihoods.add(genotype.hasLikelihoods() ? genotype.getLikelihoods().getAsVector() : null );
-
-            }
-            else {
-                final Object PPfromVCF = genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
-                //parse the PPs into a vector of probabilities
-                if (PPfromVCF instanceof String) {
-                    final String PPstring = (String)PPfromVCF;
-                    if (PPstring.charAt(0)=='.')  //samples not in trios will have PP tag like ".,.,." if family priors are applied
-                    {
-                        likelihoods.add(genotype.hasLikelihoods() ? genotype.getLikelihoods().getAsVector() : null);
-                    } else {
-                        final String[] likelihoodsAsStringVector = PPstring.split(",");
-                        final double[] likelihoodsAsVector = new double[likelihoodsAsStringVector.length];
-                        for ( int i = 0; i < likelihoodsAsStringVector.length; i++ ) {
-                            likelihoodsAsVector[i] = Double.parseDouble(likelihoodsAsStringVector[i])/-10.0;
-                        }
-                        likelihoods.add(likelihoodsAsVector);
-                    }
-                }
-                else {
-                    final int[] likelihoodsAsInts = extractInts(PPfromVCF);
-                    final double[] likelihoodsAsVector = new double[likelihoodsAsInts.length];
-                    for ( int i = 0; i < likelihoodsAsInts.length; i++ ) {
-                        likelihoodsAsVector[i] = likelihoodsAsInts[i]/-10.0;
-                    }
-                    likelihoods.add(likelihoodsAsVector);
-                }
-            }
-
-        }
+        final List<double[]> likelihoods = vc1.getGenotypes().stream().map(g -> parseLikelihoods(g)).collect(Collectors.toList());
 
         //TODO: for now just use priors that are SNPs because indel priors will bias SNP calls
-        final boolean useFlatPriors = nonSNPeval || nonSNPprior || (resources.isEmpty() && !useDiscoveredAC);
+        final boolean useFlatPriors = !vc1.isSNP() || (resources.isEmpty() && !useDiscoveredAC) || resources.stream().anyMatch(r -> !r.isSNP()) ;
 
         final List<double[]> posteriors = calculatePosteriorProbs(likelihoods,alleleCounts,vc1.getMaxPloidy(2), useFlatPriors);
 
@@ -129,6 +77,26 @@ public final class PosteriorProbabilitiesUtils {
         // add in the AC, AF, and AN attributes
         VariantContextUtils.calculateChromosomeCounts(builder, true);
         return builder.make();
+    }
+
+    private static double[] parseLikelihoods(Genotype genotype) {
+        final Object PPfromVCF = genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+
+        if (PPfromVCF == null){
+            return getLikelihoodsVector(genotype);
+        } else if (PPfromVCF instanceof String) {
+            final String PPstring = (String) PPfromVCF;
+            //samples not in trios will have PP tag like ".,.,." if family priors are applied
+            return PPstring.charAt(0)=='.' ? getLikelihoodsVector(genotype) :
+                    Arrays.stream(PPstring.split(",")).mapToDouble(s -> Double.parseDouble(s)/-10.0).toArray();
+        } else {
+            return Arrays.stream(extractInts(PPfromVCF)).mapToDouble(i -> i/-10.0).toArray();
+        }
+    }
+
+    // return the double[] of likelihoods if available, otherwise null
+    private static double[] getLikelihoodsVector(Genotype genotype) {
+        return genotype.hasLikelihoods() ? genotype.getLikelihoods().getAsVector() : null;
     }
 
     /**
@@ -315,10 +283,8 @@ public final class PosteriorProbabilitiesUtils {
         } else if ( integerListContainingVCField instanceof String) {
             mleList = Arrays.asList(Integer.parseInt((String)integerListContainingVCField));
         }
-        if ( mleList == null ) {
-            throw new IllegalArgumentException(String.format("VCF does not have properly formatted " +
-                    GATKVCFConstants.MLE_ALLELE_COUNT_KEY + " or " + VCFConstants.ALLELE_COUNT_KEY));
-        }
+        Utils.nonNull( mleList, () -> String.format("VCF does not have properly formatted %s or %s.",
+                    GATKVCFConstants.MLE_ALLELE_COUNT_KEY, VCFConstants.ALLELE_COUNT_KEY));
 
         final int[] mle = new int[mleList.size()];
 

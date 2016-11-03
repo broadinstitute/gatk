@@ -73,12 +73,8 @@ public final class SharedVertexSequenceSplitter {
     public SharedVertexSequenceSplitter(final SeqGraph graph, final Collection<SeqVertex> toSplitsArg) {
         Utils.nonNull(graph, "graph cannot be null");
         Utils.nonNull(toSplitsArg, "toSplitsArg cannot be null");
-        if ( toSplitsArg.size() < 2 ) {
-            throw new IllegalArgumentException("Can only split at least 2 vertices but only got " + toSplitsArg);
-        }
-        if ( ! graph.vertexSet().containsAll(toSplitsArg) ) {
-            throw new IllegalArgumentException("graph doesn't contain all of the vertices to split");
-        }
+        Utils.validateArg( toSplitsArg.size() > 1, () -> "Can only split at least 2 vertices but only got " + toSplitsArg);
+        Utils.validateArg(graph.vertexSet().containsAll(toSplitsArg), "graph doesn't contain all of the vertices to split");
 
         this.outer = graph;
         this.toSplits = toSplitsArg;
@@ -173,18 +169,10 @@ public final class SharedVertexSequenceSplitter {
      *            will be added without any outgoing edges to the rest of the graph
      */
     public void updateGraph(final SeqVertex top, final SeqVertex bot) {
-        if ( ! outer.vertexSet().containsAll(toSplits) ) {
-            throw new IllegalArgumentException("graph doesn't contain all of the original vertices to split");
-        }
-        if ( top == null && bot == null ) {
-            throw new IllegalArgumentException("Cannot update graph without at least one top or bot vertex, but both were null");
-        }
-        if ( top != null && ! outer.containsVertex(top) ) {
-            throw new IllegalArgumentException("top " + top + " not found in graph " + outer);
-        }
-        if ( bot != null && ! outer.containsVertex(bot) ) {
-            throw new IllegalArgumentException("bot " + bot + " not found in graph " + outer);
-        }
+        Utils.validateArg(outer.vertexSet().containsAll(toSplits), "graph doesn't contain all of the original vertices to split");
+        Utils.validateArg( top != null || bot != null, "Cannot update graph without at least one top or bot vertex, but both were null");
+        Utils.validateArg( top == null || outer.containsVertex(top), () -> "top " + top + " not found in graph " + outer);
+        Utils.validateArg( bot == null || outer.containsVertex(bot), () -> "bot " + bot + " not found in graph " + outer);
         if ( splitGraph == null ) {
             throw new IllegalStateException("Cannot call updateGraph until split() has been called");
         }

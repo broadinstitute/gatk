@@ -150,14 +150,11 @@ public final class PCA {
     private static List<String> checkNonNullUniqueNames(final List<String> input, final String roleName) {
         if (input == null) {
             return null;
-        } else if (input.stream().anyMatch(Objects::isNull)) {
-            throw new IllegalArgumentException(String.format("the input %s list must not contain nulls", roleName));
-        } else if (input.stream().sorted().distinct().count() != input.size()) {
-            throw new IllegalArgumentException(String.format("the input %s list must not contain repeats", roleName));
-        } else {
-            return Collections.unmodifiableList(new ArrayList<>(input));
         }
-
+        Utils.containsNoNull(input, String.format("the input %s list must not contain nulls", roleName));
+        Utils.validateArg(input.stream().sorted().distinct().count() == input.size(), () ->
+                String.format("the input %s list must not contain repeats", roleName));
+        return Collections.unmodifiableList(new ArrayList<>(input));
     }
 
     /**

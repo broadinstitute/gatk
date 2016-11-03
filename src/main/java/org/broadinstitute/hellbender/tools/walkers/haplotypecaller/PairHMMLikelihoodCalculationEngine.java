@@ -214,12 +214,9 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
                                                       final byte[] baseQualities,
                                                       final byte[] baseInsertionQualities,
                                                       final byte[] baseDeletionQualities) {
-        if ( baseQualities.length != readBases.length || baseInsertionQualities.length != readBases.length || baseDeletionQualities.length != readBases.length ) {
-            throw new IllegalArgumentException("Read bases and read quality arrays aren't the same size: Bases:" + readBases.length
-                    + " vs Base Q's:" + baseQualities.length
-                    + " vs Insert Q's:" + baseInsertionQualities.length
-                    + " vs Delete Q's:" + baseDeletionQualities.length);
-        }
+        Utils.validateArg( baseQualities.length == readBases.length && baseInsertionQualities.length == readBases.length && baseDeletionQualities.length == readBases.length,
+                () -> String.format("Read bases and read quality arrays aren't the same size: Bases: %d vs Base Q's: %d vs Insert Q's: %d vs Delete Q's: %d.",
+                        readBases.length, baseQualities.length, baseInsertionQualities.length, baseDeletionQualities.length));
 
         final GATKRead processedRead = ReadUtils.emptyRead(read);
         processedRead.setBases(readBases);

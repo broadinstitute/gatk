@@ -88,17 +88,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBa
         private final Set<Haplotype> calledHaplotypes;
 
         public CalledHaplotypes(final List<VariantContext> calls, final Set<Haplotype> calledHaplotypes) {
-            if ( calls == null ) {
-                throw new IllegalArgumentException("calls cannot be null");
-            }
-            if ( calledHaplotypes == null ) {
-                throw new IllegalArgumentException("calledHaplotypes cannot be null");
-            }
-            if ( Utils.xor(calls.isEmpty(), calledHaplotypes.isEmpty()) ) {
-                throw new IllegalArgumentException("Calls and calledHaplotypes should both be empty or both not but got calls=" + calls + " calledHaplotypes=" + calledHaplotypes);
-            }
-            this.calls = calls;
-            this.calledHaplotypes = calledHaplotypes;
+            this.calls = Utils.nonNull(calls, "calls cannot be null");
+            this.calledHaplotypes = Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
+            Utils.validateArg(calls.isEmpty() == calledHaplotypes.isEmpty(), "Calls and calledHaplotypes should both be empty or both not but got calls=" + calls + " calledHaplotypes=" + calledHaplotypes);
         }
 
         /**

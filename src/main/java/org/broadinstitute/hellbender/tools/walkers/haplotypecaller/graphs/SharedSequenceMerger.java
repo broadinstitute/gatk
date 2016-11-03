@@ -26,9 +26,7 @@ public final class SharedSequenceMerger {
      */
     public static boolean merge(final SeqGraph graph, final SeqVertex v) {
         Utils.nonNull(graph, "graph cannot be null");
-        if ( ! graph.vertexSet().contains(v) ) {
-            throw new IllegalArgumentException("graph doesn't contain vertex " + v);
-        }
+        Utils.validateArg(graph.vertexSet().contains(v), () -> "graph doesn't contain vertex " + v);
 
         final Set<SeqVertex> prevs = graph.incomingVerticesOf(v);
         if ( ! canMerge(graph, v, prevs) ) {

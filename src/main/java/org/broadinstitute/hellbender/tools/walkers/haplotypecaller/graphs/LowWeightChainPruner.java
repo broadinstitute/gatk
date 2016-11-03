@@ -17,9 +17,7 @@ public final class LowWeightChainPruner<V extends BaseVertex, E extends BaseEdge
     private final int pruneFactor;
 
     public LowWeightChainPruner(final int pruneFactor) {
-        if ( pruneFactor < 0 ) {
-            throw new IllegalArgumentException("pruneFactor must be >= 0 but got " + pruneFactor);
-        }
+        Utils.validateArg( pruneFactor >= 0, "pruneFactor must be >= 0 but got " + pruneFactor);
         this.pruneFactor = pruneFactor;
     }
 

@@ -74,13 +74,8 @@ final class MergedGATKReadPair implements GATKRead {
     public static GATKRead mergeReadPair(final GATKRead first, final GATKRead second) {
         Utils.nonNull(first, "the first read cannot be null");
         Utils.nonNull(second, "the second read cannot be null");
-        if (first.isUnmapped() || !first.getContig().equals(second.getContig())) {
-            throw new IllegalArgumentException("the first and second reads must align to the same contig");
-        } else if (first.getStart() <= second.getStart()) {
-            return mergeReadSortedPair(first, second, true);
-        } else {
-            return mergeReadSortedPair(second, first, false);
-        }
+        Utils.validateArg(!first.isUnmapped() && first.getContig().equals(second.getContig()), "the first and second reads must align to the same contig");
+        return first.getStart() <= second.getStart() ? mergeReadSortedPair(first, second, true) : mergeReadSortedPair(second, first, false);
     }
 
     /**
@@ -692,9 +687,7 @@ final class MergedGATKReadPair implements GATKRead {
             this.length = ParamUtils.isPositive(length, "the input length must be greater than 0");
             this.bases = Utils.nonNull(bases, "input bases array must not be null");
             this.quals = Utils.nonNull(quals, "input quals array must not be null");
-            if (this.bases.length != this.quals.length) {
-                throw new IllegalArgumentException("input base and quals array must have the same length");
-            }
+            Utils.validateArg(this.bases.length == this.quals.length, "input base and quals array must have the same length");
             this.readStart = ParamUtils.inRange(readOffset, 0, bases.length - length, "the input read-offset is invalid");
             this.readEnd = readOffset + length;
             this.referenceStart = ParamUtils.isPositive(referenceOffset, "the reference offset must be greater than 0");

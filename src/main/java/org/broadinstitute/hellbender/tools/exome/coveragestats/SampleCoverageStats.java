@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.coveragestats;
 
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 /**
@@ -83,18 +84,12 @@ public final class SampleCoverageStats {
      */
     public static SampleCoverageStats fromSums(final String sample, final long size, final double sum,
                                                final double squaresSum) {
-        if (size < 0) {
-            throw new IllegalArgumentException("the size cannot be less than 0");
-        } else if (size == 0) {
-            if (MathUtils.compareDoubles(sum, 0) != 0 && MathUtils.compareDoubles(squaresSum, 0) != 0) {
-                throw new IllegalArgumentException("when the size is 0, then the sums must be zero");
-            }
+        ParamUtils.isPositiveOrZero(size, "the size cannot be less than 0");
+        ParamUtils.isPositiveOrZero(squaresSum, "the sum of squares cannot be negative");
+        if (size == 0) {
+            Utils.validateArg(MathUtils.compareDoubles(sum, 0) == 0 && MathUtils.compareDoubles(squaresSum, 0) == 0, "when the size is 0, then the sums must be zero");
         } else if (size == 1) {
-            if (MathUtils.compareDoubles(sum * sum, squaresSum) != 0) {
-                throw new IllegalArgumentException("when the size is 1, then the sum squared must be the same as the squaresSum provided");
-            }
-        } else if (squaresSum < 0) {
-            throw new IllegalArgumentException("the sum of squares cannot be negative");
+            Utils.validateArg(MathUtils.compareDoubles(sum * sum, squaresSum) == 0, "when the size is 1, then the sum squared must be the same as the squaresSum provided");
         }
         final double mean = sum / size;
         final double squaresMean = squaresSum / size;

@@ -35,9 +35,7 @@ public final class CommonSuffixSplitter {
     public static boolean split(final SeqGraph graph, final SeqVertex v) {
         Utils.nonNull(graph, "graph cannot be null");
         Utils.nonNull(v, "v cannot be null");
-        if ( ! graph.vertexSet().contains(v) ) {
-            throw new IllegalArgumentException("graph doesn't contain vertex v " + v);
-        }
+        Utils.validateArg(graph.vertexSet().contains(v), () -> "graph doesn't contain vertex v " + v);
         final Collection<SeqVertex> toSplit= graph.incomingVerticesOf(v);
 
         final SeqVertex suffixVTemplate = commonSuffix(graph, v, toSplit);

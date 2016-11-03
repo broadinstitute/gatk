@@ -74,9 +74,7 @@ public class VariantEvaluationContext extends VariantContext {
         }
         System.arraycopy(alternativeAllelesFrequencies, 0, result, 1, alternativeAllelesFrequencies.length);
         final double nonRefSum = MathUtils.sum(result);
-        if (nonRefSum > 1.) {
-            throw new IllegalArgumentException(String.format("The sum of element on annotation %s cannot greater than 1.0: %g", key, nonRefSum));
-        }
+        Utils.validateArg(nonRefSum <= 1.0, () -> String.format("The sum of element on annotation %s cannot greater than 1.0: %g", key, nonRefSum));
         result[0] = 1.0 - nonRefSum;
         return result;
     }
