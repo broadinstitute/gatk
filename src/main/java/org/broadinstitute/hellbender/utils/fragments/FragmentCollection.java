@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.fragments;
 
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
+import org.broadinstitute.hellbender.utils.pileup.PileupElementTracker;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -127,6 +129,11 @@ public final class FragmentCollection<T> {
             throw new IllegalArgumentException("Pileup cannot be null");
         }
         return create(rbp::sortedIterator, rbp.size(), pileup -> pileup.getRead());
+    }
+
+    public static FragmentCollection<PileupElement> create(final PileupElementTracker tracker) {
+        Utils.nonNull(tracker, "PileupElementTracker cannot be null");
+        return create(tracker::sortedIterator, tracker.size(), pileup -> pileup.getRead());
     }
 
     /**

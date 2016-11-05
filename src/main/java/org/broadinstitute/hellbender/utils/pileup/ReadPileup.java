@@ -1,35 +1,25 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Represents a pileup of reads at a given position.
  */
 public class ReadPileup implements Iterable<PileupElement> {
     private final Locatable loc;
-    private final List<PileupElement> pileupElements;
-
-    /** Constant used by samtools to downgrade a quality for overlapping reads that disagrees in their base. */
-    public static final double SAMTOOLS_OVERLAP_LOW_CONFIDENCE = 0.8;
+    private PileupElementTracker pileupElements;
 
     /**
      * Create a new pileup at loc, using the reads and their corresponding
@@ -37,25 +27,35 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Note: This constructor keeps an alias to the given list.
      */
     public ReadPileup(final Locatable loc, final List<PileupElement> pileup) {
+        this(loc, pileup, false);
+    }
+
+    /**
+     * Create a new pileup at loc, using the reads and their corresponding
+     * offsets.
+     * Note: This constructor keeps an alias to the given list.
+     */
+    public ReadPileup(final Locatable loc, final List<PileupElement> pileup, final boolean preSorted) {
         Utils.nonNull(loc, "loc is null");
         Utils.nonNull(pileup, "element list is null");
         this.loc = loc;
-        this.pileupElements = pileup;
+        this.pileupElements = new UnifiedPileupElementTracker(pileup, preSorted);
     }
 
     /**
      * Create a new pileup at loc, using an stratified pileup
-     * Note: the current implementation of ReadPileup does not efficiently retrieve the stratified pileup
      */
     public ReadPileup(final Locatable loc, final Map<String, ReadPileup> stratifiedPileup) {
-        this(loc, stratifiedPileup.values().stream().flatMap(ReadPileup::getElementStream).collect(Collectors.toList()));
+        this.loc = loc;
+        this.pileupElements = new PerSamplePileupElementTracker(stratifiedPileup.entrySet().stream()
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue().pileupElements)));
     }
 
     /**
      * Create a new pileup without any aligned reads
      */
     public ReadPileup(final Locatable loc) {
-        this(loc, Collections.emptyList());
+        this(loc, Collections.emptyList(), true);
     }
 
     /**
@@ -72,6 +72,12 @@ public class ReadPileup implements Iterable<PileupElement> {
         this(loc, readsOffsetsToPileup(reads, offsets));
     }
 
+    // helper constructor
+    private ReadPileup(final Locatable loc, final PileupElementTracker tracker) {
+        this.loc = loc;
+        this.pileupElements = tracker;
+    }
+
     /**
      * Returns the first element corresponding to the given read or null there is no such element.
      *
@@ -80,7 +86,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      */
     @VisibleForTesting
     PileupElement getElementForRead(final GATKRead read) {
-        return getElementStream().filter(el -> Objects.equals(el.getRead(), read)).findAny().orElse(null);
+        return pileupElements.getElementStream().filter(el -> Objects.equals(el.getRead(), read)).findAny().orElse(null);
     }
 
     /**
@@ -89,9 +95,7 @@ public class ReadPileup implements Iterable<PileupElement> {
     private static List<PileupElement> readsOffsetsToPileup(final List<GATKRead> reads, final List<Integer> offsets) {
         Utils.nonNull(reads, "Illegal null read list in UnifiedReadBackedPileup");
         Utils.nonNull(offsets, "Illegal null offsets list in UnifiedReadBackedPileup");
-        if (reads.size() != offsets.size()) {
-            throw new IllegalArgumentException("Reads and offset lists have different sizes!");
-        }
+        Utils.validateArg(reads.size() == offsets.size(), "Reads and offset lists have different sizes!");
 
         final List<PileupElement> pileup = new ArrayList<>(reads.size());
         for (int i = 0; i < reads.size(); i++) {
@@ -115,7 +119,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      */
     public ReadPileup makeFilteredPileup(final Predicate<PileupElement> filter) {
         Utils.nonNull(filter);
-        return new ReadPileup(loc, getElementStream().filter(filter).collect(Collectors.toList()));
+        return new ReadPileup(loc, pileupElements.makeFilteredTracker(filter));
     }
 
     /**
@@ -149,7 +153,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
      */
     public ReadPileup getPileupForSample(final String sample, final SAMFileHeader header) {
-        return makeFilteredPileup(pe -> Objects.equals(ReadUtils.getSampleName(pe.getRead(), header), sample));
+        return new ReadPileup(loc, pileupElements.getTrackerForSample(sample, header));
     }
 
     /**
@@ -157,7 +161,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Note: contains null if a read has a null read group
      */
     public Set<String> getReadGroupIDs() {
-        return getElementStream().map(pe -> pe.getRead().getReadGroup()).collect(Collectors.toSet());
+        return pileupElements.getElementStream().map(pe -> pe.getRead().getReadGroup()).collect(Collectors.toSet());
     }
 
     /**
@@ -165,7 +169,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Note: contains null if a read has a null read group or a null sample name.
      */
     public Set<String> getSamples(final SAMFileHeader header) {
-        return getElementStream().map(pe -> pe.getRead()).map(r -> ReadUtils.getSampleName(r, header)).collect(Collectors.toSet());
+        return pileupElements.getSamples(header);
     }
 
     /**
@@ -177,19 +181,16 @@ public class ReadPileup implements Iterable<PileupElement> {
      * @throws org.broadinstitute.hellbender.exceptions.UserException.ReadMissingReadGroup if unknownSampleName is {@code null} and there are reads without RG/sample name
      */
     public Map<String, ReadPileup> splitBySample(final SAMFileHeader header, final String unknownSampleName) {
-        final Map<String, ReadPileup> toReturn = new HashMap<>();
-        for (final String sample : getSamples(header)) {
-            final ReadPileup pileupBySample = getPileupForSample(sample, header);
-            if (sample != null) {
-                toReturn.put(sample, pileupBySample);
-            } else {
-                if (unknownSampleName == null) {
-                    throw new UserException.ReadMissingReadGroup(pileupBySample.iterator().next().getRead());
-                }
-                toReturn.put(unknownSampleName, pileupBySample);
-            }
+        // keep the splitting
+        pileupElements = pileupElements.splitBySample(header);
+        final Set<String> samples = getSamples(header);
+        if (unknownSampleName == null && samples.contains(null)) {
+            throw new UserException.ReadMissingReadGroup(getPileupForSample(null, header).iterator().next().getRead());
         }
-        return toReturn;
+        return getSamples(header).stream().collect(Collectors.toMap(
+                s -> (s == null) ? unknownSampleName : s,
+                s -> getPileupForSample(s, header)
+        ));
     }
 
     /**
@@ -201,16 +202,14 @@ public class ReadPileup implements Iterable<PileupElement> {
      */
     @Override
     public Iterator<PileupElement> iterator() {
-        return Collections.unmodifiableList(pileupElements).iterator();
+        return pileupElements.iterator();
     }
 
     /**
      * Iterator over sorted by read start PileupElements.
      */
     public Iterator<PileupElement> sortedIterator() {
-        return getElementStream()
-                .sorted((l, r) -> Integer.compare(l.getRead().getStart(), r.getRead().getStart()))
-                .iterator();
+        return pileupElements.sortedIterator();
     }
 
     /**
@@ -272,52 +271,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Note: Resulting qualities higher than {@link QualityUtils#MAX_SAM_QUAL_SCORE} are capped.
      */
     public void fixOverlaps() {
-        final FragmentCollection<PileupElement> fragments = FragmentCollection.create(this);
-        fragments.getOverlappingPairs().stream()
-                .forEach(
-                        elements -> fixPairOverlappingQualities(elements.get(0), elements.get(1))
-                );
-    }
-
-    /**
-     * Fixes the quality of two elements that come from an overlapping pair in the same way as
-     * samtools does {@see tweak_overlap_quality function in
-     * <a href="https://github.com/samtools/htslib/blob/master/sam.c">samtools</a>}.
-     * The only difference with the samtools API is the cap for high values ({@link QualityUtils#MAX_SAM_QUAL_SCORE}).
-     */
-    @VisibleForTesting
-    static void fixPairOverlappingQualities(final PileupElement firstElement,
-                                            final PileupElement secondElement) {
-        // only if they do not represent deletions
-        if (!secondElement.isDeletion() && !firstElement.isDeletion()) {
-            final byte[] firstQuals = firstElement.getRead().getBaseQualities();
-            final byte[] secondQuals = secondElement.getRead().getBaseQualities();
-            if (firstElement.getBase() == secondElement.getBase()) {
-                // if both have the same base, extra confidence in the firts of them
-                firstQuals[firstElement.getOffset()] =
-                        (byte) (firstQuals[firstElement.getOffset()] + secondQuals[secondElement
-                                .getOffset()]);
-                // cap to maximum byte value
-                if (firstQuals[firstElement.getOffset()] < 0
-                        || firstQuals[firstElement.getOffset()] > QualityUtils.MAX_SAM_QUAL_SCORE) {
-                    firstQuals[firstElement.getOffset()] = QualityUtils.MAX_SAM_QUAL_SCORE;
-                }
-                secondQuals[secondElement.getOffset()] = 0;
-            } else {
-                // if not, we lost confidence in the one with higher quality
-                if (firstElement.getQual() >= secondElement.getQual()) {
-                    firstQuals[firstElement.getOffset()] =
-                            (byte) (SAMTOOLS_OVERLAP_LOW_CONFIDENCE * firstQuals[firstElement.getOffset()]);
-                    secondQuals[secondElement.getOffset()] = 0;
-                } else {
-                    secondQuals[secondElement.getOffset()] =
-                            (byte) (SAMTOOLS_OVERLAP_LOW_CONFIDENCE * secondQuals[secondElement.getOffset()]);
-                    firstQuals[firstElement.getOffset()] = 0;
-                }
-            }
-            firstElement.getRead().setBaseQualities(firstQuals);
-            secondElement.getRead().setBaseQualities(secondQuals);
-        }
+        pileupElements.fixOverlaps();
     }
 
     public final static Comparator<PileupElement> baseQualTieBreaker = new Comparator<PileupElement>() {
@@ -423,11 +377,7 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Returns a list of the reads in this pileup. Note this call costs O(n) and allocates fresh lists each time
      */
     public List<GATKRead> getReads() {
-        return getElementStream().map(pe -> pe.getRead()).collect(Collectors.toList());
-    }
-
-    private Stream<PileupElement> getElementStream() {
-        return pileupElements.stream();
+        return pileupElements.getElementStream().map(pe -> pe.getRead()).collect(Collectors.toList());
     }
 
     /**
@@ -436,7 +386,7 @@ public class ReadPileup implements Iterable<PileupElement> {
     public int getNumberOfElements(final Predicate<PileupElement> peFilter) {
         Utils.nonNull(peFilter);
         //Note: pileups are small so int is fine.
-        return (int) getElementStream().filter(peFilter).count();
+        return (int) pileupElements.getElementStream().filter(peFilter).count();
     }
 
     /**
@@ -444,12 +394,12 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Note: this call costs O(n) and allocates fresh lists each time
      */
     public List<Integer> getOffsets() {
-        return getElementStream().map(pe -> pe.getOffset()).collect(Collectors.toList());
+        return pileupElements.getElementStream().map(pe -> pe.getOffset()).collect(Collectors.toList());
     }
 
     //Extracts an int array by mapping each element in the pileup to int.
     private int[] extractIntArray(final ToIntFunction<PileupElement> map) {
-        return getElementStream().mapToInt(map).toArray();
+        return pileupElements.getElementStream().mapToInt(map).toArray();
     }
 
     /**

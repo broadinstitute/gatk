@@ -342,7 +342,8 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                 }
 
                 if (!pile.isEmpty()) { // if this pileup added at least one base, add it to the full pileup
-                    fullPileupPerSample.put(sample, new ReadPileup(location, pile));
+                    // the pileup for LIBS is sorted by coordinate, because it comes from a sorted BAM file
+                    fullPileupPerSample.put(sample, new ReadPileup(location, pile, true));
                 }
             }
 
