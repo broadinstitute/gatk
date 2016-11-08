@@ -108,17 +108,8 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
             return new FlatMapFunction<ContextShard, ContextShard>() {
                 private static final long serialVersionUID = 1L;
                 @Override
-                public Iterable<ContextShard> call(ContextShard contextShard) throws Exception {
-                    return new Iterable<ContextShard>() {
-                        @Override
-                        public Iterator<ContextShard> iterator() {
-                            try {
-                                return new SubdivideAndFillReadsIterator(bam, auth, outputShardSize, margin, optFilter, contextShard);
-                            } catch (Exception x) {
-                                throw new RuntimeException(x);
-                            }
-                        }
-                    };
+                public Iterator<ContextShard> call(ContextShard contextShard) throws Exception {
+                    return new SubdivideAndFillReadsIterator(bam, auth, outputShardSize, margin, optFilter, contextShard);
                 }
             };
     }

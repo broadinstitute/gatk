@@ -55,7 +55,7 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.6.1')
-final hadoopBamVersion = System.getProperty('hadoopBam.version','7.7.0')
+final hadoopBamVersion = System.getProperty('hadoopBam.version','7.7.1')
 
 configurations.all {
     resolutionStrategy {
@@ -99,7 +99,7 @@ dependencies {
     // Using the shaded version to avoid conflicts between its protobuf dependency
     // and that of Hadoop/Spark (either the one we reference explicitly, or the one
     // provided by dataproc).
-    compile 'com.google.cloud:gcloud-java-nio:0.2.8:shaded'
+    compile 'com.google.cloud:google-cloud-nio:0.5.1:shaded'
     compile 'com.google.cloud.genomics:google-genomics-dataflow:v1beta2-0.15'
     compile 'com.google.cloud.genomics:gatk-tools-java:1.1'
     compile 'org.apache.logging.log4j:log4j-api:2.3'
@@ -117,7 +117,7 @@ dependencies {
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
 
    compile 'org.ojalgo:ojalgo:39.0'
-    compile ('org.apache.spark:spark-mllib_2.10:1.6.1') {
+    compile ('org.apache.spark:spark-mllib_2.10:2.0.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -125,7 +125,7 @@ dependencies {
     }
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    compile('org.bdgenomics.adam:adam-core_2.10:0.18.0') {
+    compile('org.bdgenomics.adam:adam-core_2.10:0.20.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -142,7 +142,7 @@ dependencies {
         exclude module: 'htsjdk'
     }
     compile('org.apache.hadoop:hadoop-client:2.7.2') // should be a 'provided' dependency
-    compile('com.github.jsr203hadoop:jsr203hadoop:1.0.2')
+    compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
     compile('de.javakaffee:kryo-serializers:0.37') {
         exclude module: 'kryo' // use Spark's version

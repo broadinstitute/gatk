@@ -2,14 +2,10 @@ package org.broadinstitute.hellbender.utils.read;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
-import org.apache.spark.api.java.function.Function;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.bdgenomics.adam.converters.SAMRecordConverter;
 import org.bdgenomics.adam.models.SequenceDictionary;
 import org.bdgenomics.adam.models.RecordGroupDictionary;
-
-
-import java.io.Serializable;
 
 /**
  * Converts a GATKRead to a BDG AlignmentRecord
@@ -35,11 +31,11 @@ public class GATKReadToBDGAlignmentRecordConverter {
 
     public static AlignmentRecord convert(
             final GATKRead gatkRead, final SAMFileHeader header, final SequenceDictionary dict, final RecordGroupDictionary readGroups ) {
-        return converter.convert(gatkRead.convertToSAMRecord(header), dict, readGroups);
+        return converter.convert(gatkRead.convertToSAMRecord(header));
     }
 
     public static AlignmentRecord convert(
             final SAMRecord sam, final SequenceDictionary dict, final RecordGroupDictionary readGroups ) {
-        return converter.convert(sam, dict, readGroups);
+        return converter.convert(sam);
     }
 }

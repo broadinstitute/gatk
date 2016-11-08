@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.commons.collections4.iterators.IteratorIterable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
@@ -163,7 +162,7 @@ public final class VariantsSparkSink {
     private static JavaRDD<VariantContext> setHeaderForEachPartition(final JavaRDD<VariantContext> variants, final Broadcast<VCFHeader> headerBroadcast) {
         return variants.mapPartitions(iterator -> {
             SparkVCFOutputFormat.setVCFHeader(headerBroadcast.getValue());
-            return new IteratorIterable<>(iterator);
+            return iterator;
         });
     }
 

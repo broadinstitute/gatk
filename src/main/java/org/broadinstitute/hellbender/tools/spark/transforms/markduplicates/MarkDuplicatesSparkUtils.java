@@ -83,7 +83,7 @@ public class MarkDuplicatesSparkUtils {
             if (pair != null) {                                    //left over read
                 out.add(new Tuple2<>(pair.key(header), pair));
             }
-            return out;
+            return out.iterator();
         }).groupByKey(numReducers);
 
         return markPairedEnds(keyedPairs, scoringStrategy, finder, header);
@@ -102,7 +102,7 @@ public class MarkDuplicatesSparkUtils {
                 // list from Multimap is not serializable by Kryo, so put in a new array list
                 out.add(new Tuple2<>(key, Lists.newArrayList(multi.get(key))));
             }
-            return out;
+            return out.iterator();
         });
     }
 
@@ -115,7 +115,7 @@ public class MarkDuplicatesSparkUtils {
      * @return an RDD where each the values for each key are grouped into an iterable collection
      */
     static <K, V> JavaPairRDD<K, Iterable<V>> spanByKey(JavaPairRDD<K, V> rdd) {
-        return rdd.mapPartitionsToPair(iter -> () -> spanningIterator(iter));
+        return rdd.mapPartitionsToPair(iter -> spanningIterator(iter));
     }
 
     /**
@@ -165,7 +165,7 @@ public class MarkDuplicatesSparkUtils {
             // Each key corresponds to either fragments or paired ends, not a mixture of both.
 
             if (ReadsKey.isFragment(keyedPair._1())) { // fragments
-                return handleFragments(pairedEnds, scoringStrategy, header);
+                return handleFragments(pairedEnds, scoringStrategy, header).iterator();
             }
 
             List<GATKRead> out = Lists.newArrayList();
@@ -183,7 +183,7 @@ public class MarkDuplicatesSparkUtils {
 
             final PairedEnds best = Iterables.getFirst(scored, null);
             if (best == null) {
-                return out;
+                return out.iterator();
             }
 
             // Mark everyone who's not best as a duplicate
@@ -215,7 +215,7 @@ public class MarkDuplicatesSparkUtils {
                 out.add(pair.first());
                 out.add(pair.second());
             }
-            return out;
+            return out.iterator();
         });
     }
 

@@ -80,12 +80,12 @@ public final class BwaSparkEngine implements Serializable{
                 final String samLine = lineIterator.next();
                 reads.add(new SAMRecordToGATKReadAdapter(samLineParser.parseLine(samLine)));
             }
-            return reads;
+            return reads.iterator();
         });
     }
 
     private JavaRDD<Tuple2<ShortRead, ShortRead>> convertToUnalignedReadPairs(final JavaRDD<GATKRead> unalignedReads) {
-        final JavaRDD<List<GATKRead>> unalignedPairs = unalignedReads.mapPartitions(iter -> () -> Iterators.partition(iter, 2));
+        final JavaRDD<List<GATKRead>> unalignedPairs = unalignedReads.mapPartitions(iter -> Iterators.partition(iter, 2));
 
         return unalignedPairs.map(p -> {
             final GATKRead read1 = p.get(0);
@@ -101,7 +101,7 @@ public final class BwaSparkEngine implements Serializable{
     }
 
     private JavaRDD<String> align(final JavaRDD<Tuple2<ShortRead, ShortRead>> shortReadPairs) {
-        return shortReadPairs.mapPartitions(iter -> () -> {
+        return shortReadPairs.mapPartitions(iter -> {
             BWANativeLibrary.load();
 
             try {

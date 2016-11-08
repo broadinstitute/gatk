@@ -77,10 +77,10 @@ public final class FeatureManager implements AutoCloseable {
     }
 
     /**
-     * The tool instance containing the FeatureInput argument values that will form the basis of our
+     * The simple class name of the tool instance containing the FeatureInput argument values that will form the basis of our
      * pool of FeatureDataSources
      */
-    private final CommandLineProgram toolInstance;
+    private final String toolInstanceSimpleClassName;
 
     /**
      * Mapping from FeatureInput argument to query-able FeatureDataSource for that source of Features
@@ -110,10 +110,10 @@ public final class FeatureManager implements AutoCloseable {
      *                              the end of query intervals in anticipation of future queries (>= 0).
      */
     public FeatureManager( final CommandLineProgram toolInstance, final int featureQueryLookahead ) {
-        this.toolInstance = toolInstance;
+        this.toolInstanceSimpleClassName = toolInstance.getClass().getSimpleName();
         featureSources = new LinkedHashMap<>();
 
-        initializeFeatureSources(featureQueryLookahead);
+        initializeFeatureSources(featureQueryLookahead, toolInstance);
     }
 
     /**
@@ -124,7 +124,7 @@ public final class FeatureManager implements AutoCloseable {
      *                              the end of query intervals in anticipation of future queries (>= 0).
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void initializeFeatureSources( final int featureQueryLookahead ) {
+    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance ) {
 
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
@@ -316,7 +316,7 @@ public final class FeatureManager implements AutoCloseable {
                                                   "In order to be detected, FeatureInputs must be declared in the tool class " +
                                                   "itself, a superclass of the tool class, or an @ArgumentCollection declared " +
                                                   "in the tool class or a superclass. They must also be annotated as an @Argument.",
-                                                  featureDescriptor.getName(), toolInstance.getClass().getSimpleName()));
+                                                  featureDescriptor.getName(), toolInstanceSimpleClassName));
         }
 
         return dataSource;

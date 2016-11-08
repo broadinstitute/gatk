@@ -111,7 +111,7 @@ public class AddContextDataToReadSpark {
         return shardedReads.flatMapToPair(new PairFlatMapFunction<Shard<GATKRead>, GATKRead, ReadContextData>() {
             private static final long serialVersionUID = 1L;
             @Override
-            public Iterable<Tuple2<GATKRead, ReadContextData>> call(Shard<GATKRead> shard) throws Exception {
+            public Iterator<Tuple2<GATKRead, ReadContextData>> call(Shard<GATKRead> shard) throws Exception {
                 // get reference bases for this shard (padded)
                 SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(shardPadding, sequenceDictionary);
                 ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, paddedInterval);
@@ -132,7 +132,7 @@ public class AddContextDataToReadSpark {
                     }
                 });
                 // only include reads that start in the shard
-                return () -> Iterators.filter(transform, r -> r._1().getStart() >= shard.getStart()
+                return Iterators.filter(transform, r -> r._1().getStart() >= shard.getStart()
                         && r._1().getStart() <= shard.getEnd());
             }
         });

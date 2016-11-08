@@ -400,20 +400,20 @@ public final class BucketUtils {
      * Files.newInputStream(Paths.get(URI.create( path ))).
      */
     public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
-        StorageOptions.Builder builder = StorageOptions.builder()
-                .projectId(projectId);
+        StorageOptions.Builder builder = StorageOptions.newBuilder()
+                .setProjectId(projectId);
         if (null != credentials) {
-            builder = builder.authCredentials((AuthCredentials.createForJson(new ByteArrayInputStream(credentials))));
+            builder = builder.setAuthCredentials((AuthCredentials.createForJson(new ByteArrayInputStream(credentials))));
         }
         // generous timeouts, to avoid tests failing when not warranted.
-        StorageOptions storageOptions = builder.connectTimeout(60000)
-            .readTimeout(60000)
-            .retryParams(RetryParams.builder()
-                    .retryMaxAttempts(10)
-                    .retryMinAttempts(6)
-                    .maxRetryDelayMillis(30000)
-                    .totalRetryPeriodMillis(120000)
-                    .initialRetryDelayMillis(250)
+        StorageOptions storageOptions = builder.setConnectTimeout(60000)
+            .setReadTimeout(60000)
+            .setRetryParams(RetryParams.newBuilder()
+                    .setRetryMaxAttempts(10)
+                    .setRetryMinAttempts(6)
+                    .setMaxRetryDelayMillis(30000)
+                    .setTotalRetryPeriodMillis(120000)
+                    .setInitialRetryDelayMillis(250)
                     .build())
             .build();
 

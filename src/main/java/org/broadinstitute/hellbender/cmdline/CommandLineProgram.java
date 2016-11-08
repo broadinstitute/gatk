@@ -17,7 +17,6 @@ import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.text.DecimalFormat;
@@ -45,13 +44,7 @@ import java.util.List;
  *
  */
 public abstract class CommandLineProgram {
-    protected transient Logger logger = LogManager.getLogger(this.getClass());
-
-    private void readObject(java.io.ObjectInputStream in)
-            throws IOException, ClassNotFoundException {
-        in.defaultReadObject();
-        logger = LogManager.getLogger(this.getClass()); // Logger is not serializable (even by Kryo)
-    }
+    protected final Logger logger = LogManager.getLogger(this.getClass());
 
     @Argument(common=true, optional=true)
     public List<File> TMP_DIR = new ArrayList<>();

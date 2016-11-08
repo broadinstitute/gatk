@@ -32,8 +32,7 @@ public final class BaseRecalibratorSparkFn {
 
                 bqsr.processRead(readWithData._1(), refDS, variants);
             }
-            // Need to wrap in ArrayList due to our current inability to serialize the return value of Arrays.asList() directly
-            return new ArrayList<>(Arrays.asList(bqsr.getRecalibrationTables()));
+            return Arrays.asList(bqsr.getRecalibrationTables()).iterator();
         });
 
         final RecalibrationTables emptyRecalibrationTable = new RecalibrationTables(new StandardCovariateList(recalArgs, header));

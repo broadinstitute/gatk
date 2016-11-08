@@ -395,7 +395,7 @@ public class SparkSharderUnitTest extends BaseTest implements Serializable {
         private static final long serialVersionUID = 1L;
 
         @Override
-        public Iterable<Tuple2<Locatable, Integer>> call(Shard<TestRead> s) throws Exception {
+        public Iterator<Tuple2<Locatable, Integer>> call(Shard<TestRead> s) throws Exception {
             Locatable interval = s.getInterval();
             Iterator<TestRead> iterator = s.iterator();
             int count = 0;
@@ -403,7 +403,7 @@ public class SparkSharderUnitTest extends BaseTest implements Serializable {
             while (iterator.hasNext()) {
                 count += overlapDetector.getOverlaps(iterator.next()).size();
             }
-            return ImmutableList.of(new Tuple2<>(interval, count));
+            return ImmutableList.of(new Tuple2<>(interval, count)).iterator();
         }
     }
 }

@@ -388,7 +388,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             reads
                 .mapPartitionsToPair(readItr ->
                         new ReadsForQNamesFinder(broadcastQNamesMultiMap.value(), nIntervals,
-                                includeMappingLocation).call(readItr), false)
+                                includeMappingLocation).call(readItr).iterator(), false)
                 .combineByKey(x -> x,
                                 FindBreakpointEvidenceSpark::combineLists,
                                 FindBreakpointEvidenceSpark::combineLists,
@@ -447,11 +447,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             reads
                 .mapPartitionsToPair(readItr ->
                         new MapPartitioner<>(readItr,
-                                new QNamesForKmersFinder(kSize, minEntropy, broadcastKmerMultiMap.value())), false)
+                                new QNamesForKmersFinder(kSize, minEntropy, broadcastKmerMultiMap.value())).iterator(), false)
                 .mapPartitions(pairItr ->
                         new KmerQNameToQNameIntervalMapper(broadcastKmerMultiMap.value(),
                                                             maxQNamesPerKmer,
-                                                            kmerMapSize).call(pairItr))
+                                                            kmerMapSize).call(pairItr).iterator())
                 .collect();
 
         broadcastKmerMultiMap.destroy();
@@ -487,9 +487,9 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 .mapPartitionsToPair(readItr ->
                         new MapPartitioner<>(readItr,
                             new QNameKmerizer(broadcastQNameAndIntervalsMultiMap.value(),
-                                            broadcastKmerKillSet.value(), kSize, minEntropy)), false)
+                                            broadcastKmerKillSet.value(), kSize, minEntropy)).iterator(), false)
                 .reduceByKey(Integer::sum)
-                .mapPartitions(itr -> new KmerCleaner(itr, kmersPerPartitionGuess, minKmers, maxKmers, maxIntervals))
+                .mapPartitions(itr -> new KmerCleaner(itr, kmersPerPartitionGuess, minKmers, maxKmers, maxIntervals).iterator())
                 .collect();
 
         broadcastQNameAndIntervalsMultiMap.destroy();
@@ -592,7 +592,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final Map<Integer, Integer> intervalCoverage =
                 reads
                     .mapPartitionsToPair(readItr ->
-                            new IntervalCoverageFinder(broadcastMetadata.value(),broadcastIntervals.value(),readItr))
+                            new IntervalCoverageFinder(broadcastMetadata.value(),broadcastIntervals.value(),readItr).iterator())
                     .reduceByKey(Integer::sum)
                     .collectAsMap();
         final int maxCoverage = params.maxIntervalCoverage;
@@ -618,7 +618,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         .mapPartitions(readItr ->
                                 new MapPartitioner<>(readItr,
                                         new QNameFinder(broadcastMetadata.value(),
-                                                broadcastIntervals.value())), false)
+                                                broadcastIntervals.value())).iterator(), false)
                         .collect();
         broadcastIntervals.destroy();
 
@@ -671,12 +671,12 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                     .mapToInt(CigarElement::getLength)
                                     .sum() >= minMatchLen)
                     .mapPartitions(readItr ->
-                            new MapPartitioner<>(readItr, new ReadClassifier(broadcastMetadata.value())), true)
+                            new MapPartitioner<>(readItr, new ReadClassifier(broadcastMetadata.value())).iterator(), true)
                     .mapPartitions(evidenceItr ->
-                            new MapPartitioner<>(evidenceItr, new BreakpointClusterer(minEvidenceCount, 2*maxFragmentSize)), true)
+                            new MapPartitioner<>(evidenceItr, new BreakpointClusterer(minEvidenceCount, 2*maxFragmentSize)).iterator(), true)
                     .mapPartitions(evidenceItr ->
                             new MapPartitioner<>(evidenceItr,
-                                    new WindowSorter(3*maxFragmentSize), new BreakpointEvidence(nContigs)), true);
+                                    new WindowSorter(3*maxFragmentSize), new BreakpointEvidence(nContigs)).iterator(), true);
 
         // record the evidence
         if ( locations.evidenceDir != null ) {
@@ -690,7 +690,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                         .mapPartitions(evidenceItr ->
                                 new MapPartitioner<>(evidenceItr,
                                         new EvidenceToIntervalMapper(maxFragmentSize),
-                                        new BreakpointEvidence(nContigs)), true)
+                                        new BreakpointEvidence(nContigs)).iterator(), true)
                         .collect()
                         .iterator();
 

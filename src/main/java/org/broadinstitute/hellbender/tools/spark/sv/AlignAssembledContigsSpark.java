@@ -65,7 +65,7 @@ public final class AlignAssembledContigsSpark extends GATKSparkTool {
                         final List<AlignmentRegion> contigAlignments = contigAligner.alignContigs(breakpointId, cc._2);
                         contigAlignments.forEach(results::add);
                     });
-                    return results;
+                    return results.iterator();
                 }
             } catch (final IOException e) {
                 throw new GATKException("Cannot run BWA-MEM", e);

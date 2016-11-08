@@ -5,7 +5,6 @@ import com.google.api.services.genomics.model.Position;
 import com.google.api.services.genomics.model.Read;
 import htsjdk.samtools.*;
 import org.bdgenomics.formats.avro.AlignmentRecord;
-import org.bdgenomics.formats.avro.Contig;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -68,12 +67,7 @@ public class GATKReadAdaptersUnitTest extends BaseTest {
 
     private static GATKRead basicReadBackedByADAMRecord(final SAMRecord sam) {
         final AlignmentRecord record = new AlignmentRecord();
-
-        final Contig contig= new Contig();
-        contig.setContigName(sam.getContig());
-        record.setContig(contig);
-
-        record.setContig(contig);
+        record.setContigName(sam.getContig());
         record.setRecordGroupSample(sam.getReadGroup().getSample());
         record.setReadName(sam.getReadName());
         record.setSequence(new String(sam.getReadBases()));

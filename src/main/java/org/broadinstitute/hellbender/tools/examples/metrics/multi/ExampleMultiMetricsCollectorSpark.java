@@ -86,7 +86,7 @@ public class ExampleMultiMetricsCollectorSpark
             .mapPartitions(
                 it -> {
                     it.forEachRemaining(r -> collector.acceptRecord(r.convertToSAMRecord(samHeader), null));
-                    return Arrays.asList(collector);
+                    return Arrays.asList(collector).iterator();
                 })
             .reduce((c1, c2) -> ExampleMultiMetricsCollector.combine(c1, c2));
     }
