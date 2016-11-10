@@ -105,7 +105,7 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
 
         int totalReads = 0;
         int duplicateReads = 0;
-        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile) ) {
+        try ( final ReadsDataSource outputReads = new ReadsDataSource(outputFile.toPath()) ) {
             for ( GATKRead read : outputReads ) {
                 ++totalReads;
 

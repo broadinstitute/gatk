@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.engine;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 
 public final class ReadsContextUnitTest extends BaseTest {
 
@@ -18,7 +21,7 @@ public final class ReadsContextUnitTest extends BaseTest {
                 { new ReadsContext() },
                 { new ReadsContext(null, null) },
                 { new ReadsContext(null, new SimpleInterval("1", 1, 1) ) },
-                { new ReadsContext(new ReadsDataSource(new File(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
+                { new ReadsContext(new ReadsDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")), null) }
         };
     }
 

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.io;
 
+import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import htsjdk.samtools.BamFileIoUtils;
 import htsjdk.samtools.cram.build.CramIO;
 import htsjdk.samtools.util.BlockCompressedInputStream;
@@ -13,6 +14,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -514,18 +516,27 @@ public final class IOUtils {
      *
      * @param uriString the URI to convert
      * @return the resulting {@code Path}
-     * @throws IOException an I/O error occurs creating the file system
+     * @throws UserException if an I/O error occurs when creating the file system
      */
-    public static Path getPath(String uriString) throws IOException {
+    public static Path getPath(String uriString) {
         URI uri = URI.create(uriString);
         try {
+            // special case GCS, in case the filesystem provider wasn't installed properly but is available.
+            if (CloudStorageFileSystem.URI_SCHEME.equals(uri.getScheme())) {
+                return BucketUtils.getPathOnGcs(uriString);
+            }
             return uri.getScheme() == null ? Paths.get(uriString) : Paths.get(uri);
         } catch (FileSystemNotFoundException e) {
-            ClassLoader cl = Thread.currentThread().getContextClassLoader();
-            if (cl == null) {
-                throw e;
+            try {
+                ClassLoader cl = Thread.currentThread().getContextClassLoader();
+                if ( cl == null ) {
+                    throw e;
+                }
+                return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
             }
-            return FileSystems.newFileSystem(uri, new HashMap<>(), cl).provider().getPath(uri);
+            catch ( IOException io ) {
+                throw new UserException(uriString + " is not a supported path", io);
+            }
         }
     }
 

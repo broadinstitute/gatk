@@ -35,8 +35,7 @@ public class ExampleNioCountReads extends SparkCommandLineProgram {
     @Argument(fullName = "parts", doc = "number of partitions", optional = false)
     private int parts = 3;
 
-    private void countReads(JavaSparkContext ctx) throws IOException {
-
+    private void countReads(JavaSparkContext ctx) {
         PrintStream outputStream;
 
         try {
@@ -58,10 +57,6 @@ public class ExampleNioCountReads extends SparkCommandLineProgram {
      */
     @Override
     protected void runPipeline(JavaSparkContext ctx) {
-        try {
-            countReads(ctx);
-        } catch (IOException x) {
-            System.err.println(x);
-        }
+        countReads(ctx);
     }
 }

@@ -13,9 +13,15 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.seekablestream.ByteArraySeekableStream;
 import htsjdk.samtools.seekablestream.SeekableStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -35,6 +41,7 @@ import java.util.List;
  * Although we don't expect you to move these objects across computers, you can.
  */
 public class NioBam implements Serializable {
+    protected static final Logger logger = LogManager.getLogger(NioBam.class);
 
     private static final long serialVersionUID = 1L;
     private final String bam;
@@ -42,29 +49,39 @@ public class NioBam implements Serializable {
     private transient byte[] indexCache;
 
     /** Checks the files exists, then stores them. **/
-    public NioBam(String gcsFilename, String indexGcsFilename) throws IOException {
-        this.bam = gcsFilename;
-        this.index = indexGcsFilename;
-        init();
+    public NioBam(String gcsFilename, String indexGcsFilename) {
+        try {
+            this.bam = gcsFilename;
+            this.index = indexGcsFilename;
+            init();
+        }
+        catch ( FileNotFoundException e ) {
+            throw new UserException.CouldNotReadInputFile("Could not read file " + gcsFilename, e);
+        }
     }
 
     /** Finds the index file, then calls NioBam(bam, index). **/
-    public NioBam(String gcsFilename) throws IOException {
-        String indexFilename = gcsFilename + ".bai";
-        if (!Files.exists(BucketUtils.getPathOnGcs(indexFilename))) {
-            int i = gcsFilename.lastIndexOf('.');
-            if (i>=0) {
-                indexFilename = gcsFilename.substring(0, i) + ".bai";
+    public NioBam(String gcsFilename) {
+        try {
+            String indexFilename = gcsFilename + ".bai";
+            if ( !Files.exists(IOUtils.getPath(indexFilename)) ) {
+                int i = gcsFilename.lastIndexOf('.');
+                if ( i >= 0 ) {
+                    indexFilename = gcsFilename.substring(0, i) + ".bai";
+                }
             }
+            this.bam = gcsFilename;
+            this.index = indexFilename;
+            init();
         }
-        this.bam = gcsFilename;
-        this.index = indexFilename;
-        init();
+        catch ( FileNotFoundException e ) {
+            throw new UserException.CouldNotReadInputFile("Could not read file " + gcsFilename, e);
+        }
     }
 
-    private void init() throws IOException {
-        Path bamPath = BucketUtils.getPathOnGcs(bam);
-        Path bamIndexPath = BucketUtils.getPathOnGcs(index);
+    private void init() throws FileNotFoundException {
+        Path bamPath = IOUtils.getPath(bam);
+        Path bamIndexPath = IOUtils.getPath(index);
         if (!Files.exists(bamPath)) {
             throw new FileNotFoundException(bamPath.toString());
         }
@@ -74,29 +91,34 @@ public class NioBam implements Serializable {
     }
 
     /** Parses the BAM file into SAMRecords. Will be distributed onto at least 'numPartitions' partitions. **/
-    public JavaRDD<SAMRecord> getReads(JavaSparkContext ctx, int numPartitions) throws IOException {
-        Path bamPath = BucketUtils.getPathOnGcs(bam);
-        ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(Files.newByteChannel(bamPath), bamPath.toString());
-        final byte[] index  = getIndex();
-        SeekableStream indexInMemory = new ByteArraySeekableStream(index);
+    public JavaRDD<SAMRecord> getReads(JavaSparkContext ctx, int numPartitions) {
+        try {
+            Path bamPath = IOUtils.getPath(bam);
+            ChannelAsSeekableStream bamOverNIO = new ChannelAsSeekableStream(Files.newByteChannel(bamPath), bamPath.toString());
+            final byte[] index = getIndex();
+            SeekableStream indexInMemory = new ByteArraySeekableStream(index);
 
-        SamReader bam3 = SamReaderFactory.makeDefault()
-                .validationStringency(ValidationStringency.LENIENT)
-                .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
-                .open(SamInputResource.of(bamOverNIO).index(indexInMemory));
-        List<QueryInterval> chunks = getAllChunksBalanced(bam3, numPartitions);
+            SamReader bam3 = SamReaderFactory.makeDefault()
+                    .validationStringency(ValidationStringency.LENIENT)
+                    .enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
+                    .open(SamInputResource.of(bamOverNIO).index(indexInMemory));
+            List<QueryInterval> chunks = getAllChunksBalanced(bam3, numPartitions);
 
-        // Ideally we'd get exactly the number of chunks the user is asking for, but until then...
-        System.out.println("We got: " + chunks.size() + " chunks.");
+            // Ideally we'd get exactly the number of chunks the user is asking for, but until then...
+            logger.debug("We got: " + chunks.size() + " chunks.");
 
-        return ctx.parallelize(chunks, chunks.size()).flatMap(qi -> new ReadsIterable(bam, index, qi).iterator());
+            return ctx.parallelize(chunks, chunks.size()).flatMap(qi -> new ReadsIterable(bam, index, qi).iterator());
+        }
+        catch ( IOException e ) {
+            throw new GATKException("I/O error loading reads", e);
+        }
     }
 
     private synchronized byte[] getIndex() throws IOException {
         if (null!= indexCache) {
             return indexCache;
         }
-        indexCache = Files.readAllBytes(BucketUtils.getPathOnGcs(index));
+        indexCache = Files.readAllBytes(IOUtils.getPath(index));
         return indexCache;
     }
 

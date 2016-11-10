@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +24,15 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
         ArrayList<File> ret = new ArrayList<>();
         for (String fn : readFilesNames) {
             ret.add(new File(fn));
+        }
+        return ret;
+    }
+
+    @Override
+    public List<Path> getReadPaths() {
+        ArrayList<Path> ret = new ArrayList<>();
+        for (String fn : readFilesNames) {
+            ret.add(IOUtils.getPath(fn));
         }
         return ret;
     }

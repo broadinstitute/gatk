@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -315,6 +316,15 @@ public abstract class BaseTest {
         final File tempDir = createTempDir("nonExistentFileHolder");
         final File nonExistingFile = new File(tempDir, fileNameWithExtension);
         return nonExistingFile;
+    }
+
+    /**
+     * Return a Path object representing a file with the given name and extension that is guaranteed not to exist.
+     * @param fileNameWithExtension
+     * @return Path object representing a file that is guaranteed not to exist
+     */
+    public static Path getSafeNonExistentPath(final String fileNameWithExtension) {
+        return getSafeNonExistentFile(fileNameWithExtension).toPath();
     }
 
     /**

@@ -206,7 +206,7 @@ public final class PrintReadsIntegrationTest extends CommandLineProgramTest{
 
         runCommandLine(args);
 
-        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(outFile) ) {
+        try ( final ReadsDataSource outputReadsSource = new ReadsDataSource(outFile.toPath()) ) {
             final List<GATKRead> actualReads = new ArrayList<>();
             for ( final GATKRead read : outputReadsSource ) {
                 actualReads.add(read);

@@ -142,7 +142,7 @@ public abstract class GATKTool extends CommandLineProgram {
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
-            reads = new ReadsDataSource(readArguments.getReadFiles(), factory);
+            reads = new ReadsDataSource(readArguments.getReadPaths(), factory);
         }
         else {
             reads = null;

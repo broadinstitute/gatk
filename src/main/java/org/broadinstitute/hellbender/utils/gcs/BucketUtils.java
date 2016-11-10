@@ -380,6 +380,7 @@ public final class BucketUtils {
     /**
      * String -> Path. This *should* not be necessary (use Paths.get(URI.create(...)) instead) , but it currently is
      * on Spark because using the fat, shaded jar breaks the registration of the GCS FilesystemProvider.
+     * To transform other types of string URLs into Paths, use IOUtils.getPath instead.
      */
     public static java.nio.file.Path getPathOnGcs(String gcsUrl) {
         final String[] split = gcsUrl.split("/");
@@ -387,7 +388,6 @@ public final class BucketUtils {
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
-
 
     /**
      * Get an authenticated GCS-backed NIO FileSystem object representing the selected projected and bucket.
