@@ -40,37 +40,48 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
             doc = "Optional sort order to output in. If not supplied output is in the same order as input.")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
-    @Argument(shortName = "ID", doc = "Read Group ID")
+    public static final String RGID_SHORT_NAME = "ID";
+    @Argument(shortName = RGID_SHORT_NAME, doc = "Read Group ID")
     public String RGID = "1";
 
-    @Argument(shortName = "LB", doc = "Read Group Library")
+    public static final String RGLB_SHORT_NAME = "LB";
+    @Argument(shortName = RGLB_SHORT_NAME, doc = "Read Group Library")
     public String RGLB;
 
-    @Argument(shortName = "PL", doc = "Read Group platform (e.g. illumina, solid)")
+    public static final String RGPL_SHORT_NAME = "PL";
+    @Argument(shortName = RGPL_SHORT_NAME, doc = "Read Group platform (e.g. illumina, solid)")
     public String RGPL;
 
-    @Argument(shortName = "PU", doc = "Read Group platform unit (eg. run barcode)")
+    public static final String RGPU_SHORT_NAME = "PU";
+    @Argument(shortName = RGPU_SHORT_NAME, doc = "Read Group platform unit (eg. run barcode)")
     public String RGPU;
 
-    @Argument(shortName = "SM", doc = "Read Group sample name")
+    public static final String RGSM_SHORT_NAME = "SM";
+    @Argument(shortName = RGSM_SHORT_NAME, doc = "Read Group sample name")
     public String RGSM;
 
-    @Argument(shortName = "CN", doc = "Read Group sequencing center name", optional = true)
+    public static final String RGCN_SHORT_NAME = "CN";
+    @Argument(shortName = RGCN_SHORT_NAME, doc = "Read Group sequencing center name", optional = true)
     public String RGCN;
 
-    @Argument(shortName = "DS", doc = "Read Group description", optional = true)
+    public static final String RGDS_SHORT_NAME = "DS";
+    @Argument(shortName = RGDS_SHORT_NAME, doc = "Read Group description", optional = true)
     public String RGDS;
 
-    @Argument(shortName = "DT", doc = "Read Group run date", optional = true)
+    public static final String RGDT_SHORT_NAME = "DT";
+    @Argument(shortName = RGDT_SHORT_NAME, doc = "Read Group run date", optional = true)
     public Iso8601Date RGDT;
 
-    @Argument(shortName = "PI", doc = "Read Group predicted insert size", optional = true)
+    public static final String RGPI_SHORT_NAME = "PI";
+    @Argument(shortName = RGPI_SHORT_NAME, doc = "Read Group predicted insert size", optional = true)
     public Integer RGPI;
 
-    @Argument(shortName = "PG", doc = "Read Group program group", optional = true)
+    public static final String RGPG_SHORT_NAME = "PG";
+    @Argument(shortName = RGPG_SHORT_NAME, doc = "Read Group program group", optional = true)
     public String RGPG;
 
-    @Argument(shortName = "PM", doc = "Read Group platform model", optional = true)
+    public static final String RGPM_SHORT_NAME = "PM";
+    @Argument(shortName = RGPM_SHORT_NAME, doc = "Read Group platform model", optional = true)
     public String RGPM;
 
     @Override
