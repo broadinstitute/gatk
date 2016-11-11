@@ -40,48 +40,59 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
             doc = "Optional sort order to output in. If not supplied output is in the same order as input.")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
+    public static final String RGID_LONG_NAME = "RGID";
     public static final String RGID_SHORT_NAME = "ID";
-    @Argument(shortName = RGID_SHORT_NAME, doc = "Read Group ID")
+    @Argument(fullName = RGID_LONG_NAME, shortName = RGID_SHORT_NAME, doc = "Read Group ID")
     public String RGID = "1";
 
+    public static final String RGLB_LONG_NAME = "RGLB";
     public static final String RGLB_SHORT_NAME = "LB";
-    @Argument(shortName = RGLB_SHORT_NAME, doc = "Read Group Library")
+    @Argument(fullName = RGLB_LONG_NAME, shortName = RGLB_SHORT_NAME, doc = "Read Group Library")
     public String RGLB;
 
+    public static final String RGPL_LONG_NAME = "RGPL";
     public static final String RGPL_SHORT_NAME = "PL";
-    @Argument(shortName = RGPL_SHORT_NAME, doc = "Read Group platform (e.g. illumina, solid)")
+    @Argument(fullName = RGPL_LONG_NAME, shortName = RGPL_SHORT_NAME, doc = "Read Group platform (e.g. illumina, solid)")
     public String RGPL;
 
+    public static final String RGPU_LONG_NAME = "RGPU";
     public static final String RGPU_SHORT_NAME = "PU";
-    @Argument(shortName = RGPU_SHORT_NAME, doc = "Read Group platform unit (eg. run barcode)")
+    @Argument(fullName = RGPU_LONG_NAME, shortName = RGPU_SHORT_NAME, doc = "Read Group platform unit (eg. run barcode)")
     public String RGPU;
 
+    public static final String RGSM_LONG_NAME = "RGSM";
     public static final String RGSM_SHORT_NAME = "SM";
-    @Argument(shortName = RGSM_SHORT_NAME, doc = "Read Group sample name")
+    @Argument(fullName = RGSM_LONG_NAME, shortName = RGSM_SHORT_NAME, doc = "Read Group sample name")
     public String RGSM;
 
+    public static final String RGCN_LONG_NAME = "RGCN";
     public static final String RGCN_SHORT_NAME = "CN";
-    @Argument(shortName = RGCN_SHORT_NAME, doc = "Read Group sequencing center name", optional = true)
+    @Argument(fullName = RGCN_LONG_NAME, shortName = RGCN_SHORT_NAME, doc = "Read Group sequencing center name", optional = true)
     public String RGCN;
 
+    public static final String RGDS_LONG_NAME = "RGDS";
     public static final String RGDS_SHORT_NAME = "DS";
-    @Argument(shortName = RGDS_SHORT_NAME, doc = "Read Group description", optional = true)
+    @Argument(fullName = RGDS_LONG_NAME, shortName = RGDS_SHORT_NAME, doc = "Read Group description", optional = true)
     public String RGDS;
 
+    public static final String RGDT_LONG_NAME = "RGDT";
     public static final String RGDT_SHORT_NAME = "DT";
-    @Argument(shortName = RGDT_SHORT_NAME, doc = "Read Group run date", optional = true)
+    @Argument(fullName = RGDT_LONG_NAME, shortName = RGDT_SHORT_NAME, doc = "Read Group run date", optional = true)
     public Iso8601Date RGDT;
 
+    public static final String RGPI_LONG_NAME = "RGPI";
     public static final String RGPI_SHORT_NAME = "PI";
-    @Argument(shortName = RGPI_SHORT_NAME, doc = "Read Group predicted insert size", optional = true)
+    @Argument(fullName = RGPI_LONG_NAME, shortName = RGPI_SHORT_NAME, doc = "Read Group predicted insert size", optional = true)
     public Integer RGPI;
 
+    public static final String RGPG_LONG_NAME = "RGPG";
     public static final String RGPG_SHORT_NAME = "PG";
-    @Argument(shortName = RGPG_SHORT_NAME, doc = "Read Group program group", optional = true)
+    @Argument(fullName = RGPG_LONG_NAME, shortName = RGPG_SHORT_NAME, doc = "Read Group program group", optional = true)
     public String RGPG;
 
+    public static final String RGPM_LONG_NAME = "RGPM";
     public static final String RGPM_SHORT_NAME = "PM";
-    @Argument(shortName = RGPM_SHORT_NAME, doc = "Read Group platform model", optional = true)
+    @Argument(fullName = RGPM_LONG_NAME, shortName = RGPM_SHORT_NAME, doc = "Read Group platform model", optional = true)
     public String RGPM;
 
     @Override
