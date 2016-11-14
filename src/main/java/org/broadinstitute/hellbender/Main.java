@@ -22,6 +22,7 @@ import java.util.*;
  * - {@link #getClassList()} to return a list of single classes to include (e.g. required input pre-processing tools).
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
+ * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
  *
  * Note: If any of the previous methods was overrided, {@link #main(String[])} should be implemented to instantiate your class
  * and call {@link #mainEntry(String[])} to make the changes effective.
@@ -104,7 +105,8 @@ public class Main {
     /**
      * The entry point to the toolkit from commandline: it uses {@link #instanceMain(String[])} to run the command line
      * program and handle the returned object with {@link #handleResult(Object)}, and exit with 0.
-     * If any error occurs, it handles the exception and exit with the concrete error exit value.
+     * If any error occurs, it handles the exception (if non-user exception, through {@link #handleNonUserException(Exception)})
+     * and exit with the concrete error exit value.
      *
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
@@ -127,7 +129,7 @@ public class Main {
             }
             System.exit(USER_EXCEPTION_EXIT_VALUE);
         } catch (final Exception e){
-            e.printStackTrace();
+            handleNonUserException(e);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
@@ -140,6 +142,14 @@ public class Main {
         if (result != null) {
             System.out.println("Tool returned:\n" + result);
         }
+    }
+
+    /**
+     * Handle any exception that does not come from the user. Default implementation prints the stack trace.
+     * @param exception the exception to handle (never an {@link UserException}).
+     */
+    protected void handleNonUserException(final Exception exception) {
+        exception.printStackTrace();
     }
 
     /** The entry point to GATK from commandline. It calls {@link #mainEntry(String[])} from this instance. */
