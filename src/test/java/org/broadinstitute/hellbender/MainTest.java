@@ -10,10 +10,4 @@ public final class MainTest extends CommandLineProgramTest{
     public void testCommandNotFoundThrows(){
         this.runCommandLine(new String[]{"Brain"});
     }
-
-    @Test
-    public void testPrintReadsVersion() {
-        String out = BaseTest.captureStderr(() -> Main.main(new String[]{"PrintReads", "--version"}));
-        BaseTest.assertContains(out, "Version:");
-    }
 }
