@@ -116,8 +116,8 @@ dependencies {
     compile 'com.google.apis:google-api-services-genomics:v1-rev90-1.22.0'
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
 
-   compile 'org.ojalgo:ojalgo:39.0'
-    compile ('org.apache.spark:spark-mllib_2.10:2.0.0') {
+    compile 'org.ojalgo:ojalgo:39.0'
+    compile ('org.apache.spark:spark-mllib_2.11:2.0.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -125,7 +125,7 @@ dependencies {
     }
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    compile('org.bdgenomics.adam:adam-core_2.10:0.20.0') {
+    compile('org.bdgenomics.adam:adam-core_2.11:0.20.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -311,13 +311,13 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.10'
+        exclude module: 'spark-core_2.11'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.10'
+        exclude module: 'spark-mllib_2.11'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
