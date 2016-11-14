@@ -286,7 +286,7 @@ def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs
         cmd = [ "gcloud", "dataproc", "jobs", "submit", "spark"] \
               + dataprocargs \
               + ["--jar", jarPath] \
-              + gatkArgs + ["--sparkMaster", "yarn-client"]
+              + ["--"] + gatkArgs + ["--sparkMaster", "yarn"]
         try:
             runCommand(cmd, dryrun)
         except OSError:
