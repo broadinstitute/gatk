@@ -285,8 +285,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         //TODO - on the originalAssemblyRegion?
         final Collection<GATKRead> filteredReads = filterNonPassingReads(regionForGenotyping);
 
+        // In Mutect2 we filter the reads after local re-assembly, and when we do so we may lose many, if not all, of the reads.
+        // In such a case it is meaningless to compute read likelihoods; just return NO_CALLS
+        if (regionForGenotyping.getReads().isEmpty()){
+            return NO_CALLS;
+        }
+
         // TODO: this quantity and all downstream uses of it seems like it can be obtained from
-        // TODO: ReadLikelihoods<Allele>::sampelReads
+        // TODO: ReadLikelihoods<Allele>::sampleReads
         final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(filteredReads);
         logReadInfo(MTAC.DEBUG_READ_NAME, regionForGenotyping.getReads(), "Present in region for genotyping after filtering reads");
 
@@ -473,7 +479,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * Shutdown this HC engine, closing resources as appropriate
+     * Shutdown this M2 engine, closing resources as appropriate
      */
     public void shutdown() {
         likelihoodCalculationEngine.close();
