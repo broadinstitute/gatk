@@ -500,11 +500,12 @@ public final class UtilsUnitTest extends BaseTest {
     }
 
     /**
-     * Test setting the global logging level for Picard and Log4j and java.util.logging.
+     * Test setting the global logging level for Picard, Log4j, MinLog and java.util.logging.
      *
      * Note that there are three very similar, but not identical, logging level enums from different namespaces
      * being used here. The one used by Picard (and Hellbender --verbosity) of type "Log.LogLevel", the parallel
      * one used by log4j of type "Level", and the one used by java.utils.logging.
+     *
      */
     @Test
     public void testSetLoggingLevel() {
