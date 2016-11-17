@@ -12,13 +12,12 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
-import scala.Tuple3;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.BreakpointAlleleInversion;
 
 public class SVVariantCallerInternalUnitTest extends BaseTest {
 
@@ -33,8 +32,8 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
         final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentRegions.get(0);
         Assert.assertEquals(chimericAlignment.contigId, "contig-1");
-        Assert.assertEquals(chimericAlignment.region1, region1);
-        Assert.assertEquals(chimericAlignment.region2, region3);
+        Assert.assertEquals(chimericAlignment.regionWithLowerCoordOnContig, region1);
+        Assert.assertEquals(chimericAlignment.regionWithHigherCoordOnContig, region3);
         Assert.assertEquals(chimericAlignment.homology, "");
         Assert.assertEquals(chimericAlignment.insertedSequence, "GAGATAGAGTC");
     }
@@ -50,8 +49,8 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
         final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentRegions.get(0);
         Assert.assertEquals(chimericAlignment.contigId, "contig-1");
-        Assert.assertEquals(chimericAlignment.region1, region1);
-        Assert.assertEquals(chimericAlignment.region2, region3);
+        Assert.assertEquals(chimericAlignment.regionWithLowerCoordOnContig, region1);
+        Assert.assertEquals(chimericAlignment.regionWithHigherCoordOnContig, region3);
         Assert.assertEquals(chimericAlignment.homology, "");
         Assert.assertEquals(chimericAlignment.insertedSequence, "TGAGAGTTGGCCCGAACACTGCTGGATTCCACTTCA");
         Assert.assertEquals(chimericAlignment.insertionMappings.size(), 1);
@@ -68,11 +67,11 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
         final ChimericAlignment chimericAlignment = assembledBreakpointsFromAlignmentRegions.get(0);
         Assert.assertEquals(chimericAlignment.contigId, "702700");
-        Assert.assertEquals(chimericAlignment.region1, region1);
-        Assert.assertEquals(chimericAlignment.region2, region2);
+        Assert.assertEquals(chimericAlignment.regionWithLowerCoordOnContig, region1);
+        Assert.assertEquals(chimericAlignment.regionWithHigherCoordOnContig, region2);
         Assert.assertFalse(chimericAlignment.homology.isEmpty());
 
-        final Tuple2<SimpleInterval, SimpleInterval> leftAndRightBreakpointsOnReferenceLeftAlignedForHomology = chimericAlignment.getLeftAndRightBreakpointsOnReferenceLeftAlignedForHomology();
+        final Tuple2<SimpleInterval, SimpleInterval> leftAndRightBreakpointsOnReferenceLeftAlignedForHomology = chimericAlignment.getLeftJustifiedBreakpoints();
 
         Assert.assertEquals(leftAndRightBreakpointsOnReferenceLeftAlignedForHomology._1(), new SimpleInterval("chr19", 20138007, 20138007));
         Assert.assertEquals(leftAndRightBreakpointsOnReferenceLeftAlignedForHomology._2(), new SimpleInterval("chr19", 20152651, 20152651));
@@ -83,7 +82,7 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         AlignmentRegion overlappingRegion1 = new AlignmentRegion("overlap", "22", TextCigarCodec.decode("47S154M"), false, new SimpleInterval("19", 48699881, 48700035), 60, 1, 154, 0);
         AlignmentRegion overlappingRegion2 = new AlignmentRegion("overlap", "22", TextCigarCodec.decode("116H85M"), true, new SimpleInterval("19", 48700584, 48700669), 60, 117, 201, 0);
 
-        Assert.assertTrue(SVVariantCallerInternal.treatNextAlignmentRegionInPairAsInsertion(overlappingRegion1, overlappingRegion2, 50));
+        Assert.assertTrue(SVVariantCallerInternal.nextAlignmentRegionInpairLowMapQ(overlappingRegion1, overlappingRegion2, 50));
     }
 
     @Test
@@ -148,12 +147,12 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         final List<AlignmentRegion> alignmentRegionList = Arrays.asList(region1, region2);
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentRegions = SVVariantCallerInternal.getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
 
-        final BreakpointAlleleInversion inversionAllele = new BreakpointAlleleInversion(assembledBreakpointsFromAlignmentRegions.get(0));
-        final String id = SVVariantCallerInternal.produceVariantId(inversionAllele);
+        final BreakpointAllele breakpointAllele = new BreakpointAllele(assembledBreakpointsFromAlignmentRegions.get(0));
+        final String id = SVVariantCallerInternal.produceVariantId(breakpointAllele);
         Assert.assertFalse(id.isEmpty());
         final String[] fields = id.split(SVConstants.VARIANT_ID_FIELD_SEPARATER);
         Assert.assertEquals(fields.length, 4);
-        Assert.assertEquals(BreakpointAlleleInversion.InversionType.valueOf(fields[0]), BreakpointAlleleInversion.InversionType.INV_3_TO_5);
+//        Assert.assertEquals(BreakpointAlleleInversion.InversionType.valueOf(fields[0]), InversionType.INV_3_TO_5);
         Assert.assertTrue(fields[1].endsWith("19"));
         Assert.assertEquals(fields[2], "20138007");
         Assert.assertEquals(fields[3], "20152651");
@@ -170,12 +169,12 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         final List<AlignmentRegion> alignmentRegionList = Arrays.asList(region1, region2);
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentRegions = SVVariantCallerInternal.getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
 
-        final Iterable<Tuple3<String, String, ChimericAlignment>> alignments = Arrays.asList(new Tuple3<>("702700", "702700", assembledBreakpointsFromAlignmentRegions.get(0)));
+        final Iterable<ChimericAlignment> alignments = Collections.singletonList(assembledBreakpointsFromAlignmentRegions.get(0));
 
-        final BreakpointAllele inversionAllele = new BreakpointAlleleInversion(assembledBreakpointsFromAlignmentRegions.get(0));
+        final BreakpointAllele breakpointAllele = new BreakpointAllele(assembledBreakpointsFromAlignmentRegions.get(0));
 
         VariantContextBuilder vcBuilder = new VariantContextBuilder().chr("chr19").start(20138007).stop(20152651).alleles(Arrays.asList(Allele.create("A", true), Allele.create("<INV>"))); // dummy test data, almost guaranteed to be non-factual
-        final VariantContext vc = SVVariantCallerInternal.updateAttributes(vcBuilder, inversionAllele, alignments, 20138007, 20152651).make();
+        final VariantContext vc = SVVariantCallerInternal.updateAttributes(vcBuilder, 20138007, 20152651, new Tuple2<>(breakpointAllele, alignments)).make();
 
         String testString = vc.getAttributeAsString(GATKSVVCFHeaderLines.MAPPING_QUALITIES, "NONSENSE");
         Assert.assertFalse(testString.isEmpty());
