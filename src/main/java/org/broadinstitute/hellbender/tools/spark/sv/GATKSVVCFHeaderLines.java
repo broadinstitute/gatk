@@ -31,8 +31,8 @@ public class GATKSVVCFHeaderLines {
     public static final String INSERTED_SEQUENCE_MAPPINGS = "INSERTED_SEQUENCE_MAPPINGS";
     public static final String HOMOLOGY = "HOMOLOGY";
     public static final String HOMOLOGY_LENGTH = "HOMOLOGY_LENGTH";
-    public static final String INV_3_TO_5 = "THREE_TO_FIVE";
-    public static final String INV_5_TO_3 = "FIVE_TO_THREE";
+    public static final String INV_3_TO_5 = "INV_3_TO_5";
+    public static final String INV_5_TO_3 = "INV_5_TO_3";
 
     static {
         vcfHeaderLines.put(SVTYPE, new VCFInfoHeaderLine(SVTYPE, 1, VCFHeaderLineType.String, "Type of structural variant"));
