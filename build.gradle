@@ -144,7 +144,7 @@ dependencies {
     compile('org.apache.hadoop:hadoop-client:2.7.2') // should be a 'provided' dependency
     compile('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
-    compile('de.javakaffee:kryo-serializers:0.37') {
+    compile('de.javakaffee:kryo-serializers:0.41') {
         exclude module: 'kryo' // use Spark's version
     }
 
