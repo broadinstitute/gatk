@@ -18,14 +18,14 @@ public class SVKmerizer implements Iterator<SVKmer> {
     protected int idx = 0;
     protected SVKmer nextKmer;
 
-    public SVKmerizer( final byte[] seq, final int kSize ) {
-        this(new ASCIICharSequence(seq), kSize);
+    public SVKmerizer( final byte[] seq, final int kSize, SVKmer kmer ) {
+        this(new ASCIICharSequence(seq), kSize, kmer );
     }
 
-    public SVKmerizer( final CharSequence seq, final int kSize ) {
+    public SVKmerizer( final CharSequence seq, final int kSize, SVKmer kmer ) {
         this.seq = seq;
         this.kSize = kSize;
-        this.nextKmer = nextKmer(new SVKmer(kSize), 0);
+        this.nextKmer = nextKmer(kmer, 0);
     }
 
     protected SVKmerizer( final int kSize, final CharSequence seq ) {
@@ -46,25 +46,25 @@ public class SVKmerizer implements Iterator<SVKmer> {
         return result;
     }
 
-    public static SVKmer toKmer( final CharSequence seq ) {
-        final SVKmerizer sk = new SVKmerizer(seq, seq.length());
-        Utils.validateArg(sk.hasNext(), () -> "Can't make a SVKmer from '"+seq+"'");
+    public static SVKmer toKmer(final CharSequence seq, SVKmer kmer) {
+        final SVKmerizer sk = new SVKmerizer(seq, seq.length(), kmer);
+        Utils.validateArg(sk.hasNext(), () -> "Can't make a SVKmerLong from '"+seq+"'");
         return sk.next();
     }
 
-    public static SVKmer toKmer( final byte[] seq ) {
-        return toKmer(new ASCIICharSequence(seq));
+    public static SVKmer toKmer(final byte[] seq, SVKmer kmer) {
+        return toKmer(new ASCIICharSequence(seq),kmer);
     }
 
-    public static Stream<SVKmer> stream( final CharSequence seq, final int kSize ) {
-        return StreamSupport.stream(((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize)).spliterator(), false);
+    public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, SVKmer kmer) {
+        return StreamSupport.stream(((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize, kmer)).spliterator(), false);
     }
 
-    public static Stream<SVKmer> stream( final byte[] seq, final int kSize ) {
-        return stream(new ASCIICharSequence(seq),kSize);
+    public static Stream<SVKmer> stream(final byte[] seq, final int kSize, SVKmer kmer ) {
+        return  stream(new ASCIICharSequence(seq), kSize, kmer);
     }
 
-    protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
+    protected SVKmer nextKmer(SVKmer tmpKmer, int validBaseCount ) {
         final int len = seq.length();
         while ( idx < len ) {
             switch ( seq.charAt(idx) ) {

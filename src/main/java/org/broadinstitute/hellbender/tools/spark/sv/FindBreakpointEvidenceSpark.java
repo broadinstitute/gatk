@@ -1074,10 +1074,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      * A <Kmer,IntervalId> pair.
      */
     @DefaultSerializer(KmerAndInterval.Serializer.class)
-    @VisibleForTesting final static class KmerAndInterval extends SVKmer implements Map.Entry<SVKmer, Integer> {
+    @VisibleForTesting final static class KmerAndInterval extends SVKmerLong implements Map.Entry<SVKmer, Integer> {
         private final int intervalId;
 
-        KmerAndInterval( final SVKmer kmer, final int intervalId ) {
+        KmerAndInterval(final SVKmer kmer, final int intervalId ) {
             super(kmer);
             this.intervalId = intervalId;
         }
@@ -1094,7 +1094,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         }
 
         @Override
-        public SVKmer getKey() { return new SVKmer(this); }
+        public SVKmer getKey() { return new SVKmerLong(this); }
         @Override
         public Integer getValue() { return intervalId; }
         @Override
@@ -1138,8 +1138,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         private final double minEntropy;
         private final ArrayList<Tuple2<KmerAndInterval, Integer>> tupleList = new ArrayList<>();
 
-        QNameKmerizer( final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap,
-                       final Set<SVKmer> kmersToIgnore, final int kSize, final double minEntropy ) {
+        QNameKmerizer(final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap,
+                      final Set<SVKmer> kmersToIgnore, final int kSize, final double minEntropy ) {
             this.qNameAndIntervalMultiMap = qNameAndIntervalMultiMap;
             this.kmersToIgnore = kmersToIgnore;
             this.kSize = kSize;
