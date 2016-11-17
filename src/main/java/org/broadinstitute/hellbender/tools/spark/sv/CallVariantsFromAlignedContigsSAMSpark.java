@@ -68,8 +68,8 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
-        final JavaPairRDD<Tuple2<String, String>, Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey();
-        final JavaPairRDD<Tuple2<String, String>, Tuple2<Iterable<AlignmentRegion>, byte[]>> alignmentRegionsIterable = alignmentsGroupedByName.mapValues(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
+        final JavaRDD<Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey().map(Tuple2::_2);
+        final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable = alignmentsGroupedByName.mapToPair(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
 
         final Integer minAlignLengthFinal = minAlignLength;
 

@@ -57,27 +57,31 @@ import java.util.List;
 class ChimericAlignment {
 
     static final String NO_SEQUENCE = "none";
+    String assemblyId;
     String contigId;
-    AlignmentRegion region1;
-    AlignmentRegion region2;
+    AlignmentRegion regionWithLowerCoordOnContig;
+    AlignmentRegion regionWithHigherCoordOnContig;
     String homology;
     String insertedSequence;
     List<String> insertionMappings;
 
     /**
      * Construct a new ChimericAlignment from two AlignmentRegions.
-     * Assumes {@code region1} has a lower {@link AlignmentRegion#startInAssembledContig} than {@code region2}.
+     * Assumes {@code regionWithLowerCoordOnContig} has a lower {@link AlignmentRegion#startInAssembledContig} than {@code regionWithHigherCoordOnContig}.
      */
-    protected ChimericAlignment(final AlignmentRegion region1, final AlignmentRegion region2,
+    protected ChimericAlignment(final AlignmentRegion regionWithLowerCoordOnContig, final AlignmentRegion regionWithHigherCoordOnContig,
                                 final String insertedSequence, final String homology,
                                 final List<String> insertionMappings) {
 
-        final String contigId = region1.contigId;
-        Utils.validateArg(contigId.equals(region2.contigId), "two alignment regions used to construct chimeric alignment are not from the same assembled contig.");
+        final String assemblyId = regionWithLowerCoordOnContig.assemblyId;
+        final String contigId = regionWithLowerCoordOnContig.contigId;
+        Utils.validateArg(assemblyId.equals(regionWithHigherCoordOnContig.assemblyId), "two alignment regions used to construct chimeric alignment are not from the same local assembly.");
+        Utils.validateArg(contigId.equals(regionWithHigherCoordOnContig.contigId), "two alignment regions used to construct chimeric alignment are not from the same assembled contig.");
 
+        this.assemblyId = assemblyId;
         this.contigId = contigId;
-        this.region1 = region1;
-        this.region2 = region2;
+        this.regionWithLowerCoordOnContig = regionWithLowerCoordOnContig;
+        this.regionWithHigherCoordOnContig = regionWithHigherCoordOnContig;
         this.homology = homology;
         this.insertedSequence = insertedSequence;
         this.insertionMappings = insertionMappings;
@@ -86,8 +90,9 @@ class ChimericAlignment {
     @SuppressWarnings("unchecked")
     protected ChimericAlignment(final Kryo kryo, final Input input) {
         this.contigId = input.readString();
-        this.region1 = kryo.readObject(input, AlignmentRegion.class);
-        this.region2 = kryo.readObject(input, AlignmentRegion.class);
+        this.contigId = input.readString();
+        this.regionWithLowerCoordOnContig = kryo.readObject(input, AlignmentRegion.class);
+        this.regionWithHigherCoordOnContig = kryo.readObject(input, AlignmentRegion.class);
         this.homology = input.readString();
         this.insertedSequence = input.readString();
         this.insertionMappings = (ArrayList<String>) kryo.readObject(input, ArrayList.class);
@@ -97,6 +102,7 @@ class ChimericAlignment {
      * TODO: never used/tested method, should remove?
      *  Parses a tab-delimited assembled breakpoint line into an ChimericAlignment object. Fields should be in the same order as that produced by toString():
      *
+     *  assemblyId
      *  contigId
      *  alignmentRegion1.toString()
      *  alignmentRegion2.toString()
@@ -127,9 +133,10 @@ class ChimericAlignment {
     }
 
     protected void serialize(final Kryo kryo, final Output output) {
+        output.writeString(assemblyId);
         output.writeString(contigId);
-        kryo.writeObject(output, region1);
-        kryo.writeObject(output, region2);
+        kryo.writeObject(output, regionWithLowerCoordOnContig);
+        kryo.writeObject(output, regionWithHigherCoordOnContig);
         output.writeString(homology);
         output.writeString(insertedSequence);
         kryo.writeObject(output, insertionMappings);
@@ -149,11 +156,12 @@ class ChimericAlignment {
 
     @Override
     public String toString() {
-        return contigId +
+        return assemblyId + "\t" +
+                contigId +
                 "\t" +
-                region1.toString() +
+                regionWithLowerCoordOnContig.toString() +
                 "\t" +
-                region2.toString() +
+                regionWithHigherCoordOnContig.toString() +
                 "\t" +
                 ("".equals(insertedSequence) ? NO_SEQUENCE : insertedSequence) +
                 "\t" +
@@ -166,7 +174,7 @@ class ChimericAlignment {
      */
     @VisibleForTesting
     boolean involvesStrandSwitch() {
-        return region1.forwardStrand != region2.forwardStrand;
+        return regionWithLowerCoordOnContig.forwardStrand != regionWithHigherCoordOnContig.forwardStrand;
     }
 
     /**
@@ -175,18 +183,43 @@ class ChimericAlignment {
      * with higher reference coordinates.
      */
     @VisibleForTesting
-    final Tuple2<SimpleInterval, SimpleInterval> getLeftAndRightBreakpointsOnReferenceLeftAlignedForHomology() {
+    final Tuple2<SimpleInterval, SimpleInterval> getLeftJustifiedBreakpoints() {
+        final String leftBreakpointRefContig, rightBreakpointRefContig;
         final int leftBreakpointCoord, rightBreakpointCoord;
-        if (region1.referenceInterval.getStart() < region2.referenceInterval.getStart()) {
-            leftBreakpointCoord = region1.forwardStrand ? region1.referenceInterval.getEnd() - homology.length() : region1.referenceInterval.getStart();
-            rightBreakpointCoord = region2.forwardStrand ? region2.referenceInterval.getStart() + homology.length() : region2.referenceInterval.getEnd();
+        if (regionStartsEarlyOnContigAlsoEarlyOnRef()) {
+            leftBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
+            leftBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() - homology.length() : regionWithLowerCoordOnContig.referenceInterval.getStart();
+            rightBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
+            rightBreakpointCoord = regionWithHigherCoordOnContig.forwardStrand ? regionWithHigherCoordOnContig.referenceInterval.getStart() + homology.length() : regionWithHigherCoordOnContig.referenceInterval.getEnd();
         } else {
-            leftBreakpointCoord = region2.forwardStrand ? region2.referenceInterval.getStart() : region2.referenceInterval.getEnd() - homology.length();
-            rightBreakpointCoord = region1.forwardStrand ? region1.referenceInterval.getEnd() : region1.referenceInterval.getStart() + homology.length();
+            leftBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
+            leftBreakpointCoord = regionWithHigherCoordOnContig.forwardStrand ? regionWithHigherCoordOnContig.referenceInterval.getStart() : regionWithHigherCoordOnContig.referenceInterval.getEnd() - homology.length();
+            rightBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
+            rightBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() : regionWithLowerCoordOnContig.referenceInterval.getStart() + homology.length();
         }
 
-        final SimpleInterval leftBreakpoint = new SimpleInterval(region1.referenceInterval.getContig(), leftBreakpointCoord, leftBreakpointCoord);
-        final SimpleInterval rightBreakpoint = new SimpleInterval(region2.referenceInterval.getContig(), rightBreakpointCoord, rightBreakpointCoord);
+        final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
+        final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
         return new Tuple2<>(leftBreakpoint, rightBreakpoint);
+    }
+
+    final boolean regionStartsEarlyOnContigAlsoEarlyOnRef() {
+        final int contig1 = Integer.valueOf( regionWithLowerCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "") );
+        final int contig2 = Integer.valueOf( regionWithHigherCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "") );
+        final int start1 = regionWithLowerCoordOnContig.referenceInterval.getStart();
+        final int start2 = regionWithHigherCoordOnContig.referenceInterval.getStart();
+        if (contig1!=contig2) {
+            return contig1 < contig2;
+        } else {
+            return start1 < start2;
+        }
+    }
+
+    final Tuple2<Boolean, Boolean> getBreakpointStrands() {
+        if (regionStartsEarlyOnContigAlsoEarlyOnRef()) {
+            return new Tuple2<>(regionWithLowerCoordOnContig.forwardStrand, regionWithHigherCoordOnContig.forwardStrand);
+        } else {
+            return new Tuple2<>(regionWithHigherCoordOnContig.forwardStrand, regionWithLowerCoordOnContig.forwardStrand);
+        }
     }
 }

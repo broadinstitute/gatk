@@ -17,21 +17,6 @@ final class SVVariantCallerUtils {
         return Math.max(0, Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1) - Math.max(one.startInAssembledContig, two.startInAssembledContig));
     }
 
-    /**
-     * Test if a {@link BreakpointAllele} is an {@link org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.BreakpointAlleleInversion}
-     */
-    @VisibleForTesting
-    static boolean isInversion(final BreakpointAllele allele) {
-        try {
-            final BreakpointAllele.BreakpointAlleleInversion invAllele = (BreakpointAllele.BreakpointAlleleInversion) allele;
-            return invAllele.leftAlignedLeftBreakpoint.getContig().equals(invAllele.leftAlignedRightBreakpoint.getContig())
-                    &&
-                    (invAllele.getInversionType() == BreakpointAllele.BreakpointAlleleInversion.InversionType.INV_3_TO_5 || invAllele.getInversionType() == BreakpointAllele.BreakpointAlleleInversion.InversionType.INV_5_TO_3);
-        } catch (final ClassCastException ccex) {
-            return false;
-        }
-    }
-
     @VisibleForTesting
     static int getTotalHardClipping(final Cigar cigar) {
         final List<CigarElement> cigarElements = cigar.getCigarElements();
