@@ -36,9 +36,6 @@ class BreakpointAllele {
 
         this.leftBreakpointAlignedForward = chimericAlignment.regionWithLowerCoordOnContig.forwardStrand;
         this.rightBreakpointAlignedForward = chimericAlignment.regionWithHigherCoordOnContig.forwardStrand;
-//        final Tuple2<Boolean, Boolean> strands = chimericAlignment.getBreakpointStrands();
-//        this.leftBreakpointAlignedForward = strands._1();
-//        this.rightBreakpointAlignedForward = strands._2();
 
         this.insertedSequence = chimericAlignment.insertedSequence;
         this.homology = chimericAlignment.homology;
