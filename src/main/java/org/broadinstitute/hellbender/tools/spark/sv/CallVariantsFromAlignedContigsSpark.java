@@ -111,7 +111,7 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
                 .filter(pair -> Iterables.size(pair._1())>1)                        // added a filter step to filter out any contigs that has less than two alignment records
                 .flatMap(SVVariantCallerInternal::findChimericAlignments)
                 .mapToPair(SVVariantCallerInternal::extractBreakpointAllele)        // prepare for consensus (generate key that will be used in consensus step)     1 -> 1
-                .filter(tuple2 -> tuple2._1().determineStrandedness() != SAME_STRAND)   // TODO: hack right now for debugging during development
+                .filter(tuple2 -> tuple2._1().leftJustifiedLeftBreakpoint.getContig().equals(tuple2._1().leftJustifiedRightBreakpoint.getContig()) && tuple2._1().determineStrandedness() != SAME_STRAND) // TODO: hack right now for debugging during development
                 .groupByKey()                                                       // consensus                                                                    variable -> 1
                 .map(tuple2 -> SVVariantCallerInternal.callVariantsFromConsensus(tuple2, broadcastReference));
     }
