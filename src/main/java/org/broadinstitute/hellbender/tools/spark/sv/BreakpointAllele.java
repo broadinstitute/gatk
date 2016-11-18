@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Tuple2;
 
@@ -28,9 +29,9 @@ class BreakpointAllele {
     // TODO: 11/3/16 see where {@code insertionMappings} could be used
 //    final List<String> insertionMappings;
 
-    public BreakpointAllele(final ChimericAlignment chimericAlignment) {
+    public BreakpointAllele(final ChimericAlignment chimericAlignment, final SAMSequenceDictionary samSequenceDictionary) {
 
-        final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = chimericAlignment.getLeftJustifiedBreakpoints();
+        final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = chimericAlignment.getLeftJustifiedBreakpoints(samSequenceDictionary);
         this.leftJustifiedLeftBreakpoint = leftJustifiedBreakpoints._1();
         this.leftJustifiedRightBreakpoint = leftJustifiedBreakpoints._2();
 

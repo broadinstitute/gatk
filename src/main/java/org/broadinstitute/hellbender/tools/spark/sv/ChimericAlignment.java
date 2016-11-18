@@ -5,8 +5,10 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
@@ -184,10 +186,10 @@ class ChimericAlignment {
      * with higher reference coordinates.
      */
     @VisibleForTesting
-    final Tuple2<SimpleInterval, SimpleInterval> getLeftJustifiedBreakpoints() {
+    final Tuple2<SimpleInterval, SimpleInterval> getLeftJustifiedBreakpoints(final SAMSequenceDictionary samSequenceDictionary) {
         final String leftBreakpointRefContig, rightBreakpointRefContig;
         final int leftBreakpointCoord, rightBreakpointCoord;
-        if (regionStartsEarlyOnContigAlsoEarlyOnRef()) {
+        if (regionStartsEarlyOnContigAlsoEarlyOnRef(samSequenceDictionary)) {
             leftBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
             leftBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() - homology.length() : regionWithLowerCoordOnContig.referenceInterval.getStart();
             rightBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
@@ -204,40 +206,7 @@ class ChimericAlignment {
         return new Tuple2<>(leftBreakpoint, rightBreakpoint);
     }
 
-    final boolean regionStartsEarlyOnContigAlsoEarlyOnRef() {
-        // todo: hack for now to sort the alignment regions need to tackle these (previously only comparing start position)
-        final boolean oneIsNumber = NumberUtils.isNumber(regionWithLowerCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", ""));
-        final boolean twoIsNumber = NumberUtils.isNumber(regionWithHigherCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", ""));
-        if (oneIsNumber == twoIsNumber) {
-            final String contig1 = regionWithLowerCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "");
-            final String contig2 = regionWithHigherCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "");
-            final int start1 = regionWithLowerCoordOnContig.referenceInterval.getStart();
-            final int start2 = regionWithHigherCoordOnContig.referenceInterval.getStart();
-            if (oneIsNumber) {
-                final int contig1N = Integer.valueOf( contig1 );
-                final int contig2N = Integer.valueOf( contig2 );
-                if (contig1N==contig2N) {
-                    return start1 < start2;
-                } else {
-                    return contig1N < contig2N;
-                }
-            } else {
-                if (contig1.equals(contig2)) {
-                    return start1 < start2;
-                } else {
-                    return contig1.compareTo(contig2) <0;
-                }
-            }
-        } else{
-            return oneIsNumber;
-        }
-    }
-
-    final Tuple2<Boolean, Boolean> getBreakpointStrands() {
-        if (regionStartsEarlyOnContigAlsoEarlyOnRef()) {
-            return new Tuple2<>(regionWithLowerCoordOnContig.forwardStrand, regionWithHigherCoordOnContig.forwardStrand);
-        } else {
-            return new Tuple2<>(regionWithHigherCoordOnContig.forwardStrand, regionWithLowerCoordOnContig.forwardStrand);
-        }
+    final boolean regionStartsEarlyOnContigAlsoEarlyOnRef(final SAMSequenceDictionary samSequenceDictionary) {
+        return 0 < IntervalUtils.compareLocatables(regionWithLowerCoordOnContig.referenceInterval, regionWithHigherCoordOnContig.referenceInterval, samSequenceDictionary);
     }
 }

@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.IterableUtils;
@@ -13,6 +15,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -67,14 +70,17 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
+
         final JavaRDD<Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey().map(Tuple2::_2);
         final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable = alignmentsGroupedByName.mapToPair(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
 
         final Integer minAlignLengthFinal = minAlignLength;
 
-        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(broadcastReference, alignmentRegionsIterable);
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputPath, SVConstants.INVERSIONS_OUTPUT_VCF, fastaReference, variants);
+        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+
+        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(ctx.broadcast(getReference()), ctx.broadcast(referenceSequenceDictionary), alignmentRegionsIterable);
+        SVVCFWriter.writeVCF(pipelineOptions, outputPath, SVConstants.INVERSIONS_OUTPUT_VCF, fastaReference, variants);
     }
 
     @VisibleForTesting

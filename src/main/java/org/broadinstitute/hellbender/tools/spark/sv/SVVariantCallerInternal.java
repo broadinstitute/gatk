@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -50,8 +51,9 @@ class SVVariantCallerInternal implements Serializable {
      *
      * @param chimericAlignment chimeric alignment of a locally-assembled contig
      */
-    static Tuple2<BreakpointAllele, ChimericAlignment> extractBreakpointAllele(final ChimericAlignment chimericAlignment) {
-        return new Tuple2<>(new BreakpointAllele(chimericAlignment), chimericAlignment);
+    static Tuple2<BreakpointAllele, ChimericAlignment> extractBreakpointAllele(final ChimericAlignment chimericAlignment,
+                                                                               final Broadcast<SAMSequenceDictionary> samSequenceDictionaryBroadcast) {
+        return new Tuple2<>(new BreakpointAllele(chimericAlignment, samSequenceDictionaryBroadcast.getValue()), chimericAlignment);
     }
 
     /**
