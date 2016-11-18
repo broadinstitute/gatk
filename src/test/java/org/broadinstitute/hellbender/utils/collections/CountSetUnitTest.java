@@ -175,6 +175,19 @@ public final class CountSetUnitTest extends BaseTest {
             Assert.assertFalse(subject.contains(i));
     }
 
+    @Test
+    public void tesIterator() {
+        final CountSet subject = new CountSet(10);
+        final int[] sortedArray = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        subject.addAll(sortedArray);
+        final Iterator<Integer> iterator = subject.iterator();
+        for (int i = 0; i < sortedArray.length; i++) {
+            Assert.assertTrue(iterator.hasNext());
+            Assert.assertEquals(iterator.next().intValue(), sortedArray[i]);
+        }
+        Assert.assertFalse(iterator.hasNext());
+    }
+
     @DataProvider(name="capacities")
     public Iterator<Object[]> capacities() {
         final int MIN = 0;
