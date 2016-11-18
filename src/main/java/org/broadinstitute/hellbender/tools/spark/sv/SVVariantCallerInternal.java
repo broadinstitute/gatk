@@ -37,11 +37,11 @@ class SVVariantCallerInternal implements Serializable {
      *
      * @return          the chimeric alignments of this sequence (empty if the sequence does not have any alignments)
      */
-    static Iterator<ChimericAlignment> findChimericAlignments(Tuple2<Iterable<AlignmentRegion>, byte[]> input) {
+    static Iterable<ChimericAlignment> findChimericAlignments(Tuple2<Iterable<AlignmentRegion>, byte[]> input) {
         final byte[] contigSequence = input._2();
         final Iterable<AlignmentRegion> alignmentRegionsIterable = input._1();
         final List<AlignmentRegion> alignmentRegions = StreamSupport.stream(alignmentRegionsIterable.spliterator(), false).sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());
-        return getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegions, SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH).iterator();
+        return getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegions, SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH);
     }
 
     // TODO: this is looking at one chimeric alignment, i.e. a pair of alignment records at a time, potentially making calling complex variant difficult
@@ -188,7 +188,8 @@ class SVVariantCallerInternal implements Serializable {
 
     @VisibleForTesting
     static String produceVariantId(final BreakpointAllele breakpointAllele) {
-        return breakpointAllele.determineStrandedness().name() + SVConstants.VARIANT_ID_FIELD_SEPARATER +
+        // todo : hack for now for inversion only
+        return (breakpointAllele.determineStrandedness()==FIVE_TO_THREE ? GATKSVVCFHeaderLines.INV_5_TO_3 : GATKSVVCFHeaderLines.INV_3_TO_5) + SVConstants.VARIANT_ID_FIELD_SEPARATER +
                 breakpointAllele.leftJustifiedLeftBreakpoint.getContig() + SVConstants.VARIANT_ID_FIELD_SEPARATER +
                 breakpointAllele.leftJustifiedLeftBreakpoint.getStart() + SVConstants.VARIANT_ID_FIELD_SEPARATER +
                 breakpointAllele.leftJustifiedRightBreakpoint.getStart();
@@ -236,7 +237,7 @@ class SVVariantCallerInternal implements Serializable {
                 .attribute(GATKSVVCFHeaderLines.ALIGN_LENGTHS, annotations.stream().map(annotation -> String.valueOf(annotation.minAL)).collect(Collectors.joining(GATKSVVCFHeaderLines.FORMAT_FIELD_SEPARATOR)))
                 .attribute(GATKSVVCFHeaderLines.MAX_ALIGN_LENGTH, annotations.stream().map(annotation -> annotation.minAL).max(Comparator.naturalOrder()).orElse(0))
                 .attribute(GATKSVVCFHeaderLines.ASSEMBLY_IDS, annotations.stream().map(annotation -> annotation.asmID).collect(Collectors.joining(GATKSVVCFHeaderLines.FORMAT_FIELD_SEPARATOR)))
-                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, annotations.stream().map(annotation -> annotation.contigID.replace(" ", "_")).collect(Collectors.joining(GATKSVVCFHeaderLines.FORMAT_FIELD_SEPARATOR)));
+                .attribute(GATKSVVCFHeaderLines.CONTIG_IDS, annotations.stream().map(annotation -> annotation.contigID).collect(Collectors.joining(GATKSVVCFHeaderLines.FORMAT_FIELD_SEPARATOR)));
 
         final BreakpointAllele breakpointAllele = consensusAndAlignments._1();
 

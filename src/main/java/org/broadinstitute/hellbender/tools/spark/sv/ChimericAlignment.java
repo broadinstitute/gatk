@@ -5,6 +5,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -89,7 +90,7 @@ class ChimericAlignment {
 
     @SuppressWarnings("unchecked")
     protected ChimericAlignment(final Kryo kryo, final Input input) {
-        this.contigId = input.readString();
+        this.assemblyId = input.readString();
         this.contigId = input.readString();
         this.regionWithLowerCoordOnContig = kryo.readObject(input, AlignmentRegion.class);
         this.regionWithHigherCoordOnContig = kryo.readObject(input, AlignmentRegion.class);
@@ -204,14 +205,31 @@ class ChimericAlignment {
     }
 
     final boolean regionStartsEarlyOnContigAlsoEarlyOnRef() {
-        final int contig1 = Integer.valueOf( regionWithLowerCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "") );
-        final int contig2 = Integer.valueOf( regionWithHigherCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "") );
-        final int start1 = regionWithLowerCoordOnContig.referenceInterval.getStart();
-        final int start2 = regionWithHigherCoordOnContig.referenceInterval.getStart();
-        if (contig1!=contig2) {
-            return contig1 < contig2;
-        } else {
-            return start1 < start2;
+        // todo: hack for now to sort the alignment regions need to tackle these (previously only comparing start position)
+        final boolean oneIsNumber = NumberUtils.isNumber(regionWithLowerCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", ""));
+        final boolean twoIsNumber = NumberUtils.isNumber(regionWithHigherCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", ""));
+        if (oneIsNumber == twoIsNumber) {
+            final String contig1 = regionWithLowerCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "");
+            final String contig2 = regionWithHigherCoordOnContig.referenceInterval.getContig().toLowerCase().replace("chr", "").replace("ch", "");
+            final int start1 = regionWithLowerCoordOnContig.referenceInterval.getStart();
+            final int start2 = regionWithHigherCoordOnContig.referenceInterval.getStart();
+            if (oneIsNumber) {
+                final int contig1N = Integer.valueOf( contig1 );
+                final int contig2N = Integer.valueOf( contig2 );
+                if (contig1N==contig2N) {
+                    return start1 < start2;
+                } else {
+                    return contig1N < contig2N;
+                }
+            } else {
+                if (contig1.equals(contig2)) {
+                    return start1 < start2;
+                } else {
+                    return contig1.compareTo(contig2) <0;
+                }
+            }
+        } else{
+            return oneIsNumber;
         }
     }
 

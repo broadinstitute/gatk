@@ -39,7 +39,7 @@ final class ContigsCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
         private final String id;
-        public ContigID(final String idString) { this.id = idString; }
+        public ContigID(final String idString) { this.id = idString.replace(">", "").split(" ")[0]; }
 
         @Override
         public String toString(){
