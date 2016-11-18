@@ -63,6 +63,8 @@ public final class CollectInsertSizeMetricsIntegrationTest extends CommandLinePr
         if (allLevels) {
             // accumulation level options (all included for better test coverage)
             args.add("-" + "LEVEL");
+            args.add(MetricAccumulationLevel.ALL_READS.toString());
+            args.add("-" + "LEVEL");
             args.add(MetricAccumulationLevel.SAMPLE.toString());
             args.add("-" + "LEVEL");
             args.add(MetricAccumulationLevel.LIBRARY.toString());

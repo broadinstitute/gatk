@@ -529,7 +529,7 @@ public final class CommandLineParserTest {
         Assert.assertEquals(o.LIST.size(), 0);
     }
 
-    @Test
+    @Test(expectedExceptions = UserException.CommandLineException.class)
     public void testClearDefaultValuesFromListArgumentAndAddNew() {
         final CollectionWithDefaultValuesArguments o = new CollectionWithDefaultValuesArguments();
         final CommandLineParser clp = new CommandLineParser(o);
@@ -539,12 +539,21 @@ public final class CommandLineParserTest {
     }
 
     @Test
-    public void testDefaultValuesListArgument() {
+    public void testReplaceListArgument() {
         final CollectionWithDefaultValuesArguments o = new CollectionWithDefaultValuesArguments();
         final CommandLineParser clp = new CommandLineParser(o);
         final String[] args = {"--LIST","baz", "--LIST","frob"};
         Assert.assertTrue(clp.parseArguments(System.err, args));
-        Assert.assertEquals(o.LIST, CollectionUtil.makeList("foo", "bar", "baz", "frob"));
+        Assert.assertEquals(o.LIST, CollectionUtil.makeList("baz", "frob"));
+    }
+
+    @Test
+    public void testRetainDefaultListArgument() {
+        final CollectionWithDefaultValuesArguments o = new CollectionWithDefaultValuesArguments();
+        final CommandLineParser clp = new CommandLineParser(o);
+        final String[] args = {};
+        Assert.assertTrue(clp.parseArguments(System.err, args));
+        Assert.assertEquals(o.LIST, CollectionUtil.makeList("foo", "bar"));
     }
 
 

@@ -47,6 +47,7 @@ public final class ExampleCollectMultiMetricsIntegrationTest extends CommandLine
         args.addOutput(textOut);
 
         if (allLevels) {
+            args.addArgument("LEVEL", MetricAccumulationLevel.ALL_READS.toString());
             args.addArgument("LEVEL", MetricAccumulationLevel.SAMPLE.toString());
             args.addArgument("LEVEL", MetricAccumulationLevel.LIBRARY.toString());
             args.addArgument("LEVEL", MetricAccumulationLevel.READ_GROUP.toString());

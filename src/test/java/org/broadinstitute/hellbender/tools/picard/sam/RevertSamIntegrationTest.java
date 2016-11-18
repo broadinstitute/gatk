@@ -117,8 +117,12 @@ public final class RevertSamIntegrationTest extends CommandLineProgramTest {
     public Object[][] getPostitiveTestData() {
         return new Object[][] {
                 {null, true, true, true, null, null, Collections.EMPTY_LIST},
-                {SAMFileHeader.SortOrder.queryname, true, true, true, "Hey,Dad!", null, Arrays.asList("XT")},
-                {null, false, true, false, "Hey,Dad!", "NewLibraryName", Arrays.asList("XT")},
+                {SAMFileHeader.SortOrder.queryname, true, true, true, "Hey,Dad!", null,
+                        Arrays.asList("XT", SAMTag.NM.name(), SAMTag.UQ.name(), SAMTag.PG.name(), SAMTag.MD.name(),
+                                SAMTag.MQ.name(), SAMTag.SA.name(), SAMTag.MC.name())},
+                {null, false, true, false, "Hey,Dad!", "NewLibraryName",
+                        Arrays.asList("XT", SAMTag.NM.name(), SAMTag.UQ.name(), SAMTag.PG.name(), SAMTag.MD.name(),
+                        SAMTag.MQ.name(), SAMTag.SA.name(), SAMTag.MC.name())},
                 {null, false, false, false, null, null, Collections.EMPTY_LIST}
         };
     }
