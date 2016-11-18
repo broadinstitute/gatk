@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.collect.Iterables;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import scala.Tuple2;
 
@@ -60,10 +63,13 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
 
         final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsWithContigSequences = prepAlignmentRegionsForCalling(ctx, inputAlignments, inputAssemblies);
 
-        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(ctx.broadcast(getReference()), alignmentRegionsWithContigSequences).cache();
+        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+
+        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(ctx.broadcast(getReference()), ctx.broadcast(referenceSequenceDictionary), alignmentRegionsWithContigSequences).cache();
         log.info("Called " + variants.count() + " variants");
 
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputPath, outputName, fastaReference, variants);
+        SVVCFWriter.writeVCF(pipelineOptions, outputPath, outputName, fastaReference, variants);
     }
 
     /**
@@ -99,18 +105,19 @@ public final class CallVariantsFromAlignedContigsSpark extends GATKSparkTool {
      * Tuple2 of:
      *     A byte array with the sequence content of the contig
      *     {@code Iterable<AlignmentRegion>} AlignmentRegion objects representing all alignments for one contig
-     *
      * @param broadcastReference The broadcast handle to the reference (used to populate reference bases)
+     * @param samSequenceDictionaryBroadcast sam sequence dictionary used for sorting alignment regions on difference chromosomes
      * @param alignmentRegionsWithContigSequences A data structure as described above, where a list of AlignmentRegions and the sequence of the contig are keyed by a tuple of Assembly ID and Contig ID
-     * @return An RDD of VariantContext's representing SVs called from breakpoint alignments
      */
     static JavaRDD<VariantContext> callVariantsFromAlignmentRegions(final Broadcast<ReferenceMultiSource> broadcastReference,
+                                                                    final Broadcast<SAMSequenceDictionary> samSequenceDictionaryBroadcast,
                                                                     final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsWithContigSequences) {
+
 
         return alignmentRegionsWithContigSequences
                 .filter(pair -> Iterables.size(pair._1())>1)                        // added a filter step to filter out any contigs that has less than two alignment records
                 .flatMap(SVVariantCallerInternal::findChimericAlignments)
-                .mapToPair(SVVariantCallerInternal::extractBreakpointAllele)        // prepare for consensus (generate key that will be used in consensus step)     1 -> 1
+                .mapToPair(ca -> SVVariantCallerInternal.extractBreakpointAllele(ca, samSequenceDictionaryBroadcast))        // prepare for consensus (generate key that will be used in consensus step)     1 -> 1
                 .filter(tuple2 -> tuple2._1().leftJustifiedLeftBreakpoint.getContig().equals(tuple2._1().leftJustifiedRightBreakpoint.getContig()) && tuple2._1().determineStrandedness() != SAME_STRAND) // TODO: hack right now for debugging during development
                 .groupByKey()                                                       // consensus                                                                    variable -> 1
                 .map(tuple2 -> SVVariantCallerInternal.callVariantsFromConsensus(tuple2, broadcastReference));
