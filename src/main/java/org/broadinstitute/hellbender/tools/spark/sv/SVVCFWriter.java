@@ -42,9 +42,19 @@ class SVVCFWriter {
         writeVariants(pipelineOptions, outputPath, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
     }
 
-    // TODO: test
+    // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample such that they have the same start, end and inversion evidence type
+    //     but differ only in their inserted sequence, sorting these variants must take into account of such complications. the solution below is hackish
     private static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants, SAMSequenceDictionary referenceSequenceDictionary) {
-        return variants.stream().sorted((VariantContext v1, VariantContext v2) -> IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary)).collect(Collectors.toList());
+        return variants.stream().sorted((VariantContext v1, VariantContext v2) -> {
+            final int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
+            if (x==0) {
+                final String s1 = v1.getAttributeAsString(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, "");
+                final String s2 = v2.getAttributeAsString(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, "");
+                return s1.compareTo(s2);
+            } else {
+                return x;
+            }
+        }).collect(Collectors.toList());
     }
 
     private static void writeVariants(final PipelineOptions pipelineOptions, final String outputPath, final String fileName,
