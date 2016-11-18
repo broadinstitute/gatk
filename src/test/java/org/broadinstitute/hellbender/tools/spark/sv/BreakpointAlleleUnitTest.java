@@ -73,14 +73,14 @@ public class BreakpointAlleleUnitTest {
         final ChimericAlignment breakpoint2 = new ChimericAlignment(region3, region4, "", "", new ArrayList<>());
 
         Assert.assertTrue(breakpoint2.involvesStrandSwitch());
-        Assert.assertEquals(new BreakpointAllele(breakpoint2).determineStrandedness(), BreakpointAllele.Strandedness.THREE_TO_FIVE);
+        Assert.assertEquals(new BreakpointAllele(breakpoint2).determineStrandedness(), BreakpointAllele.Strandedness.FIVE_TO_THREE);
 
         final AlignmentRegion region5 = new AlignmentRegion("3", "contig-7", TextCigarCodec.decode("137M141S"), true, new SimpleInterval("19", 38343346, 38343483), 60, 1, 137, 0);
         final AlignmentRegion region6 = new AlignmentRegion("3", "contig-7", TextCigarCodec.decode("137S141M"), false, new SimpleInterval("19", 38342908, 38343049), 60, 138, 278, 0);
         final ChimericAlignment breakpoint3 = new ChimericAlignment(region5, region6, "", "", new ArrayList<>());
 
         Assert.assertTrue(breakpoint3.involvesStrandSwitch());
-        Assert.assertEquals(new BreakpointAllele(breakpoint3).determineStrandedness(), BreakpointAllele.Strandedness.THREE_TO_FIVE);
+        Assert.assertEquals(new BreakpointAllele(breakpoint3).determineStrandedness(), BreakpointAllele.Strandedness.FIVE_TO_THREE);
     }
 
     // -----------------------------------------------------------------------------------------------
@@ -101,8 +101,8 @@ public class BreakpointAlleleUnitTest {
 
     @Test
     public void test5to3InversionCtor_2() throws Exception {
-        final AlignmentRegion region1 = new AlignmentRegion("1","1", TextCigarCodec.decode("100S105M"), true, new SimpleInterval("1", 500, 605), 60, 1, 105, 0);
-        final AlignmentRegion region2 = new AlignmentRegion("1","1", TextCigarCodec.decode("105M100S"), false, new SimpleInterval("1", 100, 205), 60, 95, 200, 0);
+        final AlignmentRegion region1 = new AlignmentRegion("1","1", TextCigarCodec.decode("105M100S"), true, new SimpleInterval("1", 500, 605), 60, 1, 105, 0);
+        final AlignmentRegion region2 = new AlignmentRegion("1","1", TextCigarCodec.decode("100S105M"), false, new SimpleInterval("1", 100, 205), 60, 95, 200, 0);
         final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, "", "ACACA", new ArrayList<>());
         final BreakpointAllele breakpointAllele = new BreakpointAllele(chimericAlignment);
         Assert.assertEquals(breakpointAllele.leftJustifiedLeftBreakpoint, new SimpleInterval("1", 200, 200));

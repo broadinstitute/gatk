@@ -67,25 +67,22 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(contigAlignments.size(), 20);
 
         final AlignmentRegion alignmentRegion1 = contigAlignments.get(3);
-        Assert.assertEquals(alignmentRegion1.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion1.contigId, "contig-9");
         Assert.assertEquals(alignmentRegion1.referenceInterval, new SimpleInterval("21", 27373209, 27374158));
         Assert.assertTrue(alignmentRegion1.forwardStrand);
         Assert.assertEquals(alignmentRegion1.mapQual, 60);
 
         final AlignmentRegion alignmentRegion2 = contigAlignments.get(4);
-        Assert.assertEquals(alignmentRegion2.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion2.contigId, "contig-9");
         Assert.assertEquals(alignmentRegion2.referenceInterval, new SimpleInterval("21", 27374159, 27374706));
         Assert.assertFalse(alignmentRegion2.forwardStrand);
         Assert.assertEquals(alignmentRegion2.mapQual, 60);
 
         final AlignmentRegion alignmentRegion3 = contigAlignments.get(5);
-        Assert.assertEquals(alignmentRegion3.contigId, ">contig-9 2009 0");
+        Assert.assertEquals(alignmentRegion3.contigId, "contig-9");
         Assert.assertEquals(alignmentRegion3.referenceInterval, new SimpleInterval("21", 27374701, 27375218));
         Assert.assertTrue(alignmentRegion3.forwardStrand);
         Assert.assertEquals(alignmentRegion3.mapQual, 60);
-
-
-
     }
 
     @Test
@@ -114,7 +111,6 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(breakpoint1Region2.mapQual, 60);
         Assert.assertEquals(breakpoint1Region2.startInAssembledContig, 189);
         Assert.assertEquals(breakpoint1Region2.endInAssembledContig, 312);
-
     }
 
     @Test
@@ -145,7 +141,6 @@ public class ContigAlignerTest extends BaseTest {
         Assert.assertEquals(breakpoint1Region2.mapQual, 60);
         Assert.assertEquals(breakpoint1Region2.startInAssembledContig, 101);
         Assert.assertEquals(breakpoint1Region2.endInAssembledContig, 200);
-
     }
 
     @AfterClass

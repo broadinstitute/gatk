@@ -138,8 +138,8 @@ class AlignmentRegion {
      */
     @VisibleForTesting
     static AlignmentRegion fromString(final String[] fields) {
-        final String breakpointId = fields[0];
-        final String contigId = fields[1];
+        final String asmId = fields[0];
+        final String contigId = fields[1].replace(">", "").split(" ")[0];
         final String refContig = fields[2];
         final Integer refStart = Integer.valueOf(fields[3]);
         final Integer refEnd = Integer.valueOf(fields[4]);
@@ -150,7 +150,7 @@ class AlignmentRegion {
         final int contigStart = Integer.valueOf(fields[8]);
         final int contigEnd = Integer.valueOf(fields[9]);
         final int mismatches = Integer.valueOf(fields[10]);
-        return new AlignmentRegion(breakpointId, contigId, cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
+        return new AlignmentRegion(asmId, contigId, cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
     }
 
     /**
