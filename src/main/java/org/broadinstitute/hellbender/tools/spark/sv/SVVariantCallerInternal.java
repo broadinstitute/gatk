@@ -37,11 +37,11 @@ class SVVariantCallerInternal implements Serializable {
      *
      * @return          the chimeric alignments of this sequence (empty if the sequence does not have any alignments)
      */
-    static Iterable<ChimericAlignment> findChimericAlignments(Tuple2<Iterable<AlignmentRegion>, byte[]> input) {
+    static Iterator<ChimericAlignment> findChimericAlignments(Tuple2<Iterable<AlignmentRegion>, byte[]> input) {
         final byte[] contigSequence = input._2();
         final Iterable<AlignmentRegion> alignmentRegionsIterable = input._1();
         final List<AlignmentRegion> alignmentRegions = StreamSupport.stream(alignmentRegionsIterable.spliterator(), false).sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());
-        return getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegions, SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH);
+        return getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegions, SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH).iterator();
     }
 
     // TODO: this is looking at one chimeric alignment, i.e. a pair of alignment records at a time, potentially making calling complex variant difficult
