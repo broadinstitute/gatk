@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -101,9 +102,7 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
      * @return integer ploidy
      */
     public int getTargetGermlinePloidyByGenotype(@Nonnull final Target target, @Nonnull final String genotypeName) {
-        if (!fullTargetSet.contains(target)) {
-            throw new IllegalArgumentException("Target \"" + target.getName() + "\" can not be found");
-        }
+        Utils.validateArg(fullTargetSet.contains(target), () -> "Target \"" + target.getName() + "\" can not be found");
         return targetToContigPloidyAnnotationMap.get(target).getGermlinePloidy(genotypeName);
     }
 

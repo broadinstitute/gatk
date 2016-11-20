@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -21,10 +22,7 @@ public class BaseEdge {
      * @param multiplicity the number of observations of this edge
      */
     public BaseEdge(final boolean isRef, final int multiplicity) {
-        if ( multiplicity < 0 ) {
-            throw new IllegalArgumentException("multiplicity must be >= 0 but got " + multiplicity);
-        }
-
+        Utils.validateArg( multiplicity >= 0, () -> "multiplicity must be >= 0 but got " + multiplicity);
         this.multiplicity = multiplicity;
         this.isRef = isRef;
     }
@@ -57,9 +55,7 @@ public class BaseEdge {
      * @param incr the change in this multiplicity, must be >= 0
      */
     public void incMultiplicity(final int incr) {
-        if ( incr < 0 ) {
-            throw new IllegalArgumentException("incr must be >= 0 but got " + incr);
-        }
+        Utils.validateArg( incr >= 0, () -> "incr must be >= 0 but got " + incr);
         multiplicity += incr;
     }
 
@@ -77,9 +73,7 @@ public class BaseEdge {
      * @param value an integer >= 0
      */
     public final void setMultiplicity( final int value ) {
-        if ( multiplicity < 0 ) {
-            throw new IllegalArgumentException("multiplicity must be >= 0");
-        }
+        ParamUtils.isPositiveOrZero(multiplicity, "multiplicity must be >= 0");
         multiplicity = value;
     }
 

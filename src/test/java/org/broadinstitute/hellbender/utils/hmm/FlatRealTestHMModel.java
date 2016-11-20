@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.hmm;
 
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,11 +24,8 @@ public final class FlatRealTestHMModel implements HiddenMarkovModel<Integer,Inte
     public FlatRealTestHMModel(final RealVector priors, final RealMatrix transitions) {
         this.priors = priors;
         this.transitions = transitions;
-        if (priors.getDimension() != this.transitions.getColumnDimension()) {
-            throw new IllegalArgumentException("bad dimensions");
-        } else if (priors.getDimension() != this.transitions.getRowDimension()) {
-            throw new IllegalArgumentException("bad dimensions");
-        }
+        Utils.validateArg(priors.getDimension() == this.transitions.getColumnDimension(), "bad dimensions");
+        Utils.validateArg(priors.getDimension() == this.transitions.getRowDimension(), "bad dimensions");
         this.numStates = priors.getDimension();
     }
 

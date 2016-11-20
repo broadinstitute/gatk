@@ -54,17 +54,10 @@ public final class Kmer {
      * @param length the length of the kmer.  Must be >= 0 and start + length < bases.length
      */
     public Kmer(final byte[] bases, final int start, final int length) {
-        Utils.nonNull(bases, "bases cannot be null");
-        if ( start < 0 ) {
-            throw new IllegalArgumentException("start must be >= 0 but got " + start);
-        }
-        if ( length < 0 ) {
-            throw new IllegalArgumentException("length must be >= 0 but got " + length);
-        }
-        if ( (start + length) > bases.length ) {
-            throw new IllegalArgumentException("start + length " + (start + length) + " must be <= bases.length " + bases.length + " but got " + start + " with length " + length);
-        }
-        this.bases = bases;
+        this.bases = Utils.nonNull(bases, "bases cannot be null");
+        Utils.validateArg(start >= 0, () -> "start must be >= 0 but got " + start);
+        Utils.validateArg( length >= 0, () -> "length must be >= 0 but got " + length);
+        Utils.validateArg(start + length <= bases.length, () -> "start + length " + (start + length) + " must be <= bases.length " + bases.length + " but got " + start + " with length " + length);
         this.start = start;
         this.length = length;
         this.hash = hashCode(bases, start, length);
@@ -144,9 +137,7 @@ public final class Kmer {
         Utils.nonNull(other);
         Utils.nonNull(differingIndeces);
         Utils.nonNull(differingBases);
-        if (maxDistance <= 0){
-            throw new IllegalArgumentException("maxDistance must be non-negative but was " + maxDistance);
-        }
+        Utils.validateArg(maxDistance > 0, "maxDistance must be positive but was " + maxDistance);
         int dist = 0;
         if (length == other.length()) {
             final byte[] f2 = other.bases;

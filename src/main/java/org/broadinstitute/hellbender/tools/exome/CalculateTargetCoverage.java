@@ -825,9 +825,7 @@ public final class CalculateTargetCoverage extends ReadWalker {
         TargetOutInfo(final Composer composer, final String... headerNames) {
             this.composer = Utils.nonNull(composer, "the info string composer cannot be null");
             this.headerNames = Collections.unmodifiableList(Arrays.asList(Utils.nonNull(headerNames, "the header name list provided cannot be null")));
-            if (this.headerNames.stream().anyMatch(Objects::isNull)) {
-                throw new IllegalArgumentException("the input header-name cannot contain nulls");
-            }
+            Utils.validateArg(this.headerNames.stream().noneMatch(Objects::isNull), "the input header-name cannot contain nulls");
         }
 
         /**

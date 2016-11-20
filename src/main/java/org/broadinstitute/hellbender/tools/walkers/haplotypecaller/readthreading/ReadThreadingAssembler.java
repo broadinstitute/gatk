@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -107,8 +108,8 @@ public final class ReadThreadingAssembler {
         Utils.nonNull(refHaplotype, "Reference haplotype cannot be null.");
         Utils.nonNull(fullReferenceWithPadding, "fullReferenceWithPadding");
         Utils.nonNull(refLoc, "refLoc");
-        if( fullReferenceWithPadding.length != refLoc.size() ) { throw new IllegalArgumentException("Reference bases and reference loc must be the same size."); }
-        if( pruneFactor < 0 ) { throw new IllegalArgumentException("Pruning factor cannot be negative"); }
+        Utils.validateArg( fullReferenceWithPadding.length == refLoc.size(), "Reference bases and reference loc must be the same size.");
+        ParamUtils.isPositiveOrZero(pruneFactor, "Pruning factor cannot be negative");
 
         // create the list of artificial haplotypes that should be added to the graph for GGA mode
         final List<Haplotype> givenHaplotypes = composeGivenHaplotypes(refHaplotype, givenAlleles, assemblyRegion.getExtendedSpan());
@@ -197,9 +198,7 @@ public final class ReadThreadingAssembler {
         for( final SeqGraph graph : graphs ) {
             final SeqVertex source = graph.getReferenceSourceVertex();
             final SeqVertex sink = graph.getReferenceSinkVertex();
-            if ( source == null || sink == null ) {
-                throw new IllegalArgumentException("Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
-            }
+            Utils.validateArg( source != null && sink != null, () -> "Both source and sink cannot be null but got " + source + " and sink " + sink + " for graph " + graph);
             final KBestHaplotypeFinder haplotypeFinder = new KBestHaplotypeFinder(graph,source,sink);
             finders.add(haplotypeFinder);
             final Iterator<KBestHaplotype> bestHaplotypes = haplotypeFinder.iterator(numBestHaplotypesPerGraph);

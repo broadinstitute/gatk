@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.PriorityQueue;
 
@@ -39,7 +40,7 @@ public final class MultiSampleEdge extends BaseEdge {
     public MultiSampleEdge(final boolean isRef, final int multiplicity, final int singleSampleCapacity) {
         super(isRef, multiplicity);
 
-        if( singleSampleCapacity <= 0 ) { throw new IllegalArgumentException("singleSampleCapacity must be > 0 but found: " + singleSampleCapacity); }
+        Utils.validateArg( singleSampleCapacity > 0, () -> "singleSampleCapacity must be > 0 but found: " + singleSampleCapacity);
         singleSampleMultiplicities = new PriorityQueue<>(singleSampleCapacity);
         singleSampleMultiplicities.add(multiplicity);
         currentSingleSampleMultiplicity = multiplicity;

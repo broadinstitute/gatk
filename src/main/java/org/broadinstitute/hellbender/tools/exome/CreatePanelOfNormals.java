@@ -310,11 +310,8 @@ public class CreatePanelOfNormals extends SparkToggleCommandLineProgram {
         } else {
             try {
                 final int result = Integer.parseInt(numberOfEigensamplesString);
-                if (result <= 0) {
-                    throw new IllegalArgumentException(NUMBER_OF_EIGENSAMPLES_FULL_NAME + " must be positive.");
-                } else {
-                    return OptionalInt.of(result);
-                }
+                Utils.validateArg(result > 0, () -> NUMBER_OF_EIGENSAMPLES_FULL_NAME + " must be positive.");
+                return OptionalInt.of(result);
             } catch (final NumberFormatException ex) {
                 throw new IllegalArgumentException(NUMBER_OF_EIGENSAMPLES_FULL_NAME + " must be either '" + INFER_NUMBER_OF_EIGENSAMPLES + "' or an integer value");
             }

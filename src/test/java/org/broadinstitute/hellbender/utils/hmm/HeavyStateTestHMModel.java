@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.hmm;
 
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -18,13 +21,9 @@ public final class HeavyStateTestHMModel implements HiddenMarkovModel<Integer, I
     private final double lightStateProbs;
 
     public HeavyStateTestHMModel(final int numStates, final int heavyState, final double heavyStateWeight) {
-        if (numStates <= 1) {
-            throw new IllegalArgumentException("bad number of states");
-        } else if (heavyState < 0 || heavyState >= numStates) {
-            throw new IllegalArgumentException("bad heavy state");
-        } else if (heavyStateWeight <= (1.0 / numStates) || heavyStateWeight >= 1.0) {
-            throw new IllegalArgumentException("bad heavy state weight");
-        }
+        Utils.validateArg(numStates > 1, "bad number of states");
+        Utils.validIndex(heavyState, numStates);
+        ParamUtils.inRange(heavyStateWeight, (1.0 / numStates), 1.0, "bad heavy state weight");
         this.heavyState = heavyState;
         this.numStates = numStates;
         this.heavyStateWeight = heavyStateWeight;
@@ -38,28 +37,21 @@ public final class HeavyStateTestHMModel implements HiddenMarkovModel<Integer, I
 
     @Override
     public double logPriorProbability(final Integer state, final Integer position) {
-        if (state < 0 || state >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        }
+        Utils.validIndex(state, numStates);
         return heavyState == state ? Math.log(heavyStateWeight) : Math.log(lightStateProbs);
     }
 
     @Override
     public double logTransitionProbability(final Integer currentState, final Integer currentPosition, final Integer nextState,
                                            final Integer nextPosition) {
-        if (currentState < 0 || currentState >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        } else if (nextState < 0 || nextState >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        }
+        Utils.validIndex(currentState, numStates);
+        Utils.validIndex(nextState, numStates);
         return nextState == heavyState ? Math.log(heavyStateWeight) : Math.log(lightStateProbs);
     }
 
     @Override
     public double logEmissionProbability(final Integer data, final Integer state, final Integer position) {
-        if (state < 0 || state >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        }
+        Utils.validIndex(state, numStates);
         return 0;
     }
 }

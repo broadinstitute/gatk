@@ -81,13 +81,9 @@ public class ReadCountRecord implements Feature {
      */
     public void copyCountsTo(final double[] destination, final int offset) {
         Utils.nonNull(destination);
-        if (offset < 0) {
-            throw new IllegalArgumentException("the offset must be 0 or greater: " + offset);
-        }
+        Utils.validateArg(offset >= 0, () -> "the offset must be 0 or greater: " + offset);
         final int to = counts.length + offset;
-        if (to > destination.length) {
-            throw new IllegalArgumentException(String.format("the destination array is not long enough: %d > %d", to, destination.length));
-        }
+        Utils.validateArg(to <= destination.length, () -> String.format("the destination array is not long enough: %d > %d", to, destination.length));
         System.arraycopy(counts, 0, destination, offset, counts.length);
     }
 
@@ -149,9 +145,7 @@ public class ReadCountRecord implements Feature {
     public static class SingleSampleRecord extends ReadCountRecord {
         public SingleSampleRecord(final Target target, final double[] counts) {
             super(target, counts);
-            if (counts.length != 1) {
-                throw new IllegalArgumentException("SingleSampleRecord must have exactly one count.");
-            }
+            Utils.validateArg(counts.length == 1, "SingleSampleRecord must have exactly one count.");
         }
 
         public SingleSampleRecord(final Target target, final double count) {

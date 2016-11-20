@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.*;
 
@@ -85,15 +86,9 @@ public class AggregatedSubHaplotypeFinder<F extends KBestSubHaplotypeFinder> imp
     @Override
     public double score(final byte[] bases, final int offset, final int length) {
         Utils.nonNull(bases, "bases cannot be null");
-        if (offset < 0) {
-            throw new IllegalArgumentException("the offset cannot be negative");
-        }
-        if (length < 0) {
-            throw new IllegalArgumentException("the length cannot be negative");
-        }
-        if (offset + length > bases.length) {
-            throw new IllegalArgumentException("the offset and length go beyond the array size");
-        }
+        ParamUtils.isPositiveOrZero(offset, "the offset cannot be negative");
+        ParamUtils.isPositiveOrZero(length, "the length cannot be negative");
+        Utils.validateArg(offset + length <= bases.length, "the offset and length go beyond the array size");
         for (final KBestSubHaplotypeFinder subFinder : subFinders) {
             final double score = subFinder.score(bases,offset,length);
             if (!Double.isNaN(score)) {
@@ -126,13 +121,9 @@ public class AggregatedSubHaplotypeFinder<F extends KBestSubHaplotypeFinder> imp
 
     @Override
     public KBestHaplotype getKBest(final int k) {
-        if (k < 0) {
-            throw new IllegalArgumentException("k cannot be negative");
-        }
+        ParamUtils.isPositiveOrZero(k, "k cannot be negative");
         processSubFindersIfNeeded();
-        if (k >= count) {
-            throw new IllegalArgumentException("k cannot be equal or greater than the count");
-        }
+        Utils.validateArg(k < count, "k must be less than the count");
         if (k < rankedSubHaplotype.size()) {
             return rankedSubHaplotype.get(k);
         }

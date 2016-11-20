@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -36,9 +37,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         super(sourceName, sourceReader);
         this.targets = targets;
         this.ignoreMissingTargets = ignoreMissingTargets;
-        if (targets == null && ignoreMissingTargets) {
-            throw new IllegalArgumentException("When ignore missing targets is true, targets cannot be null");
-        }
+        Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
         countColumnNames = super.columns().names().stream()
                 .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
@@ -62,9 +61,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         super(file);
         this.targets = targets;
         this.ignoreMissingTargets = ignoreMissingTargets;
-        if (targets == null && ignoreMissingTargets) {
-            throw new IllegalArgumentException("When ignore missing targets is true, targets cannot be null");
-        }
+        Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
         countColumnNames = super.columns().names().stream()
                 .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
@@ -80,9 +77,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         super(sourceReader);
         this.targets = targets;
         this.ignoreMissingTargets = ignoreMissingTargets;
-        if (targets == null && ignoreMissingTargets) {
-            throw new IllegalArgumentException("When ignore missing targets is true, targets cannot be null");
-        }
+        Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
         countColumnNames = super.columns().names().stream()
                 .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());

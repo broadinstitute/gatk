@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.utils.hmm;
 
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
+
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -14,9 +17,7 @@ public final class UninformativeTestHMModel implements HiddenMarkovModel<Integer
 
     private final int numStates;
     public UninformativeTestHMModel(final int numStates) {
-        if (numStates <= 0) {
-            throw new IllegalArgumentException("bad number of states");
-        }
+        ParamUtils.isPositive(numStates, "bad number of states");
         this.numStates = numStates;
     }
 
@@ -27,28 +28,21 @@ public final class UninformativeTestHMModel implements HiddenMarkovModel<Integer
 
     @Override
     public double logPriorProbability(final Integer state, final Integer position) {
-        if (state < 0 || state >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        }
+        Utils.validIndex(state, numStates);
         return - Math.log(numStates);
     }
 
     @Override
     public double logTransitionProbability(final Integer currentState, final Integer currentPosition, final Integer nextState,
                                            final Integer nextPosition) {
-        if (currentState < 0 || currentState >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        } else if (nextState < 0 || nextState >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        }
+        Utils.validIndex(currentState, numStates);
+        Utils.validIndex(nextState, numStates);
         return - Math.log(numStates);
     }
 
     @Override
     public double logEmissionProbability(final Integer data, final Integer state, final Integer position) {
-        if (state < 0 || state >= numStates) {
-            throw new IllegalArgumentException("bad state");
-        }
+        Utils.validIndex(state, numStates);
         return 0;
     }
 }

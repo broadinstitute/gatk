@@ -29,9 +29,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      */
     protected BaseGraph(final int kmerSize, final EdgeFactory<V,E> edgeFactory) {
         super(edgeFactory);
-        if ( kmerSize < 1 ) {
-            throw new IllegalArgumentException("kmerSize must be >= 1 but got " + kmerSize);
-        }
+        Utils.validateArg(kmerSize > 0, () -> "kmerSize must be > 0 but got " + kmerSize);
         this.kmerSize = kmerSize;
     }
 
@@ -589,9 +587,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @return a edge
      */
     private E getSingletonEdge(final Collection<E> edges) {
-        if ( edges.size() > 1 ) {
-            throw new IllegalArgumentException("Cannot get a single incoming edge for a vertex with multiple incoming edges " + edges);
-        }
+        Utils.validateArg(edges.size() <= 1, "Cannot get a single incoming edge for a vertex with multiple incoming edges " + edges);
         return edges.isEmpty() ? null : edges.iterator().next();
     }
 
@@ -651,12 +647,8 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      */
     public final BaseGraph<V,E> subsetToNeighbors(final V target, final int distance) {
         Utils.nonNull(target, "Target cannot be null");
-        if ( ! containsVertex(target) ) {
-            throw new IllegalArgumentException("Graph doesn't contain vertex " + target);
-        }
-        if ( distance < 0 ) {
-            throw new IllegalArgumentException("Distance must be >= 0 but got " + distance);
-        }
+        Utils.validateArg(containsVertex(target), () -> "Graph doesn't contain vertex " + target);
+        Utils.validateArg(distance >= 0, () -> "Distance must be >= 0 but got " + distance);
 
         final Set<V> toKeep = verticesWithinDistance(target, distance);
         final Collection<V> toRemove = new HashSet<>(vertexSet());
@@ -673,9 +665,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      * @return a non-null subgraph of this graph
      */
     public final BaseGraph<V,E> subsetToRefSource(final int refSourceNeighborhood) {
-        if (refSourceNeighborhood <= 0){
-            throw new IllegalArgumentException("refSourceNeighborhood needs to be positive but was " + refSourceNeighborhood);
-        }
+        Utils.validateArg(refSourceNeighborhood > 0, () -> "refSourceNeighborhood needs to be positive but was " + refSourceNeighborhood);
         return subsetToNeighbors(getReferenceSourceVertex(), refSourceNeighborhood);
     }
 
@@ -691,9 +681,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
      */
     public final boolean containsAllVertices(final Collection<? extends V> vertices) {
         Utils.nonNull(vertices, "the input vertices collection cannot be null");
-        if (vertices.stream().anyMatch(v -> v == null)){
-            throw new IllegalArgumentException("null vertex");
-        }
+        Utils.containsNoNull(vertices, "null vertex");
         return vertices.stream().allMatch(v -> containsVertex(v));
     }
 
@@ -741,9 +729,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
                                  final boolean followIncomingEdges, final boolean followOutgoingEdges) {
             Utils.nonNull(graph, "graph cannot be null");
             Utils.nonNull(start, "start cannot be null");
-            if ( ! graph.containsVertex(start) ) {
-                throw new IllegalArgumentException("start " + start + " must be in graph but it isn't");
-            }
+            Utils.validateArg(graph.containsVertex(start), () -> "start " + start + " must be in graph but it isn't");
             this.graph = graph;
             this.followIncomingEdges = followIncomingEdges;
             this.followOutgoingEdges = followOutgoingEdges;

@@ -92,19 +92,12 @@ public final class ReadCountCollection implements Serializable {
             Utils.nonNull(targets,"the input targets cannot be null");
             Utils.nonNull(columnNames,"the column names cannot be null");
             Utils.nonNull(counts,"the counts cannot be null");
-            if (columnNames.contains(null)) {
-                throw new IllegalArgumentException("column names contain nulls");
-            } else if (targets.contains(null)) {
-                throw new IllegalArgumentException("there are some null targets");
-            } else if (counts.getRowDimension() != targets.size()) {
-                throw new IllegalArgumentException("number of count rows does not match the number of targets");
-            } else if (counts.getColumnDimension() != columnNames.size()) {
-                throw new IllegalArgumentException("number of count columns does not match the number of column names");
-            } else if (new HashSet<>(targets).size() != targets.size()) {
-                throw new IllegalArgumentException("targets contain duplicates");
-            } else if (new HashSet<>(columnNames).size() != columnNames.size()) {
-                throw new IllegalArgumentException("column names contain duplicates");
-            }
+            Utils.containsNoNull(columnNames, "column names contain nulls");
+            Utils.containsNoNull(targets, "there are some null targets");
+            Utils.validateArg(counts.getRowDimension() == targets.size(), "number of count rows does not match the number of targets");
+            Utils.validateArg(counts.getColumnDimension() == columnNames.size(), "number of count columns does not match the number of column names");
+            Utils.validateArg(new HashSet<>(targets).size() == targets.size(), "targets contain duplicates");
+            Utils.validateArg(new HashSet<>(columnNames).size() == columnNames.size(), "column names contain duplicates");
             this.targets = Collections.unmodifiableList(new ArrayList<>(targets));
             this.columnNames = Collections.unmodifiableList(new ArrayList<>(columnNames));
             this.counts = counts.copy();
@@ -165,9 +158,8 @@ public final class ReadCountCollection implements Serializable {
                                                 final boolean verifyInput) {
         if (verifyInput) {
             ParamUtils.inRange(columnIndex, 0, counts.getColumnDimension() - 1, "Column index out of range");
-            if (targetsToKeep.isEmpty()) {
-                throw new IllegalArgumentException("The input target list can not be empty");
-            } else if (!new HashSet<>(targets).containsAll(targetsToKeep)) {
+            Utils.nonEmpty(targetsToKeep, "The input target list can not be empty");
+            if (!new HashSet<>(targets).containsAll(targetsToKeep)) {
                 throw unknownTargetsToKeep(new HashSet<>(targetsToKeep));
             }
         }
@@ -229,9 +221,8 @@ public final class ReadCountCollection implements Serializable {
      */
     public ReadCountCollection subsetTargets(final Set<Target> targetsToKeep) {
         Utils.nonNull(targetsToKeep, "the input target set cannot be null");
-        if (targetsToKeep.isEmpty()) {
-            throw new IllegalArgumentException("the input target subset size must be greater than 0");
-        } else if (!new HashSet<>(targets).containsAll(targetsToKeep)) {
+        Utils.nonEmpty(targetsToKeep, "the input target subset size must be greater than 0");
+        if (!new HashSet<>(targets).containsAll(targetsToKeep)) {
             throw unknownTargetsToKeep(targetsToKeep);
         }
 
@@ -262,9 +253,8 @@ public final class ReadCountCollection implements Serializable {
      */
     public ReadCountCollection subsetColumns(final Set<String> columnsToKeep) {
         Utils.nonNull(columnsToKeep, "the set of input columns to keep cannot be null.");
-        if (columnsToKeep.isEmpty()) {
-            throw new IllegalArgumentException("the number of columns to keep must be greater than 0");
-        } else if (!new HashSet<>(columnNames).containsAll(columnsToKeep)) {
+        Utils.nonEmpty(columnsToKeep, "the number of columns to keep must be greater than 0");
+        if (!new HashSet<>(columnNames).containsAll(columnsToKeep)) {
             throw unknownColumnToKeepNames(columnsToKeep);
         }
 
@@ -297,9 +287,7 @@ public final class ReadCountCollection implements Serializable {
      */
     public ReadCountCollection arrangeTargets(final List<Target> targetsInOrder) {
         Utils.nonNull(targetsInOrder);
-        if (targetsInOrder.isEmpty()) {
-            throw new IllegalArgumentException("the input targets list cannot be empty");
-        }
+        Utils.nonEmpty(targetsInOrder, "the input targets list cannot be empty");
         final RealMatrix counts = new Array2DRowRealMatrix(targetsInOrder.size(), columnNames.size());
         final Object2IntMap<Target> targetToIndex = new Object2IntOpenHashMap<>(targets.size());
         for (int i = 0; i < targets.size(); i++) {
@@ -307,9 +295,7 @@ public final class ReadCountCollection implements Serializable {
         }
         for (int i = 0; i < targetsInOrder.size(); i++) {
             final Target target = targetsInOrder.get(i);
-            if (!targetToIndex.containsKey(target)) {
-                throw new IllegalArgumentException(String.format("target '%s' is not present in the collection", target.getName()));
-            }
+            Utils.validateArg(targetToIndex.containsKey(target), () -> String.format("target '%s' is not present in the collection", target.getName()));
             counts.setRow(i, this.counts.getRow(targetToIndex.getInt(target)));
         }
         return new ReadCountCollection(new ArrayList<>(targetsInOrder), columnNames, counts, false);

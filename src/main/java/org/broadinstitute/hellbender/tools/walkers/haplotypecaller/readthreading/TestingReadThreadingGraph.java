@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.MultiSampleEdge;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -73,9 +74,7 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
             final String label = pathMatcher.group(2);
             final boolean isReference = "REF".equals(label);
             if (referenceFound) {
-                if (isReference) {
-                    throw new IllegalArgumentException("there are two reference paths");
-                }
+                Utils.validateArg(!isReference, "there are two reference paths");
             } else if ( isReference ) {
                 referenceFound = true;
             }
@@ -83,17 +82,13 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
             // Divide each path into its elements getting a list of sequences and labels if applies:
             final String elementsString = pathMatcher.group(3);
             final String[] elements = elementsString.split("\\s*->\\s*");
-            if (elements.length == 0) {
-                throw new IllegalArgumentException("empty path not allowed");
-            }
+            Utils.validateArg(elements.length > 0, "empty path not allowed");
             final String[] seqs = new String[elements.length];
             final String[] ids = new String[elements.length];
             for (int i = 0; i < elements.length; i++) {
                 ids[i] = pathElementId(elements[i]);
                 seqs[i] = pathElementSeq(elements[i]);
-                if (seqs[i].isEmpty() && ids[i] == null) {
-                    throw new IllegalArgumentException("path with empty element without an id");
-                }
+                Utils.validateArg(!(seqs[i].isEmpty() && ids[i] == null), "path with empty element without an id");
             }
             final boolean isSource =  ids[0] == null || !vertexById.containsKey(ids[0]);
             if (isSource && seqs[0].length() != kmerSize) {
@@ -118,9 +113,8 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
 
             MultiDeBruijnVertex lastVertex = firstVertex;
             for (int i = 1; i < elements.length; i++) {
-                if (seqs[i].length() > 1) {
-                    throw new IllegalArgumentException("non-source vertex sequence must have length 1");
-                }
+                //TODO: code and comment disagree
+                Utils.validateArg(seqs[i].length() <= 1, "non-source vertex sequence must have length 1");
                 final MultiDeBruijnVertex nextVertex;
                 if (ids[i] == null || !vertexById.containsKey(ids[i])) {
                     final Set<MultiDeBruijnVertex> nextVertices = getNextVertices(lastVertex,seqs[i].getBytes()[0]);
@@ -153,13 +147,9 @@ public final class TestingReadThreadingGraph extends ReadThreadingGraph {
         }
 
         final int closeBracketPosition = element.lastIndexOf(')');
-        if (closeBracketPosition == -1) {
-            throw new IllegalArgumentException("non-closed id parantesys found in element: " + element);
-        }
+        Utils.validateArg(closeBracketPosition != -1, () -> "non-closed id parantesys found in element: " + element);
         final String result = element.substring(openBracketPosition + 1,closeBracketPosition).trim();
-        if (result.isEmpty()) {
-            throw new IllegalArgumentException("empty id found in element: " + element);
-        }
+        Utils.validateArg(!result.isEmpty(), () -> "empty id found in element: " + element);
         return result;
     }
 

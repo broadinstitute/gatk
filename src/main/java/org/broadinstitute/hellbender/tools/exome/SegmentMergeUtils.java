@@ -38,12 +38,8 @@ public final class SegmentMergeUtils {
      * @return          a new segment constructed by joining the two segments
      */
     public static SimpleInterval mergeSegments(final SimpleInterval segment1, final SimpleInterval segment2) {
-        if (!segment1.getContig().equals(segment2.getContig())) {
-            throw new IllegalArgumentException(String.format("Cannot join segments " +
-                            segment1.getContig() + ":%d-%d and " +
-                            segment2.getContig() + ":%d-%d on different chromosomes.",
-                    segment1.getStart(), segment1.getEnd(), segment2.getStart(), segment2.getEnd()));
-        }
+        Utils.validateArg(segment1.getContig().equals(segment2.getContig()),
+                () -> String.format("Cannot join segments %s and %s on different chromosomes.", segment1.toString(), segment2.toString()));
         final int start = Math.min(segment1.getStart(), segment2.getStart());
         final int end = Math.max(segment1.getEnd(), segment2.getEnd());
 

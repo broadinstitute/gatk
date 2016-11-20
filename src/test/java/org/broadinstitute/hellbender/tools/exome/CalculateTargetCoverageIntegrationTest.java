@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -555,9 +556,7 @@ public final class CalculateTargetCoverageIntegrationTest extends CommandLinePro
         }
 
         public Table(final Reader reader) throws IOException {
-            if (reader == null) {
-                throw new IllegalArgumentException("the reader cannot be null");
-            }
+            Utils.nonNull(reader, "the reader cannot be null");
             final BufferedReader lineReader = new BufferedReader(reader);
             final List<String> headerLines = new ArrayList<>(10);
             String lastLine;
@@ -568,9 +567,7 @@ public final class CalculateTargetCoverageIntegrationTest extends CommandLinePro
                     break;
             }
             final String[] header = lastLine == null ? null : lastLine.split("\\t");
-            if (header == null) {
-                throw new IllegalArgumentException("the table does not have a header");
-            }
+            Utils.nonNull(header, "the table does not have a header");
             columnCount = header.length;
 
             final List<String> values = new ArrayList<>(100);

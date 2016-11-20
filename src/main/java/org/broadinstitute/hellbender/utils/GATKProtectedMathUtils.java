@@ -141,9 +141,7 @@ public class GATKProtectedMathUtils {
      */
     public static double stdDev(final Collection<? extends Number> values) {
         Utils.nonNull(values);
-        if (values.contains(null)) {
-            throw new IllegalArgumentException("input values must not contain a null");
-        }
+        Utils.containsNoNull(values, "input values must not contain a null");
         final double[] doubleValues = values.stream()
                 .mapToDouble(Number::doubleValue).toArray();
         return stdDev(doubleValues);

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMRecord;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -163,10 +164,7 @@ public final class AssemblyRegionTestDataSetUnitTest extends BaseTest {
 
 
     private static int[] intValues(final String[] kmerSizes) {
-        final int[] result = new int[kmerSizes.length];
-        for (int i = 0; i < result.length; i++)
-            result[i] = Integer.parseInt(kmerSizes[i]);
-        return result;
+        return new IndexRange(0, kmerSizes.length).mapToInteger(n -> Integer.parseInt(kmerSizes[n]));
     }
 
     private static final Object[][] ACTIVE_REGION_TEST_DATA_SET_PARAMETERS;

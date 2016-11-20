@@ -271,9 +271,7 @@ public final class ForwardBackwardAlgorithm {
 
         final List<D> dataList = Collections.unmodifiableList(new ArrayList<>(data));
         final List<T> positionList = Collections.unmodifiableList(new ArrayList<>(positions));
-        if (dataList.size() != positionList.size()) {
-            throw new IllegalArgumentException("the data sequence and position sequence must have the same number of elements");
-        }
+        Utils.validateArg(dataList.size()== positionList.size(), "the data sequence and position sequence must have the same number of elements");
 
         final double[][] forwardProbabilities = calculateLogForwardProbabilities(model, dataList, positionList);
         final double[][] backwardProbabilities = calculateLogBackwardProbabilities(model, dataList, positionList);
@@ -540,26 +538,17 @@ public final class ForwardBackwardAlgorithm {
         public double logProbability(final T position, final S state) {
             final int stateIndex = this.stateIndex.getOrDefault(state, -1);
             final int positionIndex = this.positionIndex.getOrDefault(position, -1);
-            if (stateIndex == -1) {
-                throw new IllegalArgumentException("the input state is not recognized by the model");
-            } else if (positionIndex == -1) {
-                throw new IllegalArgumentException("unknown input position");
-            } else {
-                return logBackwardProbabilities[positionIndex][stateIndex]
+            Utils.validateArg(stateIndex != -1, "the input state is not recognized by the model");
+            Utils.validateArg(positionIndex != -1, "unknown input position");
+            return logBackwardProbabilities[positionIndex][stateIndex]
                         + logForwardProbabilities[positionIndex][stateIndex] - logDataLikelihood[positionIndex];
-            }
         }
 
         @Override
         public double logProbability(final List<S> states) {
             Utils.nonNull(states);
-            if (states.size() != data.size()) {
-                throw new IllegalArgumentException("the input states sequence does not have the same length as the data sequence");
-            } else if (states.isEmpty()) {
-                return 0;
-            } else {
-                return logProbability(0, states);
-            }
+            Utils.validateArg(states.size() == data.size(), "the input states sequence does not have the same length as the data sequence");
+            return states.isEmpty() ? 0 : logProbability(0, states);
         }
 
         @Override
@@ -571,9 +560,7 @@ public final class ForwardBackwardAlgorithm {
             } else {
                 final int statesLength = states.size();
                 final int lastIndex = statesLength + startIndex - 1;
-                if (lastIndex >= data.size()) {
-                    throw new IllegalArgumentException("the input state sequence is too long");
-                }
+                Utils.validateArg(lastIndex < data.size(), "the input state sequence is too long");
                 double result = logForwardProbability(positions.get(startIndex), states.get(0));
                 for (int statesOffset = 1, dataOffset = startIndex + 1; dataOffset <= lastIndex; statesOffset++, dataOffset++) {
                     result += model.logTransitionProbability(states.get(statesOffset - 1), positions.get(dataOffset - 1), states.get(statesOffset), positions.get(dataOffset));
@@ -599,9 +586,8 @@ public final class ForwardBackwardAlgorithm {
             } else {
                 final int length = stateConstraints.size();
                 final int lastIndex = length + startIndex - 1;
-                if (lastIndex >= data.size()) {
-                    throw new IllegalArgumentException("the input state sequence is too long");
-                }
+                Utils.validateArg(lastIndex < data.size(), "the input state sequence is too long");
+
                 // calculate the likelihoods of each state at the first position using the forward-probabilities.
                 List<S>  currentStates = new ArrayList<>(Utils.nonNull(stateConstraints.get(0)));
                 double[] currentLikelihoods = currentStates.stream()
@@ -673,9 +659,7 @@ public final class ForwardBackwardAlgorithm {
          */
         private int validStateIndex(final S state) {
             final int stateIndex = this.stateIndex.getOrDefault(state, -1);
-            if (stateIndex == -1) {
-                throw new IllegalArgumentException("the input state is not recognized by the model");
-            }
+            Utils.validateArg(stateIndex != -1, "the input state is not recognized by the model");
             return stateIndex;
         }
 
@@ -687,9 +671,7 @@ public final class ForwardBackwardAlgorithm {
          */
         private int validPositionIndex(final T position) {
             final int positionIndex = this.positionIndex.getOrDefault(position, -1);
-            if (positionIndex == -1) {
-                throw new IllegalArgumentException("the input position is not recognized by the model");
-            }
+            Utils.validateArg(positionIndex != -1, "the input position is not recognized by the model");
             return positionIndex;
         }
     }

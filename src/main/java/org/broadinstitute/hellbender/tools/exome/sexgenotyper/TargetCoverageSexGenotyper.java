@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -143,11 +144,7 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
         /* check args */
         Utils.regularReadableUserFile(inputRawReadCountsFile);
         Utils.regularReadableUserFile(inputContigAnnotsFile);
-        if (baselineMappingErrorProbability <= 0 || baselineMappingErrorProbability >= 1) {
-            throw new IllegalArgumentException("Baseline mapping error probability must be a positive real number in " +
-                    "range (0, 1) excluding endpoints.");
-        }
-
+        Utils.validateArg(baselineMappingErrorProbability > 0 && baselineMappingErrorProbability < 1, "Must have 0 < baseline mapping error probability < 1.");
         /* read input read counts */
         final ReadCountCollection rawReadCounts;
         try {

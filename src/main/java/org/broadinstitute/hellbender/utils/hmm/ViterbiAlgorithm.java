@@ -131,9 +131,7 @@ public final class ViterbiAlgorithm {
         Utils.nonNull(data);
         Utils.nonNull(times);
         Utils.nonNull(model);
-        if (data.size() != times.size()) {
-            throw new IllegalArgumentException("the data and time input sequences must have the same length");
-        }
+        Utils.validateArg(data.size() == times.size(), "the data and time input sequences must have the same length");
     }
 
     /**

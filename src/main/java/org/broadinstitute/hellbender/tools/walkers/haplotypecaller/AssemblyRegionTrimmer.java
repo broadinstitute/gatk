@@ -71,9 +71,8 @@ public final class AssemblyRegionTrimmer {
         if (this.assemblyRegionTrimmerArgs != null) {
             throw new IllegalStateException(getClass().getSimpleName() + " instance initialized twice");
         }
-        Utils.nonNull(assemblyRegionTrimmerArgs);
 
-        this.assemblyRegionTrimmerArgs = assemblyRegionTrimmerArgs;
+        this.assemblyRegionTrimmerArgs = Utils.nonNull(assemblyRegionTrimmerArgs);;
         this.sequenceDictionary = sequenceDictionary;
 
         checkUserArguments();
@@ -283,9 +282,7 @@ public final class AssemblyRegionTrimmer {
             this.maximumSpan = maximumSpan;
             this.extendedSpan = extendedSpan;
 
-            if ( extendedSpan != null && callableSpan != null && ! extendedSpan.contains(callableSpan) ) {
-                throw new IllegalArgumentException("the extended callable span must include the callable span");
-            }
+            Utils.validateArg(extendedSpan == null || callableSpan == null || extendedSpan.contains(callableSpan), "the extended callable span must include the callable span");
         }
 
 

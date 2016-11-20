@@ -100,13 +100,10 @@ public final class ReferenceConfidenceModel {
                                     final SAMFileHeader header,
                                     final int indelInformativeDepthIndelSize) {
         Utils.nonNull(samples, "samples cannot be null");
-        if ( samples.numberOfSamples() == 0) {
-            throw new IllegalArgumentException("samples cannot be empty");
-        }
+        Utils.validateArg( samples.numberOfSamples() > 0, "samples cannot be empty");
         Utils.nonNull(header, "header cannot be empty");
-        if ( indelInformativeDepthIndelSize < 0) {
-            throw new IllegalArgumentException("indelInformativeDepthIndelSize must be >= 1 but got " + indelInformativeDepthIndelSize);
-        }
+        //TODO: code and comment disagree -- which is right?
+        Utils.validateArg( indelInformativeDepthIndelSize >= 0, () -> "indelInformativeDepthIndelSize must be >= 1 but got " + indelInformativeDepthIndelSize);
 
         this.samples = samples;
         this.indelInformativeDepthIndelSize = indelInformativeDepthIndelSize;
@@ -152,12 +149,12 @@ public final class ReferenceConfidenceModel {
                                                        final List<VariantContext> variantCalls) {
         Utils.nonNull(refHaplotype, "refHaplotype cannot be null");
         Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
-        if ( !calledHaplotypes.contains(refHaplotype)) throw new IllegalArgumentException("calledHaplotypes must contain the refHaplotype");
+        Utils.validateArg(calledHaplotypes.contains(refHaplotype), "calledHaplotypes must contain the refHaplotype");
         Utils.nonNull(paddedReferenceLoc, "paddedReferenceLoc cannot be null");
         Utils.nonNull(activeRegion, "activeRegion cannot be null");
         Utils.nonNull(readLikelihoods, "readLikelihoods cannot be null");
-        if ( readLikelihoods.numberOfSamples() != 1 ) throw new IllegalArgumentException("readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
-        if ( refHaplotype.length() != activeRegion.getExtendedSpan().size() ) throw new IllegalArgumentException("refHaplotype " + refHaplotype.length() + " and activeRegion location size " + activeRegion.getSpan().size() + " are different");
+        Utils.validateArg(readLikelihoods.numberOfSamples() == 1, () -> "readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
+        Utils.validateArg( refHaplotype.length() == activeRegion.getExtendedSpan().size(), () -> "refHaplotype " + refHaplotype.length() + " and activeRegion location size " + activeRegion.getSpan().size() + " are different");
         Utils.nonNull(ploidyModel, "the ploidy model cannot be null");
         final int ploidy = ploidyModel.samplePloidy(0); // the first sample = the only sample in reference-confidence mode.
 
@@ -361,8 +358,8 @@ public final class ReferenceConfidenceModel {
                                                            final AssemblyRegion activeRegion,
                                                            final SimpleInterval activeRegionSpan,
                                                            final ReadLikelihoods<Haplotype> readLikelihoods) {
-        if ( !calledHaplotypes.contains(refHaplotype)) throw new IllegalArgumentException("calledHaplotypes must contain the refHaplotype");
-        if ( readLikelihoods.numberOfSamples() != 1 ) throw new IllegalArgumentException("readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
+        Utils.validateArg(calledHaplotypes.contains(refHaplotype), "calledHaplotypes must contain the refHaplotype");
+        Utils.validateArg(readLikelihoods.numberOfSamples() == 1, () -> "readLikelihoods must contain exactly one sample but it contained " + readLikelihoods.numberOfSamples());
 
         final List<GATKRead> reads = activeRegion.getReads();
 

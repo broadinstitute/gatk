@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.jgrapht.EdgeFactory;
 
 import java.util.HashMap;
@@ -50,9 +51,9 @@ public final class TestGraph extends BaseGraph<MultiDeBruijnVertex, BaseEdge> {
      * @param isRef true if the added edge is a reference edge
      */
     public void addKmersToGraph( final byte[] kmer1, final byte[] kmer2, final boolean isRef, final int multiplicity ) {
-        if( kmer1 == null ) { throw new IllegalArgumentException("Attempting to add a null kmer to the graph."); }
-        if( kmer2 == null ) { throw new IllegalArgumentException("Attempting to add a null kmer to the graph."); }
-        if( kmer1.length != kmer2.length ) { throw new IllegalArgumentException("Attempting to add a kmers to the graph with different lengths."); }
+        Utils.nonNull( kmer1, "Attempting to add a null kmer to the graph.");
+        Utils.nonNull(kmer2,"Attempting to add a null kmer to the graph.");
+        Utils.validateArg( kmer1.length == kmer2.length, "Attempting to add a kmers to the graph with different lengths.");
 
         final MultiDeBruijnVertex v1 = new MultiDeBruijnVertex( kmer1 , true);
         final MultiDeBruijnVertex v2 = new MultiDeBruijnVertex( kmer2 , true);

@@ -62,12 +62,8 @@ public final class KBestHaplotypeFinder extends AbstractList<KBestHaplotype> {
         Utils.nonNull(graph, "graph cannot be null");
         Utils.nonNull(sources, "sources cannot be null");
         Utils.nonNull(sinks, "sinks cannot be null");
-        if (!graph.containsAllVertices(sources)) {
-            throw new IllegalArgumentException("source does not belong to the graph");
-        }
-        if (!graph.containsAllVertices(sinks)) {
-            throw new IllegalArgumentException("sink does not belong to the graph");
-        }
+        Utils.validateArg(graph.containsAllVertices(sources), "source does not belong to the graph");
+        Utils.validateArg(graph.containsAllVertices(sinks), "sink does not belong to the graph");
 
         //TODO dealing with cycles here due to a bug in some of the graph transformations that produces cycles.
         //TODO Once that is solve, the if-else below should be substituted by a throw if there is any cycles,

@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.TargetCodec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -221,12 +222,8 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
 
     private void checkOutputRepeats(final SAMSequenceDictionary dictionary, final SimpleInterval interval, final double observed) {
         final int sequenceIndex = dictionary.getSequenceIndex(interval.getContig());
-        int repeatedBases = 0;
-        for (int i = interval.getStart() - 1; i < interval.getEnd(); i++) {
-            if (REPEATED_ARRAY[sequenceIndex][i]) {
-                repeatedBases++;
-            }
-        }
+        final double repeatedBases = new IndexRange(interval.getStart() - 1, interval.getEnd())
+                .sum(i -> REPEATED_ARRAY[sequenceIndex][i] ? 1 : 0);
         final double actual = repeatedBases / (double) (interval.getEnd() - interval.getStart() + 1);
         Assert.assertEquals(observed, actual, 0.0001);
     }

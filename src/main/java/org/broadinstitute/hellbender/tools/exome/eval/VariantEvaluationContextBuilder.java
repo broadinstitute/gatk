@@ -39,20 +39,15 @@ public class VariantEvaluationContextBuilder extends VariantContextBuilder {
     public VariantEvaluationContextBuilder alleles(final Collection<Allele> alleles) {
         Utils.containsNoNull(alleles, "the input cannot contain null alleles");
         validateAlleleStrings(alleles.stream().map(Allele::getDisplayString).collect(Collectors.toList()));
-        if (!alleles.iterator().next().isReference()) {
-            throw new IllegalArgumentException("the first allele must be a reference allele");
-        }
+        Utils.validateArg(alleles.iterator().next().isReference(), "the first allele must be a reference allele");
         super.alleles(alleles);
         return this;
     }
 
     private void validateAlleleStrings(final List<String> allelesString) {
         Utils.containsNoNull(allelesString, "the input cannot contain null strings");
-        if (allelesString.isEmpty()) {
-            throw new IllegalArgumentException("the allele list cannot be empty");
-        } if (!allelesString.get(0).equals(CopyNumberTriStateAllele.REF.getDisplayString())) {
-            throw new IllegalArgumentException("the first allele must be the reference allele: " + CopyNumberTriStateAllele.REF);
-        }
+        Utils.nonEmpty(allelesString, "the allele list cannot be empty");
+        Utils.validateArg(allelesString.get(0).equals(CopyNumberTriStateAllele.REF.getDisplayString()), "the first allele must be the reference allele: " + CopyNumberTriStateAllele.REF);
         final Set<CopyNumberTriStateAllele> allelesFound = new HashSet<>();
         allelesFound.add(CopyNumberTriStateAllele.REF);
         for (int i = 1; i < allelesString.size(); i++) {

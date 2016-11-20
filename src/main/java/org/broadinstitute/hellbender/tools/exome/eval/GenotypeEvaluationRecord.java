@@ -48,9 +48,7 @@ public final class GenotypeEvaluationRecord implements Locatable {
         this.filters = Collections.unmodifiableSet(new LinkedHashSet<>(filters));
         this.interval = Utils.nonNull(interval);
         this.targetCount = targetCount;
-        if (calls.contains(null)) {
-            throw new IllegalArgumentException("calls cannot contain nulls");
-        }
+        Utils.containsNoNull(calls, "calls cannot contain nulls");
     }
 
     public String getFilterString() {

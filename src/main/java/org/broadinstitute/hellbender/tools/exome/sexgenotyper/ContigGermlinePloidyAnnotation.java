@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
@@ -76,11 +77,8 @@ public final class ContigGermlinePloidyAnnotation {
      * @return integer contig ploidy
      */
     public int getGermlinePloidy(@Nonnull final String sexGenotypeName) {
-        if (!genotypesSet.contains(sexGenotypeName)) {
-            throw new IllegalArgumentException("The input genotype class \"" + sexGenotypeName + "\" can not be found");
-        } else {
-            return ploidyMap.get(sexGenotypeName);
-        }
+        Utils.validateArg(genotypesSet.contains(sexGenotypeName), () -> "The input genotype class \"" + sexGenotypeName + "\" can not be found");
+        return ploidyMap.get(sexGenotypeName);
     }
 
     /**

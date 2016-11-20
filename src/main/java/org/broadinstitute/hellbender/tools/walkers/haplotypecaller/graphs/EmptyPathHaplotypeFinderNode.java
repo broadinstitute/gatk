@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collections;
 import java.util.Set;
@@ -50,12 +51,8 @@ final class EmptyPathHaplotypeFinderNode implements KBestSubHaplotypeFinder {
 
     @Override
     public KBestHaplotype getKBest(final int k) {
-        if (k < 0) {
-            throw new IllegalArgumentException("k cannot be negative");
-        }
-        if (k > 0) {
-            throw new IllegalArgumentException("k cannot greater than the possible haplotype count");
-        }
+        ParamUtils.isPositiveOrZero(k, "k cannot be negative");
+        Utils.validateArg(k == 0, "k cannot greater than the possible haplotype count");
         return singleHaplotypePath;
     }
 
@@ -67,15 +64,9 @@ final class EmptyPathHaplotypeFinderNode implements KBestSubHaplotypeFinder {
     @Override
     public double score(final byte[] bases, final int offset, final int length) {
         Utils.nonNull(bases, "bases cannot be null");
-        if (offset < 0) {
-            throw new IllegalArgumentException("the offset cannot be negative");
-        }
-        if (length < 0) {
-            throw new IllegalArgumentException("the length cannot be negative");
-        }
-        if (offset + length > bases.length) {
-            throw new IllegalArgumentException("the offset and length go beyond the array size");
-        }
+        ParamUtils.isPositiveOrZero(offset, "the offset cannot be negative");
+        ParamUtils.isPositiveOrZero(length, "the length cannot be negative");
+        Utils.validateArg(offset + length <= bases.length, "the offset and length go beyond the array size");
         final byte[] vertexBases = singleHaplotypePath.head().getSequence();
         if (length != vertexBases.length) {
             return Double.NaN;
