@@ -1,19 +1,18 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import com.google.common.collect.Lists;
 import org.broadinstitute.hellbender.cmdline.Advanced;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
 import org.broadinstitute.hellbender.cmdline.Hidden;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
-import java.io.File;
-import java.util.Arrays;
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Set of arguments related to the {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler}
  */
-public final class ReadThreadingAssemblerArgumentCollection implements ArgumentCollectionDefinition {
+public final class ReadThreadingAssemblerArgumentCollection implements ArgumentCollectionDefinition, Serializable {
     private static final long serialVersionUID = 1L;
 
     // -----------------------------------------------------------------------------------------------
@@ -25,7 +24,7 @@ public final class ReadThreadingAssemblerArgumentCollection implements ArgumentC
      */
     @Advanced
     @Argument(fullName="kmerSize", shortName="kmerSize", doc="Kmer size to use in the read threading assembler", optional = true)
-    public List<Integer> kmerSizes = Arrays.asList(10, 25);
+    public List<Integer> kmerSizes = Lists.newArrayList(10,25);
 
     /**
      * When graph cycles are detected, the normal behavior is to increase kmer sizes iteratively until the cycles are

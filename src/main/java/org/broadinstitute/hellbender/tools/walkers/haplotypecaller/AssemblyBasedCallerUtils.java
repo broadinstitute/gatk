@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.Logger;
@@ -137,11 +138,11 @@ public class AssemblyBasedCallerUtils {
      * @param paddedReferenceLoc the interval which includes padding and shows how big the reference haplotype should be
      * @return a non-null haplotype
      */
-    public static Haplotype createReferenceHaplotype(final AssemblyRegion region, final SimpleInterval paddedReferenceLoc, final IndexedFastaSequenceFile referenceReader) {
+    public static Haplotype createReferenceHaplotype(final AssemblyRegion region, final SimpleInterval paddedReferenceLoc, final ReferenceSequenceFile referenceReader) {
         return ReferenceConfidenceModel.createReferenceHaplotype(region, region.getAssemblyRegionReference(referenceReader), paddedReferenceLoc);
     }
 
-    public static SimpleInterval getPaddedReferenceLoc(final AssemblyRegion region, final int referencePadding, final IndexedFastaSequenceFile referenceReader) {
+    public static SimpleInterval getPaddedReferenceLoc(final AssemblyRegion region, final int referencePadding, final ReferenceSequenceFile referenceReader) {
         final int padLeft = Math.max(region.getExtendedSpan().getStart() - referencePadding, 1);
         final int padRight = Math.min(region.getExtendedSpan().getEnd() + referencePadding, referenceReader.getSequenceDictionary().getSequence(region.getExtendedSpan().getContig()).getSequenceLength());
         return new SimpleInterval(region.getExtendedSpan().getContig(), padLeft, padRight);
@@ -233,7 +234,7 @@ public class AssemblyBasedCallerUtils {
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
                                                   final Logger logger,
-                                                  final CachingIndexedFastaSequenceFile referenceReader,
+                                                  final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine){
         finalizeRegion(region, argumentCollection.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList);
         if( argumentCollection.debug) {

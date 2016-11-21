@@ -6,6 +6,8 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
  */
 public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBasedCallerArgumentCollection> {
 
+    private static final Logger logger = LogManager.getLogger(HaplotypeCallerGenotypingEngine.class);
     protected static final int ALLELE_EXTENSION = 2;
     private static final String phase01 = "0|1";
     private static final String phase10 = "1|0";
@@ -293,7 +296,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<AssemblyBa
         }
 
         @Override
-        public int compareTo(@Nonnull final AlleleScoredByHaplotypeScores other) {
+        public int compareTo(final AlleleScoredByHaplotypeScores other) {
 
             if(allele.isReference() && other.allele.isNonReference()){
                 return -1;

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
@@ -277,7 +276,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(args);
 
-        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput) ) {
+        try ( final ReadsDataSource bamOutReadsSource = new ReadsDataSource(bamOutput.toPath()) ) {
             int actualBamoutNumReads = 0;
             for ( final GATKRead read : bamOutReadsSource ) {
                 ++actualBamoutNumReads;
@@ -311,7 +310,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
      */
-    private double calculateConcordance( final File actual, final File expected ) {
+    public static double calculateConcordance( final File actual, final File expected ) {
         final Set<String> actualVCFKeys = new HashSet<>();
         final Set<String> expectedVCFKeys = new HashSet<>();
         int concordant = 0;
@@ -347,7 +346,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         return (double)concordant / (double)(concordant + discordant);
     }
 
-    private String keyForVariant( final VariantContext variant ) {
+    private static String keyForVariant( final VariantContext variant ) {
         return String.format("%s:%d-%d %s %s", variant.getContig(), variant.getStart(), variant.getEnd(),
                 variant.getAlleles(), variant.getGenotype(0).getGenotypeString(false));
     }

@@ -3,10 +3,10 @@ package org.broadinstitute.hellbender.tools.exome.conversion.allelicbalancecalle
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.SerializationTestUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.mcmc.PosteriorSummary;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -44,7 +44,7 @@ public class AllelicSplitCallerModelStateUnitTest extends BaseTest {
 
         final AllelicBalanceCallerModelState state = AllelicBalanceCallerModelState.createInitialCNLOHCallerModelState(0.2, tempList,
                 HomoSapiensConstants.DEFAULT_PLOIDY, CNLOHCaller.NUM_RHOS);
-        SerializationTestUtils.roundTripInKryo(state, AllelicBalanceCallerModelState.class,
+        SparkTestUtils.roundTripInKryo(state, AllelicBalanceCallerModelState.class,
                 SparkContextFactory.getTestSparkContext().getConf());
     }
 }

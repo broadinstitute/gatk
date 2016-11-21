@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
@@ -11,7 +12,10 @@ import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.engine.filters.*;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
@@ -23,7 +27,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
-import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -60,9 +63,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     private final SAMFileHeader readsHeader;
 
-    // path to a reference file
-    private final String reference;
-
     private ReferenceConfidenceModel referenceConfidenceModel = null;
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
@@ -79,7 +79,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private VariantAnnotatorEngine annotationEngine = null;
 
     // fasta reference reader to supplement the edges of the reference sequence
-    protected CachingIndexedFastaSequenceFile referenceReader;
+    private final ReferenceSequenceFile referenceReader;
 
     // writes Haplotypes to a bam file when the -bamout option is specified
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
@@ -135,12 +135,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      *
      * @param hcArgs command-line arguments for the HaplotypeCaller
      * @param readsHeader header for the reads
-     * @param reference path to the reference
+     * @param referenceReader reader to provide reference data
      */
-    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, final SAMFileHeader readsHeader, final String reference ) {
+    public HaplotypeCallerEngine( final HaplotypeCallerArgumentCollection hcArgs, final SAMFileHeader readsHeader, ReferenceSequenceFile referenceReader ) {
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);
-        this.reference = Utils.nonNull(reference);
+        this.referenceReader = Utils.nonNull(referenceReader);
 
         initialize();
     }
@@ -168,7 +168,6 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
            throw new UserException("Allele-specific annotations are not yet supported in the VCF mode");
         }
 
-        referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(hcArgs, readsHeader);
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(hcArgs);
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs);

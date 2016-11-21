@@ -51,7 +51,6 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-
     @Test(dataProvider = "gvcfsToGenotype")
     public void testGenotypesOnly(String input, String expected, List<String> extraArgs) throws IOException {
         assertGenotypesMatch(getTestFile(input), getTestFile(expected), extraArgs);

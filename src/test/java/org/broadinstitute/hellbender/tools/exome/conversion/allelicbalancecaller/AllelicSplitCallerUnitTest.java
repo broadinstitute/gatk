@@ -5,7 +5,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.tools.exome.ACNVModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
-import org.broadinstitute.hellbender.utils.SerializationTestUtils;
+import org.broadinstitute.hellbender.utils.test.SparkTestUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
@@ -29,10 +29,10 @@ public class AllelicSplitCallerUnitTest extends BaseTest {
         final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
         final List<ACNVModeledSegment> segs = SegmentUtils.readACNVModeledSegmentFile(ACNV_SEG_FILE);
-        SerializationTestUtils.roundTripInKryo(segs.get(0), ACNVModeledSegment.class, ctx.getConf());
+        SparkTestUtils.roundTripInKryo(segs.get(0), ACNVModeledSegment.class, ctx.getConf());
 
         // Make sure the CNLOH Caller is serializable before making calls.
-        SerializationTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
+        SparkTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
 
         final List<AllelicCalls> calls = cnlohCaller.makeCalls(segs, 2, ctx);
         Assert.assertNotNull(calls);
@@ -42,8 +42,8 @@ public class AllelicSplitCallerUnitTest extends BaseTest {
         Assert.assertTrue(calls.stream().allMatch(c -> c.getAcnvSegment() != null));
 
         // Make sure the CNLOH Caller is serializable after making calls.
-        SerializationTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
-        SerializationTestUtils.roundTripInKryo(calls.get(0), AllelicCalls.class, ctx.getConf());
+        SparkTestUtils.roundTripInKryo(cnlohCaller, CNLOHCaller.class, ctx.getConf());
+        SparkTestUtils.roundTripInKryo(calls.get(0), AllelicCalls.class, ctx.getConf());
     }
 
     @Test(dataProvider = "mafValues")

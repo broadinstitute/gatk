@@ -78,9 +78,9 @@ check.dependsOn installDist
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
-    compile 'org.broadinstitute:gatk:4.alpha.2-83-gc903e35-20161101.190933-1'
+    compile 'org.broadinstitute:gatk:4.alpha.2-95-g64661b5-20161114.160836-1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
-    
+
     testCompile 'org.testng:testng:6.8.8'
 }
 
@@ -96,13 +96,13 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.10'
+        exclude module: 'spark-core_2.11'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.10'
+        exclude module: 'spark-mllib_2.11'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
@@ -192,6 +192,7 @@ test {
     systemProperty "samjdk.compression_level", "1"
     systemProperty "gatk.spark.debug", System.getProperty("gatk.spark.debug")
 
+    environment "SPARK_LOCAL_IP","127.0.0.1"
     // enable TestNG support (default is JUnit)
     useTestNG{
         excludeGroups 'cloud', 'bucket'

@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -14,6 +15,8 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -21,7 +24,7 @@ import java.util.List;
 public class HaplotypeCallerEngineUnitTest extends BaseTest {
 
     @Test
-    public void testIsActive() {
+    public void testIsActive() throws IOException {
         final File testBam = new File(NA12878_20_21_WGS_bam);
         final File reference = new File(b37_reference_20_21);
         final SimpleInterval shardInterval = new SimpleInterval("20", 10000000, 10001000);
@@ -41,10 +44,11 @@ public class HaplotypeCallerEngineUnitTest extends BaseTest {
                 new SimpleInterval("20", 10001019, 10001019)
         );
 
-        try ( final ReadsDataSource reads = new ReadsDataSource(testBam);
-              final ReferenceDataSource ref = new ReferenceFileSource(reference) ) {
+        try ( final ReadsDataSource reads = new ReadsDataSource(testBam.toPath());
+              final ReferenceDataSource ref = new ReferenceFileSource(reference);
+              final CachingIndexedFastaSequenceFile referenceReader = new CachingIndexedFastaSequenceFile(reference);) {
 
-            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, reads.getHeader(), reference.getAbsolutePath());
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, reads.getHeader(), referenceReader);
 
             List<ReadFilter> hcFilters = HaplotypeCallerEngine.makeStandardHCReadFilters();
             hcFilters.forEach(filter -> filter.setHeader(reads.getHeader()));

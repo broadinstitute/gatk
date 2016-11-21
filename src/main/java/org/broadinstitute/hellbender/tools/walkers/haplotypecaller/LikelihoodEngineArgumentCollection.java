@@ -6,11 +6,13 @@ import org.broadinstitute.hellbender.cmdline.Hidden;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
+import java.io.Serializable;
+
 /**
  * Set of arguments related to {@link ReadLikelihoodCalculationEngine} implementations
  */
-public final class LikelihoodEngineArgumentCollection {
-
+public final class LikelihoodEngineArgumentCollection implements Serializable {
+    private static final long serialVersionUID = 1L;
     @Hidden
     @Advanced
     @Argument(fullName = "likelihoodCalculationEngine", shortName = "likelihoodEngine",

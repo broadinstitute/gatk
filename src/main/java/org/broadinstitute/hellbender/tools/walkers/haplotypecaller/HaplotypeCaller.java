@@ -1,15 +1,21 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 
@@ -150,6 +156,14 @@ import java.util.List;
 )
 public final class HaplotypeCaller extends AssemblyRegionWalker {
 
+    public static final int DEFAULT_READSHARD_SIZE = 5000;
+    public static final int DEFAULT_READSHARD_PADDING = 100;
+    public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
+    public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
+    public static final int DEFAULT_ASSEMBLY_REGION_PADDING = 100;
+    public static final int DEFAULT_MAX_READS_PER_ALIGNMENT = 50;
+    public static final double DEFAULT_ACTIVE_PROB_THRESHOLD = 0.002;
+    public static final int DEFAULT_MAX_PROB_PROPAGATION_DISTANCE = 50;
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
 
@@ -164,28 +178,28 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     private HaplotypeCallerEngine hcEngine;
 
     @Override
-    protected int defaultReadShardSize() { return 5000; }
+    protected int defaultReadShardSize() { return DEFAULT_READSHARD_SIZE; }
 
     @Override
-    protected int defaultReadShardPadding() { return 100; }
+    protected int defaultReadShardPadding() { return DEFAULT_READSHARD_PADDING; }
 
     @Override
-    protected int defaultMinAssemblyRegionSize() { return 50; }
+    protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
 
     @Override
-    protected int defaultMaxAssemblyRegionSize() { return 300; }
+    protected int defaultMaxAssemblyRegionSize() { return DEFAULT_MAX_ASSEMBLY_REGION_SIZE; }
 
     @Override
-    protected int defaultAssemblyRegionPadding() { return 100; }
+    protected int defaultAssemblyRegionPadding() { return DEFAULT_ASSEMBLY_REGION_PADDING; }
 
     @Override
-    protected int defaultMaxReadsPerAlignmentStart() { return 50; }
+    protected int defaultMaxReadsPerAlignmentStart() { return DEFAULT_MAX_READS_PER_ALIGNMENT; }
 
     @Override
-    protected double defaultActiveProbThreshold() { return 0.002; }
+    protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
 
     @Override
-    protected int defaultMaxProbPropagationDistance() { return 50; }
+    protected int defaultMaxProbPropagationDistance() { return DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
@@ -199,12 +213,24 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
-        hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), referenceArguments.getReferenceFileName());
+        final ReferenceSequenceFile referenceReader = getReferenceReader(referenceArguments);
+        hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), referenceReader);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
         vcfWriter = hcEngine.makeVCFWriter(outputVCF, sequenceDictionary);
         hcEngine.writeHeader(vcfWriter, sequenceDictionary);
+    }
+
+    private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
+        final CachingIndexedFastaSequenceFile referenceReader;
+        final File reference = new File(referenceArguments.getReferenceFileName());
+        try {
+            referenceReader = new CachingIndexedFastaSequenceFile(reference);
+        } catch (FileNotFoundException e) {
+            throw new UserException.CouldNotReadInputFile(reference, e);
+        }
+        return referenceReader;
     }
 
     @Override
