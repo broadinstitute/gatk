@@ -60,14 +60,13 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                     "truth_training2,training=true,truth=true,prior=12.0:" + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf",
                     "-an", "QD", "-an", "HaplotypeScore", "-an", "HRun",
                     "--trustAllPolymorphic", // for speed
-                    "-mode", "SNP"
+                     "-mode", "SNP"
                 }
             },
         };
     }
 
-    @Test(dataProvider = "VarRecalSNP")
-    public void testVariantRecalibratorSNP(final String[] params) throws IOException {
+    private void doSNPTest(final String[] params, final String expectedTranchesFile) throws IOException {
         //NOTE: The number of iterations required to ensure we have enough negative training data to proceed,
         //as well as the test results themselves, are both very sensitive to the state of the random number
         //generator at the time the tool starts to execute. Sampling a single integer from the RNG at the
@@ -98,7 +97,36 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         // the expected vcf is not in the expected dir because its used
         // as input for the ApplyVQSR test
         IntegrationTestSpec.assertEqualTextFiles(recalOut, new File(getLargeVQSRTestDataDir() + "snpRecal.vcf"));
-        IntegrationTestSpec.assertEqualTextFiles(tranchesOut, new File(getLargeVQSRTestDataDir() + "expected/SNPTranches.txt"));
+        IntegrationTestSpec.assertEqualTextFiles(tranchesOut, new File(expectedTranchesFile));
+    }
+
+    @Test(dataProvider = "VarRecalSNP")
+    public void testVariantRecalibratorSNP(final String[] params) throws IOException {
+        doSNPTest(params, getLargeVQSRTestDataDir() + "expected/SNPDefaultTranches.txt");
+    }
+
+    @Test(dataProvider = "VarRecalSNP")
+    public void testVariantRecalibratorSNPAlternateTranches(final String[] params) throws IOException {
+        // same as testVariantRecalibratorSNP but with specific tranches
+        List<String> args = new ArrayList<>(params.length);
+        Stream.of(params).forEach(arg -> args.add(arg));
+        args.addAll(
+                Arrays.asList(
+                        "-tranche", "100.0",
+                        "-tranche", "99.95",
+                        "-tranche", "99.9",
+                        "-tranche", "99.8",
+                        "-tranche", "99.6",
+                        "-tranche", "99.5",
+                        "-tranche", "99.4",
+                        "-tranche", "99.3",
+                        "-tranche", "99.0",
+                        "-tranche", "98.0",
+                        "-tranche", "97.0",
+                        "-tranche", "90.0"
+                )
+        );
+        doSNPTest(args.toArray(new String[args.size()]), getLargeVQSRTestDataDir() + "expected/SNPAlternateTranches.txt");
     }
 
     @Test(dataProvider = "VarRecalSNP")
