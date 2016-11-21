@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 
 import java.util.logging.ConsoleHandler;
 import java.util.logging.Handler;
@@ -86,8 +87,9 @@ public class LoggingUtils {
         return javaUtilLevelNamespaceMap.get(picardLevel);
     }
 
+
     /**
-     * Propagate the verbosity level to Picard, log4j, and the java built in logger
+     * Propagate the verbosity level to Picard, log4j, the java built in logger, and Kryo's MinLog
      */
     public static void setLoggingLevel(final Log.LogLevel verbosity) {
 
@@ -100,6 +102,8 @@ public class LoggingUtils {
         // set the java.util.logging Level
         setJavaUtilLoggingLevel(verbosity);
 
+        // set the esotericsoft MinLog level, this is used by kryo
+        setMinLogLoggingLevel(verbosity);
     }
 
     private static void setLog4JLoggingLevel(Log.LogLevel verbosity) {
@@ -112,5 +116,19 @@ public class LoggingUtils {
 
         loggerConfig.setLevel(levelToLog4jLevel(verbosity));
         loggerContext.updateLoggers();
+    }
+
+    /**
+     * set the logging level for {@link com.esotericsoftware.minlog.Log}, the logger used by Kryo
+     */
+    private static void setMinLogLoggingLevel(Log.LogLevel verbosity) {
+        switch (verbosity) {
+            case DEBUG: com.esotericsoftware.minlog.Log.DEBUG(); break;
+            case INFO: com.esotericsoftware.minlog.Log.INFO(); break;
+            case WARNING: com.esotericsoftware.minlog.Log.WARN(); break;
+            case ERROR: com.esotericsoftware.minlog.Log.ERROR(); break;
+            default:
+                throw new GATKException("This log level is not implemented properly: " + verbosity);
+        }
     }
 }
