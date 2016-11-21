@@ -543,9 +543,20 @@ public final class CommandLineParser {
                 throw new UserException.CommandLineException("Argument '" + argumentDefinition.getNames() + "' cannot be specified more than once.");
         }
 
+        if (argumentDefinition.isCollection) {
+            // if this is a collection then we only want to clear it once at the beginning, before we process
+            // all of the values
+            @SuppressWarnings("rawtypes")
+            final Collection c = (Collection) argumentDefinition.getFieldValue();
+            c.clear();
+        }
         for (String stringValue: values) {
             final Object value;
             if (stringValue.equals(NULL_STRING)) {
+                if (argumentDefinition.isCollection && values.size() > 1) {
+                    // multiple values for a collection were passed, and at least one of them is null
+                    throw new UserException.CommandLineException("A value of \"null\" can only be provided for a collection if it is the only value provided. Multiple values were provided for: " + argumentDefinition.getNames() + ".");
+                }
                 //"null" is a special value that allows the user to override any default
                 //value set for this arg
                 if (argumentDefinition.optional) {

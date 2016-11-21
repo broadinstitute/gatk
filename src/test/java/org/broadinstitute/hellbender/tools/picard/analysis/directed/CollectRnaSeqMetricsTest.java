@@ -138,7 +138,6 @@ public final class CollectRnaSeqMetricsTest extends CommandLineProgramTest {
                 "--RIBOSOMAL_INTERVALS", rRnaIntervalsFile.getAbsolutePath(),
                 "--STRAND_SPECIFICITY", "SECOND_READ_TRANSCRIPTION_STRAND",
                 "--IGNORE_SEQUENCE", ignoredSequence,
-                "--LEVEL", "null",
                 "--LEVEL", "SAMPLE",
                 "--LEVEL", "LIBRARY"
         };
