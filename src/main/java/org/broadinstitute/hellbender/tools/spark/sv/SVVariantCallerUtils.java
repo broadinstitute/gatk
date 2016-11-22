@@ -12,20 +12,27 @@ import java.util.List;
  */
 final class SVVariantCallerUtils {
 
+    /**
+     * @return the number of bases of two alignment regions overlap on the locally-assembled contig they originate from.
+     *          Mostly useful for computing micro-homology.
+     */
     @VisibleForTesting
     static int overlapOnContig(final AlignmentRegion one, final AlignmentRegion two) {
         return Math.max(0, Math.min(one.endInAssembledContig + 1, two.endInAssembledContig + 1) - Math.max(one.startInAssembledContig, two.startInAssembledContig));
     }
 
+    /**
+     * @return the total number of hard clipped bases represented in the CIGAR.
+     */
     @VisibleForTesting
     static int getTotalHardClipping(final Cigar cigar) {
         final List<CigarElement> cigarElements = cigar.getCigarElements();
         final int sz = cigarElements.size();
-        if (sz == 0) {
+        if (sz <2) { // no cigar elements or only 1 element means there cannot be any hard clipping
             return 0;
         }
         return (cigarElements.get(0).getOperator() == CigarOperator.HARD_CLIP ? cigarElements.get(0).getLength() : 0) +
-                (sz == 1 || cigarElements.get(sz - 1).getOperator() == CigarOperator.HARD_CLIP ? cigarElements.get(sz - 1).getLength() : 0);
+                (cigarElements.get(sz - 1).getOperator() == CigarOperator.HARD_CLIP ? cigarElements.get(sz - 1).getLength() : 0);
     }
 
     /**

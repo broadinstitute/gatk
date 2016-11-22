@@ -16,6 +16,17 @@ public final class SVConstants {
 
     static final String INVERSIONS_OUTPUT_VCF = "inversions.vcf";
 
+    static final String INS_DEL_OUTPUT_VCF = "del_ins.vcf";
+
+    static final String VCF_ALT_ALLELE_STRING_INV = "<INV>";
+
+    static final String VCF_ALT_ALLELE_STRING_INS = "<INS>";
+
+    static final String VCF_ALT_ALLELE_STRING_DEL = "<DEL>";
+
+    static final String VCF_ALT_ALLELE_STRING_INDEL = "<INS_DEL>";
+
+
     /**
      * Minimum flanking alignment length used in calling variants when going through contig alignments.
      */
@@ -24,4 +35,6 @@ public final class SVConstants {
     static final String VARIANT_ID_FIELD_SEPARATER = ";";
 
     static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
+
+    static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be break apart.
 }
