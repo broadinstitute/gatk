@@ -207,6 +207,6 @@ class ChimericAlignment {
     }
 
     final boolean regionStartsEarlyOnContigAlsoEarlyOnRef(final SAMSequenceDictionary samSequenceDictionary) {
-        return 0 < IntervalUtils.compareLocatables(regionWithLowerCoordOnContig.referenceInterval, regionWithHigherCoordOnContig.referenceInterval, samSequenceDictionary);
+        return 0 > IntervalUtils.compareLocatables(regionWithLowerCoordOnContig.referenceInterval, regionWithHigherCoordOnContig.referenceInterval, samSequenceDictionary);
     }
 }
