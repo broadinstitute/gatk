@@ -56,9 +56,6 @@ public class GATKRegistrator implements KryoRegistrator {
         //register to avoid writing the full name of this class over and over
         kryo.register(PairedEnds.class, new FieldSerializer<>(kryo, PairedEnds.class));
 
-        kryo.register(Allele.class, new FieldSerializer<>(kryo, Allele.class));
-        kryo.register(FastGenotype.class, new FieldSerializer<>(kryo, FastGenotype.class));
-        kryo.register(VariantContext.class, new FieldSerializer<>(kryo, VariantContext.class));
         // register the ADAM data types using Avro serialization, including:
         //     AlignmentRecord
         //     Genotype
