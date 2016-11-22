@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -20,7 +21,12 @@ import java.util.List;
 
 
 public class SVVariantCallerInternalUnitTest extends BaseTest {
+    private static final PipelineOptions dummyOptions = null;
+    private static final SAMSequenceDictionary seqDict = new ReferenceMultiSource(dummyOptions, b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
 
+    // the chromosome that the long contig1 is supposed to be mapped to is actually chr19, but to make tests runnable, we could only use "20" or "21"
+    // todo: this should be fixed, but since the exact mapped to chromosome is not important now, we push it to later
+    private static final String chrForLongContig1 = "20";
     @Test
     public void testGetAssembledBreakpointsFromAlignmentRegions() throws Exception {
         final byte[] contigSequence = "GACGAACGATTTGACTTTAATATGAAATGTTTTATGTGGGCTATAAAATTATCCAAACTCGACACAGGACATTTTGAGCTTATTTCCAAATCATCTGGCCTTCATCTACCCACTGGAACTATTACTCTGCTGGGTCCTCATGGAAACATATCTTTCAGCCCTAACAATGAGACTACAGACATCTACGTCCCCAACACAACAGCTAAAAAGCAGTAGAATGTCAGAAAGGCTATCCACTTAGCCCTTGGCTGACAGGCCCCACTGAGCATCCTTTGCGAAGTCCATTTACTAGCTAATTCATAATTTACACAAGGCATTCAGACATAGCAGCTAAGATATAAAACATTTATCAACACAGGGACTAGTTTGTCATTTTAAAATAATTATGTTTAAGTAAGCCAATAAAGTCTATCTTCTCCAATTTACTTATTGAGCTTTATGAGGCAATTTAAGTCCCGATTTTGGGGGGTATGTATGAAAGGAGAGCATGGAAATGCCATTTGCTCCCTGAAGTTTTTATCTTTTTTTTTTTGAGATAGAGTCTTGTGTTTTCTGTGGAGTACATGAGTATGCATCAAAGCTAACAACGCCCACTGCCCTGTTAGTCAAATACCTTTGA".getBytes();
@@ -60,8 +66,8 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
     @Test
     public void testGetAssembledBreakpointFromAlignmentRegionsStrangeLeftBreakpoint() throws Exception {
         final byte[] contigSequence = LONG_CONTIG1.getBytes();
-        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval("chr19", 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
-        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval("chr19", 20152030, 20154634), 60, 3604, contigSequence.length, 36);
+        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval(chrForLongContig1, 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
+        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval(chrForLongContig1, 20152030, 20154634), 60, 3604, contigSequence.length, 36);
         final List<AlignmentRegion> alignmentRegionList = Arrays.asList(region1, region2);
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentRegions = SVVariantCallerInternal.getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
         Assert.assertEquals(assembledBreakpointsFromAlignmentRegions.size(), 1);
@@ -71,10 +77,10 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         Assert.assertEquals(chimericAlignment.regionWithHigherCoordOnContig, region2);
         Assert.assertFalse(chimericAlignment.homology.isEmpty());
 
-        final Tuple2<SimpleInterval, SimpleInterval> leftAndRightBreakpointsOnReferenceLeftAlignedForHomology = chimericAlignment.getLeftJustifiedBreakpoints();
+        final Tuple2<SimpleInterval, SimpleInterval> leftAndRightBreakpointsOnReferenceLeftAlignedForHomology = chimericAlignment.getLeftJustifiedBreakpoints(seqDict);
 
-        Assert.assertEquals(leftAndRightBreakpointsOnReferenceLeftAlignedForHomology._1(), new SimpleInterval("chr19", 20138007, 20138007));
-        Assert.assertEquals(leftAndRightBreakpointsOnReferenceLeftAlignedForHomology._2(), new SimpleInterval("chr19", 20152651, 20152651));
+        Assert.assertEquals(leftAndRightBreakpointsOnReferenceLeftAlignedForHomology._1(), new SimpleInterval(chrForLongContig1, 20138007, 20138007));
+        Assert.assertEquals(leftAndRightBreakpointsOnReferenceLeftAlignedForHomology._2(), new SimpleInterval(chrForLongContig1, 20152651, 20152651));
     }
 
     @Test
@@ -88,8 +94,8 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
     @Test
     public void testARtooSmall() {
         final byte[] contigSequence = LONG_CONTIG1.getBytes();
-        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval("chr19", 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
-        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval("chr19", 20152030, 20154634), 60, 3604, contigSequence.length, 36);
+        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval(chrForLongContig1, 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
+        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval(chrForLongContig1, 20152030, 20154634), 60, 3604, contigSequence.length, 36);
         Assert.assertFalse( SVVariantCallerInternal.alignmentRegionIsTooSmall(region1, region2, SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
         Assert.assertFalse( SVVariantCallerInternal.alignmentRegionIsTooSmall(region2, region1, SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
 
@@ -142,18 +148,18 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
     @Test
     public void testProduceVariantId_Inversion() {
         final byte[] contigSequence = LONG_CONTIG1.getBytes();
-        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval("chr19", 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
-        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval("chr19", 20152030, 20154634), 60, 3604, contigSequence.length, 36);
+        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval(chrForLongContig1, 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
+        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval(chrForLongContig1, 20152030, 20154634), 60, 3604, contigSequence.length, 36);
         final List<AlignmentRegion> alignmentRegionList = Arrays.asList(region1, region2);
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentRegions = SVVariantCallerInternal.getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
 
-        final BreakpointAllele breakpointAllele = new BreakpointAllele(assembledBreakpointsFromAlignmentRegions.get(0));
+        final BreakpointAllele breakpointAllele = new BreakpointAllele(assembledBreakpointsFromAlignmentRegions.get(0), seqDict);
         final String id = SVVariantCallerInternal.produceVariantId(breakpointAllele);
         Assert.assertFalse(id.isEmpty());
         final String[] fields = id.split(SVConstants.VARIANT_ID_FIELD_SEPARATER);
         Assert.assertEquals(fields.length, 4);
 //        Assert.assertEquals(BreakpointAlleleInversion.InversionType.valueOf(fields[0]), InversionType.INV_3_TO_5);
-        Assert.assertTrue(fields[1].endsWith("19"));
+        Assert.assertTrue(fields[1].equals(chrForLongContig1));
         Assert.assertEquals(fields[2], "20138007");
         Assert.assertEquals(fields[3], "20152651");
     }
@@ -164,16 +170,16 @@ public class SVVariantCallerInternalUnitTest extends BaseTest {
         // MAPPING_QUALITIES, ALIGNMENT_LENGTH, INSERTED_SEQUENCE, INSERTED_SEQUENCE_MAPPINGS, HOMOLOGY, TYPE
 
         final byte[] contigSequence = LONG_CONTIG1.getBytes();
-        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval("chr19", 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
-        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval("chr19", 20152030, 20154634), 60, 3604, contigSequence.length, 36);
+        AlignmentRegion region1 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, new SimpleInterval(chrForLongContig1, 20138007, 20142231), 60, 1, contigSequence.length - 1986, 36);
+        AlignmentRegion region2 = new AlignmentRegion("702700", "702700", TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, new SimpleInterval(chrForLongContig1, 20152030, 20154634), 60, 3604, contigSequence.length, 36);
         final List<AlignmentRegion> alignmentRegionList = Arrays.asList(region1, region2);
         final List<ChimericAlignment> assembledBreakpointsFromAlignmentRegions = SVVariantCallerInternal.getChimericAlignmentsFromAlignmentRegions(contigSequence, alignmentRegionList, 50);
 
         final Iterable<ChimericAlignment> alignments = Collections.singletonList(assembledBreakpointsFromAlignmentRegions.get(0));
 
-        final BreakpointAllele breakpointAllele = new BreakpointAllele(assembledBreakpointsFromAlignmentRegions.get(0));
+        final BreakpointAllele breakpointAllele = new BreakpointAllele(assembledBreakpointsFromAlignmentRegions.get(0), seqDict);
 
-        VariantContextBuilder vcBuilder = new VariantContextBuilder().chr("chr19").start(20138007).stop(20152651).alleles(Arrays.asList(Allele.create("A", true), Allele.create("<INV>"))); // dummy test data, almost guaranteed to be non-factual
+        VariantContextBuilder vcBuilder = new VariantContextBuilder().chr(chrForLongContig1).start(20138007).stop(20152651).alleles(Arrays.asList(Allele.create("A", true), Allele.create("<INV>"))); // dummy test data, almost guaranteed to be non-factual
         final VariantContext vc = SVVariantCallerInternal.updateAttributes(vcBuilder, 20138007, 20152651, new Tuple2<>(breakpointAllele, alignments)).make();
 
         String testString = vc.getAttributeAsString(GATKSVVCFHeaderLines.MAPPING_QUALITIES, "NONSENSE");
