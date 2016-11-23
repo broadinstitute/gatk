@@ -72,7 +72,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
         try {
             reads = shards.flatMap(AddContextDataToReadSparkOptimized.subdivideAndFillReads(bam, auth, outputShardSize, margin, optFilter));
         } catch (IOException x) {
-            throw new UserException.CouldNotReadInputFile("Couldn't read "+bam+": "+x.getMessage(), x);
+            throw new UserException.CouldNotReadInputFile(bam, x.getMessage(), x);
         }
         // add reference bases
         reads = reads.map(s -> AddContextDataToReadSparkOptimized.fillContext(rds, s));

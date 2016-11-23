@@ -159,7 +159,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                 IOUtil.assertFileIsReadable(samPath);
             }
             catch ( SAMException|IllegalArgumentException e ) {
-                throw new UserException.CouldNotReadInputFile(samPath.toString(), e);
+                throw new UserException.CouldNotReadInputFile(samPath, e);
             }
 
             SamReader reader;

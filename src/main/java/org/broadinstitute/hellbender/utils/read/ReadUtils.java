@@ -1022,7 +1022,7 @@ public final class ReadUtils {
             return SamStreams.isCRAMFile(bis);
         }
         catch (IOException e) {
-            throw new UserException.CouldNotReadInputFile(e.getMessage());
+            throw new UserException.CouldNotReadInputFile(putativeCRAMFile, e);
         }
     }
 

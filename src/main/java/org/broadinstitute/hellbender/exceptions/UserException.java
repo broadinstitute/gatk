@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -59,8 +60,16 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file %s", file.getAbsolutePath()));
         }
 
+        public CouldNotReadInputFile(Path path) {
+            super(String.format("Couldn't read file %s", path));
+        }
+
         public CouldNotReadInputFile(File file, String message) {
-            super(String.format("Couldn't read file %s. Error was: %s", file.getAbsolutePath(), message));
+            this(file.getAbsolutePath(), message);
+        }
+
+        public CouldNotReadInputFile(Path path, String message) {
+            this(path.toString(), message);
         }
 
         public CouldNotReadInputFile(String file, String message) {
@@ -68,11 +77,23 @@ public class UserException extends RuntimeException {
         }
 
         public CouldNotReadInputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file.getAbsolutePath(), message, getMessage(e)), e);
+            this(file.getAbsolutePath(), message, e);
+        }
+
+        public CouldNotReadInputFile(Path path, String message, Exception e) {
+            this(path.toString(), message, e);
+        }
+
+        public CouldNotReadInputFile(String file, String message, Exception e) {
+            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file, message, getMessage(e)), e);
         }
 
         public CouldNotReadInputFile(File file, Exception e) {
             this(file, getMessage(e), e);
+        }
+
+        public CouldNotReadInputFile(Path path, Exception e) {
+            this(path, getMessage(e), e);
         }
 
         public CouldNotReadInputFile(String message) {

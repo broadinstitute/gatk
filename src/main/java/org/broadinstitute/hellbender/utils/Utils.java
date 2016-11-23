@@ -694,9 +694,9 @@ public final class Utils {
     public static File regularReadableUserFile(final File file) {
         nonNull(file, "unexpected null file reference");
         if (!file.canRead()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file does not exist or cannot be read");
+            throw new UserException.CouldNotReadInputFile(file,"the input file does not exist or cannot be read");
         } else if (!file.isFile()) {
-            throw new UserException.CouldNotReadInputFile(file.getAbsolutePath(),"the input file is not a regular file");
+            throw new UserException.CouldNotReadInputFile(file,"the input file is not a regular file");
         } else {
             return file;
         }
