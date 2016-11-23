@@ -302,7 +302,11 @@ public class UserException extends RuntimeException {
         }
 
         public MalformedBAM(File file, String message) {
-            this(file.toString(), message);
+            this(file.getAbsolutePath(), message);
+        }
+
+        public MalformedBAM(Path path, String message) {
+            this(path.toString(), message);
         }
 
         public MalformedBAM(String source, String message) {
