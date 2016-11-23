@@ -1,16 +1,29 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.github.lindenb.jbwa.jni.AlnRgn;
+import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
+import java.util.List;
+
 public class AlignmentRegionUnitTest {
 
+    private static final List<String> refNames = Collections.singletonList("1");
+    private BwaMemAlignment createAlignment(final boolean fwdStrand, final int refStart, final int tigStart, final String cigar, final int nMismatches ) {
+        return new BwaMemAlignment( fwdStrand ? 0 : SAMFlag.READ_REVERSE_STRAND.intValue(),
+                                0, refStart, refStart+4, tigStart, tigStart+4, 60, nMismatches,
+                                0, 0, cigar, null, null,
+                                0, refStart+100, 104);
+    }
     @Test
     public void testNormalizeStrandOnCreation() throws Exception {
-        final AlignmentRegion ar1p1 = new AlignmentRegion("1", "1", new AlnRgn("1", 96, (byte) '+', "4M4S", 60, 0, 0));
+        final AlignmentRegion ar1p1 = new AlignmentRegion("1", "1", 8,
+                createAlignment(true, 96, 0, "4M4S", 0 ),
+                refNames);
         Assert.assertEquals(ar1p1.referenceInterval, new SimpleInterval("1", 97, 100));
         Assert.assertEquals(ar1p1.startInAssembledContig, 1);
         Assert.assertEquals(ar1p1.endInAssembledContig, 4);
@@ -18,8 +31,14 @@ public class AlignmentRegionUnitTest {
         Assert.assertEquals(ar1p1.forwardStrandCigar, TextCigarCodec.decode("4M4S"));
         Assert.assertEquals(ar1p1.assembledContigLength, 8);
         Assert.assertEquals(ar1p1.mismatches, 0);
+        Assert.assertEquals(ar1p1,
+                new AlignmentRegion("1", "1", new SimpleInterval("1", 97, 100),
+                                    TextCigarCodec.decode("4M4S"),
+                                    true, 60, 0, 1, 4));
 
-        final AlignmentRegion ar1p2 = new AlignmentRegion("1", "1", new AlnRgn("1", 196, (byte) '-', "4M4H", 60, 1, 0));
+        final AlignmentRegion ar1p2 = new AlignmentRegion("1", "1", 8,
+                createAlignment(false, 196, 4, "4H4M", 1 ),
+                refNames);
         Assert.assertEquals(ar1p2.referenceInterval, new SimpleInterval("1", 197, 200));
         Assert.assertEquals(ar1p2.startInAssembledContig, 5);
         Assert.assertEquals(ar1p2.endInAssembledContig, 8);
@@ -27,35 +46,10 @@ public class AlignmentRegionUnitTest {
         Assert.assertEquals(ar1p2.forwardStrandCigar, TextCigarCodec.decode("4H4M"));
         Assert.assertEquals(ar1p2.assembledContigLength, 8);
         Assert.assertEquals(ar1p2.mismatches, 1);
-
-        final AlignmentRegion ar2p1 = new AlignmentRegion("1", "1", new AlnRgn("1", 96, (byte) '-', "4M4S", 60, 0, 0));
-        Assert.assertEquals(ar2p1.referenceInterval, new SimpleInterval("1", 97, 100));
-        Assert.assertEquals(ar2p1.startInAssembledContig, 5);
-        Assert.assertEquals(ar2p1.endInAssembledContig, 8);
-        Assert.assertFalse(ar2p1.forwardStrand);
-        Assert.assertEquals(ar2p1.forwardStrandCigar, TextCigarCodec.decode("4S4M"));
-        Assert.assertEquals(ar2p1.assembledContigLength, 8);
-        Assert.assertEquals(ar2p1.mismatches, 0);
-
-        final AlignmentRegion ar2p2 = new AlignmentRegion("1", "1", new AlnRgn("1", 196, (byte) '+', "4M4H", 60, 0, 0));
-        Assert.assertEquals(ar2p2.referenceInterval, new SimpleInterval("1", 197, 200));
-        Assert.assertEquals(ar2p2.startInAssembledContig, 1);
-        Assert.assertEquals(ar2p2.endInAssembledContig, 4);
-        Assert.assertTrue(ar2p2.forwardStrand);
-        Assert.assertEquals(ar2p2.forwardStrandCigar, TextCigarCodec.decode("4M4H"));
-        Assert.assertEquals(ar2p1.assembledContigLength, 8);
-        Assert.assertEquals(ar2p2.mismatches, 0);
-    }
-
-    @Test
-    public void testCtorConcordance() {
-        final AlignmentRegion ar1p1 = new AlignmentRegion("1", "1", new AlnRgn("1", 96, (byte) '+', "4M4S", 60, 0, 0));
-        final AlignmentRegion ar1p1v2 = new AlignmentRegion("1", "1", new SimpleInterval("1", 97, 100), TextCigarCodec.decode("4M4S"), true, 60, 0, 1, 4);
-        Assert.assertEquals(ar1p1, ar1p1v2);
-
-        final AlignmentRegion ar1p2 = new AlignmentRegion("1", "1", new AlnRgn("1", 196, (byte) '-', "4M4H", 60, 0, 0));
-        final AlignmentRegion ar1p2v2 = new AlignmentRegion("1", "1", new SimpleInterval("1", 197, 200), TextCigarCodec.decode("4H4M"), false, 60, 0, 5, 8);
-        Assert.assertEquals(ar1p2, ar1p2v2);
+        Assert.assertEquals(ar1p2,
+                new AlignmentRegion("1", "1", new SimpleInterval("1", 197, 200),
+                        TextCigarCodec.decode("4H4M"),
+                        false, 60, 1, 5, 8));
     }
 
     @Test
@@ -79,24 +73,5 @@ public class AlignmentRegionUnitTest {
         Assert.assertEquals(region2.startInAssembledContig, 1344);
         Assert.assertEquals(region2.endInAssembledContig, 2498);
         Assert.assertEquals(region2.mismatches, 3);
-    }
-
-    @Test
-    public void testPositionsOnContig(){
-        final AlignmentRegion ar1p1 = new AlignmentRegion("1", "1", new AlnRgn("1", 96, (byte) '+', "4M4S", 60, 0, 0));
-        Assert.assertEquals(ar1p1.startOfAlignmentInContig(), 1);
-        Assert.assertEquals(ar1p1.endOfAlignmentInContig(), 4);
-
-        final AlignmentRegion ar1p2 = new AlignmentRegion("1", "1", new AlnRgn("1", 196, (byte) '-', "4M4H", 60, 0, 0));
-        Assert.assertEquals(ar1p2.startOfAlignmentInContig(), 5);
-        Assert.assertEquals(ar1p2.endOfAlignmentInContig(), 8);
-
-        final AlignmentRegion ar2p1 = new AlignmentRegion("1", "1", new AlnRgn("1", 96, (byte) '-', "4M4S", 60, 0, 0));
-        Assert.assertEquals(ar2p1.startOfAlignmentInContig(), 5);
-        Assert.assertEquals(ar2p1.endOfAlignmentInContig(), 8);
-
-        final AlignmentRegion ar2p2 = new AlignmentRegion("1", "1", new AlnRgn("1", 196, (byte) '+', "4M4H", 60, 0, 0));
-        Assert.assertEquals(ar2p2.startOfAlignmentInContig(), 1);
-        Assert.assertEquals(ar2p2.endOfAlignmentInContig(), 4);
     }
 }

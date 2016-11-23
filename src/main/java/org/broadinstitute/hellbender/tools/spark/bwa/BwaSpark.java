@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.bwa;
 
-import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -24,11 +22,12 @@ public final class BwaSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String output;
 
-    @ArgumentCollection
-    private BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
+    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
+            fullName = "bwamemIndexImage")
+    private String indexImageFile;
 
     @Override
     public boolean requiresReference() {
@@ -42,16 +41,16 @@ public final class BwaSpark extends GATKSparkTool {
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final JavaRDD<GATKRead> unalignedReads = getReads();
-        final String referenceFileName = referenceArguments.getReferenceFileName();
-        final BwaSparkEngine engine = new BwaSparkEngine(bwaArgs.numThreads, bwaArgs.fixedChunkSize, referenceFileName);
-        final SAMFileHeader readsHeader = engine.makeHeaderForOutput(getHeaderForReads(), getReferenceSequenceDictionary());
-        final JavaRDD<GATKRead> reads = engine.alignWithBWA(ctx, unalignedReads, readsHeader);
+        try ( final BwaSparkEngine engine =
+                      new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
+            final JavaRDD<GATKRead> reads = engine.align(getReads());
 
-        try {
-            ReadsSparkSink.writeReads(ctx, output, null, reads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
-        } catch (final IOException e) {
-            throw new GATKException("Unable to write bam",e);
+            try {
+                ReadsSparkSink.writeReads(ctx, output, null, reads, engine.getHeader(),
+                                            shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
+            } catch (final IOException e) {
+                throw new GATKException("Unable to write aligned reads", e);
+            }
         }
     }
 }
