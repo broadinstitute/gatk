@@ -39,6 +39,6 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
 
     @Override
     public List<String> getReadFilesNames() {
-        return new ArrayList<String>(readFilesNames);
+        return new ArrayList<>(readFilesNames);
     }
 }

@@ -12,6 +12,7 @@ public final class StandardArgumentDefinitions {
     public static final String REFERENCE_LONG_NAME = "reference";
     public static final String VARIANT_LONG_NAME = "variant";
     public static final String FEATURE_LONG_NAME = "feature";
+    public static final String READ_INDEX_LONG_NAME = "readIndex";
     public static final String USE_ORIGINAL_QUALITIES_LONG_NAME = "useOriginalQualities";
     public static final String LENIENT_LONG_NAME = "lenient";
     public static final String VERBOSITY_NAME = "verbosity";
@@ -33,6 +34,7 @@ public final class StandardArgumentDefinitions {
     public static final String REFERENCE_SHORT_NAME = "R";
     public static final String VARIANT_SHORT_NAME = "V";
     public static final String FEATURE_SHORT_NAME = "F";
+    public static final String READ_INDEX_SHORT_NAME = READ_INDEX_LONG_NAME;
     public static final String LENIENT_SHORT_NAME = "LE";
     public static final String READ_VALIDATION_STRINGENCY_SHORT_NAME = "VS";
     public static final String SAMPLE_ALIAS_SHORT_NAME = "ALIAS";
