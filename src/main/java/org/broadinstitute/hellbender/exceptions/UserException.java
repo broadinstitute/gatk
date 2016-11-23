@@ -297,6 +297,7 @@ public class UserException extends RuntimeException {
     public static class MalformedBAM extends UserException {
         private static final long serialVersionUID = 1l;
 
+        // todo - why this needs the read?
         public MalformedBAM(GATKRead read, String message) {
             this("(unknown)", message);
         }
