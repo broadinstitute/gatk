@@ -221,7 +221,7 @@ public final class IntervalUtils {
                 throw e;
             }
             catch ( final Exception e ) {
-                throw new UserException.MalformedFile(new File(arg), "Interval file could not be parsed in any supported format.", e);
+                throw new UserException.MalformedFile(arg, "Interval file could not be parsed in any supported format.", e);
             }
         }
         // If it's neither a Feature-containing file nor an interval file, but is an existing file, throw an error.
@@ -323,7 +323,7 @@ public final class IntervalUtils {
         }
 
         if ( ret.isEmpty() ) {
-            throw new UserException.MalformedFile(new File(fileName), "It contains no intervals.");
+            throw new UserException.MalformedFile(fileName, "It contains no intervals.");
         }
 
         return ret;
