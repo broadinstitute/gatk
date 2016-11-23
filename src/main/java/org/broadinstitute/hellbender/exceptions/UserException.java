@@ -126,19 +126,35 @@ public class UserException extends RuntimeException {
 
 
         public CouldNotCreateOutputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)), e);
+            this(file.getAbsolutePath(), message, e);
         }
 
-        public CouldNotCreateOutputFile(File file, String message) {
-            super(String.format("Couldn't write file %s because %s", file.getAbsolutePath(), message));
+        public CouldNotCreateOutputFile(Path path, String message, Exception e) {
+            this(path.toString(), message, e);
         }
 
         public CouldNotCreateOutputFile(String filename, String message, Exception e) {
             super(String.format("Couldn't write file %s because %s with exception %s", filename, message, getMessage(e)), e);
         }
 
+        public CouldNotCreateOutputFile(File file, String message) {
+            this(file.getAbsolutePath(), message);
+        }
+
+        public CouldNotCreateOutputFile(Path path, String message) {
+            this(path.toString(), message);
+        }
+
+        public CouldNotCreateOutputFile(String file, String message) {
+            super(String.format("Couldn't write file %s because %s", file, message));
+        }
+
         public CouldNotCreateOutputFile(File file, Exception e) {
             super(String.format("Couldn't write file %s because exception %s", file.getAbsolutePath(), getMessage(e)), e);
+        }
+
+        public CouldNotCreateOutputFile(Path path, Exception e) {
+            super(String.format("Couldn't write file %s because exception %s", path.toString(), getMessage(e)), e);
         }
 
         public CouldNotCreateOutputFile(String message, Exception e) {
