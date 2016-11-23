@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine.spark;
 
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import com.google.cloud.genomics.dataflow.utils.GCSOptions;
 import htsjdk.samtools.SAMFileHeader;
@@ -76,7 +77,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             fullName = "bamPartitionSize", shortName = "bps", optional = true)
     protected long bamPartitionSplitSize = 0;
 
-    @Argument(fullName = "disableSequenceDictionaryValidation", shortName = "disableSequenceDictionaryValidation", doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
     private boolean disableSequenceDictionaryValidation = false;
 
     @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)

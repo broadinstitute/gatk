@@ -25,6 +25,9 @@ public final class StandardArgumentDefinitions {
     public static final String CREATE_OUTPUT_VARIANT_MD5_LONG_NAME = "createOutputVariantMD5";
     public static final String METRIC_ACCUMULATION_LEVEL_LONG_NAME = "metricAccumulationLevel";
 
+    public static final String DISABLE_SEQUENCE_DICT_VALIDATION_NAME = "disableSequenceDictionaryValidation";
+    public static final String ADD_OUTPUT_SAM_PROGRAM_RECORD = "addOutputSAMProgramRecord";
+
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
     public static final String REFERENCE_SHORT_NAME = "R";
