@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -142,7 +143,8 @@ public abstract class GATKTool extends CommandLineProgram {
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
-            reads = new ReadsDataSource(readArguments.getReadPaths(), factory);
+
+            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory);
         }
         else {
             reads = null;

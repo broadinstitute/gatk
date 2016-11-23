@@ -8,6 +8,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * An argument collection for use with tools that accept zero or more input files containing reads
@@ -18,6 +19,9 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = true)
     private List<String> readFilesNames;
+
+    @Argument(fullName = "readIndex", shortName = "readIndex", doc = "BAM/CRAM indices", optional = true)
+    private List<String> indices;
 
     @Override
     public List<File> getReadFiles() {
@@ -39,6 +43,15 @@ public final class OptionalReadInputArgumentCollection extends ReadInputArgument
 
     @Override
     public List<String> getReadFilesNames() {
-        return new ArrayList<String>(readFilesNames);
+        return new ArrayList<>(readFilesNames);
+    }
+
+    @Override
+    public List<Path> getReadIndexPaths() {
+        if ( indices == null || indices.isEmpty() ) {
+            return null;
+        }
+
+        return indices.stream().map(index -> IOUtils.getPath(index)).collect(Collectors.toList());
     }
 }

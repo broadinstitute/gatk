@@ -109,8 +109,16 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      */
     public ReadsDataSource(final List<Path> samPaths, SamReaderFactory customSamReaderFactory ) {
+        this(samPaths, null, customSamReaderFactory);
+    }
+
+    public ReadsDataSource(final List<Path> samPaths, final List<Path> samIndices, SamReaderFactory customSamReaderFactory ) {
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
+
+        if ( samIndices != null ) {
+            Utils.validateArg(samPaths.size() == samIndices.size(), "Must have the same number of BAM/SAM paths and indices");
+        }
 
         readers = new LinkedHashMap<>(samPaths.size() * 2);
         backingPaths = new LinkedHashMap<>(samPaths.size() * 2);
@@ -121,6 +129,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                     SamReaderFactory.makeDefault().validationStringency(ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY) :
                     customSamReaderFactory;
 
+        int samCount = 0;
         for ( final Path samPath : samPaths ) {
             // Ensure each file can be read
             try {
@@ -130,7 +139,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                 throw new UserException.CouldNotReadInputFile(samPath.toString(), e);
             }
 
-            SamReader reader = samReaderFactory.open(samPath);
+            SamReader reader;
+            if ( samIndices == null ) {
+                reader = samReaderFactory.open(samPath);
+            }
+            else {
+                final SamInputResource samResource = SamInputResource.of(samPath);
+                samResource.index(samIndices.get(samCount));
+                reader = samReaderFactory.open(samResource);
+            }
 
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {
@@ -139,6 +156,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
             readers.put(reader, null);
             backingPaths.put(reader, samPath);
+            ++samCount;
         }
 
         // Prepare a header merger only if we have multiple readers

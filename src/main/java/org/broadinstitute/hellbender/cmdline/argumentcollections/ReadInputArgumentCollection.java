@@ -33,6 +33,8 @@ public abstract class ReadInputArgumentCollection implements ArgumentCollectionD
      */
     public abstract List<Path> getReadPaths();
 
+    public abstract List<Path> getReadIndexPaths();
+
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */
