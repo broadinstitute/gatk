@@ -3,11 +3,13 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+import org.apache.commons.collections4.BidiMap;
+import org.apache.commons.collections4.bidimap.DualLinkedHashBidiMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
@@ -39,9 +41,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     private final Map<SamReader, CloseableIterator<SAMRecord>> readers;
 
     /**
-     * Hang onto the input files so that we can print useful errors about them
+     * Hang onto the input files so that we can print useful errors about them.
+     * The map is bi directional so that we can look up the reader for a given file.
      */
-    private final Map<SamReader, Path> backingPaths;
+    private final BidiMap<SamReader, File> backingFiles;
 
     /**
      * Only reads that overlap these intervals (and unmapped reads, if {@link #traverseUnmapped} is set) will be returned
@@ -112,8 +115,8 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
 
-        readers = new LinkedHashMap<>(samPaths.size() * 2);
-        backingPaths = new LinkedHashMap<>(samPaths.size() * 2);
+        readers = new LinkedHashMap<>(samFiles.size() * 2);
+        backingFiles = new DualLinkedHashBidiMap<>();
         indicesAvailable = true;
 
         final SamReaderFactory samReaderFactory =
@@ -318,6 +321,14 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         // TODO: don't require coordinate ordering
         SamFileHeaderMerger headerMerger = new SamFileHeaderMerger(SAMFileHeader.SortOrder.coordinate, headers, true);
         return headerMerger;
+    }
+
+    /**
+     * Returns the SamReader corresponding to the given file or {@code null} if there is none.
+     */
+    public SamReader getReaderForFile(final File file){
+        Utils.nonNull(file);
+        return backingFiles.getKey(file);
     }
 
     /**

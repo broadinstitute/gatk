@@ -316,6 +316,20 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
+     * Returns the SAM header for the given symbolic name of the read input.
+     * Returns {@code null} if no such header is found
+     * (either there are no reads or there is no read source with the given symbolic name).
+     */
+    public final SAMFileHeader getHeaderForSymbolicName(final String symbolicName){
+        Utils.nonNull(symbolicName);
+        if (! hasReads()){
+            return null;
+        }
+        final TaggedInputFileArgument arg = readArguments.getInputsBySymbolicName().get(symbolicName);
+        return arg == null ? null : reads.getReaderForFile(arg.getFile()).getFileHeader();
+    }
+
+    /**
      * Returns the header for the specified source of Features
      * @param featureDescriptor FeatureInput whose header to retrieve
      * @param <T> type of Feature in our FeatureInput
