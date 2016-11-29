@@ -43,7 +43,6 @@ class BreakpointAllele {
 //        this.insertionMappings = chimericAlignment.insertionMappings;
     }
 
-    @SuppressWarnings("unchecked")
     protected BreakpointAllele(final Kryo kryo, final Input input) {
         final String contig1 = input.readString();
         final int start1 = input.readInt();
@@ -59,6 +58,11 @@ class BreakpointAllele {
         this.homology = input.readString();
     }
 
+    enum Strandedness {
+        SAME_STRAND, THREE_TO_FIVE, FIVE_TO_THREE
+    }
+
+    @VisibleForTesting
     Strandedness determineStrandedness() {
         if (leftBreakpointAlignedForward == rightBreakpointAlignedForward) {
             return SAME_STRAND;
@@ -110,10 +114,6 @@ class BreakpointAllele {
         output.writeBoolean(rightBreakpointAlignedForward);
         output.writeString(insertedSequence);
         output.writeString(homology);
-    }
-
-    enum Strandedness {
-        SAME_STRAND, THREE_TO_FIVE, FIVE_TO_THREE
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BreakpointAllele> {

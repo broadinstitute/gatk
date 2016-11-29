@@ -21,69 +21,82 @@ import java.util.Objects;
 @DefaultSerializer(AlignmentRegion.Serializer.class)
 class AlignmentRegion {
 
-    final String contigId;
+    static final String STRING_REP_SEPARATOR= "\t";
+
+    // TODO: 11/26/16 this class is indicating there are two coordinate systems, one on the reference, the other on the assembled contig, the only asymmetry should be that the sequence have exact match to the contig, but has, in theory, in-exact alignment to the reference
     final String assemblyId;
+    final String contigId;
+
+    // ref alignment info
+    final SimpleInterval referenceInterval;
     final Cigar forwardStrandCigar;
     final boolean forwardStrand;
-    final SimpleInterval referenceInterval;
     final int mapQual;
-    final int startInAssembledContig;   // 1-based, inclusive
-    final int endInAssembledContig;     // 1-based, inclusive
-    final int assembledContigLength;
     final int mismatches;
 
+    // contig "exact-match" alignment info
+    final int assembledContigLength;
+    final int startInAssembledContig;   // 1-based, inclusive
+    final int endInAssembledContig;     // 1-based, inclusive
+
     // TODO: the referenceInterval initialization/assignment needs +1 because of a bug in the jBWA this code depends on. fix it when Ted's binding is in.
+    @VisibleForTesting
     public AlignmentRegion(final String assemblyId, final String contigId, final AlnRgn alnRgn) {
-        this.contigId = contigId;
         this.assemblyId = assemblyId;
+        this.contigId = contigId;
+
         this.forwardStrand = alnRgn.getStrand() == '+';
         final Cigar alignmentCigar = TextCigarCodec.decode(alnRgn.getCigar());
         this.forwardStrandCigar = forwardStrand ? alignmentCigar : CigarUtils.invertCigar(alignmentCigar);
         this.referenceInterval = new SimpleInterval(alnRgn.getChrom(), (int) alnRgn.getPos() + 1, (int) (alnRgn.getPos() + forwardStrandCigar.getReferenceLength()));
         this.mapQual = alnRgn.getMQual();
+        this.mismatches = alnRgn.getNm();
+
         this.assembledContigLength = forwardStrandCigar.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(forwardStrandCigar);
         this.startInAssembledContig = startOfAlignmentInContig();
         this.endInAssembledContig = endOfAlignmentInContig();
-        this.mismatches = alnRgn.getNm();
     }
 
-    public AlignmentRegion(final String assemblyId, final String contigId, final Cigar forwardStrandCigar, final boolean forwardStrand, final SimpleInterval referenceInterval, final int mapQual, final int startInAssembledContig, final int endInAssembledContig, final int mismatches) {
-        this.contigId = contigId;
+    @VisibleForTesting
+    public AlignmentRegion(final String assemblyId, final String contigId, final SimpleInterval referenceInterval,
+                           final Cigar forwardStrandCigar, final boolean forwardStrand, final int mapQual, final int mismatches,
+                           final int startInAssembledContig, final int endInAssembledContig) {
         this.assemblyId = assemblyId;
+        this.contigId = contigId;
+        this.referenceInterval = referenceInterval;
         this.forwardStrandCigar = forwardStrandCigar;
         this.forwardStrand = forwardStrand;
-        this.referenceInterval = referenceInterval;
         this.mapQual = mapQual;
+        this.mismatches = mismatches;
+        this.assembledContigLength = forwardStrandCigar.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(forwardStrandCigar);
         this.startInAssembledContig = startInAssembledContig;
         this.endInAssembledContig = endInAssembledContig;
-        this.assembledContigLength = forwardStrandCigar.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(forwardStrandCigar);
-        this.mismatches = mismatches;
     }
 
     public AlignmentRegion(final GATKRead read) {
         this.assemblyId = null;
         this.contigId = read.getName();
+        this.referenceInterval = new SimpleInterval(read);
         this.forwardStrand = ! read.isReverseStrand();
         this.forwardStrandCigar = forwardStrand ? read.getCigar() : CigarUtils.invertCigar(read.getCigar());
-        this.referenceInterval = new SimpleInterval(read);
+        this.mapQual = read.getMappingQuality();
+        this.mismatches = read.hasAttribute("NM") ? read.getAttributeAsInteger("NM") : 0;
         this.assembledContigLength = forwardStrandCigar.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(forwardStrandCigar);
         this.startInAssembledContig = startOfAlignmentInContig();
         this.endInAssembledContig = endOfAlignmentInContig();
-        this.mapQual = read.getMappingQuality();
-        this.mismatches = read.hasAttribute("NM") ? read.getAttributeAsInteger("NM") : 0;
     }
 
     public AlignmentRegion(final Kryo kryo, final Input input) {
-        this.contigId = input.readString();
         this.assemblyId = input.readString();
+        this.contigId = input.readString();
+        this.referenceInterval = kryo.readObject(input, SimpleInterval.class);
         this.forwardStrandCigar = TextCigarCodec.decode(input.readString());
         this.forwardStrand = input.readBoolean();
-        this.referenceInterval = kryo.readObject(input, SimpleInterval.class);
         this.mapQual = input.readInt();
+        this.mismatches = input.readInt();
+        this.assembledContigLength = input.readInt();
         this.startInAssembledContig = input.readInt();
         this.endInAssembledContig = input.readInt();
-        this.assembledContigLength = input.readInt();
-        this.mismatches = input.readInt();
     }
 
     @VisibleForTesting
@@ -96,28 +109,37 @@ class AlignmentRegion {
         return assembledContigLength - SVVariantCallerUtils.getNumClippedBases(false, forwardStrandCigar);
     }
 
+    // TODO: 11/27/16 test
+    /**
+     * @return  A packed String representation of this AlignmentRegion, noticeably the fields are not separated by tab.
+     *          Note that the format is NOT the same as that used in {@link #toString()}.
+     */
+    String toPackedString() {
+        return assemblyId + "-" + contigId + ":" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(forwardStrandCigar) + ',' + mapQual + ',' + mismatches;
+    }
+
     @Override
     public String toString() {
         return assemblyId +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 contigId +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 referenceInterval.getContig() +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 referenceInterval.getStart() +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 referenceInterval.getEnd() +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 (forwardStrand ? "+" : "-") +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 forwardStrandCigar.toString() +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 mapQual +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 startInAssembledContig +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 endInAssembledContig +
-                "\t" +
+                STRING_REP_SEPARATOR +
                 mismatches;
     }
 
@@ -150,18 +172,7 @@ class AlignmentRegion {
         final int contigStart = Integer.valueOf(fields[8]);
         final int contigEnd = Integer.valueOf(fields[9]);
         final int mismatches = Integer.valueOf(fields[10]);
-        return new AlignmentRegion(asmId, contigId, cigar, refStrand, refInterval, mqual, contigStart, contigEnd, mismatches);
-    }
-
-    /**
-     * input format is the text representation of an alignment region
-     * @param alignedAssembledContigLine An input line with the tab-separated fields of an alignment region
-     * @return A tuple with the breakpoint ID and string representation of an ChimericAlignment, or an empty iterator if the line did not have two comma-separated values
-     */
-    @VisibleForTesting
-    static AlignmentRegion parseAlignedAssembledContigLine(final String alignedAssembledContigLine) {
-        final String[] split = alignedAssembledContigLine.split("\t", -1);
-        return AlignmentRegion.fromString(split);
+        return new AlignmentRegion(asmId, contigId, refInterval, cigar, refStrand, mqual, mismatches, contigStart, contigEnd);
     }
 
     @Override
@@ -175,19 +186,15 @@ class AlignmentRegion {
                 endInAssembledContig == that.endInAssembledContig &&
                 assembledContigLength == that.assembledContigLength &&
                 mismatches == that.mismatches &&
-                Objects.equals(contigId, that.contigId) &&
                 Objects.equals(assemblyId, that.assemblyId) &&
+                Objects.equals(contigId, that.contigId) &&
                 Objects.equals(forwardStrandCigar, that.forwardStrandCigar) &&
                 Objects.equals(referenceInterval, that.referenceInterval);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(contigId, assemblyId, forwardStrandCigar, forwardStrand, referenceInterval, mapQual, startInAssembledContig, endInAssembledContig, assembledContigLength, mismatches);
-    }
-
-    String toPackedString() {
-        return assemblyId + "-" + contigId + ":" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(forwardStrandCigar) + ',' + mapQual + ',' + mismatches;
+        return Objects.hash(assemblyId, contigId, forwardStrandCigar, forwardStrand, referenceInterval, mapQual, startInAssembledContig, endInAssembledContig, assembledContigLength, mismatches);
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<AlignmentRegion> {
@@ -203,15 +210,15 @@ class AlignmentRegion {
     }
 
     private void serialize(final Kryo kryo, final Output output) {
-        output.writeString(contigId);
         output.writeString(assemblyId);
+        output.writeString(contigId);
+        kryo.writeObject(output, referenceInterval);
         output.writeString(TextCigarCodec.encode(forwardStrandCigar));
         output.writeBoolean(forwardStrand);
-        kryo.writeObject(output, referenceInterval);
         output.writeInt(mapQual);
+        output.writeInt(mismatches);
+        output.writeInt(assembledContigLength);
         output.writeInt(startInAssembledContig);
         output.writeInt(endInAssembledContig);
-        output.writeInt(assembledContigLength);
-        output.writeInt(mismatches);
     }
 }

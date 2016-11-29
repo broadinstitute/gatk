@@ -50,18 +50,18 @@ public class AlignmentRegionUnitTest {
     @Test
     public void testCtorConcordance() {
         final AlignmentRegion ar1p1 = new AlignmentRegion("1", "1", new AlnRgn("1", 96, (byte) '+', "4M4S", 60, 0, 0));
-        final AlignmentRegion ar1p1v2 = new AlignmentRegion("1", "1", TextCigarCodec.decode("4M4S"), true, new SimpleInterval("1", 97, 100), 60, 1, 4, 0);
+        final AlignmentRegion ar1p1v2 = new AlignmentRegion("1", "1", new SimpleInterval("1", 97, 100), TextCigarCodec.decode("4M4S"), true, 60, 0, 1, 4);
         Assert.assertEquals(ar1p1, ar1p1v2);
 
         final AlignmentRegion ar1p2 = new AlignmentRegion("1", "1", new AlnRgn("1", 196, (byte) '-', "4M4H", 60, 0, 0));
-        final AlignmentRegion ar1p2v2 = new AlignmentRegion("1", "1", TextCigarCodec.decode("4H4M"), false, new SimpleInterval("1", 197, 200), 60, 5, 8, 0);
+        final AlignmentRegion ar1p2v2 = new AlignmentRegion("1", "1", new SimpleInterval("1", 197, 200), TextCigarCodec.decode("4H4M"), false, 60, 0, 5, 8);
         Assert.assertEquals(ar1p2, ar1p2v2);
     }
 
     @Test
     public void testParseAlignedAssembledContigLine() throws Exception {
         final String line = "100\t>contig-0 2498 0\t1\t7043012\t7044153\t+\t1141M1357S\t60\t1\t1141\t1";
-        final AlignmentRegion region1 = AlignmentRegion.parseAlignedAssembledContigLine(line);
+        final AlignmentRegion region1 = AlignmentRegion.fromString(line.split(AlignmentRegion.STRING_REP_SEPARATOR, -1));
         Assert.assertEquals(region1.referenceInterval, new SimpleInterval("1", 7043012, 7044153));
         Assert.assertTrue(region1.forwardStrand);
         Assert.assertEquals(region1.forwardStrandCigar.toString(), "1141M1357S");
@@ -71,7 +71,7 @@ public class AlignmentRegionUnitTest {
         Assert.assertEquals(region1.mismatches, 1);
 
         final String line2 = "100\tcontig-0\t1\t7044151\t7045306\t+\t1343S1155M\t60\t1344\t2498\t3";
-        final AlignmentRegion region2 = AlignmentRegion.parseAlignedAssembledContigLine(line2);
+        final AlignmentRegion region2 = AlignmentRegion.fromString(line2.split(AlignmentRegion.STRING_REP_SEPARATOR, -1));
         Assert.assertEquals(region2.referenceInterval, new SimpleInterval("1", 7044151, 7045306));
         Assert.assertTrue(region2.forwardStrand);
         Assert.assertEquals(region2.forwardStrandCigar.toString(), "1343S1155M");

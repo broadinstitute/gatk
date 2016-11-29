@@ -6,8 +6,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-
 
 public class SVVariantCallerUtilsUnitTest {
 
@@ -15,13 +13,13 @@ public class SVVariantCallerUtilsUnitTest {
     public void testAlignmentRegionOverlap() throws Exception {
 
         //overlap by 1
-        final AlignmentRegion ar1 = new AlignmentRegion("1","1", TextCigarCodec.decode("5M5H"),true,new SimpleInterval("1",1,5),60,1,5,0);
-        final AlignmentRegion ar2 = new AlignmentRegion("1","1", TextCigarCodec.decode("5S5M"),true,new SimpleInterval("1",10,16),60,5,10,0);
+        final AlignmentRegion ar1 = new AlignmentRegion("1","1", new SimpleInterval("1",1,5), TextCigarCodec.decode("5M5H"),true, 60, 0, 1,5);
+        final AlignmentRegion ar2 = new AlignmentRegion("1","1", new SimpleInterval("1",10,16), TextCigarCodec.decode("5S5M"),true, 60, 0, 5,10);
         Assert.assertEquals(SVVariantCallerUtils.overlapOnContig(ar1, ar2), 1);
 
         // don't overlap
-        final AlignmentRegion ar3 = new AlignmentRegion("1","1", TextCigarCodec.decode("5M5H"),true,new SimpleInterval("1",1,5),60,1,5,0);
-        final AlignmentRegion ar4 = new AlignmentRegion("1","1", TextCigarCodec.decode("5S5M"),true,new SimpleInterval("1",11,16),60,6,10,0);
+        final AlignmentRegion ar3 = new AlignmentRegion("1","1", new SimpleInterval("1",1,5), TextCigarCodec.decode("5M5H"),true, 60, 0, 1,5);
+        final AlignmentRegion ar4 = new AlignmentRegion("1","1", new SimpleInterval("1",11,16), TextCigarCodec.decode("5S5M"),true, 60, 0, 6,10);
         Assert.assertEquals(SVVariantCallerUtils.overlapOnContig(ar3, ar4), 0);
     }
 

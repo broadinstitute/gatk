@@ -17,25 +17,25 @@ public class ChimericAlignmentUnitTest extends BaseTest {
     private static final SAMSequenceDictionary seqDict = new ReferenceMultiSource(dummyOptions, b37_reference_20_21, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
     @Test
     public void testGetLeftAlignedLeftBreakpointOnAssembledContig() throws Exception {
-        final AlignmentRegion region1 = new AlignmentRegion("1","1", TextCigarCodec.decode("100M100S"), true, new SimpleInterval("20", 100, 200), 60, 1, 100, 0);
-        final AlignmentRegion region2 = new AlignmentRegion("1","1", TextCigarCodec.decode("100M100S"), false, new SimpleInterval("20", 500, 600), 60, 101, 200, 0);
+        final AlignmentRegion region1 = new AlignmentRegion("1","1", new SimpleInterval("20", 100, 200), TextCigarCodec.decode("100M100S"), true, 60, 0, 1, 100);
+        final AlignmentRegion region2 = new AlignmentRegion("1","1", new SimpleInterval("20", 500, 600), TextCigarCodec.decode("100M100S"), false, 60, 0, 101, 200);
         final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, "", "", new ArrayList<>());
         Assert.assertEquals(chimericAlignment.getLeftJustifiedBreakpoints(seqDict)._1(), new SimpleInterval("20", 200, 200));
     }
 
     @Test
     public void testGetLeftAlignedLeftBreakpointOnAssembledContigWithHomology() throws Exception {
-        final AlignmentRegion region1 = new AlignmentRegion("1","1", TextCigarCodec.decode("105M100S"), true, new SimpleInterval("20", 100, 205), 60, 1, 105, 0);
-        final AlignmentRegion region2 = new AlignmentRegion("1","1", TextCigarCodec.decode("105M100S"), false, new SimpleInterval("20", 500, 605), 60, 95, 200, 0);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, "", "ACACA", new ArrayList<>());
+        final AlignmentRegion region1 = new AlignmentRegion("1","1", new SimpleInterval("20", 100, 205), TextCigarCodec.decode("105M100S"), true, 60, 0, 1, 105);
+        final AlignmentRegion region2 = new AlignmentRegion("1","1", new SimpleInterval("20", 500, 605), TextCigarCodec.decode("105M100S"), false, 60, 0, 95, 200);
+        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, "ACACA", "", new ArrayList<>());
         Assert.assertEquals(chimericAlignment.getLeftJustifiedBreakpoints(seqDict)._1(), new SimpleInterval("20", 200, 200));
     }
 
     @Test
     public void testAlignedBreakpointBreakpointAllele() throws Exception {
-        final AlignmentRegion region1 = new AlignmentRegion("1", "contig-1", TextCigarCodec.decode("146M51S"), true, new SimpleInterval("21", 108569148, 108569294), 60, 1, 146, 0);
-        final AlignmentRegion region2 = new AlignmentRegion("1", "contig-1", TextCigarCodec.decode("147S50M"), false, new SimpleInterval("21", 108569314, 108569364), 60, 148, 197, 0);
-        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, "TC", "", new ArrayList<>());
+        final AlignmentRegion region1 = new AlignmentRegion("1", "contig-1", new SimpleInterval("21", 108569148, 108569294), TextCigarCodec.decode("146M51S"), true, 60, 0, 1, 146);
+        final AlignmentRegion region2 = new AlignmentRegion("1", "contig-1", new SimpleInterval("21", 108569314, 108569364), TextCigarCodec.decode("147S50M"), false, 60, 0, 148, 197);
+        final ChimericAlignment chimericAlignment = new ChimericAlignment(region1, region2, "", "TC", new ArrayList<>());
         final SimpleInterval leftAlignedLeftBreakpointOnAssembledContig = chimericAlignment.getLeftJustifiedBreakpoints(seqDict)._1();
         Assert.assertEquals(leftAlignedLeftBreakpointOnAssembledContig, new SimpleInterval("21", 108569294, 108569294));
         final SimpleInterval leftAlignedRightBreakpointOnAssembledContig = chimericAlignment.getLeftJustifiedBreakpoints(seqDict)._2();

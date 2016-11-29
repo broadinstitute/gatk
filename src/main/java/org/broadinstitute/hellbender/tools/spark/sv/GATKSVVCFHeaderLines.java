@@ -58,6 +58,6 @@ public class GATKSVVCFHeaderLines {
     }
 
     enum SVTYPES {
-        DEL, INS, DUP, INV, CNV, BND
+        DEL, INS, INSDEL, DUP, INV, CNV, BND
     }
 }

@@ -6,7 +6,6 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -60,6 +59,7 @@ import java.util.List;
 class ChimericAlignment {
 
     static final String NO_SEQUENCE = "none";
+
     String assemblyId;
     String contigId;
     AlignmentRegion regionWithLowerCoordOnContig;
@@ -73,7 +73,7 @@ class ChimericAlignment {
      * Assumes {@code regionWithLowerCoordOnContig} has a lower {@link AlignmentRegion#startInAssembledContig} than {@code regionWithHigherCoordOnContig}.
      */
     protected ChimericAlignment(final AlignmentRegion regionWithLowerCoordOnContig, final AlignmentRegion regionWithHigherCoordOnContig,
-                                final String insertedSequence, final String homology,
+                                final String homology, final String insertedSequence,
                                 final List<String> insertionMappings) {
 
         final String assemblyId = regionWithLowerCoordOnContig.assemblyId;
@@ -90,7 +90,43 @@ class ChimericAlignment {
         this.insertionMappings = insertionMappings;
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * A naive way to test if a chimeric alignment supports an inversion event.
+     * Returning true does not necessarily mean there's actually an inversion.
+     */
+    @VisibleForTesting
+    boolean involvesStrandSwitch() {
+        return regionWithLowerCoordOnContig.forwardStrand != regionWithHigherCoordOnContig.forwardStrand;
+    }
+
+    /**
+     * Returns the reference coordinates of the left and right breakpoints implied by this chimeric alignment.
+     * If there is homologous sequence represented in the alignments, it will be assigned to the side of the breakpoint
+     * with higher reference coordinates.
+     */
+    @VisibleForTesting
+    final Tuple2<SimpleInterval, SimpleInterval> getLeftJustifiedBreakpoints(final SAMSequenceDictionary samSequenceDictionary) {
+        final String leftBreakpointRefContig, rightBreakpointRefContig;
+        final int leftBreakpointCoord, rightBreakpointCoord;
+        final boolean regionStartsEarlyOnContigAlsoEarlyOnRef =
+                0 > IntervalUtils.compareLocatables(regionWithLowerCoordOnContig.referenceInterval, regionWithHigherCoordOnContig.referenceInterval, samSequenceDictionary);
+        if (regionStartsEarlyOnContigAlsoEarlyOnRef) {
+            leftBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
+            leftBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() - homology.length() : regionWithLowerCoordOnContig.referenceInterval.getStart();
+            rightBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
+            rightBreakpointCoord = regionWithHigherCoordOnContig.forwardStrand ? regionWithHigherCoordOnContig.referenceInterval.getStart() + homology.length() : regionWithHigherCoordOnContig.referenceInterval.getEnd();
+        } else {
+            leftBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
+            leftBreakpointCoord = regionWithHigherCoordOnContig.forwardStrand ? regionWithHigherCoordOnContig.referenceInterval.getStart() : regionWithHigherCoordOnContig.referenceInterval.getEnd() - homology.length();
+            rightBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
+            rightBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() : regionWithLowerCoordOnContig.referenceInterval.getStart() + homology.length();
+        }
+
+        final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
+        final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
+        return new Tuple2<>(leftBreakpoint, rightBreakpoint);
+    }
+
     protected ChimericAlignment(final Kryo kryo, final Input input) {
         this.assemblyId = input.readString();
         this.contigId = input.readString();
@@ -98,12 +134,29 @@ class ChimericAlignment {
         this.regionWithHigherCoordOnContig = kryo.readObject(input, AlignmentRegion.class);
         this.homology = input.readString();
         this.insertedSequence = input.readString();
-        this.insertionMappings = (ArrayList<String>) kryo.readObject(input, ArrayList.class);
+        @SuppressWarnings("unchecked") // trick to limit scope of unchecked cast warnings, see StackOverflow 509076
+        final List<String> tempForWarning = (ArrayList<String>) kryo.readObject(input, ArrayList.class);
+        this.insertionMappings = tempForWarning;
     }
 
+    @Override
+    public String toString() {
+        return assemblyId + "\t" +
+                contigId +
+                "\t" +
+                regionWithLowerCoordOnContig.toString() +
+                "\t" +
+                regionWithHigherCoordOnContig.toString() +
+                "\t" +
+                ("".equals(insertedSequence) ? NO_SEQUENCE : insertedSequence) +
+                "\t" +
+                ("".equals(homology) ? NO_SEQUENCE : homology);
+    }
+
+    // TODO: never used/tested method, should remove?
     /**
-     * TODO: never used/tested method, should remove?
-     *  Parses a tab-delimited assembled breakpoint line into an ChimericAlignment object. Fields should be in the same order as that produced by toString():
+     *
+     *  Parses a tab-delimited assembled breakpoint line into an ChimericAlignment object. Fields should be in the same order as that produced by {@link #toString()}:
      *
      *  assemblyId
      *  contigId
@@ -118,7 +171,7 @@ class ChimericAlignment {
         return fromFields(fields);
     }
 
-    // TODO: private method that's only called in fromString, which is never accessed. Should remove?
+    // TODO: private method that's only called in fromString, which is never accessed/tested. Should remove?
     private ChimericAlignment fromFields(final String[] fields) {
         try {
 //            final String contigId = fields[0].replaceFirst("^>","");
@@ -129,7 +182,7 @@ class ChimericAlignment {
             final String insertedSequence = fields[19].equals(NO_SEQUENCE) ? "" : fields[19];
             final String homology = fields[20].equals(NO_SEQUENCE) ? "" : fields[20];
             final List<String> insertionMappings = Arrays.asList(fields[21].split(";"));
-            return new ChimericAlignment(alignmentRegion1, alignmentRegion2, homology, insertedSequence, insertionMappings);
+            return new ChimericAlignment(alignmentRegion1, alignmentRegion2, insertedSequence, homology, insertionMappings);
         } catch (final NumberFormatException nfe) {
             throw new GATKException(Arrays.toString(fields), nfe);
         }
@@ -155,58 +208,5 @@ class ChimericAlignment {
         public ChimericAlignment read(final Kryo kryo, final Input input, final Class<ChimericAlignment> klass ) {
             return new ChimericAlignment(kryo, input);
         }
-    }
-
-    @Override
-    public String toString() {
-        return assemblyId + "\t" +
-                contigId +
-                "\t" +
-                regionWithLowerCoordOnContig.toString() +
-                "\t" +
-                regionWithHigherCoordOnContig.toString() +
-                "\t" +
-                ("".equals(insertedSequence) ? NO_SEQUENCE : insertedSequence) +
-                "\t" +
-                ("".equals(homology) ? NO_SEQUENCE : homology);
-    }
-
-    /**
-     * A naive way to test if a chimeric alignment supports an inversion event.
-     * Returning true does not necessarily mean there's actually an inversion.
-     */
-    @VisibleForTesting
-    boolean involvesStrandSwitch() {
-        return regionWithLowerCoordOnContig.forwardStrand != regionWithHigherCoordOnContig.forwardStrand;
-    }
-
-    /**
-     * Returns the reference coordinates of the left and right breakpoints implied by this chimeric alignment.
-     * If there is homologous sequence represented in the alignments, it will be assigned to the side of the breakpoint
-     * with higher reference coordinates.
-     */
-    @VisibleForTesting
-    final Tuple2<SimpleInterval, SimpleInterval> getLeftJustifiedBreakpoints(final SAMSequenceDictionary samSequenceDictionary) {
-        final String leftBreakpointRefContig, rightBreakpointRefContig;
-        final int leftBreakpointCoord, rightBreakpointCoord;
-        if (regionStartsEarlyOnContigAlsoEarlyOnRef(samSequenceDictionary)) {
-            leftBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
-            leftBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() - homology.length() : regionWithLowerCoordOnContig.referenceInterval.getStart();
-            rightBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
-            rightBreakpointCoord = regionWithHigherCoordOnContig.forwardStrand ? regionWithHigherCoordOnContig.referenceInterval.getStart() + homology.length() : regionWithHigherCoordOnContig.referenceInterval.getEnd();
-        } else {
-            leftBreakpointRefContig = regionWithHigherCoordOnContig.referenceInterval.getContig();
-            leftBreakpointCoord = regionWithHigherCoordOnContig.forwardStrand ? regionWithHigherCoordOnContig.referenceInterval.getStart() : regionWithHigherCoordOnContig.referenceInterval.getEnd() - homology.length();
-            rightBreakpointRefContig = regionWithLowerCoordOnContig.referenceInterval.getContig();
-            rightBreakpointCoord = regionWithLowerCoordOnContig.forwardStrand ? regionWithLowerCoordOnContig.referenceInterval.getEnd() : regionWithLowerCoordOnContig.referenceInterval.getStart() + homology.length();
-        }
-
-        final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
-        final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
-        return new Tuple2<>(leftBreakpoint, rightBreakpoint);
-    }
-
-    final boolean regionStartsEarlyOnContigAlsoEarlyOnRef(final SAMSequenceDictionary samSequenceDictionary) {
-        return 0 > IntervalUtils.compareLocatables(regionWithLowerCoordOnContig.referenceInterval, regionWithHigherCoordOnContig.referenceInterval, samSequenceDictionary);
     }
 }
