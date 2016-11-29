@@ -6,6 +6,10 @@ import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.api.services.genomics.model.Read;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.FastGenotype;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.bdgenomics.adam.serialization.ADAMKryoRegistrator;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
@@ -34,7 +38,7 @@ public class GATKRegistrator implements KryoRegistrator {
 
         //relatively inefficient serialization of Collections created with Collections.nCopies(), without this
         //any Collection created with Collections.nCopies fails to serialize at run time
-        kryo.register(Collections.nCopies(2, "").getClass(), new JavaSerializer());
+        kryo.register(Collections.nCopies(2, "").getClass(), new FieldSerializer<>(kryo, Collections.nCopies(2, "").getClass()));
 
         // htsjdk.variant.variantcontext.CommonInfo has a Map<String, Object> that defaults to
         // a Collections.unmodifiableMap. This can't be handled by the version of kryo used in Spark, it's fixed
