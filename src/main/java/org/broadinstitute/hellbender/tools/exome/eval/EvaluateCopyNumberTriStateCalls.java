@@ -261,7 +261,7 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
             try {
                 caseWriter.writeRecord(record);
             } catch (final IOException ex) {
-                throw new UserException.CouldNotCreateOutputFile(this.caseDetailOutputFile, ex);
+                throw new UserException.CouldNotCreateOutputFile(caseDetailOutputFile, ex);
             }
         }
     }

@@ -38,13 +38,13 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         this.targets = targets;
         this.ignoreMissingTargets = ignoreMissingTargets;
         Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
-        countColumnNames = super.columns().names().stream()
+        countColumnNames = columns().names().stream()
                 .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
-        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(super.columns(),
+        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns(),
                 (message) -> formatException(message));
-        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(super.columns());
-        final Function<DataLine, double[]> countExtractor = countExtractor(super.columns());
+        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns());
+        final Function<DataLine, double[]> countExtractor = countExtractor(columns());
         recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
     }
 
@@ -62,13 +62,13 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         this.targets = targets;
         this.ignoreMissingTargets = ignoreMissingTargets;
         Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
-        countColumnNames = super.columns().names().stream()
+        countColumnNames = columns().names().stream()
                 .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
-        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(super.columns(),
+        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns(),
                 (message) -> formatException(message));
-        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(super.columns());
-        final Function<DataLine, double[]> countExtractor = countExtractor(super.columns());
+        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns());
+        final Function<DataLine, double[]> countExtractor = countExtractor(columns());
         recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
     }
 
@@ -78,13 +78,13 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
         this.targets = targets;
         this.ignoreMissingTargets = ignoreMissingTargets;
         Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
-        countColumnNames = super.columns().names().stream()
+        countColumnNames = columns().names().stream()
                 .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
                 .collect(Collectors.toList());
-        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(super.columns(),
+        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns(),
                 (message) -> formatException(message));
-        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(super.columns());
-        final Function<DataLine, double[]> countExtractor = countExtractor(super.columns());
+        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns());
+        final Function<DataLine, double[]> countExtractor = countExtractor(columns());
         recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
     }
 

@@ -68,7 +68,7 @@ public class AllelicBalanceCallerModelState implements Serializable {
     }
 
     public void setEffectiveAlpha(double eAlpha) {
-        this.effectiveAlpha = eAlpha;
+        effectiveAlpha = eAlpha;
     }
 
     public int getK() {
@@ -76,7 +76,7 @@ public class AllelicBalanceCallerModelState implements Serializable {
     }
 
     public void setK(int k) {
-        this.K = k;
+        K = k;
     }
 
     public double[] getRhos() {

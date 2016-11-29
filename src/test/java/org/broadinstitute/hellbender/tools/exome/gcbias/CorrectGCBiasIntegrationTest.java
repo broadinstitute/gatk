@@ -58,7 +58,7 @@ public class CorrectGCBiasIntegrationTest extends CommandLineProgramTest {
     }
 
     @AfterClass
-    public void disposeFile() throws IOException {
+    public void disposeFile() {
         TARGETS_FILE.delete();
         INPUT_COUNTS_FILE.delete();
         OUTPUT_COUNTS_FILE.delete();

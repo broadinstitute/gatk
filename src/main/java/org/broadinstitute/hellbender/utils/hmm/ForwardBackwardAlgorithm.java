@@ -432,13 +432,13 @@ public final class ForwardBackwardAlgorithm {
                             final double[][] logBackwardProbabilities) {
             this.data = Collections.unmodifiableList(new ArrayList<>(data));
             this.positions = Collections.unmodifiableList(new ArrayList<>(positions));
-            this.positionIndexRange = new IntRange(0, positions.size() - 1);
+            positionIndexRange = new IntRange(0, positions.size() - 1);
             this.model = model;
-            this.positionIndex = composeIndexMap(this.positions);
-            this.stateIndex = composeIndexMap(model.hiddenStates());
+            positionIndex = composeIndexMap(this.positions);
+            stateIndex = composeIndexMap(model.hiddenStates());
             this.logBackwardProbabilities = logBackwardProbabilities;
             this.logForwardProbabilities = logForwardProbabilities;
-            this.logDataLikelihood = calculateLogDataLikelihood(logForwardProbabilities, logBackwardProbabilities);
+            logDataLikelihood = calculateLogDataLikelihood(logForwardProbabilities, logBackwardProbabilities);
         }
 
         /**

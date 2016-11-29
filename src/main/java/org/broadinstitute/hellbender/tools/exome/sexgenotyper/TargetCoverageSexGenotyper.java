@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -156,12 +155,9 @@ public class TargetCoverageSexGenotyper extends CommandLineProgram {
 
         /* parse contig genotype ploidy annotations */
         final List<ContigGermlinePloidyAnnotation> contigGermlinePloidyAnnotationList;
-        try {
-            logger.info("Parsing contig genotype ploidy annotations file...");
-            contigGermlinePloidyAnnotationList = ContigGermlinePloidyAnnotationTableReader.readContigGermlinePloidyAnnotationsFromFile(inputContigAnnotsFile);
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotReadInputFile("Could not read contig genotype ploidy annotations file");
-        }
+        logger.info("Parsing contig genotype ploidy annotations file...");
+        contigGermlinePloidyAnnotationList = ContigGermlinePloidyAnnotationTableReader.readContigGermlinePloidyAnnotationsFromFile(inputContigAnnotsFile);
+
 
         /* parse target list */
         final List<Target> inputTargetList;

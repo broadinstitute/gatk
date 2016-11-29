@@ -56,7 +56,7 @@ public class Segment<C> implements Locatable {
      * @return never {@code null}.
      */
     public final C getCall() {
-        return this.call;
+        return call;
     }
 
     /**
@@ -65,7 +65,7 @@ public class Segment<C> implements Locatable {
      * @return a valid mean value between 0 and {@link Double#MAX_VALUE}.
      */
     public final double getMean() {
-        return this.mean;
+        return mean;
     }
 
     /**
@@ -74,7 +74,7 @@ public class Segment<C> implements Locatable {
      * @return a valid interval.
      */
     public final SimpleInterval getInterval() {
-        return this.interval;
+        return interval;
     }
 
     /**
@@ -83,7 +83,7 @@ public class Segment<C> implements Locatable {
      * @return never {@code null}.
      */
     public final long getTargetCount() {
-        return this.targetCount;
+        return targetCount;
     }
 
     @Override

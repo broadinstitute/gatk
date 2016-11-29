@@ -682,8 +682,8 @@ public final class ReadCountCollectionUtils {
          * Creates a new buffer
          */
         private Buffer() {
-            this.targets = SetUniqueList.setUniqueList(new ArrayList<>());
-            this.counts = new ArrayList<>();
+            targets = SetUniqueList.setUniqueList(new ArrayList<>());
+            counts = new ArrayList<>();
         }
 
         /**

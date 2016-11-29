@@ -43,13 +43,13 @@ public final class CaseToPoNTargetMapper {
         Utils.nonNull(caseTargets, "Case-sample targets cannot be null.");
         Utils.nonNull(ponTargetNames, "PoN target names cannot be null.");
         this.ponTargetNames = ponTargetNames;
-        this.caseTargetIndexes = IntStream.range(0, caseTargets.size()).boxed()
+        caseTargetIndexes = IntStream.range(0, caseTargets.size()).boxed()
                 .collect(Collectors.toMap(i -> caseTargets.get(i).getName(), Function.identity()));
         if (this.ponTargetNames.stream().anyMatch(n -> ! caseTargetIndexes.containsKey(n))) {
             throw new UserException.BadInput(String.format("the read-count input file is missing some target in the PoN: e.g. '%s'",
                     this.ponTargetNames.stream().filter(n -> ! caseTargetIndexes.containsKey(n)).limit(10).collect(Collectors.joining(", "))));
         }
-        this.outputTargets =  ponTargetNames.stream()
+        outputTargets =  ponTargetNames.stream()
                 .map(caseTargetIndexes::get).sorted().map(caseTargets::get).collect(Collectors.toList());
     }
 

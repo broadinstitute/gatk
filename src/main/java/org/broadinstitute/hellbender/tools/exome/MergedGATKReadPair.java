@@ -688,10 +688,10 @@ final class MergedGATKReadPair implements GATKRead {
             this.bases = Utils.nonNull(bases, "input bases array must not be null");
             this.quals = Utils.nonNull(quals, "input quals array must not be null");
             Utils.validateArg(this.bases.length == this.quals.length, "input base and quals array must have the same length");
-            this.readStart = ParamUtils.inRange(readOffset, 0, bases.length - length, "the input read-offset is invalid");
-            this.readEnd = readOffset + length;
-            this.referenceStart = ParamUtils.isPositive(referenceOffset, "the reference offset must be greater than 0");
-            this.referenceEnd = referenceOffset + length;
+            readStart = ParamUtils.inRange(readOffset, 0, bases.length - length, "the input read-offset is invalid");
+            readEnd = readOffset + length;
+            referenceStart = ParamUtils.isPositive(referenceOffset, "the reference offset must be greater than 0");
+            referenceEnd = referenceOffset + length;
         }
 
         /**

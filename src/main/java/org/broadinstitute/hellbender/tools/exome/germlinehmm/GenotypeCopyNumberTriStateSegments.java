@@ -70,7 +70,7 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
 
         result.addMetaDataLine(new VCFHeaderLine(VCFHeaderVersion.VCF4_2.getFormatString(), VCFHeaderVersion.VCF4_2.getVersionString()));
         CopyNumberTriStateAllele.addHeaderLinesTo(result);
-        result.addMetaDataLine(new VCFHeaderLine("command",this.getCommandLine()));
+        result.addMetaDataLine(new VCFHeaderLine("command", getCommandLine()));
 
         // FORMAT.
         result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1, VCFHeaderLineType.Integer, "Genotype"));
@@ -254,11 +254,11 @@ public final class GenotypeCopyNumberTriStateSegments extends CopyNumberTriState
         public GenotypingSegment(final SimpleInterval interval, final IndexRange targetIndexes) {
             this.interval = Utils.nonNull(interval);
             this.targetIndexes = Utils.nonNull(targetIndexes);
-            this.containingSamples = new HashSet<>();
+            containingSamples = new HashSet<>();
         }
 
         public void addSample(final String name) {
-            this.containingSamples.add(name);
+            containingSamples.add(name);
         }
 
         public IndexRange getTargetIndexes() {

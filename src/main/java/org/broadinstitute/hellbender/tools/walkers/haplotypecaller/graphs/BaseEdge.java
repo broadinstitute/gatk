@@ -110,8 +110,8 @@ public class BaseEdge {
      */
     public final BaseEdge add(final BaseEdge edge) {
         Utils.nonNull(edge, "edge cannot be null");
-        this.multiplicity += edge.getMultiplicity();
-        this.isRef = this.isRef || edge.isRef();
+        multiplicity += edge.getMultiplicity();
+        isRef = isRef || edge.isRef();
         return this;
     }
 

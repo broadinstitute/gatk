@@ -96,8 +96,7 @@ public final class ContigGermlinePloidyAnnotationTableReader extends TableReader
      * @return a list of contig ploidy annotations
      * @throws IOException if a read error occurs
      */
-    public static List<ContigGermlinePloidyAnnotation> readContigGermlinePloidyAnnotationsFromFile(@Nonnull final File contigGermlinePloidyAnnotationsFile)
-            throws IOException {
+    public static List<ContigGermlinePloidyAnnotation> readContigGermlinePloidyAnnotationsFromFile(@Nonnull final File contigGermlinePloidyAnnotationsFile) {
         Utils.regularReadableUserFile(contigGermlinePloidyAnnotationsFile);
         try {
             return readContigGermlinePloidyAnnotationsFromReader(contigGermlinePloidyAnnotationsFile.getAbsolutePath(),
@@ -117,8 +116,7 @@ public final class ContigGermlinePloidyAnnotationTableReader extends TableReader
      * @throws IOException if a read error occurs
      */
     public static List<ContigGermlinePloidyAnnotation> readContigGermlinePloidyAnnotationsFromReader(@Nonnull final String contigAnnotationSourceName,
-                                                                                                     @Nonnull final Reader contigAnnotationReader)
-            throws IOException {
+                                                                                                     @Nonnull final Reader contigAnnotationReader) {
         /* read contig annotations */
         try (final ContigGermlinePloidyAnnotationTableReader reader =
                      new ContigGermlinePloidyAnnotationTableReader(contigAnnotationSourceName, contigAnnotationReader)) {

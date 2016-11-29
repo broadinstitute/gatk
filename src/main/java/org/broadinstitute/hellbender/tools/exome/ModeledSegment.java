@@ -37,7 +37,7 @@ public class ModeledSegment extends Segment<String> {
      * Set the segment mean in log2 space
      */
     public void setSegmentMean(final double segmentMean) {
-        this.mean = segmentMean;
+        mean = segmentMean;
     }
 
     /**
@@ -55,7 +55,7 @@ public class ModeledSegment extends Segment<String> {
     }
 
     public void setSegmentMeanInCRSpace(final double segmentMeanInCRSpace) {
-        this.mean = Math.log(segmentMeanInCRSpace)/Math.log(2);
+        mean = Math.log(segmentMeanInCRSpace)/Math.log(2);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class ModeledSegment extends Segment<String> {
     }
 
     public void setSimpleInterval(final SimpleInterval simpleInterval) {
-        this.interval = Utils.nonNull(simpleInterval, "The input interval cannot be null");
+        interval = Utils.nonNull(simpleInterval, "The input interval cannot be null");
     }
 
     /**

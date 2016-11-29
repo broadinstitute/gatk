@@ -880,7 +880,7 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     @DataProvider(name = "testModelData")
-    public Object[][] testModelData() throws IOException {
+    public Object[][] testModelData() {
         return TEST_MODELS.stream()
                 .map(model -> new Object[]{ model })
                 .toArray(Object[][]::new);

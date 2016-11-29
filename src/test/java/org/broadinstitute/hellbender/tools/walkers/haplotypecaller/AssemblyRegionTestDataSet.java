@@ -42,13 +42,13 @@ public final class AssemblyRegionTestDataSet {
     public AssemblyRegionTestDataSet(final int kmerSize, final String reference, final String[] haplotypes,
                                    final String[] readCigars, final byte[] bq, final byte[] dq, final byte[] iq) {
         this.reference = reference;
-        this.haplotypeCigars = haplotypes;
+        haplotypeCigars = haplotypes;
         this.readCigars = readCigars;
         this.bq = bq;
         this.dq = dq;
         this.iq = iq;
         this.kmerSize = kmerSize;
-        this.genomeLocParser = new GenomeLocParser(ArtificialReadUtils.createArtificialSamHeader(1, 1, reference.length()).getSequenceDictionary());
+        genomeLocParser = new GenomeLocParser(ArtificialReadUtils.createArtificialSamHeader(1, 1, reference.length()).getSequenceDictionary());
     }
 
     public String getReference() {
@@ -64,15 +64,15 @@ public final class AssemblyRegionTestDataSet {
     public AssemblyResultSet assemblyResultSet() {
         if (assemblyResultSet == null) {
             final ReadThreadingGraph rtg = new ReadThreadingGraph(kmerSize);
-            rtg.addSequence("anonymous", this.getReference().getBytes(), true);
-            for (final String haplotype : this.haplotypesStrings()) {
+            rtg.addSequence("anonymous", getReference().getBytes(), true);
+            for (final String haplotype : haplotypesStrings()) {
                 rtg.addSequence("anonymous", haplotype.getBytes(), false);
             }
             rtg.buildGraphIfNecessary();
             if (rtg.hasCycles())
                 throw new RuntimeException("there is cycles in the reference with kmer size " + kmerSize + ". Don't use this size for the benchmark or change the reference");
 
-            List<Haplotype> haplotypeList = this.haplotypeList();
+            List<Haplotype> haplotypeList = haplotypeList();
 
             assemblyResultSet = new AssemblyResultSet();
             final AssemblyResult ar = new AssemblyResult((haplotypeList.size() > 1 ?

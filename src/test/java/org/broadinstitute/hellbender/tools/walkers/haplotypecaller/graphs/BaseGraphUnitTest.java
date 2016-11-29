@@ -13,7 +13,7 @@ public final class BaseGraphUnitTest extends BaseTest {
     SeqVertex v1, v2, v3, v4, v5;
 
     @BeforeMethod
-    public void setUp() throws Exception {
+    public void setUp() {
         graph = new SeqGraph(11);
 
         v1 = new SeqVertex("A");

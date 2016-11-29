@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Tests {@link org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger}.
+ * Tests {@link ReferenceConfidenceVariantContextMerger}.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -215,8 +215,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends BaseTest {
                         new GenotypeBuilder("A_C_G.test2").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make(),
                         new GenotypeBuilder("A_C_G.test").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make()).make()});
 
-        final Object[][] result = tests.toArray(new Object[][]{});
-        return result;
+        return tests.toArray(new Object[][]{});
     }
     @DataProvider(name = "getIndexesOfRelevantAllelesData")
     public Object[][] makeGetIndexesOfRelevantAllelesData() {

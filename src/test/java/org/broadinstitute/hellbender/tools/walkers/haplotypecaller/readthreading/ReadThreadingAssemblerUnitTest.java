@@ -231,10 +231,10 @@ public final class ReadThreadingAssemblerUnitTest extends BaseTest {
         final List<GATKRead> reads = new LinkedList<>();
 
         private TestAssembler(final int kmerSize) {
-            this.assembler = new ReadThreadingAssembler(100000, Arrays.asList(kmerSize));
+            assembler = new ReadThreadingAssembler(100000, Arrays.asList(kmerSize));
             assembler.setJustReturnRawGraph(true);
             assembler.setPruneFactor(0);
-            this.header= ArtificialReadUtils.createArtificialSamHeader();
+            header = ArtificialReadUtils.createArtificialSamHeader();
         }
 
         public void addSequence(final byte[] bases, final boolean isRef) {

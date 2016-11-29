@@ -683,9 +683,9 @@ public class CNLOHCaller implements Serializable {
         private GammaDistribution gammaDistribution;
 
         public QAlphaUnivariateFunction(final double[] effectivePhis) {
-            this.numEffectivePhis = effectivePhis.length;
-            this.sumLogEffectivePhis = Arrays.stream(effectivePhis).map(Math::log).sum();
-            this.gammaDistribution = new GammaDistribution(null, GAMMA_SHAPE, GAMMA_SCALE);
+            numEffectivePhis = effectivePhis.length;
+            sumLogEffectivePhis = Arrays.stream(effectivePhis).map(Math::log).sum();
+            gammaDistribution = new GammaDistribution(null, GAMMA_SHAPE, GAMMA_SCALE);
         }
 
         @Override

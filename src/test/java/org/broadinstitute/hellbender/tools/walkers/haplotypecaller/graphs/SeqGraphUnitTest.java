@@ -70,7 +70,7 @@ public final class SeqGraphUnitTest extends BaseTest {
 
 
     @DataProvider(name = "IsDiamondData")
-    public Object[][] makeIsDiamondData() throws Exception {
+    public Object[][] makeIsDiamondData() {
         List<Object[]> tests = new ArrayList<>();
 
         SeqGraph graph;
@@ -147,7 +147,7 @@ public final class SeqGraphUnitTest extends BaseTest {
     }
 
     @DataProvider(name = "MergingData")
-    public Object[][] makeMergingData() throws Exception {
+    public Object[][] makeMergingData() {
         List<Object[]> tests = new ArrayList<>();
 
         final SeqGraph graph = new SeqGraph(11);
@@ -313,7 +313,7 @@ public final class SeqGraphUnitTest extends BaseTest {
     }
 
     @DataProvider(name = "LinearZipData")
-    public Object[][] makeLinearZipData() throws Exception {
+    public Object[][] makeLinearZipData() {
         List<Object[]> tests = new ArrayList<>();
 
         SeqGraph graph = new SeqGraph(11);

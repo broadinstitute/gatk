@@ -152,8 +152,8 @@ public class VariantEvaluationContextBuilder extends VariantContextBuilder {
         final List<Allele> contextAlleles = getAlleles();
         final int[] alleleToCNVAlleleOrdinal = contextAlleles.stream()
                 .mapToInt(a -> CopyNumberTriStateAllele.valueOf(a).index()).toArray();
-        final int callsAN = (int) MathUtils.sum(this.callsAC);
-        final int truthAN = (int) MathUtils.sum(this.truthAC);
+        final int callsAN = (int) MathUtils.sum(callsAC);
+        final int truthAN = (int) MathUtils.sum(truthAC);
         attribute(VariantEvaluationContext.CALLS_ALLELE_NUMBER_KEY, callsAN);
         attribute(VariantEvaluationContext.TRUTH_ALLELE_NUMBER_KEY, truthAN);
         if (callsAN > 0) {

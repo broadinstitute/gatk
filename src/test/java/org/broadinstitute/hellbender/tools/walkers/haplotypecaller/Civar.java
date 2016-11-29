@@ -81,7 +81,7 @@ public final class Civar {
         if (allElementsAreOptional()) {
             return this;
         }
-        final Element[] newElements = new Element[this.elements.size()];
+        final Element[] newElements = new Element[elements.size()];
         int next = 0;
         for (final Element e : elements) {
            final Element newElement = e.clone();
@@ -148,10 +148,8 @@ public final class Civar {
         int sc = starCount();
         if (mtss > 0) {
             if (sc > 0) {
-                final Civar newEmbedded = new Civar(Collections.unmodifiableList(Arrays.asList(
+                return new Civar(Collections.unmodifiableList(Arrays.asList(
                         new Element(Operator.MATCH, mtss, false, false), new Element(Operator.MATCH, sc, true, false))));
-                //newEmbedded.string = newEmbedded.elements.get(0).toString() + newEmbedded.elements.get(1).toString();
-                return newEmbedded;
             } else {
                 return new Civar(Collections.unmodifiableList(Collections.singletonList(new Element(Operator.MATCH, mtss, false, false))));
             }
@@ -170,12 +168,11 @@ public final class Civar {
         if (!isUnrolled())
             throw new UnsupportedOperationException("you cannot apply an unrolled Civar to a DNA sequence");
         final List<ElementOffset> result = new ArrayList<>(elements().size());
-        final CharSequence sequence = seq;
 
-        int sequenceLength = sequence.length();
+        int sequenceLength = seq.length();
         int minSeqLen = minimumTemplateSequenceSize();
-        Utils.validateArg(expands() || sequenceLength == minSeqLen, () -> "the sequence provided does not match this Civar size " + sequence.length() + " != " + minSeqLen);
-        Utils.validateArg(sequenceLength >= minSeqLen, () -> "the sequence provided is too small for this Civar " + sequence.length() + " < " + minSeqLen);
+        Utils.validateArg(expands() || sequenceLength == minSeqLen, () -> "the sequence provided does not match this Civar size " + seq.length() + " != " + minSeqLen);
+        Utils.validateArg(sequenceLength >= minSeqLen, () -> "the sequence provided is too small for this Civar " + seq.length() + " < " + minSeqLen);
         int starCount = starCount();
         int paddingTotal = sequenceLength - minSeqLen;
         int starPadding = starCount == 0 ? 0 : paddingTotal / starCount;
@@ -442,10 +439,10 @@ public final class Civar {
                 minimumTemplateSize += e.size();
             }
         }
-        this.string = strBuilder.toString();
+        string = strBuilder.toString();
         this.hasVariation = hasVariation;
-        this.allVariationIsOptional = allElementsAreOptional;
-        this.hasOptionalVariation = hasOptionalElements;
+        allVariationIsOptional = allElementsAreOptional;
+        hasOptionalVariation = hasOptionalElements;
         this.hasEmbeddedCivars = hasEmbeddedCivars;
         this.starCount = starCount;
         this.expands = expands;
@@ -721,7 +718,7 @@ public final class Civar {
         }
 
         public Element mandatoryEquivalent() {
-            final Element result = this.clone();
+            final Element result = clone();
             result.optional = false;
             return result;
         }
@@ -922,7 +919,7 @@ public final class Civar {
        // We first get the equivalent cigar elements for the elements in the Civar.
        final List<CigarElement> cigarElements = new LinkedList<>();
 
-       for (final Element e : this.elements()) {
+       for (final Element e : elements()) {
             final int size = e.size(starPadding,excessPadding);
             excessPadding -= e.excessPaddingUsed(excessPadding);
 
@@ -981,7 +978,7 @@ public final class Civar {
         }
 
         public String toString() {
-            switch (this.type) {
+            switch (type) {
                 case STAR: return "*";
                 case OPEN_BRACKET: return "(";
                 case CLOSE_BRACKET: return ")";

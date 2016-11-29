@@ -100,7 +100,7 @@ public final class KmerUnitTest extends BaseTest {
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
-    public void getDifferingPositions() throws Exception {
+    public void getDifferingPositions() {
         final byte[] bases = "ACGTACGT".getBytes();
         final Kmer eq1 = new Kmer(bases, 0, 3);
         final byte[] newBases = bases.clone();
@@ -116,9 +116,8 @@ public final class KmerUnitTest extends BaseTest {
         final byte[] bases2 = "TGCATGCA".getBytes();
         final Kmer eq1 = new Kmer(bases, 0, 3);
         final Kmer eq2 = new Kmer(bases2, 0, 3);
-        final byte[] newBases = bases2;
-        final int[] differingIndices = new int[newBases.length];
-        final byte[] differingBases = new byte[newBases.length];
+        final int[] differingIndices = new int[bases2.length];
+        final byte[] differingBases = new byte[bases2.length];
 
         Assert.assertEquals(eq1.getDifferingPositions(eq2, 1, differingIndices, differingBases), -1);
     }

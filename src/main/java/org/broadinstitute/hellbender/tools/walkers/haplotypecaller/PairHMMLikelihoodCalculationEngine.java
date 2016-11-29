@@ -138,11 +138,11 @@ public final class PairHMMLikelihoodCalculationEngine implements ReadLikelihoodC
         this.constantGCP = constantGCP;
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.pcrErrorModel = pcrErrorModel;
-        this.pairHMM = hmmType.makeNewHMM();
+        pairHMM = hmmType.makeNewHMM();
 
         initializePCRErrorModel();
 
-        this.likelihoodsStream = makeLikelihoodStream();
+        likelihoodsStream = makeLikelihoodStream();
 
         if (baseQualityScoreThreshold < QualityUtils.MIN_USABLE_Q_SCORE) {
             throw new IllegalArgumentException("baseQualityScoreThreshold must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");

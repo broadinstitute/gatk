@@ -27,7 +27,6 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
-import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;

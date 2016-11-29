@@ -73,7 +73,7 @@ public final class ReadThreadingAssembler {
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
         this.allowNonUniqueKmersInRef = allowNonUniqueKmersInRef;
         this.numPruningSamples = numPruningSamples;
-        this.numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
+        numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
     }
 
     @VisibleForTesting

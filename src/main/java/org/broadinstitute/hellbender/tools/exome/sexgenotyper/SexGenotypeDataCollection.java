@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 import javax.annotation.Nonnull;
@@ -49,7 +48,7 @@ public final class SexGenotypeDataCollection {
      * @throws IOException if a read error occurs
      */
     public SexGenotypeDataCollection(@Nonnull final Reader sexGenotypeDataReader,
-                                     @Nonnull final String sexGenotypeDataSourceName) throws IOException {
+                                     @Nonnull final String sexGenotypeDataSourceName) {
         try (final SexGenotypeTableReader reader = new SexGenotypeTableReader(sexGenotypeDataSourceName, sexGenotypeDataReader)) {
             sexGenotypeDataList = reader.stream().collect(Collectors.toList());
         } catch (final IOException ex) {

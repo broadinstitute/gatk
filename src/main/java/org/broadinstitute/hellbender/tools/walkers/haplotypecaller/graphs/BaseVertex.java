@@ -25,7 +25,7 @@ public class BaseVertex {
     public BaseVertex(final byte[] sequence) {
         Utils.nonNull(sequence, "Sequence cannot be null");
         this.sequence = sequence;
-        this.cachedHashCode = Arrays.hashCode(sequence);
+        cachedHashCode = Arrays.hashCode(sequence);
 
     }
 
@@ -69,7 +69,7 @@ public class BaseVertex {
         }
 
         final BaseVertex that = (BaseVertex) o;
-        if (this.hashCode() != that.hashCode()){
+        if (hashCode() != that.hashCode()){
             return false;
         }
 
@@ -92,7 +92,7 @@ public class BaseVertex {
      * @return true if b and this have the same sequence, regardless of other attributes that might differentiate them
      */
     public final boolean seqEquals(final BaseVertex b) {
-        return Arrays.equals(this.getSequence(), b.getSequence());
+        return Arrays.equals(getSequence(), b.getSequence());
     }
 
     @Override

@@ -74,8 +74,8 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
      */
     private TestHMModel(final double[] priors, final double[][] emission, final double[][] transition) {
         this.priors = priors;
-        this.emissionProbabilities = emission;
-        this.transitionProbabilities = transition;
+        emissionProbabilities = emission;
+        transitionProbabilities = transition;
     }
 
     @Override
@@ -160,7 +160,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
                 .collect(Collectors.joining(", ")));
 
         final String transProbsString = String.format("matrix(c(%s), nrow=%d, byrow=T)",
-                DoubleStream.of(Stream.of(this.transitionProbabilities)
+                DoubleStream.of(Stream.of(transitionProbabilities)
                         .reduce(ArrayUtils::addAll).get())
                         .map(d -> Math.exp(d))
                         .mapToObj(d -> String.format("%.4g", d))
@@ -168,16 +168,15 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
                 , State.values().length);
 
         final String emissionProbsString = String.format("matrix(c(%s), nrow=%d, byrow=T)",
-                DoubleStream.of(Stream.of(this.emissionProbabilities)
+                DoubleStream.of(Stream.of(emissionProbabilities)
                         .reduce(ArrayUtils::addAll).get())
                         .map(d -> Math.exp(d))
                         .mapToObj(d -> String.format("%.4g", d))
                         .collect(Collectors.joining(", "))
                 , State.values().length);
 
-        final String result = String.format("initHMM(States=%s, Symbols=%s, startProbs=%s, transProbs=%s, emissionProbs=%s)",
+        return String.format("initHMM(States=%s, Symbols=%s, startProbs=%s, transProbs=%s, emissionProbs=%s)",
                 statesString, symbolsString, startProbsString, transProbsString, emissionProbsString);
-        return result;
     }
 
     private State generateNextState(final State previousState, final Integer previousPosition, final Integer nextPosition, final Random rdn) {

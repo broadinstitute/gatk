@@ -27,7 +27,7 @@ public final class HeavyStateTestHMModel implements HiddenMarkovModel<Integer, I
         this.heavyState = heavyState;
         this.numStates = numStates;
         this.heavyStateWeight = heavyStateWeight;
-        this.lightStateProbs = (1.0 - heavyStateWeight) / (double) (numStates - 1);
+        lightStateProbs = (1.0 - heavyStateWeight) / (double) (numStates - 1);
     }
 
     @Override

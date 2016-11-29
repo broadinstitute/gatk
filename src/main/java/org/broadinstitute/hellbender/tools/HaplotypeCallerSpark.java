@@ -205,7 +205,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
                 .collect(Collectors.toList());
 
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
-        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, this.getBestAvailableSequenceDictionary())) {
+        try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, getBestAvailableSequenceDictionary())) {
             hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary());
             sortedVariants.forEach(writer::add);
         }
@@ -295,7 +295,7 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         public ReferenceMultiSourceAdapter(final ReferenceMultiSource source, final AuthHolder auth) {
             this.source = source;
             this.auth = auth;
-            this.sequenceDictionary = source.getReferenceSequenceDictionary(null);
+            sequenceDictionary = source.getReferenceSequenceDictionary(null);
         }
 
         @Override

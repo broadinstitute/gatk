@@ -17,8 +17,8 @@ public final class EvaluationSampleSummaryRecord {
     private int total;
 
     public EvaluationSampleSummaryRecord(final String sampleName) {
-        this.sample = Utils.nonNull(sampleName);
-        this.countsByClass = new Object2IntLinkedOpenHashMap<>(EvaluationClass.values().length);
+        sample = Utils.nonNull(sampleName);
+        countsByClass = new Object2IntLinkedOpenHashMap<>(EvaluationClass.values().length);
         for (final EvaluationClass ec : EvaluationClass.values()) {
             countsByClass.put(ec, 0);
         }
@@ -30,7 +30,7 @@ public final class EvaluationSampleSummaryRecord {
         final String countsString = countsByClass.entrySet().stream()
                 .map(entry -> String.format("%s = %d", entry.getKey(), entry.getValue()))
                 .collect(Collectors.joining(", "));
-        return String.format("Overall stats: ALL = %d, %s", this.getTotal(), countsString);
+        return String.format("Overall stats: ALL = %d, %s", getTotal(), countsString);
     }
 
     public void increase(final EvaluationClass evalClass) {

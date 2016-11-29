@@ -103,20 +103,16 @@ public final class AssemblyRegionTestDataSetUnitTest extends BaseTest {
      * @return never null.
      */
     public static AssemblyRegionTestDataSet createAssemblyRegionTestDataSet(final int kmerSize, final int readLength, final String variation, final int readCount, final int regionSize, final byte bq, final byte iq, final byte dq) {
-
         final String reference = REF.substring(0, regionSize);
 
-        final AssemblyRegionTestDataSet result = new AssemblyRegionTestDataSet(kmerSize, reference,
+        return new AssemblyRegionTestDataSet(kmerSize, reference,
                 new String[]{"Civar:" + variation},
                 new String[]{"*:" + readCount + ":" + readLength}, byteRepeat(bq, readLength), byteRepeat(dq, readLength), byteRepeat(iq, readLength));
-
-
-        return result;
     }
 
     @DataProvider(name="activeRegionTestDataSets")
     public Iterator<Object[]> activeRegionTestDataSets() {
-        return new java.util.Iterator<Object[]>() {
+        return new Iterator<Object[]>() {
 
             private int i = 0;
 

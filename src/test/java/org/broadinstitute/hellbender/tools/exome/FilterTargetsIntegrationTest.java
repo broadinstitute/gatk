@@ -141,8 +141,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "targetTargetSizeFilterData")
-    public void testTargetSizeFilterWithoutRejectionFile(final int min, final int max, final List<Target> targets) throws IOException
-    {
+    public void testTargetSizeFilterWithoutRejectionFile(final int min, final int max, final List<Target> targets) {
         final File targetFile = createTargetFile(targets, Collections.emptySet());
         final List<Target> leftInTargets = targets.stream()
                 .filter(t -> t.getInterval().size() >= min && t.getInterval().size() <= max)
@@ -291,8 +290,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "targetExtremeGCFilterData", expectedExceptions = UserException.BadInput.class)
-    public void testTargetExtremeGCFilterMissingAnnotation(final List<Target> targets, final double extremeGC)
-            throws IOException {
+    public void testTargetExtremeGCFilterMissingAnnotation(final List<Target> targets, final double extremeGC) {
         if (extremeGC <= 0.0) {
             throw new UserException.BadInput("when minGC is 0.0 or less we don't throw an exception");
         }
@@ -309,8 +307,7 @@ public final class FilterTargetsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "targetExtremeGCFilterData", expectedExceptions = UserException.BadInput.class)
-    public void testTargetExtremeRepeatFilterMissingAnnotation(final List<Target> targets, final double maxRepeatContent)
-            throws IOException {
+    public void testTargetExtremeRepeatFilterMissingAnnotation(final List<Target> targets, final double maxRepeatContent) {
         if (maxRepeatContent >= 1.0) {
             throw new UserException.BadInput("when maxRepeat is 1.0 or greater we don't throw an exception");
         }

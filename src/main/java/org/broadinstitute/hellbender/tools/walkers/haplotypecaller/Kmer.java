@@ -60,7 +60,7 @@ public final class Kmer {
         Utils.validateArg(start + length <= bases.length, () -> "start + length " + (start + length) + " must be <= bases.length " + bases.length + " but got " + start + " with length " + length);
         this.start = start;
         this.length = length;
-        this.hash = hashCode(bases, start, length);
+        hash = hashCode(bases, start, length);
     }
 
     /**

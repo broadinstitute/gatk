@@ -76,8 +76,8 @@ public final class SharedVertexSequenceSplitter {
         Utils.validateArg( toSplitsArg.size() > 1, () -> "Can only split at least 2 vertices but only got " + toSplitsArg);
         Utils.validateArg(graph.vertexSet().containsAll(toSplitsArg), "graph doesn't contain all of the vertices to split");
 
-        this.outer = graph;
-        this.toSplits = toSplitsArg;
+        outer = graph;
+        toSplits = toSplitsArg;
 
         // all of the edges point to the same sink, so it's time to merge
         final Pair<SeqVertex, SeqVertex> prefixAndSuffix = commonPrefixAndSuffixOfVertices(toSplits);

@@ -26,7 +26,7 @@ public final class FlatRealTestHMModel implements HiddenMarkovModel<Integer,Inte
         this.transitions = transitions;
         Utils.validateArg(priors.getDimension() == this.transitions.getColumnDimension(), "bad dimensions");
         Utils.validateArg(priors.getDimension() == this.transitions.getRowDimension(), "bad dimensions");
-        this.numStates = priors.getDimension();
+        numStates = priors.getDimension();
     }
 
     @Override

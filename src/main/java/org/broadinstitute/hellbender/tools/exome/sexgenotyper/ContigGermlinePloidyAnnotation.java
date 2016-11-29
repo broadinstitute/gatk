@@ -60,7 +60,7 @@ public final class ContigGermlinePloidyAnnotation {
         }
 
         this.ploidyMap = Collections.unmodifiableMap(ploidyMap);
-        this.genotypesSet = ploidyMap.keySet();
+        genotypesSet = ploidyMap.keySet();
     }
 
     public String getContigName() {

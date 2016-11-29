@@ -48,7 +48,7 @@ public final class SliceSampler {
         this.xMin = xMin;
         this.xMax = xMax;
         this.width = width;
-        this.exponentialDistribution = new ExponentialDistribution(rng, 1.);
+        exponentialDistribution = new ExponentialDistribution(rng, 1.);
     }
 
     /**
