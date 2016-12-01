@@ -406,7 +406,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
 
     private void filterOverlappingReads(final ReadLikelihoods<Allele> likelihoods, final String sample, final Allele ref, final int location, final boolean retainMismatches) {
 
-        if (likelihoods.indexOfSample(sample) < 0) {
+        if (sample == null || likelihoods.indexOfSample(sample) < 0) {
             return;
         }
         // Get the best alleles of each read and group them by the read name.
