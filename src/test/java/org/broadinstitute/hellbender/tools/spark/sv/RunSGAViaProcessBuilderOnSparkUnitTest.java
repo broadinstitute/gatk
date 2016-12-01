@@ -216,7 +216,7 @@ public class RunSGAViaProcessBuilderOnSparkUnitTest extends CommandLineProgramTe
 
         editDistancesBetweenSeq = new ArrayList<>();
         moduleArgs.clear();
-        moduleArgs.add("--kmer-threshold");         moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.FILTER_STEP_KMER_FREQUENCY_THREASHOLD));
+        moduleArgs.add("--kmer-threshold");         moduleArgs.add(String.valueOf(RunSGAViaProcessBuilderOnSpark.FILTER_STEP_KMER_FREQUENCY_THRESHOLD));
         moduleArgs.add("--homopolymer-check");
         moduleArgs.add("--low-complexity-check");
         final File correctedFile = new File(workingDir, correctedFileName);
