@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
 
 import java.util.ArrayList;
 import java.util.List;

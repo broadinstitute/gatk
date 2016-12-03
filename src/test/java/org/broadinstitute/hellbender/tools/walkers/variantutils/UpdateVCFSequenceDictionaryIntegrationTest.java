@@ -4,8 +4,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.utils.SAMSequenceDictionaryExtractor;
 import htsjdk.variant.vcf.VCFFileReader;
 import htsjdk.variant.vcf.VCFHeader;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 
 import org.testng.Assert;
@@ -78,7 +78,7 @@ public class UpdateVCFSequenceDictionaryIntegrationTest extends CommandLineProgr
         };
     }
 
-    @Test(dataProvider="UpdateBadSequenceDictionaryData", expectedExceptions= UserException.BadArgumentValue.class)
+    @Test(dataProvider="UpdateBadSequenceDictionaryData", expectedExceptions= CommandLineException.BadArgumentValue.class)
     private void testBadUpdateSequenceDictionary(
             final File inputVariantsFile,
             final File inputSourceFile,

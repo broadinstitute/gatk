@@ -10,13 +10,13 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
@@ -70,7 +70,7 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
     /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */
     protected final LIBSDownsamplingInfo getDownsamplingInfo() {
         if (maxDepthPerSample < 0) {
-            throw new UserException.BadArgumentValue("maxDepthPerSample",
+            throw new CommandLineException.BadArgumentValue("maxDepthPerSample",
                     String.valueOf(maxDepthPerSample),
                     "should be a positive number");
         }

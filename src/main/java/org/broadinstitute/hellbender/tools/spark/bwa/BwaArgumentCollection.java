@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.spark.bwa;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.barclay.argparser.Argument;
+
+import java.io.Serializable;
 
 /**
  * Arguments for BWA.
  */
-public final class BwaArgumentCollection implements ArgumentCollectionDefinition {
+public final class BwaArgumentCollection implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

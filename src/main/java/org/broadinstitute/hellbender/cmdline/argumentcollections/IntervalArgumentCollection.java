@@ -4,21 +4,23 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.*;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Intended to be used as an {@link org.broadinstitute.hellbender.cmdline.ArgumentCollection} for specifying intervals at the command line.
+ * Intended to be used as an @ArgumentCollection for specifying intervals at the command line.
  * Subclasses must override getIntervalStrings and addToIntervalStrings().
  */
-public abstract class IntervalArgumentCollection implements ArgumentCollectionDefinition {
+public abstract class IntervalArgumentCollection implements Serializable {
     private static final Logger logger = LogManager.getLogger(IntervalArgumentCollection.class);
     protected final IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
     private static final long serialVersionUID = 1L;
@@ -126,7 +128,7 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
             try {
                 includeSortedSet = IntervalUtils.loadIntervals(getIntervalStrings(), intervalSetRule, intervalMerging, intervalPadding, genomeLocParser);
             } catch( UserException.EmptyIntersection e) {
-                throw new UserException.BadArgumentValue("-L, --interval_set_rule", getIntervalStrings()+","+intervalSetRule, "The specified intervals had an empty intersection");
+                throw new CommandLineException.BadArgumentValue("-L, --interval_set_rule", getIntervalStrings()+","+intervalSetRule, "The specified intervals had an empty intersection");
             }
         }
 
@@ -144,7 +146,7 @@ public abstract class IntervalArgumentCollection implements ArgumentCollectionDe
             intervals = includeSortedSet.subtractRegions(excludeSortedSet);
 
             if( intervals.isEmpty()){
-                throw new UserException.BadArgumentValue("-L,-XL",getIntervalStrings().toString() + ", "+excludeIntervalStrings.toString(),"The intervals specified for exclusion with -XL removed all territory specified by -L.");
+                throw new CommandLineException.BadArgumentValue("-L,-XL",getIntervalStrings().toString() + ", "+excludeIntervalStrings.toString(),"The intervals specified for exclusion with -XL removed all territory specified by -L.");
             }
             // logging messages only printed when exclude (-XL) arguments are given
             final long toPruneSize = includeSortedSet.coveredSize();

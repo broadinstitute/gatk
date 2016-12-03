@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 
 /**

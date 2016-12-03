@@ -2,22 +2,23 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.map.DefaultedMap;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorImplementation;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 
 /**
  * This is pulled out so that every caller isn't exposed to the arguments from every other caller.
  */
-public class StandardCallerArgumentCollection implements ArgumentCollectionDefinition {
+public class StandardCallerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**

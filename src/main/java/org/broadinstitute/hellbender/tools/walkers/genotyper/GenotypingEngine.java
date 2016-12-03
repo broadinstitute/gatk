@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -88,13 +89,13 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if (!inputPriors.isEmpty()) {
             // user-specified priors
             if (inputPriors.size() != N) {
-                throw new UserException.BadArgumentValue("inputPrior", "Invalid length of inputPrior vector: vector length must be equal to # samples +1 ");
+                throw new CommandLineException.BadArgumentValue("inputPrior", "Invalid length of inputPrior vector: vector length must be equal to # samples +1 ");
             }
 
             int idx = 1;
             for (final double prior: inputPriors) {
                 if (prior < 0.0) {
-                    throw new UserException.BadArgumentValue("Bad argument: negative values not allowed", "inputPrior");
+                    throw new CommandLineException.BadArgumentValue("Bad argument: negative values not allowed", "inputPrior");
                 }
                 priors[idx++] = Math.log10(prior);
                 sum += prior;
@@ -111,7 +112,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         // protection against the case of heterozygosity too high or an excessive number of samples (which break population genetics assumptions)
         if (sum > 1.0) {
-            throw new UserException.BadArgumentValue("heterozygosity","The heterozygosity value is set too high relative to the number of samples to be processed, or invalid values specified if input priors were provided - try reducing heterozygosity value or correct input priors.");
+            throw new CommandLineException.BadArgumentValue("heterozygosity","The heterozygosity value is set too high relative to the number of samples to be processed, or invalid values specified if input priors were provided - try reducing heterozygosity value or correct input priors.");
         }
         // null frequency for AF=0 is (1 - sum(all other frequencies))
         priors[0] = Math.log10(1.0 - sum);
@@ -133,11 +134,11 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         if (!inputPriors.isEmpty()) {
             // user-specified priors
             if (inputPriors.size() != N) {
-                throw new UserException.BadArgumentValue("inputPrior", "Invalid length of inputPrior vector: vector length must be equal to # samples +1 ");
+                throw new CommandLineException.BadArgumentValue("inputPrior", "Invalid length of inputPrior vector: vector length must be equal to # samples +1 ");
             }
             for (final Double prior : inputPriors) {
                 if (prior <= 0 || prior >= 1) {
-                    throw new UserException.BadArgumentValue("inputPrior", "inputPrior vector values must be greater than 0 and less than 1");
+                    throw new CommandLineException.BadArgumentValue("inputPrior", "inputPrior vector values must be greater than 0 and less than 1");
                 }
             }
             return new CustomAFPriorProvider(inputPriors);

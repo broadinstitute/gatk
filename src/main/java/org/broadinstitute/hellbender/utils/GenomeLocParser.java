@@ -7,6 +7,7 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -67,7 +68,7 @@ public final class GenomeLocParser {
         Utils.nonNull(validationLevel, "validation level cannot be null");
         if (seqDict == null) { // we couldn't load the reference dictionary
             //logger.info("Failed to load reference dictionary, falling back to lexicographic order for contigs");
-            throw new UserException.CommandLineException("Failed to load reference dictionary");
+            throw new CommandLineException("Failed to load reference dictionary");
         }
 
         this.validationLevel = validationLevel;

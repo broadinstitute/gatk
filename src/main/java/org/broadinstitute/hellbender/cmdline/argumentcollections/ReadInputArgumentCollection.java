@@ -1,12 +1,12 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import htsjdk.samtools.ValidationStringency;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
 import java.io.File;
+import java.io.Serializable;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -15,7 +15,7 @@ import java.util.List;
  * An abstract argument collection for use with tools that accept input files containing reads
  * (eg., BAM/SAM/CRAM files).
  */
-public abstract class ReadInputArgumentCollection implements ArgumentCollectionDefinition {
+public abstract class ReadInputArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = StandardArgumentDefinitions.READ_VALIDATION_STRINGENCY_LONG_NAME,

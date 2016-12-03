@@ -3,11 +3,11 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException.BadArgumentValue;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
@@ -216,13 +216,13 @@ public final class VariantAnnotatorEngine {
 
             final Set<String> unknownGroups =  Sets.difference(new LinkedHashSet<>(annotationGroupsToUse), new LinkedHashSet<>(AnnotationManager.getAllAnnotationGroupNames()));
             if (!unknownGroups.isEmpty()){
-                throw new BadArgumentValue("group", "Unknown annotation group in " + unknownGroups + ". Known groups are " + AnnotationManager.getAllAnnotationGroupNames());
+                throw new CommandLineException.BadArgumentValue("group", "Unknown annotation group in " + unknownGroups + ". Known groups are " + AnnotationManager.getAllAnnotationGroupNames());
             }
         }
 
         private void assertAnnotationExists(final Set<String> missingAnnots){
             if (!missingAnnots.isEmpty()){
-                throw new BadArgumentValue("annotation", "Annotation " + missingAnnots + " not found; please check that you have specified the name correctly");
+                throw new CommandLineException.BadArgumentValue("annotation", "Annotation " + missingAnnots + " not found; please check that you have specified the name correctly");
             }
         }
 

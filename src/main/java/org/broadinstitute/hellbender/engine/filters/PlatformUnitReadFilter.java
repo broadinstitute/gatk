@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTag;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.utils.SerializableFunction;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 

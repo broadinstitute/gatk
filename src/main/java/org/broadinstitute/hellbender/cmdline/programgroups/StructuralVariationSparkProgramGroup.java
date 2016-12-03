@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
+import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 
 /**
  * Tools for structural variation analysis that runs on Spark.

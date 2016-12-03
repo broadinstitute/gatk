@@ -10,9 +10,10 @@ import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -77,7 +78,7 @@ public final class CreateHadoopBamSplittingIndex extends CommandLineProgram {
     @Override
     public Object doWork() {
         if( granularity <= 0) {
-            throw new UserException.BadArgumentValue(SPLITTING_INDEX_GRANULARITY_LONG_NAME, Integer.toString(granularity), "Granularity must be > 0");
+            throw new CommandLineException.BadArgumentValue(SPLITTING_INDEX_GRANULARITY_LONG_NAME, Integer.toString(granularity), "Granularity must be > 0");
         }
         final File index = getOutputFile(output, inputBam);
         if(createBai){

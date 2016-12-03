@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.cmdline;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockCompressedStreamConstants;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;

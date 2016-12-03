@@ -1,15 +1,17 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.broadinstitute.barclay.argparser.Argument;
 
 /**
  * This collection is for arguments that require special treatment by the arguments parser itself.
  * It should not grow beyond a very short list.
  */
-public final class SpecialArgumentsCollection implements ArgumentCollectionDefinition {
+public final class SpecialArgumentsCollection implements Serializable {
     public static final String HELP_FULLNAME = "help";
     public static final String VERSION_FULLNAME = "version";
     public static final String ARGUMENTS_FILE_FULLNAME = "arguments_file";

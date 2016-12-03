@@ -12,6 +12,7 @@ import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.SimpleFeature;
 import org.apache.commons.io.FileUtils;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -500,14 +501,14 @@ public final class IntervalUtilsUnitTest extends BaseTest {
         Assert.assertEquals(locs3.get(1), chr4);
     }
 
-    @Test(expectedExceptions=UserException.BadArgumentValue.class)
+    @Test(expectedExceptions=CommandLineException.BadArgumentValue.class)
     public void testSplitFixedIntervalsMoreFiles() {
         List<File> files = testFiles("more.", 3, ".intervals");
         List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2");
         IntervalUtils.splitFixedIntervals(locs, files.size());
     }
 
-    @Test(expectedExceptions=UserException.BadArgumentValue.class)
+    @Test(expectedExceptions=CommandLineException.BadArgumentValue.class)
     public void testScatterFixedIntervalsMoreFiles() {
         List<File> files = testFiles("more.", 3, ".intervals");
         List<GenomeLoc> locs = intervalStringsToGenomeLocs("1", "2");

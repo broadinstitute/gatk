@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -36,7 +36,7 @@ public final class FeatureInputUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "InvalidFeatureArgumentValuesDataProvider", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider = "InvalidFeatureArgumentValuesDataProvider", expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testInvalidFeatureArgumentValue( final String invalidFeatureArgumentValue ) {
         FeatureInput<Feature> featureInput = new FeatureInput<>(invalidFeatureArgumentValue);
     }

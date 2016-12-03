@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.utils.nio.NioBam;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.PrintStream;
 
 /**

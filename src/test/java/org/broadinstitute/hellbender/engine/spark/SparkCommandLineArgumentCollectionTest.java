@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -38,7 +38,7 @@ public class SparkCommandLineArgumentCollectionTest {
         };
     }
 
-    @Test(dataProvider = "badSplits", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider = "badSplits", expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testBadProperties(String property){
         final SparkCommandLineArgumentCollection sparkArgumentCollection = new SparkCommandLineArgumentCollection();
         sparkArgumentCollection.sparkProperties.add(property);

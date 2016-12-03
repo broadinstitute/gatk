@@ -13,6 +13,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -203,7 +204,7 @@ public final class IntervalUtils {
         final List<GenomeLoc> rawIntervals = new ArrayList<>();    // running list of raw GenomeLocs
 
         if ( arg.indexOf(';') != -1 ) {
-            throw new UserException.BadArgumentValue("-L " + arg, "The legacy -L \"interval1;interval2\" syntax " +
+            throw new CommandLineException.BadArgumentValue("-L " + arg, "The legacy -L \"interval1;interval2\" syntax " +
                     "is no longer supported. Please use one -L argument for each " +
                     "interval or an interval file instead.");
         }
@@ -645,7 +646,7 @@ public final class IntervalUtils {
         Utils.containsNoNull(splits, "null split loc");
 
         if (splits.size() != scatterParts.size()) {
-            throw new UserException.BadArgumentValue("splits", String.format("Split points %d does not equal the number of scatter parts %d.", splits.size(), scatterParts.size()));
+            throw new CommandLineException.BadArgumentValue("splits", String.format("Split points %d does not equal the number of scatter parts %d.", splits.size(), scatterParts.size()));
         }
 
         int fileIndex = 0;
@@ -669,7 +670,7 @@ public final class IntervalUtils {
         Utils.nonNull(locs, "locs is null");
 
         if (locs.size() < numParts) {
-            throw new UserException.BadArgumentValue("scatterParts", String.format("Cannot scatter %d locs into %d parts.", locs.size(), numParts));
+            throw new CommandLineException.BadArgumentValue("scatterParts", String.format("Cannot scatter %d locs into %d parts.", locs.size(), numParts));
         }
         final long locsSize = intervalSize(locs);
         final List<Integer> splitPoints = new ArrayList<>();
@@ -682,7 +683,7 @@ public final class IntervalUtils {
     public static List<List<GenomeLoc>> splitLocusIntervals(final List<GenomeLoc> locs, final int numParts) {
         Utils.nonNull(locs, "locs is null");
         if (numParts < 0) {
-            throw new UserException.BadArgumentValue("scatterParts", String.format("Cannot scatter %d locs into %d parts.", locs.size(), numParts));
+            throw new CommandLineException.BadArgumentValue("scatterParts", String.format("Cannot scatter %d locs into %d parts.", locs.size(), numParts));
         }
 
         // the ideal size of each split

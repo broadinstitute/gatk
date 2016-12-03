@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.examples.metrics.multi;
 
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulationLevelArgumentCollection;
 import org.broadinstitute.hellbender.metrics.MetricsArgumentCollection;
 
