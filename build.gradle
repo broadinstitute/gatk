@@ -55,6 +55,7 @@ repositories {
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.6.1')
+final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.7.1')
 
 configurations.all {
@@ -117,7 +118,7 @@ dependencies {
     compile 'com.google.cloud.genomics:google-genomics-utils:v1beta2-0.30'
 
     compile 'org.ojalgo:ojalgo:39.0'
-    compile ('org.apache.spark:spark-mllib_2.11:2.0.0') {
+    compile ('org.apache.spark:spark-mllib_2.11:' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
