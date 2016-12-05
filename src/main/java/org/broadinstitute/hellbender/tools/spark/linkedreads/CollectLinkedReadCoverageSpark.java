@@ -56,11 +56,55 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (aggregator, read) -> addReadToIntervals(aggregator, read, clusterSize),
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                 );
-        final JavaRDD<String> intervalsByBarcode =
-                barcodeIntervals.flatMap(CollectLinkedReadCoverageSpark::intervalTreeToString);
 
+        final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getReads()
+                .filter(r -> (!r.isUnmapped() && ! r.mateIsUnmapped() && LinkedReadAnalysisFilter.isChimeric(r)))
+                .mapToPair(r -> new Tuple2<>(r.getName(), r))
+                .groupByKey();
 
-        intervalsByBarcode.saveAsTextFile(out);
+        final JavaPairRDD<String, Iterable<List<GATKRead>>> listOfChimericPairsByBx = chimericReads.mapToPair(this::gatherChimericPairsByBarcode).groupByKey();
+
+        final JavaPairRDD<String, Tuple2<Map<String, IntervalTree<List<ReadInfo>>>, Iterable<List<GATKRead>>>> barcodeIntervalsWithChimericPairs = barcodeIntervals.join(listOfChimericPairsByBx);
+
+        final JavaPairRDD<String, Tuple2<Integer, Integer>> distancesByBx = barcodeIntervalsWithChimericPairs.flatMapValues(v -> {
+            final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap = v._1();
+            final Iterable<List<GATKRead>> chimericPairs = v._2();
+            final List<Tuple2<Integer, Integer>> distances = new ArrayList<>();
+            for (List<GATKRead> pair : chimericPairs) {
+                final int d1 = getDistance(barcodeIntervalMap, pair.get(0));
+                final int d2 = getDistance(barcodeIntervalMap, pair.get(1));
+                distances.add(new Tuple2<>(d1, d2));
+            }
+            return distances;
+        });
+
+        distancesByBx.saveAsTextFile(out);
+    }
+
+    private int getDistance(final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap, final GATKRead read) {
+        int distance;
+        final IntervalTree<List<ReadInfo>> intervalTree = barcodeIntervalMap.get(read.getContig());
+        if (intervalTree == null) {
+            distance = -1;
+        } else {
+            if (intervalTree.find(read.getStart(), read.getEnd()) != null) {
+                distance = 0;
+            } else {
+                final IntervalTree.Node<List<ReadInfo>> min = intervalTree.min(read.getStart(), read.getEnd());
+                final IntervalTree.Node<List<ReadInfo>> max = intervalTree.max(read.getStart(), read.getEnd());
+                distance = Math.min(min.getStart() - read.getEnd(), read.getStart() - max.getEnd());
+            }
+        }
+        return distance;
+    }
+
+    private Tuple2<String, List<GATKRead>> gatherChimericPairsByBarcode(final Tuple2<String, Iterable<GATKRead>> p) {
+        final Iterable<GATKRead> readsIt = p._2();
+        final List<GATKRead> readsList = new ArrayList<>();
+        for (GATKRead r : readsIt) {
+            readsList.add(r);
+        }
+        return new Tuple2<>(readsList.get(0).getAttributeAsString("BX"), readsList);
     }
 
     static Iterator<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeLocations) {
