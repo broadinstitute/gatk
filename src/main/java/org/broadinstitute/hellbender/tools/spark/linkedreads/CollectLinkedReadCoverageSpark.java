@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
-import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
@@ -64,7 +63,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         intervalsByBarcode.saveAsTextFile(out);
     }
 
-    static List<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeLocations) {
+    static Iterator<String> intervalTreeToString(final Tuple2<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeLocations) {
         final List<String> outputLines = new ArrayList<>();
         final String barcode = barcodeLocations._1;
         final Map<String, IntervalTree<List<ReadInfo>>> stringIntervalTreeMap = barcodeLocations._2;
@@ -103,7 +102,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             }
         }
 
-        return outputLines;
+        return outputLines.iterator();
     }
 
     @VisibleForTesting
