@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -58,9 +59,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 );
 
         final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getReads()
-                .filter(r -> (!r.isUnmapped() && ! r.mateIsUnmapped() && LinkedReadAnalysisFilter.isChimeric(r)))
+                .filter(r -> (!r.isUnmapped() && ! r.mateIsUnmapped() && ReadFilterLibrary.PRIMARY_ALIGNMENT.test(r) && LinkedReadAnalysisFilter.isChimeric(r)))
                 .mapToPair(r -> new Tuple2<>(r.getName(), r))
-                .groupByKey();
+                .groupByKey().cache();
+
+        logger.info("found " + chimericReads.count() + " chimeric fragments.");
 
         final JavaPairRDD<String, Iterable<List<GATKRead>>> listOfChimericPairsByBx = chimericReads.mapToPair(this::gatherChimericPairsByBarcode).groupByKey();
 
@@ -78,6 +81,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             return distances;
         });
 
+        chimericReads.unpersist();
         distancesByBx.saveAsTextFile(out);
     }
 
