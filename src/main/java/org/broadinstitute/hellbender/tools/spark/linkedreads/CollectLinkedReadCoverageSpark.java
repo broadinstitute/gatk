@@ -99,6 +99,17 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             } else {
                 final IntervalTree.Node<List<ReadInfo>> min = intervalTree.min(read.getStart(), read.getEnd());
                 final IntervalTree.Node<List<ReadInfo>> max = intervalTree.max(read.getStart(), read.getEnd());
+                if (min == null) {
+                    if (max != null) {
+                        return read.getStart() - max.getEnd();
+                    } else {
+                        return -1;
+                    }
+                }
+                if (max == null) {
+                    return min.getStart() - read.getEnd();
+                }
+
                 distance = Math.min(min.getStart() - read.getEnd(), read.getStart() - max.getEnd());
             }
         }
