@@ -126,7 +126,7 @@ dependencies {
     }
 
     compile 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    compile('org.bdgenomics.adam:adam-core_2.11:0.20.0') {
+    compile('org.bdgenomics.adam:adam-core-spark2_2.11:0.20.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
