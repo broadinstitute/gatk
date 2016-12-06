@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
-import org.broadinstitute.hellbender.tools.exome.SubtractCoverageComponents;
+import org.broadinstitute.hellbender.tools.exome.NormalizeSomaticReadCounts;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
@@ -21,7 +21,7 @@ import java.util.*;
  * based on {@link XHMMModel} HMM model.
  *
  * <p>
- *     You normally want to run this tool on values normalized using {@link SubtractCoverageComponents}
+ *     You normally want to run this tool on values normalized using {@link NormalizeSomaticReadCounts}
  *     which should get rid of systematic biases due to sequencing and capture technology
  * </p>
  *

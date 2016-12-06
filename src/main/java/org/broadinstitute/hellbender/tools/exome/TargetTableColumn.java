@@ -16,10 +16,7 @@ public enum TargetTableColumn {
     START("start", true), /* it was a terrible idea to change this from "START" to "start"! */
     END("stop", true), /* it was a terrible idea to change this from "END" to "stop"! */
     GC_CONTENT("GC_CONTENT", false),
-    REPEAT_FRACTION("REPEAT_FRACTION", false),
-    MEAN_COVERAGE("MEAN_COVERAGE", false),
-    COVERAGE_VARIANCE("COVERAGE_VARIANCE", false),
-    COVERAGE_INTERQUARTILE_RANGE("COVERAGE_INTERQUARTILE_RANGE", false);
+    REPEAT_FRACTION("REPEAT_FRACTION", false);
 
     private final String columnName;  //store the column names
 

@@ -80,7 +80,7 @@ import java.util.stream.IntStream;
  * </p>
  * <h2>Input and Output File Format</h2>
  * <p>
- *    Input read count file format follows the one produced by {@link CalculateTargetBaseCallCoverage}.
+ *    Input read count file format follows the one produced by {@link CalculateTargetCoverage}.
  *    Namely a tab separated value table file where there is a least one column, <b>NAME</b>;
  *    indicating the target name, an arbitrary number of read count columns (e.g. one per sample)
  *    and the target coordinates (<b>CONTIG</b>, <b>START</b> and <b>STOP</b>) which are optional if

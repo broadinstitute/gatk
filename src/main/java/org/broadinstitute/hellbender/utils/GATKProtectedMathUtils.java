@@ -56,12 +56,6 @@ public class GATKProtectedMathUtils {
         }
         return max + Math.log(sum);
     }
-    
-    public static double interquartileRange(final double ... values) {
-        final Percentile percentile = new Percentile();
-        percentile.setData(values);
-        return percentile.evaluate(75.0) - percentile.evaluate(25.0);
-    }
 
     public static double mean(final double ... values) {
         Utils.nonNull(values);
@@ -104,20 +98,6 @@ public class GATKProtectedMathUtils {
         Utils.nonNull(matrix);
         return IntStream.range(0, matrix.getColumnDimension())
                 .mapToDouble(c -> mean(matrix.getColumn(c))).toArray();
-    }
-
-    /**
-     * Calculates the variances per column from a matrix.
-     * @param matrix the input matrix.
-     * @return never {@code null}, an array with as many positions as columns in {@code matrix}.
-     * @throws IllegalArgumentException if {@code matrix} is {@code null}.
-     */
-    public static double[] columnVariances(final RealMatrix matrix) {
-        Utils.nonNull(matrix);
-        final Variance varianceEvaluator = new Variance();
-        return IntStream.range(0, matrix.getColumnDimension())
-                .mapToDouble(c -> varianceEvaluator.evaluate(matrix.getColumn(c)))
-                .toArray();
     }
 
     /**

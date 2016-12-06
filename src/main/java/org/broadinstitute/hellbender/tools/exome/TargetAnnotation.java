@@ -25,22 +25,7 @@ public enum TargetAnnotation {
      *
      * <p>This value is always a number between 0 and 1 without exceptions.</p>
      */
-    REPEAT_FRACTION(TargetTableColumn.REPEAT_FRACTION),
-
-    /**
-     * Average coverage across samples.
-     */
-    MEAN_COVERAGE(TargetTableColumn.MEAN_COVERAGE),
-
-    /**
-     * The coverage variance across samples.
-     */
-    COVERAGE_VARIANCE(TargetTableColumn.COVERAGE_VARIANCE),
-
-    /**
-     * The coverage interquartile range across samples.
-     */
-    COVERAGE_INTERQUARTILE_RANGE(TargetTableColumn.COVERAGE_INTERQUARTILE_RANGE);
+    REPEAT_FRACTION(TargetTableColumn.REPEAT_FRACTION);
 
     /**
      * Reference to the corresponding column in the targets table.
