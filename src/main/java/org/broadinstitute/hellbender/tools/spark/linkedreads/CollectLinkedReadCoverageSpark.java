@@ -67,9 +67,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                                 && r.hasAttribute("BX")
                                 && LinkedReadAnalysisFilter.isChimeric(r)))
                 .mapToPair(r -> new Tuple2<>(r.getName(), r))
-                .groupByKey().cache();
-
-        logger.info("found " + chimericReads.count() + " chimeric fragments.");
+                .groupByKey();
 
         final JavaPairRDD<String, Iterable<List<GATKRead>>> listOfChimericPairsByBx = chimericReads.mapToPair(this::gatherChimericPairsByBarcode).groupByKey();
 
@@ -87,7 +85,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             return distances;
         });
 
-        chimericReads.unpersist();
         distancesByBx.saveAsTextFile(out);
     }
 
