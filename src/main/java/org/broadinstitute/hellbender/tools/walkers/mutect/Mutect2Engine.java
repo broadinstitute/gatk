@@ -9,7 +9,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
@@ -51,13 +50,11 @@ import static java.lang.Math.pow;
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
     //TODO: move these lists to GATKVCFConstants
     public static final List<String> STANDARD_M_2_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY,
-            GATKVCFConstants.PANEL_OF_NORMALS_COUNT_KEY, GATKVCFConstants.HAPLOTYPE_COUNT_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY,
-            GATKVCFConstants.EVENT_DISTANCE_MIN_KEY, GATKVCFConstants.EVENT_DISTANCE_MAX_KEY);
+            GATKVCFConstants.PANEL_OF_NORMALS_COUNT_KEY, GATKVCFConstants.HAPLOTYPE_COUNT_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY);
     public static final List<String> M_2_FILTER_NAMES = Arrays.asList(GATKVCFConstants.STR_CONTRACTION_FILTER_NAME, GATKVCFConstants.PON_FILTER_NAME,
-            GATKVCFConstants.ALT_ALLELE_IN_NORMAL_FILTER_NAME, GATKVCFConstants.MULTI_EVENT_ALT_ALLELE_IN_NORMAL_FILTER_NAME,
             GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME, GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME,
             GATKVCFConstants.TUMOR_LOD_FILTER_NAME, GATKVCFConstants.GERMLINE_RISK_FILTER_NAME, GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME,
-            GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.CLUSTERED_READ_POSITION_FILTER_NAME);
+            GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
     public static final List<String> STRAND_ARTIFACT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.TLOD_FWD_KEY, GATKVCFConstants.TLOD_REV_KEY,
             GATKVCFConstants.TUMOR_SB_POWER_FWD_KEY, GATKVCFConstants.TUMOR_SB_POWER_REV_KEY);
 
@@ -79,7 +76,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private SomaticGenotypingEngine genotypingEngine;
     private Optional<HaplotypeBAMWriter> haplotypeBAMWriter;
     private VariantAnnotatorEngine annotationEngine;
-    private final Mutect2FilteringEngine filteringEngine;
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
@@ -98,7 +94,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         this.header = Utils.nonNull(header);
         Utils.nonNull(reference);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
-        filteringEngine = new Mutect2FilteringEngine(MTAC);
 
         final Predicate<GATKRead> goodReadLengthForGenotyping = read -> read.getLength() >= MIN_READ_LENGTH;
         final Predicate<GATKRead> goodMappingQuality = read -> read.getMappingQuality() >= MTAC.MIN_MAPPING_QUALITY_SCORE;
@@ -124,9 +119,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         //If the samples specified are exactly one normal and one tumor, use the TCGA VCF sample header format
         printTCGAsampleHeader = samplesList.numberOfSamples() == 2 && MTAC.normalSampleName != null;
 
+        //TODO: add required annotations for all the filtering steps I propose
+        //TODO: how about add this annotation regardless but *filter* optionally?
         if (MTAC.ENABLE_CLUSTERED_READ_POSITION_FILTER) {
             MTAC.annotationsToUse.add("ClusteredReadPosition");
         }
+
         annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.annotationGroupsToUse,
                 MTAC.annotationsToUse,
                 MTAC.annotationsToExclude,
@@ -134,9 +132,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 MTAC.comps);
 
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
-
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
-
         genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, MTAC.tumorSampleName, MTAC.normalSampleName);
         genotypingEngine.setAnnotationEngine(annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, header);
@@ -196,10 +192,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
 
         STANDARD_M_2_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
+        STRAND_ARTIFACT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
 
-        if (MTAC.ENABLE_STRAND_ARTIFACT_FILTER){
-            STRAND_ARTIFACT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
-        }
+        headerInfo.add(new VCFInfoHeaderLine(SomaticGenotypingEngine.IN_COSMIC_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in COSMIC database"));
+        headerInfo.add(new VCFInfoHeaderLine(SomaticGenotypingEngine.IN_DBSNP_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in dbSNP database"));
+        headerInfo.add(new VCFInfoHeaderLine(SomaticGenotypingEngine.IN_PON_VCF_ATTRIBUTE, 0, VCFHeaderLineType.Flag, "site found in panel of normals"));
 
         headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.ALLELE_FRACTION_KEY));
         M_2_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerInfo::add);
@@ -223,14 +220,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return sampleLines;
     }
 
-    public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final FeatureContext featureContext ) {
+    public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
         if ( MTAC.justDetermineActiveRegions || !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
             return NO_CALLS;
         }
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, MTAC.MIN_MAPPING_QUALITY_SCORE, header);
-
-        // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine);
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
@@ -241,7 +236,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final AssemblyResultSet assemblyResult =
                 trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getCallableRegion()) : untrimmedAssemblyResult;
 
-        // it is conceivable that the region is active yet has no events upon assembling only the well-mapped reads
+        // we might find out after assembly that the "active" region actually has no variants
         if( ! assemblyResult.isVariationPresent() ) {
             return NO_CALLS;
         }
@@ -254,8 +249,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         final Collection<GATKRead> readsToRemove = regionForGenotyping.getReads().stream().filter(useReadForGenotyping.negate()).collect(Collectors.toList());
         regionForGenotyping.removeAll(readsToRemove);
 
-        // In Mutect2 we filter the reads after local re-assembly, and when we do so we may lose many, if not all, of the reads.
-        // In such a case it is meaningless to compute read likelihoods; just return NO_CALLS
+        // we might have no reads left after filtering
         if (regionForGenotyping.getReads().isEmpty()){
             return NO_CALLS;
         }
@@ -266,23 +260,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
-        //TODO: this obtains the old behavior where the second of a read pair was the one recorded
-        final Map<String, Integer> ARreads_origNormalMQ = regionForGenotyping.getReads().stream()
-                .collect(Collectors.toMap(GATKRead::getName, GATKRead::getMappingQuality, (read, mate) -> mate));
-
-        // modify MAPQ scores in normal to be high so that we don't do any base quality score capping
-        regionForGenotyping.getReads().stream().filter(this::isReadFromNormal).forEach(rec -> rec.setMappingQuality(60));
-
         final ReadLikelihoods<Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
         final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc());
         readLikelihoods.changeReads(readRealignments);
 
         final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(
                 readLikelihoods,
-                ARreads_origNormalMQ,
                 perSampleFilteredReadList,
-                assemblyResult.getFullReferenceWithPadding(),
-                assemblyResult.getPaddedReferenceLoc(),
+                assemblyResult,
+                referenceContext,
                 regionForGenotyping.getSpan(),
                 featureContext,
                 header);
@@ -290,7 +276,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         writeBamOutput(assemblyResult, readLikelihoods, calledHaplotypes);
 
         if( MTAC.debug) { logger.info("----------------------------------------------------------------------------------"); }
-        return applyAnnotationsAndFilters(calledHaplotypes, featureContext);
+        return annotateCalls(calledHaplotypes);
     }
 
     private void writeBamOutput(AssemblyResultSet assemblyResult, ReadLikelihoods<Haplotype> readLikelihoods, HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
@@ -306,57 +292,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                     calledHaplotypeSet,
                     readLikelihoods);
         }
-    }
-
-    private Set<String> calculateFilters(final FeatureContext featureContext, final VariantContext vc, final Map<String, Object> eventDistanceAttributes) {
-        final Set<String> filters = new HashSet<>();
-
-        final Integer eventCount = (Integer) eventDistanceAttributes.get(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY);
-        final Integer maxEventDistance = (Integer) eventDistanceAttributes.get(GATKVCFConstants.EVENT_DISTANCE_MAX_KEY);
-
-        filteringEngine.applyPanelOfNormalsFilter(vc, filters, featureContext);
-
-        // TODO: make the change to have only a single normal sample (but multiple tumors is ok...)
-        if (hasNormal()) {
-            final Genotype normalGenotype = vc.getGenotype(MTAC.normalSampleName);
-
-            // NOTE: how do we get the non-ref depth here?
-            final int normalAltCounts = normalGenotype.getAD()[1];
-            final double normalF = (Double) normalGenotype.getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY);
-            int normalAltQualityScoreSum = 0;
-
-            final Object qss = normalGenotype.getExtendedAttribute(GATKVCFConstants.QUALITY_SCORE_SUM_KEY);
-            if (qss != null) {
-                normalAltQualityScoreSum = (Integer) ((Object[]) qss)[1];
-            } else {
-                logger.error("Null qss at " + vc.getStart());
-            }
-
-            if ( (normalAltCounts > MTAC.MAX_ALT_ALLELES_IN_NORMAL_COUNT || normalF > MTAC.MAX_ALT_ALLELE_IN_NORMAL_FRACTION ) && normalAltQualityScoreSum > MTAC.MAX_ALT_ALLELES_IN_NORMAL_QSCORE_SUM) {
-                filters.add(GATKVCFConstants.ALT_ALLELE_IN_NORMAL_FILTER_NAME);
-            } else if ( eventCount > 1 && normalAltCounts >= 1) {
-                filters.add(GATKVCFConstants.MULTI_EVENT_ALT_ALLELE_IN_NORMAL_FILTER_NAME);
-            }
-        }
-
-
-        else if (eventCount >= 3) {
-            filters.add(GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME);
-        }
-
-        filteringEngine.applySTRFilter(vc, filters);
-
-        // NOTE: what if there is a 3bp indel followed by a snp... we are comparing starts
-        // so it would be thrown but it's really an adjacent event
-        if ( eventCount >= 2 && maxEventDistance >= 3) {
-            filters.add(GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME);
-        }
-
-        filteringEngine.applyClusteredReadPositionFilter(vc, filters);
-
-        // TODO: Move strand bias filter here
-
-        return filters;
     }
 
     //TODO: should be a variable, not a function
@@ -441,20 +376,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return MTAC.normalSampleName != null && ReadUtils.getSampleName(rec, header).equals(MTAC.normalSampleName);
     }
 
-    final List<VariantContext> applyAnnotationsAndFilters(final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes, final FeatureContext featureContext) {
+    //TODO: move to SomaticGenotypingEngine with all the other annotations
+    final List<VariantContext> annotateCalls(final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
         final int eventCount = calledHaplotypes.getCalls().size();
-        final Map<String, Object> eventDistanceAttributes = new HashMap<>();    //TODO: should be Map<String, Integer> -- see TODO below
-        eventDistanceAttributes.put(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount);
-        if (eventCount > 1) {
-            final int lastPosition = calledHaplotypes.getCalls().get(0).getStart();
-            final int[] eventDistances = new int[calledHaplotypes.getCalls().size() - 1];
-            for (int n = 0; n < eventDistances.length; n++) {
-                eventDistances[n] = Math.abs(calledHaplotypes.getCalls().get(n + 1).getStart() - lastPosition);
-            }
-            final int maxEventDistance = calledHaplotypes.getCalls().get(eventCount - 1).getStart() - calledHaplotypes.getCalls().get(0).getStart();
-            eventDistanceAttributes.put(GATKVCFConstants.EVENT_DISTANCE_MIN_KEY, NumberUtils.min(eventDistances));
-            eventDistanceAttributes.put(GATKVCFConstants.EVENT_DISTANCE_MAX_KEY, maxEventDistance);
-        }
 
         final List<VariantContext> annotatedCalls = new ArrayList<>();
         // can we do this with the Annotation classes instead?
@@ -462,22 +386,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             final VariantContextBuilder vcb = new VariantContextBuilder(originalVC);
 
             final Map<String, Object> attributes = new HashMap<>(originalVC.getAttributes());
-            attributes.putAll(eventDistanceAttributes);
+            attributes.put(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount);
             vcb.attributes(attributes);
-
-            final Set<String> filters = new HashSet<>(originalVC.getFilters());
-
-            final double tumorLod = originalVC.getAttributeAsDouble(GATKVCFConstants.TUMOR_LOD_KEY, -1);
-            if (tumorLod < MTAC.TUMOR_LOD_THRESHOLD) {
-                filters.add(GATKVCFConstants.TUMOR_LOD_FILTER_NAME);
-            }
-
-            // if we are in artifact detection mode, apply the thresholds for the LOD scores
-            if (!MTAC.ARTIFACT_DETECTION_MODE) {
-                filters.addAll(calculateFilters(featureContext, originalVC, eventDistanceAttributes));
-            }
-
-            vcb.filters(filters.isEmpty() ? VariantContext.PASSES_FILTERS : filters);
 
             if (printTCGAsampleHeader) {
                 final Genotype tumorGenotype = new GenotypeBuilder(originalVC.getGenotype(MTAC.tumorSampleName)).name("TUMOR").make();

@@ -43,7 +43,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.
      */
     @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal", optional = true)
-    public List<FeatureInput<VariantContext>> normalPanelFeatureInput = Collections.emptyList();
+    public FeatureInput<VariantContext> normalPanelFeatureInput;
 
     /**
      * Artifact detection mode is used to prepare a panel of normals. This maintains the specified tumor LOD threshold,
@@ -58,12 +58,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = "initial_tumor_lod", optional = true, doc = "Initial LOD threshold for calling tumor variant")
     public double INITIAL_TUMOR_LOD_THRESHOLD = 4.0;
-
-    /**
-     * This is the LOD threshold corresponding to the minimum amount of reference evidence in the normal for a variant to be considered somatic and emitted in the VCF
-     */
-    @Argument(fullName = "initial_normal_lod", optional = true, doc = "Initial LOD threshold for calling normal variant")
-    public double INITIAL_NORMAL_LOD_THRESHOLD = 0.5;
 
     /**
      * Only variants with tumor LODs exceeding this threshold can pass filtering.
@@ -83,27 +77,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = "dbsnp_normal_lod", optional = true, doc = "LOD threshold for calling normal non-variant at dbsnp sites")
     public double NORMAL_DBSNP_LOD_THRESHOLD = 5.5;
-
-    /**
-     * This argument is used for the internal "alt_allele_in_normal" filter.
-     * A variant will PASS the filter if the value tested is lower or equal to the threshold value. It will FAIL the filter if the value tested is greater than the max threshold value.
-     **/
-    @Argument(fullName = "max_alt_alleles_in_normal_count", optional = true, doc="Threshold for maximum alternate allele counts in normal")
-    public int MAX_ALT_ALLELES_IN_NORMAL_COUNT = 1;
-
-    /**
-     * This argument is used for the internal "alt_allele_in_normal" filter.
-     * A variant will PASS the filter if the value tested is lower or equal to the threshold value. It will FAIL the filter if the value tested is greater than the max threshold value.
-     */
-    @Argument(fullName = "max_alt_alleles_in_normal_qscore_sum", optional = true, doc="Threshold for maximum alternate allele quality score sum in normal")
-    public int MAX_ALT_ALLELES_IN_NORMAL_QSCORE_SUM = 20;
-
-    /**
-     * This argument is used for the internal "alt_allele_in_normal" filter.
-     * A variant will PASS the filter if the value tested is lower or equal to the threshold value. It will FAIL the filter if the value tested is greater than the max threshold value.
-     */
-    @Argument(fullName = "max_alt_allele_in_normal_fraction", optional = true, doc="Threshold for maximum alternate allele fraction in normal")
-    public double MAX_ALT_ALLELE_IN_NORMAL_FRACTION = 0.03;
 
     /**
      * This argument is used for the M1-style strand bias filter
