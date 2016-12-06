@@ -58,8 +58,14 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                 );
 
-        final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getReads()
-                .filter(r -> (!r.isUnmapped() && ! r.mateIsUnmapped() && ReadFilterLibrary.PRIMARY_ALIGNMENT.test(r) && LinkedReadAnalysisFilter.isChimeric(r)))
+        final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getUnfilteredReads()
+                .filter(r ->
+                        (!r.isUnmapped()
+                                && ! r.mateIsUnmapped()
+                                && ! r.isSecondaryAlignment()
+                                && ! r.isSupplementaryAlignment()
+                                && r.hasAttribute("BX")
+                                && LinkedReadAnalysisFilter.isChimeric(r)))
                 .mapToPair(r -> new Tuple2<>(r.getName(), r))
                 .groupByKey().cache();
 

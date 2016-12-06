@@ -26,11 +26,11 @@ public class LinkedReadAnalysisFilter extends ReadFilter {
     }
 
     public static boolean isChimeric(final GATKRead read) {
-        return (read.getMateContig() != null && !read.getContig().equals(read.getMateContig())) ||
-                read.getFragmentLength() >= MAX_FRAGMENT_LENGTH ||
+        return ((read.getMateContig() != null && !read.getContig().equals(read.getMateContig())) ||
+                Math.abs(read.getFragmentLength()) >= MAX_FRAGMENT_LENGTH ||
                 read.isReverseStrand() == read.mateIsReverseStrand() ||
                 (read.getStart() < read.getMateStart() && read.isReverseStrand()) ||
-                (read.getStart() > read.getMateStart() && !read.isReverseStrand());
+                (read.getStart() > read.getMateStart() && !read.isReverseStrand()));
     }
 
 
