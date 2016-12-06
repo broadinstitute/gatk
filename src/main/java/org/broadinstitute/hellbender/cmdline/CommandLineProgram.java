@@ -11,8 +11,12 @@ import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -58,7 +62,6 @@ public abstract class CommandLineProgram {
 
     @Argument(doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
-    private final String standardUsagePreamble = CommandLineParser.getStandardUsagePreamble(getClass());
 
     @Argument(fullName = "use_jdk_deflater", shortName = "jdk_deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
     public boolean useJdkDeflater = false;
@@ -193,7 +196,7 @@ public abstract class CommandLineProgram {
      * Any arguments set by command-line parser can be validated.
     * @return null if command line is valid.  If command line is invalid, returns an array of error message
     * to be written to the appropriate place.
-    * @throws UserException.CommandLineException if command line is invalid and handling as exception is preferred.
+    * @throws CommandLineException if command line is invalid and handling as exception is preferred.
     */
     protected String[] customCommandLineValidation() {
         return null;
@@ -205,7 +208,7 @@ public abstract class CommandLineProgram {
     */
     protected boolean parseArgs(final String[] argv) {
 
-        commandLineParser = new CommandLineParser(this, getPluginDescriptors());
+        commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors());
         try{
             final boolean ret = commandLineParser.parseArguments(System.err, argv);
             commandLine = commandLineParser.getCommandLine();
@@ -221,7 +224,7 @@ public abstract class CommandLineProgram {
                 return false;
             }
             return true;
-        } catch (final UserException.CommandLineException e){
+        } catch (final CommandLineException e){
             //The CommandLineException is treated specially - we display help and no blow up
             commandLineParser.usage(System.err, true);
             printDecoratedUserExceptionMessage(System.err, e);
@@ -235,12 +238,12 @@ public abstract class CommandLineProgram {
      * Return the list of GATKCommandLinePluginDescriptors to be used for this CLP.
      * Default implementation returns null. Subclasses can override this to return a custom list.
      */
-    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() { return new ArrayList<>(); }
+    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() { return new ArrayList<>(); }
 
     /**
      * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
      */
-    public static void printDecoratedUserExceptionMessage(final PrintStream ps, final UserException e){
+    public static void printDecoratedUserExceptionMessage(final PrintStream ps, final Exception e){
         Utils.nonNull(ps, "stream");
         Utils.nonNull(e, "exception");
         ps.println("***********************************************************************");

@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.tribble.Feature;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -100,11 +101,11 @@ public final class FeatureInput<T extends Feature> implements Serializable {
             final String[] tokens = rawArgumentValue.split(MATCH_NAME_BUT_NOT_URI, -1);
 
             if ( Arrays.stream(tokens).anyMatch(String::isEmpty)) {
-                throw new UserException.BadArgumentValue("", rawArgumentValue, "Empty name/file encountered. " + USAGE);
+                throw new CommandLineException.BadArgumentValue("", rawArgumentValue, "Empty name/file encountered. " + USAGE);
             }
 
             if (tokens.length == 0 || tokens.length > 2) {
-                throw new UserException.BadArgumentValue("", rawArgumentValue, USAGE);
+                throw new CommandLineException.BadArgumentValue("", rawArgumentValue, USAGE);
             } else if (tokens.length == 1) {
                 // No user-specified logical name for this FeatureInput, so use the absolute path to the File as its name
                 final String featurePath = tokens[0];
@@ -116,17 +117,17 @@ public final class FeatureInput<T extends Feature> implements Serializable {
                 // eg foo,a=3,b=false,c=fred:file.vcf
                 final String[] subtokens= tokens[0].split(FEATURE_ARGUMENT_KEY_VALUE_PAIR_DELIMITER, -1);
                 if (subtokens[0].isEmpty()){
-                    throw new UserException.BadArgumentValue("", rawArgumentValue, USAGE);
+                    throw new CommandLineException.BadArgumentValue("", rawArgumentValue, USAGE);
                 }
                 final ParsedArgument pa= new ParsedArgument(subtokens[0], tokens[1]);
                 //note: starting from 1 because 0 is the name
                 for (int i = 1; i < subtokens.length; i++){
                     final String[] kv = subtokens[i].split(FEATURE_ARGUMENT_KEY_VALUE_SEPARATOR, -1);
                     if (kv.length != 2 || kv[0].isEmpty() || kv[1].isEmpty()){
-                        throw new UserException.BadArgumentValue("", rawArgumentValue, USAGE);
+                        throw new CommandLineException.BadArgumentValue("", rawArgumentValue, USAGE);
                     }
                     if (pa.containsKey(kv[0])){
-                        throw new UserException.BadArgumentValue("", rawArgumentValue, "Duplicate key " + kv[0] + "\n" + USAGE);
+                        throw new CommandLineException.BadArgumentValue("", rawArgumentValue, "Duplicate key " + kv[0] + "\n" + USAGE);
                     }
                     pa.addKeyValue(kv[0], kv[1]);
                 }

@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.picard.analysis;
 
 import htsjdk.samtools.util.CollectionUtil;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.metrics.InsertSizeMetrics;
-import org.broadinstitute.hellbender.metrics.QualityYieldMetrics;
 
 import java.io.File;
 import java.util.*;

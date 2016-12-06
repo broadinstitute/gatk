@@ -4,6 +4,7 @@ import htsjdk.samtools.*;
 import htsjdk.samtools.fastq.FastqReader;
 import htsjdk.samtools.fastq.FastqRecord;
 import htsjdk.samtools.util.IOUtil;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -149,7 +150,7 @@ public final class SamToFastqIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(expectedExceptions = UserException.CommandLineException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testNoArgs() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps= new PrintStream(baos);

@@ -8,15 +8,15 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.exceptions.UserException;
 
 import java.io.File;
 
@@ -66,7 +66,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         SAMSequenceDictionary oldDictionary =
                 vcfHeader == null ? null : vcfHeader.getSequenceDictionary();
         if ( (oldDictionary != null && !oldDictionary.getSequences().isEmpty()) && !replace) {
-            throw new UserException.BadArgumentValue(
+            throw new CommandLineException.BadArgumentValue(
                     String.format(
                             "The input variant file %s already contains a sequence dictionary. " +
                             "Use %s to force the dictionary to be replaced.",
@@ -86,7 +86,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
         // Validate each variant against the source dictionary manually
         SAMSequenceRecord samSeqRec = sourceDictionary.getSequence(vc.getContig());
         if (samSeqRec == null) {
-            throw new UserException.BadArgumentValue(
+            throw new CommandLineException.BadArgumentValue(
                 String.format(
                     "The input variant file contains a variant (ID: \"%s\") with a reference to a sequence (\"%s\") " +
                     "that is not present in the provided dictionary",
@@ -95,7 +95,7 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
                 )
             );
         } else if (vc.getEnd() > samSeqRec.getSequenceLength()) {
-            throw new UserException.BadArgumentValue(
+            throw new CommandLineException.BadArgumentValue(
                 String.format(
                     "The input variant file contains a variant (ID: \"%s\") with a reference to a sequence (\"%s\") " +
                     "that ends at a position (%d) that exceeds the length of that sequence (%d) in the provided dictionary",
@@ -126,14 +126,14 @@ public final class UpdateVCFSequenceDictionary extends VariantWalker {
             if (hasReference()) {
                 dictionary = getReferenceDictionary();
             } else {
-                throw new UserException.MissingArgument(
+                throw new CommandLineException.MissingArgument(
                         DICTIONARY_ARGUMENT_NAME, "A dictionary source file or reference file must be provided");
             }
 
         } else {
             dictionary = SAMSequenceDictionaryExtractor.extractDictionary(new File(dictionarySource));
             if (dictionary == null || dictionary.getSequences().isEmpty()) {
-                throw new UserException.BadArgumentValue(
+                throw new CommandLineException.BadArgumentValue(
                         String.format(
                             "The specified dictionary source has an empty or invalid sequence dictionary",
                             dictionarySource)

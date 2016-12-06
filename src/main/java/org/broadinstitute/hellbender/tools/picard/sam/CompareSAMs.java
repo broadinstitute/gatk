@@ -4,9 +4,9 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.IOUtil;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.PositionalArguments;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.PositionalArguments;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.utils.read.SamComparison;
 

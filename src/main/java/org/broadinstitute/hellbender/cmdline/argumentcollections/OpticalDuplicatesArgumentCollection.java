@@ -1,19 +1,16 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
-import java.io.File;
-import java.util.List;
+import java.io.Serializable;
 
 
 /**
  * An argument collection for use with tools that mark optical
  * duplicates.
  */
-public final class OpticalDuplicatesArgumentCollection implements ArgumentCollectionDefinition {
+public final class OpticalDuplicatesArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Argument(doc = "Regular expression that can be used to parse read names in the incoming SAM file. Read names are " +

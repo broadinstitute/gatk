@@ -5,8 +5,8 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.IntervalList;
 import htsjdk.samtools.util.StringUtil;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 

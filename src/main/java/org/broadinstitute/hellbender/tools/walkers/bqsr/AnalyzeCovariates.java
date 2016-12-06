@@ -2,9 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -272,13 +273,13 @@ public final class AnalyzeCovariates extends CommandLineProgram {
         if (value == null) {
             return;
         } else if (!value.exists()) {
-            throw new UserException.BadArgumentValue(name, "input report '" +
+            throw new CommandLineException.BadArgumentValue(name, "input report '" +
                     value + "' does not exist or is unreachable");
         } else if (!value.isFile()) {
-            throw new UserException.BadArgumentValue(name, "input report '" +
+            throw new CommandLineException.BadArgumentValue(name, "input report '" +
                     value + "' is not a regular file");
         } else if (!value.canRead()) {
-            throw new UserException.BadArgumentValue(name, "input report '" +
+            throw new CommandLineException.BadArgumentValue(name, "input report '" +
                     value + "' cannot be read");
         }
     }
@@ -296,7 +297,7 @@ public final class AnalyzeCovariates extends CommandLineProgram {
             return;
         }
         if (value.exists() && !value.isFile()) {
-            throw new UserException.BadArgumentValue(name, "the output file location '"
+            throw new CommandLineException.BadArgumentValue(name, "the output file location '"
                     + value + "' exists as not a file");
         }
         final File parent = value.getParentFile();
@@ -304,13 +305,13 @@ public final class AnalyzeCovariates extends CommandLineProgram {
             return;
         }
         if (!parent.exists()) {
-            throw new UserException.BadArgumentValue(name, "the output file parent directory '"
+            throw new CommandLineException.BadArgumentValue(name, "the output file parent directory '"
                     + parent + "' does not exists or is unreachable");
         } else if (!parent.isDirectory()) {
-            throw new UserException.BadArgumentValue(name, "the output file parent directory '"
+            throw new CommandLineException.BadArgumentValue(name, "the output file parent directory '"
                     + parent + "' is not a directory");
         } else if (!parent.canWrite()) {
-            throw new UserException.BadArgumentValue(name, "the output file parent directory '"
+            throw new CommandLineException.BadArgumentValue(name, "the output file parent directory '"
                     + parent + "' cannot be written");
         }
 

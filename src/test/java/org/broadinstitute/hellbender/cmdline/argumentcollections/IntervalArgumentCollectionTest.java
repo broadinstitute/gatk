@@ -1,11 +1,13 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
-import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
-import org.broadinstitute.hellbender.cmdline.CommandLineParser;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.hellbender.engine.TraversalParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -38,15 +40,15 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
     @Test
     public void testOptionalIsOptional(){
         WithOptionalIntervals opt = new WithOptionalIntervals();
-        CommandLineParser clp = new CommandLineParser(opt);
+        CommandLineParser clp = new CommandLineArgumentParser(opt);
         String[] args = {};
         clp.parseArguments(System.out, args);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testRequiredIsRequired(){
         WithRequiredIntervals opt = new WithRequiredIntervals();
-        CommandLineParser clp = new CommandLineParser(opt);
+        CommandLineParser clp = new CommandLineArgumentParser(opt);
         String[] args = {};
         clp.parseArguments(System.out, args);
     }
@@ -106,14 +108,14 @@ public final class IntervalArgumentCollectionTest extends BaseTest{
     }
 
 
-    @Test(dataProvider = "optionalOrNot", expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(dataProvider = "optionalOrNot", expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testAllExcluded(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:10-20");
         iac.excludeIntervalStrings.add("1:1-200");
         iac.getIntervals(hg19GenomeLocParser.getSequenceDictionary());
     }
 
-    @Test(dataProvider = "optionalOrNot", expectedExceptions= UserException.BadArgumentValue.class)
+    @Test(dataProvider = "optionalOrNot", expectedExceptions= CommandLineException.BadArgumentValue.class)
     public void testNoIntersection(IntervalArgumentCollection iac){
         iac.addToIntervalStrings("1:10-20");
         iac.addToIntervalStrings("1:50-200");

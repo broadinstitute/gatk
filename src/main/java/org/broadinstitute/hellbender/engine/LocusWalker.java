@@ -2,8 +2,9 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -13,7 +14,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 
@@ -82,7 +82,7 @@ public abstract class LocusWalker extends GATKTool {
      * Uses the read filter plugin.
      */
     @Override
-    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
+    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
     }
 
@@ -129,7 +129,7 @@ public abstract class LocusWalker extends GATKTool {
     /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */
     protected final LIBSDownsamplingInfo getDownsamplingInfo() {
         if (maxDepthPerSample < 0) {
-            throw new UserException.BadArgumentValue("maxDepthPerSample",
+            throw new CommandLineException.BadArgumentValue("maxDepthPerSample",
                     String.valueOf(maxDepthPerSample),
                     "should be a positive number");
         }

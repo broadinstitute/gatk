@@ -3,9 +3,9 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -40,7 +40,7 @@ public final class CountVariantsSpark extends GATKSparkTool {
      * for Variant tools.
      */
     @Override
-    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
+    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return new ArrayList<>();
     }
 

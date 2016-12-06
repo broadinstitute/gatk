@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.cmdline.Argument;
 
 /**
  * Filter out reads that are over-soft-clipped

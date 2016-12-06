@@ -1,15 +1,14 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
-import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.baq.BAQ;
-import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
 import org.broadinstitute.hellbender.utils.report.GATKReportTable;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -18,7 +17,7 @@ import java.util.Map;
  * This set of arguments will also be passed to the constructor of every Covariate when it is instantiated.
  */
 
-public final class RecalibrationArgumentCollection implements ArgumentCollectionDefinition {
+public final class RecalibrationArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // We always use the same covariates. The field is retained for compatibility with GATK3 reports.
@@ -136,11 +135,11 @@ public final class RecalibrationArgumentCollection implements ArgumentCollection
     // Debugging-only Arguments
     /////////////////////////////
 
-    @HiddenOption
+    @Hidden
     @Argument(fullName = "default_platform", shortName = "dP", optional = true, doc = "If a read has no platform then default to the provided String. Valid options are illumina, 454, and solid.")
     public String DEFAULT_PLATFORM = null;
 
-    @HiddenOption
+    @Hidden
     @Argument(fullName = "force_platform", shortName = "fP", optional = true, doc = "If provided, the platform of EVERY read will be forced to be the provided String. Valid options are illumina, 454, and solid.")
     public String FORCE_PLATFORM = null;
 

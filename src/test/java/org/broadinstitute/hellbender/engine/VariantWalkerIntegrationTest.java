@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFFileReader;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
+import org.broadinstitute.barclay.argparser.CommandLineParser;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.cmdline.CommandLineParser;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
@@ -78,7 +78,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testBestSequenceDictionary_FromVariantReference() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
-        final CommandLineParser clp = new CommandLineParser(tool);
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
         final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/example_variants_noSequenceDict.vcf");
         final String[] args = {"-V", vcfFile.getCanonicalPath(), "-R", hg19MiniReference};
         clp.parseArguments(System.out, args);
@@ -97,7 +97,7 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testBestSequenceDictionary_FromVariantIndex() throws Exception {
         final GATKTool tool = new TestGATKToolWithFeatures();
-        final CommandLineParser clp = new CommandLineParser(tool);
+        final CommandLineParser clp = new CommandLineArgumentParser(tool);
         final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/example_variants_noSequenceDict.vcf");
         final String[] args = {"--variant", vcfFile.getCanonicalPath()};
         clp.parseArguments(System.out, args);

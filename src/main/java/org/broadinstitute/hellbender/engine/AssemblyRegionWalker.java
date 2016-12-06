@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.hellbender.cmdline.Advanced;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKCommandLinePluginDescriptor;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
@@ -133,23 +133,23 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         super.onStartup();
 
         if ( readShardSize <= 0 ) {
-            throw new UserException.BadArgumentValue("read shard size must be > 0");
+            throw new CommandLineException.BadArgumentValue("read shard size must be > 0");
         }
 
         if ( readShardPadding < 0 ) {
-            throw new UserException.BadArgumentValue("read shard padding must be >= 0");
+            throw new CommandLineException.BadArgumentValue("read shard padding must be >= 0");
         }
 
         if ( minAssemblyRegionSize > maxAssemblyRegionSize ) {
-            throw new UserException.BadArgumentValue("minAssemblyRegionSize must be <= maxAssemblyRegionSize");
+            throw new CommandLineException.BadArgumentValue("minAssemblyRegionSize must be <= maxAssemblyRegionSize");
         }
 
         if ( maxAssemblyRegionSize > readShardSize ) {
-            throw new UserException.BadArgumentValue("maxAssemblyRegionSize must be <= readShardSize");
+            throw new CommandLineException.BadArgumentValue("maxAssemblyRegionSize must be <= readShardSize");
         }
 
         if ( assemblyRegionPadding > readShardPadding ) {
-            throw new UserException.BadArgumentValue("assemblyRegionPadding must be <= readShardPadding");
+            throw new CommandLineException.BadArgumentValue("assemblyRegionPadding must be <= readShardPadding");
         }
 
         final List<SimpleInterval> intervals = hasIntervals() ? intervalsForTraversal : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
@@ -177,7 +177,7 @@ public abstract class AssemblyRegionWalker extends GATKTool {
      * Uses the read filter plugin.
      */
     @Override
-    protected List<? extends GATKCommandLinePluginDescriptor<?>> getPluginDescriptors() {
+    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
     }
 

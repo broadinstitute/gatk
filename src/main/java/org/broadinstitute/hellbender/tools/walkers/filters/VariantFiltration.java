@@ -6,8 +6,9 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.VariantContextUtils.JexlVCMatchExp;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -245,14 +246,14 @@ public final class VariantFiltration extends VariantWalker {
     @Override
     public void onTraversalStart() {
         if (clusterSize <= 1){
-            throw new UserException.BadArgumentValue("clusterSize", "values lower than 2 are not allowed");
+            throw new CommandLineException.BadArgumentValue("clusterSize", "values lower than 2 are not allowed");
         }
         if ( maskExtension < 0 ) {
-            throw new UserException.BadArgumentValue("maskExtension", "negative values are not allowed");
+            throw new CommandLineException.BadArgumentValue("maskExtension", "negative values are not allowed");
         }
 
         if (filterRecordsNotInMask && mask == null) {
-            throw new UserException.BadArgumentValue("filterNotInMask", "argument not allowed if mask argument is not provided");
+            throw new CommandLineException.BadArgumentValue("filterNotInMask", "argument not allowed if mask argument is not provided");
         }
         filterExps = VariantContextUtils.initializeMatchExps(filterNames, filterExpressions);
         genotypeFilterExps = VariantContextUtils.initializeMatchExps(genotypeFilterNames, genotypeFilterExpressions);
@@ -353,7 +354,7 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Return true if there is a window of size {@link clusterWindow} that contains as least {@link clusterSize} SNPs.
+     * Return true if there is a window of size {@link #clusterWindow} that contains as least {@link #clusterSize} SNPs.
      */
     private boolean areClusteredSNPs(final FeatureContext featureContext, final VariantContext current) {
         if (clusterWindow < 1){ //as per argument doc, snpsInVicinity < 1 imply no clustering

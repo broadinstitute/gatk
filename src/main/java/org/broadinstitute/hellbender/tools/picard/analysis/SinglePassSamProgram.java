@@ -13,7 +13,7 @@ import htsjdk.samtools.util.SequenceUtil;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;

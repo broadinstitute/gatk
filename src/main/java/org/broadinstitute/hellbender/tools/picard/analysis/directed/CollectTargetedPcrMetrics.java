@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.picard.analysis.directed;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.IntervalList;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 

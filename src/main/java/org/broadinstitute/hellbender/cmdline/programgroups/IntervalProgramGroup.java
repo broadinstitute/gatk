@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramGroup;
+import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 
 /**
  * Program group for tools that process intervals and associated overlapping records

@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools;
 
 import htsjdk.samtools.*;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.TestSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.UserException;

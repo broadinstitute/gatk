@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.metrics.MetricAccumulationLevel;
 
+import java.io.Serializable;
 import java.util.EnumSet;
 import java.util.Set;
 
-public class MetricAccumulationLevelArgumentCollection implements ArgumentCollectionDefinition {
+public class MetricAccumulationLevelArgumentCollection implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

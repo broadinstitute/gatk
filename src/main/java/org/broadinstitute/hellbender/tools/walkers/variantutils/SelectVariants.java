@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -13,13 +12,13 @@ import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFContigHeaderLine;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import htsjdk.variant.vcf.VCFUtils;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -35,7 +34,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.commandline.HiddenOption;
 import org.broadinstitute.hellbender.utils.io.ListFileUtils;
 import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
@@ -331,7 +329,7 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="excludeIDs", shortName="xlIDs", doc="List of variant IDs to select", optional=true)
     private File XLrsIDFile = null;
 
-    @HiddenOption
+    @Hidden
     @Argument(fullName="fullyDecode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
     private boolean fullyDecode = false;
 
@@ -397,12 +395,12 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="setFilteredGtToNocall", optional=true, doc="Set filtered genotypes to no-call")
     private boolean setFilteredGenotypesToNocall = false;
 
-    @HiddenOption
+    @Hidden
     @Argument(fullName="ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES", optional=true,
                     doc="Allow samples other than those in the VCF to be specified on the command line. These samples will be ignored.")
     private boolean allowNonOverlappingCommandLineSamples = false;
 
-    @HiddenOption
+    @Hidden
     @Argument(fullName="SUPPRESS_REFERENCE_PATH", shortName="sr", optional=true,
             doc="Suppress reference path in output for test result differencing")
     private boolean suppressReferencePath = false;

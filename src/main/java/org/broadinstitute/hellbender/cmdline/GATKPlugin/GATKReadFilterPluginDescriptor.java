@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
-import com.sun.jersey.server.impl.wadl.WadlResource;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -20,9 +21,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
- * A GATKCommandLinePluginDescriptor for ReadFilter plugins
+ * A CommandLinePluginDescriptor for ReadFilter plugins
  */
-public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescriptor<ReadFilter> {
+public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<ReadFilter> {
 
     protected transient Logger logger = LogManager.getLogger(this.getClass());
 
@@ -211,7 +212,7 @@ public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescrip
         enabledAndDisabled.retainAll(disableFilters);
         if (!enabledAndDisabled.isEmpty()) {
             final String badFiltersList = Utils.join(", ", enabledAndDisabled);
-            throw new UserException.CommandLineException(
+            throw new CommandLineException(
                     String.format("The read filter(s): %s are both enabled and disabled", badFiltersList));
         }
 
@@ -233,7 +234,7 @@ public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescrip
         // throw if args were specified for a filter that was also disabled
         disableFilters.forEach(s -> {
             if (requiredPredecessors.contains(s)) {
-                throw new UserException.CommandLineException(
+                throw new CommandLineException(
                         String.format("Values were supplied for (%s) that is also disabled", s));
             }
         });
@@ -244,7 +245,7 @@ public class GATKReadFilterPluginDescriptor extends GATKCommandLinePluginDescrip
             ReadFilter trf = readFilters.get(s);
             if (null == trf) {
                 if (!toolDefaultReadFilters.containsKey(s)) {
-                    throw new UserException.CommandLineException("Unrecognized read filter name: " + s);
+                    throw new CommandLineException("Unrecognized read filter name: " + s);
                 }
             } else {
                 requestedReadFilters.put(s, trf);

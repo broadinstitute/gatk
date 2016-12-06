@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine.filters;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**

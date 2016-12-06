@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.cmdline.Advanced;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 

@@ -1,17 +1,17 @@
 package org.broadinstitute.hellbender.tools;
 
-import org.broadinstitute.hellbender.cmdline.Advanced;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * The collection of those arguments for ApplyBQSR that are not already defined in RecalibrationArgumentCollection.
  */
-public class ApplyBQSRUniqueArgumentCollection implements ArgumentCollectionDefinition {
+public class ApplyBQSRUniqueArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**

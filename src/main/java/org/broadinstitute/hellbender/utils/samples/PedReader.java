@@ -6,6 +6,7 @@ import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
@@ -322,7 +323,7 @@ public final class PedReader {
             try {
                 missingFields.add(MissingPedField.valueOf(tag));
             } catch ( IllegalArgumentException e ) {
-                throw new UserException.BadArgumentValue(arg.toString(), "Unknown tag " + tag + " allowed values are " + MissingPedField.values());
+                throw new CommandLineException.BadArgumentValue(arg.toString(), "Unknown tag " + tag + " allowed values are " + MissingPedField.values());
             }
         }
 

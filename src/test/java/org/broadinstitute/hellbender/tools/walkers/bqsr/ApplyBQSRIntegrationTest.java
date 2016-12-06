@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
 import htsjdk.samtools.SamReaderFactory;
 import org.apache.commons.lang.StringUtils;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -143,7 +144,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
                         " -SQQ 9 -qq 4 " +
                         " -O /dev/null",
                 0,
-                UserException.CommandLineException.class);
+                CommandLineException.class);
         spec.executeTest("testPRWithConflictingArguments_qqAndSQQ", this);
     }
 
@@ -156,7 +157,7 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
                         " -RDQ -qq 4 " +
                         " -O /dev/null",
                 0,
-                UserException.CommandLineException.class);
+                CommandLineException.class);
         spec.executeTest("testPRWithConflictingArguments_qqAndSQQ", this);
     }
 
