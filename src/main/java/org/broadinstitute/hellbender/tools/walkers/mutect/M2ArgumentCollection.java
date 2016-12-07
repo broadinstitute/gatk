@@ -80,10 +80,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName="power_constant_qscore", doc="Phred scale quality score constant to use in power calculations", optional = true)
     public int POWER_CONSTANT_QSCORE = 30;
 
-    @Hidden
-    @Argument(fullName = "strand_artifact_lod", optional = true, doc = "LOD threshold for calling strand bias")
-    public float STRAND_ARTIFACT_LOD_THRESHOLD = 2.0f;
-
     /**
      * Which annotations to add to the output VCF file. See the VariantAnnotator -list argument to view available annotations.
      */
@@ -91,7 +87,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls", optional = true)
     protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"Coverage", "DepthPerAlleleBySample",
             "TandemRepeat", "OxoGReadCounts", "ClippedBases", "ReadPosition", "BaseQuality", "MappingQuality",
-    "FragmentLength"}));
+            "FragmentLength", "StrandArtifact"}));
 
     /**
      * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
