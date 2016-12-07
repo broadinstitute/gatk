@@ -62,7 +62,7 @@ public final class HetPulldownCalculator {
         ParamUtils.isPositiveOrZero(minMappingQuality, "Minimum mapping quality must be nonnegative.");
         ParamUtils.isPositiveOrZero(minBaseQuality, "Minimum base quality must be nonnegative.");
         this.refFile = refFile;
-        this.snpIntervals = IntervalList.fromFile(snpFile);
+        snpIntervals = IntervalList.fromFile(snpFile);
         this.minMappingQuality = minMappingQuality;
         this.minBaseQuality = minBaseQuality;
         this.validationStringency = validationStringency;
@@ -124,7 +124,7 @@ public final class HetPulldownCalculator {
      */
     public Pulldown getNormal(final File normalBAMFile, final double pvalThreshold, final int minReadCount) {
         ParamUtils.inRange(pvalThreshold, 0., 1., "p-value threshold must be in [0, 1].");
-        return getHetPulldown(normalBAMFile, this.snpIntervals, SampleType.NORMAL, pvalThreshold, minReadCount);
+        return getHetPulldown(normalBAMFile, snpIntervals, SampleType.NORMAL, pvalThreshold, minReadCount);
     }
 
     /**
@@ -169,7 +169,7 @@ public final class HetPulldownCalculator {
                                     final double pvalThreshold, final int minimumRawReads) {
         try (final SamReader bamReader = SamReaderFactory.makeDefault().validationStringency(validationStringency)
                 .referenceSequence(refFile).open(bamFile);
-             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
+             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
                 throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");
             }

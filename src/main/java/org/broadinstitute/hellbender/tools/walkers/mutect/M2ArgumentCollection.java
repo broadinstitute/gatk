@@ -28,9 +28,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     //TODO: END OF HACK ALERT
 
-    @Argument(fullName = "debug_read_name", optional = true, doc="trace this read name through the calling process")
-    protected String DEBUG_READ_NAME = null;
-
     /***************************************/
     // Reference Metadata inputs
     /***************************************/
@@ -47,10 +44,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName="normal_panel", shortName = "PON", doc="VCF file of sites observed in normal", optional = true)
     public List<FeatureInput<VariantContext>> normalPanelFeatureInput = Collections.emptyList();
-
-    @Advanced
-    @Argument(fullName="m2debug", shortName="m2debug", doc="Print out very verbose M2 debug information", optional = true)
-    public boolean M2_DEBUG = false;
 
     /**
      * Artifact detection mode is used to prepare a panel of normals. This maintains the specified tumor LOD threshold,

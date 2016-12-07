@@ -183,18 +183,17 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     private boolean isAlleleSpecificMode(final VariantAnnotatorEngine annotationEngine) {
         //HACK. Note: we can't use subclass information from ReducibleAnnotation (which would be the obvious choice)
         // because RMSMappingQuality is both a reducible annotation and a standard annotation.
-        final boolean infoAnnAlleleSpefic = annotationEngine.getInfoAnnotations().stream().anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().startsWith("AS_"));
-        if (infoAnnAlleleSpefic){
-            return true;
-        }
-        final boolean genoAnnAlleleSpefic = annotationEngine.getGenotypeAnnotations().stream().anyMatch(genotypeAnnotation -> genotypeAnnotation.getClass().getSimpleName().startsWith("AS_"));
-        return genoAnnAlleleSpefic;
+
+        return annotationEngine.getInfoAnnotations().stream()
+                .anyMatch(infoFieldAnnotation -> infoFieldAnnotation.getClass().getSimpleName().startsWith("AS_")) ||
+                annotationEngine.getGenotypeAnnotations().stream()
+                .anyMatch(genotypeAnnotation -> genotypeAnnotation.getClass().getSimpleName().startsWith("AS_"));
     }
 
     private void validateAndInitializeArgs() {
         if ( hcArgs.genotypeArgs.samplePloidy != HomoSapiensConstants.DEFAULT_PLOIDY && ! hcArgs.doNotRunPhysicalPhasing ) {
             hcArgs.doNotRunPhysicalPhasing = true;
-            logger.info("Currently, physical phasing is not available when ploidy is different than " + HomoSapiensConstants.DEFAULT_PLOIDY + "; therefore it won't be performed");
+            logger.info("Currently, physical phasing is only available for diploid samples.");
         }
 
         if ( hcArgs.dontGenotype && emitReferenceConfidence() ) {

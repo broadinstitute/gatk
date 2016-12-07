@@ -90,8 +90,8 @@ public final class AssemblyResultSet {
         }
 
         result.setRegionForGenotyping(trimmedAssemblyRegion);
-        result.setFullReferenceWithPadding(this.fullReferenceWithPadding);
-        result.setPaddedReferenceLoc(this.paddedReferenceLoc);
+        result.setFullReferenceWithPadding(fullReferenceWithPadding);
+        result.setPaddedReferenceLoc(paddedReferenceLoc);
         if (result.refHaplotype == null) {
             throw new IllegalStateException("missing reference haplotype in the trimmed set");
         }
@@ -194,8 +194,8 @@ public final class AssemblyResultSet {
         if (getHaplotypeList().isEmpty()) {
             return;
         }
-        pw.println("Active Region " + this.regionForGenotyping.getSpan());
-        pw.println("Extended Act Region " + this.getRegionForGenotyping().getExtendedSpan());
+        pw.println("Active Region " + regionForGenotyping.getSpan());
+        pw.println("Extended Act Region " + getRegionForGenotyping().getExtendedSpan());
         pw.println("Ref haplotype coords " + getHaplotypeList().get(0).getGenomeLocation());
         pw.println("Haplotype count " + haplotypes.size());
         final Map<Integer,Integer> kmerSizeToCount = new HashMap<>();

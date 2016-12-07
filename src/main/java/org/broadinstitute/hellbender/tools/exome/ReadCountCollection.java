@@ -106,7 +106,7 @@ public final class ReadCountCollection implements Serializable {
             this.columnNames = columnNames;
             this.counts = counts;
         }
-        this.targetIndexMap = createTargetIndexMap(this.targets);
+        targetIndexMap = createTargetIndexMap(this.targets);
     }
 
     /**

@@ -48,7 +48,7 @@ public final class ReferenceConfidenceModelUnitTest extends BaseTest {
     ReferenceConfidenceModel model;
 
     @BeforeClass
-    public void setUp() throws Exception {
+    public void setUp() {
         header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
         rg = new SAMReadGroupRecord(RGID);
         rg.setSample(sample);
@@ -88,26 +88,23 @@ public final class ReferenceConfidenceModelUnitTest extends BaseTest {
             tests.add(new Object[]{read5, ref, 1, Arrays.asList(1, 1, 1, 1, 1, 1, 0, 0)});
         }
 
-        {
-            for ( final String repeatUnit : Arrays.asList("A", "CA", "TAG", "TAGC", "TCAGA")) {
-                final String anchor = Strings.repeat("N", repeatUnit.length());
-                for ( int nUnits = 1; nUnits < 10; nUnits++ ) {
-                    final String repeat = Strings.repeat(repeatUnit, nUnits);
-                    final String ref = anchor + repeat + anchor;
-                    for ( int readLen = repeatUnit.length(); readLen < repeat.length(); readLen++ ) {
-                        final String read = anchor + repeat.substring(0, readLen);
-                        final List<Integer> expected = new LinkedList<>();
-                        for ( int i = 0; i < anchor.length(); i++ ) expected.add(1);
-                        for ( int i = 0; i < repeat.length(); i++ ) expected.add(readLen == repeat.length() ? 1 : 0);
-                        for ( int i = 0; i < anchor.length(); i++ ) expected.add(0);
-                        tests.add(new Object[]{read, ref, repeatUnit.length(), expected});
+        for ( final String repeatUnit : Arrays.asList("A", "CA", "TAG", "TAGC", "TCAGA")) {
+            final String anchor = Strings.repeat("N", repeatUnit.length());
+            for ( int nUnits = 1; nUnits < 10; nUnits++ ) {
+                final String repeat = Strings.repeat(repeatUnit, nUnits);
+                final String ref = anchor + repeat + anchor;
+                for ( int readLen = repeatUnit.length(); readLen < repeat.length(); readLen++ ) {
+                    final String read = anchor + repeat.substring(0, readLen);
+                    final List<Integer> expected = new LinkedList<>();
+                    for ( int i = 0; i < anchor.length(); i++ ) expected.add(1);
+                    for ( int i = 0; i < repeat.length(); i++ ) expected.add(readLen == repeat.length() ? 1 : 0);
+                    for ( int i = 0; i < anchor.length(); i++ ) expected.add(0);
+                    tests.add(new Object[]{read, ref, repeatUnit.length(), expected});
 
-                        final List<Integer> result = new ArrayList<>(Collections.nCopies(ref.length() - anchor.length(), 1));
-                        result.addAll(Collections.nCopies(anchor.length(), 0));
-                        tests.add(new Object[]{ref, ref, repeatUnit.length(), result});
-                    }
+                    final List<Integer> result = new ArrayList<>(Collections.nCopies(ref.length() - anchor.length(), 1));
+                    result.addAll(Collections.nCopies(anchor.length(), 0));
+                    tests.add(new Object[]{ref, ref, repeatUnit.length(), result});
                 }
-
             }
         }
 

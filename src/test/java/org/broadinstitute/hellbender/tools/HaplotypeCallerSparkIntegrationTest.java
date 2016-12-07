@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.FastGenotype;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import org.apache.spark.SparkException;

@@ -35,14 +35,14 @@ public class Mutect2FilteringEngine {
 
     public void applyClusteredReadPositionFilter(final VariantContext vc, final Collection<String> filters) {
         if (MTAC.ENABLE_CLUSTERED_READ_POSITION_FILTER) {
-            final Double tumorFwdPosMedian = (Double) vc.getAttribute(Mutect2Engine.MEDIAN_LEFT_OFFSET_KEY);
-            final Double tumorRevPosMedian = (Double) vc.getAttribute(Mutect2Engine.MEDIAN_RIGHT_OFFSET_KEY);
-            final Double tumorFwdPosMAD = (Double) vc.getAttribute(Mutect2Engine.MAD_MEDIAN_LEFT_OFFSET_KEY);
-            final Double tumorRevPosMAD = (Double) vc.getAttribute(Mutect2Engine.MAD_MEDIAN_RIGHT_OFFSET_KEY);
+            final Double tumorFwdPosMedian = (Double) vc.getAttribute(GATKVCFConstants.MEDIAN_LEFT_OFFSET_KEY);
+            final Double tumorRevPosMedian = (Double) vc.getAttribute(GATKVCFConstants.MEDIAN_RIGHT_OFFSET_KEY);
+            final Double tumorFwdPosMAD = (Double) vc.getAttribute(GATKVCFConstants.MAD_MEDIAN_LEFT_OFFSET_KEY);
+            final Double tumorRevPosMAD = (Double) vc.getAttribute(GATKVCFConstants.MAD_MEDIAN_RIGHT_OFFSET_KEY);
             //If the variant is near the read end (median threshold) and the positions are very similar (MAD threshold) then filter
             if ((tumorFwdPosMedian != null && tumorFwdPosMedian <= MTAC.PIR_MEDIAN_THRESHOLD && tumorFwdPosMAD != null && tumorFwdPosMAD <= MTAC.PIR_MAD_THRESHOLD) ||
                     (tumorRevPosMedian != null && tumorRevPosMedian <= MTAC.PIR_MEDIAN_THRESHOLD && tumorRevPosMAD != null && tumorRevPosMAD <= MTAC.PIR_MAD_THRESHOLD))
-                filters.add(Mutect2Engine.CLUSTERED_READ_POSITION_FILTER_NAME);
+                filters.add(GATKVCFConstants.CLUSTERED_READ_POSITION_FILTER_NAME);
         }
     }
 

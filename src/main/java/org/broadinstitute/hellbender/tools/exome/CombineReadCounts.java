@@ -19,7 +19,7 @@ import java.util.stream.IntStream;
  * Combines a set of read counts input files in a single multi read count column output file.
  * <p>
  * The user can indicate the input files individually using multiple
- *   {@value org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions#INPUT_SHORT_NAME} arguments,
+ *   {@value StandardArgumentDefinitions#INPUT_SHORT_NAME} arguments,
  *   collectively in a input file name
  *   list file using a single {@value #READ_COUNT_FILE_LIST_SHORT_NAME} argument or
  *   a combination of both approaches.
@@ -27,7 +27,7 @@ import java.util.stream.IntStream;
  *
  * <p>
  *   The output read count columns will appear sorted in alpha-numerical order and target will appear in the same order as the input. The output
- *   file name must be specified with the {@value org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions#OUTPUT_SHORT_NAME} argument.
+ *   file name must be specified with the {@value StandardArgumentDefinitions#OUTPUT_SHORT_NAME} argument.
  * </p>
  *
  * <p>
@@ -158,7 +158,7 @@ public final class CombineReadCounts extends CommandLineProgram {
 
     @ArgumentCollection
     protected TargetArgumentCollection targetArguments = new TargetArgumentCollection(() ->
-            composeAndCheckInputReadCountFiles(this.coverageFiles, this.coverageFileList).stream().findFirst().orElseGet(null));
+            composeAndCheckInputReadCountFiles(coverageFiles, coverageFileList).stream().findFirst().orElseGet(null));
 
     @Argument(
             doc = "Output file",
@@ -171,7 +171,7 @@ public final class CombineReadCounts extends CommandLineProgram {
     @Override
     public Object doWork() {
         final Set<File> temporaryFiles = new HashSet<>();
-        final List<File> coverageFiles = composeAndCheckInputReadCountFiles(this.coverageFiles, this.coverageFileList);
+        final List<File> coverageFiles = composeAndCheckInputReadCountFiles(this.coverageFiles, coverageFileList);
 
         final TargetCollection<Target> targets = targetArguments.readTargetCollection(false);
         final int optimalMergingFileCount = calculateOptimalMergingFileCount(coverageFiles.size());

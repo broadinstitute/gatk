@@ -42,22 +42,22 @@ public final class RamPCACoveragePoN implements PCACoveragePoN {
      */
     public RamPCACoveragePoN(final PCACoveragePoN inputPoN) {
         //make defensive copies of lists
-        this.version = inputPoN.getVersion();
-        this.targets = new ArrayList<>(inputPoN.getTargets());
-        this.rawTargets = new ArrayList<>(inputPoN.getRawTargets());
-        this.panelTargets = new ArrayList<>(inputPoN.getPanelTargets());
-        this.targetFactors = Arrays.copyOf(inputPoN.getTargetFactors(), inputPoN.getTargetFactors().length);
-        this.targetVariances = Arrays.copyOf(inputPoN.getTargetVariances(), inputPoN.getTargetVariances().length);
-        this.normalizedCounts = inputPoN.getNormalizedCounts();
-        this.logNormalizedCounts = inputPoN.getLogNormalizedCounts();
-        this.logNormalizedPInverseCounts = inputPoN.getLogNormalizedPInverseCounts();
-        this.reducedPanelCounts = inputPoN.getReducedPanelCounts();
-        this.reducedPanelPInverseCounts = inputPoN.getReducedPanelPInverseCounts();
-        this.targetNames = new ArrayList<>(inputPoN.getTargetNames());
-        this.rawTargetNames = new ArrayList<>(inputPoN.getRawTargetNames());
-        this.panelTargetNames = new ArrayList<>(inputPoN.getPanelTargetNames());
-        this.sampleNames = new ArrayList<>(inputPoN.getSampleNames());
-        this.panelSampleNames = new ArrayList<>(inputPoN.getPanelSampleNames());
+        version = inputPoN.getVersion();
+        targets = new ArrayList<>(inputPoN.getTargets());
+        rawTargets = new ArrayList<>(inputPoN.getRawTargets());
+        panelTargets = new ArrayList<>(inputPoN.getPanelTargets());
+        targetFactors = Arrays.copyOf(inputPoN.getTargetFactors(), inputPoN.getTargetFactors().length);
+        targetVariances = Arrays.copyOf(inputPoN.getTargetVariances(), inputPoN.getTargetVariances().length);
+        normalizedCounts = inputPoN.getNormalizedCounts();
+        logNormalizedCounts = inputPoN.getLogNormalizedCounts();
+        logNormalizedPInverseCounts = inputPoN.getLogNormalizedPInverseCounts();
+        reducedPanelCounts = inputPoN.getReducedPanelCounts();
+        reducedPanelPInverseCounts = inputPoN.getReducedPanelPInverseCounts();
+        targetNames = new ArrayList<>(inputPoN.getTargetNames());
+        rawTargetNames = new ArrayList<>(inputPoN.getRawTargetNames());
+        panelTargetNames = new ArrayList<>(inputPoN.getPanelTargetNames());
+        sampleNames = new ArrayList<>(inputPoN.getSampleNames());
+        panelSampleNames = new ArrayList<>(inputPoN.getPanelSampleNames());
     }
 
     @Override

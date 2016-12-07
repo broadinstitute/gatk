@@ -100,10 +100,10 @@ public final class ParameterizedModel<V1 extends Enum<V1> & ParameterEnum, S1 ex
 
     //Constructor for GibbsBuilder
     private ParameterizedModel(final GibbsBuilder<V1, S1, T1> builder) {
-        this.state = builder.state;
-        this.dataCollection = builder.dataCollection;
-        this.samplerMap = builder.samplerMap;
-        this.updateMethod = UpdateMethod.GIBBS;
+        state = builder.state;
+        dataCollection = builder.dataCollection;
+        samplerMap = builder.samplerMap;
+        updateMethod = UpdateMethod.GIBBS;
     }
 
     /**

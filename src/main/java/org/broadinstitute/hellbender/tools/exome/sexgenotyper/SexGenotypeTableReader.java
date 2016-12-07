@@ -58,7 +58,7 @@ public final class SexGenotypeTableReader extends TableReader<SexGenotypeData> {
      */
     public SexGenotypeTableReader(@Nullable final String sourceName, @Nonnull Reader sourceReader) throws IOException {
         super(sourceName, sourceReader);
-        final TableColumnCollection columns = this.columns();
+        final TableColumnCollection columns = columns();
         TableUtils.checkMandatoryColumns(columns, SexGenotypeTableColumn.MANDATORY_SEX_GENOTYPE_COLUMNS,
                 UserException.BadInput::new);
         sexGenotypeNames = new ArrayList<>();

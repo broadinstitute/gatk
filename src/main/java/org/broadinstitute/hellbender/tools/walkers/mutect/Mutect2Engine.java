@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
@@ -48,19 +47,18 @@ import static java.lang.Math.pow;
  * Created by davidben on 9/15/16.
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
+    //TODO: move these lists to GATKVCFConstants
+    public static final List<String> STANDARD_M_2_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY,
+            GATKVCFConstants.PANEL_OF_NORMALS_COUNT_KEY, GATKVCFConstants.HAPLOTYPE_COUNT_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY,
+            GATKVCFConstants.EVENT_DISTANCE_MIN_KEY, GATKVCFConstants.EVENT_DISTANCE_MAX_KEY);
+    public static final List<String> M_2_FILTER_NAMES = Arrays.asList(GATKVCFConstants.STR_CONTRACTION_FILTER_NAME, GATKVCFConstants.PON_FILTER_NAME,
+            GATKVCFConstants.ALT_ALLELE_IN_NORMAL_FILTER_NAME, GATKVCFConstants.MULTI_EVENT_ALT_ALLELE_IN_NORMAL_FILTER_NAME,
+            GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME, GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME,
+            GATKVCFConstants.TUMOR_LOD_FILTER_NAME, GATKVCFConstants.GERMLINE_RISK_FILTER_NAME, GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME,
+            GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME, GATKVCFConstants.CLUSTERED_READ_POSITION_FILTER_NAME);
+    public static final List<String> STRAND_ARTIFACT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.TLOD_FWD_KEY, GATKVCFConstants.TLOD_REV_KEY,
+            GATKVCFConstants.TUMOR_SB_POWER_FWD_KEY, GATKVCFConstants.TUMOR_SB_POWER_REV_KEY);
 
-    public static final String TUMOR_SB_POWER_FWD_KEY =             "TUMOR_SB_POWER_FWD";
-    //TODO: move to GATKVCFConstants in gatk public
-    public static final String TLOD_FWD_KEY =                       "TLOD_FWD";
-    public static final String TLOD_REV_KEY =                       "TLOD_REV";
-    public static final String TUMOR_SB_POWER_REV_KEY =             "TUMOR_SB_POWER_REV";
-    public static final String TRIALLELIC_SITE_FILTER_NAME =                  "triallelic_site"; //M2
-    public static final String STRAND_ARTIFACT_FILTER_NAME =                  "strand_artifact"; // M2
-    public static final String CLUSTERED_READ_POSITION_FILTER_NAME =          "clustered_read_position"; // M2
-    public static final String MEDIAN_LEFT_OFFSET_KEY =              "MEDIAN_LEFT_OFFSET";
-    public static final String MEDIAN_RIGHT_OFFSET_KEY =             "MEDIAN_RIGHT_OFFSET";
-    public static final String MAD_MEDIAN_LEFT_OFFSET_KEY =          "MAD_LEFT_OFFSET";
-    public static final String MAD_MEDIAN_RIGHT_OFFSET_KEY =         "MAD_RIGHT_OFFSET";
     private static final Logger logger = LogManager.getLogger(Mutect2Engine.class);
     private final static List<VariantContext> NO_CALLS = Collections.emptyList();
 
@@ -68,8 +66,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private SAMFileHeader header;
 
     private static final int MIN_READ_LENGTH = 30;
-
-    private byte MIN_TAIL_QUALITY;
 
     private SampleList samplesList;
     private boolean printTCGAsampleHeader = false;
@@ -128,15 +124,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         assemblyEngine = AssemblyBasedCallerUtils.createReadThreadingAssembler(MTAC);
 
-        MIN_TAIL_QUALITY = (byte)(MTAC.minBaseQualityScore - 1);
-
         likelihoodCalculationEngine = AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(MTAC.likelihoodArgs);
 
-        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, MTAC.tumorSampleName, MTAC.normalSampleName, MTAC.DEBUG_READ_NAME);
+        genotypingEngine = new SomaticGenotypingEngine(samplesList, MTAC, MTAC.tumorSampleName, MTAC.normalSampleName);
         genotypingEngine.setAnnotationEngine(annotationEngine);
         haplotypeBAMWriter = AssemblyBasedCallerUtils.createBamWriter(MTAC, header);
 
-        // why isn't this a constructor (instead of initialize)?  Since the method is package-friendly
         trimmer.initialize(MTAC.assemblyRegionTrimmerArgs, header.getSequenceDictionary(), MTAC.debug,
                 MTAC.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES, false);
 
@@ -179,57 +172,27 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                 VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_PL_KEY);
 
-        //TODO: see comment in getM2HeaderLines about some M2 filters undefined in GATKVCFHEaderLines
         headerInfo.addAll(getM2HeaderLines());
         headerInfo.addAll(getSampleHeaderLines());
 
         // if printTCGAsampleHeader, we already checked for exactly 1 tumor and 1 normal in printTCGAsampleHeader assignment in initialize()
         final List<String> outputSampleNames = printTCGAsampleHeader ? Arrays.asList("TUMOR", "NORMAL") : samplesList.asListOfSamples();
-
-        //TODO: this hack removes nulls due to the aforementioned problem with M2 header lines
-        final Set<VCFHeaderLine> nonNullHeaderInfo = headerInfo.stream()
-                .filter(line -> line != null).collect(Collectors.toSet());
-        final VCFHeader vcfHeader = new VCFHeader(nonNullHeaderInfo, outputSampleNames);
+        final VCFHeader vcfHeader = new VCFHeader(headerInfo, outputSampleNames);
         vcfHeader.setSequenceDictionary(sequenceDictionary);
         vcfWriter.writeHeader(vcfHeader);
     }
 
     private Set<VCFHeaderLine> getM2HeaderLines(){
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.NORMAL_LOD_KEY));
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.TUMOR_LOD_KEY));
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.PANEL_OF_NORMALS_COUNT_KEY));
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.HAPLOTYPE_COUNT_KEY));
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY));
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EVENT_DISTANCE_MIN_KEY));
-        headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EVENT_DISTANCE_MAX_KEY));
+
+        STANDARD_M_2_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
 
         if (MTAC.ENABLE_STRAND_ARTIFACT_FILTER){
-            headerInfo.add(GATKVCFHeaderLines.getInfoLine(TLOD_FWD_KEY));
-            headerInfo.add(GATKVCFHeaderLines.getInfoLine(TLOD_REV_KEY));
-            headerInfo.add(GATKVCFHeaderLines.getInfoLine(TUMOR_SB_POWER_FWD_KEY));
-            headerInfo.add(GATKVCFHeaderLines.getInfoLine(TUMOR_SB_POWER_REV_KEY));
+            STRAND_ARTIFACT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
         }
 
         headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.ALLELE_FRACTION_KEY));
-
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.STR_CONTRACTION_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.PON_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.ALT_ALLELE_IN_NORMAL_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.MULTI_EVENT_ALT_ALLELE_IN_NORMAL_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.TUMOR_LOD_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME));
-
-
-        // TODO: GATKVCFHeaderLines has a giant static block defining VCFHeaderLines
-        // TODO: the following M2 filters do not yet appear there in GATK4
-        // TODO: thus getFilterLine returns null
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(TRIALLELIC_SITE_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(STRAND_ARTIFACT_FILTER_NAME));
-        headerInfo.add(GATKVCFHeaderLines.getFilterLine(CLUSTERED_READ_POSITION_FILTER_NAME));
-
+        M_2_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerInfo::add);
 
         if ( ! MTAC.doNotRunPhysicalPhasing ) {
             headerInfo.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
@@ -254,11 +217,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         if ( MTAC.justDetermineActiveRegions || !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
             return NO_CALLS;
         }
-        logReadInfo(MTAC.DEBUG_READ_NAME, originalAssemblyRegion.getReads(), "Present in original active region");
 
         final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, MTAC.MIN_MAPPING_QUALITY_SCORE, header);
-
-        logReadInfo(MTAC.DEBUG_READ_NAME, assemblyActiveRegion.getReads(), "Present in assembly active region");
 
         // run the local assembler, getting back a collection of information on how we should proceed
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine);
@@ -267,7 +227,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         if (!trimmingResult.isVariationPresent()) {
             return NO_CALLS;
         }
-        logReadInfo(MTAC.DEBUG_READ_NAME, trimmingResult.getCallableRegion().getReads(), "Present in trimming result");
 
         final AssemblyResultSet assemblyResult =
                 trimmingResult.needsTrimming() ? untrimmedAssemblyResult.trimTo(trimmingResult.getCallableRegion()) : untrimmedAssemblyResult;
@@ -278,7 +237,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         }
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
-        logReadInfo(MTAC.DEBUG_READ_NAME, regionForGenotyping.getReads(), "Present in region for genotyping");
 
         // filter out reads from genotyping which fail mapping quality based criteria
         //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
@@ -294,7 +252,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         // TODO: this quantity and all downstream uses of it seems like it can be obtained from
         // TODO: ReadLikelihoods<Allele>::sampleReads
         final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(filteredReads);
-        logReadInfo(MTAC.DEBUG_READ_NAME, regionForGenotyping.getReads(), "Present in region for genotyping after filtering reads");
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
@@ -486,20 +443,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
-        }
-    }
-
-    public static void logReadInfo(final String readName, final Collection<GATKRead> records, final String message) {
-        if (readName != null) {
-            for (final GATKRead rec : records) {
-                logReadInfo(readName, rec, message);
-            }
-        }
-    }
-
-    public static void logReadInfo(final String readName, final GATKRead rec, final String message) {
-        if (readName != null && rec != null && readName.equals(rec.getName())) {
-            logger.info("Found " + rec.toString() + " - " + message);
         }
     }
 

@@ -550,13 +550,12 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
             return false;
         }
         //for every edge in g2 there is an equal edge in g1
-        final boolean okG2 = edges2.stream().allMatch(e2 -> edges1.stream().anyMatch(e1 -> g2.seqEquals(e2, e1, g1)));
-        return okG2;
+        return edges2.stream().allMatch(e2 -> edges1.stream().anyMatch(e1 -> g2.seqEquals(e2, e1, g1)));
     }
 
     // For use when comparing edges across graphs!
     private boolean seqEquals( final E edge1, final E edge2, final BaseGraph<V,E> graph2 ) {
-        return (this.getEdgeSource(edge1).seqEquals(graph2.getEdgeSource(edge2))) && (this.getEdgeTarget(edge1).seqEquals(graph2.getEdgeTarget(edge2)));
+        return (getEdgeSource(edge1).seqEquals(graph2.getEdgeSource(edge2))) && (getEdgeTarget(edge1).seqEquals(graph2.getEdgeTarget(edge2)));
     }
 
 

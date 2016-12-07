@@ -40,7 +40,7 @@ public class GATKProtectedMathUtils {
         double sum = 0.0;
         for (int i = 0; i < values.length; ++i) {
             if (values[i] != Double.NEGATIVE_INFINITY) {
-                sum += java.lang.Math.exp(values[i] - max);
+                sum += Math.exp(values[i] - max);
             }
         }
         return max + Math.log(sum);
@@ -51,7 +51,7 @@ public class GATKProtectedMathUtils {
         double sum = 0.0;
         for (final double val : values) {
             if (val != Double.NEGATIVE_INFINITY) {
-                sum += java.lang.Math.exp(val - max);
+                sum += Math.exp(val - max);
             }
         }
         return max + Math.log(sum);

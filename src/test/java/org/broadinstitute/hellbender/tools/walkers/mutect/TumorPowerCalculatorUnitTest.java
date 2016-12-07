@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by tsato on 6/19/16.
  */

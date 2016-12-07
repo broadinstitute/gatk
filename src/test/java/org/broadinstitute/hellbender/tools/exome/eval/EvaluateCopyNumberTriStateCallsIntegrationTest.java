@@ -398,16 +398,10 @@ public class EvaluateCopyNumberTriStateCallsIntegrationTest extends CommandLineP
                 return false;
             }
         }
-        if (filteringOptions.maximumCalledEventFrequency < MathUtils.sum(AF)) {
-            return false;
-        }
-        if (filteringOptions.minimumCalledSegmentLength > targets.targetCount(callVariant)) {
-            return false;
-        }
-        if (filteringOptions.minimumCalledSegmentQuality > callGQ(callGenotype)) {
-            return false;
-        }
-        return true;
+
+        return MathUtils.sum(AF) <= filteringOptions.maximumCalledEventFrequency
+                && targets.targetCount(callVariant) >= filteringOptions.minimumCalledSegmentLength
+                && callGQ(callGenotype) >= filteringOptions.minimumCalledSegmentQuality;
     }
 
     private double callGQ(final Genotype callGenotype) {

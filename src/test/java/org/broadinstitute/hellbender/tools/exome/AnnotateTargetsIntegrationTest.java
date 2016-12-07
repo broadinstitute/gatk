@@ -108,13 +108,13 @@ public class AnnotateTargetsIntegrationTest extends CommandLineProgramTest {
     }
 
     @AfterClass
-    public void disposeTargetFile() throws IOException {
+    public void disposeTargetFile() {
         TARGET_FILE.delete();
         TARGET_FILE_IDX.delete();
     }
 
     @AfterClass
-    public void disposeRepeatFile() throws IOException {
+    public void disposeRepeatFile() {
         REPEAT_FILE.delete();
         REPEAT_FILE_IDX.delete();
         REPEATED_ARRAY = null;

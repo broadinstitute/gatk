@@ -26,7 +26,7 @@ public class TargetWriter extends TableWriter<Target> {
      */
     public TargetWriter(final File file) throws IOException {
         super(file, composeTableColumns(Collections.emptySet()));
-        this.annotations = Collections.emptyList();
+        annotations = Collections.emptyList();
     }
 
     /**

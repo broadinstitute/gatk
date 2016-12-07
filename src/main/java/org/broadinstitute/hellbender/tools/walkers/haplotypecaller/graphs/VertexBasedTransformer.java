@@ -19,7 +19,8 @@ abstract class VertexBasedTransformer {
     private boolean dontModifyGraphEvenIfPossible = false;
 
     public boolean dontModifyGraphEvenIfPossible() { return dontModifyGraphEvenIfPossible; }
-    public void setDontModifyGraphEvenIfPossible() { this.dontModifyGraphEvenIfPossible = true; }
+    public void setDontModifyGraphEvenIfPossible() {
+        dontModifyGraphEvenIfPossible = true; }
 
     private final SeqGraph graph;
 

@@ -54,8 +54,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
     public SomaticGenotypingEngine(final SampleList samples,
                                    final M2ArgumentCollection MTAC,
                                    final String tumorSampleName,
-                                   final String matchedNormalSampleName,
-                                   final String DEBUG_READ_NAME) {
+                                   final String matchedNormalSampleName) {
         super(MTAC, samples, DUMMY_AF_CALCULATOR_PROVIDER, !MTAC.doNotRunPhysicalPhasing);
         this.MTAC = MTAC;
         this.tumorSampleName = tumorSampleName;
@@ -129,7 +128,9 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
             }
 
             filterOverlappingReads(readAlleleLikelihoods, tumorSampleName, mergedVC.getReference(), loc, false);
-            filterOverlappingReads(readAlleleLikelihoods, matchedNormalSampleName, mergedVC.getReference(), loc, true);
+            if (matchedNormalSampleName != null) {
+                filterOverlappingReads(readAlleleLikelihoods, matchedNormalSampleName, mergedVC.getReference(), loc, true);
+            }
 
             //TODO: uncomment after porting Mutect2.java
             //Mutect2.logReadInfo(DEBUG_READ_NAME, tumorPRALM.getLikelihoodReadMap().keySet(), "Present in Tumor PRALM after filtering for overlapping reads");
@@ -189,7 +190,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
 
             // TODO: move code to Mutect2::calculateFilters()
             if (allelesThatPassThreshold.size() > 1) {
-                callVcb.filter(Mutect2Engine.TRIALLELIC_SITE_FILTER_NAME);
+                callVcb.filter(GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME);
             } else if (MTAC.ENABLE_STRAND_ARTIFACT_FILTER && allelesThatPassThreshold.size() == 1) {
                 addStrandBiasAnnotationsAndFilter(originalNormalReadQualities, mergedVC, readAlleleLikelihoods, altAlleleFractions, alleleWithHighestTumorLOD, callVcb);
             }
@@ -260,22 +261,22 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
         final double tumorLod_fwd = tumorGenotypeLLForward.getAlt(alleleWithHighestTumorLOD) - tumorGenotypeLLForward.getRef();
         final double tumorLod_rev = tumorGenotypeLLReverse.getAlt(alleleWithHighestTumorLOD) - tumorGenotypeLLReverse.getRef();
 
-        final int tumorForwardReadCount = (int) likelihoods.sampleReads(likelihoods.indexOfSample(tumorSampleName)).stream()
-                .filter(read -> !read.isReverseStrand()).count();
-        final int tumorReverseReadCount = likelihoods.readCount() - tumorForwardReadCount;
+        final List<GATKRead> tumorReads = likelihoods.sampleReads(likelihoods.indexOfSample(tumorSampleName));
+        final int tumorReverseReadCount = (int) tumorReads.stream().filter(GATKRead::isReverseStrand).count();
+        final int tumorForwardReadCount = tumorReads.size() - tumorReverseReadCount;
 
         // Note that we use the observed combined (+ and -) allele fraction for power calculation in either direction
         final double tumorSBpower_fwd = strandArtifactPowerCalculator.cachedPowerCalculation(tumorForwardReadCount, altAlleleFractions.getAlt(alleleWithHighestTumorLOD));
         final double tumorSBpower_rev = strandArtifactPowerCalculator.cachedPowerCalculation(tumorReverseReadCount, altAlleleFractions.getAlt(alleleWithHighestTumorLOD));
 
-        callVcb.attribute(Mutect2Engine.TLOD_FWD_KEY, tumorLod_fwd);
-        callVcb.attribute(Mutect2Engine.TLOD_REV_KEY, tumorLod_rev);
-        callVcb.attribute(Mutect2Engine.TUMOR_SB_POWER_FWD_KEY, tumorSBpower_fwd);
-        callVcb.attribute(Mutect2Engine.TUMOR_SB_POWER_REV_KEY, tumorSBpower_rev);
+        callVcb.attribute(GATKVCFConstants.TLOD_FWD_KEY, tumorLod_fwd);
+        callVcb.attribute(GATKVCFConstants.TLOD_REV_KEY, tumorLod_rev);
+        callVcb.attribute(GATKVCFConstants.TUMOR_SB_POWER_FWD_KEY, tumorSBpower_fwd);
+        callVcb.attribute(GATKVCFConstants.TUMOR_SB_POWER_REV_KEY, tumorSBpower_rev);
 
         if ((tumorSBpower_fwd > MTAC.STRAND_ARTIFACT_POWER_THRESHOLD && tumorLod_fwd < MTAC.STRAND_ARTIFACT_LOD_THRESHOLD) ||
                 (tumorSBpower_rev > MTAC.STRAND_ARTIFACT_POWER_THRESHOLD && tumorLod_rev < MTAC.STRAND_ARTIFACT_LOD_THRESHOLD))
-            callVcb.filter(Mutect2Engine.STRAND_ARTIFACT_FILTER_NAME);
+            callVcb.filter(GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
     }
 
     /** Calculate the likelihoods of hom ref and each het genotype of the form ref/alt
@@ -398,17 +399,9 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
         return result;
     }
 
-    private void logM2Debug(String s) {
-        if (MTAC.M2_DEBUG) {
-            logger.info(s);
-        }
-    }
-
     private void filterOverlappingReads(final ReadLikelihoods<Allele> likelihoods, final String sample, final Allele ref, final int location, final boolean retainMismatches) {
+        Utils.validateArg(likelihoods.indexOfSample(sample) >= 0, "Sample is missing from likelihoods");
 
-        if (sample == null || likelihoods.indexOfSample(sample) < 0) {
-            return;
-        }
         // Get the best alleles of each read and group them by the read name.
         // This puts paired reads from the same fragment together
         final Map<String, List<ReadLikelihoods<Allele>.BestAllele>> fragments = likelihoods.bestAlleles(sample).stream()

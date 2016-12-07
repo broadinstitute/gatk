@@ -11,7 +11,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,12 +30,8 @@ public class GermlinePloidyAnnotatedTargetCollectionUnitTest extends BaseTest {
 
     @BeforeClass
     public static void loadTestResources() {
-        try {
-            contigPloidyAnnotsList = ContigGermlinePloidyAnnotationTableReader.readContigGermlinePloidyAnnotationsFromFile(CONTIG_PLOIDY_ANNOTS_FILE);
-            targetList = TargetTableReader.readTargetFile(TARGET_FILE);
-        } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile("Could not read test resource file");
-        }
+        contigPloidyAnnotsList = ContigGermlinePloidyAnnotationTableReader.readContigGermlinePloidyAnnotationsFromFile(CONTIG_PLOIDY_ANNOTS_FILE);
+        targetList = TargetTableReader.readTargetFile(TARGET_FILE);
         ploidyAnnotsCollection = new GermlinePloidyAnnotatedTargetCollection(contigPloidyAnnotsList, targetList);
     }
 

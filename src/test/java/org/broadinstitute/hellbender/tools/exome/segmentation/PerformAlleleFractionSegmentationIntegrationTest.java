@@ -7,7 +7,6 @@ import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -18,7 +17,7 @@ public final class PerformAlleleFractionSegmentationIntegrationTest extends Comm
     private static final File ALLELIC_COUNTS_FILE = new File(TOOLS_TEST_DIRECTORY, "snps-for-allelic-integration.tsv");
 
     @Test
-    public void testCommandLine() throws IOException {
+    public void testCommandLine() {
         final File snpFile = ALLELIC_COUNTS_FILE;
         final File outputSegmentFile = createTempFile("segments", ".seg");
         final int initialNumStates = 10;

@@ -87,7 +87,7 @@ public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgr
         }
     }
 
-    private List<CopyNumberTriStateSegmentRecord> composeExpectedSegments(final File vcf, final TargetCollection<Target> targets) throws IOException {
+    private List<CopyNumberTriStateSegmentRecord> composeExpectedSegments(final File vcf, final TargetCollection<Target> targets) {
         final VCFFileReader reader = new VCFFileReader(vcf, false);
         final List<CopyNumberTriStateSegmentRecord> result = new ArrayList<>();
         reader.iterator().forEachRemaining(vc -> {

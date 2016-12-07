@@ -112,7 +112,7 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
         this.exactQuality = exactQuality;
         this.someQuality = someQuality;
         this.startQuality = startQuality;
-        this.endQuality = stopQuality;
+        endQuality = stopQuality;
         this.eventQuality = eventQuality;
     }
 
@@ -138,7 +138,7 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
         this.exactQuality = exactQuality;
         this.someQuality = someQuality;
         this.startQuality = startQuality;
-        this.endQuality = stopQuality;
+        endQuality = stopQuality;
         this.eventQuality = eventQuality;
     }
 

@@ -49,7 +49,7 @@ public class AggregatedSubHaplotypeFinder<F extends KBestSubHaplotypeFinder> imp
      */
     public AggregatedSubHaplotypeFinder(final Collection<F> finders) {
         Utils.nonNull(finders, "finder collection cannot be null");
-        this.subFinders = finders;
+        subFinders = finders;
     }
 
     @Override
@@ -164,8 +164,8 @@ public class AggregatedSubHaplotypeFinder<F extends KBestSubHaplotypeFinder> imp
         private int rank;
 
         private MyKBestHaplotypeResult(final KBestSubHaplotypeFinder finder, final int rank) {
-            this.subFinder = finder;
-            this.result = finder.getKBest(rank);
+            subFinder = finder;
+            result = finder.getKBest(rank);
             this.rank = -1;
         }
 

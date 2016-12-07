@@ -39,10 +39,10 @@ public final class GenotypeEvaluationRecord implements Locatable {
         this.result = new VariantContextBuilder(Utils.nonNull(result))
                 .genotypes(Collections.singleton(result.getGenotype(sample))).make();
         this.evaluationClass = Utils.nonNull(evaluationClass);
-        this.truth = result.getTruthVariantContext() == null ? null
+        truth = result.getTruthVariantContext() == null ? null
                 : new VariantContextBuilder(result.getTruthVariantContext())
                       .genotypes(Collections.singleton(result.getTruthVariantContext().getGenotype(sample))).make();
-        this.calls = result.getCallsVariantContexts() == null ? Collections.emptyList()
+        calls = result.getCallsVariantContexts() == null ? Collections.emptyList()
                 : result.getCallsVariantContexts().stream().map(var -> new VariantContextBuilder(var)
                       .genotypes(var.getGenotypes(sample)).make()).collect(Collectors.toList());
         this.filters = Collections.unmodifiableSet(new LinkedHashSet<>(filters));

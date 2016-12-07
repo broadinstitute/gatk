@@ -20,7 +20,7 @@ public final class XHMMTargetLikelihoodCalculator implements TargetLikelihoodCal
     public XHMMTargetLikelihoodCalculator(final double deletionMean, final double duplicationMean, final double emissionStdDev,
                                           final RandomGenerator rng) {
         this.rng = rng;
-        this.emissionStandardDeviation = emissionStdDev;
+        emissionStandardDeviation = emissionStdDev;
         this.duplicationMean = duplicationMean;
         this.deletionMean = deletionMean;
     }

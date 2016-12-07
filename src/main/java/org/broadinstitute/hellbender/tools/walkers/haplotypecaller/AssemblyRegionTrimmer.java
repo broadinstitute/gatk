@@ -275,8 +275,8 @@ public final class AssemblyRegionTrimmer {
             this.originalRegion = originalRegion;
             this.nonVariantFlanks = nonVariantFlanks;
             this.padding = padding;
-            this.usableExtension = extension;
-            this.callableEvents = overlappingEvents;
+            usableExtension = extension;
+            callableEvents = overlappingEvents;
             this.callableSpan = callableSpan;
             this.idealSpan = idealSpan;
             this.maximumSpan = maximumSpan;

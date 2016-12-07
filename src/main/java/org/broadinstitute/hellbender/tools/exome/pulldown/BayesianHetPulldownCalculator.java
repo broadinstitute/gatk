@@ -325,7 +325,7 @@ public final class BayesianHetPulldownCalculator {
 
         try (final SamReader bamReader = SamReaderFactory.makeDefault().validationStringency(validationStringency)
                 .referenceSequence(refFile).open(bamFile);
-             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(this.refFile)) {
+             final ReferenceSequenceFileWalker refWalker = new ReferenceSequenceFileWalker(refFile)) {
             if (bamReader.getFileHeader().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
                 throw new UserException.BadInput("BAM file " + bamFile.toString() + " must be coordinate sorted.");
             }

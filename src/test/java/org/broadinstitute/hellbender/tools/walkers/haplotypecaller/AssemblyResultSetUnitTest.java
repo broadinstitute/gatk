@@ -64,12 +64,12 @@ public final class AssemblyResultSetUnitTest extends BaseTest{
     }
 
     @Test(dataProvider="assemblyResults")
-    public void testAddManyHaplotypes(final java.util.List<AssemblyResult> assemblyResults,
-                                      final java.util.List<java.util.List<Haplotype>> haplotypes) {
+    public void testAddManyHaplotypes(final List<AssemblyResult> assemblyResults,
+                                      final List<List<Haplotype>> haplotypes) {
         final AssemblyResultSet subject = new AssemblyResultSet();
         for (int i = 0; i < haplotypes.size(); i++) {
             final int haplotypeCountBefore = subject.getHaplotypeCount();
-            final java.util.List<Haplotype> haplos = haplotypes.get(i);
+            final List<Haplotype> haplos = haplotypes.get(i);
             final AssemblyResult ar = assemblyResults.get(i);
             for (final Haplotype h : haplos) {
                 Assert.assertTrue(subject.add(h, ar));
@@ -142,7 +142,7 @@ public final class AssemblyResultSetUnitTest extends BaseTest{
 
 
     @DataProvider(name="assemblyResults")
-    public java.util.Iterator<Object[]> assemblyResults() {
+    public Iterator<Object[]> assemblyResults() {
         final int size = THREE_KS_GRAPH_AND_HAPLOTYPES.length * (1 + TEN_KS_GRAPH_AND_HAPLOTYPES.length);
         final Object[][] result = new Object[size][];
 

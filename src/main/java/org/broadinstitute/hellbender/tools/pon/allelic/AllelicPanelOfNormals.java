@@ -378,7 +378,7 @@ public final class AllelicPanelOfNormals {
     }
 
     private void throwExceptionIfPoNIsEmpty() {
-        if (this.equals(EMPTY_PON)) {
+        if (equals(EMPTY_PON)) {
             throw new UnsupportedOperationException("Cannot get MLE hyperparameters for empty panel of normals.");
         }
     }

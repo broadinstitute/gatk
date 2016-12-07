@@ -22,13 +22,12 @@ public final class LowWeightChainPrunerUnitTest extends BaseTest {
         for ( final int edgeWeight : Arrays.asList(1, 2, 3) ) {
             for ( final int pruneFactor : Arrays.asList(1, 2, 3, 4) ) {
                 for ( final boolean isRef : Arrays.asList(true, false)) {
-                    { // just an isolated chain
-                        final int nExpected = edgeWeight < pruneFactor && ! isRef ? 3 : 0;
-                        SeqGraph graph = new SeqGraph(11);
-                        graph.addVertices(v1, v2, v3);
-                        graph.addEdges(() -> new BaseEdge(isRef, edgeWeight), v1, v2, v3);
-                        tests.add(new Object[]{"combinatorial", graph, pruneFactor, nExpected > 0 ? Collections.emptySet() : graph.vertexSet()});
-                    }
+                    // just an isolated chain
+                    final int nExpected = edgeWeight < pruneFactor && ! isRef ? 3 : 0;
+                    SeqGraph graph = new SeqGraph(11);
+                    graph.addVertices(v1, v2, v3);
+                    graph.addEdges(() -> new BaseEdge(isRef, edgeWeight), v1, v2, v3);
+                    tests.add(new Object[]{"combinatorial", graph, pruneFactor, nExpected > 0 ? Collections.emptySet() : graph.vertexSet()});
                 }
             }
         }

@@ -298,13 +298,13 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
         }
 
         public ReadCountCollectionInfo changeTargetCount(final int delta) {
-           this.targetCount -= delta;
+            targetCount -= delta;
             if (delta > 0) {
                 for (int i = 0; i < delta; i++) {
-                    this.targetNames.add(targetNames.get(i) + "_extra");
+                    targetNames.add(targetNames.get(i) + "_extra");
                     if (intervals != null) {
                         final SimpleInterval interval = intervals.get(i);
-                        this.intervals.add(intervals.get(i) == null ? null : new SimpleInterval("other_chr",interval.getStart(),interval.getEnd()));
+                        intervals.add(intervals.get(i) == null ? null : new SimpleInterval("other_chr",interval.getStart(),interval.getEnd()));
                     }
                 }
             } else if (delta < 0) {
@@ -313,7 +313,7 @@ public final class ReadCountCollectionUnitTest extends BaseTest {
                 }
                 targetNames = targetNames.subList(0,targetNames.size() + delta);
             }
-            this.targetCount += delta;
+            targetCount += delta;
             return this;
         }
 

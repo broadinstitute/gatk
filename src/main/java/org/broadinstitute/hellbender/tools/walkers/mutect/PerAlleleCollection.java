@@ -93,7 +93,7 @@ public class PerAlleleCollection<X> {
             throw new IllegalStateException("Collection does not hold the REF allele");
         }
 
-        if (this.refAllele.isPresent()){
+        if (refAllele.isPresent()){
             return refValue.get();
         } else {
             throw new IllegalStateException("Collection's ref allele has not been set yet");

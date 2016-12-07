@@ -50,14 +50,14 @@ public final class MultiDeBruijnVertexUnitTest {
     public void testBasic() {
         final byte[] bases = "ACT".getBytes();
         final MultiDeBruijnVertex v = new MultiDeBruijnVertex(bases);
-        org.testng.Assert.assertEquals(v.getSequence(), bases);
-        org.testng.Assert.assertEquals(v.getSequenceString(), new String(bases));
-        org.testng.Assert.assertEquals(v.length(), bases.length);
-        org.testng.Assert.assertEquals(v.getSuffix(), (byte) 'T');
-        org.testng.Assert.assertEquals(v.getSuffixString(), "T");
+        Assert.assertEquals(v.getSequence(), bases);
+        Assert.assertEquals(v.getSequenceString(), new String(bases));
+        Assert.assertEquals(v.length(), bases.length);
+        Assert.assertEquals(v.getSuffix(), (byte) 'T');
+        Assert.assertEquals(v.getSuffixString(), "T");
 
-        org.testng.Assert.assertEquals(v.getAdditionalSequence(true), bases);
-        org.testng.Assert.assertEquals(v.getAdditionalSequence(false).length, 1);
-        org.testng.Assert.assertEquals(v.getAdditionalSequence(false)[0], (byte) 'T');
+        Assert.assertEquals(v.getAdditionalSequence(true), bases);
+        Assert.assertEquals(v.getAdditionalSequence(false).length, 1);
+        Assert.assertEquals(v.getAdditionalSequence(false)[0], (byte) 'T');
     }
 }

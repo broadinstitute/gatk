@@ -104,7 +104,7 @@ final class EmptyPathHaplotypeFinderNode implements KBestSubHaplotypeFinder {
         MyBestHaplotypePath(final SeqGraph graph, final SeqVertex vertex) {
             this.vertex = vertex;
             this.graph = graph;
-            this.isReference = graph.isReferenceNode(vertex);
+            isReference = graph.isReferenceNode(vertex);
         }
 
         @Override

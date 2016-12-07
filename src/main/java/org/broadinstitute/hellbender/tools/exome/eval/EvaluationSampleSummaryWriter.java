@@ -33,7 +33,7 @@ public final class EvaluationSampleSummaryWriter extends TableWriter<EvaluationS
 
     EvaluationSampleSummaryWriter(final File file, final String overallSample) throws IOException {
         super(file, COLUMNS);
-        this.overallRecord = new EvaluationSampleSummaryRecord(overallSample);
+        overallRecord = new EvaluationSampleSummaryRecord(overallSample);
     }
 
     @Override

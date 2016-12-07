@@ -1,21 +1,15 @@
 package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
-import htsjdk.samtools.util.Log;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.testng.Assert;
-import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;

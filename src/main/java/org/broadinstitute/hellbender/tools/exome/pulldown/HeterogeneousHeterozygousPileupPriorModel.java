@@ -71,9 +71,9 @@ public final class HeterogeneousHeterozygousPileupPriorModel extends Heterozygou
         this.maxCopyNumber = ParamUtils.isPositive(maxCopyNumber, "Maximum copy number must be positive");
 
         /* auxiliary derived members */
-        this.minHetAlleleFraction = (1 - this.maxAbnormalFraction) / (this.maxCopyNumber * this.maxAbnormalFraction +
+        minHetAlleleFraction = (1 - this.maxAbnormalFraction) / (this.maxCopyNumber * this.maxAbnormalFraction +
                 2 * (1 - this.maxAbnormalFraction));
-        this.breakpointHetAlleleFraction = (1 - this.minAbnormalFraction) / (this.maxCopyNumber * this.minAbnormalFraction +
+        breakpointHetAlleleFraction = (1 - this.minAbnormalFraction) / (this.maxCopyNumber * this.minAbnormalFraction +
                 2 * (1 - this.minAbnormalFraction));
 
         /* initialize the integration quadrature and calculate the allele fraction prior on the abscissas */

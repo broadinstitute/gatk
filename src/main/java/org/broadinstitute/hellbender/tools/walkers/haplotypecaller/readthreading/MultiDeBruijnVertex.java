@@ -33,7 +33,7 @@ public final class MultiDeBruijnVertex extends BaseVertex {
         this.mergeIdenticalNodes = mergeIdenticalNodes;
 
         //cache hashcode because its computation shows on profiler
-        this.hashCode = mergeIdenticalNodes ? super.hashCode() : System.identityHashCode(this);
+        hashCode = mergeIdenticalNodes ? super.hashCode() : System.identityHashCode(this);
     }
 
     /**

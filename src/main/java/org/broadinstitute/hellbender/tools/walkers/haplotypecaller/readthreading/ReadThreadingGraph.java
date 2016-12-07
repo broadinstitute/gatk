@@ -359,7 +359,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
                 verticesToRemove.add(v);
             }
         }
-        this.removeVertex(null);
+        removeVertex(null);
         removeAllVertices(verticesToRemove);
     }
 
@@ -460,7 +460,7 @@ public class ReadThreadingGraph extends BaseGraph<MultiDeBruijnVertex, MultiSamp
             this.start = start;
             this.stop = stop;
             this.count = count;
-            this.isRef = ref;
+            isRef = ref;
         }
     }
 

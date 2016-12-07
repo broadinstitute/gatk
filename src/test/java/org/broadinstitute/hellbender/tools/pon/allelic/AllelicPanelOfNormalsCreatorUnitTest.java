@@ -9,7 +9,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +28,7 @@ public final class AllelicPanelOfNormalsCreatorUnitTest extends BaseTest {
     private static final File PON_EXPECTED_SITE_FREQUENCY_75 = new File(TEST_SUB_DIR, "allelic-pon-test-pon-freq-75.tsv");
 
     @DataProvider(name = "dataCreate")
-    public Object[][] dataCreate() throws IOException {
+    public Object[][] dataCreate() {
         return new Object[][]{
                 {0.5, AllelicPanelOfNormals.read(PON_EXPECTED_SITE_FREQUENCY_50)},
                 {0.75, AllelicPanelOfNormals.read(PON_EXPECTED_SITE_FREQUENCY_75)}
@@ -42,7 +41,7 @@ public final class AllelicPanelOfNormalsCreatorUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "dataCreate")
-    public void testCreate(final double siteFrequencyThreshold, final AllelicPanelOfNormals expected) throws IOException {
+    public void testCreate(final double siteFrequencyThreshold, final AllelicPanelOfNormals expected) {
         LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
         final AllelicPanelOfNormalsCreator allelicPoNCreator = new AllelicPanelOfNormalsCreator(PULLDOWN_FILES);
         final AllelicPanelOfNormals result = allelicPoNCreator.create(siteFrequencyThreshold);

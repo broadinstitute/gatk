@@ -43,7 +43,7 @@ final class RecursiveSubHaplotypeFinder extends AggregatedSubHaplotypeFinder<Rec
                                        final Map<BaseEdge, KBestSubHaplotypeFinder> children) {
         super(createChildFinderCollection(vertex, children));
         this.vertex = vertex;
-        this.isReference = graph.isReferenceNode(vertex);
+        isReference = graph.isReferenceNode(vertex);
     }
 
     /**
@@ -136,7 +136,7 @@ final class RecursiveSubHaplotypeFinder extends AggregatedSubHaplotypeFinder<Rec
             this.childFinder = childFinder;
             this.edge = edge;
             this.vertex = vertex;
-            this.edgeScore = 0;
+            edgeScore = 0;
         }
 
         private void calibrateEdgeScore(final double log10TotalMultiplicityAcrossOutgoingEdges) {
@@ -212,10 +212,10 @@ final class RecursiveSubHaplotypeFinder extends AggregatedSubHaplotypeFinder<Rec
 
 
         private ChildKBestSubHaplotype(final SeqVertex vertex, final BaseEdge edge, final KBestHaplotype child, final double edgeScore) {
-            this.score = edgeScore + child.score();
+            score = edgeScore + child.score();
             this.vertex = vertex;
             this.child = child;
-            this.isReference = edge.isRef() && child.isReference();
+            isReference = edge.isRef() && child.isReference();
         }
 
         @Override

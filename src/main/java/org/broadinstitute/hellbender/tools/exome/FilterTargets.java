@@ -391,7 +391,7 @@ public final class FilterTargets extends CommandLineProgram {
             this.specLocation = Utils.nonNull(specLocation);
             this.specString = Utils.nonNull(specString);
             try {
-                this.interval = new SimpleInterval(specString);
+                interval = new SimpleInterval(specString);
             } catch (final IllegalArgumentException ex) {
                 throw new UserException.BadInput(
                         String.format("bad format in exclusion interval specification (%s) at %s", specString, specLocation));
@@ -687,10 +687,10 @@ public final class FilterTargets extends CommandLineProgram {
          *             outputted.
          * @throws IOException
          */
-        public TargetRejectWriter(final File file) throws IOException {
-            this.outputFile = file;
-            this.outputWriter = composeWriter(file);
-            this.filterCounters = new int[TargetFilter.values().length];
+        public TargetRejectWriter(final File file) {
+            outputFile = file;
+            outputWriter = composeWriter(file);
+            filterCounters = new int[TargetFilter.values().length];
         }
 
         /**
@@ -763,7 +763,7 @@ public final class FilterTargets extends CommandLineProgram {
          */
         public void logStats(final Logger logger) {
             for (final TargetFilter filter : TargetFilter.values()) {
-                final int targetCount = this.filterCounters[filter.ordinal()];
+                final int targetCount = filterCounters[filter.ordinal()];
                 logger.info(String.format("%s : %d targets filtered out", filter, targetCount));
             }
         }

@@ -7,7 +7,6 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.CopyNumberTriStateSegmentsCallerIntegrationTest;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;

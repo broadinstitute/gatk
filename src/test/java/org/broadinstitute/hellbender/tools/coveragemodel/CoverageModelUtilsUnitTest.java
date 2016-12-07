@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

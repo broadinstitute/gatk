@@ -46,7 +46,7 @@ public final class HDF5LibraryUnitTest {
     }
 
     @Test()
-    public void testCreateHDF5File() throws IOException {
+    public void testCreateHDF5File() {
         final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
         testFile.delete();
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
@@ -54,7 +54,7 @@ public final class HDF5LibraryUnitTest {
     }
 
     @Test(dependsOnMethods = {"testCreateGroup", "testMakeDouble"})
-    public void testIsPresent() throws IOException {
+    public void testIsPresent() {
         final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         Assert.assertFalse(file.isPresent("test-group"));
@@ -84,7 +84,7 @@ public final class HDF5LibraryUnitTest {
     }
 
     @Test()
-    public void testCreateGroup() throws IOException {
+    public void testCreateGroup() {
         final File testFile = BaseTest.createTempFile("hdf5", ".hd5");
         final HDF5File file = new HDF5File(testFile, HDF5File.OpenMode.CREATE);
         Assert.assertTrue(file.makeGroup("test-group/lola-run"));
