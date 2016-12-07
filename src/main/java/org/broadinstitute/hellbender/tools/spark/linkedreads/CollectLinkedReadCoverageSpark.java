@@ -79,7 +79,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             final List<Tuple2<Integer, Integer>> distances = new ArrayList<>();
             for (List<GATKRead> pair : chimericPairs) {
                 final int d1 = getDistance(barcodeIntervalMap, pair.get(0));
-                if (pair.size() < 2) {
+                if (pair.size() == 1) {
                     distances.add(new Tuple2<>(d1, -2));
                 }
                 final int d2 = getDistance(barcodeIntervalMap, pair.get(1));
