@@ -58,7 +58,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                 );
 
-        final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> sample = barcodeIntervals.sample(false, .1);
+        final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> sample = barcodeIntervals.sample(false, .1).cache();
 
         final Set<String> sampledBarcodes = new HashSet<>();
         sampledBarcodes.addAll(sample.map(Tuple2::_1).collect());
@@ -85,6 +85,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             final Iterable<List<GATKRead>> chimericPairs = v._2();
             final List<Tuple2<Integer, Integer>> distances = new ArrayList<>();
             for (List<GATKRead> pair : chimericPairs) {
+                if (pair.size() != 2) {
+                    continue;
+                }
                 final int d1 = getDistance(barcodeIntervalMap, pair.get(0));
                 if (pair.size() > 2) {
                     distances.add(new Tuple2<>(-2, -2));
