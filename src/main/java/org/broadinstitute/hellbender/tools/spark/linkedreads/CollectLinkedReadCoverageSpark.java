@@ -6,12 +6,12 @@ import htsjdk.samtools.util.IntervalTree;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
@@ -58,6 +58,12 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                 );
 
+        final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> sample = barcodeIntervals.sample(false, .1);
+
+        final Set<String> sampledBarcodes = new HashSet();
+        sampledBarcodes.addAll(sample.map(Tuple2::_1).collect());
+
+        final Broadcast<Set<String>> broadcastSampleNames = ctx.broadcast(sampledBarcodes);
         final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getUnfilteredReads()
                 .filter(r ->
                         (!r.isUnmapped()
@@ -65,13 +71,14 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                                 && ! r.isSecondaryAlignment()
                                 && ! r.isSupplementaryAlignment()
                                 && r.hasAttribute("BX")
+                                && broadcastSampleNames.getValue().contains(r.getAttributeAsString("BX"))
                                 && LinkedReadAnalysisFilter.isChimeric(r)))
                 .mapToPair(r -> new Tuple2<>(r.getName(), r))
                 .groupByKey();
 
         final JavaPairRDD<String, Iterable<List<GATKRead>>> listOfChimericPairsByBx = chimericReads.mapToPair(this::gatherChimericPairsByBarcode).groupByKey();
 
-        final JavaPairRDD<String, Tuple2<Map<String, IntervalTree<List<ReadInfo>>>, Iterable<List<GATKRead>>>> barcodeIntervalsWithChimericPairs = barcodeIntervals.join(listOfChimericPairsByBx);
+        final JavaPairRDD<String, Tuple2<Map<String, IntervalTree<List<ReadInfo>>>, Iterable<List<GATKRead>>>> barcodeIntervalsWithChimericPairs = sample.join(listOfChimericPairsByBx);
 
         final JavaPairRDD<String, Tuple2<Integer, Integer>> distancesByBx = barcodeIntervalsWithChimericPairs.flatMapValues(v -> {
             final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap = v._1();
@@ -79,6 +86,9 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             final List<Tuple2<Integer, Integer>> distances = new ArrayList<>();
             for (List<GATKRead> pair : chimericPairs) {
                 final int d1 = getDistance(barcodeIntervalMap, pair.get(0));
+                if (pair.size() > 2) {
+                    distances.add(new Tuple2<>(-2, -2));
+                }
                 if (pair.size() == 1) {
                     distances.add(new Tuple2<>(d1, -2));
                 }
