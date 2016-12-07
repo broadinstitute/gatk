@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
+import scala.Tuple3;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,6 +39,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             optional = true)
     public int clusterSize = 5000;
 
+    @Argument(doc = "sample fraction",
+            shortName = "sampleFraction", fullName = "sampleFraction",
+            optional = true)
+    public double sampleFraction = .1;
+
     @Override
     public boolean requiresReads() { return true; }
 
@@ -58,7 +64,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                 );
 
-        final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> sample = barcodeIntervals.sample(false, .1).cache();
+        final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> sample = barcodeIntervals.sample(false, sampleFraction).cache();
 
         final Set<String> sampledBarcodes = new HashSet<>();
         sampledBarcodes.addAll(sample.map(Tuple2::_1).collect());
@@ -80,28 +86,31 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         final JavaPairRDD<String, Tuple2<Map<String, IntervalTree<List<ReadInfo>>>, Iterable<List<GATKRead>>>> barcodeIntervalsWithChimericPairs = sample.join(listOfChimericPairsByBx);
 
-        final JavaPairRDD<String, Tuple2<Integer, Integer>> distancesByBx = barcodeIntervalsWithChimericPairs.flatMapValues(v -> {
+        final JavaPairRDD<String, Tuple3<Integer,Integer, Integer>> distancesByBx = barcodeIntervalsWithChimericPairs.flatMapValues(v -> {
             final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap = v._1();
+            final int moleculesForBarcode = calcMoleculesForBarcode(barcodeIntervalMap);
             final Iterable<List<GATKRead>> chimericPairs = v._2();
-            final List<Tuple2<Integer, Integer>> distances = new ArrayList<>();
+            final List<Tuple3<Integer, Integer, Integer>> distances = new ArrayList<>();
             for (List<GATKRead> pair : chimericPairs) {
                 if (pair.size() != 2) {
                     continue;
                 }
                 final int d1 = getDistance(barcodeIntervalMap, pair.get(0));
-                if (pair.size() > 2) {
-                    distances.add(new Tuple2<>(-2, -2));
-                }
-                if (pair.size() == 1) {
-                    distances.add(new Tuple2<>(d1, -2));
-                }
                 final int d2 = getDistance(barcodeIntervalMap, pair.get(1));
-                distances.add(new Tuple2<>(d1, d2));
+                distances.add(new Tuple3<>(moleculesForBarcode, d1, d2));
             }
             return distances;
         });
 
         distancesByBx.saveAsTextFile(out);
+    }
+
+    private int calcMoleculesForBarcode(final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap) {
+        int molecules = 0;
+        for (final String contig : barcodeIntervalMap.keySet()) {
+            molecules = molecules + barcodeIntervalMap.get(contig).size();
+        }
+        return molecules;
     }
 
     private int getDistance(final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap, final GATKRead read) {
@@ -110,7 +119,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         if (intervalTree == null) {
             distance = -1;
         } else {
-            if (intervalTree.find(read.getStart(), read.getEnd()) != null) {
+            if (intervalTree.overlappers(read.getStart(), read.getEnd()) != null) {
                 distance = 0;
             } else {
                 final IntervalTree.Node<List<ReadInfo>> min = intervalTree.min(read.getStart(), read.getEnd());
