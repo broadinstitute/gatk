@@ -60,7 +60,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> sample = barcodeIntervals.sample(false, .1);
 
-        final Set<String> sampledBarcodes = new HashSet();
+        final Set<String> sampledBarcodes = new HashSet<>();
         sampledBarcodes.addAll(sample.map(Tuple2::_1).collect());
 
         final Broadcast<Set<String>> broadcastSampleNames = ctx.broadcast(sampledBarcodes);
