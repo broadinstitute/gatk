@@ -5,6 +5,7 @@ import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -287,8 +288,19 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
         // Set up an iterator for each reader, bounded to overlap with the supplied intervals if there are any
         for ( Map.Entry<SamReader, CloseableIterator<SAMRecord>> readerEntry : readers.entrySet() ) {
-            readerEntry.setValue(traversalIsBounded ? new SamReaderQueryingIterator(readerEntry.getKey(), queryIntervals, queryUnmapped) :
-                                                      readerEntry.getKey().iterator());
+            if (traversalIsBounded) {
+                readerEntry.setValue(
+                        new SamReaderQueryingIterator(
+                                readerEntry.getKey(),
+                                readers.size() > 1 ?
+                                        getIntervalsOverlappingReader(readerEntry.getKey(), queryIntervals) :
+                                        queryIntervals,
+                                queryUnmapped
+                        )
+                );
+            } else {
+                readerEntry.setValue(readerEntry.getKey().iterator());
+            }
         }
 
         // Create a merging iterator over all readers if necessary. In the case where there's only a single reader,
@@ -302,6 +314,19 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         }
 
         return new SAMRecordToReadIterator(startingIterator);
+    }
+
+    /**
+     * Reduce the intervals down to only include ones that can actually intersect with this reader
+     */
+    private List<SimpleInterval> getIntervalsOverlappingReader(
+            final SamReader samReader,
+            final List<SimpleInterval> queryIntervals)
+    {
+        final SAMSequenceDictionary sequenceDictionary = samReader.getFileHeader().getSequenceDictionary();
+        return queryIntervals.stream()
+                .filter(interval -> IntervalUtils.intervalIsOnDictionaryContig(interval, sequenceDictionary))
+                .collect(Collectors.toList());
     }
 
     /**
