@@ -48,11 +48,14 @@ public final class FisherStrandUnitTest {
         tests.add(new Object[]{9, 11, 12, 10, 0.7578618});
         tests.add(new Object[]{12, 10, 9, 11, 0.7578618});
         tests.add(new Object[]{9, 10, 12, 10, 0.7578618});
-        tests.add(new Object[]{9, 10, 12, 10, 0.7578618});
         tests.add(new Object[]{9, 9, 12, 10, 1.0});
         tests.add(new Object[]{9, 13, 12, 10, 0.5466948});
         tests.add(new Object[]{12, 10, 9, 13, 0.5466948});
         tests.add(new Object[]{9, 12, 11, 9, 0.5377362});
+
+        tests.add(new Object[]{0, 0, 0, 3,                     1.0});
+        tests.add(new Object[]{9, 0, 0, 0,                     1.0});
+        tests.add(new Object[]{0, 200, 200, 0,                 1.942643e-119});
 
         tests.add(new Object[]{0, 0, 0, 0, 1.0});
         tests.add(new Object[]{100000, 100000, 100000, 100000, 1.0});
