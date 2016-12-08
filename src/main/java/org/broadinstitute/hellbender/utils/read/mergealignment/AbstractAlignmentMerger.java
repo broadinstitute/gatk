@@ -513,7 +513,7 @@ public abstract class AbstractAlignmentMerger {
         // If it's on the negative strand, reverse complement the bases
         // and reverse the order of the qualities
         if (rec.getReadNegativeStrandFlag()) {
-            SAMRecordUtil.reverseComplement(rec);
+            rec.reverseComplement(true);
         }
 
     }

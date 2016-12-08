@@ -171,7 +171,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         Assert.assertEquals(rddParallelReads.count(), rddParallelReads2.count());
     }
 
-    @Test(dataProvider = "loadReadsADAM", groups = "spark")
+    @Test(enabled = false, dataProvider = "loadReadsADAM", groups = "spark")
     public void readsSinkADAMTest(String inputBam, String outputDirectoryName) throws IOException {
         // Since the test requires that we not create the actual output directory in advance,
         // we instead create its parent directory and mark it for deletion on exit. This protects

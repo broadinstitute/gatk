@@ -6,7 +6,6 @@ import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordQueryNameComparator;
-import htsjdk.samtools.SAMRecordUtil;
 import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -331,7 +330,7 @@ public final class RevertSam extends PicardCommandLineProgram {
 
         if (REMOVE_ALIGNMENT_INFORMATION) {
             if (rec.getReadNegativeStrandFlag()) {
-                SAMRecordUtil.reverseComplement(rec);
+                rec.reverseComplement(true);
                 rec.setReadNegativeStrandFlag(false);
             }
 

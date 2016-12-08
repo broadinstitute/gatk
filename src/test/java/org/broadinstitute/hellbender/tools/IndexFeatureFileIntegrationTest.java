@@ -60,7 +60,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testIndexNonFeatureFileGZ() {
         final File ORIG_FILE = getTestFile("test_nonFeature_file.txt.blockgz.gz"); //made by bgzip
-        final File outName = createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".idx");
+        final File outName = createTempFile("test_nonFeature_file.txt.blockgz.gz.", ".tbi");
 
         final String[] args = {
                 "--feature_file", ORIG_FILE.getAbsolutePath(),
@@ -72,7 +72,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     @Test(expectedExceptions = UserException.NoSuitableCodecs.class)
     public void testIndexBCFFileGZ() {
         final File ORIG_FILE = getTestFile("test_variants_for_index.bcf.blockgz.gz");  //made by bgzip
-        final File outName = createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.bcf.blockgz.gz.", ".tbi");
 
         final String[] args = {
                 "--feature_file", ORIG_FILE.getAbsolutePath(),
@@ -135,7 +135,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     public void testVCFGZIPIndex() throws IOException {
         //This tests blows up because the input file is not blocked gzipped
         final File ORIG_FILE = getTestFile("test_variants_for_index.vcf.gzip.gz"); //made by gzip
-        final File outName = createTempFile("test_variants_for_index.gzip.gz.", ".idx");
+        final File outName = createTempFile("test_variants_for_index.gzip.gz.", ".tbi");
         final String[] args = {
                 "--feature_file" ,  ORIG_FILE.getAbsolutePath(),
                 "-O" ,  outName.getAbsolutePath()
