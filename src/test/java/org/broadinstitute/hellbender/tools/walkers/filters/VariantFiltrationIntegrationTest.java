@@ -239,4 +239,18 @@ public final class VariantFiltrationIntegrationTest extends CommandLineProgramTe
 
         spec.executeTest("testSetVcfFilteredGtoNocall", this);
     }
+
+    // The current htsjdk implementation of JEXL matching on genotype fields is buggy. When the filter uses an
+    // annotation that is present in both FORMAT and INFO, and the FORMAT value is missing, the current code (Jan 2017)
+    // will look up the INFO value. Here we use a made-up annotation Z instead of DP to avoid having to rig the test
+    // so that the INFO value will give the same matching results as the FORMAT value.
+    @Test
+    public void testFilteringZfromFORMATAndFailMissing() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString("filteringZInFormatWithMissing.vcf", " --missingValuesInExpressionsShouldEvaluateAsFailing --genotypeFilterExpression 'Z < 10' --genotypeFilterName lowZ "),
+                Arrays.asList(getToolTestDataDir() + "expected/" + "testVariantFiltration_testFilteringZfromFORMATAndFailMissing.vcf")
+        );
+
+        spec.executeTest("testFilteringZfromFORMATAndFailMissing", this);
+    }
 }

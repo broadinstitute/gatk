@@ -1,0 +1,7 @@
+##fileformat=VCFv4.1
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="read depth">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
+##FORMAT=<ID=Z,Number=1,Type=Integer,Description="Made up annotation to test behavior of VF when a value is missing">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Test1	Test2	Test3	Test4	Test5	Test6
+1	13504	.	G	A	.	.	DP=22	GT:DP:Z	1/1:9:9	1/1:10:10	./.:3:3	./.:0:0	./.:0:0	1/1:.:.
