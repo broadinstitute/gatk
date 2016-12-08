@@ -56,7 +56,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
-q
+
         final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeIntervals =
                 reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                 .aggregateByKey(
