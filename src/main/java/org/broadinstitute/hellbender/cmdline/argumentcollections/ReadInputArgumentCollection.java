@@ -33,6 +33,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
               doc = "Indices to use for the read inputs. If specified, an index must be provided for every read input " +
                     "and in the same order as the read inputs. If this argument is not specified, the path to the index " +
                     "for each input will be inferred automatically.",
+              common = true,
               optional = true)
     protected List<String> readIndices;
 

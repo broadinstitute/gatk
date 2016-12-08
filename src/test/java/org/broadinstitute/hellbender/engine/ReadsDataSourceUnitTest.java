@@ -570,6 +570,23 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData")
+    public void testManuallySpecifiedIndicesWithCustomReaderFactory( final List<Path> bams, final List<Path> indices ) {
+        final SamReaderFactory customFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT);
+
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory) ) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
+
+            final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
+            int queryCount = 0;
+            while ( queryReads.hasNext() ) {
+                ++queryCount;
+                queryReads.next();
+            }
+            Assert.assertEquals(queryCount, 5, "Wrong number of reads returned in query");
+        }
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData")
     public void testManuallySpecifiedIndicesNullIndexListOK( final List<Path> bams, final List<Path> indices ) {
         try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, (List<Path>)null) ) {
             Assert.assertFalse(readsSource.indicesAvailable(), "Bams not indexed and explicit indices not provided, but indicesAvailable() returns true");
