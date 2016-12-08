@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
+import org.apache.avro.io.parsing.Symbol;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -70,6 +71,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Set<String> sampledBarcodes = new HashSet<>();
         sampledBarcodes.addAll(sample.map(Tuple2::_1).collect());
 
+        final Iterator<Tuple2<String, Map<String, IntervalTree<List<ReadInfo>>>>> iterator = sample.collect().iterator();
+
         final Broadcast<Set<String>> broadcastSampleNames = ctx.broadcast(sampledBarcodes);
         final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getUnfilteredReads()
                 .filter(r ->
@@ -120,7 +123,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         if (intervalTree == null) {
             distance = -1;
         } else {
-            if (intervalTree.overlappers(read.getStart(), read.getEnd()) != null) {
+            if (intervalTree.overlappers(read.getStart(), read.getEnd()).hasNext()) {
                 distance = 0;
             } else {
                 final IntervalTree.Node<List<ReadInfo>> min = intervalTree.min(read.getStart(), read.getEnd());
