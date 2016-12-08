@@ -13,6 +13,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
@@ -38,6 +39,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -66,6 +68,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private SAMFileHeader header;
 
     private static final int MIN_READ_LENGTH = 30;
+    private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
 
     private SampleList samplesList;
     private boolean printTCGAsampleHeader = false;
@@ -80,6 +83,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
+    private final Predicate<GATKRead> useReadForGenotyping;
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -95,6 +99,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         Utils.nonNull(reference);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
         filteringEngine = new Mutect2FilteringEngine(MTAC);
+
+        final Predicate<GATKRead> goodReadLengthForGenotyping = read -> read.getLength() >= MIN_READ_LENGTH;
+        final Predicate<GATKRead> goodMappingQuality = read -> read.getMappingQuality() >= MTAC.MIN_MAPPING_QUALITY_SCORE;
+        final Predicate<GATKRead> isInReadGroupsToKeep = read ->  MTAC.keepRG == null || read.getReadGroup().equals(MTAC.keepRG);
+        useReadForGenotyping = goodReadLengthForGenotyping.and(goodMappingQuality).
+                and(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE).
+                and(isInReadGroupsToKeep);
 
         initialize();
     }
@@ -143,9 +154,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
      */
     public static List<ReadFilter> makeStandardMutect2ReadFilters() {
         // The order in which we apply filters is important. Cheap filters come first so we fail fast
-        // In Mutect2 we intentionally keep poorly mapped reads for reassembly
-
         List<ReadFilter> filters = new ArrayList<>();
+        filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
@@ -241,7 +251,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         // filter out reads from genotyping which fail mapping quality based criteria
         //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
         //TODO - on the originalAssemblyRegion?
-        final Collection<GATKRead> filteredReads = filterNonPassingReads(regionForGenotyping);
+        final Collection<GATKRead> readsToRemove = regionForGenotyping.getReads().stream().filter(useReadForGenotyping.negate()).collect(Collectors.toList());
+        regionForGenotyping.removeAll(readsToRemove);
 
         // In Mutect2 we filter the reads after local re-assembly, and when we do so we may lose many, if not all, of the reads.
         // In such a case it is meaningless to compute read likelihoods; just return NO_CALLS
@@ -251,7 +262,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         // TODO: this quantity and all downstream uses of it seems like it can be obtained from
         // TODO: ReadLikelihoods<Allele>::sampleReads
-        final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(filteredReads);
+        final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(readsToRemove);
 
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
@@ -411,26 +422,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return p.getBase() != refBase || p.isDeletion() || p.isBeforeDeletionStart() || p.isAfterDeletionEnd() || p.isBeforeInsertion() || p.isAfterInsertion() || p.isNextToSoftClip();
     }
 
-    protected Set<GATKRead> filterNonPassingReads( final AssemblyRegion assemblyRegion) {
-        final Set<GATKRead> readsToRemove = new LinkedHashSet<>();
-        for( final GATKRead rec : assemblyRegion.getReads() ) {
-            //TODO: Takuto points out that this is questionable.  Let's think hard abut it.
-            // KCIBUL: only perform read quality filtering on tumor reads...
-            // The reason we filter only the tumor is because we want to get any evidence for ALT alleles in the normal, even if the MQ is poor, to improve specificity.
-            // TODO: If we decide to filter the tumor and normal uniformly, move the method to the util class and share code with the method of the same name in HC
-            if (isReadFromNormal(rec)) {
-                if( rec.getLength() < MIN_READ_LENGTH ) {
-                    readsToRemove.add(rec);
-                }
-            } else if( rec.getLength() < MIN_READ_LENGTH || rec.getMappingQuality() < MTAC.MIN_MAPPING_QUALITY_SCORE || hasBadMate(rec) ||
-                    (MTAC.keepRG != null && !rec.getReadGroup().equals(MTAC.keepRG)) ) {
-                readsToRemove.add(rec);
-            }
-        }
-        assemblyRegion.removeAll(readsToRemove);
-        return readsToRemove;
-    }
-
     protected Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
         return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, header, reads);
     }
@@ -546,12 +537,4 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         return new ActivityProfileState( ref.getInterval(), prob, ActivityProfileState.Type.NONE, null);
     }
-
-
-    // If mates in a pair are mapping to different contigs, it is likely that at least one of them is in the wrong place.
-    // Of course, it is also possible there is a structural variant, in which case we lose some sensitivity
-    public static boolean hasBadMate(final GATKRead rec) {
-        return (rec.isPaired() && !rec.mateIsUnmapped() && !rec.getAssignedContig().equals(rec.getMateContig()));
-    }
-
 }
