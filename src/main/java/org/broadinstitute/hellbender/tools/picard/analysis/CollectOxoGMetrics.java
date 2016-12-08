@@ -395,7 +395,7 @@ public final class CollectOxoGMetrics extends PicardCommandLineProgram {
             final Counts counts = new Counts();
             final byte altBase = (refBase == 'C') ? (byte) 'A' : (byte) 'T';
 
-            for (final SamLocusIterator.RecordAndOffset rec : info.getRecordAndPositions()) {
+            for (final SamLocusIterator.RecordAndOffset rec : info.getRecordAndOffsets()) {
                 final byte qual;
                 final SAMRecord samrec = rec.getRecord();
 

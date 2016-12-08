@@ -172,9 +172,9 @@ public final class CollectWgsMetrics extends PicardCommandLineProgram {
             if (base == 'N') continue;
 
             // Figure out the coverage while not counting overlapping reads twice, and excluding various things
-            final Set<String> readNames = new HashSet<>(info.getRecordAndPositions().size());
+            final Set<String> readNames = new HashSet<>(info.getRecordAndOffsets().size());
             int pileupSize = 0;
-            for (final SamLocusIterator.RecordAndOffset recs : info.getRecordAndPositions()) {
+            for (final SamLocusIterator.RecordAndOffset recs : info.getRecordAndOffsets()) {
 
                 if (recs.getBaseQuality() < MINIMUM_BASE_QUALITY)                   { ++basesExcludedByBaseq;   continue; }
                 if (!readNames.add(recs.getRecord().getReadName()))                 { ++basesExcludedByOverlap; continue; }
