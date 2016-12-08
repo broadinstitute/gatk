@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 import scala.Tuple3;
+import scala.Tuple4;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -55,7 +56,7 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         final JavaRDD<GATKRead> reads = getReads();
-
+q
         final JavaPairRDD<String, Map<String, IntervalTree<List<ReadInfo>>>> barcodeIntervals =
                 reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                 .aggregateByKey(
@@ -86,18 +87,18 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
         final JavaPairRDD<String, Tuple2<Map<String, IntervalTree<List<ReadInfo>>>, Iterable<List<GATKRead>>>> barcodeIntervalsWithChimericPairs = sample.join(listOfChimericPairsByBx);
 
-        final JavaPairRDD<String, Tuple3<Integer,Integer, Integer>> distancesByBx = barcodeIntervalsWithChimericPairs.flatMapValues(v -> {
+        final JavaPairRDD<String, Tuple4<String, Integer,Integer, Integer>> distancesByBx = barcodeIntervalsWithChimericPairs.flatMapValues(v -> {
             final Map<String, IntervalTree<List<ReadInfo>>> barcodeIntervalMap = v._1();
             final int moleculesForBarcode = calcMoleculesForBarcode(barcodeIntervalMap);
             final Iterable<List<GATKRead>> chimericPairs = v._2();
-            final List<Tuple3<Integer, Integer, Integer>> distances = new ArrayList<>();
+            final List<Tuple4<String, Integer, Integer, Integer>> distances = new ArrayList<>();
             for (List<GATKRead> pair : chimericPairs) {
                 if (pair.size() != 2) {
                     continue;
                 }
                 final int d1 = getDistance(barcodeIntervalMap, pair.get(0));
                 final int d2 = getDistance(barcodeIntervalMap, pair.get(1));
-                distances.add(new Tuple3<>(moleculesForBarcode, d1, d2));
+                distances.add(new Tuple4<>(pair.get(0).getContig() + ":" + pair.get(0).getStart() + "-" + pair.get(1).getContig() + ":" + pair.get(1).getStart(), moleculesForBarcode, d1, d2));
             }
             return distances;
         });
