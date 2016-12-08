@@ -74,21 +74,21 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
     private boolean indicesAvailable;
 
     /**
-     * Initialize this data source with a single SAM/BAM file without a reference and validation stringency SILENT.
+     * Initialize this data source with a single SAM/BAM file and validation stringency SILENT.
      *
      * @param samFile SAM/BAM file, not null.
      */
     public ReadsDataSource( final Path samFile ) {
-        this(samFile != null ? Arrays.asList(samFile) : null, null);
+        this(samFile != null ? Arrays.asList(samFile) : null, (SamReaderFactory)null);
     }
 
     /**
-     * Initialize this data source with multiple SAM/BAM files without a reference and validation stringency SILENT.
+     * Initialize this data source with multiple SAM/BAM files and validation stringency SILENT.
      *
      * @param samFiles SAM/BAM files, not null.
      */
     public ReadsDataSource( final List<Path> samFiles ) {
-        this(samFiles, null);
+        this(samFiles, (SamReaderFactory)null);
     }
 
     /**
@@ -98,7 +98,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
-    public ReadsDataSource( final Path samPath, SamReaderFactory customSamReaderFactory) {
+    public ReadsDataSource( final Path samPath, SamReaderFactory customSamReaderFactory ) {
         this(samPath != null ? Arrays.asList(samPath) : null, customSamReaderFactory);
     }
 
@@ -109,9 +109,39 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
-    public ReadsDataSource(final List<Path> samPaths, SamReaderFactory customSamReaderFactory ) {
+    public ReadsDataSource( final List<Path> samPaths, SamReaderFactory customSamReaderFactory ) {
+        this(samPaths, null, customSamReaderFactory);
+    }
+
+    /**
+     * Initialize this data source with multiple SAM/BAM/CRAM files, and explicit indices for those files.
+     *
+     * @param samPaths paths to SAM/BAM/CRAM files, not null
+     * @param samIndices indices for all of the SAM/BAM/CRAM files, in the same order as samPaths. May be null,
+     *                   in which case index paths are inferred automatically.
+     */
+    public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices ) {
+        this(samPaths, samIndices, null);
+    }
+
+    /**
+     * Initialize this data source with multiple SAM/BAM/CRAM files, explicit indices for those files,
+     * and a custom SamReaderFactory.
+     *
+     * @param samPaths paths to SAM/BAM/CRAM files, not null
+     * @param samIndices indices for all of the SAM/BAM/CRAM files, in the same order as samPaths. May be null,
+     *                   in which case index paths are inferred automatically.
+     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
+     *                               stringency SILENT is used.
+     */
+    public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices, SamReaderFactory customSamReaderFactory ) {
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
+
+        if ( samIndices != null && samPaths.size() != samIndices.size() ) {
+            throw new UserException(String.format("Must have the same number of BAM/CRAM/SAM paths and indices. Saw %d BAM/CRAM/SAMs but %d indices",
+                                                  samPaths.size(), samIndices.size()));
+        }
 
         readers = new LinkedHashMap<>(samPaths.size() * 2);
         backingPaths = new LinkedHashMap<>(samPaths.size() * 2);
@@ -122,6 +152,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                     SamReaderFactory.makeDefault().validationStringency(ReadConstants.DEFAULT_READ_VALIDATION_STRINGENCY) :
                     customSamReaderFactory;
 
+        int samCount = 0;
         for ( final Path samPath : samPaths ) {
             // Ensure each file can be read
             try {
@@ -131,7 +162,15 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
                 throw new UserException.CouldNotReadInputFile(samPath.toString(), e);
             }
 
-            SamReader reader = samReaderFactory.open(samPath);
+            SamReader reader;
+            if ( samIndices == null ) {
+                reader = samReaderFactory.open(samPath);
+            }
+            else {
+                final SamInputResource samResource = SamInputResource.of(samPath);
+                samResource.index(samIndices.get(samCount));
+                reader = samReaderFactory.open(samResource);
+            }
 
             // Ensure that each file has an index
             if ( ! reader.hasIndex() ) {
@@ -140,10 +179,18 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
             readers.put(reader, null);
             backingPaths.put(reader, samPath);
+            ++samCount;
         }
 
         // Prepare a header merger only if we have multiple readers
         headerMerger = samPaths.size() > 1 ? createHeaderMerger() : null;
+    }
+
+    /**
+     * Are indices available for all files?
+     */
+    public boolean indicesAvailable() {
+        return indicesAvailable;
     }
 
     /**

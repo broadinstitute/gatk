@@ -146,6 +146,8 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "SingleFileTraversalWithIntervalsData")
     public void testSingleFileTraversalWithIntervals( final Path samFile, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
+
             readsSource.setTraversalBounds(intervals);
 
             List<GATKRead> reads = new ArrayList<>();
@@ -197,6 +199,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "SingleFileQueryByIntervalData")
     public void testSingleFileQueryByInterval( final Path samFile, final SimpleInterval interval, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFile)) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
 
             List<GATKRead> reads = new ArrayList<>();
             Iterator<GATKRead> queryIterator = readsSource.query(interval);
@@ -278,6 +281,8 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "MultipleFilesTraversalWithIntervalsData")
     public void testMultipleFilesTraversalWithIntervals( final List<Path> samFiles, final List<SimpleInterval> intervals, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
+
             readsSource.setTraversalBounds(intervals);
 
             List<GATKRead> reads = new ArrayList<>();
@@ -325,6 +330,7 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
     @Test(dataProvider = "MultipleFilesQueryByIntervalData")
     public void testMultipleFilesQueryByInterval( final List<Path> samFiles, final SimpleInterval interval, final List<String> expectedReadNames ) {
         try (ReadsDataSource readsSource = new ReadsDataSource(samFiles)) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Indices should be reported as available for this reads source");
 
             List<GATKRead> reads = new ArrayList<>();
             Iterator<GATKRead> queryIterator = readsSource.query(interval);
@@ -532,4 +538,71 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         return outputFile;
     }
 
+    @DataProvider(name = "manuallySpecifiedIndexTestData")
+    public Object[][] manuallySpecifiedIndexTestData() {
+        final String BAM_DIR = READS_DATA_SOURCE_TEST_DIRECTORY + "readIndexTest/";
+        final String INDEX_DIR = BAM_DIR + "indices/";
+
+        final List<Path> bams = Arrays.asList(IOUtils.getPath(BAM_DIR + "reads_data_source_test1.bam"),
+                IOUtils.getPath(BAM_DIR + "reads_data_source_test2.bam"));
+
+        final List<Path> indices = Arrays.asList(IOUtils.getPath(INDEX_DIR + "reads_data_source_test1.bam.bai"),
+                IOUtils.getPath(INDEX_DIR + "reads_data_source_test2.bam.bai"));
+
+        return new Object[][]{
+                {bams, indices}
+        };
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData")
+    public void testManuallySpecifiedIndices( final List<Path> bams, final List<Path> indices ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices) ) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
+
+            final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
+            int queryCount = 0;
+            while ( queryReads.hasNext() ) {
+                ++queryCount;
+                queryReads.next();
+            }
+            Assert.assertEquals(queryCount, 5, "Wrong number of reads returned in query");
+        }
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData")
+    public void testManuallySpecifiedIndicesWithCustomReaderFactory( final List<Path> bams, final List<Path> indices ) {
+        final SamReaderFactory customFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT);
+
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory) ) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
+
+            final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
+            int queryCount = 0;
+            while ( queryReads.hasNext() ) {
+                ++queryCount;
+                queryReads.next();
+            }
+            Assert.assertEquals(queryCount, 5, "Wrong number of reads returned in query");
+        }
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData")
+    public void testManuallySpecifiedIndicesNullIndexListOK( final List<Path> bams, final List<Path> indices ) {
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, (List<Path>)null) ) {
+            Assert.assertFalse(readsSource.indicesAvailable(), "Bams not indexed and explicit indices not provided, but indicesAvailable() returns true");
+        }
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData", expectedExceptions = UserException.class)
+    public void testManuallySpecifiedIndicesEmptyIndexList( final List<Path> bams, final List<Path> indices ) {
+        final ReadsDataSource readsSource = new ReadsDataSource(bams, Collections.emptyList());
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData", expectedExceptions = UserException.class)
+    public void testManuallySpecifiedIndicesWrongNumberOfIndices( final List<Path> bams, final List<Path> indices ) {
+        final List<Path> wrongIndices = new ArrayList<>();
+        wrongIndices.add(indices.get(0)); // Add one index, but not the other
+
+        final ReadsDataSource readsSource = new ReadsDataSource(bams, wrongIndices);
+    }
 }
