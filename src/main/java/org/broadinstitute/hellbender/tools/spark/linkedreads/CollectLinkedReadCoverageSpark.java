@@ -71,8 +71,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Set<String> sampledBarcodes = new HashSet<>();
         sampledBarcodes.addAll(sample.map(Tuple2::_1).collect());
 
-        final Iterator<Tuple2<String, Map<String, IntervalTree<List<ReadInfo>>>>> iterator = sample.collect().iterator();
-
         final Broadcast<Set<String>> broadcastSampleNames = ctx.broadcast(sampledBarcodes);
         final JavaPairRDD<String, Iterable<GATKRead>> chimericReads = getUnfilteredReads()
                 .filter(r ->
