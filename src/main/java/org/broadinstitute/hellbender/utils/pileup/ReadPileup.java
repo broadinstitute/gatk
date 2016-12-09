@@ -1,15 +1,19 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
+import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -317,73 +321,59 @@ public final class ReadPileup implements Iterable<PileupElement> {
     }
 
     /**
-     * Returns a new ReadBackedPileup where only one read from an overlapping read
+     * Returns a new ReadPileup where only one read from an overlapping read
      * pair is retained.  If the two reads in question disagree to their basecall,
      * neither read is retained.  If they agree on the base, the read with the higher
      * base quality observation is retained
      *
      * @return the newly filtered pileup
      */
-    @Override
-    public ReadBackedPileup getOverlappingFragmentFilteredPileup() {
+    public ReadPileup getOverlappingFragmentFilteredPileup() {
         return getOverlappingFragmentFilteredPileup(true, true);
     }
 
     /**
-     * Returns a new ReadBackedPileup where only one read from an overlapping read
+     * Returns a new ReadPileup where only one read from an overlapping read
      * pair is retained.  If discardDiscordant and the two reads in question disagree to their basecall,
      * neither read is retained.  Otherwise, the read with the higher
      * quality (base or mapping, depending on baseQualNotMapQual) observation is retained
      *
      * @return the newly filtered pileup
      */
-    @Override
-    public ReadBackedPileupImpl getOverlappingFragmentFilteredPileup(boolean discardDiscordant, boolean baseQualNotMapQual) {
-        if (pileupElementTracker instanceof PerSamplePileupElementTracker) {
-            PerSamplePileupElementTracker<PileupElement> tracker = (PerSamplePileupElementTracker<PileupElement>) pileupElementTracker;
-            PerSamplePileupElementTracker<PileupElement> filteredTracker = new PerSamplePileupElementTracker<PileupElement>();
+    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, boolean baseQualNotMapQual) {
+        Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
 
-            for (final String sample : tracker.getSamples()) {
-                PileupElementTracker<PileupElement> perSampleElements = tracker.getElements(sample);
-                ReadBackedPileupImpl pileup = createNewPileup(loc, perSampleElements).getOverlappingFragmentFilteredPileup(discardDiscordant, baseQualNotMapQual);
-                filteredTracker.addElements(sample, pileup.pileupElementTracker);
-            }
-            return createNewPileup(loc, filteredTracker);
-        } else {
-            Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
+        for (PileupElement p : this) {
+                String readName = p.getRead().getName();
 
-            for (PileupElement p : pileupElementTracker) {
-                String readName = p.getRead().getReadName();
+            // if we've never seen this read before, life is good
+            if (!filteredPileup.containsKey(readName)) {
+                filteredPileup.put(readName, p);
+            } else {
+                PileupElement existing = filteredPileup.get(readName);
 
-                // if we've never seen this read before, life is good
-                if (!filteredPileup.containsKey(readName)) {
-                    filteredPileup.put(readName, p);
+                // if the reads disagree at this position, throw them both out.  Otherwise
+                // keep the element with the higher quality score
+                if (discardDiscordant && existing.getBase() != p.getBase()) {
+                    filteredPileup.remove(readName);
                 } else {
-                    PileupElement existing = filteredPileup.get(readName);
-
-                    // if the reads disagree at this position, throw them both out.  Otherwise
-                    // keep the element with the higher quality score
-                    if (discardDiscordant && existing.getBase() != p.getBase()) {
-                        filteredPileup.remove(readName);
-                    } else {
-                        if (baseQualNotMapQual) {
-                            if (existing.getQual() < p.getQual())
-                                filteredPileup.put(readName, p);
-                        }
-                        else {
-                            if (existing.getMappingQual() < p.getMappingQual())
-                                filteredPileup.put(readName, p);
-                        }
+                    if (baseQualNotMapQual) {
+                        if (existing.getQual() < p.getQual())
+                            filteredPileup.put(readName, p);
+                    }
+                    else {
+                        if (existing.getMappingQual() < p.getMappingQual())
+                            filteredPileup.put(readName, p);
                     }
                 }
             }
-
-            UnifiedPileupElementTracker<PileupElement> filteredTracker = new UnifiedPileupElementTracker<PileupElement>();
-            for (PileupElement filteredElement : filteredPileup.values())
-                filteredTracker.add(filteredElement);
-
-            return createNewPileup(loc, filteredTracker);
         }
+
+        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>();
+        for (PileupElement filteredElement : filteredPileup.values())
+            filteredPileupList.add(filteredElement);
+
+        return new ReadPileup(loc, filteredPileupList);
     }
 
     @Override

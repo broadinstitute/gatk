@@ -1,0 +1,5 @@
+contig	position	variantID	refAllele	altAllele	refCount	altCount	totalCount	lowMAPQDepth	lowBaseQDepth	rawDepth	otherBases	improperPairs
+20	2451361	.	A	C	298	222	520	0	0	538	18	0
+20	2464353	.	A	G	8	12	20	0	0	20	0	0
+20	2633936	.	T	C	64	44	108	1	0	110	1	0
+20	2637071	.	T	C	119	127	246	1	0	247	0	0
