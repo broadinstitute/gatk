@@ -170,8 +170,7 @@ public class SATagBuilderUnitTests {
         return new Object[][] {{read1},{read2},{read3},{read4}};
     }
 
-    // Still waiting on htsjdk new version update...
-    @Test(expectedExceptions = SAMException.class)
+    @Test
     public void testEmptyNMTagSupport() {
         SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
         GATKRead read = ArtificialReadUtils.createArtificialRead(header, "name", "2", 1, "AAAAAAAAAA".getBytes(), "##########".getBytes());
