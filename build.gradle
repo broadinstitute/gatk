@@ -58,6 +58,7 @@ final htsjdkVersion = System.getProperty('htsjdk.version','2.8.0')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.7.1')
 
+
 configurations.all {
     resolutionStrategy {
         force 'com.google.http-client:google-http-client:1.21.0'

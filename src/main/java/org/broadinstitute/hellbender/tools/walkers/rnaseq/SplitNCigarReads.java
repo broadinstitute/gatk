@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.transformers.NDNCigarReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
+import org.broadinstitute.hellbender.utils.SATagBuilder;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.read.*;
@@ -275,7 +276,7 @@ public final class SplitNCigarReads extends TwoPassReadWalker {
         }
         if (readFamily.size() > 1) {
             GATKRead primary = readFamily.remove(0);
-            ReadUtils.setReadsAsSupplemental(primary,readFamily);
+            SATagBuilder.setReadsAsSupplemental(primary,readFamily);
         }
     }
 }

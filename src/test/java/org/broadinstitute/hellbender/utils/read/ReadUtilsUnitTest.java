@@ -407,39 +407,6 @@ public final class ReadUtilsUnitTest extends BaseTest {
         Assert.assertEquals(ReadUtils.getAssignedReferenceIndex(unmappedReadWithAssignedPosition, header), 1);
     }
 
-    @Test
-    public void testSetReadsAsSupplemental() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-        GATKRead primarySup = ArtificialReadUtils.createArtificialRead(header, "read1", 1, 10000, new byte[] {}, new byte[] {}, "4M");
-        primarySup.setMappingQuality(100);
-        primarySup.setAttribute("NM",20);
-        primarySup.setIsReverseStrand(true);
-        GATKRead secondarySup = ArtificialReadUtils.createArtificialRead(header, "read2", 2, 10001, new byte[] {}, new byte[] {}, "4S");
-        secondarySup.setMappingQuality(200);
-        List<GATKRead> sups = new ArrayList<>();
-        sups.add(secondarySup);
-        ReadUtils.setReadsAsSupplemental(primarySup,sups);
-        Assert.assertEquals(primarySup.getAttributeAsString("SA"), "3,10001,+,4S,200,0;");
-        Assert.assertEquals(primarySup.isSupplementaryAlignment(), false);
-        Assert.assertEquals(secondarySup.getAttributeAsString("SA"), "2,10000,-,4M,100,20;");
-        Assert.assertEquals(secondarySup.isSupplementaryAlignment(), true);
-        GATKRead tertiarySup = ArtificialReadUtils.createArtificialRead(header, "read3", 3, 10003, new byte[] {}, new byte[] {}, "4D");
-        tertiarySup.setMappingQuality(200);
-        sups.add(tertiarySup);
-        ReadUtils.setReadsAsSupplemental(primarySup,sups);
-        Assert.assertEquals(sups.size(), 2);
-        Assert.assertEquals(sups.get(0).getAttributeAsString("SA"), "2,10000,-,4M,100,20;4,10003,+,4D,200,0;");
-        Assert.assertTrue(sups.get(1).getAttributeAsString("SA").startsWith("2,10000,-,4M,100,20;"));
-        Assert.assertTrue(primarySup.getAttributeAsString("SA").contains("4,10003,+,4D,200,0;"));
-        Assert.assertTrue(primarySup.getAttributeAsString("SA").contains("3,10001,+,4S,200,0;"));
-        GATKRead unmappedSup = ArtificialReadUtils.createArtificialUnmappedRead(header,new byte[] {}, new byte[] {});
-        sups.clear();
-        sups.add(unmappedSup);
-        ReadUtils.setReadsAsSupplemental(primarySup,sups);
-        Assert.assertEquals(primarySup.getAttributeAsString("SA"), "*,0,+,*,0,0;");
-        Assert.assertEquals(sups.get(0).getAttributeAsString("SA"), "2,10000,-,4M,100,20;");
-    }
-
     @DataProvider(name = "ReadHasNoAssignedPositionTestData")
     public Object[][] readHasNoAssignedPositionTestData() {
         final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
