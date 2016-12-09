@@ -211,4 +211,23 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
             Assert.assertEquals(observed.getCigar(), expected.getCigar(), "getCigar");
         }
     }
+
+    @Test(groups = "spark")
+    public void testGetBamFragments() throws IOException {
+        final Path fragmentDir = new Path(getToolTestDataDir(), "fragments_test");
+        final FileSystem fs = fragmentDir.getFileSystem(new Configuration());
+
+        final FileStatus[] bamFragments = ReadsSparkSink.getBamFragments(fragmentDir, fs);
+        final List<String> expectedFragmentNames = Arrays.asList("part-r-00000", "part-r-00001", "part-r-00002", "part-r-00003");
+
+        Assert.assertEquals(bamFragments.length, expectedFragmentNames.size(), "Wrong number of fragments returned by ReadsSparkSink.getBamFragments()");
+        for ( int i = 0; i < bamFragments.length; ++i ) {
+            Assert.assertEquals(bamFragments[i].getPath().getName(), expectedFragmentNames.get(i), "Fragments are not in correct order");
+        }
+    }
+
+    @Test( expectedExceptions = GATKException.class, groups = "spark" )
+    public void testMergeIntoThrowsIfNoPartFiles() throws IOException {
+        ReadsSparkSink.mergeInto(null, new Path(getToolTestDataDir() + "directoryWithNoPartFiles"), new Configuration());
+    }
 }
