@@ -110,4 +110,10 @@ public class PerAlleleCollection<X> {
     public Set<Allele> getAltAlleles(){
         return altAlleleValueMap.keySet();
     }
+
+    public Allele getRefAllele() {
+        Utils.validateArg(refAllele.isPresent(), "no ref allele");
+        return refAllele.get();
+    }
+
 }

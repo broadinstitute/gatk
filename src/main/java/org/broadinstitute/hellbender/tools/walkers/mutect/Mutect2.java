@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.cmdline.ArgumentCollection;
@@ -12,6 +14,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -101,6 +104,8 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     private Mutect2Engine m2Engine;
 
+    private final List<VariantContext> unfilteredCalls = new ArrayList<>();
+
     @Override
     protected int defaultReadShardSize() { return 5000; }
 
@@ -141,13 +146,24 @@ public final class Mutect2 extends AssemblyRegionWalker {
         m2Engine.writeHeader(vcfWriter, sequenceDictionary);
     }
 
+    //TODO: implement sophisticated filtering
+    @Override
+    public Object onTraversalSuccess() {
+        for (final VariantContext vc : unfilteredCalls) {
+            final VariantContextBuilder vcb = new VariantContextBuilder(vc);
+            vcb.filters(MTAC.ARTIFACT_DETECTION_MODE ? VariantContext.PASSES_FILTERS : Mutect2FilteringEngine.calculateFilters(MTAC, vc));
+            vcfWriter.add(vcb.make());
+        }
+        return "SUCCESS";
+    }
+
     @Override
     public void apply(final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
-        m2Engine.callRegion(region, featureContext).stream()
+        m2Engine.callRegion(region, referenceContext, featureContext).stream()
                 // Only include calls that start within the current read shard (as opposed to the padded regions around it).
                 // This is critical to avoid duplicating events that span shard boundaries!
                 .filter(call -> getCurrentReadShardBounds().contains(call))
-                .forEach(vcfWriter::add);
+                .forEach(unfilteredCalls::add);
     }
 
     @Override

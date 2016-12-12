@@ -5,12 +5,15 @@ import junit.framework.Assert;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -61,6 +64,50 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final double fdr = concordance.getRight();
         Assert.assertTrue(sensitivity > requiredSensitivity);
         Assert.assertTrue(fdr < 0.5);
+    }
+
+    // make a pon with a tumor and then use this pon to call somatic variants on the same tumor
+    // if the pon is doing its job all calls should be filtered by this pon
+    @Test(dataProvider = "dreamSyntheticDataSample1")
+    public void testPon(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final String[] createPonArgs = {
+                "-I", tumorBam.getAbsolutePath(),
+                "-tumor", tumorSample,
+                "-I", normalBam.getAbsolutePath(),
+                "-normal", normalSample,
+                "-R", b37_reference_20_21,
+                "-L", "20",
+                "-O", ponVcf.getAbsolutePath(),
+                "-artifact_detection_mode"
+        };
+
+        runCommandLine(createPonArgs);
+
+        // make an index file for the pon vcf we just created in order to be used below
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-F", ponVcf.getAbsolutePath()), "IndexFeatureFile"));
+
+        final File outputVcf = createTempFile("output", ".vcf");
+        final String[] callWithPonArgs = {
+                "-I", tumorBam.getAbsolutePath(),
+                "-tumor", tumorSample,
+                "-I", normalBam.getAbsolutePath(),
+                "-normal", normalSample,
+                "-normal_panel", ponVcf.getAbsolutePath(),
+                "-R", b37_reference_20_21,
+                "-L", "20",
+                "-O", outputVcf.getAbsolutePath()
+
+        };
+
+        runCommandLine(callWithPonArgs);
+
+        final long numVariants = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+                .filter(vc -> vc.getFilters().isEmpty()).count();
+
+        Assert.assertEquals(numVariants, 0);
     }
 
     // run tumor-only using the original DREAM synthetic sample 1 tumor and normal restricted to
@@ -120,6 +167,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), 0.95},
                 {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), 0.90},
                 {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), 0.65}
+        };
+    }
+
+    // tumor bam, tumor sample name, normal bam, normal sample name, truth vcf, required sensitivity
+    @DataProvider(name = "dreamSyntheticDataSample1")
+    public Object[][] dreamSyntheticDataSample1() {
+        return new Object[][]{
+                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal"}
         };
     }
 
