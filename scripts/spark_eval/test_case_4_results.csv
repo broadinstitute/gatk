@@ -1,0 +1,16 @@
+Command,Number of executors,Executor cores,Executor memory,Exit code,Time (mins)
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,4,1,1g,0,79.35
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,8,1,1g,0,54.87
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,16,1,1g,0,32.62
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,32,1,1g,0,16.45
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,64,1,1g,0,9.36
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,2,2,1g,0,75.38
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,4,2,1g,0,52.15
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,8,2,1g,0,30.49
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,16,2,1g,0,16.90
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,32,2,1g,0,9.00
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,1,4,1g,0,78.86
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,2,4,1g,0,41.30
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,4,4,1g,0,30.75
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,8,4,1g,0,18.90
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam -L Broad.human.exome.b37.interval_list,16,4,1g,0,9.58

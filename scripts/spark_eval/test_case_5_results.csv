@@ -1,0 +1,6 @@
+Command,Number of executors,Executor cores,Executor memory,Exit code,Time (mins)
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,16,4,16g,0,8.90
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,4,1g,0,8.31
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,4,500m,0,8.32
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,4,256m,0,8.48
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,4,128m,3,0.76

@@ -1,0 +1,16 @@
+Command,Number of executors,Executor cores,Executor memory,Exit code,Time (mins)
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,1,1g,0,24.23
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,8,1,1g,0,14.09
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,16,1,1g,0,8.35
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,32,1,1g,0,4.64
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,64,1,1g,0,2.82
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,2,2,1g,0,24.00
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,2,1g,0,14.08
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,8,2,1g,0,8.35
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,16,2,1g,0,4.44
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,32,2,1g,0,2.61
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,1,4,1g,0,23.42
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,2,4,1g,0,13.33
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,4,4,1g,0,8.30
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,8,4,1g,0,4.48
+CountReadsSpark -I hdfs:///user/tom/q4_spark_eval/WGS-G94982-NA12878.bam,16,4,1g,0,2.50
