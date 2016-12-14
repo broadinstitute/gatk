@@ -1,0 +1,16 @@
+{
+  "Mutect2.gatk4_jar": "/home/unix/tsato/gatk-protected.jar",
+  "Mutect2.intervals": "/seq/references/HybSelOligos/HybSelOligos/whole_exome_illumina_coding_v1/whole_exome_illumina_coding_v1.Homo_sapiens_assembly19.targets.interval_list",
+  "Mutect2.ref_fasta": "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta",
+  "Mutect2.ref_fasta_index": "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta.fai",
+  "Mutect2.ref_dict": "/seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.dict",
+  "Mutect2.tumor_bam": "/dsde/working/mutect/dream_smc/bams/synthetic.challenge.set3.tumor.bam",
+  "Mutect2.tumor_bam_index": "/dsde/working/mutect/dream_smc/bams/synthetic.challenge.set3.tumor.bai",
+  "Mutect2.tumor_sample_name": "IS3.snv.indel.sv",
+  "Mutect2.normal_bam": "/dsde/working/mutect/dream_smc/bams/synthetic.challenge.set3.normal.bam",
+  "Mutect2.normal_bam_index": "/dsde/working/mutect/dream_smc/bams/synthetic.challenge.set3.normal.bai",
+  "Mutect2.normal_sample_name": "G15512.prenormal.sorted",
+  "Mutect2.pon": "/xchip/cga/reference/hg19/wgs_hg19_125_cancer_blood_normal_panel.vcf",
+  "Mutect2.pon_index": "/xchip/cga/reference/hg19/wgs_hg19_125_cancer_blood_normal_panel.vcf.idx",
+  "Mutect2.scatter_count": "30"
+}
