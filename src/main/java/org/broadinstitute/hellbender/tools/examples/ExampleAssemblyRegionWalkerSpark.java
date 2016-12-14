@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -8,10 +9,10 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerSpark;
-import scala.Tuple3;
 
 import java.io.Serializable;
 
@@ -75,15 +76,15 @@ public final class ExampleAssemblyRegionWalkerSpark extends AssemblyRegionWalker
     }
 
     @Override
-    protected void runTool(final JavaSparkContext ctx) {
-        getAssemblyRegions(ctx).map(assemblyFunction(knownVariants)).saveAsTextFile(outputFile);
+    protected void processAssemblyRegions(JavaRDD<AssemblyRegionWalkerContext> rdd, JavaSparkContext ctx) {
+        rdd.map(assemblyFunction(knownVariants)).saveAsTextFile(outputFile);
     }
 
-    private static Function<Tuple3<AssemblyRegion, ReferenceContext, FeatureContext>, String> assemblyFunction(FeatureInput<VariantContext> knownVariants) {
-        return (Function<Tuple3<AssemblyRegion, ReferenceContext, FeatureContext>, String>) t -> {
-            AssemblyRegion region = t._1();
-            ReferenceContext referenceContext = t._2();
-            FeatureContext featureContext = t._3();
+    private static Function<AssemblyRegionWalkerContext, String> assemblyFunction(FeatureInput<VariantContext> knownVariants) {
+        return (Function<AssemblyRegionWalkerContext, String>) context -> {
+            AssemblyRegion region = context.getAssemblyRegion();
+            ReferenceContext referenceContext = context.getReferenceContext();
+            FeatureContext featureContext = context.getFeatureContext();
 
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("%s assembly region at %s (%s with padding), containing %d reads.\n\n",

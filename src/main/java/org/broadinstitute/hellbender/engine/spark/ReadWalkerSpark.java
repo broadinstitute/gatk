@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -13,15 +11,14 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple3;
 
-import javax.annotation.Nullable;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
- * A Spark version of {@link ReadWalker}.
+ * A Spark version of {@link ReadWalker}. Subclasses should implement {@link #processReads(JavaRDD, JavaSparkContext)}
+ * and operate on the passed in RDD.
  */
 public abstract class ReadWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
@@ -60,7 +57,7 @@ public abstract class ReadWalkerSpark extends GATKSparkTool {
      *
      * @return all reads as a {@link JavaRDD}, bounded by intervals if specified.
      */
-    public JavaRDD<Tuple3<GATKRead, ReferenceContext, FeatureContext>> getReads(JavaSparkContext ctx) {
+    public JavaRDD<ReadWalkerContext> getReads(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         // use unpadded shards (padding is only needed for reference bases)
@@ -73,27 +70,21 @@ public abstract class ReadWalkerSpark extends GATKSparkTool {
         return shardedReads.flatMap(getReadsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, readShardPadding));
     }
 
-    private static FlatMapFunction<Shard<GATKRead>, Tuple3<GATKRead, ReferenceContext, FeatureContext>> getReadsFunction(
+    private static FlatMapFunction<Shard<GATKRead>, ReadWalkerContext> getReadsFunction(
             Broadcast<ReferenceMultiSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
             SAMSequenceDictionary sequenceDictionary, int readShardPadding) {
-        return (FlatMapFunction<Shard<GATKRead>, Tuple3<GATKRead, ReferenceContext, FeatureContext>>) shard -> {
+        return (FlatMapFunction<Shard<GATKRead>, ReadWalkerContext>) shard -> {
             // get reference bases for this shard (padded)
             SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(readShardPadding, sequenceDictionary);
             ReferenceDataSource reference = bReferenceSource == null ? null :
                     new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
 
-            Iterator<Tuple3<GATKRead, ReferenceContext, FeatureContext>> transform = Iterators.transform(shard.iterator(), new Function<GATKRead, Tuple3<GATKRead, ReferenceContext, FeatureContext>>() {
-                @Nullable
-                @Override
-                public Tuple3<GATKRead, ReferenceContext, FeatureContext> apply(@Nullable GATKRead read) {
-                    final SimpleInterval readInterval = getReadInterval(read);
-                    return new Tuple3<>(read, new ReferenceContext(reference, readInterval), new FeatureContext(features, readInterval));
-                }
-            });
-            // only include reads that start in the shard
-            return Iterators.filter(transform, r -> r._1().getStart() >= shard.getStart()
-                    && r._1().getStart() <= shard.getEnd());
+            return StreamSupport.stream(shard.spliterator(), false)
+                    .map(r -> {
+                        final SimpleInterval readInterval = getReadInterval(r);
+                        return new ReadWalkerContext(r, new ReferenceContext(reference, readInterval), new FeatureContext(features, readInterval));
+                    }).iterator();
         };
     }
 
@@ -105,4 +96,17 @@ public abstract class ReadWalkerSpark extends GATKSparkTool {
     static SimpleInterval getReadInterval(final GATKRead read) {
         return !read.isUnmapped() && SimpleInterval.isValid(read.getContig(), read.getStart(), read.getEnd()) ? new SimpleInterval(read) : null;
     }
+
+    @Override
+    protected void runTool(JavaSparkContext ctx) {
+        processReads(getReads(ctx), ctx);
+    }
+
+    /**
+     * Process the reads and write output. Must be implemented by subclasses.
+     *
+     * @param rdd a distributed collection of {@link ReadWalkerContext}
+     * @param ctx our Spark context
+     */
+    protected abstract void processReads(JavaRDD<ReadWalkerContext> rdd, JavaSparkContext ctx);
 }

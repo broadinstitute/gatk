@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -19,15 +17,14 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import scala.Tuple4;
 
-import javax.annotation.Nullable;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
- * A Spark version of {@link VariantWalker}.
+ * A Spark version of {@link VariantWalker}. Subclasses should implement {@link #processVariants(JavaRDD, JavaSparkContext)}
+ * and operate on the passed in RDD.
  */
 public abstract class VariantWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
@@ -119,7 +116,7 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
      *
      * @return all variants as a {@link JavaRDD}, bounded by intervals if specified.
      */
-    public JavaRDD<Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>> getVariants(JavaSparkContext ctx) {
+    public JavaRDD<VariantWalkerContext> getVariants(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         // use unpadded shards (padding is only needed for reference bases)
@@ -135,31 +132,39 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
         return shardedVariants.flatMap(getVariantsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, variantShardPadding));
     }
 
-    private static FlatMapFunction<Shard<VariantContext>, Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>> getVariantsFunction(
+    private static FlatMapFunction<Shard<VariantContext>, VariantWalkerContext> getVariantsFunction(
             final Broadcast<ReferenceMultiSource> bReferenceSource,
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMSequenceDictionary sequenceDictionary, final int variantShardPadding) {
-        return (FlatMapFunction<Shard<VariantContext>, Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>>) shard -> {
+        return (FlatMapFunction<Shard<VariantContext>, VariantWalkerContext>) shard -> {
             // get reference bases for this shard (padded)
             SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(variantShardPadding, sequenceDictionary);
             ReferenceDataSource reference = bReferenceSource == null ? null :
                     new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
 
-            Iterator<Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>> transform = Iterators.transform(shard.iterator(), new Function<VariantContext, Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>>() {
-                @Nullable
-                @Override
-                public Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext> apply(@Nullable VariantContext variant) {
-                    final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    return new Tuple4<>(variant,
-                            new ReadsContext(), // empty
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
-                }
-            });
-            // only include variants that start in the shard
-            return Iterators.filter(transform, r -> r._1().getStart() >= shard.getStart()
-                    && r._1().getStart() <= shard.getEnd());
+            return StreamSupport.stream(shard.spliterator(), false)
+                    .filter(v -> v.getStart() >= shard.getStart() && v.getStart() <= shard.getEnd()) // only include variants that start in the shard
+                    .map(v -> {
+                        final SimpleInterval variantInterval = new SimpleInterval(v);
+                        return new VariantWalkerContext(v,
+                                new ReadsContext(), // empty
+                                new ReferenceContext(reference, variantInterval),
+                                new FeatureContext(features, variantInterval));
+                    }).iterator();
         };
     }
+
+    @Override
+    protected void runTool(JavaSparkContext ctx) {
+        processVariants(getVariants(ctx), ctx);
+    }
+
+    /**
+     * Process the variants and write output. Must be implemented by subclasses.
+     *
+     * @param rdd a distributed collection of {@link VariantWalkerContext}
+     * @param ctx our Spark context
+     */
+    protected abstract void processVariants(JavaRDD<VariantWalkerContext> rdd, JavaSparkContext ctx);
 }

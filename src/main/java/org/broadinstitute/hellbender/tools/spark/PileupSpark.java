@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark;
 
 import htsjdk.tribble.Feature;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -15,6 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.engine.spark.LocusWalkerContext;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.engine.spark.LocusWalkerSpark;
@@ -76,16 +78,16 @@ public final class PileupSpark extends LocusWalkerSpark {
     }
 
     @Override
-    protected void runTool(final JavaSparkContext ctx) {
-        getAlignments(ctx).map(pileupFunction(metadata, outputInsertLength, showVerbose)).saveAsTextFile(outputFile);
+    protected void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx) {
+        rdd.map(pileupFunction(metadata, outputInsertLength, showVerbose)).saveAsTextFile(outputFile);
     }
 
-    private static Function<Tuple3<AlignmentContext, ReferenceContext, FeatureContext>, String> pileupFunction(List<FeatureInput<Feature>> metadata,
-                                                                                                               boolean outputInsertLength, boolean showVerbose) {
-        return (Function<Tuple3<AlignmentContext, ReferenceContext, FeatureContext>, String>) t -> {
-            AlignmentContext alignmentContext = t._1();
-            ReferenceContext referenceContext = t._2();
-            FeatureContext featureContext = t._3();
+    private static Function<LocusWalkerContext, String> pileupFunction(List<FeatureInput<Feature>> metadata,
+                                                                       boolean outputInsertLength, boolean showVerbose) {
+        return (Function<LocusWalkerContext, String>) context -> {
+            AlignmentContext alignmentContext = context.getAlignmentContext();
+            ReferenceContext referenceContext = context.getReferenceContext();
+            FeatureContext featureContext = context.getFeatureContext();
             final String features = getFeaturesString(featureContext, metadata);
             final ReadPileup basePileup = alignmentContext.getBasePileup();
             final StringBuilder s = new StringBuilder();

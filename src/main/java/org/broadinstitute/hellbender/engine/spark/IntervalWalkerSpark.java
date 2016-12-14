@@ -7,15 +7,18 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.cmdline.Argument;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple4;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
- * A Spark version of {@link IntervalWalker}.
+ * A Spark version of {@link IntervalWalker}. Subclasses should implement {@link #processIntervals(JavaRDD, JavaSparkContext)}
+ * and operate on the passed in RDD.
  */
 public abstract class IntervalWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
@@ -34,6 +37,7 @@ public abstract class IntervalWalkerSpark extends GATKSparkTool {
     /**
      * Customize initialization of the Feature data source for this traversal type to disable query lookahead.
      */
+    @Override
     void initializeFeatures() {
         // Disable query lookahead in our FeatureManager for this traversal type. Query lookahead helps
         // when our query intervals are overlapping and gradually increasing in position (as they are
@@ -50,7 +54,7 @@ public abstract class IntervalWalkerSpark extends GATKSparkTool {
      *
      * @return all intervals as a {@link JavaRDD}.
      */
-    public JavaRDD<Tuple4<SimpleInterval, ReadsContext, ReferenceContext, FeatureContext>> getIntervals(JavaSparkContext ctx) {
+    public JavaRDD<IntervalWalkerContext> getIntervals(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         // don't shard the intervals themselves, since we want each interval to be processed by a single task
         final List<ShardBoundary> intervalShardBoundaries = getIntervals().stream()
@@ -61,18 +65,41 @@ public abstract class IntervalWalkerSpark extends GATKSparkTool {
         return shardedReads.map(getIntervalsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, intervalShardPadding));
     }
 
-    private static org.apache.spark.api.java.function.Function<Shard<GATKRead>, Tuple4<SimpleInterval, ReadsContext, ReferenceContext, FeatureContext>> getIntervalsFunction(
+    private static org.apache.spark.api.java.function.Function<Shard<GATKRead>, IntervalWalkerContext> getIntervalsFunction(
             Broadcast<ReferenceMultiSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
             SAMSequenceDictionary sequenceDictionary, int intervalShardPadding) {
-        return (org.apache.spark.api.java.function.Function<Shard<GATKRead>, Tuple4<SimpleInterval, ReadsContext, ReferenceContext, FeatureContext>>) shard -> {
+        return (org.apache.spark.api.java.function.Function<Shard<GATKRead>, IntervalWalkerContext>) shard -> {
             // get reference bases for this shard (padded)
             SimpleInterval interval = shard.getInterval();
             SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(intervalShardPadding, sequenceDictionary);
-            ReadsContext readsContext = new ReadsContext(shard);
+            ReadsContext readsContext = new ReadsContext(new GATKDataSource<GATKRead>() {
+                @Override
+                public Iterator<GATKRead> iterator() {
+                    return shard.iterator();
+                }
+                @Override
+                public Iterator<GATKRead> query(SimpleInterval interval) {
+                    return StreamSupport.stream(shard.spliterator(), false).filter(
+                            r -> IntervalUtils.overlaps(r, interval)).iterator();
+                }
+            }, shard.getInterval());
             ReferenceDataSource reference = bReferenceSource == null ? null :
                     new ReferenceMemorySource(bReferenceSource.getValue().getReferenceBases(null, paddedInterval), sequenceDictionary);
             FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
-            return new Tuple4<>(interval, readsContext, new ReferenceContext(reference, interval), new FeatureContext(features, interval));
+            return new IntervalWalkerContext(interval, readsContext, new ReferenceContext(reference, interval), new FeatureContext(features, interval));
         };
     }
+
+    @Override
+    protected void runTool(JavaSparkContext ctx) {
+        processIntervals(getIntervals(ctx), ctx);
+    }
+
+    /**
+     * Process the intervals and write output. Must be implemented by subclasses.
+     *
+     * @param rdd a distributed collection of {@link IntervalWalkerContext}
+     * @param ctx our Spark context
+     */
+    protected abstract void processIntervals(JavaRDD<IntervalWalkerContext> rdd, JavaSparkContext ctx);
 }

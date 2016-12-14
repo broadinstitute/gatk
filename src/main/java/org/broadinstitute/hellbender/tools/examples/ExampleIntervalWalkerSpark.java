@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -10,10 +11,10 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.IntervalProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.spark.IntervalWalkerContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.engine.spark.IntervalWalkerSpark;
-import scala.Tuple4;
 
 import java.io.PrintStream;
 import java.util.List;
@@ -38,17 +39,18 @@ public final class ExampleIntervalWalkerSpark extends IntervalWalkerSpark {
 
     private PrintStream outputStream = null;
 
+
     @Override
-    protected void runTool(final JavaSparkContext ctx) {
-        getIntervals(ctx).map(intervalFunction(optionalVariants.variantFiles)).saveAsTextFile(outputFile);
+    protected void processIntervals(JavaRDD<IntervalWalkerContext> rdd, JavaSparkContext ctx) {
+        rdd.map(intervalFunction(optionalVariants.variantFiles)).saveAsTextFile(outputFile);
     }
 
-    private static Function<Tuple4<SimpleInterval, ReadsContext, ReferenceContext, FeatureContext>, String> intervalFunction(List<FeatureInput<VariantContext>> auxiliaryVariants) {
-        return (Function<Tuple4<SimpleInterval, ReadsContext, ReferenceContext, FeatureContext>, String>) t -> {
-            SimpleInterval interval = t._1();
-            ReadsContext readsContext = t._2();
-            ReferenceContext referenceContext = t._3();
-            FeatureContext featureContext = t._4();
+    private static Function<IntervalWalkerContext, String> intervalFunction(List<FeatureInput<VariantContext>> auxiliaryVariants) {
+        return (Function<IntervalWalkerContext, String>) context -> {
+            SimpleInterval interval = context.getInterval();
+            ReadsContext readsContext = context.getReadsContext();
+            ReferenceContext referenceContext = context.getReferenceContext();
+            FeatureContext featureContext = context.getFeatureContext();
 
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("Current interval: " + interval));

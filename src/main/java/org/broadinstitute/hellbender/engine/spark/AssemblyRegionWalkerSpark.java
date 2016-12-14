@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
@@ -18,15 +16,15 @@ import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple3;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
- * A Spark version of {@link AssemblyRegionWalker}.
+ * A Spark version of {@link AssemblyRegionWalker}. Subclasses should implement {@link #processAssemblyRegions(JavaRDD, JavaSparkContext)}
+ * and operate on the passed in RDD.
  */
 public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
@@ -106,6 +104,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     @Override
     public final boolean requiresReference() { return true; }
 
+    @Override
     public List<ReadFilter> getDefaultReadFilters() {
         final List<ReadFilter> defaultFilters = new ArrayList<>(2);
         defaultFilters.add(new WellformedReadFilter());
@@ -121,6 +120,9 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
 
     private List<ShardBoundary> intervalShards;
 
+    /**
+     * Note that this sets {@code intervalShards} as a side effect, in order to add padding to the intervals.
+     */
     @Override
     protected List<SimpleInterval> editIntervals(List<SimpleInterval> rawIntervals) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
@@ -140,7 +142,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      *
      * @return all assembly regions as a {@link JavaRDD}, bounded by intervals if specified.
      */
-    public JavaRDD<Tuple3<AssemblyRegion, ReferenceContext, FeatureContext>> getAssemblyRegions(JavaSparkContext ctx) {
+    protected JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegions(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
         Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
@@ -149,7 +151,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
                 assemblyRegionEvaluator(), minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold, maxProbPropagationDistance));
     }
 
-    private static FlatMapFunction<Shard<GATKRead>, Tuple3<AssemblyRegion, ReferenceContext, FeatureContext>> getAssemblyRegionsFunction(
+    private static FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext> getAssemblyRegionsFunction(
             final Broadcast<ReferenceMultiSource> bReferenceSource,
             final Broadcast<FeatureManager> bFeatureManager,
             final SAMSequenceDictionary sequenceDictionary,
@@ -160,7 +162,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
             final int assemblyRegionPadding,
             final double activeProbThreshold,
             final int maxProbPropagationDistance) {
-        return (FlatMapFunction<Shard<GATKRead>, Tuple3<AssemblyRegion, ReferenceContext, FeatureContext>>) shardedRead -> {
+        return (FlatMapFunction<Shard<GATKRead>, AssemblyRegionWalkerContext>) shardedRead -> {
             SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
             SimpleInterval assemblyRegionPaddedInterval = paddedInterval.expandWithinContig(assemblyRegionPadding, sequenceDictionary);
 
@@ -174,16 +176,24 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
                     header, referenceContext, featureContext, evaluator,
                     minAssemblyRegionSize, maxAssemblyRegionSize, assemblyRegionPadding, activeProbThreshold,
                     maxProbPropagationDistance);
-            return Iterators.transform(assemblyRegions.iterator(), new Function<AssemblyRegion, Tuple3<AssemblyRegion, ReferenceContext, FeatureContext>>() {
-                @Nullable
-                @Override
-                public Tuple3<AssemblyRegion, ReferenceContext, FeatureContext> apply(@Nullable AssemblyRegion assemblyRegion) {
-                    return new Tuple3<>(assemblyRegion,
-                            new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
-                            new FeatureContext(features, assemblyRegion.getExtendedSpan()));
-                }
-            });
+            return StreamSupport.stream(assemblyRegions.spliterator(), false).map(assemblyRegion ->
+                    new AssemblyRegionWalkerContext(assemblyRegion,
+                        new ReferenceContext(reference, assemblyRegion.getExtendedSpan()),
+                        new FeatureContext(features, assemblyRegion.getExtendedSpan()))).iterator();
         };
     }
+
+    @Override
+    protected void runTool(JavaSparkContext ctx) {
+        processAssemblyRegions(getAssemblyRegions(ctx), ctx);
+    }
+
+    /**
+     * Process the assembly regions and write output. Must be implemented by subclasses.
+     *
+     * @param rdd a distributed collection of {@link AssemblyRegionWalkerContext}
+     * @param ctx our Spark context
+     */
+    protected abstract void processAssemblyRegions(JavaRDD<AssemblyRegionWalkerContext> rdd, JavaSparkContext ctx);
 
 }

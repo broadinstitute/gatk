@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.examples;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.broadinstitute.hellbender.cmdline.Argument;
@@ -8,9 +9,9 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.spark.VariantWalkerContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.engine.spark.VariantWalkerSpark;
-import scala.Tuple4;
 
 import java.io.PrintStream;
 
@@ -35,16 +36,16 @@ public final class ExampleVariantWalkerSpark extends VariantWalkerSpark {
     private PrintStream outputStream = null;
 
     @Override
-    protected void runTool(final JavaSparkContext ctx) {
-        getVariants(ctx).map(variantFunction(auxiliaryVariants)).saveAsTextFile(outputFile);
+    protected void processVariants(JavaRDD<VariantWalkerContext> rdd, JavaSparkContext ctx) {
+        rdd.map(variantFunction(auxiliaryVariants)).saveAsTextFile(outputFile);
     }
 
-    private static Function<Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>, String> variantFunction(FeatureInput<VariantContext> auxiliaryVariants) {
-        return (Function<Tuple4<VariantContext, ReadsContext, ReferenceContext, FeatureContext>, String>) t -> {
-            VariantContext variant = t._1();
-            ReadsContext readsContext = t._2();
-            ReferenceContext referenceContext = t._3();
-            FeatureContext featureContext = t._4();
+    private static Function<VariantWalkerContext, String> variantFunction(FeatureInput<VariantContext> auxiliaryVariants) {
+        return (Function<VariantWalkerContext, String>) context -> {
+            VariantContext variant = context.getVariant();
+            ReadsContext readsContext = context.getReadsContext();
+            ReferenceContext referenceContext = context.getReferenceContext();
+            FeatureContext featureContext = context.getFeatureContext();
 
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("Current variant: " + variant));
