@@ -44,9 +44,7 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * Note: the current implementation of ReadPileup does not efficiently retrieve the stratified pileup
      */
     public ReadPileup(final Locatable loc, final Map<String, ReadPileup> stratifiedPileup) {
-        this(loc, stratifiedPileup.values().stream().flatMap(ReadPileup::getElementStream)
-                .sorted((l, r) -> Integer.compare(l.getRead().getStart(), r.getRead().getStart()))
-                .collect(Collectors.toList()));
+        this(loc, stratifiedPileup.values().stream().flatMap(ReadPileup::getElementStream).collect(Collectors.toList()));
     }
 
     /**
@@ -200,6 +198,15 @@ public final class ReadPileup implements Iterable<PileupElement> {
     @Override
     public Iterator<PileupElement> iterator() {
         return Collections.unmodifiableList(pileupElements).iterator();
+    }
+
+    /**
+     * Iterator over sorted by read start PileupElements.
+     */
+    public Iterator<PileupElement> sortedIterator() {
+        return getElementStream()
+                .sorted((l, r) -> Integer.compare(l.getRead().getStart(), r.getRead().getStart()))
+                .iterator();
     }
 
     /**

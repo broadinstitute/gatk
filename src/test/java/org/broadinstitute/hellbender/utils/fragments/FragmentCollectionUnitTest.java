@@ -20,18 +20,15 @@ import java.util.Map;
  */
 public class FragmentCollectionUnitTest extends BaseTest {
 
-    private static final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
-    private static final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "10M");
-    private static final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "10M");
-    static {
+    @Test
+    public void createFromMultiSamplePileup() throws Exception {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "10M");
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "10M");
         read1.setPosition(new SimpleInterval("22", 200, 210));
         read2.setPosition(new SimpleInterval("22", 208, 218));
         read1.setMatePosition(read2);
         read2.setMatePosition(read1);
-    }
-
-    @Test
-    public void createFromMultiSamplePileup() throws Exception {
         final Locatable loc = new SimpleInterval("22", 208, 208);
         final Map<String, ReadPileup> stratified = new LinkedHashMap<>();
         stratified.put("sample1", new ReadPileup(loc, Arrays.asList(read2), 0));
