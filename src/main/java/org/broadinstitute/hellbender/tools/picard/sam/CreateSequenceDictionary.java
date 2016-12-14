@@ -68,8 +68,11 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
         }
         if (OUTPUT == null) {
             // determine the name for the dict file in the same way as CachingIndexedFastaSequenceFile.checkAndCreate
-            final String fastaExt = REFERENCE_SEQUENCE.getAbsolutePath().endsWith("fa") ? "\\.fa$" : "\\.fasta$";
-            OUTPUT = new File(REFERENCE_SEQUENCE.getAbsolutePath().replaceAll(fastaExt, IOUtil.DICT_FILE_EXTENSION));
+            final String name = REFERENCE_SEQUENCE.getName();
+            final String fastaExt = ReferenceSequenceFileFactory.FASTA_EXTENSIONS.stream()
+                    .filter(name::endsWith).findFirst().orElseGet(() -> "");
+            OUTPUT = new File(REFERENCE_SEQUENCE.getParentFile(),
+                    REFERENCE_SEQUENCE.getName().replace(fastaExt, IOUtil.DICT_FILE_EXTENSION));
         }
         return null;
     }
