@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
+import com.google.common.io.Files;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -38,10 +39,13 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
 
     @Test
     public void testDefaultOutputFile() throws Exception {
-        final File expectedDict = new File(TEST_DATA_DIR, "basic.dict");
+        final File tempDir = createTempDir("CreateSequenceDictionaryTest");
+        final File fastaCopy = new File(tempDir, "basic.fasta");
+        Files.copy(BASIC_FASTA, fastaCopy);
+        final File expectedDict = new File(tempDir, "basic.dict");
         Assert.assertFalse(expectedDict.exists());
         final String[] argv = {
-                "--reference", BASIC_FASTA.getAbsolutePath(),
+                "--reference", fastaCopy.getAbsolutePath(),
                 "--URI", BASIC_FASTA.getName()
         };
         runCommandLine(argv);

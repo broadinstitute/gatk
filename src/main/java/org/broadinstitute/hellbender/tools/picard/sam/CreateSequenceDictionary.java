@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
@@ -67,14 +68,22 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
             URI = "file:" + REFERENCE_SEQUENCE.getAbsolutePath();
         }
         if (OUTPUT == null) {
-            // determine the name for the dict file in the same way as CachingIndexedFastaSequenceFile.checkAndCreate
-            final String name = REFERENCE_SEQUENCE.getName();
-            final String fastaExt = ReferenceSequenceFileFactory.FASTA_EXTENSIONS.stream()
-                    .filter(name::endsWith).findFirst().orElseGet(() -> "");
-            OUTPUT = new File(REFERENCE_SEQUENCE.getParentFile(),
-                    REFERENCE_SEQUENCE.getName().replace(fastaExt, IOUtil.DICT_FILE_EXTENSION));
+            if (OUTPUT == null) {
+                // TODO: use the htsjdk method implemented in https://github.com/samtools/htsjdk/pull/774
+                OUTPUT = getDefaultDictionaryForReferenceSequence(REFERENCE_SEQUENCE);
+                logger.info("Output dictionary will be written in ", OUTPUT);
+            }
         }
         return null;
+    }
+
+    // TODO: this method will be in htsjdk (https://github.com/samtools/htsjdk/pull/774)
+    private static File getDefaultDictionaryForReferenceSequence(final File fastaFile) {
+        final String name = fastaFile.getName();
+        final String extension = ReferenceSequenceFileFactory.FASTA_EXTENSIONS.stream().filter(name::endsWith).findFirst()
+                .orElseGet(() -> {throw new IllegalArgumentException("File is not a supported reference file type: " + fastaFile.getAbsolutePath());});
+        final int extensionIndex = name.length() - extension.length();
+        return new File(fastaFile.getParentFile(), name.substring(0, extensionIndex) + IOUtil.DICT_FILE_EXTENSION);
     }
 
     /**
