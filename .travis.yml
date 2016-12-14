@@ -5,8 +5,10 @@ git:
   depth: 9999999
 jdk:
 - oraclejdk8
+osx_image: xcode8
 env:
   matrix:
+  - osx
   - CLOUD=mandatory
   - CLOUD=false
   global:
