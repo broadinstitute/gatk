@@ -37,7 +37,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * sample to prove the variant is not present in germline.
      */
     @Argument(fullName="cosmic", shortName = "cosmic", doc="VCF file of COSMIC sites", optional = true)
-    public List<FeatureInput<VariantContext>> cosmicFeatureInput = Collections.emptyList();
+    public FeatureInput<VariantContext> cosmicFeatureInput;
 
     /**
      * A panel of normals can be a useful (optional) input to help filter out commonly seen sequencing noise that may appear as low allele-fraction somatic variants.

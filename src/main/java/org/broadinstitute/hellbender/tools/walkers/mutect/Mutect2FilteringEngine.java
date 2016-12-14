@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -62,7 +63,8 @@ public class Mutect2FilteringEngine {
         final boolean siteInCosmic = vc.hasAttribute(SomaticGenotypingEngine.IN_COSMIC_VCF_ATTRIBUTE);
         final boolean siteInDbsnp = vc.hasAttribute(SomaticGenotypingEngine.IN_DBSNP_VCF_ATTRIBUTE);
         if (siteInDbsnp && !siteInCosmic ) {
-            final double normalLod = vc.getAttributeAsDouble(GATKVCFConstants.NORMAL_LOD_KEY, 0.0);
+            // take the normal LOD of the first alt allele, which has the highest tumor LOD
+            final double normalLod = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(vc, GATKVCFConstants.NORMAL_LOD_KEY, () -> null, -1)[0];
             if (normalLod < MTAC.NORMAL_DBSNP_LOD_THRESHOLD) {
                 filters.add(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME);
             }
