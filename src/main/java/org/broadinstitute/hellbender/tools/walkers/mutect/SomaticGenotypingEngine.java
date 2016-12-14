@@ -153,7 +153,7 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
 
             //TODO: multiple alt alleles -- per-allele strand bias
             final List<Allele> allSomaticAlleles = ListUtils.union(Arrays.asList(mergedVC.getReference()), somaticAltAlleles);
-            final Allele alleleWithHighestTumorLOD = Collections.max(somaticAltAlleles, (a1, a2) -> Double.compare(tumorLods.getAlt(a1), tumorLods.getAlt(a2)));
+            final Allele alleleWithHighestTumorLOD = somaticAltAlleles.get(0);
             addStrandBiasAnnotations(readAlleleLikelihoods, tumorAlleleFractions, alleleWithHighestTumorLOD, callVcb);
 
             if (!featureContext.getValues(MTAC.cosmicFeatureInput, loc).isEmpty()) {
