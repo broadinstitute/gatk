@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RankSumTest;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -17,10 +18,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class ReadPosRankSumTestUnitTest extends BaseTest {
     private final String sample1 = "NA1";
@@ -48,14 +46,6 @@ public final class ReadPosRankSumTestUnitTest extends BaseTest {
         read.setMappingQuality(mq);
         read.setPosition(CONTIG, start);
         return read;
-    }
-
-    @DataProvider(name = "dataReadPos")
-    private Object[][] dataReadPos(){
-         return new Object[][]{
-                 {},
-                 {new AS_ReadPosRankSumTest(), GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY},
-         };
     }
 
     @Test
@@ -157,5 +147,30 @@ public final class ReadPosRankSumTestUnitTest extends BaseTest {
         final Map<String, Object> annotatePastEndNonRaw = ann.annotate(ref, vcPastEnd, likelihoods);
         Assert.assertTrue(annotatePastEndRaw.isEmpty());
         Assert.assertTrue(annotatePastEndNonRaw.isEmpty());
+    }
+
+    @DataProvider(name = "dataIsUsableRead")
+    private Object[][] dataIsUsableRead(){
+        return new Object[][]{
+                {"20M6D2M", 10, 1, 0, true},
+                {"20M6D2M", 10, 1, 27, true},
+                {"20M6D2M", 10, 1, 29, false},
+                {"1I20M1S", 10, 1, 0, true},
+                {"1I20M1S", 0, 1, 0, false},
+                {"1I20M1S", QualityUtils.MAPPING_QUALITY_UNAVAILABLE, 1, 0, false},
+                {"1I20M1S", 10, 1, 22, false},
+                {"1I20M1S", 10, 21, 42, false},
+                {"1I20M1H", 10, 1, 21, false},
+        };
+    }
+
+    @Test(dataProvider = "dataIsUsableRead")
+    public void testIsUsableRead(final String cigarString, final int mappingQuality, final int start, final int refLoc, final boolean isUsable ) {
+        final ReadPosRankSumTest readPosRankSumTest = new ReadPosRankSumTest();
+        final Cigar cigar = TextCigarCodec.decode(cigarString);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(cigar);
+        read.setMappingQuality(mappingQuality);
+        read.setPosition(CONTIG, start);
+        Assert.assertEquals(readPosRankSumTest.isUsableRead(read, refLoc), isUsable);
     }
 }
