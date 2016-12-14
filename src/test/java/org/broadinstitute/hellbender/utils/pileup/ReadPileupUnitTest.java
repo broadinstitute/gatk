@@ -632,4 +632,22 @@ public final class ReadPileupUnitTest extends BaseTest {
         Assert.assertEquals(copy2, read2);
     }
 
+    @Test
+    public void testSortedIterator() throws Exception {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader();
+        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header, "10M");
+        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header, "10M");
+        read1.setPosition(new SimpleInterval("22", 200, 210));
+        read2.setPosition(new SimpleInterval("22", 208, 218));
+        read1.setMatePosition(read2);
+        read2.setMatePosition(read1);
+        final Locatable loc = new SimpleInterval("22", 208, 208);
+        final Map<String, ReadPileup> stratified = new LinkedHashMap<>();
+        stratified.put("sample1", new ReadPileup(loc, Arrays.asList(read2), 0));
+        stratified.put("sample2", new ReadPileup(loc, Arrays.asList(read1), 9));
+        final ReadPileup combined = new ReadPileup(loc, stratified);
+        final Iterator<PileupElement> sortedIterator = combined.sortedIterator();
+        Assert.assertSame(sortedIterator.next().getRead(), read1);
+        Assert.assertSame(sortedIterator.next().getRead(), read2);
+    }
 }

@@ -201,6 +201,15 @@ public final class ReadPileup implements Iterable<PileupElement> {
     }
 
     /**
+     * Iterator over sorted by read start PileupElements.
+     */
+    public Iterator<PileupElement> sortedIterator() {
+        return getElementStream()
+                .sorted((l, r) -> Integer.compare(l.getRead().getStart(), r.getRead().getStart()))
+                .iterator();
+    }
+
+    /**
      * The number of elements in this pileup.
      */
     public int size() {

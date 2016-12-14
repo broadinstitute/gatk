@@ -126,7 +126,7 @@ public final class FragmentCollection<T> {
         if ( rbp == null ) {
             throw new IllegalArgumentException("Pileup cannot be null");
         }
-        return create(rbp, rbp.size(), pileup -> pileup.getRead());
+        return create(rbp::sortedIterator, rbp.size(), pileup -> pileup.getRead());
     }
 
     /**
