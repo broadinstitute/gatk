@@ -37,7 +37,7 @@ public final class CreateSequenceDictionaryIntegrationTest extends CommandLinePr
     }
 
     @Test
-    public void testNoOutput() throws Exception {
+    public void testDefaultOutputFile() throws Exception {
         final File expectedDict = new File(TEST_DATA_DIR, "basic.dict");
         Assert.assertFalse(expectedDict.exists());
         final String[] argv = {
