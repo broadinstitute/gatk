@@ -117,7 +117,11 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
                 continue;
 
             final String sampleBarcode = currentRecord.getStringAttribute("BC");
-            final FastqWriters fq = writers.get(currentRecord.getReadGroup() + "-" + sampleBarcode);
+            final String writerKey = currentRecord.getReadGroup() + "-" + sampleBarcode;
+            final FastqWriters fq = writers.get(writerKey);
+            if (fq == null) {
+                throw new GATKException("No writer available for key " + writerKey);
+            }
             if (currentRecord.getReadPairedFlag()) {
                 final String currentReadName = currentRecord.getReadName();
                 final SAMRecord firstRecord = firstSeenMates.remove(currentReadName);
@@ -181,7 +185,9 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
                         return INTERLEAVE ? firstOfPairWriter : factory.newWriter(makeReadGroupFile(rg, "_2", barcode));
                     }
                 });
-                writerMap.put(rg + "-" + barcode, new FastqWriters(firstOfPairWriter, lazySecondOfPairWriter, firstOfPairWriter, barcodeWriter));
+                final String writerKey = rg + "-" + barcode;
+                logger.info("Generating writer for " + writerKey);
+                writerMap.put(writerKey, new FastqWriters(firstOfPairWriter, lazySecondOfPairWriter, firstOfPairWriter, barcodeWriter));
             }
         }
         return writerMap;
