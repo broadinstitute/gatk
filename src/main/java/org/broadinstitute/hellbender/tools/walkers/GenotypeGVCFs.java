@@ -69,6 +69,7 @@ public final class GenotypeGVCFs extends VariantWalker {
             doc="File to which variants should be written", optional=false)
     private File outputFile;
 
+    private static String GVCF_BLOCK = "GVCFBlock";
 
     //@Argument(fullName="includeNonVariantSites", shortName="allSites", doc="Include loci found to be non-variant after genotyping", optional=true)
     //TODO This option is currently not supported.
@@ -118,6 +119,13 @@ public final class GenotypeGVCFs extends VariantWalker {
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(inputVCFHeader.getMetaDataInInputOrder());
+
+        // Remove GCVFBlocks
+        for ( final Iterator<VCFHeaderLine> iter = headerLines.iterator(); iter.hasNext(); ) {
+            if ( iter.next().getKey().contains(GVCF_BLOCK) ) {
+                iter.remove();
+            }
+        }
         headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions());
         headerLines.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
 
