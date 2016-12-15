@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
+import org.codehaus.plexus.util.WriterFactory;
 
 import java.io.File;
 import java.util.*;
@@ -49,10 +50,6 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
     @Argument(shortName = "ODIR", doc = "Directory in which to output the fastq file(s).  Used only when OUTPUT_PER_RG is true.",
             optional = false)
     public File OUTPUT_DIR;
-
-    @Argument(shortName = "BARCODES", doc = "Comma separated list of barcodes.",
-            optional = false)
-    public String BARCODES;
 
     @Argument(shortName = "RC", doc = "Re-reverse bases and qualities of reads with negative strand flag set before writing them to fastq",
             optional = true)
@@ -104,8 +101,7 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
         final Map<String, SAMRecord> firstSeenMates = new HashMap<>();
         final FastqWriterFactory factory = new FastqWriterFactory();
         factory.setCreateMd5(CREATE_MD5_FILE);
-        final List<String> barcodes = Arrays.asList(BARCODES.split(","));
-        final Map<String, FastqWriters> writers = generateWriters(reader.getFileHeader().getReadGroups(), factory, barcodes);
+        final Map<String, FastqWriters> writers = generateWritersFactory(factory);
 
         final ProgressLogger progress = new ProgressLogger(logger);
         for (final SAMRecord currentRecord : reader) {
@@ -163,6 +159,30 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
         return null;
     }
 
+    private class ReadGroupBarcodeWritersFactory extends HashMap<String, FastqWriters> {
+        private static final long serialVersionUID = 1L;
+        
+        private final FastqWriterFactory fastqWriterFactory;
+
+        private ReadGroupBarcodeWritersFactory(FastqWriterFactory fastqWriterFactory) {
+            this.fastqWriterFactory = fastqWriterFactory;
+        }
+
+        public FastqWriters get(SAMReadGroupRecord rg, String barcode) {
+            String key = rg + "-" + barcode;
+            if (!containsKey(key)) {
+                final FastqWriters fastqWriters = createFastqWriters(fastqWriterFactory, rg, barcode);
+                super.put(key, fastqWriters);
+            }
+            return super.get(key);
+        }
+
+    }
+
+    private ReadGroupBarcodeWritersFactory generateWritersFactory(final FastqWriterFactory factory) {
+        return new ReadGroupBarcodeWritersFactory(factory);
+    }
+
     /**
      * Generates the writers for the given read groups or, if we are not emitting per-read-group, just returns the single set of writers.
      */
@@ -175,22 +195,28 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
             // When we're creating a fastq-group per readgroup, by convention we do not emit a special fastq for unpaired reads.
         for (final SAMReadGroupRecord rg : samReadGroupRecords) {
             for (final String barcode : barcodes) {
-                final FastqWriter firstOfPairWriter = factory.newWriter(makeReadGroupFile(rg, "_RA", barcode));
-                final FastqWriter barcodeWriter = factory.newWriter(makeReadGroupFile(rg, "_I1", barcode));
-                // Create this writer on-the-fly; if we find no second-of-pair reads, don't bother making a writer (or delegating,
-                // if we're interleaving).
-                final Lazy<FastqWriter> lazySecondOfPairWriter = new Lazy<>(new Lazy.LazyInitializer<FastqWriter>() {
-                    @Override
-                    public FastqWriter make() {
-                        return INTERLEAVE ? firstOfPairWriter : factory.newWriter(makeReadGroupFile(rg, "_2", barcode));
-                    }
-                });
                 final String writerKey = rg + "-" + barcode;
                 logger.info("Generating writer for " + writerKey);
-                writerMap.put(writerKey, new FastqWriters(firstOfPairWriter, lazySecondOfPairWriter, firstOfPairWriter, barcodeWriter));
+
+                final FastqWriters writers = createFastqWriters(factory, rg, barcode);
+                writerMap.put(writerKey, writers);
             }
         }
         return writerMap;
+    }
+
+    private FastqWriters createFastqWriters(final FastqWriterFactory factory, final SAMReadGroupRecord rg, final String barcode) {
+        final FastqWriter firstOfPairWriter = factory.newWriter(makeReadGroupFile(rg, "_RA", barcode));
+        final FastqWriter barcodeWriter = factory.newWriter(makeReadGroupFile(rg, "_I1", barcode));
+        // Create this writer on-the-fly; if we find no second-of-pair reads, don't bother making a writer (or delegating,
+        // if we're interleaving).
+        final Lazy<FastqWriter> lazySecondOfPairWriter = new Lazy<>(new Lazy.LazyInitializer<FastqWriter>() {
+            @Override
+            public FastqWriter make() {
+                return INTERLEAVE ? firstOfPairWriter : factory.newWriter(makeReadGroupFile(rg, "_2", barcode));
+            }
+        });
+        return new FastqWriters(firstOfPairWriter, lazySecondOfPairWriter, firstOfPairWriter, barcodeWriter);
     }
 
     private File makeReadGroupFile(final SAMReadGroupRecord readGroup, final String preExtSuffix, final String barcode) {
