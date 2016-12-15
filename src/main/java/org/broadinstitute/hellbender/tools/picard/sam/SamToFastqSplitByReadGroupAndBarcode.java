@@ -101,7 +101,7 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
         final Map<String, SAMRecord> firstSeenMates = new HashMap<>();
         final FastqWriterFactory factory = new FastqWriterFactory();
         factory.setCreateMd5(CREATE_MD5_FILE);
-        final Map<String, FastqWriters> writers = generateWritersFactory(factory);
+        final ReadGroupBarcodeWritersFactory writers = generateWritersFactory(factory);
 
         final ProgressLogger progress = new ProgressLogger(logger);
         for (final SAMRecord currentRecord : reader) {
@@ -113,9 +113,9 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
                 continue;
 
             final String sampleBarcode = currentRecord.getStringAttribute("BC");
-            final String writerKey = currentRecord.getReadGroup() + "-" + sampleBarcode;
-            final FastqWriters fq = writers.get(writerKey);
+            final FastqWriters fq = writers.get(currentRecord.getReadGroup(), sampleBarcode);
             if (fq == null) {
+                final String writerKey = currentRecord.getReadGroup() + "-" + sampleBarcode;
                 throw new GATKException("No writer available for key " + writerKey);
             }
             if (currentRecord.getReadPairedFlag()) {
@@ -161,7 +161,7 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
 
     private class ReadGroupBarcodeWritersFactory extends HashMap<String, FastqWriters> {
         private static final long serialVersionUID = 1L;
-        
+
         private final FastqWriterFactory fastqWriterFactory;
 
         private ReadGroupBarcodeWritersFactory(FastqWriterFactory fastqWriterFactory) {
