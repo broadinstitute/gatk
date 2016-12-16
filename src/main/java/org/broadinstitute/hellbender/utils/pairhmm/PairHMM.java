@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -17,7 +16,7 @@ import java.io.Closeable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Class for performing the pair HMM for local alignment. Figure 4.3 in Durbin 1998 book.
@@ -32,84 +31,56 @@ public abstract class PairHMM implements Closeable{
     protected byte[] previousHaplotypeBases;
     protected int hapStartIndex;
 
-    private static void logPairHmmArgs(PairHMMNativeArguments args) {
-        logger.info("Threads : " + args.maxNumberOfThreads);
-        logger.info("Floating-point precision : " + (args.useDoublePrecision ? "double" : "single"));
-    }
-
     public enum Implementation {
         /* Very slow implementation which uses very accurate log10 sum functions. Only meant to be used as a reference test implementation */
-        EXACT(args -> {
+        EXACT(() -> {
             final Log10PairHMM hmm = new Log10PairHMM(true);
-            logger.info("Using the single-threaded, non-hardware accelerated, double-precision Java EXACT PairHMM implementation");
+            logger.info("Using the non-hardware accelerated Java EXACT PairHMM implementation");
             return hmm;
         }),
         /* PairHMM as implemented for the UnifiedGenotyper. Uses log10 sum functions accurate to only 1E-4 */
-        ORIGINAL(args -> {
+        ORIGINAL(() -> {
             final Log10PairHMM hmm = new Log10PairHMM(false);
-            logger.info("Using the single-threaded, non-hardware-accelerated, double-precision Java ORIGINAL PairHMM implementation");
+            logger.info("Using the non-hardware-accelerated Java ORIGINAL PairHMM implementation");
             return hmm;
         }),
         /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
-        LOGLESS_CACHING(arg -> {
+        LOGLESS_CACHING(() -> {
             final LoglessPairHMM hmm = new LoglessPairHMM();
-            logger.info("Using the single-threaded, non-hardware-accelerated, double-precision Java LOGLESS_CACHING PairHMM implementation");
+            logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PairHMM implementation");
             return hmm;
         }),
         /* Optimized AVX implementation of LOGLESS_CACHING called through JNI. Throws if AVX is not available */
-        AVX_LOGLESS_CACHING(args -> {
+        AVX_LOGLESS_CACHING(() -> {
             // Constructor will throw a UserException if AVX is not available
-            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.AVX, args);
-            logger.info("Using the single-threaded AVX-accelerated native PairHMM implementation");
-            logPairHmmArgs(args);
+            // TODO: connect PairHMMNativeArguments
+            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(null);
+            logger.info("Using the AVX-accelerated native PairHMM implementation");
             return hmm;
         }),
-        /* OpenMP Multi-threaded AVX implementation of LOGLESS_CACHING called through JNI. Throws if OpenMP AVX is not available */
-        AVX_LOGLESS_CACHING_OMP(args -> {
-            // Constructor will throw a UserException if OpenMP AVX is not available
-            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.OMP, args);
-            logger.info("Using the OpenMP multi-threaded AVX-accelerated native PairHMM implementation");
-            logPairHmmArgs(args);
-            return hmm;
-        }),
-        /* Uses the fastest available PairHMM implementation supported on the platform.
-           Order of precedence:
-            1. AVX_LOGLESS_CACHING_OMP
-            2. AVX_LOGLESS_CACHING
-            3. LOGLESS_CACHING
-         */
-        FASTEST_AVAILABLE(args -> {
+        /* Uses the fastest available PairHMM implementation (AVX if AVX is available, otherwise LOGLESS_CACHING */
+        FASTEST_AVAILABLE(() -> {
             try {
-                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.OMP, args);
-                logger.info("Using the OpenMP multi-threaded AVX-accelerated native PairHMM implementation");
-                logPairHmmArgs(args);
-                return hmm;
-            }
-            catch ( UserException.HardwareFeatureException e ) {
-                logger.info("OpenMP multi-threaded AVX-accelerated native PairHMM implementation is not supported");
-            }
-            try {
-                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.AVX, args);
-                logger.info("Using the single-threaded AVX-accelerated native PairHMM implementation");
-                logPairHmmArgs(args);
+                // TODO: connect PairHMMNativeArguments
+                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(null);
+                logger.info("Using the AVX-accelerated native PairHMM implementation");
                 return hmm;
             }
             catch ( UserException.HardwareFeatureException e ) {
                 logger.warn("***WARNING: Machine does not have the AVX instruction set support needed for the accelerated AVX PairHmm. " +
                             "Falling back to the MUCH slower LOGLESS_CACHING implementation!");
-                logger.info("Using the single-threaded, non-hardware-accelerated, double-precision Java LOGLESS_CACHING PairHMM implementation");
                 return new LoglessPairHMM();
             }
         });
 
-        private final Function<PairHMMNativeArguments, PairHMM> makeHmm;
+        private final Supplier<PairHMM> makeHmm;
 
-        private Implementation(final Function<PairHMMNativeArguments, PairHMM> makeHmm){
+        private Implementation(final Supplier<PairHMM> makeHmm){
             this.makeHmm = makeHmm;
         }
 
-        public PairHMM makeNewHMM(PairHMMNativeArguments args) {
-            return makeHmm.apply(args);
+        public PairHMM makeNewHMM() {
+            return makeHmm.get();
         }
     }
 
