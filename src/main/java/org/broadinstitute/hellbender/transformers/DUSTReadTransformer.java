@@ -14,14 +14,14 @@ public class DUSTReadTransformer implements ReadTransformer {
     public static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(DUSTReadTransformer.class);
 
-    private short MASK_PHRED = 15; //Phred score to mask low-complexity sequences with
+    private int MASK_PHRED = 15; //Phred score to mask low-complexity sequences with
     private int W = 64; //DUST window size
-    private float T = 20.0f; //DUST score threshold
+    private double T = 20.0f; //DUST score threshold
 
     private static final class PStruct {
         public int start = 0;
         public int finish = 0;
-        public float score = 0;
+        public double score = 0;
     }
 
     private static final class IntTuple {
@@ -31,7 +31,7 @@ public class DUSTReadTransformer implements ReadTransformer {
     }
 
 
-    public DUSTReadTransformer(final short dust_mask, final int dust_w, final float dust_t) {
+    public DUSTReadTransformer(final int dust_mask, final int dust_w, final double dust_t) {
         MASK_PHRED = dust_mask;
         W = dust_w;
         T = dust_t;
@@ -67,7 +67,7 @@ public class DUSTReadTransformer implements ReadTransformer {
     /**
      * Wrapper method for runDUST so that we don't have to expose the IntTuple class.
      */
-    public static Collection<Tuple2<Integer,Integer>> sDUST(final GATKRead read, final int window, final float tscore) {
+    public static Collection<Tuple2<Integer,Integer>> sDUST(final GATKRead read, final int window, final double tscore) {
         Collection<IntTuple> res = runDUST(read,window,tscore);
         List<Tuple2<Integer,Integer>> res_tuple2 = new ArrayList<>(res.size());
         for (IntTuple tuple : res) {
@@ -81,7 +81,7 @@ public class DUSTReadTransformer implements ReadTransformer {
      //  Liebert et al.(2006). A Fast and Symmetric DUST Implementation to Mask Low-Complexity DNA Sequences.
      //  Journal of Computational Biology, 13(5), 1028 - 1040.
      */
-    private static List<IntTuple> runDUST(final GATKRead read, final int window, final float tscore) {
+    private static List<IntTuple> runDUST(final GATKRead read, final int window, final double tscore) {
 
         final byte[] q = read.getBases();
 
@@ -184,12 +184,12 @@ public class DUSTReadTransformer implements ReadTransformer {
                 int r = running_score_suffix;
                 ListIterator<PStruct> iter = perfect_intervals.listIterator();
                 PStruct perf = iter.hasNext() ? iter.next() : null;
-                float max_score = 0;
+                double max_score = 0;
                 for (int i = window_triplets.size() - L - 1; i >= 0; i--) {
                     t = window_triplets.get(i);
                     r += c[t];
                     c[t]++;
-                    final float new_score = ((float)r)/(window_triplets.size() - i - 1);
+                    final double new_score = ((double)r)/(window_triplets.size() - i - 1);
                     if (new_score*10 > tscore) {
                         while (perf != null && perf.start >= i + wstart) {
                             max_score = Math.max(max_score,perf.score);
