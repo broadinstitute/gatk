@@ -1,16 +1,13 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.intel.gkl.pairhmm.IntelPairHmm;
-import com.intel.gkl.pairhmm.IntelPairHmmOMP;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.HaplotypeDataHolder;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeBinding;
 import org.broadinstitute.gatk.nativebindings.pairhmm.ReadDataHolder;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -29,8 +26,6 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     private long threadLocalSetupTimeDiff = 0;
     private long pairHMMSetupTime = 0;
 
-    public enum Implementation {AVX, OMP}
-
     private final PairHMMNativeBinding pairHmm;
 
     //Hold the mapping between haplotype and index in the list of Haplotypes passed to initialize
@@ -38,35 +33,17 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     private final Map<Haplotype, Integer> haplotypeToHaplotypeListIdxMap = new LinkedHashMap<>();
     private HaplotypeDataHolder[] mHaplotypeDataArray;
 
-    public VectorLoglessPairHMM(Implementation implementation,
-                                PairHMMNativeArguments pairHmmArgs) throws UserException.HardwareFeatureException {
+    public VectorLoglessPairHMM(PairHMMNativeArguments args) throws UserException.HardwareFeatureException {
+        // TODO: connect GATK temp directory
+        final boolean isSupported = new IntelPairHmm().load(null);
 
-        // require non-null implementation and pairHmmArgs
-        Utils.nonNull(implementation);
-        Utils.nonNull(pairHmmArgs);
-
-        switch (implementation) {
-            case AVX:
-                final boolean isAvxSupported = new IntelPairHmm().load();
-                if (!isAvxSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support AVX PairHMM.");
-                }
-                pairHmm = new IntelPairHmm();
-                break;
-
-            case OMP:
-                final boolean isOmpSupported = new IntelPairHmmOMP().load();
-                if (!isOmpSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
-                }
-                pairHmm = new IntelPairHmmOMP();
-                break;
-
-            default:
-                throw new GATKException("Unknown PairHMM implementation : " + implementation.name());
+        if (!isSupported) {
+            throw new UserException.HardwareFeatureException("Machine does not support AVX PairHMM.");
         }
 
-        pairHmm.initialize(pairHmmArgs);
+        // instantiate and initialize IntelPairHmm
+        pairHmm = new IntelPairHmm();
+        pairHmm.initialize(args);
     }
 
 
