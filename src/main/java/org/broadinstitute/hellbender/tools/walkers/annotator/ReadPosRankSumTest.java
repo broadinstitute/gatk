@@ -64,6 +64,6 @@ public final class ReadPosRankSumTest extends RankSumTest implements StandardAnn
     @Override
     protected boolean isUsableRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
-        return super.isUsableRead(read, refLoc) && ReadUtils.getSoftStart(read) + read.getCigar().getReadLength() > refLoc;
+        return super.isUsableRead(read, refLoc) && ReadUtils.getSoftEnd(read) >= refLoc;
     }
 }

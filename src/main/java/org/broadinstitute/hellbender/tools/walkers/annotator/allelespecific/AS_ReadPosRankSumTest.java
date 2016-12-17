@@ -72,6 +72,6 @@ public class AS_ReadPosRankSumTest extends AS_RankSumTest implements AS_Standard
     @Override
     protected boolean isUsableRead(final GATKRead read, final int refLoc) {
         Utils.nonNull(read);
-        return super.isUsableRead(read, refLoc) && ReadUtils.getSoftStart(read) + read.getCigar().getReadLength() > refLoc;
+        return super.isUsableRead(read, refLoc) && ReadUtils.getSoftEnd(read) >= refLoc;
     }
 }
