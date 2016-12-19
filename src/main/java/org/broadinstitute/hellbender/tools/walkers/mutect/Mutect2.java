@@ -104,8 +104,6 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     private Mutect2Engine m2Engine;
 
-    private final List<VariantContext> unfilteredCalls = new ArrayList<>();
-
     @Override
     protected int defaultReadShardSize() { return 5000; }
 
@@ -146,14 +144,8 @@ public final class Mutect2 extends AssemblyRegionWalker {
         m2Engine.writeHeader(vcfWriter, sequenceDictionary);
     }
 
-    //TODO: implement sophisticated filtering
     @Override
     public Object onTraversalSuccess() {
-        for (final VariantContext vc : unfilteredCalls) {
-            final VariantContextBuilder vcb = new VariantContextBuilder(vc);
-            vcb.filters(MTAC.ARTIFACT_DETECTION_MODE ? VariantContext.PASSES_FILTERS : Mutect2FilteringEngine.calculateFilters(MTAC, vc));
-            vcfWriter.add(vcb.make());
-        }
         return "SUCCESS";
     }
 
@@ -163,7 +155,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
                 // Only include calls that start within the current read shard (as opposed to the padded regions around it).
                 // This is critical to avoid duplicating events that span shard boundaries!
                 .filter(call -> getCurrentReadShardBounds().contains(call))
-                .forEach(unfilteredCalls::add);
+                .forEach(vcfWriter::add);
     }
 
     @Override
