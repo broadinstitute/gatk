@@ -40,38 +40,60 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
             doc = "Optional sort order to output in. If not supplied output is in the same order as input.")
     public SAMFileHeader.SortOrder SORT_ORDER;
 
-    @Argument(shortName = "ID", doc = "Read Group ID")
-    public String RGID = "1";
+    public static final String RGID_LONG_NAME = "RGID";
+    public static final String RGID_SHORT_NAME = "ID";
+    @Argument(fullName = RGID_LONG_NAME, shortName = RGID_SHORT_NAME, doc = "Read Group ID")
+    public String readGroupId = "1";
 
-    @Argument(shortName = "LB", doc = "Read Group Library")
-    public String RGLB;
+    public static final String RGLB_LONG_NAME = "RGLB";
+    public static final String RGLB_SHORT_NAME = "LB";
+    @Argument(fullName = RGLB_LONG_NAME, shortName = RGLB_SHORT_NAME, doc = "Read Group Library")
+    public String readGroupLibrary;
 
-    @Argument(shortName = "PL", doc = "Read Group platform (e.g. illumina, solid)")
-    public String RGPL;
+    public static final String RGPL_LONG_NAME = "RGPL";
+    public static final String RGPL_SHORT_NAME = "PL";
+    @Argument(fullName = RGPL_LONG_NAME, shortName = RGPL_SHORT_NAME, doc = "Read Group platform (e.g. illumina, solid)")
+    public String readGroupPlatform;
 
-    @Argument(shortName = "PU", doc = "Read Group platform unit (eg. run barcode)")
-    public String RGPU;
+    public static final String RGPU_LONG_NAME = "RGPU";
+    public static final String RGPU_SHORT_NAME = "PU";
+    @Argument(fullName = RGPU_LONG_NAME, shortName = RGPU_SHORT_NAME, doc = "Read Group platform unit (eg. run barcode)")
+    public String readGroupPlatformUnit;
 
-    @Argument(shortName = "SM", doc = "Read Group sample name")
-    public String RGSM;
+    public static final String RGSM_LONG_NAME = "RGSM";
+    public static final String RGSM_SHORT_NAME = "SM";
+    @Argument(fullName = RGSM_LONG_NAME, shortName = RGSM_SHORT_NAME, doc = "Read Group sample name")
+    public String readGroupSampleName;
 
-    @Argument(shortName = "CN", doc = "Read Group sequencing center name", optional = true)
-    public String RGCN;
+    public static final String RGCN_LONG_NAME = "RGCN";
+    public static final String RGCN_SHORT_NAME = "CN";
+    @Argument(fullName = RGCN_LONG_NAME, shortName = RGCN_SHORT_NAME, doc = "Read Group sequencing center name", optional = true)
+    public String readGroupSequencingCenter;
 
-    @Argument(shortName = "DS", doc = "Read Group description", optional = true)
-    public String RGDS;
+    public static final String RGDS_LONG_NAME = "RGDS";
+    public static final String RGDS_SHORT_NAME = "DS";
+    @Argument(fullName = RGDS_LONG_NAME, shortName = RGDS_SHORT_NAME, doc = "Read Group description", optional = true)
+    public String readGroupDescription;
 
-    @Argument(shortName = "DT", doc = "Read Group run date", optional = true)
-    public Iso8601Date RGDT;
+    public static final String RGDT_LONG_NAME = "RGDT";
+    public static final String RGDT_SHORT_NAME = "DT";
+    @Argument(fullName = RGDT_LONG_NAME, shortName = RGDT_SHORT_NAME, doc = "Read Group run date", optional = true)
+    public Iso8601Date readGroupRunDate;
 
-    @Argument(shortName = "PI", doc = "Read Group predicted insert size", optional = true)
-    public Integer RGPI;
+    public static final String RGPI_LONG_NAME = "RGPI";
+    public static final String RGPI_SHORT_NAME = "PI";
+    @Argument(fullName = RGPI_LONG_NAME, shortName = RGPI_SHORT_NAME, doc = "Read Group predicted insert size", optional = true)
+    public Integer readGroupPredictedInsertSize;
 
-    @Argument(shortName = "PG", doc = "Read Group program group", optional = true)
-    public String RGPG;
+    public static final String RGPG_LONG_NAME = "RGPG";
+    public static final String RGPG_SHORT_NAME = "PG";
+    @Argument(fullName = RGPG_LONG_NAME, shortName = RGPG_SHORT_NAME, doc = "Read Group program group", optional = true)
+    public String readGroupProgramGroup;
 
-    @Argument(shortName = "PM", doc = "Read Group platform model", optional = true)
-    public String RGPM;
+    public static final String RGPM_LONG_NAME = "RGPM";
+    public static final String RGPM_SHORT_NAME = "PM";
+    @Argument(fullName = RGPM_LONG_NAME, shortName = RGPM_SHORT_NAME, doc = "Read Group platform model", optional = true)
+    public String readGroupPlatformModel;
 
     @Override
     protected Object doWork() {
@@ -81,17 +103,17 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
         final SamReader in = SamReaderFactory.makeDefault().referenceSequence(REFERENCE_SEQUENCE).open(INPUT);
 
         // create the read group we'll be using
-        final SAMReadGroupRecord rg = new SAMReadGroupRecord(RGID);
-        rg.setLibrary(RGLB);
-        rg.setPlatform(RGPL);
-        rg.setSample(RGSM);
-        rg.setPlatformUnit(RGPU);
-        if (RGCN != null) rg.setSequencingCenter(RGCN);
-        if (RGDS != null) rg.setDescription(RGDS);
-        if (RGDT != null) rg.setRunDate(RGDT);
-        if (RGPI != null) rg.setPredictedMedianInsertSize(RGPI);
-        if (RGPG != null) rg.setProgramGroup(RGPG);
-        if (RGPM != null) rg.setPlatformModel(RGPM);
+        final SAMReadGroupRecord rg = new SAMReadGroupRecord(readGroupId);
+        rg.setLibrary(readGroupLibrary);
+        rg.setPlatform(readGroupPlatform);
+        rg.setSample(readGroupSampleName);
+        rg.setPlatformUnit(readGroupPlatformUnit);
+        if (readGroupSequencingCenter != null) rg.setSequencingCenter(readGroupSequencingCenter);
+        if (readGroupDescription != null) rg.setDescription(readGroupDescription);
+        if (readGroupRunDate != null) rg.setRunDate(readGroupRunDate);
+        if (readGroupPredictedInsertSize != null) rg.setPredictedMedianInsertSize(readGroupPredictedInsertSize);
+        if (readGroupProgramGroup != null) rg.setProgramGroup(readGroupProgramGroup);
+        if (readGroupPlatformModel != null) rg.setPlatformModel(readGroupPlatformModel);
 
         logger.info(String.format("Created read group ID=%s PL=%s LB=%s SM=%s%n", rg.getId(), rg.getPlatform(), rg.getLibrary(), rg.getSample()));
 
@@ -109,7 +131,7 @@ public final class AddOrReplaceReadGroups extends PicardCommandLineProgram {
 
             final ProgressLogger progress = new ProgressLogger(logger);
             for (final SAMRecord read : in) {
-                read.setAttribute(SAMTag.RG.name(), RGID);
+                read.setAttribute(SAMTag.RG.name(), readGroupId);
                 outWriter.addAlignment(read);
                 progress.record(read);
             }
