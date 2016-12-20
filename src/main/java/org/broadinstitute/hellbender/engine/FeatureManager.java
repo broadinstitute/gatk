@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,6 +12,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.conf.GATKConf;
+import org.broadinstitute.hellbender.conf.GATKConfBuilder;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -42,13 +45,6 @@ public final class FeatureManager implements AutoCloseable {
     private static final Logger logger = LogManager.getLogger(FeatureManager.class);
 
     /**
-     * We will search these packages at startup to look for FeatureCodecs
-     */
-    private static final List<String> CODEC_PACKAGES = Arrays.asList("htsjdk.variant",
-                                                                     "htsjdk.tribble",
-                                                                     "org.broadinstitute.hellbender.utils.codecs");
-
-    /**
      * All codecs descend from this class
      */
     private static final Class<FeatureCodec> CODEC_BASE_CLASS = FeatureCodec.class;
@@ -56,7 +52,7 @@ public final class FeatureManager implements AutoCloseable {
     /**
      * The codec classes we locate when searching CODEC_PACKAGES
      */
-    private static final Set<Class<?>> DISCOVERED_CODECS;
+    private static Set<Class<?>> DISCOVERED_CODECS = null;
 
     /**
      * Feature arguments in tools are of this type
@@ -64,12 +60,18 @@ public final class FeatureManager implements AutoCloseable {
     private static final Class<FeatureInput> FEATURE_ARGUMENT_CLASS = FeatureInput.class;
 
     /**
-     * At startup, walk through the packages in CODEC_PACKAGES, and save any (concrete) FeatureCodecs discovered
-     * in DISCOVERED_CODECS
+     * Walk through the packages in {@link GATKConf#getCodecPackages()}, and save any (concrete) FeatureCodecs discovered
+     * in DISCOVERED_CODECS.
+     *
+     * @throws IllegalStateException if codecs were alredy initialized.
      */
-    static {
+    public synchronized static void setConfiguration(final GATKConf configuration) {
+        if (DISCOVERED_CODECS != null) {
+            throw new IllegalStateException("Codecs already initialized");
+        }
+        final List<String> codecPackages = configuration.getCodecPackages();
         final ClassFinder finder = new ClassFinder();
-        for ( final String codecPackage : CODEC_PACKAGES ) {
+        for (final String codecPackage : codecPackages) {
             finder.find(codecPackage, CODEC_BASE_CLASS);
         }
         // Exclude abstract classes and interfaces from the list of discovered codec classes
@@ -407,6 +409,10 @@ public final class FeatureManager implements AutoCloseable {
      * @return A List of all codecs in DISCOVERED_CODECS for which {@link FeatureCodec#canDecode(String)} returns true on the specified file
      */
     private static List<FeatureCodec<? extends Feature, ?>> getCandidateCodecsForFile( final File featureFile )  {
+        if (DISCOVERED_CODECS == null) {
+            setConfiguration(GATKConfBuilder.getDefaultConfiguration());
+        }
+
         final List<FeatureCodec<? extends Feature, ?>> candidateCodecs = new ArrayList<>();
 
         for ( final Class<?> codecClass : DISCOVERED_CODECS ) {

@@ -1,11 +1,16 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.util.StringUtil;
+import org.apache.commons.configuration.ConfigurationException;
 import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.conf.GATKConf;
+import org.broadinstitute.hellbender.conf.GATKConfBuilder;
+import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 
@@ -19,8 +24,7 @@ import java.util.*;
  *
  * If you want your own single command line program, extend this class and override if required:
  *
- * - {@link #getPackageList()} to return a list of java packages in which to search for classes that extend CommandLineProgram.
- * - {@link #getClassList()} to return a list of single classes to include (e.g. required input pre-processing tools).
+ * - {@link #getConfiguration()} to setup the configuration on startup.
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
  * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
@@ -57,20 +61,8 @@ public class Main {
     private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 3;
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
-    /**
-     * The packages we wish to include in our command line.
-     */
-    protected List<String> getPackageList() {
-        final List<String> packageList = new ArrayList<>();
-        packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
-        return packageList;
-    }
-
-    /**
-     * The single classes we wish to include in our command line.
-     */
-    protected List<Class<? extends CommandLineProgram>> getClassList() {
-        return Collections.emptyList();
+    protected GATKConf getConfiguration() {
+        return GATKConfBuilder.getDefaultConfiguration();
     }
 
     /** Returns the command line that will appear in the usage. */
@@ -100,7 +92,9 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      */
     public Object instanceMain(final String[] args) {
-        return instanceMain(args, getPackageList(), getClassList(), getCommandLineName());
+        final GATKConf configuration = getConfiguration();
+        FeatureManager.setConfiguration(configuration);
+        return instanceMain(args, configuration.getToolPackages(), configuration.getToolClasses(), getCommandLineName());
     }
 
     /**
