@@ -316,6 +316,76 @@ public final class ReadPileup implements Iterable<PileupElement> {
         }
     }
 
+    /**
+     * Returns a new ReadBackedPileup where only one read from an overlapping read
+     * pair is retained.  If the two reads in question disagree to their basecall,
+     * neither read is retained.  If they agree on the base, the read with the higher
+     * base quality observation is retained
+     *
+     * @return the newly filtered pileup
+     */
+    @Override
+    public ReadBackedPileup getOverlappingFragmentFilteredPileup() {
+        return getOverlappingFragmentFilteredPileup(true, true);
+    }
+
+    /**
+     * Returns a new ReadBackedPileup where only one read from an overlapping read
+     * pair is retained.  If discardDiscordant and the two reads in question disagree to their basecall,
+     * neither read is retained.  Otherwise, the read with the higher
+     * quality (base or mapping, depending on baseQualNotMapQual) observation is retained
+     *
+     * @return the newly filtered pileup
+     */
+    @Override
+    public ReadBackedPileupImpl getOverlappingFragmentFilteredPileup(boolean discardDiscordant, boolean baseQualNotMapQual) {
+        if (pileupElementTracker instanceof PerSamplePileupElementTracker) {
+            PerSamplePileupElementTracker<PileupElement> tracker = (PerSamplePileupElementTracker<PileupElement>) pileupElementTracker;
+            PerSamplePileupElementTracker<PileupElement> filteredTracker = new PerSamplePileupElementTracker<PileupElement>();
+
+            for (final String sample : tracker.getSamples()) {
+                PileupElementTracker<PileupElement> perSampleElements = tracker.getElements(sample);
+                ReadBackedPileupImpl pileup = createNewPileup(loc, perSampleElements).getOverlappingFragmentFilteredPileup(discardDiscordant, baseQualNotMapQual);
+                filteredTracker.addElements(sample, pileup.pileupElementTracker);
+            }
+            return createNewPileup(loc, filteredTracker);
+        } else {
+            Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
+
+            for (PileupElement p : pileupElementTracker) {
+                String readName = p.getRead().getReadName();
+
+                // if we've never seen this read before, life is good
+                if (!filteredPileup.containsKey(readName)) {
+                    filteredPileup.put(readName, p);
+                } else {
+                    PileupElement existing = filteredPileup.get(readName);
+
+                    // if the reads disagree at this position, throw them both out.  Otherwise
+                    // keep the element with the higher quality score
+                    if (discardDiscordant && existing.getBase() != p.getBase()) {
+                        filteredPileup.remove(readName);
+                    } else {
+                        if (baseQualNotMapQual) {
+                            if (existing.getQual() < p.getQual())
+                                filteredPileup.put(readName, p);
+                        }
+                        else {
+                            if (existing.getMappingQual() < p.getMappingQual())
+                                filteredPileup.put(readName, p);
+                        }
+                    }
+                }
+            }
+
+            UnifiedPileupElementTracker<PileupElement> filteredTracker = new UnifiedPileupElementTracker<PileupElement>();
+            for (PileupElement filteredElement : filteredPileup.values())
+                filteredTracker.add(filteredElement);
+
+            return createNewPileup(loc, filteredTracker);
+        }
+    }
+
     @Override
     public String toString() {
         return String.format("%s %s %s %s",
