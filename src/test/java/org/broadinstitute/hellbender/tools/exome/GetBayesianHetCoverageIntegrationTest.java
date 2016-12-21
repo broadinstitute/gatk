@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -43,7 +44,7 @@ public final class GetBayesianHetCoverageIntegrationTest extends CommandLineProg
         }
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testBadJobArgs_1() {
         final File normalOutputFile = createTempFile("normal-test", ".tsv");
 
@@ -56,7 +57,7 @@ public final class GetBayesianHetCoverageIntegrationTest extends CommandLineProg
         runCommandLine(argumentsNoBam);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testBadJobArgs_2() {
         /* bad job: no normal het pulldown output file */
         final String[] argumentsNormalNoHetOutput = {
@@ -67,7 +68,7 @@ public final class GetBayesianHetCoverageIntegrationTest extends CommandLineProg
         runCommandLine(argumentsNormalNoHetOutput);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testBadJobArgs_3() {
         /* bad job: no tumor het pulldown output file */
         final String[] argumentsTumorNoHetOutput = {

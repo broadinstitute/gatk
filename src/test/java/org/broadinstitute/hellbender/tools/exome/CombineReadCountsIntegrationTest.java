@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import org.apache.commons.math3.linear.RealMatrix;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -43,7 +44,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
 
     private final int TEST_TARGET_LEN = 111;
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testEmptyInputFileListProvided() throws Exception {
         @SuppressWarnings("serial")
         final List<Target> phonyTargets = SimulatedTargets.phonyTargets(3);
@@ -60,7 +61,7 @@ public class CombineReadCountsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testNoInputFileProvided() throws Exception {
         @SuppressWarnings("serial")
         final List<Target> phonyTargets = SimulatedTargets.phonyTargets(3);

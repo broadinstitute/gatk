@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -202,7 +203,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( emitReferenceConfidence() ) {
             if ( hcArgs.genotypingOutputMode == GenotypingOutputMode.GENOTYPE_GIVEN_ALLELES) {
-                throw new UserException.BadArgumentValue("ERC/gt_mode", "you cannot request reference confidence output and GENOTYPE_GIVEN_ALLELES at the same time");
+                throw new CommandLineException.BadArgumentValue("ERC/gt_mode", "you cannot request reference confidence output and GENOTYPE_GIVEN_ALLELES at the same time");
             }
 
             hcArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_EMITTING = -0.0;
@@ -237,7 +238,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         Utils.validateArg(hcArgs.likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD >= QualityUtils.MIN_USABLE_Q_SCORE, "BASE_QUALITY_SCORE_THRESHOLD must be greater than or equal to " + QualityUtils.MIN_USABLE_Q_SCORE + " (QualityUtils.MIN_USABLE_Q_SCORE)");
 
         if ( emitReferenceConfidence() && samplesList.numberOfSamples() != 1 ) {
-            throw new UserException.BadArgumentValue("--emitRefConfidence", "Can only be used in single sample mode currently. Use the sample_name argument to run on a single sample out of a multi-sample BAM file.");
+            throw new CommandLineException.BadArgumentValue("--emitRefConfidence", "Can only be used in single sample mode currently. Use the sample_name argument to run on a single sample out of a multi-sample BAM file.");
         }
     }
 
@@ -247,7 +248,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         if ( hcArgs.sampleNameToUse != null ) {
             if ( ! sampleSet.contains(hcArgs.sampleNameToUse) ) {
-                throw new UserException.BadArgumentValue("--sample_name", "Specified name does not exist in input bam files");
+                throw new CommandLineException.BadArgumentValue("--sample_name", "Specified name does not exist in input bam files");
             }
             if (sampleSet.size() == 1) {
                 //No reason to incur performance penalty associated with filtering if they specified the name of the only sample
@@ -315,7 +316,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             try {
                 writer = new GVCFWriter(writer, hcArgs.GVCFGQBands, hcArgs.genotypeArgs.samplePloidy);
             } catch ( IllegalArgumentException e ) {
-                throw new UserException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
+                throw new CommandLineException.BadArgumentValue("GQBands", "are malformed: " + e.getMessage());
             }
         }
 

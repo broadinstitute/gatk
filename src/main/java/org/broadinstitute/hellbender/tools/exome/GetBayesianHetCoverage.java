@@ -4,6 +4,10 @@ import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.IntervalList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
@@ -281,18 +285,18 @@ public final class GetBayesianHetCoverage extends CommandLineProgram {
     protected Object doWork() {
         /* check for illegal arguments */
         if (normalBamFile == null && tumorBamFile == null) {
-            throw new UserException.BadArgumentValue(String.format("You must provide at least one normal (argument %s)" +
+            throw new CommandLineException.BadArgumentValue(String.format("You must provide at least one normal (argument %s)" +
                             " or tumor (argument %s) alignment file.",
                     ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_LONG_NAME,
                     ExomeStandardArgumentDefinitions.TUMOR_BAM_FILE_LONG_NAME));
         }
         if (normalBamFile != null && normalHetOutputFile == null) {
-            throw new UserException.CommandLineException(String.format("If the normal BAM file is provided, the normal" +
+            throw new CommandLineException(String.format("If the normal BAM file is provided, the normal" +
                     " Het pulldown output file (argument %s) must also be provided.",
                     ExomeStandardArgumentDefinitions.NORMAL_ALLELIC_COUNTS_FILE_LONG_NAME));
         }
         if (tumorBamFile != null && tumorHetOutputFile == null) {
-            throw new UserException.CommandLineException(String.format("If the tumor BAM file is provided, the tumor" +
+            throw new CommandLineException(String.format("If the tumor BAM file is provided, the tumor" +
                     " Het pulldown output file (argument %s) must also be provided.",
                     ExomeStandardArgumentDefinitions.TUMOR_ALLELIC_COUNTS_FILE_LONG_NAME));
         }

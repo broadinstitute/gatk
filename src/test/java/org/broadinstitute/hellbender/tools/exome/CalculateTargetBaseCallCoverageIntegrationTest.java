@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.*;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
@@ -51,7 +52,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
         return CalculateTargetBaseCallCoverage.class.getSimpleName();
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testNegativeMinimumMQ() throws IOException {
         final File outputFile = createTempFile("ctc-test-", ".tsv");
         runCommandLine(
@@ -73,7 +74,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                 });
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testNegativeMinimumBQ() throws IOException {
         final File outputFile = createTempFile("ctc-test-", ".tsv");
         runCommandLine(
@@ -95,7 +96,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                 });
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testNegativeMaximumCoverage() throws IOException {
         final File outputFile = createTempFile("ctc-test-", ".tsv");
         runCommandLine(
@@ -117,7 +118,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
                 });
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testNaNMaximumCoverage() throws IOException {
         final File outputFile = createTempFile("ctc-test-", ".tsv");
         runCommandLine(
@@ -494,7 +495,7 @@ public class CalculateTargetBaseCallCoverageIntegrationTest extends CommandLineP
         return result;
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testWithoutTargetFile() throws IOException {
         final File outputFile = createTempFile("ctc-test-", ".tsv");
         runCommandLine(

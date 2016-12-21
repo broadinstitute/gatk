@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -81,7 +82,7 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testBadRunMissingReadCounts() {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
@@ -91,7 +92,7 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testBadRunMissingAnnotations() {
         final File sexGenotypeOutputFile = createTempFile("sex-genotype-test", ".tsv");
         final String[] arguments = {
@@ -101,7 +102,7 @@ public class TargetCoverageSexGenotyperIntegrationTest extends CommandLineProgra
         runCommandLine(arguments);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testBadRunMissingOutput() {
         final String[] arguments = {
                 "-" + StandardArgumentDefinitions.INPUT_LONG_NAME, TEST_RCC_FILE.getAbsolutePath(),

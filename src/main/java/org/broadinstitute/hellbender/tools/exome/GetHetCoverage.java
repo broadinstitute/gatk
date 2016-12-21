@@ -2,6 +2,10 @@ package org.broadinstitute.hellbender.tools.exome;
 
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.IntervalList;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredReferenceInputArgumentCollection;
@@ -129,7 +133,7 @@ public final class GetHetCoverage extends CommandLineProgram {
         if (tumorHetOutputFile != null && tumorBAMFile != null) {
             doTumorPulldown = true;
         } else if ((tumorHetOutputFile == null) != (tumorBAMFile == null)) {
-            throw new UserException.CommandLineException("Must specify both BAM and output files for tumor pulldown.");
+            throw new CommandLineException("Must specify both BAM and output files for tumor pulldown.");
         } else {
             doTumorPulldown = false;
         }

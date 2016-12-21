@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.tools.exome.coveragestats;
 
 import org.apache.commons.math3.util.Pair;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -28,7 +29,7 @@ import java.util.List;
  *   output is omitted.
  * </p>
  * <p>
- *   No output file specified by the user will result in a {@link UserException} to be thrown.
+ *   No output file specified by the user will result in a {@link CommandLineException.BadArgumentValue} to be thrown.
  * </p>
  * <p>
  *   The input format for the coverage file is described in {@link ReadCountCollectionUtils}.
@@ -132,7 +133,7 @@ public final class CalculateCoverageStats extends CommandLineProgram {
 
     private void onTraversalStart() {
         if (sampleOutputFile == null && targetOutputFile == null) {
-            throw new UserException.BadArgumentValue(TARGET_OUTPUT_FILE_FULL_NAME, "you must indicate an output target file name or an output sample file");
+            throw new CommandLineException.BadArgumentValue(TARGET_OUTPUT_FILE_FULL_NAME, "you must indicate an output target file name or an output sample file");
         }
         final Pair<Boolean, List<String>> inputCoverageContent = checkInputCoverageContent();
         onTraversalStartForSampleOutput(inputCoverageContent);

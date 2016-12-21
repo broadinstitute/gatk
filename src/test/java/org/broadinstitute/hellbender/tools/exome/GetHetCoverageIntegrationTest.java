@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -104,7 +105,7 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         Assert.assertEquals(normalHetPulldownExpected, normalOutputPulldownResult);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testGetHetCoverageMissingTumorBAM() {
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),
@@ -116,7 +117,7 @@ public final class GetHetCoverageIntegrationTest extends CommandLineProgramTest 
         runCommandLine(arguments);
     }
 
-    @Test(expectedExceptions = UserException.class)
+    @Test(expectedExceptions = CommandLineException.class)
     public void testGetHetCoverageMissingTumorOutput() {
         final String[] arguments = {
                 "-" + ExomeStandardArgumentDefinitions.NORMAL_BAM_FILE_SHORT_NAME, NORMAL_BAM_FILE.getAbsolutePath(),

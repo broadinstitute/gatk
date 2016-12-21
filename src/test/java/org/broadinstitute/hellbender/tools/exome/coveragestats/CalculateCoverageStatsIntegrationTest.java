@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.exome.coveragestats;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.util.Pair;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -93,7 +94,7 @@ public final class CalculateCoverageStatsIntegrationTest extends CommandLineProg
         runCommandLine(inputFile, true, true);
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testNoOutputFiles()
         throws IOException
     {

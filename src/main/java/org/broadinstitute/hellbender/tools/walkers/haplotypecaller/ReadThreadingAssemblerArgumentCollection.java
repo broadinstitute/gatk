@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.Lists;
-import org.broadinstitute.hellbender.cmdline.Advanced;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.ArgumentCollectionDefinition;
-import org.broadinstitute.hellbender.cmdline.Hidden;
+import org.broadinstitute.barclay.argparser.Advanced;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.Hidden;
 
 import java.io.Serializable;
 import java.util.List;
@@ -12,7 +11,7 @@ import java.util.List;
 /**
  * Set of arguments related to the {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler}
  */
-public final class ReadThreadingAssemblerArgumentCollection implements ArgumentCollectionDefinition, Serializable {
+public final class ReadThreadingAssemblerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // -----------------------------------------------------------------------------------------------

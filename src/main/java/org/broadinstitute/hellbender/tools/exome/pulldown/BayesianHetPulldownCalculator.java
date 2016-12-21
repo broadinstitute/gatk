@@ -200,7 +200,7 @@ public final class BayesianHetPulldownCalculator {
      * @return map of base-pair to error probabilities
      */
     private Map<Nucleotide, List<BaseQuality>> getPileupBaseQualities(final SamLocusIterator.LocusInfo locus) {
-        final Map<Nucleotide, List<BaseQuality>> baseQualities = locus.getRecordAndPositions().stream()
+        final Map<Nucleotide, List<BaseQuality>> baseQualities = locus.getRecordAndOffsets().stream()
                 .map(rp -> new ImmutablePair<>(
                         Nucleotide.valueOf(rp.getReadBase()),
                         new BaseQuality(
@@ -231,7 +231,7 @@ public final class BayesianHetPulldownCalculator {
      */
     private static Nucleotide.Counter getPileupBaseCounts(final SamLocusIterator.LocusInfo locus) {
         final Nucleotide.Counter result = new Nucleotide.Counter();
-        for (final SamLocusIterator.RecordAndOffset rec : locus.getRecordAndPositions()) {
+        for (final SamLocusIterator.RecordAndOffset rec : locus.getRecordAndOffsets()) {
             result.add(rec.getReadBase());
         }
         return result;
@@ -342,7 +342,7 @@ public final class BayesianHetPulldownCalculator {
                 }
                 locusCount++;
 
-                final int totalReadCount = locus.getRecordAndPositions().size();
+                final int totalReadCount = locus.getRecordAndOffsets().size();
                 if (totalReadCount <= readDepthThreshold) {
                     continue;
                 }
@@ -416,7 +416,7 @@ public final class BayesianHetPulldownCalculator {
                 }
                 locusCount++;
 
-                final int totalReadCount = locus.getRecordAndPositions().size();
+                final int totalReadCount = locus.getRecordAndOffsets().size();
                 if (totalReadCount <= readDepthThreshold) {
                     continue;
                 }

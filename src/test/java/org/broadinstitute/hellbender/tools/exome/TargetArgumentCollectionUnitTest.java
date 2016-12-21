@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -24,7 +25,7 @@ public class TargetArgumentCollectionUnitTest {
         Assert.assertNull(subject.readTargetCollection(true));
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testRequiredWithoutDefaultSupplierAndMissingTargetsFile() {
         final TargetArgumentCollection subject = new TargetArgumentCollection();
         subject.readTargetCollection(false);
@@ -36,7 +37,7 @@ public class TargetArgumentCollectionUnitTest {
         Assert.assertNull(subject.readTargetCollection(true));
     }
 
-    @Test(expectedExceptions = UserException.BadArgumentValue.class)
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
     public void testRequiredWithDefaultNullSupplierAndMissingTargetsFile() {
         final TargetArgumentCollection subject = new TargetArgumentCollection(() -> null);
         subject.readTargetCollection(false);

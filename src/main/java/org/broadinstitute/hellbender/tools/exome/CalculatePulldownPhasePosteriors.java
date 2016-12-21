@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;

@@ -63,6 +63,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
+                "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-pairHMM", "AVX_LOGLESS_CACHING"
         };
@@ -126,6 +127,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
+                "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-pairHMM", "AVX_LOGLESS_CACHING"
         };
@@ -177,6 +179,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
+                "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING"
@@ -238,6 +241,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-G", "StandardAnnotation",
+                "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-ERC", "GVCF",
                 "-pairHMM", "AVX_LOGLESS_CACHING"

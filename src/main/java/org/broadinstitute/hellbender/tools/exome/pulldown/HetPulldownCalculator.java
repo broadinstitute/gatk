@@ -82,7 +82,7 @@ public final class HetPulldownCalculator {
      */
     static Nucleotide.Counter getPileupBaseCounts(final SamLocusIterator.LocusInfo locus) {
         final Nucleotide.Counter result = new Nucleotide.Counter();
-        for (final SamLocusIterator.RecordAndOffset rec : locus.getRecordAndPositions()) {
+        for (final SamLocusIterator.RecordAndOffset rec : locus.getRecordAndOffsets()) {
             result.add(rec.getReadBase());
         }
         return result;
@@ -198,7 +198,7 @@ public final class HetPulldownCalculator {
                 locusCount++;
 
                 //include N, etc. reads here
-                final int totalReadCount = locus.getRecordAndPositions().size();
+                final int totalReadCount = locus.getRecordAndOffsets().size();
                 if (totalReadCount < minimumRawReads) {
                     continue;
                 }

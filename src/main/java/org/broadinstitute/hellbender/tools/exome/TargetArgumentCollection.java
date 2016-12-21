@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.exome;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -31,7 +32,7 @@ import java.util.stream.Collectors;
  * </p>
  * <p>
  *   If even this mechanism does not provide a target file name, and the target file is deemed non-optional,
- *   the a {@link UserException.BadArgumentValue} is thrown.
+ *   the a {@link CommandLineException.BadArgumentValue} is thrown.
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
@@ -105,7 +106,7 @@ public final class TargetArgumentCollection {
      * @param optional whether the target collection is optional or not.
      * @return may be {@code null}, if {@code optional} is {@code true} and no target file could be
      *      determined.
-     * @throws UserException.BadArgumentValue if {@code optional} is {@code false} and no target file
+     * @throws CommandLineException.BadArgumentValue if {@code optional} is {@code false} and no target file
      *   was provided or cannot be resolved otherwise.
      */
     public TargetCollection<Target> readTargetCollection(final boolean optional) {
@@ -120,7 +121,7 @@ public final class TargetArgumentCollection {
             if (optional) {
                 return null;
             } else {
-                throw new UserException.BadArgumentValue(TARGET_FILE_SHORT_NAME, "No target file was specified");
+                throw new CommandLineException.BadArgumentValue(TARGET_FILE_SHORT_NAME, "No target file was specified");
             }
         }
     }

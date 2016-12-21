@@ -78,7 +78,7 @@ check.dependsOn installDist
 
 dependencies {
     compile files("${System.properties['java.home']}/../lib/tools.jar")
-    compile 'org.broadinstitute:gatk:4.alpha.2-95-g64661b5-20161114.160836-1'
+    compile 'org.broadinstitute:gatk:4.alpha.2-127-g3eff9c1-20161220.230220-1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
 
     testCompile 'org.testng:testng:6.8.8'

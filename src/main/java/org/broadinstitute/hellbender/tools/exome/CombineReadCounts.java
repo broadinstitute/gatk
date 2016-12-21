@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.exome;
 
+import org.broadinstitute.barclay.argparser.*;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -281,7 +285,7 @@ public final class CombineReadCounts extends CommandLineProgram {
             }
         }
         if (result.isEmpty()) {
-            throw new UserException.BadArgumentValue(READ_COUNT_FILES_SHORT_NAME,
+            throw new CommandLineException.BadArgumentValue(READ_COUNT_FILES_SHORT_NAME,
                     String.format("there must be at least one input file or a non-empty input file list (arg. -%s)", READ_COUNT_FILE_LIST_SHORT_NAME));
         } else {
             final Optional<File> badInputFile = coverageFiles.stream().filter(f -> !f.canRead() || !f.isFile()).findAny();

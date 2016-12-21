@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -65,7 +66,7 @@ public final class AssemblyRegionTrimmer {
      *
      * @throws IllegalStateException if this trim calculator has already been initialized.
      * @throws IllegalArgumentException if the input location parser is {@code null}.
-     * @throws UserException.BadArgumentValue if any of the user argument values is invalid.
+     * @throws CommandLineException.BadArgumentValue if any of the user argument values is invalid.
      */
     public void initialize(final AssemblyRegionTrimmerArgumentCollection assemblyRegionTrimmerArgs, final SAMSequenceDictionary sequenceDictionary, final boolean debug, final boolean isGGA, final boolean emitReferenceConfidence) {
         if (this.assemblyRegionTrimmerArgs != null) {
@@ -84,20 +85,20 @@ public final class AssemblyRegionTrimmer {
     /**
      * Checks user trimming argument values
      *
-     * @throws UserException.BadArgumentValue if there is some problem with any of the arguments values.
+     * @throws CommandLineException.BadArgumentValue if there is some problem with any of the arguments values.
      */
     private void checkUserArguments() {
         if ( assemblyRegionTrimmerArgs.snpPadding < 0 ) {
-            throw new UserException.BadArgumentValue("paddingAroundSNPs", "" + assemblyRegionTrimmerArgs.snpPadding + "< 0");
+            throw new CommandLineException.BadArgumentValue("paddingAroundSNPs", "" + assemblyRegionTrimmerArgs.snpPadding + "< 0");
         }
         if ( assemblyRegionTrimmerArgs.indelPadding < 0 ) {
-            throw new UserException.BadArgumentValue("paddingAroundIndels", "" + assemblyRegionTrimmerArgs.indelPadding + "< 0");
+            throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + assemblyRegionTrimmerArgs.indelPadding + "< 0");
         }
         if ( assemblyRegionTrimmerArgs.discoverExtension < 0) {
-            throw new UserException.BadArgumentValue("maxDiscARExtension", "" + assemblyRegionTrimmerArgs.discoverExtension + "< 0");
+            throw new CommandLineException.BadArgumentValue("maxDiscARExtension", "" + assemblyRegionTrimmerArgs.discoverExtension + "< 0");
         }
         if ( assemblyRegionTrimmerArgs.ggaExtension < 0) {
-            throw new UserException.BadArgumentValue("maxGGAAREExtension", "" + assemblyRegionTrimmerArgs.ggaExtension + "< 0");
+            throw new CommandLineException.BadArgumentValue("maxGGAAREExtension", "" + assemblyRegionTrimmerArgs.ggaExtension + "< 0");
         }
     }
 

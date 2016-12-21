@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.engine.spark.SparkCommandLineProgram;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 

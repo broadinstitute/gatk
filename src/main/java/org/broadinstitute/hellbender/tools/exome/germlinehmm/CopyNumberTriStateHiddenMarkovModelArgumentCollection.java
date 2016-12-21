@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
-import org.broadinstitute.hellbender.cmdline.Argument;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 /**

@@ -3,8 +3,9 @@ package org.broadinstitute.hellbender.tools.exome;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMReadGroupRecord;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -270,20 +271,20 @@ public class CalculateTargetBaseCallCoverage extends TargetWalker {
      *     selected.
      * </p>
      *
-     * @throws UserException.BadArgumentValue if any of the argument has a bad value.
+     * @throws CommandLineException.BadArgumentValue if any of the argument has a bad value.
      */
     private void checkThresholdArgumentValues() {
 
         if (minimumBaseQuality < 0) {
-            throw new UserException.BadArgumentValue(MINIMUM_BASE_QUALITY_FULL_NAME,
+            throw new CommandLineException.BadArgumentValue(MINIMUM_BASE_QUALITY_FULL_NAME,
                     String.valueOf(minimumBaseQuality),
                     "Its value must be 0 or greater");
         } else if (minimumMappingQuality < 0) {
-            throw new UserException.BadArgumentValue(MINIMUM_MAPPING_QUALITY_FULL_NAME,
+            throw new CommandLineException.BadArgumentValue(MINIMUM_MAPPING_QUALITY_FULL_NAME,
                     String.valueOf(minimumMappingQuality),
                     "Its value most be 0 or greater");
         } else if (maximumCoverage < 0 || Double.isNaN(maximumCoverage)) {
-            throw new UserException.BadArgumentValue(MAXIMUM_COVERAGE_FULL_NAME,
+            throw new CommandLineException.BadArgumentValue(MAXIMUM_COVERAGE_FULL_NAME,
                     String.valueOf(maximumCoverage),
                     "Its value must be 0 or greater.");
         }
