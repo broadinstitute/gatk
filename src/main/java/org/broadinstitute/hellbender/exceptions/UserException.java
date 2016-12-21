@@ -52,51 +52,51 @@ public class UserException extends RuntimeException {
     public static class CouldNotReadInputFile extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public CouldNotReadInputFile(String message, Exception e) {
+        public CouldNotReadInputFile(final String message, final Exception e) {
             super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)), e);
         }
 
-        public CouldNotReadInputFile(File file) {
+        public CouldNotReadInputFile(final File file) {
             super(String.format("Couldn't read file %s", file.getAbsolutePath()));
         }
 
-        public CouldNotReadInputFile(Path path) {
+        public CouldNotReadInputFile(final Path path) {
             super(String.format("Couldn't read file %s", path));
         }
 
-        public CouldNotReadInputFile(File file, String message) {
+        public CouldNotReadInputFile(final File file, final String message) {
             this(file.getAbsolutePath(), message);
         }
 
-        public CouldNotReadInputFile(Path path, String message) {
+        public CouldNotReadInputFile(final Path path, final String message) {
             this(path.toString(), message);
         }
 
-        public CouldNotReadInputFile(String file, String message) {
-            super(String.format("Couldn't read file %s. Error was: %s", file, message));
+        public CouldNotReadInputFile(final String fileName, final String message) {
+            super(String.format("Couldn't read file %s. Error was: %s", fileName, message));
         }
 
-        public CouldNotReadInputFile(File file, String message, Exception e) {
+        public CouldNotReadInputFile(final File file, final String message, final Exception e) {
             this(file.getAbsolutePath(), message, e);
         }
 
-        public CouldNotReadInputFile(Path path, String message, Exception e) {
+        public CouldNotReadInputFile(final Path path, final String message, final Exception e) {
             this(path.toString(), message, e);
         }
 
-        public CouldNotReadInputFile(String file, String message, Exception e) {
-            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file, message, getMessage(e)), e);
+        public CouldNotReadInputFile(final String fileName, final String message, final Exception e) {
+            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", fileName, message, getMessage(e)), e);
         }
 
-        public CouldNotReadInputFile(File file, Exception e) {
-            this(file, getMessage(e), e);
+        public CouldNotReadInputFile(final File file, final Exception e) {
+            this(file, getMessage(e));
         }
 
-        public CouldNotReadInputFile(Path path, Exception e) {
-            this(path, getMessage(e), e);
+        public CouldNotReadInputFile(final Path path, final Exception e) {
+            this(path, getMessage(e));
         }
 
-        public CouldNotReadInputFile(String message) {
+        public CouldNotReadInputFile(final String message) {
             super(message);
         }
     }
@@ -104,7 +104,7 @@ public class UserException extends RuntimeException {
     public static class MissingReference extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public MissingReference(String message) { super(message); }
+        public MissingReference(final String message) { super(message); }
     }
 
     public static class CannotHandleGzippedRef extends UserException {
@@ -125,51 +125,53 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
 
-        public CouldNotCreateOutputFile(File file, String message, Exception e) {
+        public CouldNotCreateOutputFile(final File file, final String message, final Exception e) {
             this(file.getAbsolutePath(), message, e);
         }
 
-        public CouldNotCreateOutputFile(Path path, String message, Exception e) {
+        public CouldNotCreateOutputFile(final Path path, final String message, final Exception e) {
             this(path.toString(), message, e);
         }
 
-        public CouldNotCreateOutputFile(String filename, String message, Exception e) {
-            super(String.format("Couldn't write file %s because %s with exception %s", filename, message, getMessage(e)), e);
+        public CouldNotCreateOutputFile(final String fileName, final String message, final Exception e) {
+            super(String.format("Couldn't write file %s because %s with exception %s", fileName, message, getMessage(e)), e);
         }
 
-        public CouldNotCreateOutputFile(File file, String message) {
+        public CouldNotCreateOutputFile(final File file, final String message) {
             this(file.getAbsolutePath(), message);
         }
 
-        public CouldNotCreateOutputFile(Path path, String message) {
+        public CouldNotCreateOutputFile(final Path path, final String message) {
             this(path.toString(), message);
         }
 
-        public CouldNotCreateOutputFile(String file, String message) {
-            super(String.format("Couldn't write file %s because %s", file, message));
+        public CouldNotCreateOutputFile(final String fileName, final String message) {
+            super(String.format("Couldn't write file %s because %s", fileName, message));
         }
 
-        public CouldNotCreateOutputFile(File file, Exception e) {
+        public CouldNotCreateOutputFile(final File file, final Exception e) {
             super(String.format("Couldn't write file %s because exception %s", file.getAbsolutePath(), getMessage(e)), e);
         }
 
-        public CouldNotCreateOutputFile(Path path, Exception e) {
+        public CouldNotCreateOutputFile(final Path path, final Exception e) {
             super(String.format("Couldn't write file %s because exception %s", path.toString(), getMessage(e)), e);
         }
 
-        public CouldNotCreateOutputFile(String message, Exception e) {
+        public CouldNotCreateOutputFile(final String message, final Exception e) {
             super(message, e);
         }
     }
 
+    // todo - why we need this?
+    // todo - remove to use MalformedBAM?
     public static class MalformedRead extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public MalformedRead( GATKRead read, String message ) {
+        public MalformedRead(final GATKRead read, final String message ) {
             super(String.format("Read %s is malformed: %s", read, message));
         }
         
-        public MalformedRead(String source, String message) {
+        public MalformedRead(final String source, final String message) {
             super(String.format("Read from source %s is malformed: %s", source, message));
         }
     }
@@ -177,7 +179,7 @@ public class UserException extends RuntimeException {
     public static class MisencodedQualityScoresRead extends MalformedRead {
         private static final long serialVersionUID = 0L;
 
-        public MisencodedQualityScoresRead( GATKRead read, String message ) {
+        public MisencodedQualityScoresRead(final GATKRead read, final String message ) {
             super(read, String.format("Read is using the wrong encoding for quality scores: %s", message));
         }
     }
@@ -185,7 +187,7 @@ public class UserException extends RuntimeException {
     public static class BadInput extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public BadInput(String message) {
+        public BadInput(final String message) {
             super(String.format("Bad input: %s", message));
         }
     }
@@ -194,7 +196,7 @@ public class UserException extends RuntimeException {
     public static class BadTmpDir extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public BadTmpDir(String message) {
+        public BadTmpDir(final String message) {
             super(String.format("Failure working with the tmp directory %s. Override with -Djava.io.tmpdir=X on the command line to a bigger/better file system.  Exact error was %s", System.getProperties().get("java.io.tmpdir"), message));
         }
     }
@@ -202,11 +204,11 @@ public class UserException extends RuntimeException {
     public static class MalformedGenomeLoc extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public MalformedGenomeLoc(String message) {
+        public MalformedGenomeLoc(final String message) {
             super(String.format("Badly formed genome unclippedLoc: %s", message));
         }
 
-        public MalformedGenomeLoc(String message, Exception e) {
+        public MalformedGenomeLoc(final String message, final Exception e) {
             super(String.format("Badly formed genome unclippedLoc: %s", message), e);
         }
     }
@@ -220,31 +222,31 @@ public class UserException extends RuntimeException {
     public static class MalformedFile extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public MalformedFile(String message) {
+        public MalformedFile(final String message) {
             super(String.format("Unknown file is malformed: %s", message));
         }
 
-        public MalformedFile(String file, String message) {
-            super(String.format("File %s is malformed: %s", file, message));
+        public MalformedFile(final String fileName, final String message) {
+            super(String.format("File %s is malformed: %s", fileName, message));
         }
 
-        public MalformedFile(String file, String message, Exception e) {
-            super(String.format("File %s is malformed: %s caused by %s", file, message, getMessage(e)), e);
+        public MalformedFile(final String fileName, final String message, final Exception e) {
+            super(String.format("File %s is malformed: %s caused by %s", fileName, message, getMessage(e)), e);
         }
 
-        public MalformedFile(File file, String message) {
+        public MalformedFile(final File file, final String message) {
             this(file.getAbsolutePath(), message);
         }
 
-        public MalformedFile(File file, String message, Exception e) {
+        public MalformedFile(final File file, final String message, final Exception e) {
             this(file.getAbsolutePath(), message, e);
         }
 
-        public MalformedFile(Path path, String message) {
+        public MalformedFile(final Path path, final String message) {
             this(path.toString(), message);
         }
 
-        public MalformedFile(Path path, String message, Exception e) {
+        public MalformedFile(final Path path, final String message, final Exception e) {
             this(path.toString(), message, e);
         }
     }
@@ -275,21 +277,21 @@ public class UserException extends RuntimeException {
 
     public static class IncompatibleRecalibrationTableParameters extends UserException {
         private static final long serialVersionUID = 0L;
-        public IncompatibleRecalibrationTableParameters(String s) {
+        public IncompatibleRecalibrationTableParameters(final String s) {
             super(s);
         }
     }
 
     public static class EmptyIntersection extends UserException {
         private static final long serialVersionUID = 0L;
-        public EmptyIntersection(String s) {
+        public EmptyIntersection(final String s) {
             super(s);
         }
     }
 
     public static class CannotExecuteRScript extends UserException {
         private static final long serialVersionUID = 0L;
-        public CannotExecuteRScript(String message) {
+        public CannotExecuteRScript(final String message) {
             super(String.format("Unable to execute RScript command: " + message));
         }
     }
@@ -297,22 +299,34 @@ public class UserException extends RuntimeException {
     public static class MalformedBAM extends UserException {
         private static final long serialVersionUID = 1l;
 
-        // todo - why this needs the read?
-        public MalformedBAM(GATKRead read, String message) {
+        public MalformedBAM(final GATKRead read, final String message) {
             this("(unknown)", message);
         }
 
-        public MalformedBAM(File file, String message) {
+        public MalformedBAM(final File file, final String message) {
             this(file.getAbsolutePath(), message);
         }
 
-        public MalformedBAM(Path path, String message) {
+        public MalformedBAM(final Path path, final String message) {
             this(path.toString(), message);
         }
 
-        public MalformedBAM(String source, String message) {
+        public MalformedBAM(final String source, final String message) {
             super(String.format("SAM/BAM/CRAM file %s is malformed: %s", source, message));
         }
+
+        public MalformedBAM(final GATKRead read, final File file, final String message) {
+            this(read, file.getAbsolutePath(), message);
+        }
+
+        public MalformedBAM(final GATKRead read, final Path path, final String message) {
+            this(read, path.toString(), message);
+        }
+
+        public MalformedBAM(final GATKRead read, final String source, final String message) {
+            super(String.format("Read %s from source %s is malformed: %s", read.getName(), source, message));
+        }
+
     }
 
     public static class FailsStrictValidation extends UserException {
@@ -320,7 +334,7 @@ public class UserException extends RuntimeException {
 
         public final ValidateVariants.ValidationType type;
 
-        public FailsStrictValidation(String f, ValidateVariants.ValidationType type, String message) {
+        public FailsStrictValidation(final String f, final ValidateVariants.ValidationType type, final String message) {
             super(String.format("Input %s fails strict validation: %s of type:", f, message, type));
             this.type = type;
         }
@@ -328,7 +342,7 @@ public class UserException extends RuntimeException {
 
     public static class MissingContigInSequenceDictionary extends UserException {
         private static final long serialVersionUID = 1L;
-        public MissingContigInSequenceDictionary(String contigName, SAMSequenceDictionary dict1) {
+        public MissingContigInSequenceDictionary(final String contigName, final SAMSequenceDictionary dict1) {
             super(String.format("Contig %s not present in the sequence dictionary %s\n",
                     contigName, ReadUtils.prettyPrintSequenceRecords(dict1)));
         }
@@ -343,11 +357,11 @@ public class UserException extends RuntimeException {
     public static class IncompatibleSequenceDictionaries extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public IncompatibleSequenceDictionaries(String message,
-                                                String name1,
-                                                SAMSequenceDictionary dict1,
-                                                String name2,
-                                                SAMSequenceDictionary dict2) {
+        public IncompatibleSequenceDictionaries(final String message,
+                                                final String name1,
+                                                final SAMSequenceDictionary dict1,
+                                                final String name2,
+                                                final SAMSequenceDictionary dict2) {
             super(String.format("Input files %s and %s have incompatible contigs: %s.\n  %s contigs = %s\n  %s contigs = %s",
                     name1, name2, message,
                     name1, ReadUtils.prettyPrintSequenceRecords(dict1),
@@ -358,7 +372,7 @@ public class UserException extends RuntimeException {
     public static class LexicographicallySortedSequenceDictionary extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public LexicographicallySortedSequenceDictionary(String name, SAMSequenceDictionary dict) {
+        public LexicographicallySortedSequenceDictionary(final String name, final SAMSequenceDictionary dict) {
             super(String.format("Lexicographically sorted human genome sequence detected in %s."
                             + "\nFor safety's sake the GATK requires human contigs in karyotypic order: 1, 2, ..., 10, 11, ..., 20, 21, 22, X, Y with M either leading or trailing these contigs."
                             + "\nThis is because all distributed GATK resources are sorted in karyotypic order, and your processing will fail when you need to use these files."
@@ -420,6 +434,7 @@ public class UserException extends RuntimeException {
 	    }
     }
 
+    // todo - if this is extending MalformedBAM, we can use the source too
     public static final class ReadMissingReadGroup extends MalformedBAM {
         private static final long serialVersionUID = 0L;
 
@@ -431,11 +446,11 @@ public class UserException extends RuntimeException {
     public static final class HardwareFeatureException extends UserException {
         private static final long serialVersionUID = 0L;
 
-        public HardwareFeatureException(String message) {
+        public HardwareFeatureException(final String message) {
             super(message);
         }
 
-        public HardwareFeatureException(String message, Exception e){
+        public HardwareFeatureException(final String message, Exception e){
             super(message, e);
         }
     }
