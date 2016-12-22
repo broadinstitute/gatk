@@ -428,7 +428,7 @@ public final class ReadUtils {
             return read.getMateStart() - 1;           // case 1 (see header)
         } else {
             final int insertSize = Math.abs(read.getFragmentLength());    // the inferred insert size can be negative if the mate is mapped before the read (so we take the absolute value)
-            return read.getStart() + insertSize + 1;  // case 2 (see header)
+            return read.getStart() + insertSize;  // case 2 (see header)
         }
     }
 

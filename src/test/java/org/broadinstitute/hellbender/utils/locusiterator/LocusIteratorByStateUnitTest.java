@@ -753,7 +753,7 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
                         read.setIsReverseStrand(false);
                         read.setMateIsReverseStrand(true);
                         read.setMatePosition(read.getContig(), start - 1);
-                        read.setFragmentLength(goodBases - 1);
+                        read.setFragmentLength(goodBases);
                         tests.add(new Object[]{0, goodBases, nClips, read});
                     }
                 }
@@ -786,6 +786,6 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         }
 
         final int nExpectedPileups = nReadContainingPileups;
-        Assert.assertEquals(nPileups, nExpectedPileups, "Wrong number of pileups seen");
+        Assert.assertEquals(nPileups, nExpectedPileups, "\"Wrong number of pileups seen for " + read + " with " + nClipsOnLeft + " clipped bases.");
     }
 }

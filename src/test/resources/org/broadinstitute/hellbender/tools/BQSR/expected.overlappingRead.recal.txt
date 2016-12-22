@@ -61,14 +61,14 @@ QualityScore  Count  QuantizedScore
           35      3              35
           36      7              36
           37     14              37
-          38     45              38
+          38     44              38
           39     10              39
           40      3              40
           41      0              93
           42      0              93
           43      0              93
           44      0              93
-          45    184              45
+          45    182              45
           46      0              93
           47      0              93
           48      0              93
@@ -121,9 +121,9 @@ QualityScore  Count  QuantizedScore
 #:GATKTable:6:3:%s:%s:%.4f:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable0:
 ReadGroup          EventType  EmpiricalQuality  EstimatedQReported  Observations  Errors
-20FUKAAXX100202.5  D                   45.0000             45.0000            92    0.00
-20FUKAAXX100202.5  I                   45.0000             45.0000            92    0.00
-20FUKAAXX100202.5  M                   36.0000             36.8252            92    0.00
+20FUKAAXX100202.5  D                   45.0000             45.0000            91    0.00
+20FUKAAXX100202.5  I                   45.0000             45.0000            91    0.00
+20FUKAAXX100202.5  M                   36.0000             36.8139            91    0.00
 
 #:GATKTable:6:12:%s:%d:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable1:
@@ -135,13 +135,13 @@ ReadGroup          QualityScore  EventType  EmpiricalQuality  Observations  Erro
 20FUKAAXX100202.5            35  M                   35.0000             3    0.00
 20FUKAAXX100202.5            36  M                   36.0000             7    0.00
 20FUKAAXX100202.5            37  M                   37.0000            14    0.00
-20FUKAAXX100202.5            38  M                   38.0000            45    0.00
+20FUKAAXX100202.5            38  M                   38.0000            44    0.00
 20FUKAAXX100202.5            39  M                   39.0000            10    0.00
 20FUKAAXX100202.5            40  M                   40.0000             3    0.00
-20FUKAAXX100202.5            45  D                   45.0000            92    0.00
-20FUKAAXX100202.5            45  I                   45.0000            92    0.00
+20FUKAAXX100202.5            45  D                   45.0000            91    0.00
+20FUKAAXX100202.5            45  I                   45.0000            91    0.00
 
-#:GATKTable:8:384:%s:%d:%s:%s:%s:%.4f:%d:%.2f:;
+#:GATKTable:8:379:%s:%d:%s:%s:%s:%.4f:%d:%.2f:;
 #:GATKTable:RecalTable2:
 ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  EmpiricalQuality  Observations  Errors
 20FUKAAXX100202.5            30  -93             Cycle          M                   30.0000             1    0.00
@@ -242,12 +242,11 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20FUKAAXX100202.5            38  -87             Cycle          M                   38.0000             1    0.00
 20FUKAAXX100202.5            38  -88             Cycle          M                   38.0000             1    0.00
 20FUKAAXX100202.5            38  -90             Cycle          M                   38.0000             1    0.00
-20FUKAAXX100202.5            38  -94             Cycle          M                   38.0000             1    0.00
 20FUKAAXX100202.5            38  AG              Context        M                   38.0000             2    0.00
 20FUKAAXX100202.5            38  AT              Context        M                   38.0000            10    0.00
 20FUKAAXX100202.5            38  CA              Context        M                   38.0000             3    0.00
 20FUKAAXX100202.5            38  CT              Context        M                   38.0000             1    0.00
-20FUKAAXX100202.5            38  GG              Context        M                   38.0000             3    0.00
+20FUKAAXX100202.5            38  GG              Context        M                   38.0000             2    0.00
 20FUKAAXX100202.5            38  GT              Context        M                   38.0000             2    0.00
 20FUKAAXX100202.5            38  TA              Context        M                   38.0000            11    0.00
 20FUKAAXX100202.5            38  TG              Context        M                   38.0000             4    0.00
@@ -438,8 +437,6 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20FUKAAXX100202.5            45  -89             Cycle          I                   45.0000             1    0.00
 20FUKAAXX100202.5            45  -9              Cycle          D                   45.0000             1    0.00
 20FUKAAXX100202.5            45  -9              Cycle          I                   45.0000             1    0.00
-20FUKAAXX100202.5            45  -90             Cycle          D                   45.0000             1    0.00
-20FUKAAXX100202.5            45  -90             Cycle          I                   45.0000             1    0.00
 20FUKAAXX100202.5            45  AAA             Context        D                   45.0000             1    0.00
 20FUKAAXX100202.5            45  AAA             Context        I                   45.0000             1    0.00
 20FUKAAXX100202.5            45  AAC             Context        D                   45.0000             1    0.00
@@ -470,8 +467,6 @@ ReadGroup          QualityScore  CovariateValue  CovariateName  EventType  Empir
 20FUKAAXX100202.5            45  CCA             Context        I                   45.0000             1    0.00
 20FUKAAXX100202.5            45  CCT             Context        D                   45.0000             1    0.00
 20FUKAAXX100202.5            45  CCT             Context        I                   45.0000             1    0.00
-20FUKAAXX100202.5            45  CGG             Context        D                   45.0000             1    0.00
-20FUKAAXX100202.5            45  CGG             Context        I                   45.0000             1    0.00
 20FUKAAXX100202.5            45  CTA             Context        D                   45.0000             1    0.00
 20FUKAAXX100202.5            45  CTA             Context        I                   45.0000             1    0.00
 20FUKAAXX100202.5            45  CTC             Context        D                   45.0000             2    0.00

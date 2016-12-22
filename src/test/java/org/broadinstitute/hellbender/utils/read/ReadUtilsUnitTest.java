@@ -73,7 +73,7 @@ public final class ReadUtilsUnitTest extends BaseTest {
         read.setIsReverseStrand(false);
         read.setMateIsReverseStrand(true);
         boundary = get.getAdaptor(read);
-        Assert.assertEquals(boundary, myStart + fragmentSize + 1);
+        Assert.assertEquals(boundary, myStart + fragmentSize);
 
         // Test case 2: positive strand, second read
         read = makeRead(fragmentSize, mateStart);
@@ -82,7 +82,7 @@ public final class ReadUtilsUnitTest extends BaseTest {
         read.setIsReverseStrand(false);
         read.setMateIsReverseStrand(true);
         boundary = get.getAdaptor(read);
-        Assert.assertEquals(boundary, myStart + fragmentSize + 1);
+        Assert.assertEquals(boundary, myStart + fragmentSize);
 
         // Test case 3: negative strand, second read
         read = makeRead(fragmentSize, mateStart);
