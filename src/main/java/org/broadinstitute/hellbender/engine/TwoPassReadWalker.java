@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.tools.walkers.rnaseq.SplitNCigarReads;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
@@ -55,7 +56,7 @@ public abstract class TwoPassReadWalker extends ReadWalker {
      * @param f function applied to each read, should produce some useful side effect
      */
     private void traverseReads(final CountingReadFilter countedFilter, final GATKApply f) {
-        StreamSupport.stream(reads.spliterator(), false)
+        Utils.stream(reads)
                 .filter(countedFilter)
                 .forEach(read -> {
                     final SimpleInterval readInterval = getReadInterval(read);

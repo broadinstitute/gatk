@@ -39,7 +39,7 @@ public final class TableColumnCollection {
      *                                  of names as determined by {@link #checkNames checkNames}.
      */
     public TableColumnCollection(final Iterable<String> names) {
-        this(StreamSupport.stream(Utils.nonNull(names, "the names cannot be null").spliterator(), false).toArray(String[]::new));
+        this(Utils.stream(Utils.nonNull(names, "the names cannot be null")).toArray(String[]::new));
     }
 
     /**

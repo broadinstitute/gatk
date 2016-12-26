@@ -5,6 +5,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.tools.ApplyBQSRArgumentCollection;
 import org.broadinstitute.hellbender.transformers.BQSRReadTransformer;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 
@@ -18,7 +19,7 @@ public class ApplyBQSRSparkFn {
             final RecalibrationReport report = reportBroadcast.getValue();
             final BQSRReadTransformer transformer = new BQSRReadTransformer(readsHeader, report, args);//reuse this for all reads in the partition
             final Iterable<GATKRead> readsIterable = () -> readsIterator;
-            return StreamSupport.stream(readsIterable.spliterator(), false).map(read -> transformer.apply(read)).collect(Collectors.toList()).iterator();
+            return Utils.stream(readsIterable).map(read -> transformer.apply(read)).collect(Collectors.toList()).iterator();
         });
     }
 }

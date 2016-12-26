@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -33,7 +34,7 @@ public final class StandardCovariateListUnitTest extends BaseTest {
     @Test
     public void testIterator() {
         StandardCovariateList scl = makeCovariateList();
-        Assert.assertEquals(StreamSupport.stream(scl.spliterator(), false).count(), 4);
+        Assert.assertEquals(Utils.stream(scl).count(), 4);
     }
 
     @Test
@@ -41,7 +42,7 @@ public final class StandardCovariateListUnitTest extends BaseTest {
         StandardCovariateList scl = makeCovariateList();
         Assert.assertEquals(scl.getReadGroupCovariate().parseNameForReport(), "ReadGroup");
         Assert.assertEquals(scl.getQualityScoreCovariate().parseNameForReport(), "QualityScore");
-        final List<Covariate> additionalCovars = StreamSupport.stream(scl.getAdditionalCovariates().spliterator(), false).collect(Collectors.toList());
+        final List<Covariate> additionalCovars = Utils.stream(scl.getAdditionalCovariates()).collect(Collectors.toList());
         Assert.assertEquals(additionalCovars.get(0).parseNameForReport(), "Context");
         Assert.assertEquals(additionalCovars.get(1).parseNameForReport(), "Cycle");
     }

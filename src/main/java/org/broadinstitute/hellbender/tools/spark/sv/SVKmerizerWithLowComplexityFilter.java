@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import org.broadinstitute.hellbender.utils.Utils;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,13 +29,13 @@ public class SVKmerizerWithLowComplexityFilter extends SVKmerizer {
     }
 
     public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, final double minEntropy ) {
-        return StreamSupport.stream(((Iterable<SVKmer>)() ->
-                new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy)).spliterator(), false);
+        return Utils.stream((Iterable<SVKmer>)() ->
+                new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy));
     }
 
     public static Stream<SVKmer> stream(final byte[] seq, final int kSize, final double minEntropy ) {
-        return StreamSupport.stream(((Iterable<SVKmer>)() ->
-                new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy)).spliterator(), false);
+        return Utils.stream((Iterable<SVKmer>)() ->
+                new SVKmerizerWithLowComplexityFilter(seq, kSize, minEntropy));
     }
 
     @Override
