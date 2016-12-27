@@ -25,14 +25,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 
@@ -451,6 +445,20 @@ public abstract class BaseTest {
 
     public static void assertContains(String actual, String expectedSubstring){
         Assert.assertTrue(actual.contains(expectedSubstring),  expectedSubstring +" was not found in " + actual+ ".");
+    }
+
+    public static <T> void assertCondition(Iterable<T> actual, Iterable<T> expected, BiConsumer<T,T> assertion){
+        final Iterator<T> iterActual = actual.iterator();
+        final Iterator<T> iterExpected = expected.iterator();
+        while(iterActual.hasNext() && iterExpected.hasNext()){
+            assertion.accept(iterActual.next(), iterExpected.next());
+        }
+        if (iterActual.hasNext()){
+            Assert.fail("actual is longer than expected with at least one additional element: " + iterActual.next());
+        }
+        if (iterExpected.hasNext()){
+            Assert.fail("actual is shorter than expected, missing at least one element: " + iterExpected.next());
+        }
     }
 
 }
