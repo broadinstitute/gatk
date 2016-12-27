@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import genomicsdb.VCF2TileDB;
+import com.intel.genomicsdb.VCF2TileDB;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 

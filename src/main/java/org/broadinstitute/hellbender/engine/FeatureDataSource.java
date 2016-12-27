@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
-import genomicsdb.GenomicsDBFeatureReader;
+import com.intel.genomicsdb.GenomicsDBFeatureReader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.*;
 import htsjdk.variant.bcf2.BCF2Codec;
