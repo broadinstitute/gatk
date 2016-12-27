@@ -311,6 +311,20 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
+    // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases
+    // e.g. read name HAVCYADXX150109:1:2102:20528:2129 with cigar 23S53I
+    @Test
+    public void testReadsThatConsumeZeroReferenceReads() throws Exception {
+        final String CONSUMES_ZERO_REFERENCE_BASES = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/na12878-chr20-consumes-zero-reference-bases.bam";
+        final File outputVcf = createTempFile("output", ".vcf");
+        final String[] args = {
+                "-I", CONSUMES_ZERO_REFERENCE_BASES,
+                "-R", b37_reference_20_21,
+                "-O", outputVcf.getAbsolutePath()
+        };
+        runCommandLine(args);
+    }
+
     /*
      * Calculate rough concordance between two vcfs, comparing only the positions, alleles, and the first genotype.
      */
