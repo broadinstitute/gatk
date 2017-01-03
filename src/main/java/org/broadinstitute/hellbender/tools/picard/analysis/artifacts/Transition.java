@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.picard.analysis.artifacts;
 
 import htsjdk.samtools.util.SequenceUtil;
 
-enum Transition {
+public enum Transition {
     AtoA('A','A'), AtoC('A','C'), AtoG('A','G'), AtoT('A','T'),
     CtoA('C','A'), CtoC('C','C'), CtoG('C','G'), CtoT('C','T'),
     GtoA('G','A'), GtoC('G','C'), GtoG('G','G'), GtoT('G','T'),
