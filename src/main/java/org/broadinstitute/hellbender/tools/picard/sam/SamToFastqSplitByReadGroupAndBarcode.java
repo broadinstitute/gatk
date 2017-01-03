@@ -293,10 +293,26 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
         }
 
         if (mateNumber != null && mateNumber == 1) {
-            final String tenxBC = read.getStringAttribute("RX");
-            final String tenxBCQ = read.getStringAttribute("QX");
-            final String fillerBases = "AAAAAAA";
-            final String fillerQuals = "AAAAAAA";
+            final String tenxBC;
+            final String tenxBCQ;
+            final String fillerBases;
+            final String fillerQuals;
+            if (read.getStringAttribute("RX") != null) {
+                // long ranger 2.1 style bam
+                tenxBC = read.getStringAttribute("RX");
+                tenxBCQ = read.getStringAttribute("QX");
+                fillerBases = read.getStringAttribute("TR");
+                fillerQuals = read.getStringAttribute("TQ");
+            } else if (read.getStringAttribute("BX") != null) {
+                // long ranger 2.0
+                final String bx = read.getStringAttribute("BX");
+                tenxBC = bx.substring(0, bx.indexOf("-"));
+                tenxBCQ = createFillerString('A', tenxBC.length());
+                fillerBases = createFillerString('A', 7);
+                fillerQuals = createFillerString('A', 7);
+            } else {
+                throw new GATKException("Read has neither an RX or BX barcode tag:" + read.toString());
+            }
             readString = tenxBC + fillerBases + readString;
             baseQualities = tenxBCQ + fillerQuals + baseQualities;
         }
@@ -307,6 +323,14 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
             barcode.write(new FastqRecord(indexReadHeader, read.getStringAttribute("BC"), "", read.getStringAttribute("QT")));
         }
 
+    }
+
+    private String createFillerString(final char value, final int length) {
+        StringBuffer b = new StringBuffer(length);
+        for (int i = 0; i < length; i++) {
+            b.append(value);
+        }
+        return b.toString();
     }
 
     /**
