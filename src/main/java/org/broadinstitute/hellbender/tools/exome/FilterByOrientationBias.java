@@ -4,8 +4,8 @@ import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -13,11 +13,11 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.ArtifactMode;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterer;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.PreAdapterOrientationScorer;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -69,11 +69,11 @@ public class FilterByOrientationBias extends VariantWalker {
             fullName = ARTIFACT_MODES_FULL_NAME,
             optional = true
     )
-    protected List<String> artifactModes = new ArrayList<>();
+    protected List<String> transitions = new ArrayList<>();
 
-    private Map<ArtifactMode, Double> artifactModeToPreAdapterScoreMap;
+    private Map<Transition, Double> transitionToPreAdapterScoreMap;
 
-    private SortedSet<ArtifactMode> relevantArtifactModes;
+    private SortedSet<Transition> relevantTransitions;
 
     private VariantContextWriter vcfWriter;
 
@@ -84,12 +84,12 @@ public class FilterByOrientationBias extends VariantWalker {
     public void onTraversalStart() {
 
         // Gets around issue 2274 in gatk public
-        if (artifactModes.size() == 0) {
-            artifactModes.add(DEFAULT_ARTIFACT_MODE);
+        if (transitions.size() == 0) {
+            transitions.add(DEFAULT_ARTIFACT_MODE);
         }
 
         // Sort the input artifacts argument
-        artifactModes.sort(null);
+        transitions.sort(null);
 
         final MetricsFile<SequencingArtifactMetrics.PreAdapterDetailMetrics, Comparable<?>> mf = new MetricsFile<>();
 
@@ -103,30 +103,30 @@ public class FilterByOrientationBias extends VariantWalker {
 
 
         // Parse the desired artifact modes from the input string.
-        relevantArtifactModes  = new TreeSet<>();
-        for (String artifactMode: artifactModes) {
-            final String[] splitArtifactMode = artifactMode.split("/");
+        relevantTransitions  = new TreeSet<>();
+        for (String transition: transitions) {
+            final String[] splitTransition = transition.split("/");
 
-            if (!isValidArtifactMode(splitArtifactMode)) {
-                throw new UserException("Invalid artifact mode: " + String.join("/", splitArtifactMode));
+            if (!isValidTransition(splitTransition)) {
+                throw new UserException("Invalid artifact mode: " + String.join("/", splitTransition));
             }
 
-            relevantArtifactModes.add(ArtifactMode.of(splitArtifactMode[0].charAt(0), splitArtifactMode[1].charAt(0)));
+            relevantTransitions.add(Transition.transitionOf(splitTransition[0].charAt(0), splitTransition[1].charAt(0)));
         }
 
         // Get the PreAdapterQ score, which gives an indication of how badly infested the file is.
-        artifactModeToPreAdapterScoreMap = PreAdapterOrientationScorer.scoreOrientationBiasMetricsOverContext(mf.getMetrics());
+        transitionToPreAdapterScoreMap = PreAdapterOrientationScorer.scoreOrientationBiasMetricsOverContext(mf.getMetrics());
         logger.info("preAdapter scores:");
-        artifactModeToPreAdapterScoreMap.keySet().stream().forEach(k -> logger.info(k + ": " + artifactModeToPreAdapterScoreMap.get(k)));
+        transitionToPreAdapterScoreMap.keySet().stream().forEach(k -> logger.info(k + ": " + transitionToPreAdapterScoreMap.get(k)));
 
         setupVCFWriter();
     }
 
-    private boolean isValidArtifactMode(final String[] splitArtifactMode) {
-        if (splitArtifactMode[0].length() != 1) {
-            throw new UserException.BadInput("First base invalid - must be of length 1: " + splitArtifactMode[0]+ ". Artifact modes must be specified as one base-slash-one base.  E.g. G/T");
-        } else if (splitArtifactMode[1].length() != 1) {
-            throw new UserException.BadInput("Second base invalid - must be of length 1: " + splitArtifactMode[1]+ ". Artifact modes must be specified as one base-slash-one base.  E.g. G/T");
+    private boolean isValidTransition(final String[] splitTransition) {
+        if (splitTransition[0].length() != 1) {
+            throw new UserException.BadInput("First base invalid - must be of length 1: " + splitTransition[0]+ ". Artifact modes must be specified as one base-slash-one base.  E.g. G/T");
+        } else if (splitTransition[1].length() != 1) {
+            throw new UserException.BadInput("Second base invalid - must be of length 1: " + splitTransition[1]+ ". Artifact modes must be specified as one base-slash-one base.  E.g. G/T");
         }
         return true;
     }
@@ -144,7 +144,7 @@ public class FilterByOrientationBias extends VariantWalker {
      */
     @Override
     public void apply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        final VariantContext updatedVariant = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(variant, relevantArtifactModes, artifactModeToPreAdapterScoreMap);
+        final VariantContext updatedVariant = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(variant, relevantTransitions, transitionToPreAdapterScoreMap);
         firstPassVariants.add(updatedVariant);
 
         // See onTraversalSuccess for the actual filtering.
@@ -153,7 +153,7 @@ public class FilterByOrientationBias extends VariantWalker {
     private void setupVCFWriter() {
         vcfWriter = createVCFWriter(outputFile);
         vcfWriter.writeHeader(OrientationBiasFilterer.createVCFHeader(getHeaderForVariants(), getCommandLine(),
-                artifactModes));
+                transitions));
     }
 
 
@@ -165,7 +165,7 @@ public class FilterByOrientationBias extends VariantWalker {
         // Calculate how many artifacts need to be cut
         double fdrThresh = 0.01;
 
-        final List<VariantContext> finalVariants = OrientationBiasFilterer.annotateVariantContextsWithFilterResults(fdrThresh, relevantArtifactModes, firstPassVariants, artifactModeToPreAdapterScoreMap);
+        final List<VariantContext> finalVariants = OrientationBiasFilterer.annotateVariantContextsWithFilterResults(fdrThresh, relevantTransitions, firstPassVariants, transitionToPreAdapterScoreMap);
 
         logger.info("Writing variants to VCF...");
         for (final VariantContext vc: finalVariants) {
@@ -173,14 +173,14 @@ public class FilterByOrientationBias extends VariantWalker {
         }
         logger.info("Writing a simple summary table...");
         final List<String> sampleNames = finalVariants.get(0).getSampleNamesOrderedByName();
-        final List<Pair<String, ArtifactMode>> sampleArtifactModeCombinations =  new ArrayList<>();
-        for (ArtifactMode relevantArtifactMode : relevantArtifactModes) {
+        final List<Pair<String, Transition>> sampleTransitionCombinations =  new ArrayList<>();
+        for (Transition relevantTransition : relevantTransitions) {
             for (String sampleName : sampleNames) {
-                sampleArtifactModeCombinations.add(Pair.of(sampleName, relevantArtifactMode));
+                sampleTransitionCombinations.add(Pair.of(sampleName, relevantTransition));
             }
         }
 
-        OrientationBiasUtils.writeOrientationBiasSummaryTable(sampleArtifactModeCombinations, finalVariants, artifactModeToPreAdapterScoreMap, new File(outputFile.getAbsolutePath() + ".summary"));
+        OrientationBiasUtils.writeOrientationBiasSummaryTable(sampleTransitionCombinations, finalVariants, transitionToPreAdapterScoreMap, new File(outputFile.getAbsolutePath() + ".summary"));
         return null;
     }
 

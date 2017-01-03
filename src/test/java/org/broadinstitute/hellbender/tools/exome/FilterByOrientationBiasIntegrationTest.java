@@ -6,9 +6,9 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.ArtifactMode;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasFilterConstants;
 import org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter.OrientationBiasUtils;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -48,7 +48,7 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
         for (final VariantContext vc: variantContexts) {
             final Genotype tumorGenotype = vc.getGenotype("TUMOR");
             Assert.assertTrue((tumorGenotype.getFilters() == null) || (tumorGenotype.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)) ||
-                    !OrientationBiasUtils.isGenotypeInArtifactModeWithComplement(tumorGenotype, ArtifactMode.of('G', 'T')));
+                    !OrientationBiasUtils.isGenotypeInTransitionWithComplement(tumorGenotype, Transition.transitionOf('G', 'T')));
 
             final Genotype normalGenotype = vc.getGenotype("NORMAL");
             Assert.assertTrue((normalGenotype.getFilters() == null)

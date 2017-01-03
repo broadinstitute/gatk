@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.exome.orientationbiasvariantfilter;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -18,39 +19,39 @@ public class OrientationBiasUtilsUnitTest extends BaseTest {
     private static final File TEST_RESOURCE_DIR = new File("src/test/resources/org/broadinstitute/hellbender/tools/exome/orientationbiasvariantfilter/");
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
 
-    @Test(dataProvider = "BasicArtifactModesWithRC")
-    public void testFindReverseComplementArtifactModes(List<ArtifactMode> artifactMode, List<ArtifactMode> reverseComplement) {
+    @Test(dataProvider = "BasicTransitionsWithRC")
+    public void testFindReverseComplementTransitions(List<Transition> transition, List<Transition> reverseComplement) {
 
-        final List<ArtifactMode> result = OrientationBiasUtils.createReverseComplementArtifactModes(artifactMode);
+        final List<Transition> result = OrientationBiasUtils.createReverseComplementTransitions(transition);
         IntStream.range(0, result.size()).forEachOrdered(i -> Assert.assertEquals(result.get(i), reverseComplement.get(i)));
     }
 
 
 
-    @DataProvider(name = "BasicArtifactModesWithRC")
-    public Object[][] basicArtifactModesWithRC() {
+    @DataProvider(name = "BasicTransitionsWithRC")
+    public Object[][] basicTransitionsWithRC() {
         return new Object[][]{
-                {Collections.singletonList(ArtifactMode.of('C', 'A')), Collections.singletonList(ArtifactMode.of('G', 'T'))},
-                {Collections.singletonList(ArtifactMode.of('A', 'T')), Collections.singletonList(ArtifactMode.of('T', 'A'))},
-                {Arrays.asList(ArtifactMode.of('A', 'T'), ArtifactMode.of('C', 'T')), Arrays.asList(ArtifactMode.of('T', 'A'), ArtifactMode.of('G', 'A'))}
+                {Collections.singletonList(Transition.transitionOf('C', 'A')), Collections.singletonList(Transition.transitionOf('G', 'T'))},
+                {Collections.singletonList(Transition.transitionOf('A', 'T')), Collections.singletonList(Transition.transitionOf('T', 'A'))},
+                {Arrays.asList(Transition.transitionOf('A', 'T'), Transition.transitionOf('C', 'T')), Arrays.asList(Transition.transitionOf('T', 'A'), Transition.transitionOf('G', 'A'))}
         };
     }
 
     @Test
-    public void testCountNumArtifactMode() {
+    public void testCountNumTransition() {
 
         // Setup the test
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2VcfMore));
-        SortedSet<ArtifactMode> relevantArtifactModes = new TreeSet<>();
-        relevantArtifactModes.add(ArtifactMode.of('T', 'A'));
+        SortedSet<Transition> relevantTransitions = new TreeSet<>();
+        relevantTransitions.add(Transition.transitionOf('T', 'A'));
         final List<VariantContext> variantContexts = new ArrayList<>();
         for (final VariantContext vc : featureDataSource) {
             variantContexts.add(vc);
         }
 
         // Should be one, since one of the variants was filtered.
-        Assert.assertEquals(OrientationBiasUtils.calculateNumArtifactMode("TUMOR", variantContexts, relevantArtifactModes.first()), 1);
-        Assert.assertEquals(OrientationBiasUtils.calculateNumArtifactMode("NORMAL", variantContexts, relevantArtifactModes.first()), 0);
+        Assert.assertEquals(OrientationBiasUtils.calculateNumTransition("TUMOR", variantContexts, relevantTransitions.first()), 1);
+        Assert.assertEquals(OrientationBiasUtils.calculateNumTransition("NORMAL", variantContexts, relevantTransitions.first()), 0);
     }
 
     @Test

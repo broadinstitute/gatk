@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -33,17 +34,17 @@ public class OrientationBiasFilterer {
 
     /** Adds the annotations that can be created for individual variants.  The annotations placed on the genotypes here will be used by the filter.
      * @param vc the variant to prepare for the orientation bias filter. Never {@code null}
-     * @param relevantArtifactModesWithoutComplement the SNV artifact modes that we want to filter against.  Do not include the complement.  Never {@code null}
+     * @param relevantTransitionsWithoutComplement the SNV artifact modes that we want to filter against.  Do not include the complement.  Never {@code null}
      * @param preAdapterQScoreMap mapping from Artifact mode to the preAdapterQ score.  Never {@code null}
      * @return updated VariantContext with new genotypes already populated.
      */
-    public static VariantContext annotateVariantContextWithPreprocessingValues(final VariantContext vc, final SortedSet<Transition> relevantArtifactModesWithoutComplement, final Map<ArtifactMode, Double> preAdapterQScoreMap) {
+    public static VariantContext annotateVariantContextWithPreprocessingValues(final VariantContext vc, final SortedSet<Transition> relevantTransitionsWithoutComplement, final Map<Transition, Double> preAdapterQScoreMap) {
 
         Utils.nonNull(vc);
-        Utils.nonNull(relevantArtifactModesWithoutComplement);
+        Utils.nonNull(relevantTransitionsWithoutComplement);
         Utils.nonNull(preAdapterQScoreMap);
 
-        final List<Transition> relevantArtifactModesComplement = OrientationBiasUtils.createReverseComplementTransitions(relevantTransitionsWithoutComplement);
+        final List<Transition> relevantTransitionsComplement = OrientationBiasUtils.createReverseComplementTransitions(relevantTransitionsWithoutComplement);
 
         final VariantContextBuilder vcb = new VariantContextBuilder(vc);
         final GenotypesContext genotypesContext = vc.getGenotypes();
@@ -69,7 +70,7 @@ public class OrientationBiasFilterer {
                     if (allele.isCalled() && allele.isNonReference() && !allele.equals(Allele.SPAN_DEL)
                             && allele.getBaseString().length() == 1) {
 
-                        final Transition genotypeMode = Transition.of(refAllele, allele.getBaseString().charAt(0));
+                        final Transition genotypeMode = Transition.transitionOf(refAllele, allele.getBaseString().charAt(0));
                         final boolean isRelevantArtifact = relevantTransitionsWithoutComplement.contains(genotypeMode);
                         final boolean isRelevantArtifactComplement = relevantTransitionsComplement.contains(genotypeMode);
 
@@ -77,7 +78,7 @@ public class OrientationBiasFilterer {
                         genotypeBuilder.attribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE, String.valueOf(isRelevantArtifactComplement));
 
                         genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(genotypeMode, PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
-                        genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(OrientationBiasUtils.createReverseComplement(genotypeMode), PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
+                        genotypeBuilder.attribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME, preAdapterQScoreMap.getOrDefault(genotypeMode.complement(), PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
 
                         // FOB for the complement is ALT_F2R1/(ALT_F2R1 + ALT_F1R2) and for the actual artifact mode is ALT_F1R2/(ALT_F2R1 + ALT_F1R2)
                         // FOB is the fraction of alt reads indicating orientation bias error (taking into account artifact mode complement).
@@ -152,19 +153,11 @@ public class OrientationBiasFilterer {
 
             // Adjust the artifact mode to cut based on the preAdapterQ score from picard
             for (final Transition transition : transitionNumToCut.keySet()) {
-                double suppression;
-                if (relevantTransitionsWithoutComplements.contains(transition)) {
-                    suppression = ArtifactStatisticsScorer.calculateSuppressionFactorFromPreAdapterQ(preAdapterQScoreMap.get(transition));
-                } else {
+                final Transition modeOrReverseComplement = relevantTransitionsWithoutComplements.contains(transition) ? transition : transition.complement();
+                final double suppression = ArtifactStatisticsScorer.calculateSuppressionFactorFromPreAdapterQ(preAdapterQScoreMap.get(modeOrReverseComplement));
 
-                    // Must be a complement, since it cannot be in relevantTransitions while not being in relevantTransitionsWithoutComplements
-                    suppression = ArtifactStatisticsScorer.calculateSuppressionFactorFromPreAdapterQ(preAdapterQScoreMap.get(OrientationBiasUtils.createReverseComplement(transition)));
-                }
-
-                transitionNumToCut.put(transition,
-                        Math.round(transitionNumToCut.get(transition) * suppression));
-                logger.info(sampleName + ": Cutting (" + transition.toString() +
-                        ") post-preAdapterQ: " + String.valueOf(transitionNumToCut.get(transition)));
+                transitionNumToCut.put(transition, Math.round(transitionNumToCut.get(transition) * suppression));
+                logger.info(sampleName + ": Cutting (" + transition + ") post-preAdapterQ: " + transitionNumToCut.get(transition));
             }
 
             // Add filtering results to genotypes and store a pair of genotype variant context, so that we can update variant contexts later.
@@ -175,18 +168,20 @@ public class OrientationBiasFilterer {
             for (final Genotype genotype : genotypesToConsiderForFiltering.keySet()) {
                 final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
 
-                final Transition transition = Transition.of(genotype.getAllele(0).getBaseString().charAt(0), genotype.getAllele(1).getBaseString().charAt(0));
+                final Transition transition = Transition.transitionOf(genotype.getAllele(0).getBaseString().charAt(0), genotype.getAllele(1).getBaseString().charAt(0));
 
+                final Double pValue = OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0);
+                final Double fractionOfReadsSupportingOrientationBias = OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.FOB, 0.0);
                 if (transitionCutSoFar.get(transition) < transitionNumToCut.get(transition)) {
                     final String updatedFilter = OrientationBiasUtils.addFilterToGenotype(genotype.getFilters(), OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
                     genotypeBuilder.filter(updatedFilter);
                     transitionCutSoFar.put(transition, transitionCutSoFar.get(transition) + 1);
                     logger.info("Cutting: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
-                            + " p=" + OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0) + " Fob=" + OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.FOB, 0.0));
+                            + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
                 } else {
                     // No need to do anything for the genotype filter, so just log it.
                     logger.info("Passing: " + genotype.getSampleName() + " " + genotype.getAllele(0) + " " + genotype.getAllele(1)
-                            + " p=" + OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, 0.0) + " Fob=" + OrientationBiasUtils.getGenotypeDouble(genotype, OrientationBiasFilterConstants.FOB, 0.0));
+                            + " p=" + pValue + " Fob=" + fractionOfReadsSupportingOrientationBias);
                 }
 
                 newGenotypes.computeIfAbsent(genotypesToConsiderForFiltering.get(genotype), v -> new ArrayList<>()).add(genotypeBuilder.make());
@@ -200,15 +195,9 @@ public class OrientationBiasFilterer {
         resultProgressMeter.start();
         for (final VariantContext vc : preAdapterQAnnotatedVariants) {
             if (newGenotypes.containsKey(vc)) {
-                final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(vc);
                 final GenotypesContext gcc = GenotypesContext.copy(vc.getGenotypes());
-                final List<Genotype> updatedGenotypes = newGenotypes.get(vc);
-
-                for (final Genotype g : updatedGenotypes) {
-                    gcc.replace(g);
-                }
-                variantContextBuilder.genotypes(gcc);
-                finalVariants.add(variantContextBuilder.make());
+                newGenotypes.get(vc).forEach(gcc::replace);
+                finalVariants.add(new VariantContextBuilder(vc).genotypes(gcc).make());
             } else {
                 finalVariants.add(vc);
             }
@@ -229,13 +218,8 @@ public class OrientationBiasFilterer {
         final Map<Transition, Long> transitionNumToCut = new HashMap<>();
         transitionCount.keySet().stream().forEach(transition -> transitionNumToCut.put(transition, 0L));
         for (final Transition transition : transitionNumToCut.keySet()) {
-            if (totalNumToCut == 0) {
-                transitionNumToCut.put(transition, 0L);
-            } else {
-                transitionNumToCut.put(transition, Long.valueOf(Math.round(totalNumToCut * transitionCount.get(transition) / allTransitionCount)));
-            }
-            logger.info(sampleName + ": Cutting (" + transition.toString() +
-                    ") pre-preAdapterQ: " + String.valueOf(transitionNumToCut.get(transition)));
+            transitionNumToCut.put(transition, Long.valueOf(Math.round(totalNumToCut * transitionCount.get(transition) / allTransitionCount)));
+            logger.info(sampleName + ": Cutting (" + transition.toString() + ") pre-preAdapterQ: " + transitionNumToCut.get(transition));
         }
         return transitionNumToCut;
     }

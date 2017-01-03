@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -21,15 +22,15 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
     @Test
     public void testAnnotateVariantContextWithPreprocessingValues() {
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2Vcf));
-        SortedSet<ArtifactMode> relevantArtifactModes = new TreeSet<>();
-        relevantArtifactModes.add(ArtifactMode.of('G', 'T'));
+        SortedSet<Transition> relevantTransitions = new TreeSet<>();
+        relevantTransitions.add(Transition.transitionOf('G', 'T'));
 
-        final Map<ArtifactMode, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
         final double amGTPreAdapterQ = 20.0;
-        preAdapterQFakeScoreMap.put(ArtifactMode.of('G', 'T'), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(Transition.transitionOf('G', 'T'), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
 
         for (final VariantContext vc : featureDataSource) {
-            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantArtifactModes, preAdapterQFakeScoreMap);
+            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantTransitions, preAdapterQFakeScoreMap);
 
             final Genotype genotypeTumor = updatedVariantContext.getGenotype("TUMOR");
             final Genotype genotypeNormal = updatedVariantContext.getGenotype("NORMAL");
@@ -37,20 +38,20 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
             Assert.assertNotEquals(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.FOB, VCFConstants.EMPTY_ALLELE), VCFConstants.EMPTY_ALLELE);
             Assert.assertNotEquals(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, VCFConstants.EMPTY_ALLELE), VCFConstants.EMPTY_ALLELE);
 
-            assertArtifact(amGTPreAdapterQ, genotypeTumor, ArtifactMode.of('G', 'T'));
+            assertArtifact(amGTPreAdapterQ, genotypeTumor, Transition.transitionOf('G', 'T'));
 
             // The NORMAL is always ref/ref in the example file.
             assertNormal(genotypeNormal);
         }
     }
 
-    private boolean assertArtifact(double amPreAdapterQ, final Genotype genotypeTumor, final ArtifactMode artifactMode) {
-        final ArtifactMode amRC = OrientationBiasUtils.createReverseComplement(artifactMode);
+    private boolean assertArtifact(double amPreAdapterQ, final Genotype genotypeTumor, final Transition transition) {
+        final Transition transitionComplement = transition.complement();
 
         boolean result = false;
 
         // Check whether this genotype is reverse complement or actual artifact mode
-        if (genotypeTumor.getAllele(0).basesMatch(artifactMode.getLeft().toString()) && genotypeTumor.getAllele(1).basesMatch(artifactMode.getRight().toString())) {
+        if (genotypeTumor.getAllele(0).basesMatch(String.valueOf(transition.ref())) && genotypeTumor.getAllele(1).basesMatch(String.valueOf(transition.call()))) {
             // not complement (i.e. artifact mode)
             Assert.assertTrue(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME).equals(OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
             Assert.assertTrue(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME).equals(amPreAdapterQ));
@@ -58,7 +59,7 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
             Assert.assertEquals(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE), String.valueOf(false));
             result = true;
 
-        } else if (genotypeTumor.getAllele(0).basesMatch(amRC.getLeft().toString()) && genotypeTumor.getAllele(1).basesMatch(amRC.getRight().toString())) {
+        } else if (genotypeTumor.getAllele(0).basesMatch(String.valueOf(transitionComplement.ref())) && genotypeTumor.getAllele(1).basesMatch(String.valueOf(transitionComplement.call()))) {
             //complement
             Assert.assertTrue(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME).equals(amPreAdapterQ));
             Assert.assertTrue(genotypeTumor.getExtendedAttribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME).equals(OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE));
@@ -73,18 +74,18 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
     @Test
     public void testAnnotateVariantContextWithPreprocessingValuesMultiArtifact() {
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2VcfMore));
-        SortedSet<ArtifactMode> relevantArtifactModes = new TreeSet<>();
-        relevantArtifactModes.add(ArtifactMode.of('G', 'T'));
-        relevantArtifactModes.add(ArtifactMode.of('C', 'T'));
+        SortedSet<Transition> relevantTransitions = new TreeSet<>();
+        relevantTransitions.add(Transition.transitionOf('G', 'T'));
+        relevantTransitions.add(Transition.transitionOf('C', 'T'));
 
-        final Map<ArtifactMode, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
-        preAdapterQFakeScoreMap.put(relevantArtifactModes.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
-        preAdapterQFakeScoreMap.put(relevantArtifactModes.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
 
         for (final VariantContext vc : featureDataSource) {
-            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantArtifactModes, preAdapterQFakeScoreMap);
+            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantTransitions, preAdapterQFakeScoreMap);
 
             final Genotype genotypeTumor = updatedVariantContext.getGenotype("TUMOR");
             final Genotype genotypeNormal = updatedVariantContext.getGenotype("NORMAL");
@@ -93,12 +94,12 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
             boolean wasGenotypeTumorTested = false;
 
             // Check whether this genotype is reverse complement or actual artifact mode
-            wasGenotypeTumorTested |= assertArtifact(amGTPreAdapterQ, genotypeTumor, relevantArtifactModes.first());
-            wasGenotypeTumorTested |= assertArtifact(amCTPreAdapterQ, genotypeTumor, relevantArtifactModes.last());
+            wasGenotypeTumorTested |= assertArtifact(amGTPreAdapterQ, genotypeTumor, relevantTransitions.first());
+            wasGenotypeTumorTested |= assertArtifact(amCTPreAdapterQ, genotypeTumor, relevantTransitions.last());
 
             // Check any variants that are not an artifact mode but are SNP
-            if (!OrientationBiasUtils.isGenotypeInArtifactModesWithComplement(genotypeTumor, relevantArtifactModes)) {
-                assertNotArtifactMode(genotypeTumor);
+            if (!OrientationBiasUtils.isGenotypeInTransitionsWithComplement(genotypeTumor, relevantTransitions)) {
+                assertNotTransition(genotypeTumor);
                 wasGenotypeTumorTested = true;
             } else {
 
@@ -114,7 +115,7 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
         }
     }
 
-    private void assertNotArtifactMode(final Genotype genotype) {
+    private void assertNotTransition(final Genotype genotype) {
         Assert.assertEquals(genotype.getExtendedAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE), String.valueOf(false));
         Assert.assertEquals(genotype.getExtendedAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE), String.valueOf(false));
         Assert.assertEquals(genotype.getExtendedAttribute(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_RC_FIELD_NAME), OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE);
@@ -135,19 +136,19 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
     @Test
     public void testAnnotateVariantContextWithFilterValuesMultiArtifact() {
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2VcfMore));
-        SortedSet<ArtifactMode> relevantArtifactModes = new TreeSet<>();
-        relevantArtifactModes.add(ArtifactMode.of('G', 'T'));
-        relevantArtifactModes.add(ArtifactMode.of('C', 'T'));
+        SortedSet<Transition> relevantTransitions = new TreeSet<>();
+        relevantTransitions.add(Transition.transitionOf('G', 'T'));
+        relevantTransitions.add(Transition.transitionOf('C', 'T'));
 
-        final Map<ArtifactMode, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
-        preAdapterQFakeScoreMap.put(relevantArtifactModes.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
-        preAdapterQFakeScoreMap.put(relevantArtifactModes.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
         final List<VariantContext> updatedVariants = new ArrayList<>();
 
         for (final VariantContext vc : featureDataSource) {
-            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantArtifactModes, preAdapterQFakeScoreMap);
+            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantTransitions, preAdapterQFakeScoreMap);
             updatedVariants.add(updatedVariantContext);
         }
         final List<String> sampleNames = updatedVariants.get(0).getSampleNamesOrderedByName();
@@ -173,19 +174,19 @@ public class OrientationBiasFiltererUnitTest extends BaseTest {
 
         // Setup the test
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2VcfMore));
-        SortedSet<ArtifactMode> relevantArtifactModes = new TreeSet<>();
-        relevantArtifactModes.add(ArtifactMode.of('G', 'T'));
-        relevantArtifactModes.add(ArtifactMode.of('C', 'T'));
+        SortedSet<Transition> relevantTransitions = new TreeSet<>();
+        relevantTransitions.add(Transition.transitionOf('G', 'T'));
+        relevantTransitions.add(Transition.transitionOf('C', 'T'));
 
-        final Map<ArtifactMode, Double> preAdapterQFakeScoreMap = new HashMap<>();
+        final Map<Transition, Double> preAdapterQFakeScoreMap = new HashMap<>();
         final double amGTPreAdapterQ = 20.0;
         final double amCTPreAdapterQ = 25.0;
-        preAdapterQFakeScoreMap.put(relevantArtifactModes.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
-        preAdapterQFakeScoreMap.put(relevantArtifactModes.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.first(), amGTPreAdapterQ);  // preAdapterQ suppression will do nothing.
+        preAdapterQFakeScoreMap.put(relevantTransitions.last(), amCTPreAdapterQ);  // preAdapterQ suppression will do nothing.
         final List<VariantContext> updatedVariants = new ArrayList<>();
 
         for (final VariantContext vc : featureDataSource) {
-            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantArtifactModes, preAdapterQFakeScoreMap);
+            final VariantContext updatedVariantContext = OrientationBiasFilterer.annotateVariantContextWithPreprocessingValues(vc, relevantTransitions, preAdapterQFakeScoreMap);
             updatedVariants.add(updatedVariantContext);
         }
         final List<String> sampleNames = updatedVariants.get(0).getSampleNamesOrderedByName();

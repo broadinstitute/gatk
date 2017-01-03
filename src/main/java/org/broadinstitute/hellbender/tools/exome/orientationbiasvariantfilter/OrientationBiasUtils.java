@@ -8,7 +8,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -60,8 +60,8 @@ public class OrientationBiasUtils {
         if (g.getAlleles().size() != 2) {
             throw new UserException.BadInput("Cannot run this method on non-diploid genotypes.");
         }
-        return g.getAllele(0).getDisplayString().equals(transition.getLeft().toString()) &&
-                g.getAllele(1).getDisplayString().equals(transition.getRight().toString());
+        return g.getAllele(0).getDisplayString().equals(String.valueOf(transition.ref())) &&
+                g.getAllele(1).getDisplayString().equals(String.valueOf(transition.call()));
     }
 
     /** See {@link #isGenotypeInTransition}, except that this will take into account complements.
@@ -77,16 +77,16 @@ public class OrientationBiasUtils {
         if (g.getAlleles().size() != 2) {
             throw new UserException.BadInput("Cannot run this method on non-diploid genotypes.");
         }
-        final boolean isInTransition = g.getAllele(0).getDisplayString().equals(transition.getLeft().toString()) &&
-                g.getAllele(1).getDisplayString().equals(transition.getRight().toString());
+        final boolean isInTransition = g.getAllele(0).getDisplayString().equals(String.valueOf(transition.ref())) &&
+                g.getAllele(1).getDisplayString().equals(String.valueOf(transition.call()));
 
         if (isInTransition) {
             return true;
         }
 
-        final Transition transitionComplement = createReverseComplement(transition);
-        return g.getAllele(0).getDisplayString().equals(transitionComplement.getLeft().toString()) &&
-                g.getAllele(1).getDisplayString().equals(transitionComplement.getRight().toString());
+        final Transition transitionComplement = transition.complement();
+        return g.getAllele(0).getDisplayString().equals(String.valueOf(transitionComplement.ref())) &&
+                g.getAllele(1).getDisplayString().equals(String.valueOf(transitionComplement.call()));
 
     }
 
@@ -114,19 +114,8 @@ public class OrientationBiasUtils {
     public static List<Transition> createReverseComplementTransitions(final Collection<Transition> transitions) {
         Utils.nonNull(transitions, "Transitions cannot be null.");
         return transitions.stream()
-                .map(am -> createReverseComplement(am))
+                .map(transition -> transition.complement())
                 .collect(Collectors.toList());
-    }
-
-    /** Create the complement of the given artifact mode.
-     *
-     * @param transition artifact mode to create a complement for.  Never {@code null}
-     * @return new artifact mode that is the complement
-     */
-    public static Transition createReverseComplement(final Transition transition) {
-        Utils.nonNull(transition, "Transition cannot be null.");
-        return Transition.of((char) BaseUtils.simpleComplement((byte) transition.getLeft().charValue()),
-                (char) BaseUtils.simpleComplement((byte) transition.getRight().charValue()));
     }
 
     /**
@@ -152,8 +141,8 @@ public class OrientationBiasUtils {
                              //lambda for creating DataLine with sampleName and segment fields
                              (sampleTransitionPair, dataLine) -> {
                                  dataLine.append(sampleTransitionPair.getLeft())
-                                 .append(sampleTransitionPair.getRight().toString() + "(" +
-                                         OrientationBiasUtils.createReverseComplement(sampleTransitionPair.getRight()).toString() + ")")
+                                 .append(sampleTransitionPair.getRight() + "(" +
+                                         sampleTransitionPair.getRight().complement() + ")")
                                  .append(preAdapterScoreMap.getOrDefault(sampleTransitionPair.getRight(), OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE))
                                  .append(calculateNumTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()))
                                  .append(calculateNumTransitionFilteredByOrientationBias(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()))
@@ -172,7 +161,7 @@ public class OrientationBiasUtils {
     /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filter. */
     @VisibleForTesting
     static long calculateNumTransition(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
-        final Transition complement = OrientationBiasUtils.createReverseComplement(transition);
+        final Transition complement = transition.complement();
         return getNumArtifactGenotypeStream(sampleName, variantContexts, transition, complement)
                 .filter(g -> (g.getFilters() == null) || (g.getFilters().equals(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)))
                 .count();
@@ -181,7 +170,7 @@ public class OrientationBiasUtils {
     /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filter. */
     @VisibleForTesting
     static long calculateNumNotTransition(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
-        final Transition complement = OrientationBiasUtils.createReverseComplement(transition);
+        final Transition complement = transition.complement();
         return getGenotypeStream(sampleName, variantContexts)
                 .filter(g -> !OrientationBiasUtils.isGenotypeInTransition(g, complement) && !OrientationBiasUtils.isGenotypeInTransition(g, transition))
                 .count();
@@ -201,7 +190,7 @@ public class OrientationBiasUtils {
     /** Includes complements */
     @VisibleForTesting
     static long calculateNumTransitionFilteredByOrientationBias(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
-        final Transition complement = OrientationBiasUtils.createReverseComplement(transition);
+        final Transition complement = transition.complement();
         return getNumArtifactGenotypeStream(sampleName, variantContexts, transition, complement)
                 .filter(g -> (g != null) && (g.getFilters() != null)
                         && g.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT))
