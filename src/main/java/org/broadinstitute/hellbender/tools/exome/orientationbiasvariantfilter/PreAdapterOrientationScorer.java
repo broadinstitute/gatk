@@ -5,6 +5,7 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.SequencingArtifactMetrics;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
+import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.HashMap;
@@ -22,11 +23,15 @@ public class PreAdapterOrientationScorer {
     final static int REF = 0;
     final static int ALT = 1;
 
+    /** Defined by convention that the Phred quality score is 100.0, so this value ensures that the Phred calculation will
+     * be 100.0. */
+    public static final double MAX_BASE_SCORE = Math.pow(10, -10);
+
     /**
      * Gets PreAdapterQ collapsed over contexts.
      *
      * rows {PRO, CON} x cols {ref, alt}
-     * @param metrics metrics usuall read from a picard preadapter detail file.
+     * @param metrics metrics usually read from a picard preadapter detail file.
      * @return mapping to score all orientation bias artifact modes to a PreAdapterQ score.  This score can be used as a bam-file level score for level of artifacts.
      */
     @VisibleForTesting
@@ -40,10 +45,11 @@ public class PreAdapterOrientationScorer {
         for (SequencingArtifactMetrics.PreAdapterDetailMetrics metric : metrics) {
             final Transition key = Transition.transitionOf(metric.REF_BASE, metric.ALT_BASE);
             result.putIfAbsent(key, new Array2DRowRealMatrix(2, 2));
-            result.get(key).addToEntry(PreAdapterOrientationScorer.PRO, PreAdapterOrientationScorer.ALT, metric.PRO_ALT_BASES);
-            result.get(key).addToEntry(PreAdapterOrientationScorer.CON, PreAdapterOrientationScorer.ALT, metric.CON_ALT_BASES);
-            result.get(key).addToEntry(PreAdapterOrientationScorer.PRO, PreAdapterOrientationScorer.REF, metric.PRO_REF_BASES);
-            result.get(key).addToEntry(PreAdapterOrientationScorer.CON, PreAdapterOrientationScorer.REF, metric.CON_REF_BASES);
+            final RealMatrix preAdapterCountMatrix = result.get(key);
+            preAdapterCountMatrix.addToEntry(PreAdapterOrientationScorer.PRO, PreAdapterOrientationScorer.ALT, metric.PRO_ALT_BASES);
+            preAdapterCountMatrix.addToEntry(PreAdapterOrientationScorer.CON, PreAdapterOrientationScorer.ALT, metric.CON_ALT_BASES);
+            preAdapterCountMatrix.addToEntry(PreAdapterOrientationScorer.PRO, PreAdapterOrientationScorer.REF, metric.PRO_REF_BASES);
+            preAdapterCountMatrix.addToEntry(PreAdapterOrientationScorer.CON, PreAdapterOrientationScorer.REF, metric.CON_REF_BASES);
         }
 
         return result;
@@ -66,10 +72,10 @@ public class PreAdapterOrientationScorer {
             final RealMatrix count = counts.get(transition);
             final double totalBases = count.getEntry(PRO, REF) + count.getEntry(PRO, ALT) +
                     count.getEntry(CON, REF) + count.getEntry(CON, ALT);
-            final double rawScorePro = count.getEntry(PRO, ALT)/totalBases;
-            final double rawScoreCon = count.getEntry(CON, ALT)/totalBases;
-            final double rawScore = rawScorePro - rawScoreCon;
-            final double score = -10 * Math.log10(Math.max(rawScore, Math.pow(10, -10)));
+            final double rawFractionPro = count.getEntry(PRO, ALT)/totalBases;
+            final double rawFractionCon = count.getEntry(CON, ALT)/totalBases;
+            final double baseScore = rawFractionPro - rawFractionCon;
+            final double score = QualityUtils.phredScaleErrorRate(Math.max(baseScore, MAX_BASE_SCORE));
             result.put(transition, score);
         }
 

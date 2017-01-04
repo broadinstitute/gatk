@@ -12,7 +12,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
 
 public class OrientationBiasUtilsUnitTest extends BaseTest {
@@ -44,14 +46,15 @@ public class OrientationBiasUtilsUnitTest extends BaseTest {
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2VcfMore));
         SortedSet<Transition> relevantTransitions = new TreeSet<>();
         relevantTransitions.add(Transition.transitionOf('T', 'A'));
-        final List<VariantContext> variantContexts = new ArrayList<>();
-        for (final VariantContext vc : featureDataSource) {
-            variantContexts.add(vc);
-        }
+        final List<VariantContext> variantContexts = getVariantContexts(featureDataSource);
 
         // Should be one, since one of the variants was filtered.
         Assert.assertEquals(OrientationBiasUtils.calculateNumTransition("TUMOR", variantContexts, relevantTransitions.first()), 1);
         Assert.assertEquals(OrientationBiasUtils.calculateNumTransition("NORMAL", variantContexts, relevantTransitions.first()), 0);
+    }
+
+    private List<VariantContext> getVariantContexts(FeatureDataSource<VariantContext> featureDataSource) {
+        return StreamSupport.stream(featureDataSource.spliterator(), false).collect(Collectors.toList());
     }
 
     @Test
@@ -59,10 +62,7 @@ public class OrientationBiasUtilsUnitTest extends BaseTest {
 
         // Setup the test
         final FeatureDataSource<VariantContext> featureDataSource = new FeatureDataSource<>(new File(smallM2VcfMore));
-        final List<VariantContext> variantContexts = new ArrayList<>();
-        for (final VariantContext vc : featureDataSource) {
-            variantContexts.add(vc);
-        }
+        final List<VariantContext> variantContexts = getVariantContexts(featureDataSource);
         Assert.assertEquals(OrientationBiasUtils.calculateUnfilteredNonRefGenotypeCount(variantContexts, "TUMOR"), 9);
         Assert.assertEquals(OrientationBiasUtils.calculateUnfilteredNonRefGenotypeCount(variantContexts, "NORMAL"), 0);
     }

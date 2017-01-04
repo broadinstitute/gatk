@@ -23,7 +23,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.*;
-
+import java.util.stream.Collectors;
 
 
 @CommandLineProgramProperties(
@@ -32,9 +32,9 @@ import java.util.*;
                 "\n" +
                 "Notes:  All variants are held in RAM.\n This tool will only catch artifacts in diploid organisms.  Others will cause an error.\n" +
                 "Triallelic sites may not be considered for filtering -- the behavior of this tool is undefined for triallelic sites.\n" +
-                "This tool was tested only with output for GATK4 MuTect and makes assumptions about the existence of fields produced by GATK4 MuTect.\n" +
+                "This tool was tested only with output for GATK4 Mutect and makes assumptions about the existence of fields produced by GATK4 Mutect.\n" +
                 "ALT_F1R2 and ALT_F2R1 tags must be present in all SNP variants.\n" +
-                "Do NOT specify artifact modes that are complements of each other.  Behavior of this tool is undefined when that happens.\n" +
+                "Do NOT specify artifact modes that are reverse complements of each other.  Behavior of this tool is undefined when that happens.  For example, do not specify C/A and G/T in the same run.\n" +
                 "Any variants that are filtered in the input file are not considered for filtering here, nor are these variants used in deciding cutoff.\n" +
                 "Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
         oneLineSummary = "Filter M2 Somatic VCFs using the Orientation Bias Filter.",
@@ -73,12 +73,12 @@ public class FilterByOrientationBias extends VariantWalker {
 
     private Map<Transition, Double> transitionToPreAdapterScoreMap;
 
-    private SortedSet<Transition> relevantTransitions;
+    private SortedSet<Transition> relevantTransitions = new TreeSet<>();
 
     private VariantContextWriter vcfWriter;
 
     /** Each has an OxoQ annotation */
-    private List<VariantContext> firstPassVariants;
+    private List<VariantContext> firstPassVariants = new ArrayList<>();;
 
     @Override
     public void onTraversalStart() {
@@ -99,27 +99,24 @@ public class FilterByOrientationBias extends VariantWalker {
             throw new UserException("Could not find file: " + preAdapterMetricsFile.getAbsolutePath());
         }
 
-        firstPassVariants = new ArrayList<>();
+        // Collect all of the transitions that were specified in the parameters.
+        relevantTransitions.addAll(transitions.stream().map(s -> convertParameterToTransition(s)).collect(Collectors.toSet()));
 
-
-        // Parse the desired artifact modes from the input string.
-        relevantTransitions  = new TreeSet<>();
-        for (String transition: transitions) {
-            final String[] splitTransition = transition.split("/");
-
-            if (!isValidTransition(splitTransition)) {
-                throw new UserException("Invalid artifact mode: " + String.join("/", splitTransition));
-            }
-
-            relevantTransitions.add(Transition.transitionOf(splitTransition[0].charAt(0), splitTransition[1].charAt(0)));
-        }
-
-        // Get the PreAdapterQ score, which gives an indication of how badly infested the file is.
+        // Get the PreAdapterQ score from the picard metrics tool, which gives an indication of how badly infested the bam file is.
         transitionToPreAdapterScoreMap = PreAdapterOrientationScorer.scoreOrientationBiasMetricsOverContext(mf.getMetrics());
         logger.info("preAdapter scores:");
         transitionToPreAdapterScoreMap.keySet().stream().forEach(k -> logger.info(k + ": " + transitionToPreAdapterScoreMap.get(k)));
 
         setupVCFWriter();
+    }
+
+    private Transition convertParameterToTransition(final String stringTransition) {
+        final String[] splitTransition = stringTransition.split("/");
+        if (!isValidTransition(splitTransition)) {
+            throw new UserException("Invalid artifact mode: " + String.join("/", splitTransition));
+        }
+
+        return Transition.transitionOf(splitTransition[0].charAt(0), splitTransition[1].charAt(0));
     }
 
     private boolean isValidTransition(final String[] splitTransition) {
@@ -152,10 +149,8 @@ public class FilterByOrientationBias extends VariantWalker {
 
     private void setupVCFWriter() {
         vcfWriter = createVCFWriter(outputFile);
-        vcfWriter.writeHeader(OrientationBiasFilterer.createVCFHeader(getHeaderForVariants(), getCommandLine(),
-                transitions));
+        vcfWriter.writeHeader(OrientationBiasFilterer.createVCFHeader(getHeaderForVariants(), getCommandLine(), transitions));
     }
-
 
     @Override
     public Object onTraversalSuccess() {
@@ -163,14 +158,13 @@ public class FilterByOrientationBias extends VariantWalker {
         logger.info("Tagging whether genotypes are in one of the artifact modes.");
 
         // Calculate how many artifacts need to be cut
-        double fdrThresh = 0.01;
+        double fdrThreshold = 0.01;
 
-        final List<VariantContext> finalVariants = OrientationBiasFilterer.annotateVariantContextsWithFilterResults(fdrThresh, relevantTransitions, firstPassVariants, transitionToPreAdapterScoreMap);
+        final List<VariantContext> finalVariants = OrientationBiasFilterer.annotateVariantContextsWithFilterResults(fdrThreshold, relevantTransitions, firstPassVariants, transitionToPreAdapterScoreMap);
 
         logger.info("Writing variants to VCF...");
-        for (final VariantContext vc: finalVariants) {
-            vcfWriter.add(vc);
-        }
+        finalVariants.forEach(vcfWriter::add);
+
         logger.info("Writing a simple summary table...");
         final List<String> sampleNames = finalVariants.get(0).getSampleNamesOrderedByName();
         final List<Pair<String, Transition>> sampleTransitionCombinations =  new ArrayList<>();

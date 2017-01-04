@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Perform operations for the orientation bias filter.
@@ -219,7 +220,7 @@ public class OrientationBiasFilterer {
         transitionCount.keySet().stream().forEach(transition -> transitionNumToCut.put(transition, 0L));
         for (final Transition transition : transitionNumToCut.keySet()) {
             transitionNumToCut.put(transition, Long.valueOf(Math.round(totalNumToCut * transitionCount.get(transition) / allTransitionCount)));
-            logger.info(sampleName + ": Cutting (" + transition.toString() + ") pre-preAdapterQ: " + transitionNumToCut.get(transition));
+            logger.info(sampleName + ": Cutting (" + transition + ") pre-preAdapterQ: " + transitionNumToCut.get(transition));
         }
         return transitionNumToCut;
     }
@@ -242,25 +243,19 @@ public class OrientationBiasFilterer {
 
     /**
      *
-     * @param fdrThresh desired maximum FDR threshold.  Must be greater than 0
+     * @param fdrThreshold desired maximum FDR threshold.  Must be greater than 0
      * @param unfilteredGenotypeCount total number of unfiltered variants
      * @param pArtifactScoresIncludingNonArtifact sorted list (descending) of the pArtifact scores.  Should include zeros for nonArtifact variants.
      * @return total number of artifact mode variants to cut in order to be below the specified FDR threshold.
      */
     @VisibleForTesting
-    static int calculateTotalNumToCut(final double fdrThresh, final long unfilteredGenotypeCount, final List<Double> pArtifactScoresIncludingNonArtifact) {
-        ParamUtils.isPositive(fdrThresh, "FDR threshold must be positive and greater than zero.");
+    static int calculateTotalNumToCut(final double fdrThreshold, final long unfilteredGenotypeCount, final List<Double> pArtifactScoresIncludingNonArtifact) {
+        ParamUtils.isPositive(fdrThreshold, "FDR threshold must be positive and greater than zero.");
 
         // Benjamini-Hochberg procedure https://en.wikipedia.org/wiki/False_discovery_rate#Benjamini.E2.80.93Hochberg_procedure
-        int result = pArtifactScoresIncludingNonArtifact.size() - 1;
-        for (int i = 0; i < pArtifactScoresIncludingNonArtifact.size(); i ++) {
-            final double pArtifact = pArtifactScoresIncludingNonArtifact.get(i);
-            if (pArtifact < (fdrThresh * (i + 1) / unfilteredGenotypeCount)) {
-                result = i;
-                break;
-            }
-        }
-        return result;
+        return IntStream.range(0, pArtifactScoresIncludingNonArtifact.size())
+                .filter(i -> pArtifactScoresIncludingNonArtifact.get(i) < fdrThreshold * (i + 1) / unfilteredGenotypeCount)
+                .findFirst().orElse(pArtifactScoresIncludingNonArtifact.size() - 1);
     }
 
     private static Map<Transition, Long> createTransitionCountMap(SortedSet<Transition> relevantTransitions, SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering) {
@@ -296,16 +291,12 @@ public class OrientationBiasFilterer {
 
         // Populate a mapping of genotypes that we might want to filter to their variant context.
         //  Make sure that the keys are sorted by cumulative probability of being an artifact.
-        for (final String sampleName: sampleNames) {
+        for (final String sampleName : sampleNames) {
             final SortedMap<Genotype, VariantContext> genotypesToConsiderForFiltering = new TreeMap<>(genotypePArtifactComparator);
             for (final VariantContext vc : variants) {
-                vc.getGenotypes(sampleName).forEach( genotype -> {
-                    if (!vc.isFiltered() && !genotype.isFiltered()
-                            && (genotype.getAnyAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE).equals(String.valueOf(true))
-                            || genotype.getAnyAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE).equals(String.valueOf(true))) ) {
-                        genotypesToConsiderForFiltering.put(genotype, vc);
-                    }
-                });
+                vc.getGenotypes(sampleName).stream()
+                        .filter(g -> isFilteringCandidate(g, vc))
+                        .forEach(genotype -> genotypesToConsiderForFiltering.put(genotype, vc));
                 customProgressMeter.update(new SimpleInterval(vc.getContig(), vc.getStart(), vc.getEnd()));
             }
             sampleNameToVariants.put(sampleName, genotypesToConsiderForFiltering);
@@ -313,6 +304,21 @@ public class OrientationBiasFilterer {
         customProgressMeter.stop();
         return sampleNameToVariants;
     }
+
+    /**
+     * Determine whether this genotype can be filtered by the orientation bias filter.
+     *
+     * @param genotype
+     * @param vc The variant context that contains the given genotype
+     * @return whether this genotype should be considered for filtering due to orientation bias.
+     */
+    private static boolean isFilteringCandidate(final Genotype genotype, final VariantContext vc) {
+        return !vc.isFiltered()
+                && !genotype.isFiltered()
+                && (genotype.getAnyAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE).equals(String.valueOf(true))
+                    || genotype.getAnyAttribute(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE).equals(String.valueOf(true)));
+    }
+
     /** Ingest the current VCF header and update it with the information necessary for the Orientation Bias filter to run.
      *
      * @param inputVCFHeader original header.  Never {@code null}

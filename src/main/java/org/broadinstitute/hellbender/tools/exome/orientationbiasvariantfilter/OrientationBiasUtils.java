@@ -24,23 +24,54 @@ import java.util.stream.Stream;
 public class OrientationBiasUtils {
     private static final Logger logger = LogManager.getLogger(OrientationBiasUtils.class);
 
-
-
+    /**
+     *  See {@link OrientationBiasUtils#getGenotypeString}.
+     *  This converts String to a Double.  If an empty field value ({@link VCFConstants#MISSING_VALUE_v4}) would be
+     *  returned, return the specified defaultValue instead.
+     *
+     * @param g genotype Never {@code null}
+     * @param fieldName Name of the field (format field).
+     * @param defaultValue return value if field is not found.
+     * @return Value of field as a Double or specified defaultValue.
+     */
     public static Double getGenotypeDouble(final Genotype g, final String fieldName, final double defaultValue) {
-        final Object o2ExtendedAttribute = g.getExtendedAttribute(fieldName, VCFConstants.MISSING_VALUE_v4);
-        final String o2PArtifactAsString = String.valueOf(o2ExtendedAttribute);
-        if ((o2PArtifactAsString == null) || (o2PArtifactAsString.equals(VCFConstants.MISSING_VALUE_v4))) {
-            return defaultValue;
-        }
-        return Double.parseDouble(o2PArtifactAsString);
+        Utils.nonNull(g);
+        final String genotypeFieldAsString = getGenotypeString(g, fieldName);
+        return isVcfGenotypeFieldEmpty(genotypeFieldAsString) ? defaultValue : Double.parseDouble(genotypeFieldAsString);
     }
+
+    /**
+     * See {@link OrientationBiasUtils#getGenotypeString}.
+     *  This converts String to a Integer.  If an empty field value ({@link VCFConstants#MISSING_VALUE_v4}) would be
+     *  returned, return the specified defaultValue instead.
+     *
+     * @param g genotype Never {@code null}
+     * @param fieldName Name of the field (format field).
+     * @param defaultValue return value if field is not found.
+     * @return Value of field as a Integer or specified defaultValue.
+     */
     public static Integer getGenotypeInteger(final Genotype g, final String fieldName, final int defaultValue) {
+        Utils.nonNull(g);
+        final String genotypeFieldAsString = getGenotypeString(g, fieldName);
+        return isVcfGenotypeFieldEmpty(genotypeFieldAsString) ? defaultValue : Integer.parseInt(genotypeFieldAsString);
+    }
+
+    private static boolean isVcfGenotypeFieldEmpty(final String genotypeFieldAsString) {
+        return (genotypeFieldAsString == null) || (genotypeFieldAsString.equals(VCFConstants.MISSING_VALUE_v4));
+    }
+
+    /**
+     *  Get field value as a string.  This method can be slow.  If the field value is empty or the field does not exist,
+     *   returns {@link VCFConstants#MISSING_VALUE_v4}.
+     *
+     * @param g genotype Never {@code null}
+     * @param fieldName Name of the field (format field).
+     * @return field value or {@link VCFConstants#MISSING_VALUE_v4}
+     */
+    public static String getGenotypeString(final Genotype g, final String fieldName) {
+        Utils.nonNull(g);
         final Object genotypeExtendedAttribute = g.getExtendedAttribute(fieldName, VCFConstants.MISSING_VALUE_v4);
-        final String genotypePArtifactAsString = String.valueOf(genotypeExtendedAttribute);
-        if ((genotypePArtifactAsString == null) || (genotypePArtifactAsString.equals(VCFConstants.MISSING_VALUE_v4))) {
-            return defaultValue;
-        }
-        return Integer.parseInt(genotypePArtifactAsString);
+        return String.valueOf(genotypeExtendedAttribute);
     }
 
     /** Complement of the artifact mode is NOT considered.
