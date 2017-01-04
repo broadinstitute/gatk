@@ -94,6 +94,10 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
             "is not comprehensive, so there may be exceptions if this is set to true and there are paired reads with non-primary alignments.")
     public boolean INCLUDE_NON_PRIMARY_ALIGNMENTS = false;
 
+    @Argument(doc = "If true, assume that the input bam has been processed by Long Ranger and had the barcodes trimmed and placed " +
+            "in 10X-specified tags. If false, assume reads in bam still contain their barcodes.")
+    public boolean LONG_RANGER_BAM = true;
+
     @Override
     protected Object doWork() {
         IOUtil.assertFileIsReadable(INPUT);
@@ -292,7 +296,7 @@ public final class SamToFastqSplitByReadGroupAndBarcode extends PicardCommandLin
             baseQualities = baseQualities.substring(0, maxBasesToWrite);
         }
 
-        if (mateNumber != null && mateNumber == 1) {
+        if (LONG_RANGER_BAM && mateNumber != null && mateNumber == 1) {
             final String tenxBC;
             final String tenxBCQ;
             final String fillerBases;
