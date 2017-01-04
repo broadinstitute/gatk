@@ -10,11 +10,10 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyResultSet;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerGenotypingEngine;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -31,7 +30,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
+public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine {
 
     public static final String IN_COSMIC_VCF_ATTRIBUTE = "IN_COSMIC";
     public static final String IN_DBSNP_VCF_ATTRIBUTE = "IN_DBSNP";
@@ -57,6 +56,11 @@ public class SomaticGenotypingEngine extends HaplotypeCallerGenotypingEngine {
     };
 
     private final static Logger logger = Logger.getLogger(SomaticGenotypingEngine.class);
+
+    @Override
+    protected String callSourceString() {
+        return "M2_call";
+    }
 
     public SomaticGenotypingEngine(final SampleList samples,
                                    final M2ArgumentCollection MTAC,
