@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
@@ -72,7 +73,7 @@ import java.util.List;
 public class ASEReadCounter extends LocusWalker {
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "Output file (if not provided, defaults to STDOUT)", optional = true)
-    private File OUTPUT_FILE = null;
+    private File outputFile = null;
 
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more VCF files")
     private List<FeatureInput<VariantContext>> variants;
@@ -107,7 +108,7 @@ public class ASEReadCounter extends LocusWalker {
     /**
      * Available options are csv, table, rtable. By default, the format is rtable (an r-readable table).
      */
-    @Argument(fullName = "outputFormat", doc = "Format of the output file, can be CSV, TABLE, RTABLE", optional = true)
+    @Argument(fullName = "outputFormat", doc = "Format of the output file", optional = true)
     public OUTPUT_FORMAT outputFormat = OUTPUT_FORMAT.RTABLE;
 
     public String separator = "\t";
@@ -152,19 +153,9 @@ public class ASEReadCounter extends LocusWalker {
     @Override
     public void onTraversalStart() {
         try {
-            outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE) : System.out;
+            outputStream = outputFile != null ? new PrintStream(outputFile) : System.out;
         } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotCreateOutputFile(OUTPUT_FILE, e);
-        }
-
-        // Check the output format
-        boolean goodOutputFormat = false;
-        for (final OUTPUT_FORMAT f : OUTPUT_FORMAT.values()) {
-            goodOutputFormat = goodOutputFormat || f.equals(outputFormat);
-        }
-
-        if (!goodOutputFormat) {
-            throw new IllegalArgumentException("Improper output format. Can be one of TABLE, RTABLE, CSV. Was " + outputFormat);
+            throw new UserException.CouldNotCreateOutputFile(outputFile, e);
         }
 
         if (outputFormat.equals(OUTPUT_FORMAT.CSV)) {
@@ -179,13 +170,16 @@ public class ASEReadCounter extends LocusWalker {
         final String contig = alignmentContext.getContig();
         final long position = alignmentContext.getPosition();
 
+
         final char refAllele = (char) referenceContext.getBase();
 
         final List<VariantContext> VCs = featureContext.getValues(variants);
-        if (VCs != null && VCs.size() > 1)
+        if (VCs != null && VCs.size() > 1) {
             throw new UserException("More then one variant context at position: " + contig + ":" + position);
-        if (VCs == null || VCs.isEmpty())
+        }
+        if (VCs == null || VCs.isEmpty()) {
             return;
+        }
 
         final VariantContext vc = VCs.get(0);
         if (!vc.isBiallelic()) {
@@ -198,8 +192,9 @@ public class ASEReadCounter extends LocusWalker {
             return;
         }
 
-        if (vc.getNAlleles() == 1 || vc.getAlternateAllele(0).getBases().length == 0)
+        if (vc.getNAlleles() == 1 || vc.getAlternateAllele(0).getBases().length == 0) {
             throw new UserException("The file of variant sites must contain heterozygous sites and cannot be a GVCF file containing <NON_REF> alleles.");
+        }
 
         final char altAllele = (char) vc.getAlternateAllele(0).getBases()[0];
 
@@ -207,7 +202,10 @@ public class ASEReadCounter extends LocusWalker {
         final ReadPileup pileup = filterPileup(alignmentContext.getBasePileup(), countType);
 
         // count up the depths of all and QC+ bases
-        calculateLineForSite(pileup, contig, position, siteID, refAllele, altAllele);
+        final StringBuilder line = calculateLineForSite(pileup, siteID, refAllele, altAllele);
+        if (line != null) {
+            outputStream.println(line);
+        }
     }
 
     @Override
@@ -216,23 +214,24 @@ public class ASEReadCounter extends LocusWalker {
             outputStream.close();
     }
 
-    protected ReadPileup filterPileup(final ReadPileup originalPileup, final CountPileupType countType) {
+    private ReadPileup filterPileup(final ReadPileup originalPileup, final CountPileupType countType) {
 
-        ReadPileup pileupWithDeletions;
-        if (countType.equals(CountPileupType.COUNT_FRAGMENTS_REQUIRE_SAME_BASE))
-            pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(true, true);
-        else if (countType.equals(CountPileupType.COUNT_READS))
-            pileupWithDeletions = originalPileup;
-        else if (countType.equals(CountPileupType.COUNT_FRAGMENTS))
-            pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(false, true);
-        else
-            throw new UserException("Must use valid CountPileupType");
+        final ReadPileup pileupWithDeletions;
+        switch (countType) {
+            case COUNT_FRAGMENTS_REQUIRE_SAME_BASE: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(true, true);
+                break;
+            case COUNT_READS: pileupWithDeletions = originalPileup;
+                break;
+            case COUNT_FRAGMENTS: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(false, true);
+                break;
+            default: throw new UserException("Must use valid CountPileupType");
+        }
 
         return pileupWithDeletions.makeFilteredPileup(p -> !p.isDeletion());
 
     }
 
-    protected void calculateLineForSite(final ReadPileup pileup, final String contig, final long position, final String siteID, final char refAllele, final char altAllele) {
+    private StringBuilder calculateLineForSite(final ReadPileup pileup, final String siteID, final char refAllele, final char altAllele) {
 
         int rawDepth = 0, lowBaseQDepth = 0, lowMAPQDepth = 0, refCount = 0, altCount = 0, totalNonFilteredCount = 0, otherBasesCount = 0, improperPairsCount = 0;
 
@@ -253,10 +252,12 @@ public class ASEReadCounter extends LocusWalker {
                 continue;
             }
 
-            if (base.getBase() == refAllele)
+            if (base.getBase() == refAllele) {
                 refCount++;
-            else if (base.getBase() == altAllele)
+            }
+            else if (base.getBase() == altAllele) {
                 altCount++;
+            }
             else {
                 otherBasesCount++;
                 continue;
@@ -264,23 +265,37 @@ public class ASEReadCounter extends LocusWalker {
             totalNonFilteredCount++;
         }
 
-        if (totalNonFilteredCount < minDepthOfNonFilteredBases)
-            return;
+        if (totalNonFilteredCount < minDepthOfNonFilteredBases) {
+            return null;
+        }
 
-        String line = contig + separator +
-                position + separator +
-                siteID + separator +
-                refAllele + separator +
-                altAllele + separator +
-                refCount + separator +
-                altCount + separator +
-                totalNonFilteredCount + separator +
-                lowMAPQDepth + separator +
-                lowBaseQDepth + separator +
-                rawDepth + separator +
-                otherBasesCount + separator +
-                improperPairsCount;
+        final StringBuilder line = new StringBuilder();
+        line.append(pileup.getLocation().getContig());
+        line.append(separator);
+        line.append(pileup.getLocation().getStart());
+        line.append(separator);
+        line.append(siteID);
+        line.append(separator);
+        line.append(refAllele);
+        line.append(separator);
+        line.append(altAllele);
+        line.append(separator);
+        line.append(refCount);
+        line.append(separator);
+        line.append(altCount);
+        line.append(separator);
+        line.append(totalNonFilteredCount);
+        line.append(separator);
+        line.append(lowMAPQDepth);
+        line.append(separator);
+        line.append(lowBaseQDepth);
+        line.append(separator);
+        line.append(rawDepth);
+        line.append(separator);
+        line.append(otherBasesCount);
+        line.append(separator);
+        line.append(improperPairsCount);
 
-        outputStream.println(line);
+        return line;
     }
 }
