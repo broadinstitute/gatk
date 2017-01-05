@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.table.TableCodec;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -256,11 +257,8 @@ public final class FeatureManagerUnitTest extends BaseTest {
         final Iterator<VariantContext> vcIterator = manager.getFeatureIterator(toolInstance.variantContextFeatureInput);
         final Iterator<BEDFeature> bedIterator = manager.getFeatureIterator(toolInstance.bedListFeatureInput.get(0));
 
-        final List<VariantContext> variants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(vcIterator,0),false)
-                .collect(Collectors.toList());
-
-        final List<BEDFeature> beds = StreamSupport.stream(Spliterators.spliteratorUnknownSize(bedIterator,0),false)
-                .collect(Collectors.toList());
+        final List<VariantContext> variants = Utils.stream(vcIterator).collect(Collectors.toList());
+        final List<BEDFeature> beds = Utils.stream(bedIterator).collect(Collectors.toList());
 
         Assert.assertEquals(variants.size(), 26);
         Assert.assertEquals(variants.get(4).getStart(),280);
@@ -278,8 +276,7 @@ public final class FeatureManagerUnitTest extends BaseTest {
         final FeatureManager manager = new FeatureManager(toolInstance);
         final Iterator<VariantContext> vcIterator = manager.getFeatureIterator(toolInstance.variantContextFeatureInput);
 
-        final List<VariantContext> variants = StreamSupport.stream(Spliterators.spliteratorUnknownSize(vcIterator,0),false)
-                .collect(Collectors.toList());
+        final List<VariantContext> variants = Utils.stream(vcIterator).collect(Collectors.toList());
 
         Assert.assertEquals(variants.size(), 26);
         Assert.assertEquals(variants.get(4).getStart(),280);

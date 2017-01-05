@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Collections;
@@ -87,7 +88,7 @@ public abstract class ReadWalker extends GATKTool {
         // Supply reference bases spanning each read, if a reference is available.
         final CountingReadFilter countedFilter = makeReadFilter();
 
-        StreamSupport.stream(reads.spliterator(), false)
+        Utils.stream(reads)
                 .filter(countedFilter)
                 .forEach(read -> {
                     final SimpleInterval readInterval = getReadInterval(read);

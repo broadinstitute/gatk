@@ -57,7 +57,7 @@ public class SVKmerizer implements Iterator<SVKmer> {
     }
 
     public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, SVKmer kmer) {
-        return StreamSupport.stream(((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize, kmer)).spliterator(), false);
+        return Utils.stream((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize, kmer));
     }
 
     public static Stream<SVKmer> stream(final byte[] seq, final int kSize, SVKmer kmer ) {

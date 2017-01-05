@@ -29,7 +29,7 @@ abstract class ExactAFCalculator extends AFCalculator {
             genotypeLikelihoods.add((new double[]{0.0, 0.0, 0.0}));
         }
 
-        StreamSupport.stream(GLs.iterateInSampleNameOrder().spliterator(), false)
+        Utils.stream(GLs.iterateInSampleNameOrder())
                 .filter(Genotype::hasLikelihoods)
                 .map(gt -> gt.getLikelihoods().getAsVector())
                 .filter(GATKVariantContextUtils::isInformative)

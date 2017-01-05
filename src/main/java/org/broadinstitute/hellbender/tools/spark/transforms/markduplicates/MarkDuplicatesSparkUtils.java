@@ -235,7 +235,7 @@ public class MarkDuplicatesSparkUtils {
 
         final Iterable<GATKRead> transform = Iterables.transform(pairedEnds, pair -> pair.first());
         Iterable<GATKRead> readsCopy = Iterables.transform(transform, GATKRead::copy);
-        final Map<Boolean, List<GATKRead>> byPairing = StreamSupport.stream(readsCopy.spliterator(), false).collect(Collectors.partitioningBy(
+        final Map<Boolean, List<GATKRead>> byPairing = Utils.stream(readsCopy).collect(Collectors.partitioningBy(
                 read -> ReadUtils.readHasMappedMate(read)
         ));
         // Note the we emit only fragments from this mapper.

@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.ReferenceShard;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
@@ -79,7 +80,7 @@ public final class ShuffleJoinReadsWithRefBases {
 
             // Apply the reference window function to each read to produce a set of intervals representing
             // the desired reference bases for each read.
-            final List<SimpleInterval> readWindows = StreamSupport.stream(iReads.spliterator(), false).map(read -> windowFunction.apply(read)).collect(Collectors.toList());
+            final List<SimpleInterval> readWindows = Utils.stream(iReads).map(read -> windowFunction.apply(read)).collect(Collectors.toList());
 
             SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
             ReferenceBases bases = referenceDataflowSource.getReferenceBases(null, interval);
@@ -115,7 +116,7 @@ public final class ShuffleJoinReadsWithRefBases {
 
             // Apply the reference window function to each read to produce a set of intervals representing
             // the desired reference bases for each read.
-            final List<SimpleInterval> readWindows = StreamSupport.stream(iReads.spliterator(), false).map(pair -> windowFunction.apply(pair._1())).collect(Collectors.toList());
+            final List<SimpleInterval> readWindows = Utils.stream(iReads).map(pair -> windowFunction.apply(pair._1())).collect(Collectors.toList());
 
             SimpleInterval interval = IntervalUtils.getSpanningInterval(readWindows);
             // TODO: don't we need to support GCS PipelineOptions?

@@ -4,6 +4,7 @@ import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.stream.StreamSupport;
@@ -64,8 +65,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
     @Override
     public void traverse() {
         // Process each feature in the input stream.
-        StreamSupport.stream(drivingFeatures.spliterator(), false)
-                .forEach(feature -> {
+        Utils.stream(drivingFeatures).forEach(feature -> {
                     final SimpleInterval featureInterval = new SimpleInterval(feature);
                     apply(feature,
                             new ReadsContext(reads, featureInterval),

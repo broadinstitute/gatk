@@ -4,8 +4,10 @@ package org.broadinstitute.hellbender.utils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.util.MathArrays;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -717,5 +719,17 @@ public final class UtilsUnitTest extends BaseTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> Utils.nonEmpty((String)null, "deliberately empty"));
         Assert.assertThrows(IllegalArgumentException.class, () -> Utils.nonEmpty("", "deliberately empty" ));
         Utils.nonEmpty("this is not empty");
+    }
+
+    @Test
+    public void testStreamFromIterable() {
+        final int[] array = new int[] {1,3,5,7,9};
+        Assert.assertTrue(Arrays.equals(array, Utils.stream(Ints.asList(array)).mapToInt(n -> n).toArray()));
+    }
+
+    @Test
+    public void testStreamFromIterator() {
+        final int[] array = new int[] {1,3,5,7,9};
+        Assert.assertEquals(array, Utils.stream(Ints.asList(array).iterator()).mapToInt(n -> n).toArray());
     }
 }

@@ -461,7 +461,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @return never {@code null}.
      */
     public Stream<R> stream() {
-        return StreamSupport.stream(spliterator(), false);
+        return Utils.stream(this);
     }
 
 

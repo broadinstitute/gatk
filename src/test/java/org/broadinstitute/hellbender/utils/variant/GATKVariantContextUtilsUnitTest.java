@@ -1807,6 +1807,7 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
         GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, builder.make(), setFilteredGenotypesToNocall, this::getGenotypeFilters);
         VariantContext vc = builder.make();
         if ( vc.hasAttribute((VCFConstants.ALLELE_COUNT_KEY)) ) {
+            final int[] array = (int[]) vc.getAttribute(VCFConstants.ALLELE_COUNT_KEY);
             Assert.assertEquals(vc.getAttribute(VCFConstants.ALLELE_COUNT_KEY), calledAltAlleles.toArray());
         }
         if ( vc.hasAttribute((VCFConstants.ALLELE_NUMBER_KEY)) ) {
