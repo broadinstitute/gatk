@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.util.Arrays;
 
 public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest {
@@ -71,5 +74,61 @@ public final class ASEReadCounterIntegrationTest extends CommandLineProgramTest 
                 "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "NA12878.RNAseq.bam -V " + publicTestDir + "NA12878.chr20_2444518_2637800.RNAseq.SYNONYMOUS_CODING.vcf -mmq 60 -mbq 10 -O %s --outputFormat CSV",
                 Arrays.asList(publicTestDir + "expected.ASEReadCount.FileFormat.table"));
         spec.executeTest("test high mq with no read passing", this);
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testASEReadCounterMultipleContexts() {
+        ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.add("-R");
+        args.add(b37_reference_20_21);
+        args.add("-I");
+        args.add(largeFileTestDir + "NA12878.RNAseq.bam");
+        args.add("-V");
+        args.add(publicTestDir + "NA12878.chr20_2444518_2637800.RNAseq.MultiContext.vcf");
+        args.add("-O");
+        args.add(BaseTest.createTempFile("testMultipleContexts", ".csv"));
+
+        runCommandLine(args);
+    }
+
+    @Test(expectedExceptions = UserException.class)
+    public void testASEReadCounterNonRefAllele() {
+        ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.add("-R");
+        args.add(b37_reference_20_21);
+        args.add("-I");
+        args.add(largeFileTestDir + "NA12878.RNAseq.bam");
+        args.add("-V");
+        args.add(publicTestDir + "NA12878.chr20_2444518_2637800.RNAseq.NON_REF.vcf");
+        args.add("-O");
+        args.add(BaseTest.createTempFile("testMultipleContexts", ".csv"));
+
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testASEReadCounterWarnings() {
+        ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.add("-R");
+        args.add(b37_reference_20_21);
+        args.add("-I");
+        args.add(largeFileTestDir + "NA12878.RNAseq.bam");
+        args.add("-V");
+        args.add(publicTestDir + "NA12878.chr20_2444518_2637800.RNAseq.warnings.vcf");
+        args.add("-O");
+        args.add(BaseTest.createTempFile("testMultipleContexts", ".csv"));
+
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testASEReadCounterImproperPairs() throws Exception {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                "-R " + b37_reference_20_21 + " -I " + largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam -V " + publicTestDir + "NA12878.chr20_2444518_2637800.RNAseq.IMPROPER_PAIR.vcf -mmq 60 -mbq 10 -O %s --outputFormat CSV",
+                Arrays.asList(publicTestDir + "expected.ASEReadCount.ImproperPair.table"));
+        spec.executeTest("test improper pairs", this);
     }
 }

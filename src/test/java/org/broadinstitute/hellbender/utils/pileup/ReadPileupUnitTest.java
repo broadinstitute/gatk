@@ -650,4 +650,42 @@ public final class ReadPileupUnitTest extends BaseTest {
         Assert.assertSame(sortedIterator.next().getRead(), read1);
         Assert.assertSame(sortedIterator.next().getRead(), read2);
     }
+
+    @Test
+    public void testOverlappingFragmentFilter() throws Exception {
+        final int readlength = 10;
+        final String cigar = "10M";
+        final byte[] lowQuals = Utils.repeatBytes((byte)10, readlength);
+        final byte[] highQuals = Utils.repeatBytes((byte)20, readlength);
+        final byte[] basesAllA = Utils.repeatChars('A', readlength);
+        final byte[] basesAllC = Utils.repeatChars('C', readlength);
+
+        GATKRead read1BasesDisagree = ArtificialReadUtils.createArtificialRead(basesAllA, lowQuals, cigar);
+        GATKRead read2BasesDisagree = ArtificialReadUtils.createArtificialRead(basesAllC, highQuals, cigar);
+        read1BasesDisagree.setName("BasesDisagree");
+        read2BasesDisagree.setName("BasesDisagree");
+
+        GATKRead read1BasesAgree = ArtificialReadUtils.createArtificialRead(basesAllA, lowQuals, cigar);
+        GATKRead read2BasesAgree = ArtificialReadUtils.createArtificialRead(basesAllA, highQuals, cigar);
+        read1BasesAgree.setName("BasesAgree");
+        read2BasesAgree.setName("BasesAgree");
+
+        final List<GATKRead> reads = Arrays.asList(read1BasesDisagree, read2BasesDisagree, read1BasesAgree, read2BasesAgree);
+        final int off = 0;
+        final ReadPileup pu = new ReadPileup(loc, reads, off);
+
+        final ReadPileup filteredPileupDiscardDiscordant = pu.getOverlappingFragmentFilteredPileup();
+        final List<GATKRead> filteredReadsDiscardDiscordant = filteredPileupDiscardDiscordant.getReads();
+        Assert.assertFalse(filteredReadsDiscardDiscordant.contains(read1BasesDisagree), "Reads with disagreeing bases were kept.");
+        Assert.assertFalse(filteredReadsDiscardDiscordant.contains(read2BasesDisagree), "Reads with disagreeing bases were kept.");
+        Assert.assertFalse(filteredReadsDiscardDiscordant.contains(read1BasesAgree), "The lower quality base was kept.");
+        Assert.assertTrue(filteredReadsDiscardDiscordant.contains(read2BasesAgree), "The higher quality base is missing.");
+
+        final ReadPileup filteredPileupKeepDiscordant = pu.getOverlappingFragmentFilteredPileup(false, true);
+        final List<GATKRead> filteredReadsKeepDiscordant = filteredPileupKeepDiscordant.getReads();
+        Assert.assertFalse(filteredReadsKeepDiscordant.contains(read1BasesDisagree), "Low quality base was kept.");
+        Assert.assertTrue(filteredReadsKeepDiscordant.contains(read2BasesDisagree), "High quality base is missing.");
+        Assert.assertFalse(filteredReadsKeepDiscordant.contains(read1BasesAgree), "The lower quality base was kept.");
+        Assert.assertTrue(filteredReadsKeepDiscordant.contains(read2BasesAgree), "The higher quality base is missing.");
+    }
 }

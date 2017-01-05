@@ -154,7 +154,7 @@ public class ASEReadCounter extends LocusWalker {
         try {
             outputStream = OUTPUT_FILE != null ? new PrintStream(OUTPUT_FILE) : System.out;
         } catch (FileNotFoundException e) {
-            throw new UserException.CouldNotReadInputFile(OUTPUT_FILE, e);
+            throw new UserException.CouldNotCreateOutputFile(OUTPUT_FILE, e);
         }
 
         // Check the output format
