@@ -1,0 +1,21 @@
+{
+  "Mutect2.gatk4_jar": "$__gatk4_jar__",
+  "Mutect2.intervals": "$__intervals__",
+  "Mutect2.ref_fasta": "$__ref_fasta__",
+  "Mutect2.ref_fasta_index": "$__ref_fasta_index__",
+  "Mutect2.ref_dict": "$__ref_dict__",
+  "Mutect2.tumor_bam": "$__tumor_bam__",
+  "Mutect2.tumor_bam_index": "$__tumor_bam_index__",
+  "Mutect2.tumor_sample_name": "$__tumor_sample_name__",
+  "Mutect2.normal_bam": "$__normal_bam__",
+  "Mutect2.normal_bam_index": "$__normal_bam_index__",
+  "Mutect2.normal_sample_name": "$__normal_sample_name__",
+  "Mutect2.pon": "$__pon__",
+  "Mutect2.pon_index": "$__pon_index__",
+  "Mutect2.scatter_count": "$__scatter_count__",
+  "Mutect2.dbsnp": "$__dbsnp__",
+  "Mutect2.dbsnp_index": "$__dbsnp_index__",
+  "Mutect2.cosmic": "$__cosmic__",
+  "Mutect2.cosmic_index": "$__cosmic_index__",
+  "Mutecdt2.picard_jar": "$__picard_jar__"
+}

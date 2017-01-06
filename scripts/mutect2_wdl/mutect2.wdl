@@ -12,11 +12,10 @@ task M2 {
   String normal_sample_name
   File? pon
   File? pon_index
-
-  File dbsnp = "/humgen/gsa-hpprojects/GATK/bundle/current/b37/dbsnp_138.b37.vcf"
-  File dbsnpIndex = "/humgen/gsa-hpprojects/GATK/bundle/current/b37/dbsnp_138.b37.vcf.idx"
-  File cosmic = "/xchip/cga/reference/hg19/hg19_cosmic_v54_120711.vcf"
-  File cosmicIndex = "/xchip/cga/reference/hg19/hg19_cosmic_v54_120711.vcf.idx"
+  File dbsnp
+  File dbsnp_index
+  File cosmic
+  File cosmic_index
 
   command <<<
     commandline="java -Xmx4g -jar ${gatk4_jar} Mutect2 \
@@ -44,13 +43,14 @@ task M2 {
 }
 
 task GatherVCFs {
+  File picard_jar
   Array[File] input_vcfs
   String output_vcf_name
 
   # using MergeVcfs instead of GatherVcfs so we can create indices
   # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
   command <<<
-    java -Xmx2g -jar /seq/software/picard/current/bin/picard-private.jar \
+    java -Xmx2g -jar ${picard_jar} \
     MergeVcfs \
     INPUT=${sep=' INPUT=' input_vcfs} \
     OUTPUT=${output_vcf_name}.vcf
@@ -64,13 +64,14 @@ task GatherVCFs {
 
 # Warning: this task does not work in the cloud.
 task SplitIntervals {
+  File picard_jar
   Int scatterCount
   File intervals
 
   command <<<
     mkdir intervalFileDir
 
-    java -jar /seq/software/picard/current/bin/picard-private.jar IntervalListTools \
+    java -jar ${picard_jar} IntervalListTools \
     I=${intervals} \
     O=intervalFileDir \
     SCATTER_COUNT=${scatterCount}
@@ -96,9 +97,15 @@ workflow Mutect2 {
   File? pon
   File? pon_index
   Int scatter_count
+  File dbsnp
+  File dbsnp_index
+  File cosmic
+  File cosmic_index
+  File picard_jar
 
   call SplitIntervals {
     input:
+      picard_jar = picard_jar,
       scatterCount = scatter_count,
       intervals = intervals
   }
@@ -118,14 +125,23 @@ workflow Mutect2 {
         normal_bam_index = normal_bam_index,
         normal_sample_name = normal_sample_name,
         pon = pon,
-        pon_index = pon_index
+        pon_index = pon_index,
+        dbsnp = dbsnp,
+        dbsnp_index = dbsnp_index,
+        cosmic = cosmic,
+        cosmic_index = cosmic_index
     } 
 	}
 
   call GatherVCFs {
     input:
+      picard_jar = picard_jar,
       input_vcfs = M2.output_vcf,
       output_vcf_name = "${tumor_sample_name}-vs-${normal_sample_name}"
+  }
+
+  output {
+    File mutect2_vcf = GatherVCFs.output_vcf
   }
 
 
