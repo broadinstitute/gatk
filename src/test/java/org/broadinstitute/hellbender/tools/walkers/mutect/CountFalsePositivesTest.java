@@ -36,7 +36,7 @@ public class CountFalsePositivesTest extends CommandLineProgramTest {
         };
         runCommandLine(args);
         Stream<String> outputLines = Files.lines(Paths.get(output.getAbsolutePath()));
-        Assert.assertEquals(outputLines.count(), 9L);
+        Assert.assertEquals(outputLines.count(), 5L);
 
     }
 
