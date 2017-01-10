@@ -13,11 +13,9 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileAlreadyExistsException;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.JobContext;
-import org.apache.hadoop.mapreduce.OutputFormat;
-import org.apache.hadoop.mapreduce.RecordWriter;
-import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.parquet.avro.AvroParquetOutputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -51,6 +49,7 @@ import java.util.UUID;
  * read writing code as well as from bigdatagenomics/adam.
  */
 public final class ReadsSparkSink {
+    private static Logger logger = LogManager.getLogger(ReadsSparkSink.class);
 
     // Output format class for writing BAM files through saveAsNewAPIHadoopFile. Must be public.
     public static class SparkBAMOutputFormat extends KeyIgnoringBAMOutputFormat<NullWritable> {
@@ -239,8 +238,13 @@ public final class ReadsSparkSink {
             final SAMFileHeader header, final int numReducers) throws IOException {
 
         final JavaRDD<SAMRecord> sortedReads = sortReads(reads, header, numReducers);
-        saveAsShardedHadoopFiles(ctx, outputFile, referenceFile, samOutputFormat, sortedReads,  header, false);
-        mergeHeaderlessBamShards(ctx, outputFile, samOutputFormat, header);
+        final String tempDirectory = getTempDirectory(outputFile);
+        logger.info("Saving bam file as shards");
+        saveAsShardedHadoopFiles(ctx, tempDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
+        logger.info("Finished saving shards, beginning to combine shards into a single output file.");
+        mergeHeaderlessBamShards(ctx, tempDirectory, outputFile, header, samOutputFormat);
+        logger.info("Finished merging shards, deleting temporary files.");
+        deleteHadoopFile(tempDirectory, ctx.hadoopConfiguration());
     }
 
     private static JavaRDD<SAMRecord> sortReads(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
@@ -296,37 +300,41 @@ public final class ReadsSparkSink {
         pathToDelete.getFileSystem(conf).delete(pathToDelete, true);
     }
 
-    private static void mergeHeaderlessBamShards(final JavaSparkContext ctx, final String outputFile, final SAMFormat samOutputFormat, final SAMFileHeader header) throws IOException {
+    private static void mergeHeaderlessBamShards(final JavaSparkContext ctx, String inputDirectory, final String outputFile, final SAMFileHeader header, final SAMFormat samOutputFormat) throws IOException {
         // At this point, the part files (part-r-00000, part-r-00001, etc) are in a directory named outputFile.
         // Each part file is a BAM file with no header or terminating end-of-file marker (Hadoop-BAM does not add
         // end-of-file markers), so to merge into a single BAM we concatenate the header with the part files and a
         // terminating end-of-file marker. Note that this has the side effect of being ever-so-slightly less efficient
         // than writing a BAM in one go because the last block of each file isn't completely full.
 
-        final String outputParentDir = outputFile.substring(0, outputFile.lastIndexOf('/') + 1);
-        // First, check for the _SUCCESS file.
-        final String successFile = outputFile + "/_SUCCESS";
-        final Path successPath = new Path(successFile);
-        final Configuration conf = ctx.hadoopConfiguration();
+        assertSuccessFileExists(ctx, inputDirectory);
 
-        //it's important that we get the appropriate file system by requesting it from the path
-        final FileSystem fs = successPath.getFileSystem(conf);
-        if (!fs.exists(successPath)) {
-            throw new GATKException("unable to find " + successFile + " file");
-        }
+        final Path tmpPath = new Path(inputDirectory);
         final Path outputPath = new Path(outputFile);
-        final Path tmpPath = new Path(outputParentDir + "tmp" + UUID.randomUUID());
-
-        fs.rename(outputPath, tmpPath);
-        fs.delete(outputPath, true);
+        FileSystem fs = outputPath.getFileSystem(ctx.hadoopConfiguration());
 
         try (final OutputStream out = fs.create(outputPath)) {
             new SAMOutputPreparer().prepareForRecords(out, samOutputFormat, header); // write the header
-            mergeInto(out, tmpPath, conf);
+            mergeInto(out, tmpPath, ctx.hadoopConfiguration());
             writeTerminatorBlock(out, samOutputFormat);
         }
+    }
 
-        fs.delete(tmpPath, true);
+    private static String getTempDirectory(String outputFile) {
+        final String outputParentDir = outputFile.substring(0, outputFile.lastIndexOf('/') + 1);
+        return outputParentDir + "tmp" + UUID.randomUUID();
+    }
+
+    private static void assertSuccessFileExists(JavaSparkContext ctx, String outputFile) throws IOException {
+        // First, check for the _SUCCESS file.
+        final String successFile = outputFile + "/_SUCCESS";
+        final Path successPath = new Path(successFile);
+
+        //it's important that we get the appropriate file system by requesting it from the path
+        final FileSystem fs = successPath.getFileSystem(ctx.hadoopConfiguration());
+        if (!fs.exists(successPath)) {
+            throw new GATKException("unable to find " + successFile + " file");
+        }
     }
 
     //Terminate the aggregated output stream with an appropriate SAMOutputFormat-dependent terminator block
@@ -348,13 +356,16 @@ public final class ReadsSparkSink {
             throw new GATKException("Could not write bam file because no part files were found.");
         }
 
+        logger.info("Found " + parts.length + " parts.");
+        int counter = 0;
         for (final FileStatus part : parts) {
             try (final InputStream in = fs.open(part.getPath())) {
                 org.apache.hadoop.io.IOUtils.copyBytes(in, out, conf, false);
             }
-        }
-        for (final FileStatus part : parts) {
-            fs.delete(part.getPath(), false);
+            counter++;
+            if( counter % 10 == 0 ) {
+                logger.info("Merged " + counter + "/" + parts.length + " parts.");
+            }
         }
     }
 
