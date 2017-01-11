@@ -13,6 +13,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureManager;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
@@ -93,6 +95,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private ReferenceMultiSource referenceSource;
     private SAMSequenceDictionary referenceDictionary;
     private List<SimpleInterval> intervals;
+    protected FeatureManager features;
 
     /**
      * Return the list of GATKCommandLinePluginDescriptor objects to be used for this CLP.
@@ -355,6 +358,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     private void initializeToolInputs(final JavaSparkContext sparkContext) {
         initializeReference();
         initializeReads(sparkContext); // reference must be initialized before reads
+        initializeFeatures();
         initializeIntervals();
     }
 
@@ -391,6 +395,21 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             if (referenceDictionary == null) {
                 throw new UserException.MissingReferenceDictFile(referenceURL);
             }
+        }
+    }
+
+    /**
+     * Initialize our source of Feature data (or set it to null if no Feature argument(s) were provided).
+     *
+     * Package-private so that engine classes can access it, but concrete tool child classes cannot.
+     * May be overridden by traversals that require custom initialization of Feature data sources.
+     *
+     * By default, this method initializes the FeatureManager to use the lookahead cache of {@link FeatureDataSource#DEFAULT_QUERY_LOOKAHEAD_BASES} bases.
+     */
+    void initializeFeatures() {
+        features = new FeatureManager(this);
+        if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
+            features = null;
         }
     }
 

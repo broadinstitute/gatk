@@ -19,7 +19,7 @@ import java.util.Iterator;
  */
 public final class ReadsContext implements Iterable<GATKRead> {
 
-    private final ReadsDataSource dataSource;
+    private final GATKDataSource<GATKRead> dataSource;
 
     private final SimpleInterval interval;
 
@@ -39,7 +39,7 @@ public final class ReadsContext implements Iterable<GATKRead> {
      * @param dataSource backing source of reads data (may be null)
      * @param interval interval over which to query (may be null)
      */
-    public ReadsContext( final ReadsDataSource dataSource, final SimpleInterval interval ) {
+    public ReadsContext( final GATKDataSource<GATKRead> dataSource, final SimpleInterval interval ) {
         this.dataSource = dataSource;
         this.interval = interval;
     }

@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
@@ -14,21 +12,23 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple3;
 
-import javax.annotation.Nullable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
+/**
+ * A Spark version of {@link LocusWalker}. Subclasses should implement {@link #processAlignments(JavaRDD, JavaSparkContext)}
+ * and operate on the passed in RDD.
+ */
 public abstract class LocusWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -52,19 +52,9 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
     @Argument(doc = "whether to use the shuffle implementation or overlaps partitioning (the default)", shortName = "shuffle", fullName = "shuffle", optional = true)
     public boolean shuffle = false;
 
-    private FeatureManager features; // TODO: move up to GATKSparkTool?
-
     @Override
-    protected void runPipeline(JavaSparkContext sparkContext) {
-        initializeFeatures();
-        super.runPipeline(sparkContext);
-    }
-
-    void initializeFeatures() {
-        features = new FeatureManager(this);
-        if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
-            features = null;
-        }
+    public boolean requiresReads() {
+        return true;
     }
 
     /** Returns the downsampling info using {@link #maxDepthPerSample} as target coverage. */
@@ -82,9 +72,9 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
      *
      * If no intervals were specified, returns all the alignments.
      *
-     * @return all alignments from as a {@link JavaRDD}, bounded by intervals if specified.
+     * @return all alignments as a {@link JavaRDD}, bounded by intervals if specified.
      */
-    public JavaRDD<Tuple3<AlignmentContext, ReferenceContext, FeatureContext>> getAlignments(JavaSparkContext ctx) {
+    public JavaRDD<LocusWalkerContext> getAlignments(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         final List<ShardBoundary> intervalShards = intervals.stream()
@@ -106,10 +96,10 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
      * @param downsamplingInfo the downsampling method for the reads
      * @return a function that maps a {@link Shard} of reads into a tuple of alignments and their corresponding reference and features.
      */
-    private static FlatMapFunction<Shard<GATKRead>, Tuple3<AlignmentContext, ReferenceContext, FeatureContext>> getAlignmentsFunction(
+    private static FlatMapFunction<Shard<GATKRead>, LocusWalkerContext> getAlignmentsFunction(
             Broadcast<ReferenceMultiSource> bReferenceSource, Broadcast<FeatureManager> bFeatureManager,
             SAMSequenceDictionary sequenceDictionary, SAMFileHeader header, LIBSDownsamplingInfo downsamplingInfo) {
-        return (FlatMapFunction<Shard<GATKRead>, Tuple3<AlignmentContext, ReferenceContext, FeatureContext>>) shardedRead -> {
+        return (FlatMapFunction<Shard<GATKRead>, LocusWalkerContext>) shardedRead -> {
             SimpleInterval interval = shardedRead.getInterval();
             SimpleInterval paddedInterval = shardedRead.getPaddedInterval();
             Iterator<GATKRead> readIterator = shardedRead.iterator();
@@ -122,15 +112,23 @@ public abstract class LocusWalkerSpark extends GATKSparkTool {
                     .collect(Collectors.toSet());
             LocusIteratorByState libs = new LocusIteratorByState(readIterator, downsamplingInfo, false, samples, header, true, false);
             IntervalOverlappingIterator<AlignmentContext> alignmentContexts = new IntervalOverlappingIterator<>(libs, ImmutableList.of(interval), sequenceDictionary);
-            Iterator<Tuple3<AlignmentContext, ReferenceContext, FeatureContext>> transform = Iterators.transform(alignmentContexts, new Function<AlignmentContext, Tuple3<AlignmentContext, ReferenceContext, FeatureContext>>() {
-                @Nullable
-                @Override
-                public Tuple3<AlignmentContext, ReferenceContext, FeatureContext> apply(@Nullable AlignmentContext alignmentContext) {
-                    final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
-                    return new Tuple3<>(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(fm, alignmentInterval));
-                }
-            });
-            return transform;
+            return StreamSupport.stream(alignmentContexts.spliterator(), false).map(alignmentContext -> {
+                final SimpleInterval alignmentInterval = new SimpleInterval(alignmentContext);
+                return new LocusWalkerContext(alignmentContext, new ReferenceContext(reference, alignmentInterval), new FeatureContext(fm, alignmentInterval));
+            }).iterator();
         };
     }
+
+    @Override
+    protected void runTool(JavaSparkContext ctx) {
+        processAlignments(getAlignments(ctx), ctx);
+    }
+
+    /**
+     * Process the alignments and write output. Must be implemented by subclasses.
+     *
+     * @param rdd a distributed collection of {@link LocusWalkerContext}
+     * @param ctx our Spark context
+     */
+    protected abstract void processAlignments(JavaRDD<LocusWalkerContext> rdd, JavaSparkContext ctx);
 }
