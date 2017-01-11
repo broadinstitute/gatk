@@ -253,7 +253,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
                     reads, readsHeader, shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
                     getRecommendedNumReducers());
         } catch (IOException e) {
-            throw new GATKException("unable to write bam: " + e);
+            throw new GATKException("unable to write bam: " + outputFile,  e);
         }
     }
 
