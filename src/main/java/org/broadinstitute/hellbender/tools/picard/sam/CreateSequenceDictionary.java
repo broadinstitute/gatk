@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.picard.sam;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -36,7 +38,7 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
     @Argument(
 	    shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output a dict file containing only the sequence dictionary")
+            doc = "Output a dict file containing only the sequence dictionary. By default it will use the base name of the input reference with the .dict extension", optional = true)
     public File OUTPUT;
 
     @Argument(doc = "Put into AS field of sequence dictionary entry if supplied", optional = true)
@@ -54,6 +56,8 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
 
     /**
      * Use reference filename to create URI to go into header if URI was not passed on cmd line.
+     * Use default name for output if not specified, being the same as the input but with
+     * {@link IOUtil#DICT_FILE_EXTENSION} extension instead of the FASTA ones (.fa or .fasta).
      */
     @Override
     protected String[] customCommandLineValidation() {
@@ -63,7 +67,21 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
         if (URI == null) {
             URI = "file:" + REFERENCE_SEQUENCE.getAbsolutePath();
         }
+        if (OUTPUT == null) {
+            // TODO: use the htsjdk method implemented in https://github.com/samtools/htsjdk/pull/774
+            OUTPUT = getDefaultDictionaryForReferenceSequence(REFERENCE_SEQUENCE);
+            logger.info("Output dictionary will be written in ", OUTPUT);
+        }
         return null;
+    }
+
+    // TODO: this method will be in htsjdk (https://github.com/samtools/htsjdk/pull/774)
+    private static File getDefaultDictionaryForReferenceSequence(final File fastaFile) {
+        final String name = fastaFile.getName();
+        final String extension = ReferenceSequenceFileFactory.FASTA_EXTENSIONS.stream().filter(name::endsWith).findFirst()
+                .orElseGet(() -> {throw new IllegalArgumentException("File is not a supported reference file type: " + fastaFile.getAbsolutePath());});
+        final int extensionIndex = name.length() - extension.length();
+        return new File(fastaFile.getParentFile(), name.substring(0, extensionIndex) + IOUtil.DICT_FILE_EXTENSION);
     }
 
     /**
