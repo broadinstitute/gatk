@@ -7,10 +7,8 @@ import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.io.Serializable;
+import java.util.*;
 import java.util.stream.IntStream;
 
 /**
@@ -189,6 +187,30 @@ public final class ForwardBackwardAlgorithm {
          *  {@code from} is not a valid position in the original data/position sequence.
          */
         double logConstrainedProbability(final T from, final List<Set<S>> stateConstraints);
+
+        /**
+         * Return the posterior joint probability of going from one state to another in a specified interval
+         * @param from the starting position (inclusive)
+         * @param to the stop position (inclusive)
+         * @param fromState the initial state
+         * @param toState the final state
+         * @return a valid probability in log scale (from -Inf to 0)
+         * @throws IllegalArgumentException if {@code fromState} or {@code toState} are not valid states in the
+         * underlying model or the {@code from} and {@code to} do not represent a valid position index range.
+         */
+        default double logJointProbability(final int from, final int to, final S fromState, final S toState) {
+            ParamUtils.inRange(from, 0, positions().size() - 1, "The 'from' index must be between 0 and the length" +
+                    " of the data/position sequence - 1");
+            ParamUtils.inRange(to, from + 1, positions().size() - 1, "the 'to' index must be between 'from' + 1 and" +
+                    " the length of the data/position sequence - 1");
+            final List<Set<S>> paths = new ArrayList<>(to - from + 1);
+            paths.add(Collections.singleton(fromState));
+            if (to > from + 1) { /* intermediate states */
+                paths.addAll(Collections.nCopies(to - from - 1, new HashSet<>(model().hiddenStates())));
+            }
+            paths.add(Collections.singleton(toState));
+            return logConstrainedProbability(from, paths);
+        }
 
         /**
          * Returns the likelihood of the original data given the model.
@@ -407,7 +429,9 @@ public final class ForwardBackwardAlgorithm {
      * @param <T> the observation time/position type.
      * @param <S> the hidden state type.
      */
-    private static class ArrayResult<D, T, S> implements Result<D, T, S> {
+    private static class ArrayResult<D, T, S> implements Result<D, T, S>, Serializable {
+
+        private static final long serialVersionUID = -8556604447304292642L;
 
         private final List<D> data;
 
@@ -423,8 +447,6 @@ public final class ForwardBackwardAlgorithm {
 
         private final double[][] logBackwardProbabilities;
         private final double[] logDataLikelihood;
-
-
 
         private ArrayResult(final List<D> data, final List<T> positions,
                             final HiddenMarkovModel<D, T, S> model,

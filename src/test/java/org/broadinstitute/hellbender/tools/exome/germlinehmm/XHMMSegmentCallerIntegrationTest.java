@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.exome.CopyNumberTriStateSegmentsCallerIntegrationTest;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentCaller;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMArgumentCollection;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecord;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecordReader;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -20,15 +23,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Integration tests for {@link DiscoverCopyNumberTriStateSegments}
+ * Integration tests for {@link XHMMSegmentCaller}
  *
- * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ * @author Valentin Ruano-Rugitbio &lt;valentin@broadinstitute.org&gt;
  */
-public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumberTriStateSegmentsCallerIntegrationTest {
+public class XHMMSegmentCallerIntegrationTest extends XHMMSegmentCallerBaseIntegrationTest {
 
     @Override
     public String getTestedClassName() {
-        return DiscoverCopyNumberTriStateSegments.class.getSimpleName();
+        return XHMMSegmentCaller.class.getSimpleName();
     }
 
     @Test(dataProvider = "testBadModelArgumentsData", expectedExceptions = IllegalArgumentException.class)
@@ -47,8 +50,9 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
         runCommandLine(arguments.toArray(new String[arguments.size()]));
     }
 
-    private List<CopyNumberTriStateSegmentRecord> readOutputRecords(final File outputFile) {
-        try (final CopyNumberTriStateSegmentRecordReader reader = new CopyNumberTriStateSegmentRecordReader(outputFile)) {
+    private List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> readOutputRecords(final File outputFile) {
+        try (final HiddenStateSegmentRecordReader<CopyNumberTriState, Target> reader =
+                     new HiddenStateSegmentRecordReader<>(outputFile, CopyNumberTriState::fromCallString)) {
             return reader.stream().collect(Collectors.toList());
         } catch (final IOException ex) {
             Assert.fail("problems reading the output file " + outputFile);
@@ -56,7 +60,7 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
         }
     }
 
-    //TODO: this test used to contain a tet of concordance with XHMM.  It no longer does that because our model has
+    //TODO: this test used to contain a test of concordance with XHMM.  It no longer does that because our model has
     //TODO: diverged from XHMM's.  Eventually the right thing to do is use the simulateChain() method to generate
     //TODO: simulated data for some artificial set of CNV segments and to test concordance with those segments.
     //TODO: however we still use XHMM's emission model, which is both not generative and quite silly.  Once we
@@ -71,12 +75,13 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
 
         Assert.assertTrue(outputFile.exists());
         final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(REALISTIC_TARGETS_FILE);
-        final List<CopyNumberTriStateSegmentRecord> outputRecords = readOutputRecords(outputFile);
+        final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> outputRecords = readOutputRecords(outputFile);
         assertOutputIsInOrder(outputRecords, targets);
         assertOutputHasConsistentNumberOfTargets(outputRecords, targets);
-        final Map<String, List<CopyNumberTriStateSegmentRecord>> outputRecordsBySample = splitOutputRecordBySample(outputRecords);
+        final Map<String, List<HiddenStateSegmentRecord<CopyNumberTriState, Target>>> outputRecordsBySample =
+                splitOutputRecordBySample(outputRecords);
         assertSampleNames(outputRecordsBySample.keySet(), chain);
-        for (final List<CopyNumberTriStateSegmentRecord> sampleRecords : outputRecordsBySample.values()) {
+        for (final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> sampleRecords : outputRecordsBySample.values()) {
             assertSampleSegmentsCoverAllTargets(sampleRecords, targets);
             assertSampleSegmentsCoordinates(sampleRecords, targets);
         }
@@ -91,13 +96,14 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
         arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
         arguments.add(outputFile.getAbsolutePath());
         loadModelArguments(chain, arguments);
-        arguments.add(String.valueOf(DiscoverCopyNumberTriStateSegments.ZScoreDimension.NONE.toString()));
+        arguments.add(String.valueOf(XHMMSegmentCaller.ZScoreDimension.NONE.toString()));
         runCommandLine(arguments.toArray(new String[arguments.size()]));
     }
 
 
-    private void assertSampleSegmentsCoordinates(List<CopyNumberTriStateSegmentRecord> sampleRecords, TargetCollection<Target> targets) {
-        for (final CopyNumberTriStateSegmentRecord record : sampleRecords) {
+    private void assertSampleSegmentsCoordinates(List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> sampleRecords,
+                                                 TargetCollection<Target> targets) {
+        for (final HiddenStateSegmentRecord<CopyNumberTriState, Target> record : sampleRecords) {
             final IndexRange range = targets.indexRange(record.getSegment());
             Assert.assertTrue(range.size() > 0);
             Assert.assertEquals(record.getSegment().getContig(),targets.location(range.from).getContig());
@@ -106,9 +112,10 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
         }
     }
 
-    private void assertSampleSegmentsCoverAllTargets(final List<CopyNumberTriStateSegmentRecord> sampleRecords, final TargetCollection<Target> targets) {
+    private void assertSampleSegmentsCoverAllTargets(final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> sampleRecords,
+                                                     final TargetCollection<Target> targets) {
         int next = 0;
-        for (final CopyNumberTriStateSegmentRecord record : sampleRecords) {
+        for (final HiddenStateSegmentRecord<CopyNumberTriState, Target> record : sampleRecords) {
             final IndexRange range = targets.indexRange(record.getSegment());
             Assert.assertEquals(range.from, next);
             next = range.to;
@@ -124,22 +131,24 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
         }
     }
 
-    private Map<String,List<CopyNumberTriStateSegmentRecord>> splitOutputRecordBySample(final List<CopyNumberTriStateSegmentRecord> outputRecords) {
-            return outputRecords.stream().collect(Collectors.groupingBy(CopyNumberTriStateSegmentRecord::getSampleName));
+    private Map<String,List<HiddenStateSegmentRecord<CopyNumberTriState, Target>>> splitOutputRecordBySample(final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> outputRecords) {
+            return outputRecords.stream().collect(Collectors.groupingBy(HiddenStateSegmentRecord::getSampleName));
     }
 
-    private void assertOutputIsInOrder(final List<CopyNumberTriStateSegmentRecord> outputRecords, final TargetCollection<Target> targets) {
+    private void assertOutputIsInOrder(final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> outputRecords,
+                                       final TargetCollection<Target> targets) {
         for (int i = 1; i < outputRecords.size(); i++) {
-            final CopyNumberTriStateSegmentRecord nextRecord = outputRecords.get(i);
-            final CopyNumberTriStateSegmentRecord previousRecord = outputRecords.get(i - 1);
+            final HiddenStateSegmentRecord<CopyNumberTriState, Target> nextRecord = outputRecords.get(i);
+            final HiddenStateSegmentRecord<CopyNumberTriState, Target> previousRecord = outputRecords.get(i - 1);
             final IndexRange nextRange = targets.indexRange(nextRecord.getSegment());
             final IndexRange previousRange = targets.indexRange(previousRecord.getSegment());
             Assert.assertTrue(nextRange.from >= previousRange.from);
         }
     }
 
-    private void assertOutputHasConsistentNumberOfTargets(final List<CopyNumberTriStateSegmentRecord> outputRecords, final TargetCollection<Target> targets) {
-        for (final CopyNumberTriStateSegmentRecord nextRecord : outputRecords) {
+    private void assertOutputHasConsistentNumberOfTargets(final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> outputRecords,
+                                                          final TargetCollection<Target> targets) {
+        for (final HiddenStateSegmentRecord<CopyNumberTriState, Target> nextRecord : outputRecords) {
             final IndexRange indexRange = targets.indexRange(nextRecord.getSegment());
             Assert.assertEquals(indexRange.to - indexRange.from, nextRecord.getSegment().getTargetCount());
         }
@@ -148,10 +157,10 @@ public class DiscoverCopyNumberTriStateSegmentsIntegrationTest extends CopyNumbe
     @DataProvider(name = "testBadModelArgumentsData")
     public Object[][] testBadModelArgumentsData() {
         return new Object[][] {
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.EVENT_START_PROBABILITY_FULL_NAME, -1.0D},
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DELETION_COVERAGE_SHIFT_SHORT_NAME, 1.1D},
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_DUPLICATION_COVERAGE_SHIFT_SHORT_NAME, -1.1D},
-                {CopyNumberTriStateHiddenMarkovModelArgumentCollection.MEAN_EVENT_SIZE_SHORT_NAME, -1.0D},
+                {XHMMArgumentCollection.EVENT_START_PROBABILITY_FULL_NAME, -1.0D},
+                {XHMMArgumentCollection.MEAN_DELETION_COVERAGE_SHIFT_SHORT_NAME, 1.1D},
+                {XHMMArgumentCollection.MEAN_DUPLICATION_COVERAGE_SHIFT_SHORT_NAME, -1.1D},
+                {XHMMArgumentCollection.MEAN_EVENT_SIZE_SHORT_NAME, -1.0D},
         };
     }
 }

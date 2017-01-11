@@ -1,10 +1,10 @@
-package org.broadinstitute.hellbender.tools.exome.germlinehmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
 /**
- * User arguments to compose a custom {@link CopyNumberTriStateHiddenMarkovModel}.
+ * User arguments to compose a custom {@link XHMMModel}.
  *
  * <p>
  *     Default values are those that were show to work well with human data in paper
@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class CopyNumberTriStateHiddenMarkovModelArgumentCollection {
+public final class XHMMArgumentCollection {
 
     public static final String EVENT_START_PROBABILITY_FULL_NAME = "eventStartProbability";
     public static final String EVENT_START_PROBABILITY_SHORT_NAME = "eventProb";
@@ -52,14 +52,14 @@ public final class CopyNumberTriStateHiddenMarkovModelArgumentCollection {
      * Creates a new model argument collection taking on the default values suggested in
      *  <a href="http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3484655/">Fromer et al. 2012</a>.
      */
-    public CopyNumberTriStateHiddenMarkovModelArgumentCollection() { }
+    public XHMMArgumentCollection() { }
 
     /**
      * Creates a new model instance using the current parameters.
      * @throws UserException.BadArgumentValue if any of the argument contain an invalid value.
      */
-    public CopyNumberTriStateHiddenMarkovModel createModel() {
-        return new CopyNumberTriStateHiddenMarkovModel(eventStartProbability, meanEventSize, meanDeletionCoverageShift,
+    public XHMMModel createModel() {
+        return new XHMMModel(eventStartProbability, meanEventSize, meanDeletionCoverageShift,
                 meanDuplicationCoverageShift);
     }
 }

@@ -1,6 +1,7 @@
-package org.broadinstitute.hellbender.utils.hmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

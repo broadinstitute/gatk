@@ -7,12 +7,12 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegment;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegmentRecord;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegmentRecordReader;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegment;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecord;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecordReader;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -56,13 +56,13 @@ public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgr
     }
 
     private void checkConsistency(final File vcf, final File segments) throws IOException {
-        final List<CopyNumberTriStateSegmentRecord> expectedSegments = composeExpectedSegments(vcf, TargetArgumentCollection.readTargetCollection(TEST_TARGET_FILE));
-        final List<CopyNumberTriStateSegmentRecord> observedSegments =
-                new CopyNumberTriStateSegmentRecordReader(segments).stream().collect(Collectors.toList());
+        final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> expectedSegments = composeExpectedSegments(vcf, TargetArgumentCollection.readTargetCollection(TEST_TARGET_FILE));
+        final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> observedSegments =
+                new HiddenStateSegmentRecordReader<>(segments, CopyNumberTriState::fromCallString).stream().collect(Collectors.toList());
         Assert.assertEquals(observedSegments.size(), expectedSegments.size());
         for (int i = 0; i < observedSegments.size(); i++) {
-            final CopyNumberTriStateSegmentRecord observedRecord = observedSegments.get(0);
-            final CopyNumberTriStateSegmentRecord expectedRecord = expectedSegments.get(0);
+            final HiddenStateSegmentRecord<CopyNumberTriState, Target> observedRecord = observedSegments.get(0);
+            final HiddenStateSegmentRecord<CopyNumberTriState, Target> expectedRecord = expectedSegments.get(0);
             Assert.assertEquals(observedRecord.getSampleName(), expectedRecord.getSampleName());
             Assert.assertEquals(observedRecord.getSegment().getCall(), expectedRecord.getSegment().getCall());
             Assert.assertEquals(observedRecord.getSegment().getInterval(), expectedRecord.getSegment().getInterval());
@@ -87,9 +87,9 @@ public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgr
         }
     }
 
-    private List<CopyNumberTriStateSegmentRecord> composeExpectedSegments(final File vcf, final TargetCollection<Target> targets) {
+    private List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> composeExpectedSegments(final File vcf, final TargetCollection<Target> targets) throws IOException {
         final VCFFileReader reader = new VCFFileReader(vcf, false);
-        final List<CopyNumberTriStateSegmentRecord> result = new ArrayList<>();
+        final List<HiddenStateSegmentRecord<CopyNumberTriState, Target>> result = new ArrayList<>();
         reader.iterator().forEachRemaining(vc -> {
             final int targetCount = targets.indexRange(vc).size();
             for (final Genotype genotype : vc.getGenotypes()) {
@@ -100,12 +100,12 @@ public class ConvertGSVariantsToSegmentsIntegrationTest extends CommandLineProgr
                 final double cnpSum = MathUtils.approximateLog10SumLog10(cnp);
                 final CopyNumberTriState call = expectedCall(cn);
                 final double exactLog10Prob = expectedExactLog10(call, cnp);
-                final CopyNumberTriStateSegment expectedSegment = new CopyNumberTriStateSegment(
+                final HiddenStateSegment<CopyNumberTriState, Target> expectedSegment = new HiddenStateSegment<>(
                         new SimpleInterval(vc), targetCount, Double.parseDouble(genotype.getExtendedAttribute("CNF").toString()),
                         0.000, call, -10.0 * exactLog10Prob, Double.NaN,  Double.NaN, Double.NaN,
                           -10.0 * (cnp[ConvertGSVariantsToSegments.NEUTRAL_COPY_NUMBER_DEFAULT] - cnpSum)
                 );
-                result.add(new CopyNumberTriStateSegmentRecord(genotype.getSampleName(), expectedSegment));
+                result.add(new HiddenStateSegmentRecord<>(genotype.getSampleName(), expectedSegment));
             }
         });
         return result;

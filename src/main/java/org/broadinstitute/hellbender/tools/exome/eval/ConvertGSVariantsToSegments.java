@@ -18,12 +18,12 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegment;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegmentRecord;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateSegmentRecordWriter;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecord;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecordWriter;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegment;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Tool to convert Genotype Strip Variant call file into {@link CopyNumberTriStateSegmentRecord} table file.
+ * Tool to convert Genotype Strip Variant call file into {@link HiddenStateSegmentRecord} table file.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
@@ -73,14 +73,14 @@ public final class ConvertGSVariantsToSegments extends VariantWalker {
     )
     protected int neutralCopyNumber = NEUTRAL_COPY_NUMBER_DEFAULT;
 
-    protected CopyNumberTriStateSegmentRecordWriter outputWriter;
+    protected HiddenStateSegmentRecordWriter<CopyNumberTriState, Target> outputWriter;
 
     protected TargetCollection<Target> targets;
 
     @Override
     public void onTraversalStart() {
         try {
-            outputWriter = new CopyNumberTriStateSegmentRecordWriter(outputFile);
+            outputWriter = new HiddenStateSegmentRecordWriter<>(outputFile);
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(outputFile, ex);
         }
@@ -139,7 +139,7 @@ public final class ConvertGSVariantsToSegments extends VariantWalker {
             final double log10PostQualNonRef = calculateLog10CallQualityNonRef(probs);
             final double phredProbCall = -10.0 * log10PostQualCall;
             final double phredProbNonRef = -10.0 * log10PostQualNonRef;
-            final CopyNumberTriStateSegment segment = new CopyNumberTriStateSegment(
+            final HiddenStateSegment<CopyNumberTriState, Target> segment = new HiddenStateSegment<>(
                     interval,
                     targetCount,
                     mean,
@@ -152,7 +152,7 @@ public final class ConvertGSVariantsToSegments extends VariantWalker {
                     phredProbNonRef
             );
 
-            final CopyNumberTriStateSegmentRecord record = new CopyNumberTriStateSegmentRecord(sample, segment);
+            final HiddenStateSegmentRecord<CopyNumberTriState, Target> record = new HiddenStateSegmentRecord<>(sample, segment);
             try {
                 outputWriter.writeRecord(record);
             } catch (final IOException ex) {

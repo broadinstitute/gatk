@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.hmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
 import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
 import org.apache.commons.math3.linear.EigenDecomposition;
