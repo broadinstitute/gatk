@@ -14,7 +14,7 @@ import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateAllele;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.GenotypeCopyNumberTriStateSegments;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentGenotyper;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -139,7 +139,7 @@ public class EvaluateCopyNumberTriStateCallsIntegrationTest extends CommandLineP
         final TargetCollection<Target> targets = TargetArgumentCollection.readTargetCollection(targetsFile);
         for (final VariantContext context : outputVariants) {
             final List<Target> overlappingTargets = targets.targets(context);
-            Assert.assertEquals(context.getAttributeAsInt(GenotypeCopyNumberTriStateSegments.NUMBER_OF_TARGETS_KEY, -1), overlappingTargets.size());
+            Assert.assertEquals(context.getAttributeAsInt(XHMMSegmentGenotyper.NUMBER_OF_TARGETS_KEY, -1), overlappingTargets.size());
         }
     }
 
@@ -258,8 +258,8 @@ public class EvaluateCopyNumberTriStateCallsIntegrationTest extends CommandLineP
                 final Allele expectedCall = callGenotype.getAllele(0).isCalled() ? CopyNumberTriStateAllele.valueOf(callGenotype.getAllele(0)) : null;
                 final Allele actualCall = outputGenotype.getAllele(0).isCalled() ? CopyNumberTriStateAllele.valueOf(outputGenotype.getAllele(0)) : null;
                 Assert.assertEquals(expectedCall, actualCall);
-                final boolean expectedDiscovered = GenotypeCopyNumberTriStateSegments.DISCOVERY_TRUE.equals(GATKProtectedVariantContextUtils.getAttributeAsString(callGenotype, GenotypeCopyNumberTriStateSegments.DISCOVERY_KEY, "N"));
-                final boolean actualDiscovered = GenotypeCopyNumberTriStateSegments.DISCOVERY_TRUE.equals(GATKProtectedVariantContextUtils.getAttributeAsString(callGenotype, GenotypeCopyNumberTriStateSegments.DISCOVERY_KEY, "N"));
+                final boolean expectedDiscovered = XHMMSegmentGenotyper.DISCOVERY_TRUE.equals(GATKProtectedVariantContextUtils.getAttributeAsString(callGenotype, XHMMSegmentGenotyper.DISCOVERY_KEY, "N"));
+                final boolean actualDiscovered = XHMMSegmentGenotyper.DISCOVERY_TRUE.equals(GATKProtectedVariantContextUtils.getAttributeAsString(callGenotype, XHMMSegmentGenotyper.DISCOVERY_KEY, "N"));
                 Assert.assertEquals(actualDiscovered, expectedDiscovered);
                 final int[] expectedCounts = new int[CopyNumberTriStateAllele.ALL_ALLELES.size()];
                 if (expectedCall.isCalled() && actualDiscovered) {
@@ -320,7 +320,7 @@ public class EvaluateCopyNumberTriStateCallsIntegrationTest extends CommandLineP
                 final Genotype outputGenotype = matchingOutput.getGenotype(sample);
                 final List<Pair<VariantContext, Genotype>> sampleCalls = overlappingCalls.stream()
                         .map(vc -> new ImmutablePair<>(vc, vc.getGenotype(sample)))
-                        .filter(p -> GenotypeCopyNumberTriStateSegments.DISCOVERY_TRUE.equals(p.getRight().getExtendedAttribute(GenotypeCopyNumberTriStateSegments.DISCOVERY_KEY)))
+                        .filter(p -> XHMMSegmentGenotyper.DISCOVERY_TRUE.equals(p.getRight().getExtendedAttribute(XHMMSegmentGenotyper.DISCOVERY_KEY)))
                         .filter(p -> callPassFilters(p.getLeft(), p.getRight(), targets, filteringOptions))
                         .collect(Collectors.toList());
                 final int[] expectedCounts = new int[CopyNumberTriStateAllele.ALL_ALLELES.size()];

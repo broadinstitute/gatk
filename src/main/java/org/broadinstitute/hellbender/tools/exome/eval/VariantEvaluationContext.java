@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.eval;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateAllele;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.GenotypeCopyNumberTriStateSegments;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentGenotyper;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -26,7 +26,7 @@ public class VariantEvaluationContext extends VariantContext {
     public static final String CALLED_ALLELE_COUNTS_KEY = "CC";
     public static final String CALLED_TARGET_COUNT_KEY = "CL";
     public static final String CALL_QUALITY_KEY = "CQ";
-    public static final String TRUTH_TARGET_COUNT_KEY = GenotypeCopyNumberTriStateSegments.NUMBER_OF_TARGETS_KEY;
+    public static final String TRUTH_TARGET_COUNT_KEY = XHMMSegmentGenotyper.NUMBER_OF_TARGETS_KEY;
     public static final String TRUTH_COPY_FRACTION_KEY = "TF";
     public static final String TRUTH_QUALITY_KEY = "TQ";
 

@@ -1,18 +1,18 @@
-package org.broadinstitute.hellbender.tools.exome.germlinehmm;
+package org.broadinstitute.hellbender.utils.hmm.segmentation;
 
 import org.broadinstitute.hellbender.tools.exome.Segment;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
 
 import java.util.List;
 
 /**
- * {@link CopyNumberTriStateHiddenMarkovModel} model target segments.
+ * Represents a sequence of hidden states with the same call as a segment.
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState> {
+public class HiddenStateSegment<S, T extends Target> extends Segment<S> {
 
     private final double exactQuality;
 
@@ -75,8 +75,11 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
 
     /**
      * Returns the "event quality" (NDP): 1 - posterior probability that the hidden
-     * state is the copy {@link CopyNumberTriState#NEUTRAL neutral} across the whole segment
+     * state is different from the the "reference state" across the whole segment
      * in Phred scale.
+     *
+     * The reference state is determined by the context. For a 3-state HMM, the reference
+     * state is the copy-neutral state.
      *
      * @return any {@code double} value.
      */
@@ -85,7 +88,8 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
     }
 
     /**
-     * Returns the standard deviation of the coverage across targets in the segment.
+     * Returns the standard deviation of emission model data (defined in context) across targets in
+     * the segment.
      */
     public double getStdev() {
         return stdev;
@@ -103,10 +107,10 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
      * @param stopQuality the phred scaled SQ score.
      * @param eventQuality the phred scaled NDQ score.
      */
-    public CopyNumberTriStateSegment(final List<Target> targets, final double mean, final double stdev,
-                                     final CopyNumberTriState call,
-                                     final double exactQuality, final double someQuality, final double startQuality,
-                                     final double stopQuality, final double eventQuality) {
+    public HiddenStateSegment(final List<T> targets, final double mean, final double stdev,
+                              final S call,
+                              final double exactQuality, final double someQuality, final double startQuality,
+                              final double stopQuality, final double eventQuality) {
         super(targets, mean, call);
         this.stdev = stdev;
         this.exactQuality = exactQuality;
@@ -129,10 +133,10 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
      * @param stopQuality the phred scaled SQ score.
      * @param eventQuality the phred scaled NDQ score.
      */
-    public CopyNumberTriStateSegment(final SimpleInterval interval, final int targetCount, final double mean, final double stdev,
-                                     final CopyNumberTriState call,
-                                     final double exactQuality, final double someQuality, final double startQuality,
-                                     final double stopQuality, final double eventQuality) {
+    public HiddenStateSegment(final SimpleInterval interval, final int targetCount, final double mean, final double stdev,
+                              final S call,
+                              final double exactQuality, final double someQuality, final double startQuality,
+                              final double stopQuality, final double eventQuality) {
         super(interval, targetCount, mean, call);
         this.stdev = stdev;
         this.exactQuality = exactQuality;
@@ -147,4 +151,5 @@ public final class CopyNumberTriStateSegment extends Segment<CopyNumberTriState>
                 interval, targetCount, call, mean,
                 stdev, exactQuality, someQuality, startQuality, endQuality, eventQuality);
     }
+
 }

@@ -1,33 +1,38 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
+import com.beust.jcommander.internal.Nullable;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
+import org.broadinstitute.barclay.utils.Utils;
 import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMEmissionData;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 /**
  * Implements the {@link TargetLikelihoodCalculator} interface for the original XHMM-based germline model.
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class XHMMTargetLikelihoodCalculator implements TargetLikelihoodCalculator {
+public final class XHMMEmissionProbabilityCalculator implements TargetLikelihoodCalculator<XHMMEmissionData> {
     private final RandomGenerator rng;
     private final double emissionStandardDeviation;
     private final double deletionMean;
     private final double duplicationMean;
     private static final double NEUTRAL_MEAN = 0.0;
 
-    public XHMMTargetLikelihoodCalculator(final double deletionMean, final double duplicationMean, final double emissionStdDev,
-                                          final RandomGenerator rng) {
+    public XHMMEmissionProbabilityCalculator(final double deletionMean, final double duplicationMean, final double emissionStdDev,
+                                             @Nullable final RandomGenerator rng) {
+        this.deletionMean = ParamUtils.isNegativeOrZero(deletionMean, "Deletion coverage shift must be negative.");
+        this.duplicationMean = ParamUtils.isPositiveOrZero(duplicationMean, "Duplication coverage shift must be positive");
+        emissionStandardDeviation = ParamUtils.isPositive(emissionStdDev, "Emission standard deviation must be positive");
         this.rng = rng;
-        emissionStandardDeviation = emissionStdDev;
-        this.duplicationMean = duplicationMean;
-        this.deletionMean = deletionMean;
     }
 
     @Override
-    public double logLikelihood(final Target target, final double copyRatio, double coverageZScore) {
-        return new NormalDistribution(rng, getEmissionMean(copyRatio), emissionStandardDeviation).logDensity(coverageZScore);
+    public double logLikelihood(final XHMMEmissionData emissionData, final double copyRatio, final Target target) {
+        return new NormalDistribution(rng, getEmissionMean(copyRatio), emissionStandardDeviation)
+                .logDensity(emissionData.getCoverageZScore());
     }
 
     private double getEmissionMean(final double copyRatio) {
@@ -43,6 +48,8 @@ public final class XHMMTargetLikelihoodCalculator implements TargetLikelihoodCal
     }
 
     public double generateRandomZScoreData(final double copyRatio) {
+        Utils.nonNull(rng, "Random z-score sampling is called by the random number generator is null. This" +
+                " instance of the class can not produce random samples.");
         return getEmissionMean(copyRatio) + rng.nextGaussian() * emissionStandardDeviation;
     }
 

@@ -5,7 +5,6 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
 
 import java.util.Arrays;
 import java.util.Collections;

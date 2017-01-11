@@ -1,89 +1,88 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
-import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.coveragemodel.XHMMTargetLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.coveragemodel.TargetLikelihoodCalculator;
+import org.broadinstitute.hellbender.tools.coveragemodel.XHMMEmissionProbabilityCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriState;
-import org.broadinstitute.hellbender.utils.hmm.CopyNumberTriStateTransitionProbabilityCache;
 import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 /**
- *  This model has the following parameters:
- *  Event start probability: the probability of a CNV event beginning at any given base.
- *  Mean event size: the average size (in base-pairs) of an event.
- *  Mean coverage shift for deletions: the mean coverage in regions that have undergone a copy loss.
- *  Mean coverage shift for duplications:  the mean coverage in regions that have undergone a copy gain.
+ *  A generic copy number tri-state HMM has the following parameters:
+ *  <ul>
+ *      <li>
+ *          Emission probability calculator: an implementation of {@link TargetLikelihoodCalculator}
+ *      </li>
+ *      <li>
+ *          Event start probability: the probability of a CNV event beginning at any given base.
+ *      </li>
+ *      <li>
+ *          Mean event size: the average size (in base-pairs) of an event.
+ *      </li>
+ *  </ul>
  *
  * <p>
  * This model assumes that target are provided in genomic coordinate order although it can handle either ascending
  * and descending orders.
  * </p>
  * <p>
- * When any of the targets provided does not have a defined interval, the model uses a default distance.
+ * When any of the targets provided does not have a defined interval, the model uses a default distance
+ * {@link #DEFAULT_DISTANCE_BETWEEN_TARGETS}
  * </p>
  *
+ * @param <D> is the emission data type
+ *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class CopyNumberTriStateHiddenMarkovModel
-        implements HiddenMarkovModel<Double, Target, CopyNumberTriState> {
+public class CopyNumberTriStateHiddenMarkovModel<D>
+        implements HiddenMarkovModel<D, Target, CopyNumberTriState>, Serializable {
+
+    private static final long serialVersionUID = -3367028114020534823L;
 
     /**
      * Immutable list of hidden states.
      */
-    private static final List<CopyNumberTriState> HIDDEN_STATES =
+    protected static final List<CopyNumberTriState> HIDDEN_STATES =
             Collections.unmodifiableList(Arrays.asList(CopyNumberTriState.values()));
 
-    /**
-    * The assumed stddev for likelihoods, regardless of copy number state.
-    */
-    private static final double EMISSION_SD = 1.0;
+    protected final TargetLikelihoodCalculator<D> targetLikelihoodCalculator;
 
-    private final XHMMTargetLikelihoodCalculator likelihoodsCalculator;
+    protected final CopyNumberTriStateTransitionProbabilityCache logTransitionProbabilityCache;
 
-    private final CopyNumberTriStateTransitionProbabilityCache logTransitionProbabilityCache;
-
-    //use this distance if target intervals are unspecified
+    /* use this distance if target intervals are unspecified */
     public static double DEFAULT_DISTANCE_BETWEEN_TARGETS = 10_000;
 
-    //per-base probability of transition from neutral to CNV state
-    private final double eventStartProbability;
+    /* per-base probability of transition from neutral to CNV state */
+    protected final double eventStartProbability;
 
-    //average size in bases of CNVs
-    private final double meanEventSize;
-
-    private static final int RANDOM_SEED = 1767;
+    /* average size in bases of CNVs */
+    protected final double meanEventSize;
 
     /**
      * Creates a new model instance.
      *
+     * @param emissionProbabilityCalculator emission probability calculator for each target
      * @param eventStartProbability the probability per base pair of a transition from neutral to a CNV
      * @param meanEventSize the expectation of the distance between consecutive targets in an event
-     * @param deletionMeanShift the deletion depth of coverage negative shift.
-     * @param duplicationMeaShift the duplication depth of coverage positive shift.
      * @throws IllegalArgumentException if any of the model parameters has an invalid value.
      */
-    public CopyNumberTriStateHiddenMarkovModel(final double eventStartProbability,
-                                               final double meanEventSize, final double deletionMeanShift,
-                                               final double duplicationMeaShift) {
+    public CopyNumberTriStateHiddenMarkovModel(@Nonnull final TargetLikelihoodCalculator<D> emissionProbabilityCalculator,
+                                               final double eventStartProbability,
+                                               final double meanEventSize) {
         ParamUtils.inRange(eventStartProbability, 0, 1, "Event probability must be between 0 and 1.");
-        ParamUtils.isNegativeOrZero(deletionMeanShift, "Deletion coverage shift must be negative.");
-        ParamUtils.isPositiveOrZero(duplicationMeaShift, "Duplication coverage shift must be positive");
         ParamUtils.isPositive(meanEventSize, "Mean event size must be positive.");
         this.eventStartProbability = eventStartProbability;
         this.meanEventSize = meanEventSize;
         logTransitionProbabilityCache = new CopyNumberTriStateTransitionProbabilityCache(meanEventSize, eventStartProbability);
-        final RandomGenerator rng = RandomGeneratorFactory.createRandomGenerator(new Random(RANDOM_SEED));
-        likelihoodsCalculator = new XHMMTargetLikelihoodCalculator(deletionMeanShift, duplicationMeaShift, EMISSION_SD, rng);
+        this.targetLikelihoodCalculator = Utils.nonNull(emissionProbabilityCalculator,
+                "The emission probability calculator must be non-null");
     }
 
     @Override
@@ -119,68 +118,24 @@ public final class CopyNumberTriStateHiddenMarkovModel
     }
 
     /**
-     * Calculate the distance between two targets.
-     * <p>
-     * If any of the targets provided does not contain intervals, the distance is set to @{code DEFAULT_DISTANCE_BETWEEN_TARGETS}
-     * in order to revert to a non-distance dependent model
-     * </p>
-     * <p>
-     * If both targets map to different chromosomes then we return {@link Double#POSITIVE_INFINITY}.
-     * </p>
-     * <p>
-     * Otherwise, the distance returned is the distance between their centers. This method
-     * works regardless of the targets' relative positions.
-     * </p>
-     * @param fromTarget the previous target.
-     * @param toTarget the next target.
-     * @return any values between 0 and {@link Double#POSITIVE_INFINITY}.
-     * @throws NullPointerException if any of the targets is {@code null}.
+     * See {@link Target#calculateDistance(Target, Target, double)}
+     *
+     * @param fromTarget first target
+     * @param toTarget second target
+     * @return distance
      */
-    @VisibleForTesting
-    double calculateDistance(final Target fromTarget, final Target toTarget) {
-        final SimpleInterval fromInterval = fromTarget.getInterval();
-        final SimpleInterval toInterval = toTarget.getInterval();
-        if (fromInterval == null || toInterval == null) {
-            return DEFAULT_DISTANCE_BETWEEN_TARGETS;
-        } else if (!fromInterval.getContig().equals(toInterval.getContig())) {
-            return Double.POSITIVE_INFINITY;
-        } else {
-            final double toMidpoint = (toInterval.getStart() + toInterval.getEnd())/2;
-            final double fromMidpoint = (fromInterval.getStart() + fromInterval.getEnd())/2;
-            return  Math.abs(toMidpoint - fromMidpoint);
-        }
+    public static double calculateDistance(final Target fromTarget, final Target toTarget) {
+        return Target.calculateDistance(fromTarget, toTarget, DEFAULT_DISTANCE_BETWEEN_TARGETS);
     }
 
     @Override
-    public double logEmissionProbability(final Double data,
+    public double logEmissionProbability(final D emissionData,
                                          final CopyNumberTriState state,
                                          final Target target) {
-        return likelihoodsCalculator.logLikelihood(target, state.copyRatio, data);
-    }
-
-    @VisibleForTesting
-    public Double randomDatum(final CopyNumberTriState state, final Random rdn) {
-        Utils.nonNull(state);
-        Utils.nonNull(rdn);
-        return likelihoodsCalculator.generateRandomZScoreData(state.copyRatio);
-    }
-
-    /**
-     * Returns the deletion mean shift.
-     * @return a valid negative finite double value.
-     */
-    public double getDeletionMean() {
-        return likelihoodsCalculator.deletionMean();
-    }
-
-    /**
-     * Return the duplication mean shift.
-     * @return a valid positive finite double value.
-     */
-    public double getDuplicationMean() {
-        return likelihoodsCalculator.duplicationMean();
+        return targetLikelihoodCalculator.logLikelihood(emissionData, state.copyRatio, target);
     }
 
     public double getEventStartProbability() { return eventStartProbability; }
+
     public double getMeanEventSize() { return meanEventSize; }
 }

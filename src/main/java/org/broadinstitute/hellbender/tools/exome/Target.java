@@ -159,4 +159,37 @@ public class Target implements Locatable, Feature, Serializable {
     public String getChr() {
         return interval.getContig();
     }
+
+    /**
+     * Calculate the distance between two targets.
+     * <p>
+     * If any of the targets provided does not contain intervals, the distance is set to {@code defaultDistance}
+     * in order to revert to a non-distance dependent model
+     * </p>
+     * <p>
+     * If both targets map to different chromosomes then we return {@link Double#POSITIVE_INFINITY}.
+     * </p>
+     * <p>
+     * Otherwise, the distance returned is the distance between their centers. This method
+     * works regardless of the targets' relative positions.
+     * </p>
+     * @param fromTarget the previous target.
+     * @param toTarget the next target.
+     * @return any values between 0 and {@link Double#POSITIVE_INFINITY}.
+     * @throws NullPointerException if any of the targets is {@code null}.
+     */
+    public static double calculateDistance(final Target fromTarget, final Target toTarget,
+                                           final double defaultDistance) {
+        final SimpleInterval fromInterval = fromTarget.getInterval();
+        final SimpleInterval toInterval = toTarget.getInterval();
+        if (fromInterval == null || toInterval == null) {
+            return defaultDistance;
+        } else if (!fromInterval.getContig().equals(toInterval.getContig())) {
+            return Double.POSITIVE_INFINITY;
+        } else {
+            final double toMidpoint = (toInterval.getStart() + toInterval.getEnd())/2;
+            final double fromMidpoint = (fromInterval.getStart() + fromInterval.getEnd())/2;
+            return Math.abs(toMidpoint - fromMidpoint);
+        }
+    }
 }
