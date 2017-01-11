@@ -84,5 +84,18 @@ public class GATKException extends RuntimeException {
             super(String.format("Attribute %s not of (or convertible to) type %s", attributeName, targetType), throwable);
         }
     }
+
+    public static class ConfigurationException extends GATKException {
+        private static final long serialVersionUID = 0L;
+
+        public ConfigurationException(final String property, final String msg) {
+            super(String.format("Wrong GATK configuration for %s property: %s", property, msg));
+        }
+
+        public ConfigurationException(final String property, final String msg, final Throwable throwable) {
+            super(String.format("Wrong GATK configuration for %s property: %s",  property, msg), throwable);
+        }
+    }
+
 }
 

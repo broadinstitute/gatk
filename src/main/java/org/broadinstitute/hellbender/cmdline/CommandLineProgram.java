@@ -17,6 +17,8 @@ import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
+import org.broadinstitute.hellbender.conf.GATKConf;
+import org.broadinstitute.hellbender.conf.GATKConfBuilder;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -71,6 +73,11 @@ public abstract class CommandLineProgram {
     * own validation, and then print usage using commandLineParser.
     */
     protected CommandLineParser commandLineParser;
+
+    /**
+     * It could be only set once. If not set, it is initialized on demand.
+     */
+    protected GATKConf configuration = null;
 
     private final List<Header> defaultHeaders = new ArrayList<>();
 
@@ -294,4 +301,23 @@ public abstract class CommandLineProgram {
         return this.defaultHeaders;
     }
 
+    /** Returns the configuration for the GATK CommandLineProgram. */
+    public final GATKConf getConfiguration() {
+        if (configuration == null) {
+            configuration = GATKConfBuilder.getDefaultConfiguration();
+        }
+        return configuration;
+    }
+
+    /**
+     * Sets the configuration for the CommandLineProgram.
+     *
+     * @throws IllegalStateException if the configuration is already set.
+     */
+    public synchronized final void setConfiguration(final GATKConf configuration) {
+        if (this.configuration != null) {
+            throw new IllegalStateException("Configuration already set");
+        }
+        this.configuration = configuration;
+    }
 }

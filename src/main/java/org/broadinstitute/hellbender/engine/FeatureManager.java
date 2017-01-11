@@ -60,16 +60,15 @@ public final class FeatureManager implements AutoCloseable {
     private static final Class<FeatureInput> FEATURE_ARGUMENT_CLASS = FeatureInput.class;
 
     /**
-     * Walk through the packages in {@link GATKConf#getCodecPackages()}, and save any (concrete) FeatureCodecs discovered
+     * Walk through the packages in {@code codecPackages}, and save any (concrete) FeatureCodecs discovered
      * in DISCOVERED_CODECS.
      *
      * @throws IllegalStateException if codecs were alredy initialized.
      */
-    public synchronized static void setConfiguration(final GATKConf configuration) {
+    public synchronized static void setCodecPackages(final List<String> codecPackages) {
         if (DISCOVERED_CODECS != null) {
             throw new IllegalStateException("Codecs already initialized");
         }
-        final List<String> codecPackages = configuration.getCodecPackages();
         final ClassFinder finder = new ClassFinder();
         for (final String codecPackage : codecPackages) {
             finder.find(codecPackage, CODEC_BASE_CLASS);
@@ -410,7 +409,7 @@ public final class FeatureManager implements AutoCloseable {
      */
     private static List<FeatureCodec<? extends Feature, ?>> getCandidateCodecsForFile( final File featureFile )  {
         if (DISCOVERED_CODECS == null) {
-            setConfiguration(GATKConfBuilder.getDefaultConfiguration());
+            setCodecPackages(GATKConfBuilder.getDefaultConfiguration().getGATKProperty(GATKConf.CODEC_PACKAGE_LIST_KEY));
         }
 
         final List<FeatureCodec<? extends Feature, ?>> candidateCodecs = new ArrayList<>();

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender;
 
 import htsjdk.samtools.util.StringUtil;
-import org.apache.commons.configuration.ConfigurationException;
 import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
@@ -16,6 +15,7 @@ import org.broadinstitute.hellbender.utils.ClassUtils;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This is the main class of Hellbender and is the way of executing individual command line programs.
@@ -79,12 +79,27 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      *
      */
-    public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
+    public Object instanceMain(final String[] args, final GATKConf configuration, final String commandLineName) {
+        // first set up the codecs
+        FeatureManager.setCodecPackages(getConfiguration().getGATKProperty(GATKConf.CODEC_PACKAGE_LIST_KEY));
+        final List<Class<? extends CommandLineProgram>> classList = configuration.getGATKProperty(GATKConf.TOOL_CLASS_LIST_KEY).stream()
+                .map(c -> {
+                    try {
+                        final Class<? extends CommandLineProgram> clazz = Class.forName(c).asSubclass(CommandLineProgram.class);
+                        return clazz;
+                    } catch (ClassNotFoundException e) {
+                        throw new GATKException.ConfigurationException(GATKConf.TOOL_CLASS_LIST_KEY, "class " + c + " not found", e);
+                    } catch (ClassCastException e) {
+                        throw new GATKException.ConfigurationException(GATKConf.TOOL_CLASS_LIST_KEY, "class " +  c + "is not a CommandLineProgram", e);
+                    }
+                }).collect(Collectors.toList());
+        final CommandLineProgram program = extractCommandLineProgram(args, configuration.getGATKProperty(GATKConf.TOOL_PACKAGE_LIST_KEY), classList, commandLineName);
         if (null == program) return null; // no program found!
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
+        // we set the configuration to the clp
+        program.setConfiguration(configuration);
         return program.instanceMain(mainArgs);
     }
 
@@ -93,8 +108,7 @@ public class Main {
      */
     public Object instanceMain(final String[] args) {
         final GATKConf configuration = getConfiguration();
-        FeatureManager.setConfiguration(configuration);
-        return instanceMain(args, configuration.getToolPackages(), configuration.getToolClasses(), getCommandLineName());
+        return instanceMain(args, configuration, getCommandLineName());
     }
 
     /**
