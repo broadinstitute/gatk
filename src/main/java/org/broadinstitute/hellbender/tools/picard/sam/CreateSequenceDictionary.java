@@ -68,11 +68,9 @@ public final class CreateSequenceDictionary extends PicardCommandLineProgram {
             URI = "file:" + REFERENCE_SEQUENCE.getAbsolutePath();
         }
         if (OUTPUT == null) {
-            if (OUTPUT == null) {
-                // TODO: use the htsjdk method implemented in https://github.com/samtools/htsjdk/pull/774
-                OUTPUT = getDefaultDictionaryForReferenceSequence(REFERENCE_SEQUENCE);
-                logger.info("Output dictionary will be written in ", OUTPUT);
-            }
+            // TODO: use the htsjdk method implemented in https://github.com/samtools/htsjdk/pull/774
+            OUTPUT = getDefaultDictionaryForReferenceSequence(REFERENCE_SEQUENCE);
+            logger.info("Output dictionary will be written in ", OUTPUT);
         }
         return null;
     }

@@ -159,6 +159,7 @@ public final class CachingIndexedFastaSequenceFile extends IndexedFastaSequenceF
         final File indexFile = new File(fastaFile.getAbsolutePath() + ".fai");
 
         // determine the name for the dict file
+        // TODO: use the htsjdk method implemented in https://github.com/samtools/htsjdk/pull/774
         final String fastaExt = fastaFile.getAbsolutePath().endsWith("fa") ? "\\.fa$" : "\\.fasta$";
         final File dictFile = new File(fastaFile.getAbsolutePath().replaceAll(fastaExt, IOUtil.DICT_FILE_EXTENSION));
 
