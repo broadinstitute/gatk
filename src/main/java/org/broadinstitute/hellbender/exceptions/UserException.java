@@ -52,7 +52,7 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public CouldNotReadInputFile(String message, Exception e) {
-            super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)));
+            super(String.format("Couldn't read file. Error was: %s with exception: %s", message, getMessage(e)), e);
         }
 
         public CouldNotReadInputFile(File file) {
@@ -68,11 +68,11 @@ public class UserException extends RuntimeException {
         }
 
         public CouldNotReadInputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file.getAbsolutePath(), message, getMessage(e)));
+            super(String.format("Couldn't read file %s. Error was: %s with exception: %s", file.getAbsolutePath(), message, getMessage(e)), e);
         }
 
         public CouldNotReadInputFile(File file, Exception e) {
-            this(file, getMessage(e));
+            this(file, getMessage(e), e);
         }
 
         public CouldNotReadInputFile(String message) {
@@ -105,7 +105,7 @@ public class UserException extends RuntimeException {
 
 
         public CouldNotCreateOutputFile(File file, String message, Exception e) {
-            super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)));
+            super(String.format("Couldn't write file %s because %s with exception %s", file.getAbsolutePath(), message, getMessage(e)), e);
         }
 
         public CouldNotCreateOutputFile(File file, String message) {
@@ -113,11 +113,11 @@ public class UserException extends RuntimeException {
         }
 
         public CouldNotCreateOutputFile(String filename, String message, Exception e) {
-            super(String.format("Couldn't write file %s because %s with exception %s", filename, message, getMessage(e)));
+            super(String.format("Couldn't write file %s because %s with exception %s", filename, message, getMessage(e)), e);
         }
 
         public CouldNotCreateOutputFile(File file, Exception e) {
-            super(String.format("Couldn't write file %s because exception %s", file.getAbsolutePath(), getMessage(e)));
+            super(String.format("Couldn't write file %s because exception %s", file.getAbsolutePath(), getMessage(e)), e);
         }
 
         public CouldNotCreateOutputFile(String message, Exception e) {
@@ -192,7 +192,7 @@ public class UserException extends RuntimeException {
         }
 
         public MalformedFile(File f, String message, Exception e) {
-            super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)));
+            super(String.format("File %s is malformed: %s caused by %s", f.getAbsolutePath(), message, getMessage(e)), e);
         }
     }
 
