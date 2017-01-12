@@ -2,12 +2,12 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.FeatureCodec;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
-import java.util.stream.StreamSupport;
 
 /**
  * A FeatureWalker is a tool that processes a {@link Feature} at a time from a source of Features, with
@@ -64,11 +64,12 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
      */
     @Override
     public void traverse() {
+        CountingReadFilter readFilter = makeReadFilter();
         // Process each feature in the input stream.
         Utils.stream(drivingFeatures).forEach(feature -> {
                     final SimpleInterval featureInterval = new SimpleInterval(feature);
                     apply(feature,
-                            new ReadsContext(reads, featureInterval),
+                            new ReadsContext(reads, featureInterval, readFilter),
                             new ReferenceContext(reference, featureInterval),
                             new FeatureContext(features, featureInterval));
                     progressMeter.update(feature);

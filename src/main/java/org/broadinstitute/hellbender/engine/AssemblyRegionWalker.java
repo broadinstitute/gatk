@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -15,7 +13,6 @@ import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -170,33 +167,6 @@ public abstract class AssemblyRegionWalker extends GATKTool {
         }
 
         return shards;
-    }
-
-    /**
-     * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
-     * Uses the read filter plugin.
-     */
-    @Override
-    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
-        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
-    }
-
-    /**
-     * Returns the read filter (simple or composite) that will be applied to the reads.
-     *
-     * The default implementation uses the {@link org.broadinstitute.hellbender.engine.filters.WellformedReadFilter} filter with all default options,
-     * as well as the {@link org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary#MAPPED} filter.
-     *
-     * Default implementation of {@link #traverse()} calls this method once before iterating
-     * over the reads and reuses the filter object to avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
-     *
-     * Subclasses can override to provide their own filters
-     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter} composition methods.
-     */
-    public CountingReadFilter makeReadFilter(){
-        GATKReadFilterPluginDescriptor readFilterPlugin =
-                commandLineParser.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        return readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads());
     }
 
     /**

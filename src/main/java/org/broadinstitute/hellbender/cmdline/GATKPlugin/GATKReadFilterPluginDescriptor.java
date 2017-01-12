@@ -9,14 +9,11 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -281,8 +278,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         Utils.nonNull(samHeader);
         return getMergedReadFilter(
                 samHeader,
-                f -> f,
-                (f1, f2) -> f1.and(f2)
+                ReadFilter::fromList
         );
     }
 
@@ -297,8 +293,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         Utils.nonNull(samHeader);
         return getMergedReadFilter(
                 samHeader,
-                f -> new CountingReadFilter(f),
-                (f1, f2) -> f1.and(f2)
+                CountingReadFilter::fromList
         );
     }
 
@@ -306,24 +301,22 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * Merge the default filters with the users's command line read filter requests, then initialize
      * the resulting filters.
      *
-     * @param samHeader - a SAMFileHeader to initialize read filter instances. May not be null.
-     * @param wrapperFunction - a wrapper function for each read filter; used to wrap read filters in
-     *                        CountingReadFilters
-     * @param mergeFunction - function to use to merge ReadFilters, usually ReadFilter.and
+     * @param samHeader a SAMFileHeader to initialize read filter instances. May not be null.
+     * @param aggregateFunction function to use to merge ReadFilters, usually ReadFilter::fromList. The function
+     *                          must return the ALLOW_ALL_READS filter wrapped in the appropriate  type when passed
+     *                          a null list.
      * @param <T> extends ReadFilter, type returned by the wrapperFunction
      * @return Single merged read filter.
      */
     public <T extends ReadFilter> T getMergedReadFilter(
             final SAMFileHeader samHeader,
-            final Function<ReadFilter, T> wrapperFunction,
-            final BinaryOperator<T> mergeFunction) {
+            final BiFunction<List<ReadFilter>, SAMFileHeader, T> aggregateFunction) {
 
         Utils.nonNull(samHeader);
-        Utils.nonNull(wrapperFunction);
-        Utils.nonNull(mergeFunction);
+        Utils.nonNull(aggregateFunction);
 
         if (disableAllReadFilters) {
-            return wrapperFunction.apply(ReadFilterLibrary.ALLOW_ALL_READS);
+            return aggregateFunction.apply(null, samHeader);
         }
 
         // start with the tool's default filters in the order they were specified, and remove any that were disabled
@@ -340,21 +333,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
             clFilters.forEach(f -> finalFilters.add(f));
         }
 
-        // Give each remaining filter a header, then map/wrap and reduce using the merge function.
-        // Reducing will leave an unnecessary identity filter (ALLOW_ALL_READS) at the start, so
-        // iterate instead
-        if (finalFilters == null || finalFilters.isEmpty()) {
-            return wrapperFunction.apply(ReadFilterLibrary.ALLOW_ALL_READS);
-        } else {
-            finalFilters.forEach(f -> f.setHeader(samHeader));
-            T finalFilter = wrapperFunction.apply(finalFilters.get(0));
-            for (int i = 1; i < finalFilters.size(); i++) {
-                finalFilter = mergeFunction.apply(
-                        finalFilter, wrapperFunction.apply(finalFilters.get(i))
-                );
-            }
-            return finalFilter;
-        }
+        return aggregateFunction.apply(finalFilters, samHeader);
     }
 
 }

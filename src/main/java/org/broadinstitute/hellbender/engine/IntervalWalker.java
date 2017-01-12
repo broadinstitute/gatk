@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 /**
@@ -50,9 +51,10 @@ public abstract class IntervalWalker extends GATKTool {
 
     @Override
     public void traverse() {
+        final ReadFilter readFilter = makeReadFilter();
         for ( final SimpleInterval interval : intervalsForTraversal ) {
             apply(interval,
-                  new ReadsContext(reads, interval),
+                  new ReadsContext(reads, interval, readFilter),
                   new ReferenceContext(reference, interval),
                   new FeatureContext(features, interval));
 

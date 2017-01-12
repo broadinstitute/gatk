@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MetricAccumulationLevelArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
-import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.metrics.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -149,11 +148,7 @@ public final class CollectMultipleMetricsSpark extends GATKSparkTool {
 
             //Bypass the framework merging of command line filters and just apply the default
             //ones specified by the collector
-            List<ReadFilter> readFilters = metricsCollector.getDefaultReadFilters();
-            readFilters.forEach(f -> f.setHeader(getHeaderForReads()));
-            ReadFilter readFilter = readFilters.stream().reduce(
-                    ReadFilterLibrary.ALLOW_ALL_READS,
-                    (rf1, rf2) -> rf1.and(rf2));
+            ReadFilter readFilter = ReadFilter.fromList(metricsCollector.getDefaultReadFilters(), getHeaderForReads());
 
             metricsCollector.collectMetrics(
                     unFilteredReads.filter(r -> readFilter.test(r)),

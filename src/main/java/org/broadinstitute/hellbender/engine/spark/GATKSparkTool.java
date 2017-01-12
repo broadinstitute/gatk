@@ -292,13 +292,14 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     }
 
     /**
-     * Returns the read filter (simple or composite) that will be applied to the reads returned from {@link #getReads}
-     * The default implementation combines the default read filters for this tool (returned by
-     * {@link org.broadinstitute.hellbender.engine.spark.GATKSparkTool#getDefaultReadFilters} with any read filter command
-     * line arguments specified by the user and returns a single composite filter resulting from the list by and'ing
-     * them together.
+     * Returns a read filter (simple or composite) that can be applied to the reads returned from {@link #getReads}.
+     * This implementation combines the default read filters for this tool (returned by {@link #getDefaultReadFilters}
+     * along with any read filter command line directives specified by the user (such as enabling other filters or
+     * disabling default filters); and returns a single composite filter resulting from the list by and'ing them together.
      *
-     * Keeping state in filter objects is strongly discouraged.
+     * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
+     * behavior or processing of the final merged read filter. To change the default read filters used by the tool,
+     * override {@link #getDefaultReadFilters} instead.
      *
      * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
      * composition methods.
@@ -313,10 +314,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * Returns the default list of ReadFilters that are used for this tool. The filters returned
      * by this method are subject to selective enabling/disabling by the user via the command line. The
      * default implementation uses the {@link WellformedReadFilter} filter with all default options. Subclasses
-     * can override to provide an alternative default filter list.
+     * can override to provide alternative filters.
      *
      * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
-     * available through {link #getHeaderForReads}.
+     * available through {@link #getHeaderForReads}. The actual SAMFileHeader is propagated to the read filters
+     * by {@link #makeReadFilter} after the filters have been merged with command line arguments.
      *
      * @return List of individual filters to be applied for this tool.
      */

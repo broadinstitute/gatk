@@ -1,0 +1,8 @@
+##fileformat=VCFv4.1
+##contig=<ID=1,length=16000,assembly=mini>
+##contig=<ID=2,length=16000,assembly=mini>
+##contig=<ID=3,length=16000,assembly=mini>
+##contig=<ID=4,length=16000,assembly=mini>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	200	c	G	A	3.0	PASS	.
+1	1000	j	G	A	10.0	PASS	.

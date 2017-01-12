@@ -50,8 +50,8 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     }
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return BaseRecalibrator.getStandardBQSRReadFilter(getHeaderForReads());
+    public List<ReadFilter> getDefaultReadFilters() {
+        return BaseRecalibrator.getStandardBQSRReadFilterList();
     }
 
     @Argument(doc = "the known variants", shortName = "knownSites", fullName = "knownSites", optional = false)

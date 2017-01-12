@@ -20,6 +20,9 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.DuplicationMetric
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
 
+import java.util.Collections;
+import java.util.List;
+
 @CommandLineProgramProperties(
         summary ="Marks duplicates on spark",
         oneLineSummary ="MarkDuplicates on Spark",
@@ -45,8 +48,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
     protected OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return ReadFilterLibrary.ALLOW_ALL_READS;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     public static JavaRDD<GATKRead> mark(final JavaRDD<GATKRead> reads, final SAMFileHeader header,

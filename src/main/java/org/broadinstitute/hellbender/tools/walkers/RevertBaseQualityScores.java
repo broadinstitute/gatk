@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -15,6 +15,8 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.List;
 
 @CommandLineProgramProperties(
         summary = "Simple tool to revert the quality scores in a SAM/BAM/CRAM file. Copies the scores from the OQ tag to the quality scores.",
@@ -36,8 +38,8 @@ public class RevertBaseQualityScores extends ReadWalker {
     }
 
     @Override
-    public CountingReadFilter makeReadFilter() {
-        return new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(ReadFilterLibrary.ALLOW_ALL_READS);
     }
 
     @Override

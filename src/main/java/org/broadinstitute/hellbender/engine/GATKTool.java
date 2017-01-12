@@ -10,9 +10,15 @@ import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -23,7 +29,6 @@ import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -118,6 +123,55 @@ public abstract class GATKTool extends CommandLineProgram {
      * the primary input in their {@link #traverse} method.
      */
     ProgressMeter progressMeter;
+
+    /**
+     * Return the list of GATKCommandLinePluginDescriptors to be used for this tool.
+     * Uses the read filter plugin.
+     */
+    @Override
+    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
+        return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
+    }
+
+    /**
+     * Returns the default list of ReadFilters that are used for this tool. The filters returned
+     * by this method are subject to selective enabling/disabling by the user via the command line. The
+     * default implementation returns an empty list. Subclasses can override to provide alternative filters.
+     *
+     * Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
+     * available through {@link #getHeaderForReads}. The actual SAMFileHeader is propagated to the read filters
+     * by {@link #makeReadFilter} after the filters have been merged with command line arguments.
+     *
+     * @return List of individual filters to be applied for this tool.
+     */
+    public List<ReadFilter> getDefaultReadFilters() {
+        return Collections.singletonList(new WellformedReadFilter());
+    }
+
+    /**
+     * Returns a read filter (simple or composite) that can be applied to reads. This implementation combines
+     * the default read filters for this tool (returned by {@link #getDefaultReadFilters} along with any read filter
+     * command line directives specified by the user (such as enabling other filters or disabling default filters);
+     * wraps each filter in the resulting list with a CountingReadFilter; and returns a single composite filter
+     * resulting from the list by and'ing them together.
+     *
+     * NOTE: Most tools will not need to override the method, and should only do so in order to provide custom
+     * behavior or processing of the final merged read filter. To change the default read filters used by the tool,
+     * override {@link #getDefaultReadFilters} instead.
+     *
+     * Implementations of {@link #traverse()} should call this method once before iterating over the reads, in order to
+     * unnecessary avoid object allocation. Nevertheless, keeping state in filter objects is strongly discouraged.
+     *
+     * Multiple filters can be composed by using {@link org.broadinstitute.hellbender.engine.filters.ReadFilter}
+     * composition methods.
+     */
+     public CountingReadFilter makeReadFilter(){
+        final GATKReadFilterPluginDescriptor readFilterPlugin =
+                commandLineParser.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
+        return hasReads() ?
+                readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads()) :
+                new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
 
     /**
      * Initialize our source of reference data (or set it to null if no reference argument was provided).

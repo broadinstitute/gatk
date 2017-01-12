@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.bqsr;
 
-import htsjdk.samtools.SAMFileHeader;
 import htsjdk.tribble.Feature;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -142,27 +141,24 @@ public final class BaseRecalibrator extends ReadWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
-        //Note: this method is called before command line parsing begins, and thus before a SAMFileHeader is
-        //available through {link #getHeaderForReads}.
-        //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
-        final List<ReadFilter> bqsrFilters = makeBQSRSpecificReadFilters();
+        return getStandardBQSRReadFilterList();
+    }
+
+    /**
+     * Return the full list of raw read filters used for BQSR contexts, including WellFormed.
+     * @return List of raw read filters not yet primed with a header
+     */
+    public static List<ReadFilter> getStandardBQSRReadFilterList() {
+        final List<ReadFilter> bqsrFilters = getBQSRSpecificReadFilterList();
         bqsrFilters.add(new WellformedReadFilter());
         return bqsrFilters;
     }
 
-    // This ReadFilter shouldn't be a CountingReadFilter since it is also used in Spark
-    // contexts (shared by BaseRecalibratorSpark and BaseRecalibratorSparkSharded).
-    public static ReadFilter getStandardBQSRReadFilter(final SAMFileHeader header ) {
-        //Note: the order is deliberate - we first check the cheap conditions that do not require decoding the read
-        List<ReadFilter> bqsrFilters =  makeBQSRSpecificReadFilters();
-        bqsrFilters.add(new WellformedReadFilter(header));
-        return bqsrFilters.stream().reduce(ReadFilterLibrary.ALLOW_ALL_READS, (f1, f2) -> f1.and(f2));
-    }
-
-    // Return the list of raw read filters used for BQSR contexts, not including WellFormed.
-    // This ReadFilter shouldn't be a CountingReadFilter as it is also used in Spark
-    // contexts (shared by ReadsPipelineSpark and BQSRPipelineSpark).
-    public static List<ReadFilter> makeBQSRSpecificReadFilters() {
+    /**
+     * Return the list of basic, raw read filters used for BQSR contexts, not including WellFormed.
+     * @return List of raw read filters that have not yet been initialized with a header
+     */
+    public static List<ReadFilter> getBQSRSpecificReadFilterList() {
         List<ReadFilter> filters = new ArrayList<>(6);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);

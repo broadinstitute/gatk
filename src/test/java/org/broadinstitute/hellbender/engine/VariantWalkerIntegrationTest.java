@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -9,11 +10,15 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.examples.ExampleVariantWalker;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
 
@@ -62,16 +67,23 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
     )
     private static final class TestGATKToolWithFeatures extends VariantWalker{
 
-        @Override
-        public boolean requiresFeatures() {
-            return true;
-        }
+        @Argument(fullName="hasBackingReadSource")
+        boolean hasBackingReadSource = false;
+
+        @Argument(fullName="backingReads", optional=true)
+        List<String> backingReads= new ArrayList<>();
 
         @Override
         public void apply(
                 VariantContext variant,
                 ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext ) {
-            // no-op
+            Assert.assertEquals(readsContext.hasBackingDataSource(), hasBackingReadSource);
+            if (hasBackingReadSource) {
+                Iterator<GATKRead> it = readsContext.iterator();
+                while (it.hasNext()) {
+                    Assert.assertTrue(backingReads.contains(it.next().getName()));
+                }
+            }
         }
     }
 
@@ -105,6 +117,39 @@ public final class VariantWalkerIntegrationTest extends CommandLineProgramTest {
         // make sure we get the seq dict from the index when there isn't one in the VCF and there is no reference available
         final SAMSequenceDictionary toolDict = tool.getBestAvailableSequenceDictionary();
         Assert.assertTrue(toolDict.getSequences().stream().allMatch(seqRec -> seqRec.getSequenceLength() == 0));
+    }
+
+    @Test
+    public void testReadFilterOff() throws Exception {
+        final GATKTool tool = new TestGATKToolWithFeatures();
+        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.vcf");
+        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.bam");
+
+        final String[] args = {
+                "--variant", vcfFile.getCanonicalPath(),
+                "--input", bamFile.getCanonicalPath(),
+                "--hasBackingReadSource", "true",
+                // reads we expect to see when using no filter
+                "--backingReads", "a",
+                "--backingReads", "d"
+        };
+        tool.instanceMain(args);
+    }
+
+    @Test
+    public void testReadFilterOn() throws Exception {
+        final GATKTool tool = new TestGATKToolWithFeatures();
+        final File vcfFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.vcf");
+        final File bamFile = new File(publicTestDir + "org/broadinstitute/hellbender/engine/VariantWalkerTest_VariantsWithReads.bam");
+        final String[] args = {
+                "--variant", vcfFile.getCanonicalPath(),
+                "--input", bamFile.getCanonicalPath(),
+                "--hasBackingReadSource", "true",
+                "--readFilter", "ReadNameReadFilter",
+                "--readName", "d",      // only retain reads named "d"
+                "--backingReads", "d",  // name of reads we expect to see
+        };
+        tool.instanceMain(args);
     }
 
 }
