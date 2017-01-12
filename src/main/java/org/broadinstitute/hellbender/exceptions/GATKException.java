@@ -20,26 +20,9 @@ public class GATKException extends RuntimeException {
         super(message, throwable);
     }
 
-    /**
-     * Subtypes of GATKException for common kinds of errors
+    /*
+      Subtypes of GATKException for common kinds of errors
      */
-
-    /**
-     * <p/>
-     * Class GATKException.CommandLineParserInternalException
-     * <p/>
-     * For internal errors in the command line parser not related to syntax errors in the command line itself.
-     */
-    public static class CommandLineParserInternalException extends GATKException {
-        private static final long serialVersionUID = 0L;
-        public CommandLineParserInternalException( final String s ) {
-            super(s);
-        }
-
-        public CommandLineParserInternalException( final String s, final Throwable throwable ) {
-            super(s, throwable);
-        }
-    }
 
     /**
      * <p/>
