@@ -320,6 +320,20 @@ public final class ReadPileup implements Iterable<PileupElement> {
         }
     }
 
+    public final static Comparator<PileupElement> baseQualTieBreaker = new Comparator<PileupElement>() {
+        @Override
+        public int compare(PileupElement o1, PileupElement o2) {
+            return Byte.compare(o1.getQual(), o2.getQual());
+        }
+    };
+
+    public final static Comparator<PileupElement> mapQualTieBreaker = new Comparator<PileupElement>() {
+        @Override
+        public int compare(PileupElement o1, PileupElement o2) {
+            return Integer.compare(o1.getMappingQual(), o2.getMappingQual());
+        }
+    };
+
     /**
      * Returns a new ReadPileup where only one read from an overlapping read
      * pair is retained.  If the two reads in question disagree to their basecall,
@@ -329,7 +343,7 @@ public final class ReadPileup implements Iterable<PileupElement> {
      * @return the newly filtered pileup
      */
     public ReadPileup getOverlappingFragmentFilteredPileup() {
-        return getOverlappingFragmentFilteredPileup(true, true);
+        return getOverlappingFragmentFilteredPileup(true, baseQualTieBreaker);
     }
 
     /**
@@ -340,38 +354,35 @@ public final class ReadPileup implements Iterable<PileupElement> {
      *
      * @return the newly filtered pileup
      */
-    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, boolean baseQualNotMapQual) {
+    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker) {
         Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
+        Set<String> readNamesDeleted = new HashSet<>();
 
         for (PileupElement p : this) {
-                String readName = p.getRead().getName();
+            String readName = p.getRead().getName();
 
             // if we've never seen this read before, life is good
             if (!filteredPileup.containsKey(readName)) {
-                filteredPileup.put(readName, p);
+                if(!readNamesDeleted.contains(readName)) {
+                    filteredPileup.put(readName, p);
+                }
             } else {
                 PileupElement existing = filteredPileup.get(readName);
 
-                // if the reads disagree at this position, throw them both out.  Otherwise
-                // keep the element with the higher quality score
+                // if the reads disagree at this position, throw them all out.  Otherwise
+                // keep the element with the highest quality score
                 if (discardDiscordant && existing.getBase() != p.getBase()) {
                     filteredPileup.remove(readName);
+                    readNamesDeleted.add(readName);
                 } else {
-                    if (baseQualNotMapQual) {
-                        if (existing.getQual() < p.getQual())
-                            filteredPileup.put(readName, p);
-                    }
-                    else {
-                        if (existing.getMappingQual() < p.getMappingQual())
-                            filteredPileup.put(readName, p);
+                    if (tieBreaker.compare(existing, p) < 0) {
+                        filteredPileup.put(readName, p);
                     }
                 }
             }
         }
 
-        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>();
-        for (PileupElement filteredElement : filteredPileup.values())
-            filteredPileupList.add(filteredElement);
+        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>(filteredPileup.values());
 
         return new ReadPileup(loc, filteredPileupList);
     }

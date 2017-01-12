@@ -170,7 +170,6 @@ public class ASEReadCounter extends LocusWalker {
         final String contig = alignmentContext.getContig();
         final long position = alignmentContext.getPosition();
 
-
         final char refAllele = (char) referenceContext.getBase();
 
         final List<VariantContext> VCs = featureContext.getValues(variants);
@@ -202,7 +201,7 @@ public class ASEReadCounter extends LocusWalker {
         final ReadPileup pileup = filterPileup(alignmentContext.getBasePileup(), countType);
 
         // count up the depths of all and QC+ bases
-        final StringBuilder line = calculateLineForSite(pileup, siteID, refAllele, altAllele);
+        final String line = calculateLineForSite(pileup, siteID, refAllele, altAllele);
         if (line != null) {
             outputStream.println(line);
         }
@@ -218,11 +217,11 @@ public class ASEReadCounter extends LocusWalker {
 
         final ReadPileup pileupWithDeletions;
         switch (countType) {
-            case COUNT_FRAGMENTS_REQUIRE_SAME_BASE: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(true, true);
+            case COUNT_FRAGMENTS_REQUIRE_SAME_BASE: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(true, ReadPileup.baseQualTieBreaker);
                 break;
             case COUNT_READS: pileupWithDeletions = originalPileup;
                 break;
-            case COUNT_FRAGMENTS: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(false, true);
+            case COUNT_FRAGMENTS: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(false, ReadPileup.baseQualTieBreaker);
                 break;
             default: throw new UserException("Must use valid CountPileupType");
         }
@@ -231,7 +230,7 @@ public class ASEReadCounter extends LocusWalker {
 
     }
 
-    private StringBuilder calculateLineForSite(final ReadPileup pileup, final String siteID, final char refAllele, final char altAllele) {
+    private String calculateLineForSite(final ReadPileup pileup, final String siteID, final char refAllele, final char altAllele) {
 
         int rawDepth = 0, lowBaseQDepth = 0, lowMAPQDepth = 0, refCount = 0, altCount = 0, totalNonFilteredCount = 0, otherBasesCount = 0, improperPairsCount = 0;
 
@@ -296,6 +295,6 @@ public class ASEReadCounter extends LocusWalker {
         line.append(separator);
         line.append(improperPairsCount);
 
-        return line;
+        return line.toString();
     }
 }
