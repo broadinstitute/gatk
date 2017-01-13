@@ -261,12 +261,12 @@ public final class CountingReadFilterUnitTest {
     @Test
     public void testFromListNull() {
         CountingReadFilter rf = CountingReadFilter.fromList(null, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
-        Assert.assertTrue(rf.delegateFilter.getClass() == ReadFilterLibrary.AllowAllReadsReadFilter.class);
+        Assert.assertTrue(rf.countingFilter.delegateFilter.getClass() == ReadFilterLibrary.AllowAllReadsReadFilter.class);
     }
     @Test
     public void testFromListEmpty() {
         CountingReadFilter rf = CountingReadFilter.fromList(Collections.emptyList(), ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
-        Assert.assertTrue(rf.delegateFilter.getClass() == ReadFilterLibrary.AllowAllReadsReadFilter.class);
+        Assert.assertTrue(rf.countingFilter.delegateFilter.getClass() == ReadFilterLibrary.AllowAllReadsReadFilter.class);
     }
 
     @Test
@@ -274,7 +274,7 @@ public final class CountingReadFilterUnitTest {
         List<ReadFilter> filters = new ArrayList<>();
         filters.add(ReadFilterLibrary.MAPPED);
         CountingReadFilter rf = CountingReadFilter.fromList(filters, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
-        Assert.assertTrue(rf.delegateFilter.getClass() == ReadFilterLibrary.MAPPED.getClass());
+        Assert.assertTrue(rf.countingFilter.delegateFilter.getClass() == ReadFilterLibrary.MAPPED.getClass());
     }
 
     @Test
@@ -288,20 +288,24 @@ public final class CountingReadFilterUnitTest {
         // structure of the filter rather than the result
         CountingReadFilter rf = CountingReadFilter.fromList(filters, ArtificialReadUtils.createArtificialSamHeader(1, 1, 10));
 
-        Assert.assertTrue(rf.getClass() == CountingReadFilter.CountingAndReadFilter.class);
-        CountingReadFilter.CountingAndReadFilter andFilter = (CountingReadFilter.CountingAndReadFilter) rf;
+        Assert.assertTrue(rf.countingFilter.getClass() == CountingFilter.CountingAndReadFilter.class);
+        CountingFilter.CountingAndReadFilter<GATKRead> andFilter = (CountingFilter.CountingAndReadFilter<GATKRead>) rf.countingFilter;
 
         // lhs is a Counting and filter; rhs is a counting filter that delegates to GOOD_CIGAR
-        Assert.assertTrue(andFilter.lhs.getClass() == CountingReadFilter.CountingAndReadFilter.class);
-        Assert.assertTrue(andFilter.rhs.delegateFilter.getClass() == ReadFilterLibrary.GOOD_CIGAR.getClass());
-        andFilter = (CountingReadFilter.CountingAndReadFilter) andFilter.lhs;
+        Assert.assertTrue(andFilter.lhs.getClass() == CountingFilter.CountingAndReadFilter.class);
+        Assert.assertTrue(andFilter.rhs.delegateFilter.getClass() == CountingFilter.class);
+        CountingFilter<GATKRead> rhs = (CountingFilter<GATKRead>) andFilter.rhs.delegateFilter;
+        Assert.assertTrue(rhs.delegateFilter.getClass() == ReadFilterLibrary.GOOD_CIGAR.getClass());
+        andFilter = (CountingFilter.CountingAndReadFilter<GATKRead>) andFilter.lhs;
 
         // lhs is a Counting filter that delegates to MAPPING_QUALITY_AVAILABLE; rhs is a
         // counting filter that delegates to MAPPED
-        Assert.assertTrue(andFilter.lhs.getClass() == CountingReadFilter.class);
+        Assert.assertTrue(andFilter.lhs.getClass() == CountingFilter.class);
         Assert.assertTrue(andFilter.lhs.delegateFilter.getClass() == ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE.getClass());
-        Assert.assertTrue(andFilter.rhs.getClass() == CountingReadFilter.class);
-        Assert.assertTrue(andFilter.rhs.delegateFilter.getClass() == ReadFilterLibrary.MAPPED.getClass());
+        Assert.assertTrue(andFilter.rhs.getClass() == CountingFilter.class);
+        Assert.assertTrue(andFilter.rhs.delegateFilter.getClass() == CountingFilter.class);
+        rhs = (CountingFilter<GATKRead>) andFilter.rhs.delegateFilter;
+        Assert.assertTrue(rhs.delegateFilter.getClass() == ReadFilterLibrary.MAPPED.getClass());
     }
 
 }
