@@ -3,8 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -68,7 +66,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private static final int READ_QUALITY_FILTER_THRESHOLD = 20;
 
     private SampleList samplesList;
-    private boolean printTCGAsampleHeader = false;
 
     private CachingIndexedFastaSequenceFile referenceReader;
     private ReadThreadingAssembler assemblyEngine;
@@ -115,9 +112,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             throw new UserException.BadInput("BAM header sample names " + samplesList.asListOfSamples() + "does not contain given normal" +
                     " sample name " + MTAC.normalSampleName);
         }
-
-        //If the samples specified are exactly one normal and one tumor, use the TCGA VCF sample header format
-        printTCGAsampleHeader = samplesList.numberOfSamples() == 2 && MTAC.normalSampleName != null;
 
         //TODO: add required annotations for all the filtering steps I propose
         //TODO: how about add this annotation regardless but *filter* optionally?
@@ -182,9 +176,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         headerInfo.addAll(getM2HeaderLines());
         headerInfo.addAll(getSampleHeaderLines());
 
-        // if printTCGAsampleHeader, we already checked for exactly 1 tumor and 1 normal in printTCGAsampleHeader assignment in initialize()
-        final List<String> outputSampleNames = printTCGAsampleHeader ? Arrays.asList("TUMOR", "NORMAL") : samplesList.asListOfSamples();
-        final VCFHeader vcfHeader = new VCFHeader(headerInfo, outputSampleNames);
+        final VCFHeader vcfHeader = new VCFHeader(headerInfo, samplesList.asListOfSamples());
         vcfHeader.setSequenceDictionary(sequenceDictionary);
         vcfWriter.writeHeader(vcfHeader);
     }
@@ -211,13 +203,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private Set<VCFHeaderLine> getSampleHeaderLines(){
         final Set<VCFHeaderLine> sampleLines = new HashSet<>();
-        if (printTCGAsampleHeader) {
-            //NOTE: This will only list the first bam file for each tumor/normal sample if there is more than one
-            final Map<String, String> normalSampleHeaderAttributes = ImmutableMap.of("ID", "NORMAL", "SampleName", MTAC.normalSampleName);
-            final Map<String, String> tumorSampleHeaderAttributes = ImmutableMap.of("ID", "TUMOR", "SampleName", MTAC.tumorSampleName);
-            sampleLines.add(new VCFSimpleHeaderLine("SAMPLE", normalSampleHeaderAttributes));
-            sampleLines.add(new VCFSimpleHeaderLine("SAMPLE", tumorSampleHeaderAttributes));
+        if (hasNormal()) {
+            final Map<String, String> normalSampleHeaderAttributes = ImmutableMap.of("ID", "NORMAL", "name", MTAC.normalSampleName);
+            sampleLines.add(new VCFSimpleHeaderLine("sample", normalSampleHeaderAttributes));
         }
+        final Map<String, String> tumorSampleHeaderAttributes = ImmutableMap.of("ID", "TUMOR", "name", MTAC.tumorSampleName);
+        sampleLines.add(new VCFSimpleHeaderLine("sample", tumorSampleHeaderAttributes));
         return sampleLines;
     }
 
@@ -277,7 +268,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         writeBamOutput(assemblyResult, readLikelihoods, calledHaplotypes);
 
         if( MTAC.debug) { logger.info("----------------------------------------------------------------------------------"); }
-        return annotateCalls(calledHaplotypes);
+        return calledHaplotypes.getCalls();
     }
 
     private void writeBamOutput(AssemblyResultSet assemblyResult, ReadLikelihoods<Haplotype> readLikelihoods, HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
@@ -371,33 +362,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         if ( haplotypeBAMWriter.isPresent() ) {
             haplotypeBAMWriter.get().close();
         }
-    }
-
-    private boolean isReadFromNormal(final GATKRead rec) {
-        return MTAC.normalSampleName != null && ReadUtils.getSampleName(rec, header).equals(MTAC.normalSampleName);
-    }
-
-    //TODO: move to SomaticGenotypingEngine with all the other annotations
-    final List<VariantContext> annotateCalls(final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes) {
-        final int eventCount = calledHaplotypes.getCalls().size();
-
-        final List<VariantContext> annotatedCalls = new ArrayList<>();
-        // can we do this with the Annotation classes instead?
-        for (final VariantContext originalVC : calledHaplotypes.getCalls()) {
-            final VariantContextBuilder vcb = new VariantContextBuilder(originalVC);
-
-            final Map<String, Object> attributes = new HashMap<>(originalVC.getAttributes());
-            attributes.put(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount);
-            vcb.attributes(attributes);
-
-            if (printTCGAsampleHeader) {
-                final Genotype tumorGenotype = new GenotypeBuilder(originalVC.getGenotype(MTAC.tumorSampleName)).name("TUMOR").make();
-                final Genotype normalGenotype = new GenotypeBuilder(originalVC.getGenotype(MTAC.normalSampleName)).name("NORMAL").make();
-                vcb.genotypes(Arrays.asList(tumorGenotype, normalGenotype));
-            }
-            annotatedCalls.add(vcb.make());
-        }
-        return annotatedCalls;
     }
 
     @Override
