@@ -112,7 +112,8 @@ public class Main {
             return program.instanceMain(mainArgs);
         } catch (final CommandLineException e){
             //Print usage in the case of a CommandLineException
-            System.err.print(program.getUsage());
+            System.err.println(program.getUsage());
+            throw e;
         }
     }
 
