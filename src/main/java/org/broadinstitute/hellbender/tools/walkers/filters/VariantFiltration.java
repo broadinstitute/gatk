@@ -309,16 +309,9 @@ public final class VariantFiltration extends VariantWalker {
         }
 
         for ( final JexlVCMatchExp exp : filterExps ) {
-            try {
-                if ( invertLogic(VariantContextUtils.match(vc, exp), invertFilterExpression) ) {
+                if ( invertLogic(VariantContextUtils.match(vc, exp), invertFilterExpression, JexlMissingValueTreatment.TREAT_AS_MATCH) ) {
                     filters.add(exp.name);
                 }
-            } catch (final Exception e) {
-                // do nothing unless specifically asked to; it just means that the expression isn't defined for this context
-                if ( failMissingValues  ) {
-                    filters.add(exp.name);
-                }
-            }
         }
 
         if ( filters.isEmpty() ) {

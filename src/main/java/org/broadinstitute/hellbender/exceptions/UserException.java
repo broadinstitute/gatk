@@ -26,11 +26,11 @@ public class UserException extends RuntimeException {
     }
 
     public UserException(final String msg) {
-        super("A USER ERROR has occurred: " + msg);
+        super(msg);
     }
 
     public UserException(final String message, final Throwable throwable) {
-        super("A USER ERROR has occurred: " + message, throwable);
+        super(message, throwable);
     }
 
     protected static String getMessage(final Throwable t) {

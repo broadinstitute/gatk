@@ -8,7 +8,9 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.*;
 
@@ -58,6 +60,19 @@ public class Main {
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
     /**
+     * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
+     */
+    public static void printDecoratedUserExceptionMessage(final PrintStream ps, final Exception e){
+        Utils.nonNull(ps, "stream");
+        Utils.nonNull(e, "exception");
+        ps.println("***********************************************************************");
+        ps.println();
+        ps.println("A USER ERROR has occurred: " + e.getMessage());
+        ps.println();
+        ps.println("***********************************************************************") ;
+    }
+
+    /**
      * The packages we wish to include in our command line.
      */
     protected List<String> getPackageList() {
@@ -93,7 +108,12 @@ public class Main {
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
-        return program.instanceMain(mainArgs);
+        try {
+            return program.instanceMain(mainArgs);
+        } catch (final CommandLineException e){
+            //Print usage in the case of a CommandLineException
+            System.err.print(program.getUsage());
+        }
     }
 
     /**
@@ -117,23 +137,18 @@ public class Main {
             handleResult(result);
             System.exit(0);
         } catch (final CommandLineException e){
-            //the usage has already been printed so don't print it here.
-            if(printStackTraceOnUserExceptions()) {
-                e.printStackTrace();
-            }
+            handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
-            CommandLineProgram.printDecoratedUserExceptionMessage(System.err, e);
-
-            if(printStackTraceOnUserExceptions()) {
-                e.printStackTrace();
-            }
+            handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
         } catch (final Exception e){
             handleNonUserException(e);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
+
+
 
     /**
      * Handle the result returned for a tool. Default implementation prints a message with the string value of the object if it is not null.
@@ -142,6 +157,23 @@ public class Main {
     protected void handleResult(final Object result) {
         if (result != null) {
             System.out.println("Tool returned:\n" + result);
+        }
+    }
+
+    /**
+     * Handle an exception that was likely caused by user error.
+     * This includes {@link UserException} and {@link CommandLineException}
+     *
+     * Default implementation produces a pretty error message
+     * and a stack trace iff {@link #printStackTraceOnUserExceptions()}
+     *
+     * @param e the exception to handle
+     */
+    protected void handleUserException(Exception e) {
+        printDecoratedUserExceptionMessage(System.err, e);
+
+        if(printStackTraceOnUserExceptions()) {
+            e.printStackTrace();
         }
     }
 
