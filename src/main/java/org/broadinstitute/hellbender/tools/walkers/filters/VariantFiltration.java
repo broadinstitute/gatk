@@ -172,6 +172,8 @@ public final class VariantFiltration extends VariantWalker {
     private List<JexlVCMatchExp> filterExps;
     private List<JexlVCMatchExp> genotypeFilterExps;
 
+    private JexlMissingValueTreatment howToTreatMissingValues;
+
     public static final String CLUSTERED_SNP_FILTER_NAME = "SnpCluster";
 
     private VariantContextWriter writer;
@@ -257,6 +259,7 @@ public final class VariantFiltration extends VariantWalker {
         }
         filterExps = VariantContextUtils.initializeMatchExps(filterNames, filterExpressions);
         genotypeFilterExps = VariantContextUtils.initializeMatchExps(genotypeFilterNames, genotypeFilterExpressions);
+        howToTreatMissingValues = failMissingValues ? JexlMissingValueTreatment.TREAT_AS_MATCH : JexlMissingValueTreatment.TREAT_AS_MISMATCH;
 
         VariantContextUtils.engine.get().setSilent(true);
 
@@ -309,15 +312,8 @@ public final class VariantFiltration extends VariantWalker {
         }
 
         for ( final JexlVCMatchExp exp : filterExps ) {
-            try {
-                if ( invertLogic(VariantContextUtils.match(vc, exp), invertFilterExpression) ) {
-                    filters.add(exp.name);
-                }
-            } catch (final Exception e) {
-                // do nothing unless specifically asked to; it just means that the expression isn't defined for this context
-                if ( failMissingValues  ) {
-                    filters.add(exp.name);
-                }
+            if ( matchesFilter(vc, null, exp, invertFilterExpression) ) {
+                filters.add(exp.name);
             }
         }
 
@@ -345,12 +341,19 @@ public final class VariantFiltration extends VariantWalker {
 
         // Add if expression filters the variant context
         for (final JexlVCMatchExp exp : genotypeFilterExps) {
-            if (invertLogic(VariantContextUtils.match(vc, g, exp), invertGenotypeFilterExpression)) {
+            if (matchesFilter(vc, g, exp, invertGenotypeFilterExpression)) {
                 filters.add(exp.name);
             }
         }
 
         return filters;
+    }
+
+    /**
+     * Return true if matches the filter expression
+     */
+    private boolean matchesFilter(final VariantContext vc, final Genotype g, final VariantContextUtils.JexlVCMatchExp exp, final boolean invertVCfilterExpression) {
+        return invertLogic(VariantContextUtils.match(vc, g, exp, howToTreatMissingValues), invertVCfilterExpression);
     }
 
     /**
