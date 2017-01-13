@@ -342,8 +342,8 @@ public final class ReadPileup implements Iterable<PileupElement> {
      *
      * @return the newly filtered pileup
      */
-    public ReadPileup getOverlappingFragmentFilteredPileup() {
-        return getOverlappingFragmentFilteredPileup(true, baseQualTieBreaker);
+    public ReadPileup getOverlappingFragmentFilteredPileup(SAMFileHeader header) {
+        return getOverlappingFragmentFilteredPileup(true, baseQualTieBreaker, header);
     }
 
     /**
@@ -354,35 +354,38 @@ public final class ReadPileup implements Iterable<PileupElement> {
      *
      * @return the newly filtered pileup
      */
-    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker) {
-        Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
-        Set<String> readNamesDeleted = new HashSet<>();
+    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker, SAMFileHeader header) {
+        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>();
 
-        for (PileupElement p : this) {
-            String readName = p.getRead().getName();
+        for( Map.Entry<String, ReadPileup> pileup : this.splitBySample(header, null).entrySet()) {
+            Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
+            Set<String> readNamesDeleted = new HashSet<>();
 
-            // if we've never seen this read before, life is good
-            if (!filteredPileup.containsKey(readName)) {
-                if(!readNamesDeleted.contains(readName)) {
-                    filteredPileup.put(readName, p);
-                }
-            } else {
-                PileupElement existing = filteredPileup.get(readName);
+            for (PileupElement p : pileup.getValue()) {
+                String readName = p.getRead().getName();
 
-                // if the reads disagree at this position, throw them all out.  Otherwise
-                // keep the element with the highest quality score
-                if (discardDiscordant && existing.getBase() != p.getBase()) {
-                    filteredPileup.remove(readName);
-                    readNamesDeleted.add(readName);
-                } else {
-                    if (tieBreaker.compare(existing, p) < 0) {
+                // if we've never seen this read before, life is good
+                if (!filteredPileup.containsKey(readName)) {
+                    if(!readNamesDeleted.contains(readName)) {
                         filteredPileup.put(readName, p);
+                    }
+                } else {
+                    PileupElement existing = filteredPileup.get(readName);
+
+                    // if the reads disagree at this position, throw them all out.  Otherwise
+                    // keep the element with the highest quality score
+                    if (discardDiscordant && existing.getBase() != p.getBase()) {
+                        filteredPileup.remove(readName);
+                        readNamesDeleted.add(readName);
+                    } else {
+                        if (tieBreaker.compare(existing, p) < 0) {
+                            filteredPileup.put(readName, p);
+                        }
                     }
                 }
             }
+            filteredPileupList.addAll(filteredPileup.values());
         }
-
-        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>(filteredPileup.values());
 
         return new ReadPileup(loc, filteredPileupList);
     }
