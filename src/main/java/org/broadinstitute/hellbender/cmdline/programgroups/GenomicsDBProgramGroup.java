@@ -6,5 +6,5 @@ public class GenomicsDBProgramGroup implements CommandLineProgramGroup {
   @Override
   public String getName() { return "GenomicsDB"; }
   @Override
-  public String getDescription() { return "Tools for loading/reading/updating to and from GenomicsDB"; }
+  public String getDescription() { return "Tools for writing and reading variants to and from GenomicsDB"; }
 }
