@@ -1,15 +1,19 @@
 package org.broadinstitute.hellbender.utils.pileup;
 
+import com.google.api.services.genomics.model.Read;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.engine.AlignmentContext;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -314,6 +318,73 @@ public final class ReadPileup implements Iterable<PileupElement> {
             firstElement.getRead().setBaseQualities(firstQuals);
             secondElement.getRead().setBaseQualities(secondQuals);
         }
+    }
+
+    public final static Comparator<PileupElement> baseQualTieBreaker = new Comparator<PileupElement>() {
+        @Override
+        public int compare(PileupElement o1, PileupElement o2) {
+            return Byte.compare(o1.getQual(), o2.getQual());
+        }
+    };
+
+    public final static Comparator<PileupElement> mapQualTieBreaker = new Comparator<PileupElement>() {
+        @Override
+        public int compare(PileupElement o1, PileupElement o2) {
+            return Integer.compare(o1.getMappingQual(), o2.getMappingQual());
+        }
+    };
+
+    /**
+     * Returns a new ReadPileup where only one read from an overlapping read
+     * pair is retained.  If the two reads in question disagree to their basecall,
+     * neither read is retained.  If they agree on the base, the read with the higher
+     * base quality observation is retained
+     *
+     * @return the newly filtered pileup
+     */
+    public ReadPileup getOverlappingFragmentFilteredPileup() {
+        return getOverlappingFragmentFilteredPileup(true, baseQualTieBreaker);
+    }
+
+    /**
+     * Returns a new ReadPileup where only one read from an overlapping read
+     * pair is retained.  If discardDiscordant and the two reads in question disagree to their basecall,
+     * neither read is retained.  Otherwise, the read with the higher
+     * quality (base or mapping, depending on baseQualNotMapQual) observation is retained
+     *
+     * @return the newly filtered pileup
+     */
+    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker) {
+        Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
+        Set<String> readNamesDeleted = new HashSet<>();
+
+        for (PileupElement p : this) {
+            String readName = p.getRead().getName();
+
+            // if we've never seen this read before, life is good
+            if (!filteredPileup.containsKey(readName)) {
+                if(!readNamesDeleted.contains(readName)) {
+                    filteredPileup.put(readName, p);
+                }
+            } else {
+                PileupElement existing = filteredPileup.get(readName);
+
+                // if the reads disagree at this position, throw them all out.  Otherwise
+                // keep the element with the highest quality score
+                if (discardDiscordant && existing.getBase() != p.getBase()) {
+                    filteredPileup.remove(readName);
+                    readNamesDeleted.add(readName);
+                } else {
+                    if (tieBreaker.compare(existing, p) < 0) {
+                        filteredPileup.put(readName, p);
+                    }
+                }
+            }
+        }
+
+        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>(filteredPileup.values());
+
+        return new ReadPileup(loc, filteredPileupList);
     }
 
     @Override

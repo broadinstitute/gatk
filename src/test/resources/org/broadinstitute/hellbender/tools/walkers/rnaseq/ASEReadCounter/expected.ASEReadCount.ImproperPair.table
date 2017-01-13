@@ -1,0 +1,2 @@
+contig,position,variantID,refAllele,altAllele,refCount,altCount,totalCount,lowMAPQDepth,lowBaseQDepth,rawDepth,otherBases,improperPairs
+20,10186023,.,T,C,74,0,74,2,1,78,0,1
