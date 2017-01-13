@@ -10,6 +10,7 @@ import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFinder;
@@ -71,6 +72,7 @@ import java.util.stream.IntStream;
  * </p>
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
+ * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class ReadCountCollectionUtils {
 
@@ -399,7 +401,7 @@ public final class ReadCountCollectionUtils {
         }
 
         try (final TableWriter<ReadCountRecord> writer =
-                     writerWithIntervals(outWriter, Arrays.asList(sampleName))) {
+                     writerWithIntervals(outWriter, Collections.singletonList(sampleName))) {
             for (String comment : comments) {
                 writer.writeComment(comment);
             }
@@ -532,7 +534,7 @@ public final class ReadCountCollectionUtils {
         final double topExtremeThreshold = new Percentile(100 - extremeColumnMedianCountPercentileThreshold).evaluate(columnMedians);
 
         // Determine kept and dropped column sets.
-        final Set<String> columnsToKeep = new HashSet<>(readCounts.columnNames().size());
+        final Set<String> columnsToKeep = new LinkedHashSet<>(readCounts.columnNames().size());
         final int initialMapSize = ((int) (2.0 * extremeColumnMedianCountPercentileThreshold / 100.0)) * readCounts.columnNames().size();
         final Map<String, Double> columnsToDrop = new LinkedHashMap<>(initialMapSize);
         for (int i = 0; i < columnMedians.length; i++) {
@@ -561,8 +563,51 @@ public final class ReadCountCollectionUtils {
         }
     }
 
-    private static long countZeroes(final double[] data) {
-        return DoubleStream.of(data).filter(d -> d == 0.0).count();
+    /**
+     * Remove columns with NaNs and infinities
+     *
+     * @param readCounts
+     * @param logger
+     * @return
+     */
+    public static ReadCountCollection removeColumnsWithBadValues(final ReadCountCollection readCounts,
+                                                                 final Logger logger) {
+        final List<String> columnNames = readCounts.columnNames();
+
+        // Determine kept and dropped column sets.
+        final Set<String> columnsToKeep = new LinkedHashSet<>(readCounts.columnNames().size());
+        final Set<String> columnsToDrop = new HashSet<>();
+        for (int i = 0; i < columnNames.size(); i++) {
+            if (Arrays.stream(readCounts.getColumn(i))
+                    .filter(d -> Double.isNaN(d) || Double.isInfinite(d))
+                    .count() == 0) {
+                columnsToKeep.add(columnNames.get(i));
+            } else {
+                columnsToDrop.add(columnNames.get(i));
+            }
+        }
+
+        // log and drop columns if it applies
+        if (columnsToKeep.isEmpty()) {
+            throw new UserException.BadInput("No column count left after removing those with NaN and infinities");
+        } else if (columnsToKeep.size() == columnNames.size()) {
+            logger.info("No column dropped due to bad values");
+            return readCounts;
+        } else {
+            final double droppedPercentage = ((double)(columnsToDrop.size()) / columnNames.size()) * 100;
+            logger.info(String.format("Some columns dropped (%d out of %d, %.2f%%) as they contained bad values: %s",
+                    columnsToDrop.size(), columnNames.size(), droppedPercentage,
+                    columnsToDrop.stream().collect(Collectors.joining(", ", "[", "]"))));
+            return readCounts.subsetColumns(columnsToKeep);
+        }
+    }
+
+    private static long countZeroes(final double[] data, final boolean roundToInteger) {
+        if (roundToInteger) {
+            return DoubleStream.of(data).filter(d -> (int) FastMath.round(d) == 0).count();
+        } else {
+            return DoubleStream.of(data).filter(d -> d == 0.0).count();
+        }
     }
 
     /**
@@ -577,12 +622,14 @@ public final class ReadCountCollectionUtils {
      *   is no target to be dropped.
      */
     public static ReadCountCollection removeTargetsWithTooManyZeros(final ReadCountCollection readCounts,
-                                                                    final int maximumTargetZeros, final Logger logger) {
+                                                                    final int maximumTargetZeros, final boolean roundToInteger,
+                                                                    final Logger logger) {
         final RealMatrix counts = readCounts.counts();
 
         final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension()).boxed()
-                .filter(i -> countZeroes(counts.getRow(i)) <= maximumTargetZeros)
-                .map(i -> readCounts.targets().get(i)).collect(Collectors.toSet());
+                .filter(i -> countZeroes(counts.getRow(i), roundToInteger) <= maximumTargetZeros)
+                .map(i -> readCounts.targets().get(i))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         final int targetsToDropCount = readCounts.targets().size() - targetsToKeep.size();
         if (targetsToDropCount == 0) {
@@ -614,7 +661,49 @@ public final class ReadCountCollectionUtils {
      *   is no target to be dropped.
      */
     public static ReadCountCollection removeTotallyUncoveredTargets(final ReadCountCollection readCounts, final Logger logger) {
-        return removeTargetsWithTooManyZeros(readCounts, readCounts.columnNames().size() - 1, logger);
+        return removeTargetsWithTooManyZeros(readCounts, readCounts.columnNames().size() - 1, true, logger);
+    }
+
+    /**
+     * Remove targets that have read counts strictly lower than {@code minReadCount} for all
+     * samples.
+     * <p>
+     *     It will return a copy of the input read-count collection with such targets dropped.
+     * </p>
+     *
+     * TODO github/gatk-protected issue #843 -- write unit test
+     *
+     * @param readCounts the input read counts.
+     * @param minCoverage minimum read count
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no target to be dropped.
+     */
+    public static ReadCountCollection removeTargetsWithUniformlyLowCoverage(final ReadCountCollection readCounts,
+                                                                            final int minCoverage,
+                                                                            final Logger logger) {
+        /* filter targets to keep, put them in an ordered set */
+        final RealMatrix counts = readCounts.counts();
+        final List<Target> originalTargets = readCounts.targets();
+        final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension())
+                .filter(ti -> Arrays.stream(counts.getRow(ti))
+                        .anyMatch(coverage -> coverage >= minCoverage))
+                .mapToObj(originalTargets::get)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        final int targetsToDropCount = originalTargets.size() - targetsToKeep.size();
+        if (targetsToDropCount == 0) {
+            logger.info(String.format("There are no targets with coverage uniformly lower than %d. Keeping all" +
+                    " %d targets.", minCoverage, originalTargets.size()));
+            return readCounts;
+        } else if (targetsToDropCount == readCounts.targets().size()) {
+            throw new UserException.BadInput(String.format("The coverage on all targets and samples lower than %d," +
+                    " resulting in all targets being dropped", minCoverage));
+        } else {
+            final double droppedPercentage = ((double)(targetsToDropCount) / originalTargets.size()) * 100;
+            logger.info(String.format("Some targets dropped (%d out of %d, %.2f%%) as their coverage were uniformly" +
+                    " lower than %d.", targetsToDropCount, originalTargets.size(), droppedPercentage, minCoverage));
+            return readCounts.subsetTargets(targetsToKeep);
+        }
     }
 
     /**
@@ -630,13 +719,16 @@ public final class ReadCountCollectionUtils {
      */
     @VisibleForTesting
     public static ReadCountCollection removeColumnsWithTooManyZeros(final ReadCountCollection readCounts,
-                                                                    final int maximumColumnZeros, final Logger logger) {
+                                                                    final int maximumColumnZeros,
+                                                                    final boolean roundToInteger,
+                                                                    final Logger logger) {
 
         final RealMatrix counts = readCounts.counts();
 
         final Set<String> columnsToKeep = IntStream.range(0, counts.getColumnDimension()).boxed()
-                .filter(i -> countZeroes(counts.getColumn(i)) <= maximumColumnZeros)
-                .map(i -> readCounts.columnNames().get(i)).collect(Collectors.toSet());
+                .filter(i -> countZeroes(counts.getColumn(i), roundToInteger) <= maximumColumnZeros)
+                .map(i -> readCounts.columnNames().get(i))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         final int columnsToDropCount = readCounts.columnNames().size() - columnsToKeep.size();
         if (columnsToDropCount == 0) {

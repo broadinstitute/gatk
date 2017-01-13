@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
-import org.broadinstitute.hellbender.tools.coveragemodel.TargetLikelihoodCalculator;
-import org.broadinstitute.hellbender.tools.coveragemodel.XHMMEmissionProbabilityCalculator;
+import org.broadinstitute.hellbender.tools.coveragemodel.interfaces.TargetLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
@@ -138,4 +137,8 @@ public class CopyNumberTriStateHiddenMarkovModel<D>
     public double getEventStartProbability() { return eventStartProbability; }
 
     public double getMeanEventSize() { return meanEventSize; }
+
+    public CopyNumberTriStateTransitionProbabilityCache getLogTransitionProbabilityCache() {
+        return logTransitionProbabilityCache;
+    }
 }

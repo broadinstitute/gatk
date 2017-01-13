@@ -1,11 +1,10 @@
-package org.broadinstitute.hellbender.tools.exome.germlinehmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentCaller;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMArgumentCollection;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecord;
 import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenStateSegmentRecordReader;

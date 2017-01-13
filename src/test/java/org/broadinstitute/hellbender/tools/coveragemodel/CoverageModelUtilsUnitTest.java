@@ -7,7 +7,9 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * Unit tests of {@link CoverageModelUtils}.
+ * Unit tests for {@link CoverageModelUtils}
+ *
+ * TODO github/gatk-protected issue #843
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */

@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.exome.sexgenotyper;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.util.Locatable;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -95,6 +94,14 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
     }
 
     /**
+     * Returns an unmodifiable set of all targets contained in the collection
+     * @return
+     */
+    public Set<Target> getFullTargetSet() {
+        return Collections.unmodifiableSet(fullTargetSet);
+    }
+
+    /**
      * Returns the ploidy of a target for a given ploidy tag (= genotype identifier string)
      *
      * @param target target in question
@@ -104,6 +111,13 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
     public int getTargetGermlinePloidyByGenotype(@Nonnull final Target target, @Nonnull final String genotypeName) {
         Utils.validateArg(fullTargetSet.contains(target), () -> "Target \"" + target.getName() + "\" can not be found");
         return targetToContigPloidyAnnotationMap.get(target).getGermlinePloidy(genotypeName);
+    }
+
+    public ContigGermlinePloidyAnnotation getContigGermlinePloidyAnnotation(@Nonnull final Target target) {
+        if (!fullTargetSet.contains(target)) {
+            throw new IllegalArgumentException("Target \"" + target.getName() + "\" can not be found");
+        }
+        return targetToContigPloidyAnnotationMap.get(target);
     }
 
     /**
@@ -118,36 +132,31 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
      * @param targetList list of targets
      * @param contigAnnotsList list of contig ploidy annotations
      */
-    private void performValidityChecks(final List<Target> targetList, final List<ContigGermlinePloidyAnnotation> contigAnnotsList) {
+    private void performValidityChecks(@Nonnull final List<Target> targetList,
+                                       @Nonnull final List<ContigGermlinePloidyAnnotation> contigAnnotsList) {
         /* assert the lists are non-empty */
-        if (targetList.isEmpty()) {
-            throw new UserException.BadInput("Target list can not be empty");
-        }
-        if (contigAnnotsList.isEmpty()) {
-            throw new UserException.BadInput("Contig germline ploidy annotation list can not be empty");
-        }
+        Utils.validateArg(!Utils.nonNull(targetList, "Target list must be non-null").isEmpty(),
+                "Target list can not be empty");
+        Utils.validateArg(!Utils.nonNull(contigAnnotsList, "Contig ploidy annotation list must be non-null").isEmpty(),
+                "Contig germline ploidy annotation list can not be empty");
 
         /* assert targets have unique names */
         final Map<String, Long> targetNameCounts = targetList.stream()
                 .map(Target::getName)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        if (targetNameCounts.keySet().size() < targetList.size()) {
-            throw new UserException.BadInput("Targets must have unique names. Non-unique target names: " +
-                    targetNameCounts.keySet().stream()
-                            .filter(name -> targetNameCounts.get(name) > 1)
-                            .collect(Collectors.joining(", ")));
-        }
+        Utils.validateArg(targetNameCounts.keySet().size() == targetList.size(),
+                "Targets must have unique names. Non-unique target names: " + targetNameCounts.keySet().stream()
+                        .filter(name -> targetNameCounts.get(name) > 1)
+                        .collect(Collectors.joining(", ")));
 
         /* assert contigs are not annotated multiple times */
         final Map<String, Long> contigAnnotsCounts = contigAnnotsList.stream()
                 .map(ContigGermlinePloidyAnnotation::getContigName)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-        if (contigAnnotsCounts.keySet().size() < contigAnnotsList.size()) {
-            throw new UserException.BadInput("Some contigs are multiply annotated: " +
-                    contigAnnotsCounts.keySet().stream()
+        Utils.validateArg(contigAnnotsCounts.keySet().size() == contigAnnotsList.size(),
+                "Some contigs are multiply annotated: " + contigAnnotsCounts.keySet().stream()
                             .filter(contig -> contigAnnotsCounts.get(contig) > 1) /* multiply annotated contigs */
                             .collect(Collectors.joining(", ")));
-        }
 
         /* assert all contigs present in the target list are annotated */
         final Set<String> contigNamesFromTargets = targetList.stream()
@@ -155,17 +164,13 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
         final Set<String> contigNamesFromAnnots = contigAnnotsList.stream()
                 .map(ContigGermlinePloidyAnnotation::getContigName).collect(Collectors.toSet());
         final Set<String> missingContigs = Sets.difference(contigNamesFromTargets, contigNamesFromAnnots);
-        if (missingContigs.size() > 0) {
-            throw new UserException.BadInput("All contigs must be annotated. Annotations are missing for: " +
+        Utils.validateArg(missingContigs.isEmpty(), "All contigs must be annotated. Annotations are missing for: " +
                     missingContigs.stream().collect(Collectors.joining(", ")));
-        }
 
         /* assert all contigs have annotations for all ploidy classes */
         final Set<String> firstAnnotPloidyTagSet = contigAnnotsList.get(0).getGenotypesSet();
-        if (contigAnnotsList.stream().filter(annot -> !annot.getGenotypesSet().equals(firstAnnotPloidyTagSet)).count() > 0) {
-            throw new UserException.BadInput("Not all entries in the contig germline ploidy annotation list have the same " +
-                    "set of genotypes");
-        }
+        Utils.validateArg(contigAnnotsList.stream().allMatch(annot -> annot.getGenotypesSet().equals(firstAnnotPloidyTagSet)),
+                "Not all entries in the contig germline ploidy annotation list have the same set of genotypes");
     }
 
     @Override

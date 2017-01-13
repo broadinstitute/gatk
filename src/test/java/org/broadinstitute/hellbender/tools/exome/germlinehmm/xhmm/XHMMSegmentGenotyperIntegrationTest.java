@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.exome.germlinehmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -7,8 +7,8 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentGenotyper;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentCallerBase;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateAllele;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenMarkovModelPostProcessor;

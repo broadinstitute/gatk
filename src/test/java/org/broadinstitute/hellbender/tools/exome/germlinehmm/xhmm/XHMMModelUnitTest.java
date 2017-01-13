@@ -1,8 +1,8 @@
-package org.broadinstitute.hellbender.tools.exome.germlinehmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import org.broadinstitute.hellbender.tools.exome.Target;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMEmissionData;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMModel;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateTransitionProbabilityCache;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;

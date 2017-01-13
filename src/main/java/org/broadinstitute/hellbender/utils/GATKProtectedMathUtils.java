@@ -5,13 +5,14 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
-import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
+import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -23,7 +24,10 @@ import java.util.stream.IntStream;
  * Extra MathUtils that should be moved to gatk-public
  * Created by davidben on 1/22/16.
  */
-public class GATKProtectedMathUtils {
+public class GATKProtectedMathUtils implements Serializable {
+
+    private static final long serialVersionUID = -7587940242569731513L;
+
     private GATKProtectedMathUtils() {
     }
 
@@ -263,6 +267,37 @@ public class GATKProtectedMathUtils {
             return secondSmallest - smallest;
         }
     }
+
+    /**
+     * Returns the smallest power of 2 that exceeds or equals {@code val}
+     * @param val input value
+     * @return power of 2 integer
+     * @throws IllegalArgumentException if an int overlow is encountered
+     */
+    public static int smallestPowerOfTwoGreaterThan(final int val)
+            throws IllegalArgumentException {
+        if (val > Integer.MAX_VALUE/2 || val < 0)
+            throw new IllegalArgumentException("The mallest power of 2 greater than " + val + " is greater than Integer.MAX_VALUE" +
+                    " or negative input.");
+        return val > 1 ? Integer.highestOneBit(val - 1) << 1 : 1;
+    }
+
+    /**
+     * Shrink or expand a double array uniformly using nearest neighbor interpolation
+     * @param data original array
+     * @param newLength length of the new array
+     * @return interpolated array
+     * @throws IllegalArgumentException if the input array is empty
+     */
+    public static double[] nearestNeighborUniform1DInterpolate(@Nonnull final double[] data, final int newLength)
+            throws IllegalArgumentException {
+        if (data.length == 0)
+            throw new IllegalArgumentException("The input array is empty.");
+        ParamUtils.isPositive(newLength - 1, "The new length of the array must be >= 2");
+        final double fact = (double)(data.length - 1)/(newLength - 1);
+        return IntStream.range(0, newLength).mapToDouble(i -> data[(int) FastMath.floor(i*fact + 0.5)]).toArray();
+    }
+
 
     /**
      * Find the maximum difference between entries of two arrays.  This is useful for testing convergence, for example

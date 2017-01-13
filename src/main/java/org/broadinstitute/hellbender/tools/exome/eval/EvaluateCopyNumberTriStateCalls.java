@@ -10,20 +10,21 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.*;
+import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetArgumentCollection;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateAllele;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentGenotyper;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentCaller;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentGenotyper;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.hmm.segmentation.HiddenMarkovModelPostProcessor;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -252,7 +253,7 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
             }
             final String sample = g.getSampleName();
             final SimpleInterval interval = new SimpleInterval(vc);
-            final int targetCount = targets.targetCount(interval);
+            final int targetCount = getTargetCount(targets, interval, g);
             final Set<String> variantFilters = vc.getFilters();
             final Genotype genotype = vc.getGenotype(sample);
             final Set<String> genotypeFilterArray = genotype.getFilters() == null ? Collections.emptySet()
@@ -374,6 +375,10 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
             evaluatedVariants.add(composeTruthOverlappingVariantContext(truth, overlappingCalls, targets));
         }
         for (final VariantContext call : callsVariants) {
+            // skip call that does not overlap a single target (the user might want to call on a smaller set of targets)
+            if (targets.targetCount(call) == 0) {
+                continue;
+            }
             final List<VariantContext> overlappingTruth = truthVariants.stream()
                     .filter(vc -> IntervalUtils.overlaps(call, vc))
                     .collect(Collectors.toList());
@@ -436,22 +441,28 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
 
     private Genotype composeNonTruthOverlappingGenotype(final VariantContext enclosingContext, final Genotype genotype) {
         final GenotypeBuilder builder = new GenotypeBuilder(genotype.getSampleName());
-        GATKProtectedVariantContextUtils.setGenotypeQualityFromPLs(builder, genotype);
-
-        final int[] PL = genotype.getPL();
-        final int callAlleleIndex = GATKProtectedMathUtils.minIndex(PL);
-        final double quality = callQuality(genotype);
-        builder.alleles(Collections.singletonList(enclosingContext.getAlleles().get(callAlleleIndex)));
-        builder.attribute(VariantEvaluationContext.CALL_QUALITY_KEY, quality);
-        final boolean discovered = XHMMSegmentGenotyper.DISCOVERY_TRUE.equals(
-                GATKProtectedVariantContextUtils.getAttributeAsString(genotype, XHMMSegmentGenotyper.DISCOVERY_KEY,
-                        XHMMSegmentGenotyper.DISCOVERY_FALSE));
-        if (callAlleleIndex != 0 && discovered) {
-            builder.attribute(VariantEvaluationContext.EVALUATION_CLASS_KEY, EvaluationClass.UNKNOWN_POSITIVE.acronym);
-        }
-        if (quality < filterArguments.minimumCalledSegmentQuality) {
-            builder.filter(EvaluationFilter.LowQuality.acronym);
-        } else {
+        if (genotype.isCalled()) {
+            GATKProtectedVariantContextUtils.setGenotypeQualityFromPLs(builder, genotype);
+            final int[] PL = genotype.getPL();
+            final int callAlleleIndex = GATKProtectedMathUtils.minIndex(PL);
+            final double quality = callQuality(genotype);
+            builder.alleles(Collections.singletonList(enclosingContext.getAlleles().get(callAlleleIndex)));
+            builder.attribute(VariantEvaluationContext.CALL_QUALITY_KEY, quality);
+            final boolean discovered = XHMMSegmentGenotyper.DISCOVERY_TRUE.equals(
+                    GATKProtectedVariantContextUtils.getAttributeAsString(genotype, XHMMSegmentGenotyper.DISCOVERY_KEY,
+                            XHMMSegmentGenotyper.DISCOVERY_FALSE));
+            if (callAlleleIndex != 0 && discovered) {
+                builder.attribute(VariantEvaluationContext.EVALUATION_CLASS_KEY, EvaluationClass.UNKNOWN_POSITIVE.acronym);
+            }
+            if (quality < filterArguments.minimumCalledSegmentQuality) {
+                builder.filter(EvaluationFilter.LowQuality.acronym);
+            } else {
+                builder.filter(EvaluationFilter.PASS);
+            }
+        } else { /* assume it is neutral */
+            /* TODO this is a hack to make CODEX vcf work */
+            builder.alleles(Collections.singletonList(CopyNumberTriStateAllele.REF));
+            builder.attribute(VariantEvaluationContext.CALL_QUALITY_KEY, 100000);
             builder.filter(EvaluationFilter.PASS);
         }
         return builder.make();
@@ -509,6 +520,23 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
     }
 
     /**
+     * Return the number of targets corresponding to a variant context and genotype.
+     *
+     * If the genotype has the target count attribute, we use that; otherwise, we infer it from the
+     * target list.
+     *
+     * @param targets
+     * @param interval
+     * @param g
+     * @return
+     */
+    private int getTargetCount(final TargetCollection<Target> targets, final Locatable interval, final Genotype g) {
+        return GATKProtectedVariantContextUtils.getAttributeAsInt(g,
+                HiddenMarkovModelPostProcessor.NUMBER_OF_SAMPLE_SPECIFIC_TARGETS_KEY,
+                targets.targetCount(interval));
+    }
+
+    /**
      * Reduces a list of calls to the ones that pass filters.
      * @param targets collection of targets under analysis.
      * @param calls calls to filter.
@@ -521,8 +549,9 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
                 .filter(pair -> pair.getRight().getAlleles().stream().anyMatch(a -> a.isCalled() && a.isNonReference()))
                 // Filter vc/gt with low call quality (SQ).
                 .filter(pair -> callQuality(pair.getRight()) >= filterArguments.minimumCalledSegmentQuality)
-                // Filter vc/gt with small segments (small number of targets)
-                .filter(pair -> targets.targetCount(pair.getLeft()) >= filterArguments.minimumCalledSegmentLength)
+                // Filter vc/gt with small segments (small number of targets). If the call genotype has sample number
+                // of targets attribute, we use that; otherwise, we get the target count from the target list
+                .filter(pair -> getTargetCount(targets, pair.getLeft(), pair.getRight()) >= filterArguments.minimumCalledSegmentLength)
                 // Filter vc/gt with that seem to be too common.
                 // or if it is multi-allelic when applies.
                 .filter(pair -> {
@@ -555,7 +584,7 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
         // Set the truth allele.
         builder.attribute(VariantEvaluationContext.TRUTH_GENOTYPE_KEY, CopyNumberTriStateAllele.ALL_ALLELES.indexOf(truthAllele));
 
-        // Annotate the genotye with the number of calls.
+        // Annotate the genotype with the number of calls.
         builder.attribute(VariantEvaluationContext.CALLED_SEGMENTS_COUNT_KEY, calls.size());
 
         // When there is more than one qualified type of event we indicate how many.
@@ -568,7 +597,7 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
 
         // Calculate the length in targets of the call as the sum across all calls.
         builder.attribute(VariantEvaluationContext.CALLED_TARGET_COUNT_KEY,
-                calls.stream().mapToInt(pair -> targets.targetCount(pair.getLeft()))
+                calls.stream().mapToInt(pair -> getTargetCount(targets, pair.getLeft(), pair.getRight()))
                         .sum());
 
         // Calculate call quality-- if there is more than one overlapping call we take the maximum qual one.
@@ -621,7 +650,6 @@ public final class EvaluateCopyNumberTriStateCalls extends CommandLineProgram {
         final double delLog10Prob = MathUtils.log10SumLog10(truthPosteriors, 0, Math.min(truthNeutralCopyNumber, truthPosteriors.length)) - totalLog10Prob;
         final double neutralLog10Prob = truthNeutralCopyNumber >= truthPosteriors.length ? Double.NEGATIVE_INFINITY : truthPosteriors[truthNeutralCopyNumber] - totalLog10Prob;
         final double dupLog10Prob = truthNeutralCopyNumber + 1 >= truthPosteriors.length ? Double.NEGATIVE_INFINITY
-
                 : MathUtils.log10SumLog10(truthPosteriors, truthNeutralCopyNumber + 1, truthPosteriors.length) - totalLog10Prob;
         if (truthCopyNumber < truthNeutralCopyNumber) {
             return -10.0 * MathUtils.approximateLog10SumLog10(neutralLog10Prob, dupLog10Prob);

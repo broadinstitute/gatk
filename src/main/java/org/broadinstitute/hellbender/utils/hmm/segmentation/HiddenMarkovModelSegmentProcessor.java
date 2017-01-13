@@ -2,9 +2,6 @@ package org.broadinstitute.hellbender.utils.hmm.segmentation;
 
 import com.google.common.collect.Iterators;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.FastMath;
@@ -15,77 +12,31 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeData;
+import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.QualityUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
-import org.broadinstitute.hellbender.utils.hmm.interfaces.AlleleMetadataProducer;
 import org.broadinstitute.hellbender.utils.hmm.interfaces.CallStringProducer;
 import org.broadinstitute.hellbender.utils.hmm.interfaces.ScalarProducer;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This class processes hidden state posteriors, i.e. an instance of {@link ForwardBackwardAlgorithm.Result}),
- * along with best hidden state sequence calls, e.g. the output of
- * {@link org.broadinstitute.hellbender.utils.hmm.ViterbiAlgorithm}) in order to:
- * <ul>
- *     <li>
- *         Create segments from best paths for each sample along with various quality scores and write the
- *         results to a SEG file
- *     </li>
- *     <li>
- *         Create variant contexts from obtained or externally provided segments and writer the results
- *         to a VCF file
- *     </li>
- * </ul>
+ * TODO github/gatk-protected issue #855 -- this is a last-minute fork of {@link HiddenMarkovModelPostProcessor}.
+ * It just does segmentation (no VCF creation)
  *
- * <p>
- * The user must identify the reference state in order to create variant contexts. All other hidden states
- * are construed as alternative alleles.
- * </p>
- *
- * </p>
- * Each sample may have its own set of targets. The targets must be lexicographically
- * sorted (according to {@link IntervalUtils#LEXICOGRAPHICAL_ORDER_COMPARATOR}).
- * A {@link UserException.BadInput} exception will be thrown.
- * <p>
- *
- * @param <T> target type; must extend {@link Target}
- *
- * @param <S> hidden state type; must implement {@link AlleleMetadataProducer} and {@link CallStringProducer}.
- *            For example, see the enum type {@link org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState}
- *            as a typical use case.
- *
- * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer & CallStringProducer & ScalarProducer,
-        T extends Target> {
+public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer & ScalarProducer, T extends Target> {
 
-    private final Logger logger = LogManager.getLogger(HiddenMarkovModelPostProcessor.class);
-
-    /**
-     * VCF header keys
-     */
-    public static final String DISCOVERY_KEY = "DSCVR";
-    public static final String NUMBER_OF_POOLED_TARGETS_KEY = "NTARGETS";
-    public static final String SOME_QUALITY_KEY = "SQ";
-    public static final String START_QUALITY_KEY = "LQ";
-    public static final String END_QUALITY_KEY = "RQ";
-    public static final String NUMBER_OF_SAMPLE_SPECIFIC_TARGETS_KEY = "NT";
-    public static final String DISCOVERY_TRUE = "Y";
-    public static final String DISCOVERY_FALSE = "N";
-
-    /**
-     * Genotype qualities will be capped at this value
-     */
-    public static final int MAX_GQ = 99;
+    private final Logger logger = LogManager.getLogger(HiddenMarkovModelSegmentProcessor.class);
 
     /**
      * Maximum tolerated log probability value. Values between this constant and 0.0 as considered as a 0.0.
@@ -122,14 +73,9 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
      */
     private static final double INV_LN_10 = 1.0 / Math.log(10);
 
-    private final List<S> allStates;
-    private final S referenceState;
-    private final List<S> alternativeStates;
-
-    private final List<Allele> allAlleles;
-    private final List<Allele> alternativeAlleles;
-
     private final List<String> sampleNames;
+    private final List<SexGenotypeData> sampleSexGenotypes;
+    private final BiFunction<SexGenotypeData, Target, S> referenceStateFactory;
     private final int numSamples;
     private final List<TargetCollection<T>> sampleTargets;
     private final List<ForwardBackwardAlgorithm.Result<D, T, S>> sampleForwardBackwardResults;
@@ -150,51 +96,53 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
      * Public constructor.
      *
      * @param sampleNames list of sample names
+     * @param sampleSexGenotypes list of sample sex genotype data
      * @param sampleTargets list of target collection for each sample
      * @param sampleForwardBackwardResults list of forward-backward result for each sample
      * @param sampleBestPaths list of best hidden state sequence call for each sample
-     * @param referenceState the reference state
+     * @param referenceStateFactory a bi-function from (sex genotype data,
      */
-    public HiddenMarkovModelPostProcessor(
+    public HiddenMarkovModelSegmentProcessor(
             @Nonnull final List<String> sampleNames,
+            @Nonnull final List<SexGenotypeData> sampleSexGenotypes,
+            @Nonnull final BiFunction<SexGenotypeData, Target, S> referenceStateFactory,
             @Nonnull final List<TargetCollection<T>> sampleTargets,
             @Nonnull final List<ForwardBackwardAlgorithm.Result<D, T, S>> sampleForwardBackwardResults,
-            @Nonnull final List<List<S>> sampleBestPaths,
-            @Nonnull final S referenceState) {
+            @Nonnull final List<List<S>> sampleBestPaths) {
 
         /* basic consistency checks on the input data */
         numSamples = sampleNames.size();
+        Utils.nonNull(sampleNames, "The list of sample names must be non-null");
+        Utils.nonNull(sampleSexGenotypes, "The list of sample sex genotypes must be non-null");
+        Utils.nonNull(referenceStateFactory, "The reference state factor must be non-null");
+        Utils.nonNull(sampleTargets, "The list of sample target list must be non-null");
+        Utils.nonNull(sampleForwardBackwardResults, "The list of forward-backward results must be non-null");
+        Utils.nonNull(sampleBestPaths, "The list of sample best paths must be non-null");
         Utils.validateArg(numSamples > 0, "Number of samples must be > 0");
         Utils.validateArg(new HashSet<>(sampleNames).size() == numSamples, "Sample names must be unique");
         Utils.validateArg(sampleTargets.size() == numSamples, "List of targets per sample must have the" +
+                " same length as the list of sample names");
+        Utils.validateArg(sampleSexGenotypes.size() == numSamples, "List of sample sex genotypes must have the" +
                 " same length as the list of sample names");
         Utils.validateArg(sampleForwardBackwardResults.size() == numSamples, "List of forward-backward" +
                 " result per sample must have the same length as the list of sample names");
         Utils.validateArg(sampleBestPaths.size() == numSamples, "List of best paths per sample must have" +
                 " the same length as the list of sample names");
         Utils.validateArg(IntStream.range(0, numSamples)
-                .allMatch(si -> sampleTargets.get(si).targetCount() == sampleBestPaths.get(si).size()),
+                        .allMatch(si -> sampleTargets.get(si).targetCount() == sampleBestPaths.get(si).size()),
                 "Some of the provided sample best paths have different lengths than their corresponding target list");
+        Utils.validateArg(IntStream.range(0, numSamples)
+                .allMatch(si -> sampleNames.get(si).equals(sampleSexGenotypes.get(si).getSampleName())),
+                "Some of the sample names in the sex genotype data do not correspond to the list of sample names");
 
         /* get the hidden states from the first sample and ensure all samples have the same hidden states */
-        final List<S> allStatesInferred = sampleForwardBackwardResults.get(0).model().hiddenStates();
-        final Set<S> allStatesInferredSet = new HashSet<>(allStatesInferred);
-        Utils.validateArg(IntStream.range(1, numSamples)
-                .allMatch(si -> new HashSet<>(sampleForwardBackwardResults.get(si).model().hiddenStates())
-                        .equals(allStatesInferredSet)), "All samples must have the same set of hidden states");
-        this.referenceState = referenceState;
-        Utils.validateArg(allStatesInferredSet.contains(referenceState), "The provided reference state is not in" +
-                " the HMM hidden states");
-        alternativeStates = new ArrayList<>(allStatesInferred);
-        alternativeStates.remove(referenceState);
-
-        /**
-         * The reference state comes first; this is required by methods used in
-         * {@link #composeVariantContext(GenotypingSegment, String)}
-         */
-        allStates = new ArrayList<>(allStatesInferred.size());
-        allStates.add(referenceState);
-        allStates.addAll(alternativeStates);
+        final Set<S> pooledStates = sampleForwardBackwardResults.stream()
+                .map(fb -> fb.model().hiddenStates())
+                .flatMap(List::stream)
+                .collect(Collectors.toSet());
+        Utils.validateArg(sampleForwardBackwardResults.stream().allMatch(fb ->
+                        new HashSet<>(fb.model().hiddenStates()).equals(pooledStates)), "All samples must have the" +
+                " same set of hidden states");
 
         /* TODO in the future, we may want to replace lexicographical order with natural order */
         /* assert that the target collection of each sample is lexicographically sorted */
@@ -202,8 +150,8 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
                 .forEach(si -> {
                     final List<T> sampleTargetList = sampleTargets.get(si).targets();
                     Utils.validateArg(IntStream.range(0, sampleTargetList.size() - 1)
-                            .allMatch(ti -> IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR
-                                    .compare(sampleTargetList.get(ti + 1), sampleTargetList.get(ti)) > 0),
+                                    .allMatch(ti -> IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR
+                                            .compare(sampleTargetList.get(ti + 1), sampleTargetList.get(ti)) > 0),
                             "The target collection for sample number " + si + " is not lexicographically sorted");
                 });
 
@@ -212,14 +160,8 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
         this.sampleTargets = sampleTargets;
         this.sampleForwardBackwardResults = sampleForwardBackwardResults;
         this.sampleBestPaths = sampleBestPaths;
-
-        /* the list of alleles must be in the same order as the corresponding lists of hidden states */
-        allAlleles = allStates.stream()
-                .map(AlleleMetadataProducer::toAllele)
-                .collect(Collectors.toList());
-        alternativeAlleles = alternativeStates.stream()
-                .map(AlleleMetadataProducer::toAllele)
-                .collect(Collectors.toList());
+        this.referenceStateFactory = referenceStateFactory;
+        this.sampleSexGenotypes = sampleSexGenotypes;
 
         /* pool targets from all samples and sort them lexicographically to make a master target collection */
         masterTargetCollection = new HashedListTargetCollection<>(sampleTargets.stream()
@@ -228,6 +170,9 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
                 .distinct()
                 .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
                 .collect(Collectors.toList()));
+
+        logger.info("Composing segments...");
+        allSegmentsBySampleName = calculateBestPathSegments();
     }
 
     /***********************
@@ -240,66 +185,16 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
      * @param writer an instance of {@link HiddenStateSegmentRecordWriter}
      */
     public void writeSegmentsToTableWriter(@Nonnull final HiddenStateSegmentRecordWriter<S, T> writer) {
-        if (allSegmentsBySampleName == null) {
-            performSegmentation();
-        }
         final Iterator<HiddenStateSegmentRecord<S, T>> allSegmentRecordsSortedByCoordinates =
                 composeTargetSortedSegmentRecordIterator(masterTargetCollection, allSegmentsBySampleName);
         logger.info("Writing segments to file...");
         writeSegments(allSegmentRecordsSortedByCoordinates, writer);
     }
 
-    /**
-     * Create the VCF file based on segmentation of the provided input data
-     *
-     * @param outputWriter variant context writer
-     * @param variantPrefix a prefix to attach to variant IDs
-     * @param commandLine (optional) command line used to generate the data handed to this class
-     */
-    public void writeVariantsToVCFWriter(@Nonnull final VariantContextWriter outputWriter,
-                                         @Nonnull final String variantPrefix,
-                                         @Nullable final String commandLine) {
-        if (allSegmentsBySampleName == null) {
-            performSegmentation();
-        }
-        logger.info("Generating genotyping segments...");
-        final List<GenotypingSegment> genotypingSegments = composeGenotypingSegments(allSegmentsBySampleName);
-        logger.info("Composing and writing variant contexts...");
-        composeVariantContextAndWrite(genotypingSegments, outputWriter, variantPrefix, commandLine);
-    }
-
-    /**
-     * Create the VCF file based on pre-determined segments. The forward-backward result provided to the
-     * constructor is used for variant context generation.
-     *
-     * @param segmentsFile a segment file
-     * @param outputWriter variant context writer
-     * @param variantPrefix a prefix to attach to variant IDs
-     * @param commandLine (optional) command line used to generate the data handled to this class
-     */
-    public void writeVariantsToVCFWriterOnGivenSegments(@Nonnull final File segmentsFile,
-                                                        @Nonnull final Function<String, S> inverseCallStringFactory,
-                                                        @Nonnull final VariantContextWriter outputWriter,
-                                                        @Nonnull final String variantPrefix,
-                                                        @Nullable final String commandLine) {
-        logger.info("Composing genotyping segments from the provided segments file...");
-        final List<GenotypingSegment> genotypingSegments =
-                composeGenotypingSegmentsFromSegmentsFile(segmentsFile, inverseCallStringFactory);
-        composeVariantContextAndWrite(genotypingSegments, outputWriter, variantPrefix, commandLine);
-    }
-
 
     /********************************
      * segmentation-related methods *
      ********************************/
-
-    /**
-     * Compose segments for all samples
-     */
-    private void performSegmentation() {
-        logger.info("Composing segments...");
-        allSegmentsBySampleName = calculateBestPathSegments();
-    }
 
     /**
      * Takes the provided forward-backward result and the best hidden state chain for each sample and
@@ -319,7 +214,7 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
                     final List<Pair<IndexRange, S>> bestPathTargetIndexRanges =
                             condenseBestPathIntoTargetIndexAndStatePairs(bestPath, targets);
                     final List<HiddenStateSegment<S, T>> bestPathSegmentList =
-                            composeSegments(fbResult, bestPathTargetIndexRanges);
+                            composeSegments(sampleIndex, fbResult, bestPathTargetIndexRanges);
                     allSegments.put(sampleName, bestPathSegmentList);
                 });
         return allSegments;
@@ -378,22 +273,26 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
      * @return never {@code null}.
      */
     private List<HiddenStateSegment<S, T>> composeSegments(
+            final int sampleIndex,
             final ForwardBackwardAlgorithm.Result<D, T, S> fbResult,
             final List<Pair<IndexRange, S>> bestPathSegments) {
         return bestPathSegments.stream()
-                .map(ir -> composeHiddenStateSegmentFromTargetIndexRange(fbResult, ir.getLeft(), ir.getRight()))
+                .map(ir -> composeHiddenStateSegmentFromTargetIndexRange(sampleIndex, fbResult, ir.getLeft(),
+                        ir.getRight()))
                 .collect(Collectors.toList());
     }
 
     /**
      * Composes the segment calculating all the corresponding quality scores,
      *
+     * @param sampleIndex sample index (used for inferring the reference state)
      * @param fbResult the {@link ForwardBackwardAlgorithm} execution result object.
      * @param targetIndexRange the target position index range of the segment.
      * @param call the call for the segment.
      * @return never {@code null}
      */
     private HiddenStateSegment<S, T> composeHiddenStateSegmentFromTargetIndexRange(
+            final int sampleIndex,
             final ForwardBackwardAlgorithm.Result<D, T, S> fbResult,
             final IndexRange targetIndexRange,
             final S call) {
@@ -407,6 +306,11 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
         final double logSomeProbability = logSomeProbability(targetIndexRange.from, segmentLength, call, fbResult);
         final double logStartProbability = logStartProbability(targetIndexRange.from, call, fbResult);
         final double logEndProbability = logEndProbability(targetIndexRange.to - 1, call, fbResult);
+        final Set<String> contigsSet = targets.stream().map(Target::getContig).collect(Collectors.toSet());
+        if (contigsSet.size() > 1) {
+            throw new IllegalArgumentException("The target index range for the segment encompasses multiple contigs");
+        }
+        final S referenceState = referenceStateFactory.apply(sampleSexGenotypes.get(sampleIndex), targets.get(0));
         final double logReferenceProbability = fbResult.logProbability(targetIndexRange.from,
                 Collections.nCopies(segmentLength, referenceState));
 
@@ -494,331 +398,9 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
         }
     }
 
-    /***********************
-     * VCF-related methods *
-     ***********************/
-
-    /**
-     * Compose genotyping segments from the internally performed segmentation of the provided HMM results
-     *
-     * @param allSegmentsBySampleName a map from each sample name to its list of segments
-     * @return a list of genotyping segments
-     */
-    private List<GenotypingSegment> composeGenotypingSegments(
-            @Nonnull final Map<String, List<HiddenStateSegment<S, T>>> allSegmentsBySampleName) {
-
-        /* create lexicographically sorted segment records with non-reference calls */
-        final List<HiddenStateSegmentRecord<S, T>> records = allSegmentsBySampleName.entrySet().stream()
-                .flatMap(entry -> entry.getValue().stream()
-                        .map(seg -> new HiddenStateSegmentRecord<>(entry.getKey(), seg)))
-                .filter(rec -> !rec.getSegment().getCall().equals(referenceState))
-                .sorted(Comparator.comparing(HiddenStateSegmentRecord::getSegment,
-                        IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR))
-                .collect(Collectors.toList());
-
-        final List<GenotypingSegment> result = new ArrayList<>();
-        for (final HiddenStateSegmentRecord<S, T> record : records) {
-            if (result.isEmpty()) {
-                result.add(new GenotypingSegment(record, masterTargetCollection));
-            } else {
-                final GenotypingSegment lastSegment = result.get(result.size() - 1);
-                if (lastSegment.getInterval().equals(record.getSegment().getInterval())) {
-                    lastSegment.addSample(record.getSampleName());
-                } else {
-                    result.add(new GenotypingSegment(record, masterTargetCollection));
-                }
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Compose genotyping segments from a previous segmentation
-     *
-     * @param segmentsFile a segments file
-     * @param inverseCallStringFactory a map from call string to hidden state
-     * @throws UserException.BadInput if the sample names in the provided segments file does not match those on which
-     * HMM output is given
-     * @return a list of genotyping segments
-     */
-    private List<GenotypingSegment> composeGenotypingSegmentsFromSegmentsFile(
-            @Nonnull final File segmentsFile,
-            @Nonnull final Function<String, S> inverseCallStringFactory) {
-        try (final HiddenStateSegmentRecordReader<S, T> reader =
-                     new HiddenStateSegmentRecordReader<>(segmentsFile, inverseCallStringFactory)) {
-            final List<HiddenStateSegmentRecord<S, T>> allRecords = reader.toList();
-            final List<HiddenStateSegmentRecord<S, T>> nonRefAndSortedRecords = allRecords.stream()
-                .filter(s -> !s.getSegment().getCall().equals(referenceState))
-                        .sorted(Comparator.comparing(
-                                HiddenStateSegmentRecord::getSegment,
-                                IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR))
-                        .collect(Collectors.toList());
-            /* ensure that the segments have the same sample names as the one provided to the constructor */
-            final Set<String> sampleNamesFromSegmentsFile = allRecords.stream()
-                    .map(HiddenStateSegmentRecord::getSampleName)
-                    .collect(Collectors.toSet());
-            if (!new HashSet<>(sampleNames).equals(sampleNamesFromSegmentsFile)) {
-                throw new UserException.BadInput("The sample names in the provided segments file does not match" +
-                        " those on which HMM output is given");
-            }
-            final List<GenotypingSegment> result = new ArrayList<>();
-            for (final HiddenStateSegmentRecord<S, T> record : nonRefAndSortedRecords) {
-                if (result.isEmpty()) {
-                    result.add(new GenotypingSegment(record, masterTargetCollection));
-                } else {
-                    final GenotypingSegment lastSegment = result.get(result.size() - 1);
-                    if (lastSegment.getInterval().equals(record.getSegment().getInterval())) {
-                        lastSegment.addSample(record.getSampleName());
-                    } else {
-                        result.add(new GenotypingSegment(record, masterTargetCollection));
-                    }
-                }
-            }
-            return result;
-        } catch (final IOException ex) {
-            throw new UserException.CouldNotReadInputFile(segmentsFile, ex);
-        }
-    }
-
-    /**
-     * Composes a variant context on a given genotyping segment
-     *
-     * @param segment a genotyping segment
-     * @param variantPrefix a prefix to attach to the variant ID
-     * @return a variant context
-     */
-    private VariantContext composeVariantContext(@Nonnull final GenotypingSegment segment,
-                                                 @Nonnull final String variantPrefix) {
-        final VariantContextBuilder builder = new VariantContextBuilder();
-        builder.alleles(allAlleles);
-        builder.chr(segment.getContig());
-        builder.start(segment.getStart());
-        builder.stop(segment.getEnd());
-        builder.id(String.format(variantPrefix + "_%s_%d_%d", segment.getContig(), segment.getStart(), segment.getEnd()));
-
-        final List<Genotype> genotypes = IntStream.range(0, sampleNames.size()).parallel()
-                .mapToObj(sampleIndex -> {
-                    final String sampleName = sampleNames.get(sampleIndex);
-                    final ForwardBackwardAlgorithm.Result<D, T, S> fbResult = sampleForwardBackwardResults.get(sampleIndex);
-                    // Different samples could have different lists of targets; we must find the index
-                    // range of the segment for each sample separately
-                    final IndexRange sampleIndexRange = sampleTargets.get(sampleIndex).indexRange(segment);
-                    if (sampleIndexRange.size() > 0) { /* the sample has some targets in this genotyping segment */
-                        final double[] log10GP = calculateLog10GP(sampleIndexRange, fbResult);
-                        final double[] SQ = calculateSQ(sampleIndexRange, fbResult);
-                        final double[] LQ = calculateLQ(sampleIndexRange, fbResult);
-                        final double[] RQ = calculateRQ(sampleIndexRange, fbResult);
-                        final GenotypeLikelihoods likelihoods = GenotypeLikelihoods.fromLog10Likelihoods(log10GP);
-                        final int[] PL = likelihoods.getAsPLs();
-                        final int GQ = calculateGQ(PL);
-                        final int genotypeCall = MathUtils.maxElementIndex(log10GP);
-                        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-                        genotypeBuilder.PL(PL);
-                        genotypeBuilder.alleles(Collections.singletonList(allAlleles.get(genotypeCall)));
-                        genotypeBuilder.attribute(DISCOVERY_KEY, segment.containingSamples.contains(sampleName) ?
-                                DISCOVERY_TRUE : DISCOVERY_FALSE);
-                        genotypeBuilder.attribute(SOME_QUALITY_KEY, SQ);
-                        genotypeBuilder.attribute(START_QUALITY_KEY, LQ);
-                        genotypeBuilder.attribute(END_QUALITY_KEY, RQ);
-                        genotypeBuilder.attribute(NUMBER_OF_SAMPLE_SPECIFIC_TARGETS_KEY, sampleIndexRange.size());
-                        genotypeBuilder.GQ(GQ);
-                        return genotypeBuilder.make();
-                    } else { /* the sample has no targets in this genotyping segment */
-                        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sampleName);
-                        genotypeBuilder.alleles(Collections.singletonList(Allele.NO_CALL));
-                        genotypeBuilder.noAD().noDP().noGQ().noPL();
-                        return genotypeBuilder.make();
-                    }
-                }).collect(Collectors.toList());
-
-        final int alleleNumber = genotypes.size();
-        final int[] altAlleleCounts = alternativeAlleles.stream()
-                .mapToInt(allele -> (int) genotypes.stream()
-                        .filter(g -> g.getAllele(0).equals(allele))
-                        .count())
-                .toArray();
-        final double[] altAlleleFrequencies = Arrays.stream(altAlleleCounts)
-                .mapToDouble(count -> count / (double) alleleNumber)
-                .toArray();
-
-        builder.attribute(VCFConstants.END_KEY, segment.getEnd());
-        builder.attribute(VCFConstants.ALLELE_FREQUENCY_KEY, altAlleleFrequencies);
-        builder.attribute(VCFConstants.ALLELE_COUNT_KEY, altAlleleCounts);
-        builder.attribute(VCFConstants.ALLELE_NUMBER_KEY, alleleNumber);
-        builder.attribute(NUMBER_OF_POOLED_TARGETS_KEY, segment.getTargetIndexes().size());
-        builder.genotypes(genotypes);
-
-        return builder.make();
-    }
-
-    /**
-     * Composes the VCF header
-     *
-     * @param commandLine optional command line used to generate the underlying data
-     * @return
-     */
-    private VCFHeader composeHeader(@Nullable final String commandLine) {
-        final VCFHeader result = new VCFHeader(Collections.emptySet(), sampleNames);
-
-        /* add VCF version */
-        result.addMetaDataLine(new VCFHeaderLine(VCFHeaderVersion.VCF4_2.getFormatString(),
-                VCFHeaderVersion.VCF4_2.getVersionString()));
-
-        /* add description of alternative alleles */
-        alternativeStates.forEach(s -> s.addHeaderLineTo(result));
-
-        /* add command line */
-        if (commandLine != null) {
-            result.addMetaDataLine(new VCFHeaderLine("command", commandLine));
-        }
-
-        /* header lines related to formatting */
-        result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_KEY, 1,
-                VCFHeaderLineType.Integer, "Genotype"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_PL_KEY, VCFHeaderLineCount.G,
-                VCFHeaderLineType.Integer, "Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(DISCOVERY_KEY, 1,
-                VCFHeaderLineType.Character, "Y if this segment was discovered in that sample, N otherwise"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(SOME_QUALITY_KEY, VCFHeaderLineCount.A,
-                VCFHeaderLineType.Float, "Quality of the region to contain at least one target with that call"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(START_QUALITY_KEY, VCFHeaderLineCount.A,
-                VCFHeaderLineType.Float, "Quality of the segment to start exactly at that location for alternative allele calls only"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(END_QUALITY_KEY, VCFHeaderLineCount.A,
-                VCFHeaderLineType.Float, "Quality of the segment to end exactly at that location for alternative allele calls only"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(NUMBER_OF_SAMPLE_SPECIFIC_TARGETS_KEY, VCFHeaderLineCount.A,
-                VCFHeaderLineType.Integer, "Number of targets enclosed in this variant for the sample"));
-        result.addMetaDataLine(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_QUALITY_KEY, 1,
-                VCFHeaderLineType.Integer, "Genotype call quality as the difference between the best and second best PL"));
-
-        /* informational header lines */
-        result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.ALLELE_COUNT_KEY, VCFHeaderLineCount.A,
-                VCFHeaderLineType.Integer, "Allele count in genotypes, for each ALT allele, in the same order as listed"));
-        result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A,
-                VCFHeaderLineType.Float, "Allele Frequency, for each ALT allele, in the same order as listed"));
-        result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.ALLELE_NUMBER_KEY, 1,
-                VCFHeaderLineType.Integer, "Total number of alleles in called genotypes"));
-        result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.END_KEY, 1,
-                VCFHeaderLineType.Integer, "End coordinate of this variant"));
-        result.addMetaDataLine(new VCFInfoHeaderLine(NUMBER_OF_POOLED_TARGETS_KEY, 1,
-                VCFHeaderLineType.Integer, "Number of targets enclosed in this variant coordinates pooled from" +
-                " all samples (some samples may have fewer)"));
-
-        return result;
-    }
-
-    /**
-     * For each segment in genotypingSegments, compose the variant context and write to outputWriter
-     *
-     * @param genotypingSegments a list of genotyping segments
-     * @param outputWriter a VCF writer
-     * @param variantPrefix a prefix for composing variant IDs
-     * @param commandLine (optional) command line used to generated the data
-     */
-    private void composeVariantContextAndWrite(@Nonnull final List<GenotypingSegment> genotypingSegments,
-                                               @Nonnull final VariantContextWriter outputWriter,
-                                               @Nonnull final String variantPrefix,
-                                               @Nullable final String commandLine) {
-        outputWriter.writeHeader(composeHeader(commandLine));
-        int counter = 0;
-        int prevReportedDonePercentage = -1;
-        for (final GenotypingSegment segment : genotypingSegments) {
-            final int donePercentage = (int)(100 * counter / (double)genotypingSegments.size());
-            if (donePercentage % 10 == 0 && prevReportedDonePercentage != donePercentage) {
-                logger.info(String.format("%d%% done...", donePercentage));
-                prevReportedDonePercentage = donePercentage;
-            }
-            final VariantContext variant = composeVariantContext(segment, variantPrefix);
-            counter++;
-            outputWriter.add(variant);
-        }
-        logger.info("100% done.");
-    }
-
     /****************************************************************************************
      * methods related to calculating various quality scores, probabilities, and statistics *
      ****************************************************************************************/
-
-    /**
-     * Calculates genotype quality from Phred scale likelihoods
-     *
-     * @param PL Phred scale likelihoods array
-     * @return
-     */
-    private int calculateGQ(final int[] PL) {
-        int best = PL[0];
-        int secondBest = Integer.MAX_VALUE;
-        for (int i = 1; i < PL.length; i++) {
-            final int value = PL[i];
-            if (value <= best) {
-                secondBest = best;
-                best = value;
-            } else if (value < secondBest) {
-                secondBest = value;
-            }
-        }
-        return Math.min(secondBest - best, MAX_GQ);
-    }
-
-    /**
-     * Calculates variant end quality for a genotyping segment
-     *
-     * @param targetIndexes the target index range for the segment for the -specific- sample
-     * @param fbResult forward-backward result for the -specific- sample
-     * @return
-     */
-    private double[] calculateRQ(final IndexRange targetIndexes,
-                                 final ForwardBackwardAlgorithm.Result<D, T, S> fbResult) {
-        return alternativeStates.stream()
-                .mapToDouble(state ->
-                        logProbToPhredScore(logEndProbability(targetIndexes.to - 1, state, fbResult), true))
-                .toArray();
-    }
-
-    /**
-     * Calculates variant start quality for a genotyping segment
-     *
-     * @param targetIndexes the target index range for the segment for the -specific- sample
-     * @param fbResult forward-backward result for the -specific- sample
-     * @return
-     */
-    private double[] calculateLQ(final IndexRange targetIndexes,
-                                 final ForwardBackwardAlgorithm.Result<D, T, S> fbResult) {
-        return alternativeStates.stream()
-                .mapToDouble(state ->
-                        logProbToPhredScore(logStartProbability(targetIndexes.from, state, fbResult), true))
-                .toArray();
-    }
-
-    /**
-     * Calculates variant some quality for a segment
-     *
-     * @param targetIndexes the target index range for the segment for the -specific- sample
-     * @param fbResult forward-backward result for the -specific- sample
-     * @return
-     */
-    private double[] calculateSQ(final IndexRange targetIndexes,
-                                 final ForwardBackwardAlgorithm.Result<D, T, S> fbResult) {
-        return alternativeStates.stream()
-                .mapToDouble(state ->
-                        logProbToPhredScore(logSomeProbability(targetIndexes.from, targetIndexes.size(), state,
-                                fbResult), true))
-                .toArray();
-    }
-
-    /**
-     * Calculates genotype probability in log_10 scale for a segment
-     *
-     * @param targetIndexes the target index range for the segment for the -specific- sample
-     * @param fbResult forward-backward result for the -specific- sample
-     * @return
-     */
-    private double[] calculateLog10GP(final IndexRange targetIndexes,
-                                      final ForwardBackwardAlgorithm.Result<D, T, S> fbResult) {
-        return allStates.stream()
-                .mapToDouble(state -> fbResult.logProbability(targetIndexes.from, targetIndexes.to, state) * INV_LN_10)
-                .map(HiddenMarkovModelPostProcessor::roundPhred)
-                .toArray();
-    }
 
     /**
      * Calculates the probability that some of the targets in the range [firstTargetIndex, firstTargetIndex + segmentLength)
@@ -1066,68 +648,5 @@ public class HiddenMarkovModelPostProcessor<D, S extends AlleleMetadataProducer 
      */
     public static double roundPhred(final double value) {
         return Math.round(value / PHRED_SCORE_PRECISION) * PHRED_SCORE_PRECISION;
-    }
-
-    /**
-     * Use to collect information about segment to be genotyped.
-     */
-    private final class GenotypingSegment implements Locatable {
-        /**
-         * Genomic interval
-         */
-        private final SimpleInterval interval;
-
-        /**
-         * Index range of the segment in the master target collection
-         */
-        private final IndexRange targetIndexes;
-
-        /**
-         * Samples that share this segment
-         */
-        private final Set<String> containingSamples;
-
-        public GenotypingSegment(final SimpleInterval interval, final IndexRange targetIndexes) {
-            this.interval = Utils.nonNull(interval);
-            this.targetIndexes = Utils.nonNull(targetIndexes);
-            this.containingSamples = new HashSet<>();
-        }
-
-        public GenotypingSegment(final HiddenStateSegmentRecord<S, T> record,
-                                 final TargetCollection<T> masterTargetCollection) {
-            this(record.getSegment().getInterval(), masterTargetCollection.indexRange(record.getSegment()));
-            addSample(record.getSampleName());
-        }
-
-        public void addSample(final String name) {
-            this.containingSamples.add(name);
-        }
-
-        public IndexRange getTargetIndexes() {
-            return targetIndexes;
-        }
-
-        public SimpleInterval getInterval() {
-            return interval;
-        }
-
-        public int getTargetCount() {
-            return targetIndexes.size();
-        }
-
-        @Override
-        public String getContig() {
-            return interval.getContig();
-        }
-
-        @Override
-        public int getStart() {
-            return interval.getStart();
-        }
-
-        @Override
-        public int getEnd() {
-            return interval.getEnd();
-        }
     }
 }

@@ -1,20 +1,12 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.coveragemodel.XHMMEmissionProbabilityCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateHiddenMarkovModel;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateTransitionProbabilityCache;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
-import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 
 /**

@@ -143,7 +143,7 @@ public final class ReadCountCollection implements Serializable {
     }
 
     /**
-     * TODO unit test
+     * TODO github/gatk-protected issue #843
      *
      * Returns a column from the collection on a given list of targets with the same ordering as {@code targetsToKeep}
      *
@@ -207,8 +207,8 @@ public final class ReadCountCollection implements Serializable {
      *
      * @param targetsToKeep the new target subset.
      * @return never {@code null}. The order of targets in the result is guaranteed to
-     *  follow the traversal order of {@code targetsToKeep}. The order of count columns is
-     *  guaranteed to follow the original order of count columns.
+     *  follow the original order of targets. The order of count columns is guaranteed to
+     *  follow the original order of count columns.
      * @throws IllegalArgumentException if {@code targetsToKeep}:
      * <ul>
      *     <li>is {@code null},</li>

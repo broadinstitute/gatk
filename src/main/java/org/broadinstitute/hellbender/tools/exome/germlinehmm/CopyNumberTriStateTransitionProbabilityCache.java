@@ -92,7 +92,7 @@ public class CopyNumberTriStateTransitionProbabilityCache implements Serializabl
      * @return a double value between (-Infinity) and 0 (inclusive)
      */
     public double logProbability(final int distance, final CopyNumberTriState to, final CopyNumberTriState from) {
-        /* this is for debugging -- may remove in the future for performance gains */
+        /* TODO github/gatk-protected issue #853 -- may remove in the future for performance gains */
         Utils.nonNull(to, "The destination state must be non-null");
         Utils.nonNull(from, "The departure state must be non-null");
         return get(distance).get(to, from);
@@ -137,8 +137,16 @@ public class CopyNumberTriStateTransitionProbabilityCache implements Serializabl
 
     /**
      * Wrapper for a {@link RealMatrix} that is indexed by the CopyNumberTriState enum
+     *
+     * @implNote This class is made public for Serialization issues. Otherwise, we get the following exception
+     * when running on GCS:
+     *
+     * java.lang.IllegalAccessException: Class com.twitter.chill.Instantiators$$anonfun$normalJava$1
+     * can not access a member of class org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriStateTransitionProbabilityCache
+     * $LogTransitionProbabilityMatrix with modifiers "public"
+     *
      */
-    private static class LogTransitionProbabilityMatrix implements Serializable {
+    public static class LogTransitionProbabilityMatrix implements Serializable {
 
         private static final long serialVersionUID = -9072224697693405187L;
 

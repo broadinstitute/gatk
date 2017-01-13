@@ -1,13 +1,15 @@
-package org.broadinstitute.hellbender.tools.coveragemodel;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import com.beust.jcommander.internal.Nullable;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.broadinstitute.barclay.utils.Utils;
+import org.broadinstitute.hellbender.tools.coveragemodel.interfaces.TargetLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMEmissionData;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+
+import javax.annotation.Nonnull;
 
 /**
  * Implements the {@link TargetLikelihoodCalculator} interface for the original XHMM-based germline model.
@@ -30,7 +32,7 @@ public final class XHMMEmissionProbabilityCalculator implements TargetLikelihood
     }
 
     @Override
-    public double logLikelihood(final XHMMEmissionData emissionData, final double copyRatio, final Target target) {
+    public double logLikelihood(@Nonnull final XHMMEmissionData emissionData, final double copyRatio, final Target target) {
         return new NormalDistribution(rng, getEmissionMean(copyRatio), emissionStandardDeviation)
                 .logDensity(emissionData.getCoverageZScore());
     }

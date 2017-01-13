@@ -1,12 +1,9 @@
-package org.broadinstitute.hellbender.tools.exome.germlinehmm;
+package org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.exome.*;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentCaller;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMArgumentCollection;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMModel;
-import org.broadinstitute.hellbender.tools.exome.germlinehmm.xhmm.XHMMSegmentCallerBase;
+import org.broadinstitute.hellbender.tools.exome.germlinehmm.CopyNumberTriState;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;

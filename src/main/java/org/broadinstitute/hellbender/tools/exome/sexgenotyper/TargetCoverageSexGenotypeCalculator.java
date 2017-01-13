@@ -179,10 +179,8 @@ public final class TargetCoverageSexGenotypeCalculator {
                 .toArray();
         return new Median().evaluate(readCountsNormalizedByPloidy);
 
-        /**
-         * TODO
-         *
-         * Old code:
+        /*
+         * @implNote Old code:
          *
          * (assume copy ratios and multiplicative biases are 1.0 at this stage)
          *
@@ -193,12 +191,11 @@ public final class TargetCoverageSexGenotypeCalculator {
          * return CoverageModelUtils.estimateReadDepthFromPoissonModel(readCounts, multBias, autosomalTargetPloidies,
          *      copyRatio, mask);
          *
-         * Note: This is prone to over-estimation because the Gaussian approximation of the Poisson distribution,
+         * @implNote This is prone to over-estimation because the Gaussian approximation of the Poisson distribution,
          * which is currently used in CoverageModelUtils.estimateReadDepthFromPoissonModel breaks down
          * for outlier read counts (if n >> depth). For the time being, we use medians which is a robust
          * statistic. In the future, we must find a better approximation for the Poisson distribution which
          * is both analytically tractable and robust.
-         *
          */
     }
 

@@ -10,6 +10,10 @@ import java.util.stream.IntStream;
 /**
  * Utility methods related to the target coverage model.
  *
+ * @implNote The use case of this class is currently non-existent. It was originally meant to serve as a better
+ * alternative to estimating read depths from medians; it turns out that the Laplace approximation to
+ * Poisson makes it less robust to the presence of extreme read counts.
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class CoverageModelUtils {
@@ -29,9 +33,7 @@ public final class CoverageModelUtils {
      * Note: the product $c_t m_t p_t$ must be positive on all targets. Otherwise, they will be automatically
      * masked out (required for stability).
      *
-     * TODO
-     *
-     * Note: This method prone to over-estimation because the Gaussian approximation of the Poisson distribution,
+     * @implNote This method prone to over-estimation because the Gaussian approximation of the Poisson distribution,
      * which is currently used in CoverageModelUtils.estimateReadDepthFromPoissonModel breaks down
      * for outlier read counts (if n >> depth). For the time being, we use medians which is a robust
      * statistic. In the future, we must find a better approximation for the Poisson distribution which
