@@ -39,54 +39,68 @@ public class CountFalsePositives extends CommandLineProgram {
     @Argument(doc = "output file", fullName= "output", shortName = "O", optional = false)
     protected File output;
 
-
     // TODO: eventually use tumor and normal sample names instead of the file name. To do so we must extract them from the vcf, which I don't know how.
     @Override
     public Object doWork() {
         Utils.regularReadableUserFile(vcfList);
         try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(output) ) {
             List<String> vcfFilePaths = Files.readAllLines(Paths.get(vcfList.toString()));
-            List<File> vcfFiles = vcfFilePaths.stream().map(File::new).collect(Collectors.toList());
-            writer.writeAllRecords(vcfFiles);
+            List<FalsePositiveRecord> falsePositiveRecords = vcfFilePaths.stream().map(str -> new FalsePositiveRecord(new File(str))).collect(Collectors.toList());
+            writer.writeAllRecords(falsePositiveRecords);
         } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while reading (or reading a file in) %s or %s", vcfList.toString(), output));
+            throw new UserException(String.format("Encountered an IO exception while reading %s, %s, or files listed in them", vcfList.toString(), output));
         }
 
         return "SUCCESS";
     }
 
-    /***
-     *
-     * @param m2vcf a mutect2 vcf file
-     * @return a pair of SNP (left) and INDEL (right) false positives
-     */
-    private static Pair<Long, Long> countFalsePositives(File m2vcf) {
-        final long snpFalsePositives = StreamSupport.stream(new FeatureDataSource<VariantContext>(m2vcf).spliterator(), false)
-                .filter(vc -> vc.getFilters().isEmpty())
-                .filter(vc -> vc.isSNP())
-                .count();
-        final long indelFalsePositives = StreamSupport.stream(new FeatureDataSource<VariantContext>(m2vcf).spliterator(), false)
-                .filter(vc -> vc.getFilters().isEmpty())
-                .filter(vc -> !vc.isSNP())
-                .count();
-        return Pair.of(snpFalsePositives, indelFalsePositives);
-    }
+    private final String ID_COLUMN_NAME = "filename";
+    private final String SNP_COLUMN_NAME = "snp";
+    private final String INDEL_COLUMN_NAME = "indel";
 
-    private class FalsePositiveTableWriter extends TableWriter<File> {
+    private class FalsePositiveTableWriter extends TableWriter<FalsePositiveRecord> {
         private FalsePositiveTableWriter(final File output) throws IOException {
-            super(output, new TableColumnCollection("filename", "snp", "indel"));
+            super(output, new TableColumnCollection(ID_COLUMN_NAME, SNP_COLUMN_NAME, INDEL_COLUMN_NAME));
         }
 
         @Override
-        protected void composeLine(final File vcf, final DataLine dataLine) {
-            Utils.nonNull(vcf, "the vcf file cannot be null");
-            Utils.nonNull(dataLine, "dataLine cannot be null");
-
-            Pair<Long, Long> falsePositives = countFalsePositives(vcf);
-
-            dataLine.set("filename", FilenameUtils.removeExtension(vcf.getName()))
-                    .set("snp", falsePositives.getLeft())
-                    .set("indel",falsePositives.getRight());
+        protected void composeLine(final FalsePositiveRecord falsePositiveRecord, final DataLine dataLine) {
+            dataLine.set(ID_COLUMN_NAME, falsePositiveRecord.getId())
+                    .set(SNP_COLUMN_NAME, falsePositiveRecord.getSnpFalsePositives())
+                    .set(INDEL_COLUMN_NAME, falsePositiveRecord.getIndelFalsePositives());
         }
+    }
+
+    private class FalsePositiveRecord {
+        private String id;
+        private long snpFalsePositives;
+        private long indelFalsePositives;
+
+        private FalsePositiveRecord(final File mutect2Vcf) {
+            Utils.nonNull(mutect2Vcf, "the vcf file cannot be null");
+
+            id = FilenameUtils.removeExtension(mutect2Vcf.getName());
+            snpFalsePositives = StreamSupport.stream(new FeatureDataSource<VariantContext>(mutect2Vcf).spliterator(), false)
+                    .filter(vc -> vc.getFilters().isEmpty())
+                    .filter(vc -> vc.isSNP())
+                    .count();
+            indelFalsePositives = StreamSupport.stream(new FeatureDataSource<VariantContext>(mutect2Vcf).spliterator(), false)
+                    .filter(vc -> vc.getFilters().isEmpty())
+                    .filter(vc -> !vc.isSNP())
+                    .count();
+        }
+
+        public String getId(){
+            return id;
+        }
+
+        public long getSnpFalsePositives(){
+            return snpFalsePositives;
+        }
+
+        public long getIndelFalsePositives(){
+            return indelFalsePositives;
+        }
+
     }
 }
