@@ -246,6 +246,16 @@ public final class CountingReadFilterUnitTest {
         Assert.assertEquals(compoundFilter.getFilteredCount(), totalRejections);
         Assert.assertEquals(badStartAndEnd.getFilteredCount(), startEndRejections);
         Assert.assertEquals(isRayOrEgon.getFilteredCount(), nameRejections);
+
+        // test if reset filtered count is correctly propagated
+        compoundFilter.resetFilteredCount();
+        Assert.assertEquals(compoundFilter.getFilteredCount(), 0);
+        Assert.assertEquals(badStartAndEnd.getFilteredCount(), 0);
+        Assert.assertEquals(isRayOrEgon.getFilteredCount(), 0);
+        Assert.assertEquals(badStart.getFilteredCount(), 0);
+        Assert.assertEquals(badEnd.getFilteredCount(), 0);
+        Assert.assertEquals(isRay.getFilteredCount(), 0);
+        Assert.assertEquals(isEgon.getFilteredCount(), 0);
     }
 
     @Test

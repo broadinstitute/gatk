@@ -188,6 +188,13 @@ public class CountingReadFilter extends ReadFilter {
         }
 
         @Override
+        public void resetFilteredCount() {
+            super.resetFilteredCount();
+            this.lhs.resetFilteredCount();
+            this.rhs.resetFilteredCount();
+        }
+
+        @Override
         public abstract String getName();
     }
 
