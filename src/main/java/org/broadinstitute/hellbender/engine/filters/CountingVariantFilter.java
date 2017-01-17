@@ -1,8 +1,12 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 /**
  * Wrapper/adapter for {@link VariantFilter} that counts the number of variants filtered,
@@ -19,16 +23,15 @@ import java.util.List;
 public class CountingVariantFilter implements VariantFilter {
     private static final long serialVersionUID = 1L;
 
-    private static final String objectName = "variant";
+    // Underlying VariantFilter we delegate to if we're wrapping a simple VariantFilter.
+    @VisibleForTesting
+    protected final VariantFilter delegateFilter;
 
-    private CountingFilter<VariantContext> countingFilter;
+    // Number of variants filtered by this filter
+    protected long filteredCount = 0;
 
     public CountingVariantFilter(final VariantFilter variantFilter) {
-        this(new CountingFilter<>(variantFilter, objectName));
-    }
-
-    private CountingVariantFilter(final CountingFilter<VariantContext> countingFilter) {
-        this.countingFilter = countingFilter;
+        delegateFilter = Utils.nonNull(variantFilter);
     }
 
     /**
@@ -50,45 +53,194 @@ public class CountingVariantFilter implements VariantFilter {
         return compositeFilter;
     }
 
-    // Return the number of reads filtered by this filter
+    // Used only by the nested CountingBinopVariantFilter subclass and its derivatives, which must
+    // override the test method with an implementation that does not depend on delegateFilter.
+    private CountingVariantFilter() {
+        delegateFilter = null;
+    }
+
+    // Return the number of variants filtered by this filter
     public long getFilteredCount() {
-        return countingFilter.getFilteredCount();
+        return filteredCount;
     }
 
     public void resetFilteredCount() {
-        countingFilter.resetFilteredCount();
+        filteredCount = 0;
     }
 
-    public String getName() {return countingFilter.getClass().getSimpleName();}
+    public String getName() {return delegateFilter.getClass().getSimpleName();}
 
     // Returns a summary line with filter counts organized by level
-    public String getSummaryLine() {return countingFilter.getSummaryLine();}
+    public String getSummaryLine() {return getSummaryLineForLevel(0);}
 
-    @Override
-    public boolean test(final VariantContext variantContext) {
-        return countingFilter.test(variantContext);
+    protected String getSummaryLineForLevel(final int indentLevel) {
+        if (0 == filteredCount) {
+            return "No variants filtered by: " + getName();
+        }
+        else {
+            return getIndentString(indentLevel) + Long.toString(filteredCount) + " variant(s) filtered by: " + getName() + " \n";
+        }
     }
 
-    @Override
-    public VariantFilter and(VariantFilter filter) {
-        return new CountingVariantFilter(this.countingFilter.and(new CountingFilter<>(filter, objectName)));
+    protected String getIndentString(final int indentLevel) {
+        final StringBuilder bldr = new StringBuilder();
+        IntStream.range(0, indentLevel).forEach(i -> bldr.append("  "));
+        return bldr.toString();
     }
 
-    @Override
-    public VariantFilter or(VariantFilter filter) {
-        return new CountingVariantFilter(this.countingFilter.or(new CountingFilter<>(filter, objectName)));
+    /**
+     * Specialization of {@link #and(Predicate)} so that CountingVariantFilter and'ed with other CountingVariantFilter produce a CountingVariantFilter
+     */
+    //@Override
+    public CountingVariantFilter and(final CountingVariantFilter other) {
+        Utils.nonNull(other);
+        return new CountingAndVariantFilter(this, other);
     }
 
+    /**
+     * Specialization of {@link #or(Predicate)} so that CountingVariantFilter ored with other CountingVariantFilter produce a CountingVariantFilter
+     */
+    //@Override
+    public CountingVariantFilter or(final CountingVariantFilter other) {
+        Utils.nonNull(other);
+        return new CountingOrVariantFilter(this, other);
+    }
+
+    /**
+     * Specialization of negate so that the resulting object is still a CountingVariantFilter
+     */
     @Override
     public CountingVariantFilter negate() {
-        return new CountingVariantFilter(this.countingFilter.negate());
+        return new CountingNegateVariantFilter(this);
     }
 
-    public CountingVariantFilter and(CountingVariantFilter filter) {
-        return new CountingVariantFilter(this.countingFilter.and(filter.countingFilter));
+    @Override
+    public boolean test(final VariantContext variant) {
+        final boolean accept = delegateFilter.test(variant);
+        if (!accept) {
+            filteredCount++;
+        }
+        return accept;
     }
 
-    public CountingVariantFilter or(CountingVariantFilter filter) {
-        return new CountingVariantFilter(this.countingFilter.or(filter.countingFilter));
+    private static class CountingNegateVariantFilter extends CountingVariantFilter {
+        private static final long serialVersionUID = 1L;
+
+        CountingVariantFilter delegateCountingFilter;
+
+        public CountingNegateVariantFilter(CountingVariantFilter delegate) {
+            this.delegateCountingFilter = delegate;
+        }
+
+        @Override
+        public boolean test(VariantContext variant) {
+            final boolean accept = !delegateCountingFilter.test(variant);
+            if (!accept) {
+                filteredCount++;
+            }
+            return accept;
+        }
+
+        @Override
+        public String getName() {
+            return "Not " + delegateCountingFilter.getName();
+        }
+    }
+
+    /**
+     * Private class for Counting binary operator (and/or) filters; these keep track of how many variants are filtered at
+     * each level of filter nesting.
+     *
+     * Subclasses must override the test method.
+     */
+    private static abstract class CountingBinopVariantFilter extends CountingVariantFilter {
+
+        private static final long serialVersionUID = 1L;
+
+        protected final CountingVariantFilter lhs;
+        protected final CountingVariantFilter rhs;
+
+        public CountingBinopVariantFilter(final CountingVariantFilter lhs, final CountingVariantFilter rhs) {
+            Utils.nonNull(lhs);
+            Utils.nonNull(rhs);
+            this.lhs = lhs;
+            this.rhs = rhs;
+        }
+
+        @Override
+        protected String getSummaryLineForLevel(final int indentLevel) {
+            final String indent = getIndentString(indentLevel);
+            if (0 == filteredCount) {
+                return "No variants filtered by: " + getName();
+            }
+            else {
+                return indent + Long.toString(filteredCount) + " variant(s) filtered by: " + getName() + "\n"
+                        + (lhs.getFilteredCount() > 0 ? indent + lhs.getSummaryLineForLevel(indentLevel + 1) : "")
+                        + (rhs.getFilteredCount() > 0 ? indent + rhs.getSummaryLineForLevel(indentLevel + 1) : "");
+            }
+        }
+
+        @Override
+        public void resetFilteredCount() {
+            super.resetFilteredCount();
+            lhs.resetFilteredCount();
+            rhs.resetFilteredCount();
+        }
+
+        @Override
+        public abstract String getName();
+    }
+
+    /**
+     * Private class for Counting AND filters
+     */
+    @VisibleForTesting
+    protected static final class CountingAndVariantFilter extends CountingBinopVariantFilter {
+
+        private static final long serialVersionUID = 1L;
+
+        private CountingAndVariantFilter(final CountingVariantFilter lhs, final CountingVariantFilter rhs) {
+            super(lhs, rhs);
+        }
+
+        @Override
+        public boolean test(final VariantContext variant) {
+            final boolean accept = lhs.test(variant) && rhs.test(variant);
+            if (!accept) {
+                filteredCount++;
+            }
+            return accept;
+        }
+
+        @Override
+        public String getName() {
+            return "(" + lhs.getName() + " AND " + rhs.getName() + ")";
+        }
+    }
+
+    /**
+     * Private class for Counting OR filters
+     */
+    private static final class CountingOrVariantFilter extends CountingBinopVariantFilter {
+
+        private static final long serialVersionUID = 1L;
+
+        private CountingOrVariantFilter(final CountingVariantFilter lhs, final CountingVariantFilter rhs) {
+            super(lhs, rhs);
+        }
+
+        @Override
+        public boolean test(final VariantContext variant) {
+            final  boolean accept = lhs.test(variant) || rhs.test(variant);
+            if (!accept) {
+                filteredCount++;
+            }
+            return accept;
+        }
+
+        @Override
+        public String getName() {
+            return "(" + lhs.getName() + " OR " + rhs.getName() + ")";
+        }
     }
 }
