@@ -37,7 +37,7 @@ public final class CountingReadFilterUnitTest {
 
         if (expected) {
             Assert.assertTrue(0 == count);
-            Assert.assertEquals(-1, rfSummary.indexOf("0 read(s) filtered"));
+            Assert.assertEquals(0, rfSummary.indexOf("No reads filtered"));
         } else {
             Assert.assertTrue(1 == count);
             Assert.assertEquals(0, rfSummary.indexOf("1 read(s) filtered"));
@@ -246,6 +246,16 @@ public final class CountingReadFilterUnitTest {
         Assert.assertEquals(compoundFilter.getFilteredCount(), totalRejections);
         Assert.assertEquals(badStartAndEnd.getFilteredCount(), startEndRejections);
         Assert.assertEquals(isRayOrEgon.getFilteredCount(), nameRejections);
+
+        // test if reset filtered count is correctly propagated
+        compoundFilter.resetFilteredCount();
+        Assert.assertEquals(compoundFilter.getFilteredCount(), 0);
+        Assert.assertEquals(badStartAndEnd.getFilteredCount(), 0);
+        Assert.assertEquals(isRayOrEgon.getFilteredCount(), 0);
+        Assert.assertEquals(badStart.getFilteredCount(), 0);
+        Assert.assertEquals(badEnd.getFilteredCount(), 0);
+        Assert.assertEquals(isRay.getFilteredCount(), 0);
+        Assert.assertEquals(isEgon.getFilteredCount(), 0);
     }
 
     @Test
