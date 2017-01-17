@@ -37,7 +37,7 @@ public final class CountingReadFilterUnitTest {
 
         if (expected) {
             Assert.assertTrue(0 == count);
-            Assert.assertEquals(-1, rfSummary.indexOf("0 read(s) filtered"));
+            Assert.assertEquals(0, rfSummary.indexOf("No reads filtered"));
         } else {
             Assert.assertTrue(1 == count);
             Assert.assertEquals(0, rfSummary.indexOf("1 read(s) filtered"));
