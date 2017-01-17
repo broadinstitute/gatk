@@ -41,7 +41,7 @@ public abstract class VariantInputArgumentCollection implements Serializable {
    * Get the list of BAM/SAM/CRAM files specified at the command line.
    * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
    */
-  public abstract List<Path> getReadPaths();
+  public abstract List<Path> getVariantPaths();
 
   /**
    * @return The list of indices to be used with the read inputs, or {@code null} if none were specified and the indices should be
@@ -50,7 +50,7 @@ public abstract class VariantInputArgumentCollection implements Serializable {
    *         If explicit indices are specified, they must be specified for all read inputs, and are assumed to be in the same
    *         order as the read inputs.
    */
-  public List<Path> getReadIndexPaths() {
+  public List<Path> getVariantIndexPaths() {
     if ( readIndices == null || readIndices.isEmpty() ) {
       return null;
     }
@@ -61,12 +61,7 @@ public abstract class VariantInputArgumentCollection implements Serializable {
   /**
    * Get the list of BAM/SAM/CRAM files specified at the command line
    */
-  public abstract List<File> getReadFiles();
-
-  /**
-   * Get the list of BAM/SAM/CRAM filenames specified at the command line
-   */
-  public abstract List<String> getVariantFilesNames();
+  public abstract List<File> getVariantFiles();
 
   /**
    * Get the read validation stringency specified at the command line, or the default value if none was specified

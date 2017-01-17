@@ -29,7 +29,7 @@ public final class RequiredVariantInputArgumentCollection extends VariantInputAr
      * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
      */
     @Override
-    public List<Path> getReadPaths() {
+    public List<Path> getVariantPaths() {
         ArrayList<Path> ret = new ArrayList<>();
         for (String fn : variantFilesNames) {
             ret.add(IOUtils.getPath(fn));
@@ -41,18 +41,11 @@ public final class RequiredVariantInputArgumentCollection extends VariantInputAr
      * Get the list of BAM/SAM/CRAM files specified at the command line
      */
     @Override
-    public List<File> getReadFiles() {
-        ArrayList<File> ret = new ArrayList<>();
-        for (String fn : variantFilesNames) {
-            ret.add(new File(fn));
-        }
-        return ret;
-    }
-
-    /**
-     * Get the list of BAM/SAM/CRAM filenames specified at the command line
-     */
-    public List<String> getVariantFilesNames() {
-        return new ArrayList<>(variantFilesNames);
+    public List<File> getVariantFiles() {
+      ArrayList<File> ret = new ArrayList<>();
+      for (String fn : variantFilesNames) {
+        ret.add(new File(fn));
+      }
+      return ret;
     }
 }

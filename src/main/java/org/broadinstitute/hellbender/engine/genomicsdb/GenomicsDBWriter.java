@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.GenomicsDBProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 
+import java.io.File;
+
 
 @CommandLineProgramProperties(
   summary = "Import streams of gVCFs GenomicsDB for given intervals",
@@ -23,7 +25,8 @@ public class GenomicsDBWriter extends GATKTool {
     new RequiredVariantInputArgumentCollection() : new OptionalVariantInputArgumentCollection();
 
   @ArgumentCollection
-  protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
+  protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ?
+    new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
 
   /**
    * A complete traversal from start to finish. Tool authors who wish to "roll their own" traversal
@@ -33,7 +36,9 @@ public class GenomicsDBWriter extends GATKTool {
    */
   @Override
   public void traverse() {
-
+    int index = 0;
+    for (File f : variantArguments.getVariantFiles())
+    System.out.println("Input file " + index++ + ": " + f);
   }
 
   public boolean requiresVariants() {
