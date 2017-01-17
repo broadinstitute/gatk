@@ -89,11 +89,11 @@ public class UserException extends RuntimeException {
         }
 
         public CouldNotReadInputFile(final File file, final Exception e) {
-            this(file, getMessage(e));
+            super(String.format("Couldn't read file %s with exception: %s", file.getAbsolutePath(), getMessage(e)), e);
         }
 
         public CouldNotReadInputFile(final Path path, final Exception e) {
-            this(path, getMessage(e));
+            super(String.format("Couldn't read file %s with exception: %s", path.toString(), getMessage(e)), e);
         }
 
         public CouldNotReadInputFile(final String message) {
