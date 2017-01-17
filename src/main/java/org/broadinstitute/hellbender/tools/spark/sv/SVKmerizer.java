@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Iterator over successive Kmers from a sequence of characters.
@@ -46,25 +45,25 @@ public class SVKmerizer implements Iterator<SVKmer> {
         return result;
     }
 
-    public static SVKmer toKmer(final CharSequence seq, SVKmer kmer) {
+    public static SVKmer toKmer( final CharSequence seq, final SVKmer kmer ) {
         final SVKmerizer sk = new SVKmerizer(seq, seq.length(), kmer);
         Utils.validateArg(sk.hasNext(), () -> "Can't make a SVKmerLong from '"+seq+"'");
         return sk.next();
     }
 
-    public static SVKmer toKmer(final byte[] seq, SVKmer kmer) {
+    public static SVKmer toKmer( final byte[] seq, final SVKmer kmer ) {
         return toKmer(new ASCIICharSequence(seq),kmer);
     }
 
-    public static Stream<SVKmer> stream(final CharSequence seq, final int kSize, SVKmer kmer) {
-        return Utils.stream((Iterable<SVKmer>)() -> new SVKmerizer(seq, kSize, kmer));
+    public static Stream<SVKmer> stream( final CharSequence seq, final int kSize, final SVKmer kmer ) {
+        return Utils.stream(new SVKmerizer(seq, kSize, kmer));
     }
 
-    public static Stream<SVKmer> stream(final byte[] seq, final int kSize, SVKmer kmer ) {
-        return  stream(new ASCIICharSequence(seq), kSize, kmer);
+    public static Stream<SVKmer> stream( final byte[] seq, final int kSize, final SVKmer kmer ) {
+        return Utils.stream(new SVKmerizer(seq, kSize, kmer));
     }
 
-    protected SVKmer nextKmer(SVKmer tmpKmer, int validBaseCount ) {
+    protected SVKmer nextKmer( SVKmer tmpKmer, int validBaseCount ) {
         final int len = seq.length();
         while ( idx < len ) {
             switch ( seq.charAt(idx) ) {
