@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.seqdoop.hadoop_bam.BAMInputFormat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,9 +46,6 @@ public final class BwaSparkEngine implements AutoCloseable {
             inputHeader.setSequenceDictionary(refDictionary);
         }
         broadcastHeader = ctx.broadcast(inputHeader);
-
-        // ensure reads in a pair fall in the same partition (input split), so they are processed together
-        ctx.hadoopConfiguration().setBoolean(BAMInputFormat.KEEP_PAIRED_READS_TOGETHER_PROPERTY, true);
     }
 
     public SAMFileHeader getHeader() { return broadcastHeader.getValue(); }

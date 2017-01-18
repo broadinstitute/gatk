@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.engine.spark.datasources;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
 import htsjdk.samtools.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -16,6 +18,8 @@ import org.apache.parquet.avro.AvroParquetInputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.AuthHolder;
@@ -38,6 +42,8 @@ import org.seqdoop.hadoop_bam.util.SAMHeaderReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /** Loads the reads from disk either serially (using samReaderFactory) or in parallel using Hadoop-BAM.
@@ -78,12 +84,14 @@ public final class ReadsSparkSource implements Serializable {
      * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
-     * @param intervals intervals of reads to include.
+     * @param intervals intervals of reads to include. If <code>null</code> then all the reads (both mapped and unmapped) will be returned.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
      *                  use the default split size (determined by the Hadoop input format, typically the size of one HDFS block).
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals, final long splitSize) {
+        SAMFileHeader header = getHeader(readFileName, referencePath, null);
+
         // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
         final Configuration conf = ctx.hadoopConfiguration();
         if (splitSize > 0) {
@@ -105,18 +113,19 @@ public final class ReadsSparkSource implements Serializable {
                     readFileName, AnySAMInputFormat.class, LongWritable.class, SAMRecordWritable.class,
                     conf);
 
-        return rdd2.map(v1 -> {
+        JavaRDD<GATKRead> reads= rdd2.map(v1 -> {
             SAMRecord sam = v1._2().get();
             if (isBam || samRecordOverlaps(sam, intervals)) { // don't check overlaps for BAM since it is done by input format
                 return (GATKRead) SAMRecordToGATKReadAdapter.headerlessReadAdapter(sam);
             }
             return null;
         }).filter(v1 -> v1 != null);
+        return putPairsInSamePartition(header, reads);
     }
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
-     * i.e., file:///path/to/bam.bam. This excludes unmapped reads.
+     * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
@@ -127,7 +136,7 @@ public final class ReadsSparkSource implements Serializable {
 
     /**
      * Loads Reads using Hadoop-BAM. For local files, readFileName must have the fully-qualified path,
-     * i.e., file:///path/to/bam.bam. This excludes unmapped reads.
+     * i.e., file:///path/to/bam.bam.
      * @param readFileName file to load
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
      * @param splitSize maximum bytes of bam file to read into a single partition, increasing this will result in fewer partitions. A value of zero means
@@ -135,9 +144,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, int splitSize) {
-        final SAMFileHeader readsHeader = getHeader(readFileName, referencePath, null);
-        List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(readsHeader.getSequenceDictionary());
-        return getParallelReads(readFileName, referencePath, intervals, splitSize);
+        return getParallelReads(readFileName, referencePath, null /* all reads */, splitSize);
     }
 
     /**
@@ -160,7 +167,7 @@ public final class ReadsSparkSource implements Serializable {
                 .values();
         JavaRDD<GATKRead> readsRdd = recordsRdd.map(record -> new BDGAlignmentRecordToGATKReadAdapter(record, bHeader.getValue()));
         JavaRDD<GATKRead> filteredRdd = readsRdd.filter(record -> samRecordOverlaps(record.convertToSAMRecord(header), intervals));
-        return filteredRdd;
+        return putPairsInSamePartition(header, filteredRdd);
     }
 
     /**
@@ -205,6 +212,40 @@ public final class ReadsSparkSource implements Serializable {
         } catch (IOException | IllegalArgumentException e) {
             throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Ensure reads in a pair fall in the same partition (input split), if the reads are queryname-sorted,
+     * so they are processed together. No shuffle is needed.
+     */
+    JavaRDD<GATKRead> putPairsInSamePartition(final SAMFileHeader header, final JavaRDD<GATKRead> reads) {
+        if (!header.getSortOrder().equals(SAMFileHeader.SortOrder.queryname)) {
+            return reads;
+        }
+        int numPartitions = reads.getNumPartitions();
+        // Find the first read in each partition
+        List<GATKRead> firstReadInEachPartition = reads
+                .mapPartitions((FlatMapFunction<Iterator<GATKRead>, GATKRead>) it -> Iterators.singletonIterator(it.next()))
+                .collect();
+        // Shift left, so that each partition will be joined with the first read from the _next_ partition
+        List<GATKRead> firstReadInNextPartition = new ArrayList<>(firstReadInEachPartition.subList(1, numPartitions));
+        firstReadInNextPartition.add(null); // the last partition does not have any reads to add to it
+
+        // Join the reads with the first read from the _next_ partition, then filter out the first and/or last read if not in a pair
+        return reads.zipPartitions(ctx.parallelize(firstReadInNextPartition, numPartitions),
+                (FlatMapFunction2<Iterator<GATKRead>, Iterator<GATKRead>, GATKRead>) (it1, it2) -> {
+            PeekingIterator<GATKRead> current = Iterators.peekingIterator(it1);
+            // skip the first read in the _current_ partition if it is the second in a pair since it will be handled in the previous partition
+            if (current.hasNext() && current.peek() != null && current.peek().isSecondOfPair()) {
+                current.next();
+            }
+            // append the first read in the _next_ partition to the _current_ partition if it is the second in a pair
+            PeekingIterator<GATKRead> next = Iterators.peekingIterator(it2);
+            if (next.hasNext() && next.peek() != null && next.peek().isSecondOfPair()) {
+                return Iterators.concat(current, next);
+            }
+            return current;
+        });
     }
 
     /**
