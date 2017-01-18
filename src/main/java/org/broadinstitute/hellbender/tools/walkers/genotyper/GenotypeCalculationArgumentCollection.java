@@ -95,9 +95,13 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
     public double heterozygosityStandardDeviation = 0.01;
 
     /**
-     * The minimum phred-scaled Qscore threshold to separate high confidence from low confidence calls. Only genotypes with
-     * confidence >= this threshold are emitted as called sites. A reasonable threshold is 30 for high-pass calling (this
-     * is the default).
+     * The minimum phred-scaled confidence threshold at which variants should be called. Only variant sites with QUAL equal
+     * or greater than this threshold will be called. Note that since version 3.7, we no longer differentiate high confidence
+     * from low confidence calls at the calling step. The default call confidence threshold is set low intentionally to achieve
+     * high sensitivity, which will allow false positive calls as a side effect. Be sure to perform some kind of filtering after
+     * calling to reduce the amount of false positives in your final callset. Note that when HaplotypeCaller is used in GVCF mode
+     * (using either -ERC GVCF or -ERC BP_RESOLUTION) the call threshold is automatically set to zero. Call confidence thresholding
+     * will then be performed in the subsequent GenotypeGVCFs command.
      */
     @Argument(fullName = "standard_min_confidence_threshold_for_calling", shortName = "stand_call_conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
     public double STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
