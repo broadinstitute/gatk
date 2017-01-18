@@ -11,7 +11,7 @@ import java.io.Serializable;
 public final class MappingQualityReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName="mappingQuality", shortName="mappingQuality", optional=true)
+    @Argument(fullName="minimumMappingQuality", shortName="minimumMappingQuality", optional=true)
     public int minMappingQualityScore = 10;
 
     // Command line parser requires a no-arg constructor
