@@ -46,6 +46,12 @@ task M2 {
     -O ${tumor_sample_name}-vs-${normal_sample_name}.vcf
   }
 
+  runtime {
+    docker: "$__docker__"
+    memory: "$__large_memory__"
+    disks: "local-disk " + $__large_disk__ + " HDD"
+  }
+
   output {
     File output_vcf = "${tumor_sample_name}-vs-${normal_sample_name}.vcf"
   }
@@ -60,6 +66,12 @@ task MergeVCFs {
   # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
   command {
     java -Xmx2g -jar ${gatk4_jar} MergeVcfs -I ${sep=' -I ' input_vcfs} -O ${output_vcf_name}.vcf
+  }
+
+  runtime {
+    docker: "$__docker__"
+    memory: "$__medium_memory__"
+    disks: "local-disk " + $__medium_disk__ + " HDD"
   }
 
   output {
@@ -77,6 +89,12 @@ task Filter {
   	java -Xmx4g -jar ${gatk4_jar} FilterMutectCalls -V ${unfiltered_calls} -O ${output_vcf_name}.vcf
   }
 
+  runtime {
+    docker: "$__docker__"
+    memory: "$__large_memory__"
+    disks: "local-disk " + $__large_disk__ + " HDD"
+  }
+
   output {
     File output_vcf = "${output_vcf_name}.vcf"
   }
@@ -91,6 +109,12 @@ task SplitIntervals {
   command {
     mkdir intervalFileDir
     java -jar ${gatk4_jar} IntervalListTools -I ${intervals} -O intervalFileDir -SCATTER_COUNT ${scatterCount}
+  }
+
+  runtime {
+    docker: "$__docker__"
+    memory: "$__medium_memory__"
+    disks: "local-disk " + $__small_disk__ + " HDD"
   }
 
   output {
