@@ -184,7 +184,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         }
 
         final List<VariantContext> outputCalls = doPhysicalPhasing ? phaseCalls(returnCalls, calledHaplotypes) : returnCalls;
-        return new CalledHaplotypes(outputCalls, calledHaplotypes);
+        final int eventCount = outputCalls.size();
+        final List<VariantContext> outputCallsWithEventCountAnnotation = outputCalls.stream()
+                .map(vc -> new VariantContextBuilder(vc).attribute(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, eventCount).make())
+                .collect(Collectors.toList());
+        return new CalledHaplotypes(outputCallsWithEventCountAnnotation, calledHaplotypes);
     }
 
     // compute the likelihoods of: AA, AB, AC. . . where A is ref and B, C. . . are somatic alts
