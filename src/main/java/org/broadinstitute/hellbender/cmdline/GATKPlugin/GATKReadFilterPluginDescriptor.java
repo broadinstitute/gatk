@@ -43,8 +43,8 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
             doc="Read filters to be disabled before analysis", optional=true)
     public final Set<String> disableFilters = new HashSet<>();
 
-    @Argument(fullName = "disableAllReadFilters",
-            shortName = "disableAllReadFilters",
+    @Argument(fullName = StandardArgumentDefinitions.DISABLE_ALL_READ_FILTERS_NAME,
+            shortName = StandardArgumentDefinitions.DISABLE_ALL_READ_FILTERS_NAME,
             doc = "Disable all read filters", common = false, optional = true)
     public boolean disableAllReadFilters = false;
 
