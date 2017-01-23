@@ -45,7 +45,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @Test(dataProvider = "dreamSyntheticData")
     public void testDreamTumorNormal(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample, final File truthVcf, final double requiredSensitivity) throws Exception {
         Utils.resetRandomGenerator();
-        final File outputVcf = createTempFile("output", ".vcf");
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
 
         final String[] args = {
                 "-I", tumorBam.getAbsolutePath(),
@@ -54,12 +55,15 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal", normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
-                "-O", outputVcf.getAbsolutePath()
+                "-O", unfilteredVcf.getAbsolutePath()
         };
 
         runCommandLine(args);
 
-        final Pair<Double, Double> concordance = calculateConcordance(outputVcf, truthVcf);
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
+
+        final Pair<Double, Double> concordance = calculateConcordance(filteredVcf, truthVcf);
         final double sensitivity = concordance.getLeft();
         final double fdr = concordance.getRight();
         Assert.assertTrue(sensitivity > requiredSensitivity);
@@ -80,8 +84,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal", normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
-                "-O", ponVcf.getAbsolutePath(),
-                "-artifact_detection_mode"
+                "-O", ponVcf.getAbsolutePath()
         };
 
         runCommandLine(createPonArgs);
@@ -89,7 +92,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // make an index file for the pon vcf we just created in order to be used below
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-F", ponVcf.getAbsolutePath()), "IndexFeatureFile"));
 
-        final File outputVcf = createTempFile("output", ".vcf");
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File filteredVcf = createTempFile("filtered", ".vcf");
         final String[] callWithPonArgs = {
                 "-I", tumorBam.getAbsolutePath(),
                 "-tumor", tumorSample,
@@ -98,13 +102,17 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal_panel", ponVcf.getAbsolutePath(),
                 "-R", b37_reference_20_21,
                 "-L", "20",
-                "-O", outputVcf.getAbsolutePath()
+                "-O", unfilteredVcf.getAbsolutePath()
 
         };
 
         runCommandLine(callWithPonArgs);
 
-        final long numVariants = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+        // run FilterMutectCalls
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
+
+
+        final long numVariants = StreamSupport.stream(new FeatureDataSource<VariantContext>(filteredVcf).spliterator(), false)
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
         Assert.assertEquals(numVariants, 0);

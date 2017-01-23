@@ -62,6 +62,22 @@ task GatherVCFs {
   }
 }
 
+task Filter {
+  File gatk4_jar
+  File unfiltered_calls
+  String output_vcf_name
+
+  command <<<
+  	java -Xmx4g -jar ${gatk4_jar} FilterMutectCalls \
+  	-V ${unfiltered_calls} \
+    -O ${output_vcf_name}.vcf
+  >>>
+
+  output {
+    File output_vcf = "${output_vcf_name}.vcf"
+  }
+}
+
 # Warning: this task does not work in the cloud.
 task SplitIntervals {
   File picard_jar
@@ -130,19 +146,25 @@ workflow Mutect2 {
         dbsnp_index = dbsnp_index,
         cosmic = cosmic,
         cosmic_index = cosmic_index
-    } 
-	}
+    }
+  }
 
   call GatherVCFs {
     input:
       picard_jar = picard_jar,
       input_vcfs = M2.output_vcf,
-      output_vcf_name = "${tumor_sample_name}-vs-${normal_sample_name}"
+      output_vcf_name = "${tumor_sample_name}-vs-${normal_sample_name}-unfiltered"
+  }
+
+call Filter {
+    input:
+      gatk4_jar = gatk4_jar,
+      unfiltered_calls = GatherVCFs.output_vcf,
+      output_vcf_name = "${tumor_sample_name}-vs-${normal_sample_name}-filtered"
   }
 
   output {
-    File mutect2_vcf = GatherVCFs.output_vcf
-  }
-
-
+        File unfiltered_vcf = GatherVCFs.output_vcf
+        File filtered_vcf = Filter.output_vcf
+    }
 }
