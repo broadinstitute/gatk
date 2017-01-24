@@ -20,10 +20,9 @@ public class LinkedReadAnalysisFilter extends ReadFilter {
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
                 .and(ReadFilterLibrary.NOT_DUPLICATE)
                 .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
-                .and(read -> !read.isSupplementaryAlignment())
-                .and(read -> read.hasAttribute("BX"))
+                .and(new BarcodedReadFilter())
                 .and(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO)
-                .and(read -> !filterOut(read, 36, true));
+                .and(new OverclippedReadFilter());
         this.filter = readPredicate;
         if (minEntropy > 0) {
             this.filter = this.filter.and(new ReadEntropyFilter(minEntropy));
@@ -31,32 +30,53 @@ public class LinkedReadAnalysisFilter extends ReadFilter {
     }
 
 
-    // Stolen from htsjdk.samtools.filter.OverclippedReadFilter so that I can use GATKRead
-    public boolean filterOut(final GATKRead record, final int unclippedBasesThreshold, final boolean filterSingleEndClips) {
-        int alignedLength = 0;
-        int softClipBlocks = 0;
-        int minSoftClipBlocks = filterSingleEndClips ? 1 : 2;
-        CigarOperator lastOperator = null;
-
-        for ( final CigarElement element : record.getCigar().getCigarElements() ) {
-            if ( element.getOperator() == CigarOperator.S ) {
-                //Treat consecutive S blocks as a single one
-                if(lastOperator != CigarOperator.S){
-                    softClipBlocks += 1;
-                }
-
-            } else if ( element.getOperator().consumesReadBases() ) {   // M, I, X, and EQ (S was already accounted for above)
-                alignedLength += element.getLength();
-            }
-            lastOperator = element.getOperator();
-        }
-
-        return(alignedLength < unclippedBasesThreshold && softClipBlocks >= minSoftClipBlocks);
-    }
 
 
     @Override
     public boolean test(final GATKRead read) {
         return filter.test(read);
     }
+
+    public static class BarcodedReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean test(final GATKRead read) {
+            return read.hasAttribute("BX");
+        }
+    }
+
+    public static class OverclippedReadFilter extends ReadFilter {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean test(final GATKRead read) {
+            return !filterOut(read, 36, true);
+        }
+
+        // Stolen from htsjdk.samtools.filter.OverclippedReadFilter so that I can use GATKRead
+        public boolean filterOut(final GATKRead record, final int unclippedBasesThreshold, final boolean filterSingleEndClips) {
+            int alignedLength = 0;
+            int softClipBlocks = 0;
+            int minSoftClipBlocks = filterSingleEndClips ? 1 : 2;
+            CigarOperator lastOperator = null;
+
+            for ( final CigarElement element : record.getCigar().getCigarElements() ) {
+                if ( element.getOperator() == CigarOperator.S ) {
+                    //Treat consecutive S blocks as a single one
+                    if(lastOperator != CigarOperator.S){
+                        softClipBlocks += 1;
+                    }
+
+                } else if ( element.getOperator().consumesReadBases() ) {   // M, I, X, and EQ (S was already accounted for above)
+                    alignedLength += element.getLength();
+                }
+                lastOperator = element.getOperator();
+            }
+
+            return(alignedLength < unclippedBasesThreshold && softClipBlocks >= minSoftClipBlocks);
+        }
+
+    }
+
 }
