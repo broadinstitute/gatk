@@ -55,7 +55,8 @@ public final class BucketUtils {
     }
 
     public static boolean isCloudStorageUrl(final java.nio.file.Path path) {
-        return (path.toUri().getScheme() + "://").equals(GCS_PREFIX);
+        // the initial "" protects us against a null scheme
+        return ("" + path.toUri().getScheme() + "://").equals(GCS_PREFIX);
     }
 
     /**

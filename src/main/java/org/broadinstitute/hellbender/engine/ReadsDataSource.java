@@ -159,24 +159,24 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             SamReaderFactory customSamReaderFactory,
             int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
         this(samPaths, samIndices, customSamReaderFactory,
-            (cloudPrefetchBuffer > 0 ? is -> ReadsDataSource.addPrefetcher(cloudPrefetchBuffer, is)
+            (cloudPrefetchBuffer > 0 ? is -> addPrefetcher(cloudPrefetchBuffer, is)
                                      : Function.identity()),
-            (cloudIndexPrefetchBuffer > 0 ? is -> ReadsDataSource.addPrefetcher(cloudIndexPrefetchBuffer, is)
+            (cloudIndexPrefetchBuffer > 0 ? is -> addPrefetcher(cloudIndexPrefetchBuffer, is)
                 : Function.identity()));
     }
 
-        /**
-         * Initialize this data source with multiple SAM/BAM/CRAM files, explicit indices for those files,
-         * and a custom SamReaderFactory.
-         *
-         * @param samPaths paths to SAM/BAM/CRAM files, not null
-         * @param samIndices indices for all of the SAM/BAM/CRAM files, in the same order as samPaths. May be null,
-         *                   in which case index paths are inferred automatically.
-         * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
-         *                               stringency SILENT is used.
-         * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud.
-         * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
-         */
+    /**
+     * Initialize this data source with multiple SAM/BAM/CRAM files, explicit indices for those files,
+     * and a custom SamReaderFactory.
+     *
+     * @param samPaths paths to SAM/BAM/CRAM files, not null
+     * @param samIndices indices for all of the SAM/BAM/CRAM files, in the same order as samPaths. May be null,
+     *                   in which case index paths are inferred automatically.
+     * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
+     *                               stringency SILENT is used.
+     * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud.
+     * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud.
+     */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
         SamReaderFactory customSamReaderFactory,
         Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
@@ -223,10 +223,6 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             else {
                 final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
                 Path indexPath = samIndices.get(samCount);
-                if (!BucketUtils.isCloudStorageUrl(samPath)) {
-                    // force no wrapping, even if indexed file is on Google Cloud Storage.
-                    indexWrapper = Function.identity();
-                }
                 samResource.index(indexPath, indexWrapper);
                 reader = samReaderFactory.open(samResource);
             }

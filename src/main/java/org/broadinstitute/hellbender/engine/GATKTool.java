@@ -203,8 +203,6 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     void initializeReads() {
         if (! readArguments.getReadFiles().isEmpty()) {
-            // Prefetcher is useful for cloud files because of the latencies involved.
-
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
                 factory = factory.referenceSequence(referenceArguments.getReferenceFile());
@@ -212,7 +210,8 @@ public abstract class GATKTool extends CommandLineProgram {
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
-            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer, getCloudIndexPrefetchBuffer());
+            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
         }
         else {
             reads = null;
