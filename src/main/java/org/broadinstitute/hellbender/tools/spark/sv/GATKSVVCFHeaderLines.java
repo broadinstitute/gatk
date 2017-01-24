@@ -12,6 +12,8 @@ public class GATKSVVCFHeaderLines {
 
     public static Map<String, VCFHeaderLine> vcfHeaderLines = new HashMap<>();
 
+    public static final String FORMAT_FIELD_SEPARATOR = "%";
+
     // VCF standard SV header lines
     // todo: add these and the other standard SV info fields from the VCF spec to htsjdk VCFStandardHeaderLines
     public static final String SVTYPE = "SVTYPE";

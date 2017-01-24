@@ -4,14 +4,14 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.InversionType.INV_3_TO_5;
-import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.InversionType.INV_5_TO_3;
+import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.Strandedness.*;
 
 /**
  * This class represents the allele of an SV breakpoint (a novel adjacency between two genomic locations)
@@ -19,56 +19,53 @@ import static org.broadinstitute.hellbender.tools.spark.sv.BreakpointAllele.Inve
 @DefaultSerializer(BreakpointAllele.Serializer.class)
 class BreakpointAllele {
 
-    final SimpleInterval leftAlignedLeftBreakpoint;
-    final SimpleInterval leftAlignedRightBreakpoint;
+    final SimpleInterval leftJustifiedLeftBreakpoint;
+    final SimpleInterval leftJustifiedRightBreakpoint;
+    final boolean leftBreakpointAlignedForward;
+    final boolean rightBreakpointAlignedForward;
     final String insertedSequence;
     final String homology;
-    private final InversionType inversionType;
 
-    public BreakpointAllele(final SimpleInterval leftAlignedLeftBreakpoint, final SimpleInterval leftAlignedRightBreakpoint, final String insertedSequence, final String homology, final boolean fiveToThree, final boolean threeToFive, final List<String> insertionMappings) {
-        this.leftAlignedLeftBreakpoint = leftAlignedLeftBreakpoint;
-        this.leftAlignedRightBreakpoint = leftAlignedRightBreakpoint;
-        this.insertedSequence = insertedSequence;
-        this.homology = homology;
-        this.inversionType = getInversionType(fiveToThree, threeToFive);
+    // TODO: 11/3/16 see where {@code insertionMappings} could be used
+//    final List<String> insertionMappings;
+
+    public BreakpointAllele(final ChimericAlignment chimericAlignment, final SAMSequenceDictionary samSequenceDictionary) {
+
+        final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = chimericAlignment.getLeftJustifiedBreakpoints(samSequenceDictionary);
+        this.leftJustifiedLeftBreakpoint = leftJustifiedBreakpoints._1();
+        this.leftJustifiedRightBreakpoint = leftJustifiedBreakpoints._2();
+
+        this.leftBreakpointAlignedForward = chimericAlignment.regionWithLowerCoordOnContig.forwardStrand;
+        this.rightBreakpointAlignedForward = chimericAlignment.regionWithHigherCoordOnContig.forwardStrand;
+
+        this.insertedSequence = chimericAlignment.insertedSequence;
+        this.homology = chimericAlignment.homology;
+//        this.insertionMappings = chimericAlignment.insertionMappings;
     }
 
     @SuppressWarnings("unchecked")
-    public BreakpointAllele(final Kryo kryo, final Input input) {
+    protected BreakpointAllele(final Kryo kryo, final Input input) {
         final String contig1 = input.readString();
         final int start1 = input.readInt();
         final int end1 = input.readInt();
-        this.leftAlignedLeftBreakpoint = new SimpleInterval(contig1, start1, end1);
+        this.leftJustifiedLeftBreakpoint = new SimpleInterval(contig1, start1, end1);
         final String contig2 = input.readString();
         final int start2 = input.readInt();
         final int end2 = input.readInt();
-        this.leftAlignedRightBreakpoint = new SimpleInterval(contig2, start2, end2);
+        this.leftJustifiedRightBreakpoint = new SimpleInterval(contig2, start2, end2);
+        this.leftBreakpointAlignedForward = input.readBoolean();
+        this.rightBreakpointAlignedForward = input.readBoolean();
         this.insertedSequence = input.readString();
         this.homology = input.readString();
-        this.inversionType = InversionType.values()[input.readInt()];
     }
 
-    public boolean isInversion() {
-        return leftAlignedLeftBreakpoint.getContig().equals(leftAlignedRightBreakpoint.getContig()) && (getInversionType() == INV_3_TO_5 || getInversionType() == INV_5_TO_3);
-    }
-
-    public enum InversionType  {
-        INV_3_TO_5, INV_5_TO_3, INV_NONE
-    }
-
-    public InversionType getInversionType() {
-        return inversionType;
-    }
-
-    private InversionType getInversionType(final boolean fiveToThree, final boolean threeToFive){
-        if(!fiveToThree && threeToFive){
-            return InversionType.INV_3_TO_5;
-        }else if(fiveToThree && !threeToFive){
-            return InversionType.INV_5_TO_3;
+    Strandedness determineStrandedness() {
+        if (leftBreakpointAlignedForward == rightBreakpointAlignedForward) {
+            return SAME_STRAND;
+        } else {
+            return leftBreakpointAlignedForward ? FIVE_TO_THREE : THREE_TO_FIVE;
         }
-        return InversionType.INV_NONE;
     }
-
 
     @Override
     public boolean equals(final Object o) {
@@ -76,20 +73,47 @@ class BreakpointAllele {
         if (o == null || getClass() != o.getClass()) return false;
         final BreakpointAllele that = (BreakpointAllele) o;
 
-        if (leftAlignedLeftBreakpoint != null ? !leftAlignedLeftBreakpoint.equals(that.leftAlignedLeftBreakpoint) : that.leftAlignedLeftBreakpoint != null)
+        if (leftJustifiedLeftBreakpoint != null ? !leftJustifiedLeftBreakpoint.equals(that.leftJustifiedLeftBreakpoint) : that.leftJustifiedLeftBreakpoint != null)
             return false;
-        if (leftAlignedRightBreakpoint != null ? !leftAlignedRightBreakpoint.equals(that.leftAlignedRightBreakpoint) : that.leftAlignedRightBreakpoint != null)
+        if (leftJustifiedRightBreakpoint != null ? !leftJustifiedRightBreakpoint.equals(that.leftJustifiedRightBreakpoint) : that.leftJustifiedRightBreakpoint != null)
             return false;
+
+        if (leftBreakpointAlignedForward != that.leftBreakpointAlignedForward)
+            return false;
+
+        if (rightBreakpointAlignedForward != that.rightBreakpointAlignedForward)
+            return false;
+
         if (insertedSequence != null ? !insertedSequence.equals(that.insertedSequence) : that.insertedSequence != null)
             return false;
-        if (homology != null ? !homology.equals(that.homology) : that.homology != null) return false;
-        return inversionType == that.inversionType;
 
+        if (homology==null) {
+            return that.homology==null;
+        } else {
+            return that.homology!=null && homology.equals(that.homology);
+        }
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(leftAlignedLeftBreakpoint, leftAlignedRightBreakpoint, insertedSequence, homology, 2659*inversionType.ordinal());
+        return Objects.hash(leftJustifiedLeftBreakpoint, leftJustifiedRightBreakpoint, leftBreakpointAlignedForward, rightBreakpointAlignedForward, insertedSequence, homology);
+    }
+
+    protected void serialize(final Kryo kryo, final Output output) {
+        output.writeString(leftJustifiedLeftBreakpoint.getContig());
+        output.writeInt(leftJustifiedLeftBreakpoint.getStart());
+        output.writeInt(leftJustifiedLeftBreakpoint.getEnd());
+        output.writeString(leftJustifiedRightBreakpoint.getContig());
+        output.writeInt(leftJustifiedRightBreakpoint.getStart());
+        output.writeInt(leftJustifiedRightBreakpoint.getEnd());
+        output.writeBoolean(leftBreakpointAlignedForward);
+        output.writeBoolean(rightBreakpointAlignedForward);
+        output.writeString(insertedSequence);
+        output.writeString(homology);
+    }
+
+    enum Strandedness {
+        SAME_STRAND, THREE_TO_FIVE, FIVE_TO_THREE
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<BreakpointAllele> {
@@ -102,18 +126,5 @@ class BreakpointAllele {
         public BreakpointAllele read(final Kryo kryo, final Input input, final Class<BreakpointAllele> klass ) {
             return new BreakpointAllele(kryo, input);
         }
-
-    }
-
-    private void serialize(final Kryo kryo, final Output output) {
-        output.writeString(leftAlignedLeftBreakpoint.getContig());
-        output.writeInt(leftAlignedLeftBreakpoint.getStart());
-        output.writeInt(leftAlignedLeftBreakpoint.getEnd());
-        output.writeString(leftAlignedRightBreakpoint.getContig());
-        output.writeInt(leftAlignedRightBreakpoint.getStart());
-        output.writeInt(leftAlignedRightBreakpoint.getEnd());
-        output.writeString(insertedSequence);
-        output.writeString(homology);
-        output.writeInt(inversionType.ordinal());
     }
 }

@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.collections4.IteratorUtils;
@@ -11,6 +13,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -47,7 +50,7 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
     @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
             fullName = "minAlignLength", optional = true)
-    private Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
+    private Integer minAlignLength = SVConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
 
     @Override
     public boolean requiresReference() {
@@ -66,13 +69,17 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
-        final JavaPairRDD<Tuple2<String, String>, Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey();
-        final JavaPairRDD<Tuple2<String, String>, Tuple2<Iterable<AlignmentRegion>, byte[]>> alignmentRegionsIterable = alignmentsGroupedByName.mapValues(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
+
+        final JavaRDD<Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey().map(Tuple2::_2);
+        final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable = alignmentsGroupedByName.mapToPair(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
 
         final Integer minAlignLengthFinal = minAlignLength;
 
-        callVariantsFromAlignmentRegionsAndWriteVariants(broadcastReference, alignmentRegionsIterable, minAlignLengthFinal, fastaReference, getAuthenticatedGCSOptions(), outputPath);
+        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+
+        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(ctx.broadcast(getReference()), ctx.broadcast(referenceSequenceDictionary), alignmentRegionsIterable);
+        SVVCFWriter.writeVCF(pipelineOptions, outputPath, SVConstants.INVERSIONS_OUTPUT_VCF, fastaReference, variants);
     }
 
     @VisibleForTesting
