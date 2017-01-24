@@ -672,12 +672,4 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     public void closeTool(){
     }
-
-    private int getCloudIndexPrefetchBuffer() {
-        if (cloudIndexPrefetchBuffer<0) {
-            // negative value means the default of "use cloudPrefetchBuffer"
-            return cloudPrefetchBuffer;
-        }
-        return cloudIndexPrefetchBuffer;
-    }
 }
