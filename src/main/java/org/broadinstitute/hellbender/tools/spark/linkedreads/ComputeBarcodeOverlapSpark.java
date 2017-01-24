@@ -45,7 +45,7 @@ public class ComputeBarcodeOverlapSpark extends GATKSparkTool {
     public List<ReadFilter> getDefaultReadFilters() {
         final ReadFilter readFilter = new ReadFilter() {
             private static final long serialVersionUID = 1L;
-            
+
             @Override
             public boolean test(final GATKRead read) {
                 return !read.isUnmapped() &&

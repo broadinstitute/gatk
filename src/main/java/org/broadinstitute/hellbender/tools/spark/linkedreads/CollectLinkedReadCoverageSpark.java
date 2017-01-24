@@ -64,13 +64,15 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> reads = getReads();
         final SAMFileHeader headerForReads = getHeaderForReads();
 
+        final int finalClusterSize = clusterSize;
+
         if (writeSAM) {
             final JavaPairRDD<String, Map<String, IntervalTree<List<GATKRead>>>> barcodeIntervals =
                     reads.mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), read))
                             .aggregateByKey(
                                     new HashMap<>(),
-                                    (aggregator, read) -> addReadToIntervals(aggregator, read, clusterSize),
-                                    (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
+                                    (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
+                                    (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
                             );
 
             final JavaRDD<GATKRead> intervalsByBarcode =
@@ -93,8 +95,8 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                             .mapToPair(read -> new Tuple2<>(read.getAttributeAsString("BX"), new ReadInfo(read.getContig(), read.getStart(), read.getEnd())))
                             .aggregateByKey(
                                     new HashMap<>(),
-                                    (aggregator, read) -> addReadToIntervals(aggregator, read, clusterSize),
-                                    (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
+                                    (aggregator, read) -> addReadToIntervals(aggregator, read, finalClusterSize),
+                                    (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
                             );
 
             final JavaRDD<String> intervalsByBarcode;
