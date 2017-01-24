@@ -30,7 +30,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Abstract class to facilitate writing command-line programs.
@@ -72,9 +74,9 @@ public abstract class CommandLineProgram {
     private final List<Header> defaultHeaders = new ArrayList<>();
 
     /**
-    * The reconstructed commandline used to run this program. Used for logging
-    * and debugging.
-    */
+     * The reconstructed commandline used to run this program. Used for logging
+     * and debugging.
+     */
     private String commandLine;
 
     /**
@@ -85,10 +87,10 @@ public abstract class CommandLineProgram {
     protected void onStartup() {}
 
     /**
-    * Do the work after command line has been parsed. RuntimeException may be
-    * thrown by this method, and are reported appropriately.
-    * @return the return value or null is there is none.
-    */
+     * Do the work after command line has been parsed. RuntimeException may be
+     * thrown by this method, and are reported appropriately.
+     * @return the return value or null is there is none.
+     */
     protected abstract Object doWork();
 
     /**
@@ -187,22 +189,23 @@ public abstract class CommandLineProgram {
     }
 
     /**
-    * Put any custom command-line validation in an override of this method.
-    * clp is initialized at this point and can be used to print usage and access argv.
+     * Put any custom command-line validation in an override of this method.
+     * clp is initialized at this point and can be used to print usage and access argv.
      * Any arguments set by command-line parser can be validated.
-    * @return null if command line is valid.  If command line is invalid, returns an array of error message
-    * to be written to the appropriate place.
-    * @throws CommandLineException if command line is invalid and handling as exception is preferred.
-    */
+     * @return null if command line is valid.  If command line is invalid, returns an array of error message
+     * to be written to the appropriate place.
+     * @throws CommandLineException if command line is invalid and handling as exception is preferred.
+     */
     protected String[] customCommandLineValidation() {
         return null;
     }
 
     /**
-    *
-    * @return true if program should be executed, false if an information only argument like {@link SpecialArgumentsCollection#HELP_FULLNAME} was specified
-    */
-    protected boolean parseArgs(final String[] argv) {
+     * Parse arguments and initialize any values annotated with {@link Argument}
+     * @return true if program should be executed, false if an information only argument like {@link SpecialArgumentsCollection#HELP_FULLNAME} was specified
+     * @throws CommandLineException if command line validation fails
+     */
+    protected final boolean parseArgs(final String[] argv) {
 
         final boolean ret = getCommandLineParser().parseArguments(System.err, argv);
         commandLine = getCommandLineParser().getCommandLine();
@@ -211,11 +214,8 @@ public abstract class CommandLineProgram {
         }
         final String[] customErrorMessages = customCommandLineValidation();
         if (customErrorMessages != null) {
-            for (final String msg : customErrorMessages) {
-                System.err.println(msg);
-            }
-            getCommandLineParser().usage(System.err, false);
-            return false;
+            throw new CommandLineException("Command Line Validation failed:" + Arrays.stream(customErrorMessages).collect(
+                    Collectors.joining(", ")));
         }
         return true;
 
@@ -279,8 +279,8 @@ public abstract class CommandLineProgram {
     }
 
     /**
-    * @return this programs CommandLineParser.  If one is not initialized yet this will initialize it.
-    */
+     * @return this programs CommandLineParser.  If one is not initialized yet this will initialize it.
+     */
     protected final CommandLineParser getCommandLineParser() {
         if( commandLineParser == null) {
             commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors());

@@ -62,12 +62,12 @@ public class Main {
     /**
      * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
      */
-    public static void printDecoratedUserExceptionMessage(final PrintStream ps, final Exception e){
+    protected static void printDecoratedExceptionMessage(final PrintStream ps, final Exception e, String prefix){
         Utils.nonNull(ps, "stream");
         Utils.nonNull(e, "exception");
         ps.println("***********************************************************************");
         ps.println();
-        ps.println("A USER ERROR has occurred: " + e.getMessage());
+        ps.println(prefix + e.getMessage());
         ps.println();
         ps.println("***********************************************************************") ;
     }
@@ -104,17 +104,20 @@ public class Main {
      */
     public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
         final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
-        if (null == program) return null; // no program found!
+        return runCommandLineProgram(program, args);
+    }
+
+    /**
+     * Run the given command line program with the raw arguments from the command line
+     * @param rawArgs thes are the raw arguments from the command line, the first will be stripped off
+     * @return the result of running  {program} with the given args, possibly null
+     */
+    protected static Object runCommandLineProgram(CommandLineProgram program, String[] rawArgs) {
+        if (null == program) return null; // no program found!  This will happen if help was specified with no other arguments
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
-        final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
-        try {
-            return program.instanceMain(mainArgs);
-        } catch (final CommandLineException e){
-            //Print usage in the case of a CommandLineException
-            System.err.println(program.getUsage());
-            throw e;
-        }
+        final String[] mainArgs = Arrays.copyOfRange(rawArgs, 1, rawArgs.length);
+        return program.instanceMain(mainArgs);
     }
 
     /**
@@ -133,11 +136,15 @@ public class Main {
      * Note: this is the only method that is allowed to call System.exit (because gatk tools may be run from test harness etc)
      */
     protected final void mainEntry(final String[] args) {
+        final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
         try {
-            final Object result = instanceMain(args);
+            final Object result = runCommandLineProgram(program, args);
             handleResult(result);
             System.exit(0);
         } catch (final CommandLineException e){
+            if (program != null) { //program can be null if th
+                System.err.println(program.getUsage());
+            }
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
@@ -171,7 +178,7 @@ public class Main {
      * @param e the exception to handle
      */
     protected void handleUserException(Exception e) {
-        printDecoratedUserExceptionMessage(System.err, e);
+        printDecoratedExceptionMessage(System.err, e, "A USER ERROR has occurred: ");
 
         if(printStackTraceOnUserExceptions()) {
             e.printStackTrace();
