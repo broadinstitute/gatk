@@ -201,20 +201,25 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         int samCount = 0;
         for ( final Path samPath : samPaths ) {
             // Ensure each file can be read
-            Function<SeekableByteChannel, SeekableByteChannel> wrapper =
-                (BucketUtils.isCloudStorageUrl(samPath)
-                    ? cloudWrapper
-                    : Function.identity());
-            Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                (samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount))
-                    ? cloudIndexWrapper
-                    : Function.identity());
             try {
                 IOUtil.assertFileIsReadable(samPath);
             }
             catch ( SAMException|IllegalArgumentException e ) {
                 throw new UserException.CouldNotReadInputFile(samPath.toString(), e);
             }
+
+            Function<SeekableByteChannel, SeekableByteChannel> wrapper =
+                (BucketUtils.isCloudStorageUrl(samPath)
+                    ? cloudWrapper
+                    : Function.identity());
+            // if samIndices==null then we'll guess the index name from the file name.
+            // If the file's on the cloud, then the search will only consider locations that are also
+            // in the cloud.
+            Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
+                ((samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount))
+                 || (samIndices == null && BucketUtils.isCloudStorageUrl(samPath)))
+                    ? cloudIndexWrapper
+                    : Function.identity());
 
             SamReader reader;
             if ( samIndices == null ) {

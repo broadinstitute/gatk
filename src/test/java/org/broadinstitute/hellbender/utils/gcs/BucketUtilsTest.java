@@ -28,6 +28,9 @@ public final class BucketUtilsTest extends BaseTest {
         // and throws an exception.
         //Assert.assertFalse(BucketUtils.isCloudStorageUrl(Paths.get(URI.create("hdfs://namenode/path/to/file"))));
         Assert.assertFalse(BucketUtils.isCloudStorageUrl(Paths.get("localFile")));
+
+        // this does not throw NullPointerException.
+        String x = "" + null + "://";
     }
 
     @Test

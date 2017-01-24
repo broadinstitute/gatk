@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.nio;
+package org.broadinstitute.hellbender.utils.test;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
