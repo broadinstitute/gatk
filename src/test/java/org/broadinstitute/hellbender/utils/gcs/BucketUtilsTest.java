@@ -2,6 +2,9 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.util.IOUtil;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
@@ -16,21 +19,27 @@ public final class BucketUtilsTest extends BaseTest {
 
     @Test
     public void testIsCloudStorageURL(){
-        Assert.assertTrue(BucketUtils.isCloudStorageUrl("gs://a_bucket/bucket"));
+        Assert.assertTrue(BucketUtils.isCloudStorageUrl("gs://abucket/bucket"));
         Assert.assertFalse(BucketUtils.isCloudStorageUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isCloudStorageUrl("localFile"));
+
+        Assert.assertTrue(BucketUtils.isCloudStorageUrl(Paths.get(URI.create("gs://abucket/bucket"))));
+        // We cannot run this one because the HDFS provider looks for the "namenode" machine
+        // and throws an exception.
+        //Assert.assertFalse(BucketUtils.isCloudStorageUrl(Paths.get(URI.create("hdfs://namenode/path/to/file"))));
+        Assert.assertFalse(BucketUtils.isCloudStorageUrl(Paths.get("localFile")));
     }
 
     @Test
     public void testIsHadoopURL(){
-        Assert.assertFalse(BucketUtils.isHadoopUrl("gs://a_bucket/bucket"));
+        Assert.assertFalse(BucketUtils.isHadoopUrl("gs://abucket/bucket"));
         Assert.assertTrue(BucketUtils.isHadoopUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isHadoopUrl("localFile"));
     }
 
     @Test
     public void testIsRemoteStorageURL(){
-        Assert.assertTrue(BucketUtils.isRemoteStorageUrl("gs://a_bucket/bucket"));
+        Assert.assertTrue(BucketUtils.isRemoteStorageUrl("gs://abucket/bucket"));
         Assert.assertTrue(BucketUtils.isRemoteStorageUrl("hdfs://namenode/path/to/file"));
         Assert.assertFalse(BucketUtils.isRemoteStorageUrl("localFile"));
     }
@@ -39,7 +48,7 @@ public final class BucketUtilsTest extends BaseTest {
     public void testIsFileURL(){
         Assert.assertTrue(BucketUtils.isFileUrl("file:///somefile/something"));
         Assert.assertTrue(BucketUtils.isFileUrl("file:/something"));
-        Assert.assertFalse(BucketUtils.isFileUrl("gs://a_bucket"));
+        Assert.assertFalse(BucketUtils.isFileUrl("gs://abucket"));
     }
 
     @Test

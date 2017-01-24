@@ -54,6 +54,10 @@ public final class BucketUtils {
         return path.startsWith(GCS_PREFIX);
     }
 
+    public static boolean isCloudStorageUrl(final java.nio.file.Path path) {
+        return (path.toUri().getScheme() + "://").equals(GCS_PREFIX);
+    }
+
     /**
      * Returns true if the given path is a HDFS (Hadoop filesystem) URL.
      */

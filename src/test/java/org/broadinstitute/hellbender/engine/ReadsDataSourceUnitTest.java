@@ -1,9 +1,18 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.*;
+import java.io.IOException;
+import java.nio.channels.Channels;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.function.Function;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.XorWrapper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
@@ -554,6 +563,20 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
         };
     }
 
+    @DataProvider(name="cloudXorTestData")
+    public Object[][] cloudXorTestData() {
+        final String BAM_DIR = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/";
+        final String INDEX_DIR = BAM_DIR;
+
+        final List<Path> bams = Arrays.asList(IOUtils.getPath(BAM_DIR + "reads_data_source_test4.xor.bam"));
+
+        final List<Path> indices = Arrays.asList(IOUtils.getPath(INDEX_DIR + "reads_data_source_test4.xor.bam.bai"));
+
+        return new Object[][]{
+            {bams, indices}
+        };
+    }
+
     @Test(dataProvider = "manuallySpecifiedIndexTestData")
     public void testManuallySpecifiedIndices( final List<Path> bams, final List<Path> indices ) {
         try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices) ) {
@@ -584,6 +607,63 @@ public final class ReadsDataSourceUnitTest extends BaseTest {
             }
             Assert.assertEquals(queryCount, 5, "Wrong number of reads returned in query");
         }
+    }
+
+    @Test(dataProvider = "manuallySpecifiedIndexTestData")
+    public void testManuallySpecifiedIndicesWithCustomReaderFactoryAndNullWrappers( final List<Path> bams, final List<Path> indices ) {
+        final SamReaderFactory customFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT);
+        // ReadsDataSource should not be using the wrapper since the files are not on the Google cloud.
+        // So we pass this invalid wrapper: if the code tries to use it, it'll blow up.
+        Function<SeekableByteChannel, SeekableByteChannel> nullWrapper = (SeekableByteChannel) -> null;
+
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, nullWrapper, nullWrapper) ) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
+
+            final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
+            int queryCount = 0;
+            while ( queryReads.hasNext() ) {
+                ++queryCount;
+                queryReads.next();
+            }
+            Assert.assertEquals(queryCount, 5, "Wrong number of reads returned in query");
+        }
+    }
+
+    @Test(dataProvider = "cloudXorTestData", groups={"bucket"})
+    public void testCloudBamWithCustomReaderFactoryAndWrappers( final List<Path> bams, final List<Path> indices ) {
+        final SamReaderFactory customFactory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.STRICT);
+        // The input files are XOR'd with a constant. We use a wrapper to XOR it back.
+        // If the code uses the wrong wrapper, or omits one, then the test will fail.
+        Function<SeekableByteChannel, SeekableByteChannel> xorData = XorWrapper.forKey((byte)74);
+        Function<SeekableByteChannel, SeekableByteChannel> xorIndex = XorWrapper.forKey((byte)80);
+
+        try ( final ReadsDataSource readsSource = new ReadsDataSource(bams, indices, customFactory, xorData, xorIndex) ) {
+            Assert.assertTrue(readsSource.indicesAvailable(), "Explicitly-provided indices not detected for bams: " + bams);
+
+            final Iterator<GATKRead> queryReads = readsSource.query(new SimpleInterval("1", 1, 300));
+            int queryCount = 0;
+            while ( queryReads.hasNext() ) {
+                ++queryCount;
+                queryReads.next();
+            }
+            Assert.assertEquals(queryCount, 2, "Wrong number of reads returned in query");
+        }
+    }
+
+    // this code generates the xor'd inputs, in case we need to do it again.
+    private void createXorInput() throws IOException {
+        String prefix = "src/test/resources/org/broadinstitute/hellbender/engine/";
+        Path input = Paths.get(prefix + "reads_data_source_test2.bam");
+        Path output = Paths.get(prefix + "reads_data_source_test4.xor.bam");
+        byte DATA_KEY = 74;
+        SeekableByteChannel in =
+            new XorWrapper(Files.newByteChannel(input, StandardOpenOption.READ), DATA_KEY);
+        java.nio.file.Files.copy(Channels.newInputStream(in), output, StandardCopyOption.REPLACE_EXISTING);
+        Path input2 = Paths.get(prefix + "reads_data_source_test2.bam.bai");
+        Path output2 = Paths.get(prefix + "reads_data_source_test4.xor.bam.bai");
+        byte DATA_KEY2 = 80;
+        in = new XorWrapper(Files.newByteChannel(input2, StandardOpenOption.READ), DATA_KEY2);
+        java.nio.file.Files.copy(Channels.newInputStream(in), output2, StandardCopyOption.REPLACE_EXISTING);
     }
 
     @Test(dataProvider = "manuallySpecifiedIndexTestData")

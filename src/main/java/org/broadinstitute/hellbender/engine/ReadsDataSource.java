@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.IOUtil;
+import java.nio.channels.SeekableByteChannel;
+import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -10,8 +12,10 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.iterators.SAMRecordToReadIterator;
 import org.broadinstitute.hellbender.utils.iterators.SamReaderQueryingIterator;
+import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
@@ -110,7 +114,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                               stringency SILENT is used.
      */
     public ReadsDataSource( final List<Path> samPaths, SamReaderFactory customSamReaderFactory ) {
-        this(samPaths, null, customSamReaderFactory);
+        this(samPaths, null, customSamReaderFactory, null, null);
     }
 
     /**
@@ -121,7 +125,7 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      *                   in which case index paths are inferred automatically.
      */
     public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices ) {
-        this(samPaths, samIndices, null);
+        this(samPaths, samIndices, null, null, null);
     }
 
     /**
@@ -134,7 +138,27 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
      * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
      *                               stringency SILENT is used.
      */
-    public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices, SamReaderFactory customSamReaderFactory ) {
+    public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
+        SamReaderFactory customSamReaderFactory) {
+        this(samPaths, samIndices, customSamReaderFactory, null, null);
+    }
+
+        /**
+         * Initialize this data source with multiple SAM/BAM/CRAM files, explicit indices for those files,
+         * and a custom SamReaderFactory.
+         *
+         * @param samPaths paths to SAM/BAM/CRAM files, not null
+         * @param samIndices indices for all of the SAM/BAM/CRAM files, in the same order as samPaths. May be null,
+         *                   in which case index paths are inferred automatically.
+         * @param cloudWrapper caching/prefetching wrapper for the data, if on Google Cloud (optional).
+         * @param cloudIndexWrapper caching/prefetching wrapper for the index, if on Google Cloud (optional).
+         * @param customSamReaderFactory SamReaderFactory to use, if null a default factory with no reference and validation
+         *                               stringency SILENT is used.
+         */
+    public ReadsDataSource( final List<Path> samPaths, final List<Path> samIndices,
+            SamReaderFactory customSamReaderFactory,
+            Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
+            Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         Utils.nonNull(samPaths);
         Utils.nonEmpty(samPaths, "ReadsDataSource cannot be created from empty file list");
 
@@ -155,6 +179,10 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         int samCount = 0;
         for ( final Path samPath : samPaths ) {
             // Ensure each file can be read
+            Function<SeekableByteChannel, SeekableByteChannel> wrapper =
+                (BucketUtils.isCloudStorageUrl(samPath) && cloudWrapper != null ? cloudWrapper : Function.identity());
+            Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
+                (samIndices != null && BucketUtils.isCloudStorageUrl(samIndices.get(samCount)) && cloudIndexWrapper != null ? cloudIndexWrapper : Function.identity());
             try {
                 IOUtil.assertFileIsReadable(samPath);
             }
@@ -164,11 +192,16 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
 
             SamReader reader;
             if ( samIndices == null ) {
-                reader = samReaderFactory.open(samPath);
+                reader = samReaderFactory.open(samPath, wrapper, indexWrapper);
             }
             else {
-                final SamInputResource samResource = SamInputResource.of(samPath);
-                samResource.index(samIndices.get(samCount));
+                final SamInputResource samResource = SamInputResource.of(samPath, wrapper);
+                Path indexPath = samIndices.get(samCount);
+                if (!BucketUtils.isCloudStorageUrl(samPath)) {
+                    // force no wrapping, even if indexed file is on Google Cloud Storage.
+                    indexWrapper = Function.identity();
+                }
+                samResource.index(indexPath, indexWrapper);
                 reader = samReaderFactory.open(samResource);
             }
 
