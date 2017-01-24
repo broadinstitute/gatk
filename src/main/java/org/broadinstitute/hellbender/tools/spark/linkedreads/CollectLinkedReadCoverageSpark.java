@@ -9,8 +9,8 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -73,18 +73,18 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                                     (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, clusterSize)
                             );
 
-            final JavaRDD<GATKRead> intervalsByBarcode;
-            intervalsByBarcode = barcodeIntervals.flatMap(x -> {
-                final String barcode = x._1;
-                final Map<String, IntervalTree<List<GATKRead>>> contigIntervalTreeMap = x._2;
-                final List<GATKRead> results = new ArrayList<>();
-                for (final String contig : contigIntervalTreeMap.keySet()) {
-                    for (final IntervalTree.Node<List<GATKRead>> next : contigIntervalTreeMap.get(contig)) {
-                        results.add(intervalTreeToGATKRead(barcode, contig, headerForReads, next));
-                    }
-                }
-                return results;
-            });
+            final JavaRDD<GATKRead> intervalsByBarcode =
+                    barcodeIntervals.flatMap(x -> {
+                        final String barcode = x._1;
+                        final Map<String, IntervalTree<List<GATKRead>>> contigIntervalTreeMap = x._2;
+                        final List<GATKRead> results = new ArrayList<>();
+                        for (final String contig : contigIntervalTreeMap.keySet()) {
+                            for (final IntervalTree.Node<List<GATKRead>> next : contigIntervalTreeMap.get(contig)) {
+                                results.add(intervalTreeToGATKRead(barcode, contig, headerForReads, next));
+                            }
+                        }
+                        return results.iterator();
+                    });
             writeReads(ctx, out, intervalsByBarcode);
 
         } else {
@@ -107,11 +107,23 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                         results.add(intervalTreeToBedRecord(barcode, contig, next));
                     }
                 }
-                return results;
+                return results.iterator();
             });
             intervalsByBarcode.saveAsTextFile(out);
         }
 
+    }
+
+    private List<GATKRead> getuIterator(final SAMFileHeader headerForReads, final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> x) {
+        final String barcode = x._1;
+        final Map<String, IntervalTree<List<GATKRead>>> contigIntervalTreeMap = x._2;
+        final List<GATKRead> results = new ArrayList<>();
+        for (final String contig : contigIntervalTreeMap.keySet()) {
+            for (final IntervalTree.Node<List<GATKRead>> next : contigIntervalTreeMap.get(contig)) {
+                results.add(intervalTreeToGATKRead(barcode, contig, headerForReads, next));
+            }
+        }
+        return results;
     }
 
 

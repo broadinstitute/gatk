@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -13,7 +13,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @CommandLineProgramProperties(
@@ -38,16 +40,26 @@ public class CollectBarcodeCoverageCountsSpark extends GATKSparkTool {
     public boolean requiresReads() { return true; }
 
     @Override
-    public ReadFilter makeReadFilter() {
-        return super.makeReadFilter()
-                .and(read -> !read.isUnmapped())
-                .and(read -> !read.failsVendorQualityCheck())
-                .and(GATKRead::isFirstOfPair)
-                .and(read -> !read.isDuplicate())
-                .and(read -> !read.isSecondaryAlignment())
-                .and(read -> !read.isSupplementaryAlignment())
-                .and(read -> read.hasAttribute("BX"));
+    public List<ReadFilter> getDefaultReadFilters() {
+        final ReadFilter readFilter = new ReadFilter() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean test(final GATKRead read) {
+                return !read.isUnmapped() &&
+                        !read.failsVendorQualityCheck() &&
+                        read.isFirstOfPair() &&
+                        !read.isDuplicate() &&
+                        !read.isSecondaryAlignment() &&
+                        !read.isSupplementaryAlignment() &&
+                        read.hasAttribute("BX");
+            }
+        };
+        List<ReadFilter> readFilterList = new ArrayList<>(super.getDefaultReadFilters());
+        readFilterList.add(readFilter);
+        return readFilterList;
     }
+
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {

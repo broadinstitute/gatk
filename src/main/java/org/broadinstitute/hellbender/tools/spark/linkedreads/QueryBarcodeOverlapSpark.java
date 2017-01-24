@@ -4,8 +4,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -65,7 +65,7 @@ public class QueryBarcodeOverlapSpark extends GATKSparkTool {
             } else if (overlapInterval2.equals(queryInterval)) {
                 overlaps.add(new Tuple2<>(overlapInterval1, overlapCountObject._2));
             }
-            return overlaps;
+            return overlaps.iterator();
         });
 
         final SAMSequenceDictionary referenceSequenceDictionary = getReferenceSequenceDictionary();

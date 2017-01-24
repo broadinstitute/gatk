@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
-import htsjdk.samtools.util.IntervalTree;
 import org.apache.spark.HashPartitioner;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.broadinstitute.hellbender.cmdline.Argument;
-import org.broadinstitute.hellbender.cmdline.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -16,7 +15,8 @@ import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @CommandLineProgramProperties(
@@ -65,7 +65,7 @@ public class FindLinkedRegionsSpark extends GATKSparkTool {
             return overlappingIntervals
                     .stream()
                     .map(interval -> new Tuple2<>(read.getAttributeAsString("BX"), interval))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()).iterator();
         }).distinct();
 
 
@@ -85,7 +85,7 @@ public class FindLinkedRegionsSpark extends GATKSparkTool {
                     results.add(new Tuple2<>(new Tuple2<>(intervalLinkedReadPair._1(), bin), 1));
                 }
             }
-            return results;
+            return results.iterator();
         }).reduceByKey((count1, count2) -> count1 + count2);
 
         final JavaPairRDD<SimpleInterval, Tuple2<SimpleInterval, Integer>> intervalBinCoverages =

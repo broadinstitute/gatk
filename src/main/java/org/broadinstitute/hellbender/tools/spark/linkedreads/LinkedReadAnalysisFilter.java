@@ -8,20 +8,23 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-public class LinkedReadAnalysisFilter implements ReadFilter {
+import java.util.function.Predicate;
+
+public class LinkedReadAnalysisFilter extends ReadFilter {
     private static final long serialVersionUID = 1l;
 
-    ReadFilter filter;
+    Predicate<GATKRead> filter;
 
     public LinkedReadAnalysisFilter(final double minEntropy) {
-        this.filter = ReadFilterLibrary.MAPPED
+        final Predicate<GATKRead> readPredicate = ReadFilterLibrary.MAPPED
                 .and(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK)
                 .and(ReadFilterLibrary.NOT_DUPLICATE)
                 .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
                 .and(read -> !read.isSupplementaryAlignment())
                 .and(read -> read.hasAttribute("BX"))
                 .and(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO)
-                .and(read -> ! filterOut(read, 36, true));
+                .and(read -> !filterOut(read, 36, true));
+        this.filter = readPredicate;
         if (minEntropy > 0) {
             this.filter = this.filter.and(new ReadEntropyFilter(minEntropy));
         }
