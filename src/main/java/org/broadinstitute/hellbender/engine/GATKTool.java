@@ -195,14 +195,6 @@ public abstract class GATKTool extends CommandLineProgram {
         reference = referenceArguments.getReferenceFile() != null ? ReferenceDataSource.of(referenceArguments.getReferenceFile()) : null;
     }
 
-    private static SeekableByteChannel addPrefetcher(int cloudPrefetchBuffer, SeekableByteChannel x) {
-        try {
-            return new SeekableByteChannelPrefetcher(x, cloudPrefetchBuffer * 1024 * 1024);
-        } catch (IOException ex) {
-            throw new GATKException("Unable to initialize the prefetcher: " + ex);
-        }
-    }
-
     /**
      * Initialize our source of reads data (or set it to null if no reads argument(s) were provided).
      *
@@ -212,10 +204,6 @@ public abstract class GATKTool extends CommandLineProgram {
     void initializeReads() {
         if (! readArguments.getReadFiles().isEmpty()) {
             // Prefetcher is useful for cloud files because of the latencies involved.
-            Function<SeekableByteChannel, SeekableByteChannel> wrapper =
-                (cloudPrefetchBuffer > 0 ? is -> GATKTool.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
-            Function<SeekableByteChannel, SeekableByteChannel> indexWrapper =
-                (getCloudIndexPrefetchBuffer() > 0 ? is -> GATKTool.addPrefetcher(getCloudIndexPrefetchBuffer(), is) : Function.identity());
 
             SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
@@ -224,7 +212,7 @@ public abstract class GATKTool extends CommandLineProgram {
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
-            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, wrapper, indexWrapper);
+            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer, getCloudIndexPrefetchBuffer());
         }
         else {
             reads = null;
