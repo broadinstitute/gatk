@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collections;
@@ -58,38 +59,12 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
 
     public ReadCountsReader(final File file, final TargetCollection<Target> targets, final boolean ignoreMissingTargets)
             throws IOException {
-        super(file);
-        this.targets = targets;
-        this.ignoreMissingTargets = ignoreMissingTargets;
-        Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
-        countColumnNames = columns().names().stream()
-                .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
-                .collect(Collectors.toList());
-        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns(),
-                (message) -> formatException(message));
-        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns());
-        final Function<DataLine, double[]> countExtractor = countExtractor(columns());
-        recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
+        this(Utils.nonNull(file).getPath(), new FileReader(file), targets, ignoreMissingTargets);
     }
 
     public ReadCountsReader(final Reader sourceReader, final TargetCollection<Target> targets,
                             final boolean ignoreMissingTargets) throws IOException {
-        super(sourceReader);
-        this.targets = targets;
-        this.ignoreMissingTargets = ignoreMissingTargets;
-        Utils.validateArg(!(targets == null && ignoreMissingTargets), "When ignore missing targets is true, targets cannot be null");
-        countColumnNames = columns().names().stream()
-                .filter(name -> !TargetTableColumn.isStandardTargetColumnName(name))
-                .collect(Collectors.toList());
-        final Function<DataLine, SimpleInterval> intervalExtractor = intervalExtractor(columns(),
-                (message) -> formatException(message));
-        final Function<DataLine, String> targetNameExtractor = targetNameExtractor(columns());
-        final Function<DataLine, double[]> countExtractor = countExtractor(columns());
-        recordExtractor = composeRecordExtractor(intervalExtractor, targetNameExtractor, countExtractor, targets);
-    }
-
-    protected ReadCountsReader(final String sourceName, final Reader sourceReader) throws IOException {
-        this(sourceName, sourceReader, null, false);
+        this(null, sourceReader, targets, ignoreMissingTargets);
     }
 
     public ReadCountsReader(final File file) throws IOException {
@@ -169,7 +144,7 @@ public class ReadCountsReader extends TableReader<ReadCountRecord> {
     }
 
 
-    private <T extends Target> Function<DataLine, ReadCountRecord> composeRecordExtractor(
+    private Function<DataLine, ReadCountRecord> composeRecordExtractor(
             final Function<DataLine, SimpleInterval> intervalExtractor,
             final Function<DataLine, String> targetNameExtractor, final Function<DataLine, double[]> countExtractor,
             final TargetCollection<?> targets) {
