@@ -27,12 +27,14 @@ public abstract class SVKmer {
     }
 
     public SVKmer() {}
-    public abstract SVKmer successor(final Base base, final int kSize );
-    public abstract SVKmer predecessor(final Base base, final int kSize );
-    public abstract SVKmer reverseComplement(final int kSize );
-    public abstract SVKmer canonical(final int kSize );
+    public abstract SVKmer successor( final Base base, final int kSize );
+    public abstract SVKmer predecessor( final Base base, final int kSize );
+    public abstract SVKmer reverseComplement( final int kSize );
+    public abstract SVKmer canonical( final int kSize );
     public abstract Base firstBase( final int kSize );
     public abstract Base lastBase();
+    public abstract int firstTrimer(final int kSize );
+    public abstract int lastTrimer();
     public abstract String toString( final int kSize );
 
     // Reverse-complement a long by taking the reverse-complement of each of its bytes in reverse order.

@@ -17,6 +17,7 @@ import scala.Tuple2;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final ReadMetadata.ReadGroupFragmentStatistics testStats =
@@ -49,7 +50,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     public void getIntervalsTest() {
         final List<SVInterval> actualIntervals =
                 FindBreakpointEvidenceSpark.getIntervals(params, broadcastMetadata, header, mappedReads, locations);
-        Assert.assertEquals(expectedIntervalList, actualIntervals);
+        Assert.assertEquals(actualIntervals, expectedIntervalList);
     }
 
     @Test(groups = "spark")
@@ -59,17 +60,18 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .stream()
                 .map(qNameAndInterval -> qNameAndInterval.getKey())
                 .forEach(actualQNames::add);
-        Assert.assertEquals(expectedQNames, actualQNames);
+        Assert.assertEquals(actualQNames, expectedQNames);
     }
 
     @Test(groups = "spark")
     public void getKmerIntervalsTest() {
+        final SVKmer kmer = new SVKmerLong(params.kSize);
         final Set<SVKmer> killSet = new HashSet<>();
         final String seq1 = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACG";
-        killSet.add(SVKmerizer.toKmer(seq1,new SVKmerLong(seq1.length())));
+        killSet.add(SVKmerizer.toKmer(seq1,kmer));
         final String seq2 = "TACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTAC";
-        killSet.add(SVKmerizer.toKmer(seq2,new SVKmerLong(seq2.length())));
-        Assert.assertEquals(2, killSet.size());
+        killSet.add(SVKmerizer.toKmer(seq2,kmer));
+        Assert.assertEquals( killSet.size(), 2);
 
         final HopscotchUniqueMultiMap<String, Integer, FindBreakpointEvidenceSpark.QNameAndInterval> qNameMultiMap =
                 new HopscotchUniqueMultiMap<>(expectedAssemblyQNames.size());
@@ -87,8 +89,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 new HopscotchUniqueMultiMap<>(
                         FindBreakpointEvidenceSpark.getKmerIntervals(params, ctx, qNameMultiMap, 1, new HopscotchSet<>(0),
                                 reads, locations, null)._2());
-        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null);
-        Assert.assertEquals(expectedKmers.size(), actualKmerAndIntervalSet.size());
+        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null, kmer);
+        Assert.assertEquals(actualKmerAndIntervalSet.size(), expectedKmers.size());
         for ( final FindBreakpointEvidenceSpark.KmerAndInterval kmerAndInterval : actualKmerAndIntervalSet ) {
             Assert.assertTrue(expectedKmers.contains(kmerAndInterval.getKey()));
         }
@@ -96,7 +98,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
 
     @Test(groups = "spark")
     public void getAssemblyQNamesTest() throws FileNotFoundException {
-        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null);
+        final Set<SVKmer> expectedKmers = SVUtils.readKmersFile(params.kSize, kmersFile, null, new SVKmerLong(params.kSize));
         final HopscotchUniqueMultiMap<SVKmer, Integer, FindBreakpointEvidenceSpark.KmerAndInterval> kmerAndIntervalSet =
                 new HopscotchUniqueMultiMap<>(expectedKmers.size());
         expectedKmers.stream().
@@ -107,7 +109,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
                 .stream()
                 .map(qNameAndInterval -> qNameAndInterval.getKey())
                 .forEach(actualAssemblyQNames::add);
-        Assert.assertEquals(expectedAssemblyQNames, actualAssemblyQNames);
+        Assert.assertEquals(actualAssemblyQNames, expectedAssemblyQNames);
     }
 
     @Test(groups = "spark")
@@ -139,8 +141,8 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         try( InputStream expectedStream = new BufferedInputStream(new FileInputStream(expectedFile)) ) {
             int val;
             while ( (val = expectedStream.read()) != -1 )
-                Assert.assertEquals(val, actualStream.read());
-            Assert.assertEquals(-1, actualStream.read());
+                Assert.assertEquals(actualStream.read(), val);
+            Assert.assertEquals(actualStream.read(), -1);
         }
         catch ( final IOException ioe ) {
             throw new GATKException("can't read expected values", ioe);

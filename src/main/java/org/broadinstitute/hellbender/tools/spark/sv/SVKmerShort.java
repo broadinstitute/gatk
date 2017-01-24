@@ -27,16 +27,16 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
     /**
      *  Makes an empty SVKmerShort.  If you call toString on it, it'll look like poly-A.
      */
-    public SVKmerShort(final int kSize ) {
+    public SVKmerShort( final int kSize ) {
         Utils.validateArg(kSize >= 1 && kSize < 32, "K must be between 1 and 31.");
         valLow = 0;
     }
 
-    public SVKmerShort(final SVKmerShort that ) { this.valLow = that.valLow; }
+    public SVKmerShort( final SVKmerShort that ) { this.valLow = that.valLow; }
 
-    private SVKmerShort(final long valLow ) { this.valLow = valLow; }
+    private SVKmerShort( final long valLow ) { this.valLow = valLow; }
 
-    private SVKmerShort(final Kryo kryo, final Input input ) {
+    private SVKmerShort( final Kryo kryo, final Input input ) {
         valLow = input.readLong();
     }
 
@@ -49,7 +49,7 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.successor(SVKmerShort.Base.C,5).toString(5) is "CTGAC".
      * @param base must be 0, 1, 2, or 3, corresponding to A, C, G, or T.
      */
-    public final SVKmerShort successor(final Base base, final int kSize ) {
+    public final SVKmerShort successor( final Base base, final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         // note we multiply kSize by two in SVKmerShort because we no longer divide the bits into two longs
         final long mask = (1L << kSize*2) - 1L;
@@ -63,7 +63,7 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.predecessor(SVKmerShort.Base.T,5).toString(5) is "TACTG".
      * @param base must be 0, 1, 2, or 3, corresponding to A, C, G, or T.
      */
-    public final SVKmerShort predecessor(final Base base, final int kSize ) {
+    public final SVKmerShort predecessor( final Base base, final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         // note we multiply kSize by two in SVKmerShort because we no longer divide the bits into two longs
         final long mask = (1L << kSize*2) - 1L;
@@ -76,7 +76,7 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
      * Returns a new SVKmerShort that's the reverse-complement of this one.
      * E.g., if kmer.toString(5) is "ACTGA", then kmer.rc(5).toString(5) is "TCAGT".
      */
-    public final SVKmerShort reverseComplement(final int kSize ) {
+    public final SVKmerShort reverseComplement( final int kSize ) {
         // bit hack to make a long value with the kSize least significant bits set to 1
         // note we multiply kSize by two in SVKmerShort because we no longer divide the bits into two longs
         final long mask = (1L << kSize*2) - 1L;
@@ -92,7 +92,7 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
      * The reverse-complement of a non-canonical SVKmerShort is a canonical SVKmerShort, and vice versa.  (Think about it.)
      * Canonical form is not defined for even-K Kmers (too expensive to compute routinely).
      */
-    public SVKmerShort canonical(final int kSize ) {
+    public SVKmerShort canonical( final int kSize ) {
         Utils.validateArg( (kSize & 1) != 0, "K must be odd to canonicalize.");
         // test middle base's value by ANDing with 1.  if it's zero the middle base is A or C and we're good to go.
         if ( ((valLow >> kSize) & 1L) == 0 ) return this;
@@ -102,6 +102,8 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
 
     public final Base firstBase( final int kSize ) { return Base.values()[(int)(valLow >> (kSize*2-2))]; }
     public final Base lastBase() { return Base.values()[(int)(valLow & 3)]; }
+    public final int firstTrimer(final int kSize ) { return (int)(valLow >>> (kSize*2-6)); }
+    public final int lastTrimer() { return (int)valLow & 0x3F; }
 
     @Override
     public boolean equals( final Object obj ) {
@@ -147,12 +149,12 @@ public class SVKmerShort extends SVKmer implements Comparable<SVKmerShort> {
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SVKmerShort> {
         @Override
-        public void write(final Kryo kryo, final Output output, final SVKmerShort svKmer ) {
+        public void write( final Kryo kryo, final Output output, final SVKmerShort svKmer ) {
             svKmer.serialize(kryo, output);
         }
 
         @Override
-        public SVKmerShort read(final Kryo kryo, final Input input, final Class<SVKmerShort> klass ) {
+        public SVKmerShort read( final Kryo kryo, final Input input, final Class<SVKmerShort> klass ) {
             return new SVKmerShort(kryo, input);
         }
     }

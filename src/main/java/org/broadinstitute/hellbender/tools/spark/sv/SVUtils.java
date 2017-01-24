@@ -25,7 +25,8 @@ public final class SVUtils {
      * Read a file of kmers.
      * Each line must be exactly SVConstants.KMER_SIZE characters long, and must match [ACGT]*.
      */
-    public static Set<SVKmer> readKmersFile(final int kSize, final String kmersFile, final PipelineOptions popts ) {
+    public static Set<SVKmer> readKmersFile( final int kSize, final String kmersFile, final PipelineOptions popts,
+                                             final SVKmer kmer ) {
         final Set<SVKmer> kmers;
 
         try ( final BufferedReader rdr =
@@ -35,11 +36,11 @@ public final class SVUtils {
             String line;
             while ( (line = rdr.readLine()) != null ) {
                 if ( line.length() != kSize ) {
-                    throw new GATKException("SVKmerLong kill set contains a line of length " + line.length() +
+                    throw new GATKException("SVKmer kill set contains a line of length " + line.length() +
                             " but we were expecting K=" + kSize);
                 }
 
-                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, new SVKmerLong(kSize));
+                final SVKmerizer kmerizer = new SVKmerizer(line, kSize, kmer);
                 if ( !kmerizer.hasNext() ) {
                     throw new GATKException("Unable to kmerize the kmer kill set string '" + line + "'.");
                 }

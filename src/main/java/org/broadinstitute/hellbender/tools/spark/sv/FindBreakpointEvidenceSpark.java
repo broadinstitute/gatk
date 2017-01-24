@@ -46,8 +46,8 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Argument(doc = "Kmer size.", fullName = "kSize")
     private int kSize = defaultParams.kSize;
 
-    @Argument(doc = "Minimum kmer entropy", fullName = "kmerEntropy")
-    private double minEntropy = defaultParams.minEntropy;
+    @Argument(doc = "maximum kmer DUST score", fullName = "kmerMaxDUSTScore")
+    private int maxDUSTScore = SVConstants.MAX_DUST_SCORE;
 
     @Argument(doc = "The minimum mapping quality for reads used to gather evidence of breakpoints.",
             fullName = "minEvidenceMapQ", optional = true)
@@ -100,7 +100,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Argument(doc = "Include read mapping location in FASTQ files.", fullName = "includeMappingLocation")
     private boolean includeMappingLocation = true;
 
-    @Argument(doc = "Include read mapping location in FASTQ files.", fullName = "intervalOnlyAssembly")
+    @Argument(doc = "Don't look for extra reads mapped outside the interval.", fullName = "intervalOnlyAssembly")
     private boolean intervalOnlyAssembly = false;
 
     // --------- locations ----------
@@ -162,7 +162,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 new Locations(metadataFile, evidenceDir, intervalFile, qNamesMappedFile,
                                 kmerFile, qNamesAssemblyFile, exclusionIntervalsFile);
         final Params params =
-                new Params(kSize, minEntropy, minEvidenceMapQ, minEvidenceMatchLength, maxIntervalCoverage,
+                new Params(kSize, maxDUSTScore, minEvidenceMapQ, minEvidenceMatchLength, maxIntervalCoverage,
                             minEvidenceCount, minKmersPerInterval, cleanerMaxIntervals, cleanerMinKmerCount,
                             cleanerMaxKmerCount, cleanerKmersPerPartitionGuess, maxQNamesPerKmer, assemblyKmerMapSize,
                             assemblyToMappedSizeRatioGuess, maxFASTQSize, exclusionIntervalPadding);
@@ -358,7 +358,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final Locations locations,
             final PipelineOptions pipelineOptions )
     {
-        final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFile, pipelineOptions);
+        final Set<SVKmer> kmerKillSet = SVUtils.readKmersFile(params.kSize, kmersToIgnoreFile, pipelineOptions, new SVKmerLong(params.kSize));
         log("Ignoring " + kmerKillSet.size() + " genomically common kmers.");
 
         final Tuple2<Map<Integer, String>, List<KmerAndInterval>> kmerIntervalsAndDispositions =
@@ -440,14 +440,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                 ctx.broadcast(kmerMultiMap);
 
         final int kSize = params.kSize;
-        final double minEntropy = params.minEntropy;
+        final int maxDUSTScore = params.maxDUSTScore;
         final int maxQNamesPerKmer = params.maxQNamesPerKmer;
         final int kmerMapSize = params.assemblyKmerMapSize;
         final List<QNameAndInterval> qNames =
             reads
                 .mapPartitionsToPair(readItr ->
                         new MapPartitioner<>(readItr,
-                                new QNamesForKmersFinder(kSize, minEntropy, broadcastKmerMultiMap.value())).iterator(), false)
+                                new QNamesForKmersFinder(kSize, maxDUSTScore, broadcastKmerMultiMap.value())).iterator(), false)
                 .mapPartitions(pairItr ->
                         new KmerQNameToQNameIntervalMapper(broadcastKmerMultiMap.value(),
                                                             maxQNamesPerKmer,
@@ -481,13 +481,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final int maxKmers = params.cleanerMaxKmerCount;
         final int maxIntervals = params.cleanerMaxIntervals;
         final int kSize = params.kSize;
-        final double minEntropy = params.minEntropy;
+        final int maxDUSTScore = params.maxDUSTScore;
         final List<KmerAndInterval> kmerIntervals =
             reads
                 .mapPartitionsToPair(readItr ->
                         new MapPartitioner<>(readItr,
                             new QNameKmerizer(broadcastQNameAndIntervalsMultiMap.value(),
-                                            broadcastKmerKillSet.value(), kSize, minEntropy)).iterator(), false)
+                                            broadcastKmerKillSet.value(), kSize, maxDUSTScore)).iterator(), false)
                 .reduceByKey(Integer::sum)
                 .mapPartitions(itr -> new KmerCleaner(itr, kmersPerPartitionGuess, minKmers, maxKmers, maxIntervals).iterator())
                 .collect();
@@ -743,7 +743,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     @VisibleForTesting static class Params {
         public final int kSize;
-        public final double minEntropy;
+        public final int maxDUSTScore;
         public final int minEvidenceMapQ;
         public final int minEvidenceMatchLength;
         public final int maxIntervalCoverage;
@@ -761,7 +761,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
         public Params() {
             kSize = SVConstants.KMER_SIZE;          // kmer size
-            minEntropy = SVConstants.MIN_ENTROPY;   // minimum kmer entropy
+            maxDUSTScore = SVConstants.MAX_DUST_SCORE;// maximum for DUST-like kmer complexity score
             minEvidenceMapQ = 20;                   // minimum map quality for evidential reads
             minEvidenceMatchLength = 45;            // minimum match length
             maxIntervalCoverage = 1000;             // maximum coverage on breakpoint interval
@@ -778,14 +778,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             exclusionIntervalPadding = 0;           // exclusion interval extra padding
         }
 
-        public Params( final int kSize, final double minEntropy, final int minEvidenceMapQ,
+        public Params( final int kSize, final int maxDUSTScore, final int minEvidenceMapQ,
                        final int minEvidenceMatchLength, final int maxIntervalCoverage, final int minEvidenceCount,
                        final int minKmersPerInterval, final int cleanerMaxIntervals, final int cleanerMinKmerCount,
                        final int cleanerMaxKmerCount, final int cleanerKmersPerPartitionGuess,
                        final int maxQNamesPerKmer, final int asemblyKmerMapSize, final int assemblyToMappedSizeRatioGuess,
                        final int maxFASTQSize, final int exclusionIntervalPadding ) {
             this.kSize = kSize;
-            this.minEntropy = minEntropy;
+            this.maxDUSTScore = maxDUSTScore;
             this.minEvidenceMapQ = minEvidenceMapQ;
             this.minEvidenceMatchLength = minEvidenceMatchLength;
             this.maxIntervalCoverage = maxIntervalCoverage;
@@ -1135,15 +1135,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         private final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap;
         private final Set<SVKmer> kmersToIgnore;
         private final int kSize;
-        private final double minEntropy;
+        private final int maxDUSTScore;
         private final ArrayList<Tuple2<KmerAndInterval, Integer>> tupleList = new ArrayList<>();
 
         QNameKmerizer(final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap,
-                      final Set<SVKmer> kmersToIgnore, final int kSize, final double minEntropy ) {
+                      final Set<SVKmer> kmersToIgnore, final int kSize, final int maxDUSTScore ) {
             this.qNameAndIntervalMultiMap = qNameAndIntervalMultiMap;
             this.kmersToIgnore = kmersToIgnore;
             this.kSize = kSize;
-            this.minEntropy = minEntropy;
+            this.maxDUSTScore = maxDUSTScore;
         }
 
         @Override
@@ -1153,7 +1153,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             tupleList.clear();
             while ( names.hasNext() ) {
                 final int intervalId = names.next().getIntervalId();
-                SVKmerizerWithLowComplexityFilter.stream(read.getBases(), kSize, minEntropy)
+                SVDUSTFilteredKmerizer.stream(read.getBases(), kSize, maxDUSTScore, new SVKmerLong())
                         .map(kmer -> kmer.canonical(kSize))
                         .filter(kmer -> !kmersToIgnore.contains(kmer))
                         .map(kmer -> new KmerAndInterval(kmer, intervalId))
@@ -1201,20 +1201,20 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
      */
     private static final class QNamesForKmersFinder implements Function<GATKRead, Iterator<Tuple2<SVKmer, String>>> {
         private final int kSize;
-        private final double minEntropy;
+        private final int maxDUSTScore;
         private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap;
 
-        QNamesForKmersFinder( final int kSize, final double minEntropy,
+        QNamesForKmersFinder( final int kSize, final int maxDUSTScore,
                               final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMultiMap ) {
             this.kSize = kSize;
-            this.minEntropy = minEntropy;
+            this.maxDUSTScore = maxDUSTScore;
             this.kmerMultiMap = kmerMultiMap;
         }
 
         @Override
         public Iterator<Tuple2<SVKmer, String>> apply(final GATKRead read ) {
             List<Tuple2<SVKmer, String>> results = new ArrayList<>();
-            SVKmerizerWithLowComplexityFilter.stream(read.getBases(), kSize, minEntropy)
+            SVDUSTFilteredKmerizer.stream(read.getBases(), kSize, maxDUSTScore, new SVKmerLong())
                     .map( kmer -> kmer.canonical(kSize) )
                     .forEach( kmer -> {
                         final Iterator<KmerAndInterval> itr = kmerMultiMap.findEach(kmer);

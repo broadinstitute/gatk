@@ -29,7 +29,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         final byte[] polyC = new byte[KMER_SIZE]; Arrays.fill(polyC, (byte)'C');
         final byte[] polyT = new byte[KMER_SIZE]; Arrays.fill(polyT, (byte)'T');
 
-        int nTimes = FindBadGenomicKmersSpark.MAX_KMER_FREQ.intValue();
+        int nTimes = FindBadGenomicKmersSpark.MAX_KMER_FREQ;
         final List<byte[]> sequenceChunks = new ArrayList<>(nTimes*2+1);
 
         // add polyA and polyC the max number of times possible while evading the trigger
@@ -41,11 +41,14 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         sequenceChunks.add(polyT);
 
         final JavaRDD<byte[]> refRDD = SparkContextFactory.getTestSparkContext().parallelize(sequenceChunks);
-        final List<SVKmer> badKmers = FindBadGenomicKmersSpark.processRefRDD(SVConstants.KMER_SIZE, 0., refRDD);
+        final List<SVKmer> badKmers = FindBadGenomicKmersSpark.processRefRDD(KMER_SIZE,
+                                                                             Integer.MAX_VALUE,
+                                                                             FindBadGenomicKmersSpark.MAX_KMER_FREQ,
+                                                                             refRDD);
 
         // should have just one bad kmer:  polyA
         Assert.assertEquals(badKmers.size(), 1);
-        Assert.assertEquals(badKmers.get(0), SVKmerizer.toKmer(polyA,new SVKmerLong(polyA.length)));
+        Assert.assertEquals(badKmers.get(0), SVKmerizer.toKmer(polyA,new SVKmerLong()));
     }
 
     @Test(groups = "spark")
@@ -61,7 +64,7 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         for ( final SAMSequenceRecord rec : dict.getSequences() ) {
             final SimpleInterval interval = new SimpleInterval(rec.getSequenceName(), 1, rec.getSequenceLength());
             final byte[] bases = ref.getReferenceBases(null, interval).getBases();
-            final SVKmerizer kmerizer = new SVKmerizer(bases, KMER_SIZE, new SVKmerLong(KMER_SIZE));
+            final SVKmerizer kmerizer = new SVKmerizer(bases, KMER_SIZE, new SVKmerLong());
             while ( kmerizer.hasNext() ) {
                 final SVKmer kmer = kmerizer.next().canonical(KMER_SIZE);
                 final Long currentCount = kmerMap.getOrDefault(kmer, 0L);
@@ -75,26 +78,9 @@ public class FindBadGenomicKmersSparkUnitTest extends BaseTest {
         }
 
         final List<SVKmer> badKmers =
-                FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, SVConstants.KMER_SIZE, 0., ref, null, null);
+                FindBadGenomicKmersSpark.findBadGenomicKmers(ctx, KMER_SIZE, Integer.MAX_VALUE, ref, null, null);
         final Set<SVKmer> badKmerSet = new HashSet<>(badKmers);
         Assert.assertEquals(badKmers.size(), badKmerSet.size());
         Assert.assertEquals(badKmerSet, kmerMap.keySet());
-    }
-
-    @Test(groups = "spark")
-    public void intervalTest() {
-        final ReferenceMultiSource ref =
-                new ReferenceMultiSource((PipelineOptions)null, REFERENCE_FILE_NAME,
-                        ReferenceWindowFunctions.IDENTITY_FUNCTION);
-        final List<String> intervals =
-                Collections.singletonList("1:13851-13901");
-        final List<SVKmer> kmers = FindBadGenomicKmersSpark.processIntervals(SVConstants.KMER_SIZE,
-                SVConstants.MIN_ENTROPY,
-                intervals,
-                ref,
-                null);
-        Assert.assertEquals(kmers.size(), 1);
-        final String seq = "CCCTTTCTATAATAACTAAAGTTAGCTGCCCTGGACTATTCACCCCCTAGT";
-        Assert.assertEquals(kmers.get(0), SVKmerizer.toKmer(seq,new SVKmerLong(seq.length())));
     }
 }
