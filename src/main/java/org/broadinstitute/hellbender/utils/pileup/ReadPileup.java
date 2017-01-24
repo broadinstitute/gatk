@@ -357,37 +357,40 @@ public final class ReadPileup implements Iterable<PileupElement> {
     public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker, SAMFileHeader header) {
         List<PileupElement> filteredPileupList = new ArrayList<PileupElement>();
 
-        for( Map.Entry<String, ReadPileup> pileup : this.splitBySample(header, null).entrySet()) {
-            Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
-            Set<String> readNamesDeleted = new HashSet<>();
-
-            for (PileupElement p : pileup.getValue()) {
-                String readName = p.getRead().getName();
-
-                // if we've never seen this read before, life is good
-                if (!filteredPileup.containsKey(readName)) {
-                    if(!readNamesDeleted.contains(readName)) {
-                        filteredPileup.put(readName, p);
-                    }
-                } else {
-                    PileupElement existing = filteredPileup.get(readName);
-
-                    // if the reads disagree at this position, throw them all out.  Otherwise
-                    // keep the element with the highest quality score
-                    if (discardDiscordant && existing.getBase() != p.getBase()) {
-                        filteredPileup.remove(readName);
-                        readNamesDeleted.add(readName);
-                    } else {
-                        if (tieBreaker.compare(existing, p) < 0) {
-                            filteredPileup.put(readName, p);
-                        }
-                    }
-                }
-            }
-            filteredPileupList.addAll(filteredPileup.values());
+        for (ReadPileup pileup : this.splitBySample(header, null).values()) {
+            Collection<PileupElement> elements = filterSingleSampleForOverlaps(pileup, tieBreaker, discardDiscordant);
+            filteredPileupList.addAll(elements);
         }
 
         return new ReadPileup(loc, filteredPileupList);
+    }
+
+    private Collection<PileupElement> filterSingleSampleForOverlaps(ReadPileup pileup, Comparator<PileupElement> tieBreaker, boolean discardDiscordant) {
+        Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
+        Set<String> readNamesDeleted = new HashSet<>();
+
+        for (PileupElement p : pileup) {
+            String readName = p.getRead().getName();
+
+            // if we've never seen this read before, life is good
+            if (!filteredPileup.containsKey(readName)) {
+                if(!readNamesDeleted.contains(readName)) {
+                    filteredPileup.put(readName, p);
+                }
+            } else {
+                PileupElement existing = filteredPileup.get(readName);
+
+                // if the reads disagree at this position, throw them all out.  Otherwise
+                // keep the element with the highest quality score
+                if (discardDiscordant && existing.getBase() != p.getBase()) {
+                    filteredPileup.remove(readName);
+                    readNamesDeleted.add(readName);
+                } else if (tieBreaker.compare(existing, p) < 0) {
+                    filteredPileup.put(readName, p);
+                }
+            }
+        }
+        return(filteredPileup.values());
     }
 
     @Override
