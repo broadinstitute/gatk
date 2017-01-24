@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * <p/>
@@ -215,12 +216,7 @@ public final class SamToFastq extends PicardCommandLineProgram {
                 final FastqWriter firstOfPairWriter = factory.newWriter(makeReadGroupFile(rg, "_1"));
                 // Create this writer on-the-fly; if we find no second-of-pair reads, don't bother making a writer (or delegating,
                 // if we're interleaving).
-                final Lazy<FastqWriter> lazySecondOfPairWriter = new Lazy<>(new Lazy.LazyInitializer<FastqWriter>() {
-                    @Override
-                    public FastqWriter make() {
-                        return INTERLEAVE ? firstOfPairWriter : factory.newWriter(makeReadGroupFile(rg, "_2"));
-                    }
-                });
+                final Lazy<FastqWriter> lazySecondOfPairWriter = new Lazy<>(() -> INTERLEAVE ? firstOfPairWriter : factory.newWriter(makeReadGroupFile(rg, "_2")));
                 writerMap.put(rg, new FastqWriters(firstOfPairWriter, lazySecondOfPairWriter, firstOfPairWriter));
             }
         }
@@ -403,12 +399,7 @@ public final class SamToFastq extends PicardCommandLineProgram {
 
         /** Simple constructor; all writers are pre-initialized.. */
         private FastqWriters(final FastqWriter firstOfPair, final FastqWriter secondOfPair, final FastqWriter unpaired) {
-            this(firstOfPair, new Lazy<>(new Lazy.LazyInitializer<FastqWriter>() {
-                @Override
-                public FastqWriter make() {
-                    return secondOfPair;
-                }
-            }), unpaired);
+            this(firstOfPair, new Lazy<FastqWriter>(() -> secondOfPair), unpaired);
         }
 
         public FastqWriter getFirstOfPair() {
