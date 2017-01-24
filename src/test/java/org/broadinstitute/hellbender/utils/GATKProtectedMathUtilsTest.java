@@ -34,13 +34,6 @@ public class GATKProtectedMathUtilsTest {
     }
 
     @Test
-    public void interquartileRangeTest() {
-        Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[]{1, 2, 3, 4, 5}), 3, 0.001);
-        Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[]{4, 2, 1, 5, 3}), 3, 0.001);
-        Assert.assertEquals(GATKProtectedMathUtils.interquartileRange(new double[]{1, 2, 3, 4, 5, 6, 7, 8, 9}), 5, 0.001);
-    }
-
-    @Test
     public void testMean() {
         Assert.assertEquals (GATKProtectedMathUtils.mean(0, 1, 2), 1, 1e-10);
         Assert.assertEquals (GATKProtectedMathUtils.mean(0, 1), 0.5, 1e-10);
@@ -98,15 +91,6 @@ public class GATKProtectedMathUtilsTest {
         final double[][] array = { {1,2,3}, {4,5,6}, {7,8,9}};
         final double[] columnMeans = GATKProtectedMathUtils.columnMeans(new Array2DRowRealMatrix(array).transpose());
         Assert.assertEquals(columnMeans, new double[]{2, 5, 8});
-    }
-
-    @Test
-    public void testColumnVariances() {
-        final double[][] array = { {1,2,3}, {5,5,5}, {7,8,9}};
-        final double[] columnVariances = GATKProtectedMathUtils.columnVariances(new Array2DRowRealMatrix(array).transpose());
-        Assert.assertEquals(columnVariances[0], 1, 1e-8);
-        Assert.assertEquals(columnVariances[1], 0, 1e-8);
-        Assert.assertEquals(columnVariances[2], 1, 1e-8);
     }
 
     @Test

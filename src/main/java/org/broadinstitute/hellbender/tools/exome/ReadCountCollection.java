@@ -3,10 +3,7 @@ package org.broadinstitute.hellbender.tools.exome;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
-import org.apache.commons.math3.linear.DefaultRealMatrixPreservingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
@@ -299,71 +296,6 @@ public final class ReadCountCollection implements Serializable {
             counts.setRow(i, this.counts.getRow(targetToIndex.getInt(target)));
         }
         return new ReadCountCollection(new ArrayList<>(targetsInOrder), columnNames, counts, false);
-    }
-
-    /**
-     * Divide coverage at each target and each column by the average of that column.
-     * @param weightByTargetSize whether to use a weighted average with weights given by target sizes
-     * @return a new collection.
-     * @throws IllegalArgumentException if {@code weightByTargetSize} is {@code true} but any target
-     * is missing an interval.
-     */
-    public ReadCountCollection normalizeByColumnAverages(final boolean weightByTargetSize) {
-        final RealMatrix normalizedCounts = counts().copy();
-        final double[] columnWeightedMeans = calculateColumnWeightedMeans(weightByTargetSize);
-        normalizedCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-                @Override
-                public double visit(final int target, final int column, final double coverage) {
-                    return coverage / columnWeightedMeans[column];
-                }
-        });
-
-        return new ReadCountCollection(targets, columnNames, normalizedCounts, false);
-    }
-
-    private double[] calculateColumnWeightedMeans(final boolean weightByTargetSize) {
-        if (!weightByTargetSize) {
-            return GATKProtectedMathUtils.columnMeans(counts);
-        } else {
-            final long[] weights;
-            try {
-                weights = targets.stream().mapToLong(Target::length).toArray();
-            } catch (final IllegalStateException e) {
-                throw new IllegalArgumentException("Weighting by target size requested but at least one target lacks an interval");
-            }
-            final long totalWeight = Arrays.stream(weights).sum();
-
-            final double[] result = new double[counts.getColumnDimension()]; // elements initialized to 0.0
-
-            counts.walkInOptimizedOrder(new DefaultRealMatrixPreservingVisitor() {
-                @Override
-                public void visit(final int target, final int column, final double coverage) {
-                    result[column] += weights[target] * coverage / totalWeight;
-                }
-            });
-            return result;
-        }
-    }
-
-    /**
-     * Express coverage in terms of Z scores with respect to the coverage distribution of the corresponding target.
-     * @return a new collection.
-     */
-    public ReadCountCollection zScoreCounts() {
-        final RealMatrix zScoreCounts = counts().copy();    //we will edit the matrix in-place
-
-        final double[] targetMeans = GATKProtectedMathUtils.rowMeans(zScoreCounts);
-        final double[] targetVariances = GATKProtectedMathUtils.rowVariances(zScoreCounts);
-        final double[] targetStandardDeviations = Arrays.stream(targetVariances).map(Math::sqrt).toArray();
-
-        zScoreCounts.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
-            @Override
-            public double visit(final int target, final int column, final double coverage) {
-                return (coverage - targetMeans[target]) / targetStandardDeviations[target];
-            }
-        });
-
-        return new ReadCountCollection(targets, columnNames, zScoreCounts, false);
     }
 
     /**
