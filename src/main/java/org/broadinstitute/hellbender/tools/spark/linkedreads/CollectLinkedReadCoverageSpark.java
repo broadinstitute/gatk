@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
+import avro.shaded.com.google.common.collect.Iterators;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Interval;
@@ -168,30 +169,44 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         if (tree1 == null || tree1.size() == 0) return tree2;
         if (tree2 == null || tree2.size() == 0) return tree1;
 
-        tree1.iterator().forEachRemaining(node -> tree2.put(node.getStart(), node.getEnd(), node.getValue()));
-
         final IntervalTree<List<T>> mergedTree = new IntervalTree<>();
 
-        while (tree2.size() > 0) {
-            final IntervalTree.Node<List<T>> current = tree2.min();
-            final int currentStart = current.getStart();
-            int currentEnd = current.getEnd();
-            final List<T> currentValue = current.getValue();
+        PriorityQueue<IntervalTree.Node<List<T>>> nodes = new PriorityQueue<>(tree1.size() + tree2.size(), Comparator.comparingInt(IntervalTree.Node::getStart));
+        tree1.iterator().forEachRemaining(nodes::add);
+        tree2.iterator().forEachRemaining(nodes::add);
 
-            final Iterator<IntervalTree.Node<List<T>>> overlappers = tree2.overlappers(current.getStart() - clusterSize, current.getEnd() + clusterSize);
-            while (overlappers.hasNext()) {
-                final IntervalTree.Node<List<T>> overlapper = overlappers.next();
-                if (overlapper == current) {
-                    continue;
+        int currentStart = -1;
+        int currentEnd = -1;
+        List<T> values = new ArrayList<T>();
+        while (nodes.size() > 0) {
+            IntervalTree.Node<List<T>> next = nodes.poll();
+            if (currentStart == -1) {
+                currentStart = next.getStart();
+                currentEnd = next.getEnd();
+                values = new ArrayList<T>(next.getValue());
+            } else {
+                if (overlaps(next, currentStart, currentEnd, clusterSize)) {
+                    currentEnd = Math.max(currentEnd, next.getEnd());
+                    values.addAll(next.getValue());
+                } else {
+                    // no overlap, so put the previous node in and set up the next set of values
+                    mergedTree.put(currentStart, currentEnd, values);
+                    currentStart = next.getStart();
+                    currentEnd = next.getEnd();
+                    values = new ArrayList<T>(next.getValue());
                 }
-                currentEnd = overlapper.getEnd();
-                currentValue.addAll(overlapper.getValue());
-                overlappers.remove();
             }
-            mergedTree.put(currentStart, currentEnd, currentValue);
-            tree2.remove(current.getStart(), current.getEnd());
+
         }
+        if (currentStart != -1) {
+            mergedTree.put(currentStart, currentEnd, values);
+        }
+
         return mergedTree;
+    }
+
+    private static <T extends Locatable> boolean overlaps(final IntervalTree.Node<List<T>> node, final int start, final int end, final int clusterSize) {
+        return end + clusterSize > node.getStart() - clusterSize;
     }
 
     public static <T extends Locatable>  String intervalTreeToBedRecord(final String barcode, final String contig, final IntervalTree.Node<List<T>> node) {

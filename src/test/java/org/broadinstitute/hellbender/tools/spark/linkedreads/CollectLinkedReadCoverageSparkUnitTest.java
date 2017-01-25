@@ -26,6 +26,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(stringIntervalTreeMap.get("1").size(), 1);
         final IntervalTree.Node<List<GATKRead>> node = stringIntervalTreeMap.get("1").find(1750, 1849);
         Assert.assertNotNull(node);
+        Assert.assertEquals(node.getStart(), 1750);
         Assert.assertEquals(node.getEnd(), 1849);
         Assert.assertEquals(node.getValue().size(), 1);
 
@@ -35,22 +36,33 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(stringIntervalTreeMap2.get("1").size(), 1);
         final IntervalTree.Node<List<GATKRead>> node2 = stringIntervalTreeMap2.get("1").find(1750, 1999);
         Assert.assertNotNull(node2);
+        Assert.assertEquals(node2.getStart(), 1750);
         Assert.assertEquals(node2.getEnd(), 1999);
         Assert.assertEquals(node2.getValue().size(), 2);
 
-        final GATKRead read3 = ArtificialReadUtils.createSamBackedRead("C", "2", 500, 100);
+        final GATKRead read3 = ArtificialReadUtils.createSamBackedRead("D", "1", 3500, 100);
         final Map<String, IntervalTree<List<GATKRead>>> stringIntervalTreeMap3 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read3, 1000);
         Assert.assertNotNull(stringIntervalTreeMap3.get("1"));
         Assert.assertEquals(stringIntervalTreeMap3.get("1").size(), 1);
         final IntervalTree.Node<List<GATKRead>> node3 = stringIntervalTreeMap3.get("1").find(1750, 1999);
         Assert.assertNotNull(node3);
-        Assert.assertEquals(node3.getValue().size(), 2);
+        Assert.assertEquals(node3.getStart(), 1750);
+        Assert.assertEquals(node3.getEnd(), 3599);
+        Assert.assertEquals(node3.getValue().size(), 3);
 
-        Assert.assertNotNull(stringIntervalTreeMap3.get("2"));
-        Assert.assertEquals(stringIntervalTreeMap3.get("2").size(), 1);
-        final IntervalTree.Node<List<GATKRead>> node4 = stringIntervalTreeMap3.get("2").find(500, 599);
+        final GATKRead read4 = ArtificialReadUtils.createSamBackedRead("C", "2", 500, 100);
+        final Map<String, IntervalTree<List<GATKRead>>> stringIntervalTreeMap4 = CollectLinkedReadCoverageSpark.addReadToIntervals(intervals, read4, 1000);
+        Assert.assertNotNull(stringIntervalTreeMap4.get("1"));
+        Assert.assertEquals(stringIntervalTreeMap4.get("1").size(), 1);
+        final IntervalTree.Node<List<GATKRead>> node4 = stringIntervalTreeMap4.get("1").find(1750, 1999);
         Assert.assertNotNull(node4);
-        Assert.assertEquals(node4.getValue().size(), 1);
+        Assert.assertEquals(node4.getValue().size(), 2);
+
+        Assert.assertNotNull(stringIntervalTreeMap4.get("2"));
+        Assert.assertEquals(stringIntervalTreeMap4.get("2").size(), 1);
+        final IntervalTree.Node<List<GATKRead>> node5 = stringIntervalTreeMap4.get("2").find(500, 599);
+        Assert.assertNotNull(node5);
+        Assert.assertEquals(node5.getValue().size(), 1);
 
     }
 
@@ -75,19 +87,24 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         resultList3.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1540, 100));
         resultList3.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1544, 100));
         resultList3.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 1550, 100));
-        tree2.put(1500, 2001, resultList3);
+        tree2.put(1500, 1649, resultList3);
         final List<GATKRead> resultList4 = new ArrayList<>();
         resultList4.add(ArtificialReadUtils.createArtificialRead(artificialSamHeader, "1", 0, 3300, 200));
         tree2.put(3300, 3500, resultList4);
 
-        final IntervalTree<List<GATKRead>> mergedTree = CollectLinkedReadCoverageSpark.mergeIntervalTrees(tree1, tree2, 500);
+        final IntervalTree<List<GATKRead>> mergedTree = CollectLinkedReadCoverageSpark.mergeIntervalTrees(tree1, tree2, 250);
         Assert.assertEquals(mergedTree.size(), 2);
-        final IntervalTree.Node<List<GATKRead>> mergedNode1 = mergedTree.find(1000, 2001);
+        final IntervalTree.Node<List<GATKRead>> mergedNode1 = mergedTree.find(1000, 1649);
         Assert.assertNotNull(mergedNode1);
+        Assert.assertEquals(mergedNode1.getStart(), 1000);
+        Assert.assertEquals(mergedNode1.getEnd(), 1649);
         Assert.assertEquals(mergedNode1.getValue().size(), 14);
 
         final IntervalTree.Node<List<GATKRead>> mergedNode2 = mergedTree.find(3000, 3500);
         Assert.assertNotNull(mergedNode2);
+        Assert.assertEquals(mergedNode2.getStart(), 3000);
+        Assert.assertEquals(mergedNode2.getEnd(), 3500);
+
         Assert.assertEquals(mergedNode2.getValue().size(), 4);
 
     }
