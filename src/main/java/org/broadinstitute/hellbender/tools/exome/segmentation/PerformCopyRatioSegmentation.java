@@ -1,19 +1,19 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import com.google.cloud.dataflow.sdk.repackaged.com.google.common.primitives.Doubles;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.exome.*;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollectionUtils;
+import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Created by davidben on 5/23/16.
@@ -54,20 +54,16 @@ public final class PerformCopyRatioSegmentation extends CommandLineProgram {
     @Override
     public Object doWork() {
         final String sampleName = ReadCountCollectionUtils.getSampleNameForCLIsFromReadCountsFile(new File(coverageFile));
-        final ReadCountCollection counts;
+        final ReadCountCollection rcc;
         try {
-            counts = ReadCountCollectionUtils.parse(new File(coverageFile));
+            rcc = ReadCountCollectionUtils.parse(new File(coverageFile));
         } catch (final IOException ex) {
             throw new UserException.BadInput("could not read input file");
         }
 
-        final List<Double> coverage = Doubles.asList(counts.counts().getColumn(0));
-        final List<SimpleInterval> intervals = counts.targets().stream().map(Target::getInterval).collect(Collectors.toList());
-        final CopyRatioSegmenter segmenter = new CopyRatioSegmenter(initialNumStates, intervals, coverage);
-        final List<ModeledSegment> segmentsWithLog2Means = segmenter.findSegments();
-        final List<ModeledSegment> segments = segmentsWithLog2Means.stream().map(segment ->
-                new ModeledSegment(segment.getSimpleInterval(), segment.getTargetCount(), segment.getSegmentMeanInCRSpace())).collect(Collectors.toList());;
-        SegmentUtils.writeModeledSegmentFile(outputSegmentsFile, segments, sampleName, true);
+        final CopyRatioSegmenter segmenter = new CopyRatioSegmenter(initialNumStates, rcc);
+        final List<ModeledSegment> segments = segmenter.getModeledSegments();
+        SegmentUtils.writeModeledSegmentFile(outputSegmentsFile, segments, sampleName, false);
 
         return "SUCCESS";
     }

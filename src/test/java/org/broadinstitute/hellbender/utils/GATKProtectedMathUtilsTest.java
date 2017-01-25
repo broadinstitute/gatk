@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
@@ -274,10 +275,10 @@ public class GATKProtectedMathUtilsTest {
     public void testMaxDifference() {
         final double[] array1 = {0.0, 1.0, 2.0};
         final double[] array2 = {-0.1, 1.05, 2.0};
-        Assert.assertEquals(GATKProtectedMathUtils.maxDifference(array1, array2), 0.1, 1e-10);
+        Assert.assertEquals(GATKProtectedMathUtils.maxDifference(Doubles.asList(array1), Doubles.asList(array2)), 0.1, 1e-10);
 
         final double[] array3 = {0.0, 1.0, 2.0, 3.0};
         final double[] array4 = {0.0, 1.0, 2.0, 0.0};
-        Assert.assertEquals(GATKProtectedMathUtils.maxDifference(array3, array4), 3.0, 1e-10);
+        Assert.assertEquals(GATKProtectedMathUtils.maxDifference(Doubles.asList(array3), Doubles.asList(array4)), 3.0, 1e-10);
     }
 }

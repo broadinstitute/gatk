@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
+import com.google.common.primitives.Doubles;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionGlobalParameters;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionLikelihoods;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
@@ -9,6 +10,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * The Allele Fraction Hidden Markov Model is a generative model describing latent CNV states
@@ -23,7 +25,7 @@ import java.util.Arrays;
  * the probability to remember a state is exp(-d/memoryLength).  If the state is forgotten, a new state
  * is chosen with probabilities given by an array of weights.
  *
- * Thus our transition probabilities are P(i -> j) = exp(-d/D) delta_{ij} + (1 - exp(-d/D) weights[j]
+ * Thus our transition probabilities are P(i -> j) = exp(-d/D) delta_{ij} + (1 - exp(-d/D)) weights[j]
  * where delta is the Kronecker delta and D is the memory length.
  *
  * Emission likelihoods as a function of minor allele fraction are defined and described in
@@ -34,7 +36,7 @@ import java.util.Arrays;
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<AllelicCount> {
+public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<AllelicCount, Double> {
     private final AlleleFractionGlobalParameters parameters;
     private final AllelicPanelOfNormals allelicPoN;
 
@@ -49,25 +51,26 @@ public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<
      * @param parameters the global parameters of the allelic bias model: mean bias, bias variance, and
      *                   outlier probability
      */
-    public AlleleFractionHiddenMarkovModel(final double[] minorAlleleFractions, final double[] weights,
+    public AlleleFractionHiddenMarkovModel(final List<Double> minorAlleleFractions, final List<Double> weights,
                                            final double memoryLength, final AllelicPanelOfNormals allelicPoN,
                                            final AlleleFractionGlobalParameters parameters) {
         super(minorAlleleFractions, weights, memoryLength);
-        Arrays.stream(minorAlleleFractions).forEach(f -> ParamUtils.inRange(f, 0, 0.5, "minor fractions must be between 0 and 1/2, found " + f));
+        minorAlleleFractions.forEach(f -> ParamUtils.inRange(f, 0, 0.5, "minor fractions must be between 0 and 1/2, found " + f));
         this.allelicPoN = Utils.nonNull(allelicPoN);
         this.parameters = Utils.nonNull(parameters);
     }
 
     @Override
     public double logEmissionProbability(final AllelicCount data, final Integer state, final SimpleInterval position) {
-        return logEmissionProbability(data, hiddenStateValues[state]);
+        return logEmissionProbability(data, getHiddenStateValue(state));
     }
 
     /**
      * Visible for {@link AlleleFractionSegmenter}
      */
     @Override
-    public double logEmissionProbability(final AllelicCount data, final double minorFraction) {
+    public double logEmissionProbability(final AllelicCount data, final Double minorFraction) {
+        ParamUtils.inRange(minorFraction, 0.0, 0.5, "Minor fraction must be in [0, 1/2].");
         return logEmissionProbability(data, minorFraction, parameters, allelicPoN);
     }
 
@@ -80,7 +83,6 @@ public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<
     }
 
     public double getMinorAlleleFraction(final int state) { return getHiddenStateValue(state); }
-    public double[] getMinorFractions() { return getHiddenStateValues(); }
     public AllelicPanelOfNormals getAllelicPoN() { return allelicPoN; }
     public AlleleFractionGlobalParameters getParameters() { return parameters; }
 }
