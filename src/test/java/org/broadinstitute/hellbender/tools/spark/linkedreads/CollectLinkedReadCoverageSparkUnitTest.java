@@ -26,6 +26,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(stringIntervalTreeMap.get("1").size(), 1);
         final IntervalTree.Node<List<GATKRead>> node = stringIntervalTreeMap.get("1").find(1750, 1849);
         Assert.assertNotNull(node);
+        Assert.assertEquals(node.getEnd(), 1849);
         Assert.assertEquals(node.getValue().size(), 1);
 
         final GATKRead read2 = ArtificialReadUtils.createSamBackedRead("B", "1", 1900, 100);
@@ -34,6 +35,7 @@ public class CollectLinkedReadCoverageSparkUnitTest {
         Assert.assertEquals(stringIntervalTreeMap2.get("1").size(), 1);
         final IntervalTree.Node<List<GATKRead>> node2 = stringIntervalTreeMap2.get("1").find(1750, 1999);
         Assert.assertNotNull(node2);
+        Assert.assertEquals(node2.getEnd(), 1999);
         Assert.assertEquals(node2.getValue().size(), 2);
 
         final GATKRead read3 = ArtificialReadUtils.createSamBackedRead("C", "2", 500, 100);

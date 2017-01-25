@@ -116,18 +116,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
 
     }
 
-    private List<GATKRead> getuIterator(final SAMFileHeader headerForReads, final Tuple2<String, Map<String, IntervalTree<List<GATKRead>>>> x) {
-        final String barcode = x._1;
-        final Map<String, IntervalTree<List<GATKRead>>> contigIntervalTreeMap = x._2;
-        final List<GATKRead> results = new ArrayList<>();
-        for (final String contig : contigIntervalTreeMap.keySet()) {
-            for (final IntervalTree.Node<List<GATKRead>> next : contigIntervalTreeMap.get(contig)) {
-                results.add(intervalTreeToGATKRead(barcode, contig, headerForReads, next));
-            }
-        }
-        return results;
-    }
-
 
     @VisibleForTesting
     static <T extends Locatable> Map<String, IntervalTree<List<T>>> addReadToIntervals(final Map<String, IntervalTree<List<T>>> intervalList, final T read, final int clusterSize) {
@@ -140,27 +128,27 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
         final Iterator<IntervalTree.Node<List<T>>> iterator = contigIntervals.overlappers(sloppedReadInterval.getStart(), sloppedReadInterval.getEnd());
         int start = read.getStart();
         int end = read.getEnd();
-        final List<T> value = new ArrayList<>();
-        value.add(read);
+        final List<T> newReadList = new ArrayList<>();
+        newReadList.add(read);
         if (iterator.hasNext()) {
-            final IntervalTree.Node<List<T>> next = iterator.next();
-            final int currentStart = next.getStart();
-            final int currentEnd = next.getStart();
-            final List<T> currentValue = next.getValue();
+            final IntervalTree.Node<List<T>> existingNode = iterator.next();
+            final int currentStart = existingNode.getStart();
+            final int currentEnd = existingNode.getEnd();
+            final List<T> currentValue = existingNode.getValue();
             start = Math.min(currentStart, read.getStart());
             end = Math.max(currentEnd, read.getEnd());
-            value.addAll(currentValue);
+            newReadList.addAll(currentValue);
             iterator.remove();
         }
         while (iterator.hasNext()) {
             final IntervalTree.Node<List<T>> next = iterator.next();
             final int currentEnd = next.getStart();
             final List<T> currentValue = next.getValue();
-            end = currentEnd;
-            value.addAll(currentValue);
+            end = Math.max(end, currentEnd);
+            newReadList.addAll(currentValue);
             iterator.remove();
         }
-        contigIntervals.put(start, end, value);
+        contigIntervals.put(start, end, newReadList);
         return intervalList;
     }
 
