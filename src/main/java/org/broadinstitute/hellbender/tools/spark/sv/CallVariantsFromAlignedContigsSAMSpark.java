@@ -1,16 +1,21 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.SequenceUtil;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.collections4.IteratorUtils;
+import org.apache.logging.log4j.LogManager;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
+import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
@@ -18,7 +23,6 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,7 +51,7 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
     @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
             fullName = "minAlignLength", optional = true)
-    private Integer minAlignLength = DEFAULT_MIN_ALIGNMENT_LENGTH;
+    private Integer minAlignLength = SVConstants.CallingStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
 
     @Override
     public boolean requiresReference() {
@@ -60,19 +64,23 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
     }
 
     @Override
-    public List<ReadFilter> getDefaultReadFilters() {
-        return Collections.singletonList(ReadFilterLibrary.MAPPED);
+    public ReadFilter makeReadFilter() {
+        return ReadFilterLibrary.MAPPED;
     }
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
-        final JavaPairRDD<Tuple2<String, String>, Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey();
-        final JavaPairRDD<Tuple2<String, String>, Tuple2<Iterable<AlignmentRegion>, byte[]>> alignmentRegionsIterable = alignmentsGroupedByName.mapValues(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
+
+        final JavaRDD<Iterable<GATKRead>> alignmentsGroupedByName = getReads().mapToPair(r -> new Tuple2<>(new Tuple2<>(r.getName(), r.getName()), r)).groupByKey().map(Tuple2::_2);
+        final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable = alignmentsGroupedByName.mapToPair(CallVariantsFromAlignedContigsSAMSpark::convertToAlignmentRegions);
 
         final Integer minAlignLengthFinal = minAlignLength;
 
-        callVariantsFromAlignmentRegionsAndWriteVariants(broadcastReference, alignmentRegionsIterable, minAlignLengthFinal, fastaReference, getAuthenticatedGCSOptions(), outputPath);
+        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+
+        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(ctx.broadcast(getReference()), alignmentRegionsIterable, LogManager.getLogger(CallVariantsFromAlignedContigsSAMSpark.class));
+        SVVCFWriter.writeVCF(pipelineOptions, outputPath, SVConstants.CallingStepConstants.INVERSIONS_OUTPUT_VCF, fastaReference, variants);
     }
 
     @VisibleForTesting
