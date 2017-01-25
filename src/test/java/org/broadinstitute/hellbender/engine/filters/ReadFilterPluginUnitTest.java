@@ -259,8 +259,8 @@ public class ReadFilterPluginUnitTest {
         Assert.assertEquals(readFilters.get(1).getClass().getSimpleName(),
                 ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName());
 
-        Assert.assertEquals(readFilterPlugin.userDisabledReadFilterNames.size(), 1);
-        Assert.assertTrue(readFilterPlugin.userDisabledReadFilterNames.contains(
+        Assert.assertEquals(readFilterPlugin.userArgs.getUserDisabledReadFilterNames().size(), 1);
+        Assert.assertTrue(readFilterPlugin.userArgs.getUserDisabledReadFilterNames().contains(
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()));
         Assert.assertTrue(readFilterPlugin.isDisabledFilter(
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()));
@@ -276,7 +276,7 @@ public class ReadFilterPluginUnitTest {
                 "-disableReadFilter", filterName
         });
         // Make sure mapped filter got disabled with no exception
-        Assert.assertTrue(rfDesc.userDisabledReadFilterNames.contains(filterName));
+        Assert.assertTrue(rfDesc.userArgs.getUserDisabledReadFilterNames().contains(filterName));
         Assert.assertTrue(rfDesc.isDisabledFilter(filterName));
     }
 
@@ -309,10 +309,10 @@ public class ReadFilterPluginUnitTest {
         Assert.assertEquals(readFilters.get(0).getClass().getSimpleName(),
                 ReadFilterLibrary.MAPPED.getClass().getSimpleName());
 
-        Assert.assertEquals(readFilterPlugin.userDisabledReadFilterNames.size(), 2);
-        Assert.assertTrue(readFilterPlugin.userDisabledReadFilterNames.contains(
+        Assert.assertEquals(readFilterPlugin.userArgs.getUserDisabledReadFilterNames().size(), 2);
+        Assert.assertTrue(readFilterPlugin.userArgs.getUserDisabledReadFilterNames().contains(
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()));
-        Assert.assertTrue(readFilterPlugin.userDisabledReadFilterNames.contains(
+        Assert.assertTrue(readFilterPlugin.userArgs.getUserDisabledReadFilterNames().contains(
                 ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName()));
 
         ReadFilter rf = instantiateFilter(clp, createHeaderWithReadGroups());
@@ -349,7 +349,7 @@ public class ReadFilterPluginUnitTest {
         clp.parseArguments(nullMessageStream, args);
 
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        Assert.assertTrue(readFilterPlugin.disableToolDefaultReadFilters);
+        Assert.assertTrue(readFilterPlugin.userArgs.disableToolDefaultReadFilters());
 
         // no instances because no readFilter was provided
         List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
@@ -395,7 +395,7 @@ public class ReadFilterPluginUnitTest {
                 "-disableReadFilter", filterName});
 
         // Make sure ReadLengthReadFilter got disabled without an exception
-        Assert.assertTrue(rfDesc.userDisabledReadFilterNames.contains(filterName));
+        Assert.assertTrue(rfDesc.userArgs.getUserDisabledReadFilterNames().contains(filterName));
         Assert.assertTrue(rfDesc.isDisabledFilter(filterName));
     }
 
