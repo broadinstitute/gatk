@@ -87,10 +87,10 @@ jacocoTestReport {
 
 //NOTE: we ignore contracts for now
 compileJava {
-  options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror','-Xdiags:verbose']
+  options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror', '-Xdiags:verbose']
 }
 compileTestJava {
-  options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror','-Xdiags:verbose']
+  options.compilerArgs = ['-proc:none', '-Xlint:all','-Werror', '-Xdiags:verbose']
 }
 
 dependencies {

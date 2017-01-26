@@ -247,6 +247,10 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
         bytesReturned += bytesToCopy;
         betweenCallsToRead.reset();
         betweenCallsToRead.start();
+        if (availableToCopy == 0) {
+            // EOF
+            return -1;
+        }
         return bytesToCopy;
     }
 

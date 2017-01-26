@@ -8,6 +8,9 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import java.io.IOException;
+import java.nio.channels.SeekableByteChannel;
+import java.util.function.Function;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
@@ -19,11 +22,13 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -83,6 +88,13 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, shortName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true)
     public boolean addOutputSAMProgramRecord = true;
+
+    // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
+    @Argument(fullName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable).", optional=true)
+    public int cloudPrefetchBuffer = 40;
+
+    @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
+    private int cloudIndexPrefetchBuffer = -1;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -198,8 +210,8 @@ public abstract class GATKTool extends CommandLineProgram {
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
-
-            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory);
+            reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
+                (cloudIndexPrefetchBuffer < 0 ? cloudPrefetchBuffer : cloudIndexPrefetchBuffer));
         }
         else {
             reads = null;
