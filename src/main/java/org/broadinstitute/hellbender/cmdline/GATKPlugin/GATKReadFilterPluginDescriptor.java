@@ -35,18 +35,20 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
     @Argument(fullName = StandardArgumentDefinitions.READ_FILTER_LONG_NAME,
             shortName = StandardArgumentDefinitions.READ_FILTER_SHORT_NAME,
-            doc="Read filters to be applied before analysis", optional=true)
+            doc="Read filters to be applied before analysis", optional = true, common = true)
     public final List<String> userReadFilterNames = new ArrayList<>(); // preserve order
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME,
             shortName = StandardArgumentDefinitions.DISABLE_READ_FILTER_SHORT_NAME,
-            doc="Read filters to be disabled before analysis", optional=true)
+            doc="Read filters to be disabled before analysis", optional = true, common = true,
+            mutex = {StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS})
     public final Set<String> disableFilters = new HashSet<>();
 
-    @Argument(fullName = "disableAllReadFilters",
-            shortName = "disableAllReadFilters",
-            doc = "Disable all read filters", common = false, optional = true)
-    public boolean disableAllReadFilters = false;
+    @Argument(fullName = StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
+            shortName = StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
+            doc = "Disable all tool default read filters", optional = true, common = true,
+            mutex = {StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME})
+    public boolean disableToolDefaultReadFilters = false;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
     private Map<String, ReadFilter> readFilters = new HashMap<>();
@@ -182,6 +184,9 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
             ReadFilter rf = readFilters.get(s);
             if (rf != null) {
                 filters.add(rf);
+            } else if (disableToolDefaultReadFilters) {
+                // include in the read instances since the tool one is disabled, but it is provided by the user
+                filters.add(toolDefaultReadFilters.get(s));
             }
         });
         return filters;
@@ -260,11 +265,12 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
     /**
      * Determine if a particular ReadFilter was disabled on the command line.
-     * @param filterName name of the filter to query
-     * @return true if the name appears in the list of disabled filters
+     * @param filterName name of the filter to query.
+     * @return {@code true} if the name appears in the list of disabled filters, or is a tool default not provided by the user and all tool defaults are disabled; {@code false} otherwise.
      */
     public boolean isDisabledFilter(final String filterName) {
-        return disableFilters.contains(filterName);
+        return disableFilters.contains(filterName)
+                || (disableToolDefaultReadFilters && !userReadFilterNames.contains(filterName));
     }
 
     /**
@@ -315,13 +321,12 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         Utils.nonNull(samHeader);
         Utils.nonNull(aggregateFunction);
 
-        if (disableAllReadFilters) {
-            return aggregateFunction.apply(null, samHeader);
-        }
-
         // start with the tool's default filters in the order they were specified, and remove any that were disabled
         // on the command line
-        final List<ReadFilter> finalFilters = toolDefaultReadFilterNamesInOrder
+        // if all of them were disable, creates an empty list
+        final List<ReadFilter> finalFilters = (disableToolDefaultReadFilters)
+                ? new ArrayList<>()
+                : toolDefaultReadFilterNamesInOrder
                 .stream()
                 .filter(s -> !isDisabledFilter(s))
                 .map(s -> toolDefaultReadFilters.get(s))
@@ -333,7 +338,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
             clFilters.forEach(f -> finalFilters.add(f));
         }
 
-        return aggregateFunction.apply(finalFilters, samHeader);
+        return (finalFilters.isEmpty()) ? aggregateFunction.apply(null, samHeader) : aggregateFunction.apply(finalFilters, samHeader);
     }
 
 }
