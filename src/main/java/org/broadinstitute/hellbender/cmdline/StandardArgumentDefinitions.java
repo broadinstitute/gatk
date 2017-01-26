@@ -27,7 +27,7 @@ public final class StandardArgumentDefinitions {
     public static final String METRIC_ACCUMULATION_LEVEL_LONG_NAME = "metricAccumulationLevel";
     public static final String CLOUD_PREFETCH_BUFFER_LONG_NAME = "cloudPrefetchBuffer";
     public static final String CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME = "cloudIndexPrefetchBuffer";
-
+    public static final String DISABLE_BAM_INDEX_CACHING_LONG_NAME = "disableBamIndexCaching";
     public static final String DISABLE_SEQUENCE_DICT_VALIDATION_NAME = "disableSequenceDictionaryValidation";
     public static final String ADD_OUTPUT_SAM_PROGRAM_RECORD = "addOutputSAMProgramRecord";
 
@@ -61,7 +61,7 @@ public final class StandardArgumentDefinitions {
     public static final String METRIC_ACCUMULATION_LEVEL_SHORT_NAME = "LEVEL";
     public static final String CLOUD_PREFETCH_BUFFER_SHORT_NAME = "CPB";
     public static final String CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME = "CIPB";
-
+    public static final String DISABLE_BAM_INDEX_CACHING_SHORT_NAME = "DBIC";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 
