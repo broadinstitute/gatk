@@ -190,9 +190,11 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     // Return the allowable values for readFilterNames/disableReadFilter
     @Override
     public Set<String> getAllowedValuesForDescriptorArgument(final String longArgName) {
-        if (longArgName.equals(StandardArgumentDefinitions.READ_FILTER_LONG_NAME) ||
-                longArgName.equals(StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME)) {
+        if (longArgName.equals(StandardArgumentDefinitions.READ_FILTER_LONG_NAME)) {
             return readFilters.keySet();
+        }
+        if (longArgName.equals(StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME)) {
+            return toolDefaultReadFilters.keySet();
         }
         throw new IllegalArgumentException("Allowed values request for unrecognized string argument: " + longArgName);
     }
