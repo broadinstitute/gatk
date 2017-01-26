@@ -259,6 +259,29 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     // ReadFilter plugin-specific helper methods
 
     /**
+     * Gets the read filters to use in the following order:
+     *
+     * - Default filters in the order specified (disable ones are removed)
+     * - Enabled user's command line filters in the order requested.
+     */
+    public List<ReadFilter> getReadFiltersToUse() {
+        // start with the tool's default filters in the order they were specified, and remove any that were disabled
+        // on the command line
+        final List<ReadFilter> finalFilters = toolDefaultReadFilterNamesInOrder
+                .stream()
+                .filter(s -> !isDisabledFilter(s))
+                .map(s -> toolDefaultReadFilters.get(s))
+                .collect(Collectors.toList());
+
+        // now add in any additional filters enabled on the command line (preserving order)
+        final List<ReadFilter> clFilters = getAllInstances();
+        if (clFilters != null) {
+            clFilters.forEach(f -> finalFilters.add(f));
+        }
+        return finalFilters;
+    }
+
+    /**
      * Determine if a particular ReadFilter was disabled on the command line.
      * @param filterName name of the filter to query
      * @return true if the name appears in the list of disabled filters
@@ -321,17 +344,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
         // start with the tool's default filters in the order they were specified, and remove any that were disabled
         // on the command line
-        final List<ReadFilter> finalFilters = toolDefaultReadFilterNamesInOrder
-                .stream()
-                .filter(s -> !isDisabledFilter(s))
-                .map(s -> toolDefaultReadFilters.get(s))
-                .collect(Collectors.toList());
-
-        // now add in any additional filters enabled on the command line (preserving order)
-        final List<ReadFilter> clFilters = getAllInstances();
-        if (clFilters != null) {
-            clFilters.forEach(f -> finalFilters.add(f));
-        }
+        final List<ReadFilter> finalFilters = getReadFiltersToUse();
 
         return aggregateFunction.apply(finalFilters, samHeader);
     }
