@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.vcf.VCFContigHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.util.*;
@@ -28,8 +29,8 @@ public final class VcfUtils {
         final SortedSet<String> samples = new TreeSet<>();
         for (final Map.Entry<String, VCFHeader> val : headers.entrySet()) {
             VCFHeader header = val.getValue();
-            samples.addAll(header.getGenotypeSamples().stream().map(sample -> GATKVariantContextUtils.mergedSampleName(val.getKey(), sample,
-                    mergeOption == GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY)).collect(Collectors.toList()));
+            samples.addAll(Utils.map(header.getGenotypeSamples(), sample -> GATKVariantContextUtils.mergedSampleName(val.getKey(), sample,
+                    mergeOption == GATKVariantContextUtils.GenotypeMergeType.UNIQUIFY)));
         }
 
         return samples;
@@ -96,7 +97,7 @@ public final class VcfUtils {
                                                                    final File referenceFile) {
         final List<VCFContigHeaderLine> lines = new ArrayList<>();
         final String assembly = referenceFile != null ? referenceFile.getName() : null;
-        lines.addAll(refDict.getSequences().stream().map(contig -> makeContigHeaderLine(contig, assembly)).collect(Collectors.toList()));
+        lines.addAll(Utils.map(refDict.getSequences(), contig -> makeContigHeaderLine(contig, assembly)));
         return lines;
     }
 

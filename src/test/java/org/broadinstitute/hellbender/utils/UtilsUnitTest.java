@@ -732,4 +732,14 @@ public final class UtilsUnitTest extends BaseTest {
         final int[] array = new int[] {1,3,5,7,9};
         Assert.assertEquals(array, Utils.stream(Ints.asList(array).iterator()).mapToInt(n -> n).toArray());
     }
+
+    @Test
+    public void testMap() {
+        final List<Integer> input = Arrays.asList(1,2,3);
+        final List<Integer> output = Utils.map(input, n -> n*n);
+        Assert.assertTrue(output.size() == input.size());
+        Assert.assertEquals(output.get(0).intValue(), 1);
+        Assert.assertEquals(output.get(1).intValue(), 4);
+        Assert.assertEquals(output.get(2).intValue(), 9);
+    }
 }

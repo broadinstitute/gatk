@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -63,7 +64,7 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
      * For example CycleCovariate.
      */
     public List<String> getStandardCovariateClassNames() {
-        return Collections.unmodifiableList(allCovariates.stream().map(cov -> cov.getClass().getSimpleName()).collect(Collectors.toList()));
+        return Collections.unmodifiableList(Utils.map(allCovariates, cov -> cov.getClass().getSimpleName()));
     }
 
     /**

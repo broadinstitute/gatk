@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -374,7 +375,7 @@ public final class FeatureManager implements AutoCloseable {
         // If featureType was specified, subset to only codecs that produce the requested type of Feature,
         // and throw an error if there are no such codecs.
         if ( featureType != null ) {
-            final List<String> discoveredCodecsFeatureTypes = candidateCodecs.stream().map(codec -> codec.getFeatureType().getSimpleName()).collect(Collectors.toList());
+            final List<String> discoveredCodecsFeatureTypes = Utils.map(candidateCodecs, codec -> codec.getFeatureType().getSimpleName());
             candidateCodecs.removeIf(codec -> ! featureType.isAssignableFrom(codec.getFeatureType()));
 
             if ( candidateCodecs.isEmpty() ) {

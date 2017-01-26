@@ -250,7 +250,7 @@ public final class VariantAnnotatorEngine {
 
         private static List<String> getAllAnnotationNames() {
             final Set<VariantAnnotation> union = Sets.union(new LinkedHashSet<>(makeAllGenotypeAnnotations()), new LinkedHashSet<>(AnnotationManager.makeAllInfoFieldAnnotations()));
-            return union.stream().map(a -> a.getClass().getSimpleName()).collect(Collectors.toList());
+            return Utils.map(union, a -> a.getClass().getSimpleName());
         }
 
         /**

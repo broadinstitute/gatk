@@ -66,7 +66,7 @@ public final class ClassUtils {
     public static List<String> knownSubInterfaceSimpleNames(final Class<?> iface) {
         Utils.nonNull(iface);
         Utils.validateArg(iface.isInterface(), iface + " is not an interface");
-        return knownSubInterfaces(iface).stream().map(c ->c.getSimpleName()).collect(Collectors.toList());
+        return Utils.map(knownSubInterfaces(iface), c ->c.getSimpleName());
     }
 
     /**

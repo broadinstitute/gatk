@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 import htsjdk.samtools.ValidationStringency;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ReadConstants;
 
@@ -55,7 +56,7 @@ public abstract class ReadInputArgumentCollection implements Serializable {
             return null;
         }
 
-        return readIndices.stream().map(index -> IOUtils.getPath(index)).collect(Collectors.toList());
+        return Utils.map(readIndices, IOUtils::getPath);
     }
 
     /**
