@@ -142,9 +142,7 @@ public class Main {
             handleResult(result);
             System.exit(0);
         } catch (final CommandLineException e){
-            if (program != null) { //program can be null if th
-                System.err.println(program.getUsage());
-            }
+            System.err.println(program.getUsage());
             handleUserException(e);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
