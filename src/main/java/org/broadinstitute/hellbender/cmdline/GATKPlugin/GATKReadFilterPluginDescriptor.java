@@ -230,9 +230,11 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
         // throw if args were specified for a filter that was also disabled
         disableFilters.forEach(s -> {
-            if (requiredPredecessors.contains(s)) {
+            if (requiredPredecessors.contains(s) && !toolDefaultReadFilters.containsKey(s)) {
                 throw new CommandLineException(
                         String.format("Values were supplied for (%s) that is also disabled", s));
+            } else {
+                logger.warn("Values were supplied for (%s) that is also disabled", s);
             }
         });
 
