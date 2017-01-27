@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -12,10 +11,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * A class to represent a shard of reads data, optionally expanded by a configurable amount of padded data.
@@ -101,38 +97,6 @@ public final class LocalReadShard implements Shard<GATKRead> {
     }
 
     /**
-     * @return number of bases of padding to the left of our interval
-     */
-    public int numLeftPaddingBases() {
-        return interval.getStart() - paddedInterval.getStart();
-    }
-
-    /**
-     * @return number of bases of padding to the right of our interval
-     */
-    public int numRightPaddingBases() {
-        return paddedInterval.getEnd() - interval.getEnd();
-    }
-
-    /**
-     * @param loc Locatable to test
-     * @return true if loc is completely contained within this shard's interval, otherwise false
-     */
-    public boolean contains(final Locatable loc) {
-        Utils.nonNull(loc);
-        return interval.contains(loc);
-    }
-
-    /**
-     * @param loc Locatable to test
-     * @return true if loc starts within this shard's interval, otherwise false
-     */
-    public boolean containsStartPosition(final Locatable loc) {
-        Utils.nonNull(loc);
-        return interval.contains(new SimpleInterval(loc.getContig(), loc.getStart(), loc.getStart()));
-    }
-
-    /**
      * @return an iterator over reads in this shard, as filtered using the configured read filter
      *         and downsampled using the configured downsampler; reads are lazily loaded rather than pre-loaded
      *
@@ -162,7 +126,7 @@ public final class LocalReadShard implements Shard<GATKRead> {
      * Note that any read filtering is always performed before any downsampling.
      */
     public List<GATKRead> loadAllReads() {
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED), false).collect(Collectors.toList());
+        return loadAllRecords();
     }
 
     /**
