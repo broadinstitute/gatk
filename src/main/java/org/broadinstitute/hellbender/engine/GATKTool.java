@@ -94,7 +94,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public int cloudPrefetchBuffer = 40;
 
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
-    private int cloudIndexPrefetchBuffer = -1;
+    public int cloudIndexPrefetchBuffer = -1;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -221,7 +221,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
-    private boolean hasCramInput() {
+    public boolean hasCramInput() {
         return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
     }
 
