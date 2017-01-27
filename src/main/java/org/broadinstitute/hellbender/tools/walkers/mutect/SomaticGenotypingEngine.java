@@ -157,7 +157,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 callVcb.attribute(NORMAL_ARTIFACT_LOD_ATTRIBUTE, somaticAltAlleles.stream().mapToDouble(a -> normalArtifactLods.get().getAlt(a)).toArray());
             }
 
-            final PerAlleleCollection<Double> tumorAlleleFractions = getAlleleFractions(readAlleleLikelihoods, tumorSampleName, Strand.BOTH);
+            final PerAlleleCollection<Double> tumorAlleleFractions = getAlleleFractions(readAlleleLikelihoods, tumorSampleName);
 
             //TODO: multiple alt alleles -- per-allele strand bias
             final List<Allele> allSomaticAlleles = ListUtils.union(Arrays.asList(mergedVC.getReference()), somaticAltAlleles);
@@ -211,7 +211,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
     private VariantContext addGenotypes(final boolean hasNormal, final List<Allele> allSomaticAlleles, final ReadLikelihoods<Allele> likelihoods,
                                         final PerAlleleCollection<Double> altAlleleFractions, final VariantContextBuilder callVcb) {
-        final PerAlleleCollection<Integer> tumorAlleleDepths = getAlleleCounts(likelihoods, tumorSampleName, Strand.BOTH);
+        final PerAlleleCollection<Integer> tumorAlleleDepths = getAlleleCounts(likelihoods, tumorSampleName);
         final Genotype tumorGenotype = new GenotypeBuilder(tumorSampleName, allSomaticAlleles)
                 .AD(allSomaticAlleles.stream().mapToInt(tumorAlleleDepths::get).toArray())
                 .attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, allSomaticAlleles.stream().filter(Allele::isNonReference).mapToDouble(altAlleleFractions::get).toArray())
@@ -225,7 +225,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         // if we are calling with a normal, build the genotype for the sample to appear in vcf
         if (hasNormal) {
-            final PerAlleleCollection<Integer> normalAlleleDepths = getAlleleCounts(likelihoods, matchedNormalSampleName, Strand.BOTH);
+            final PerAlleleCollection<Integer> normalAlleleDepths = getAlleleCounts(likelihoods, matchedNormalSampleName);
             final int normalTotalDepth = likelihoods.sampleReadCount(likelihoods.indexOfSample(matchedNormalSampleName));
             final double[] normalAlleleFractions = allSomaticAlleles.stream().filter(Allele::isNonReference)
                     .mapToDouble(a ->  normalAlleleDepths.get(a) / (double) normalTotalDepth).toArray();
@@ -271,7 +271,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                                                                      final OptionalDouble givenAltAlleleFraction,
                                                                      final Strand strand) {
         final Optional<PerAlleleCollection<Double>> alleleFractions = givenAltAlleleFraction.isPresent() ?
-                Optional.empty() : Optional.of(getAlleleFractions(likelihoods, sampleNameForAlleleFractions, strand));
+                Optional.empty() : Optional.of(getAlleleFractions(likelihoods, sampleNameForAlleleFractions));
         final PerAlleleCollection<MutableDouble> genotypeLogLikelihoods = new PerAlleleCollection<>(PerAlleleCollection.Type.REF_AND_ALT);
         genotypeLogLikelihoods.set(likelihoods.alleles(), a -> new MutableDouble(0));
 
@@ -301,7 +301,10 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
         }
 
         final PerAlleleCollection<Double> result = new PerAlleleCollection<>(PerAlleleCollection.Type.REF_AND_ALT);
-        final double refLogLikelihood = IntStream.range(0, numReads).mapToDouble(r -> matrix.get(refAlleleIndex, r)).sum();
+        final double refLogLikelihood = IntStream.range(0, numReads)
+                .filter(i -> readComesFromStrand(matrix.getRead(i), strand))
+                .mapToDouble(i -> matrix.get(refAlleleIndex, i))
+                .sum();
         result.setRef(refAllele, refLogLikelihood);
         likelihoods.alleles().stream().filter(Allele::isNonReference).forEach(a -> result.setAlt(a, genotypeLogLikelihoods.get(a).toDouble()));
 
@@ -315,12 +318,11 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
     // TODO: calculate using the uncertainty rather than this cheap approach
     private PerAlleleCollection<Double> getAlleleFractions(final ReadLikelihoods<Allele> likelihoods,
-                                                           final String sampleName,
-                                                           final Strand strand) {
+                                                           final String sampleName) {
         final List<Allele> alleles = likelihoods.alleles();
-        final PerAlleleCollection<Integer> alleleCounts = getAlleleCounts(likelihoods, sampleName, strand);
+        final PerAlleleCollection<Integer> alleleCounts = getAlleleCounts(likelihoods, sampleName);
         final PerAlleleCollection<Double> alleleFractions = new PerAlleleCollection<>(PerAlleleCollection.Type.REF_AND_ALT);
-        final int totalCount = likelihoods.sampleReadCount(likelihoods.indexOfSample(sampleName));
+        final int totalCount = alleleCounts.getRef() + alleleCounts.getAltAlleles().stream().mapToInt(a -> alleleCounts.getAlt(a)).sum();
         alleleFractions.set(alleles, a -> totalCount == 0 ? 0 : alleleCounts.get(a) / (double) totalCount);
 
         return alleleFractions;
@@ -328,8 +330,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
 
     private PerAlleleCollection<Integer> getAlleleCounts(final ReadLikelihoods<Allele> likelihoods,
-                                                         final String sampleName,
-                                                         final Strand strand) {
+                                                         final String sampleName) {
         final List<Allele> alleles = likelihoods.alleles();
 
         final PerAlleleCollection<MutableInt> alleleCounts = new PerAlleleCollection<>(PerAlleleCollection.Type.REF_AND_ALT);
@@ -337,8 +338,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
 
         for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles(sampleName)) {
             final GATKRead read = bestAllele.read;
-            final boolean correctStrand = strand == Strand.BOTH || (read.isReverseStrand() ? strand == Strand.REVERSE : strand == Strand.FORWARD);
-            if (correctStrand && read.getMappingQuality() > 0 && bestAllele.isInformative()) {
+            if (read.getMappingQuality() > 0 && bestAllele.isInformative()) {
                 alleleCounts.get(bestAllele.allele).increment();
             }
         }
