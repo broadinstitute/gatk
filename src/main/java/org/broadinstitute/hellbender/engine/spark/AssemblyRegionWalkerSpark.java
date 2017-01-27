@@ -8,6 +8,9 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.AssemblyRegionWalkerShardingArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ShardingArgumentCollection;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -29,11 +32,8 @@ import java.util.stream.StreamSupport;
 public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName="readShardSize", shortName="readShardSize", doc = "Maximum size of each read shard, in bases. For good performance, this should be much larger than the maximum assembly region size.", optional = true)
-    protected int readShardSize = defaultReadShardSize();
-
-    @Argument(fullName="readShardPadding", shortName="readShardPadding", doc = "Each read shard has this many bases of extra context on each side. Read shards must have as much or more padding than assembly regions.", optional = true)
-    protected int readShardPadding = defaultReadShardPadding();
+    @ArgumentCollection
+    protected ShardingArgumentCollection shardingArgumentCollection = defaultShardingArgumentCollection();
 
     @Argument(fullName = "minAssemblyRegionSize", shortName = "minAssemblyRegionSize", doc = "Minimum size of an assembly region", optional = true)
     protected int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
@@ -56,12 +56,20 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
     protected int maxProbPropagationDistance = defaultMaxProbPropagationDistance();
 
     /**
-     * @return Default value for the {@link #readShardSize} parameter, if none is provided on the command line
+     * Default implementation returns an {@link AssemblyRegionWalkerShardingArgumentCollection} with {@link #defaultReadShardPadding()} and {@link #defaultReadShardPadding()} default values.
+     * @return
+     */
+    public ShardingArgumentCollection defaultShardingArgumentCollection() {
+        return new AssemblyRegionWalkerShardingArgumentCollection(defaultReadShardSize(), defaultReadShardPadding());
+    }
+
+    /**
+     * @return Default value for the {@link AssemblyRegionWalkerShardingArgumentCollection#readShardSize} parameter, if none is provided on the command line
      */
     protected abstract int defaultReadShardSize();
 
     /**
-     * @return Default value for the {@link #readShardPadding} parameter, if none is provided on the command line
+     * @return Default value for the {@link AssemblyRegionWalkerShardingArgumentCollection#readShardPadding} parameter, if none is provided on the command line
      */
     protected abstract int defaultReadShardPadding();
 
@@ -128,10 +136,10 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         List<SimpleInterval> intervals = rawIntervals == null ? IntervalUtils.getAllIntervalsForReference(sequenceDictionary) : rawIntervals;
         intervalShards = intervals.stream()
-                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, sequenceDictionary).stream())
+                .flatMap(interval -> Shard.divideIntervalIntoShards(interval, shardingArgumentCollection.getShardSize(), shardingArgumentCollection.getShardStep(), shardingArgumentCollection.getShardPadding(), sequenceDictionary).stream())
                 .collect(Collectors.toList());
         List<SimpleInterval> paddedIntervalsForReads =
-                intervals.stream().map(interval -> interval.expandWithinContig(readShardPadding, sequenceDictionary)).collect(Collectors.toList());
+                intervals.stream().map(interval -> interval.expandWithinContig(shardingArgumentCollection.getShardPadding(), sequenceDictionary)).collect(Collectors.toList());
         return paddedIntervalsForReads;
     }
 
@@ -144,7 +152,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
      */
     protected JavaRDD<AssemblyRegionWalkerContext> getAssemblyRegions(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, readShardSize, shuffle);
+        JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShards, shardingArgumentCollection.getShardSize(), shuffle);
         Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);
         return shardedReads.flatMap(getAssemblyRegionsFunction(bReferenceSource, bFeatureManager, sequenceDictionary, getHeaderForReads(),
