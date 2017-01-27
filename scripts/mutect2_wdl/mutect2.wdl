@@ -22,38 +22,63 @@ task M2 {
   File tumor_bam
   File tumor_bam_index
   String tumor_sample_name
-  File normal_bam
-  File normal_bam_index
-  String normal_sample_name
+  File? normal_bam
+  File? normal_bam_index
+  String? normal_sample_name
   File? pon
   File? pon_index
   File? dbsnp
   File? dbsnp_index
   File? cosmic
   File? cosmic_index
+  String output_vcf_name
 
   command {
+  if [[ ${normal_bam} == *.bam ]]; then
+      normal_command_line="-I ${normal_bam} -normal ${normal_sample_name}"
+  fi
+
     java -Xmx4g -jar ${gatk4_jar} Mutect2 \
     -R ${ref_fasta} \
     -I ${tumor_bam} \
-    -I ${normal_bam} \
     -tumor ${tumor_sample_name} \
-    -normal ${normal_sample_name} \
+    $normal_command_line \
     ${"--dbsnp " + dbsnp} \
     ${"--cosmic " + cosmic} \
     ${"--normal_panel " + pon} \
     -L ${intervals} \
-    -O ${tumor_sample_name}-vs-${normal_sample_name}.vcf
+    -O "${output_vcf_name}.vcf"
   }
 
   runtime {
-    docker: "$__docker__"
-    memory: "5 GB"
-    disks: "local-disk " + 500 + " HDD"
+      #docker: "$__docker__"
+      memory: "5 GB"
+      disks: "local-disk " + 500 + " HDD"
   }
 
   output {
-    File output_vcf = "${tumor_sample_name}-vs-${normal_sample_name}.vcf"
+    File output_vcf = "${output_vcf_name}.vcf"
+  }
+}
+
+# HACK: cromwell can't handle the optional normal sample name in output or input --
+# string interpolation of optionals only works inside a command block
+# thus we use this hack
+task MakeOutputVcfName {
+  String tumor_sample_name
+  String? normal_bam
+  String? normal_sample_name
+
+  command {
+      if [[ ${normal_bam} == *.bam ]]; then
+        echo "${tumor_sample_name}-vs-${normal_sample_name}" > name.tmp
+      else
+        echo "${tumor_sample_name}-tumor-only" > name.tmp
+      fi
+  }
+
+  output {
+      String output_name = read_string("name.tmp")
   }
 }
 
@@ -69,7 +94,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "$__docker__"
+    #docker: "$__docker__"
     memory: "3 GB"
     disks: "local-disk " + 300 + " HDD"
   }
@@ -83,20 +108,20 @@ task MergeVCFs {
 task Filter {
   File gatk4_jar
   File unfiltered_calls
-  String output_vcf_name
+  String output_prepend
 
   command {
-  	java -Xmx4g -jar ${gatk4_jar} FilterMutectCalls -V ${unfiltered_calls} -O ${output_vcf_name}.vcf
+  	java -Xmx4g -jar ${gatk4_jar} FilterMutectCalls -V ${unfiltered_calls} -O ${output_prepend}-filtered.vcf
   }
 
   runtime {
-    docker: "$__docker__"
+    #docker: "$__docker__"
     memory: "5 GB"
     disks: "local-disk " + 500 + " HDD"
   }
 
   output {
-    File output_vcf = "${output_vcf_name}.vcf"
+    File m2_filtered_vcf = "${output_prepend}-filtered.vcf"
   }
 }
 
@@ -112,7 +137,7 @@ task SplitIntervals {
   }
 
   runtime {
-    docker: "$__docker__"
+    #docker: "$__docker__"
     memory: "3 GB"
     disks: "local-disk " + 100 + " HDD"
   }
@@ -168,9 +193,9 @@ workflow Mutect2 {
   File tumor_bam
   File tumor_bam_index
   String tumor_sample_name
-  File normal_bam
-  File normal_bam_index
-  String normal_sample_name
+  File? normal_bam
+  File? normal_bam_index
+  String? normal_sample_name
   File? pon
   File? pon_index
   Int scatter_count
@@ -179,6 +204,13 @@ workflow Mutect2 {
   File? cosmic
   File? cosmic_index
   Boolean is_run_orientation_bias_filter
+
+  call MakeOutputVcfName {
+    input:
+      tumor_sample_name = tumor_sample_name,
+      normal_bam = normal_bam,
+      normal_sample_name = normal_sample_name
+  }
 
   call SplitIntervals {
     input:
@@ -206,7 +238,8 @@ workflow Mutect2 {
         dbsnp = dbsnp,
         dbsnp_index = dbsnp_index,
         cosmic = cosmic,
-        cosmic_index = cosmic_index
+        cosmic_index = cosmic_index,
+        output_vcf_name = MakeOutputVcfName.output_name
     }
   }
 
@@ -214,38 +247,37 @@ workflow Mutect2 {
     input:
       gatk4_jar = gatk4_jar,
       input_vcfs = M2.output_vcf,
-      output_vcf_name = "${tumor_sample_name}-vs-${normal_sample_name}-unfiltered"
+      output_vcf_name = MakeOutputVcfName.output_name
   }
 
   call Filter {
     input:
       gatk4_jar = gatk4_jar,
       unfiltered_calls = MergeVCFs.output_vcf,
-      output_vcf_name = "${tumor_sample_name}-vs-${normal_sample_name}-filtered"
+      output_prepend = MakeOutputVcfName.output_name
   }
 
   if(is_run_orientation_bias_filter) {
       call CollectSequencingArtifactMetrics {
         input:
-          gatk4_jar=gatk4_jar,
-          bam_file=tumor_bam,
-          ref_fasta=ref_fasta,
-          output_prepend="${tumor_sample_name}",
-
+          gatk4_jar = gatk4_jar,
+          bam_file = tumor_bam,
+          ref_fasta = ref_fasta,
+          output_prepend = MakeOutputVcfName.output_name
       }
 
       call FilterByOrientationBias {
         input:
-           gatk4_jar=gatk4_jar,
-           output_prepend="${tumor_sample_name}",
-           m2_vcf=Filter.output_vcf,
-           pre_adapter_detail_metrics=CollectSequencingArtifactMetrics.pre_adapter_detail_metrics,
+           gatk4_jar = gatk4_jar,
+           output_prepend = MakeOutputVcfName.output_name,
+           m2_vcf = Filter.m2_filtered_vcf,
+           pre_adapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_detail_metrics,
       }
   }
 
   output {
         File unfiltered_vcf = MergeVCFs.output_vcf
-        File filtered_vcf = Filter.output_vcf
+        File filtered_vcf = Filter.m2_filtered_vcf
         File? ob_filtered_vcf = FilterByOrientationBias.orientation_bias_vcf
     }
 }
