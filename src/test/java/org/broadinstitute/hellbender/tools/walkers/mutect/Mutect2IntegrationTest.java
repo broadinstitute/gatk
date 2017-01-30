@@ -89,9 +89,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(createPonArgs);
 
-        // make an index file for the pon vcf we just created in order to be used below
-        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-F", ponVcf.getAbsolutePath()), "IndexFeatureFile"));
-
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
         final String[] callWithPonArgs = {
@@ -103,7 +100,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20",
                 "-O", unfilteredVcf.getAbsolutePath()
-
         };
 
         runCommandLine(callWithPonArgs);

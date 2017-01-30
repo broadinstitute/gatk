@@ -98,7 +98,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
-    public String outputVCF = null;
+    public File outputVCF;
 
     private VariantContextWriter vcfWriter;
 
@@ -140,7 +140,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public void onTraversalStart() {
         m2Engine = new Mutect2Engine(MTAC, getHeaderForReads(), referenceArguments.getReferenceFileName());
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
-        vcfWriter = createVCFWriter(new File(outputVCF));
+        vcfWriter = createVCFWriter(outputVCF);
         m2Engine.writeHeader(vcfWriter, sequenceDictionary);
     }
 
