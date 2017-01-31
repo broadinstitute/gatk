@@ -202,23 +202,23 @@ class NovelAdjacencyReferenceLocations {
 
         String homologyForwardStrandRepresentation="", insertedSeqForwardStrandRepresentation="", dupSeqForwardStrandRepresentation="";
         int dupSeqRepeatNumOnRef=0, dupSeqRepeatNumOnCtg=0;
-        if (distBetweenAlignRegionsOnRef>0 && distBetweenAlignRegionsOnCtg==0) {        // DEL: simple deletion, deleted sequence is [r1e+1, r2b-1] on the reference
+        if (distBetweenAlignRegionsOnRef>0 && distBetweenAlignRegionsOnCtg==0) {        // Deletion: simple deletion, deleted sequence is [r1e+1, r2b-1] on the reference
             homologyForwardStrandRepresentation    = "";
             insertedSeqForwardStrandRepresentation = "";
             dupSeqForwardStrandRepresentation      = "";
             dupSeqRepeatNumOnRef = dupSeqRepeatNumOnCtg = 0;
-        } else if (distBetweenAlignRegionsOnRef==0 && distBetweenAlignRegionsOnCtg>0) { // INS: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
+        } else if (distBetweenAlignRegionsOnRef==0 && distBetweenAlignRegionsOnCtg>0) { // Insertion: simple insertion, inserted sequence is the sequence [c1e+1, c2b-1] on the contig
             homologyForwardStrandRepresentation    = "";
             insertedSeqForwardStrandRepresentation = getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
             dupSeqForwardStrandRepresentation      = "";
             dupSeqRepeatNumOnRef = dupSeqRepeatNumOnCtg = 0;
-        } else if (distBetweenAlignRegionsOnRef==0 && distBetweenAlignRegionsOnCtg<0) { // DEL: tandem repeat contraction where reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
+        } else if (distBetweenAlignRegionsOnRef==0 && distBetweenAlignRegionsOnCtg<0) { // Deletion: tandem repeat contraction where reference has two copies but one copy was deleted on the contig; duplicated sequence on reference are [r1e-|d2|+1, r1e] and [r2b, r2b+|d2|-1]
             homologyForwardStrandRepresentation    = getHomology(firstContigRegion, secondContigRegion, contigSeq);
             insertedSeqForwardStrandRepresentation = "";
             dupSeqForwardStrandRepresentation      = homologyForwardStrandRepresentation;
             dupSeqRepeatNumOnRef      = 2;
             dupSeqRepeatNumOnCtg      = 1;
-        } else if (distBetweenAlignRegionsOnRef<0 && distBetweenAlignRegionsOnCtg==0) { // INS: tandem repeat expansion of reference bases [r1e-|d1|+1, r1e] to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1]
+        } else if (distBetweenAlignRegionsOnRef<0 && distBetweenAlignRegionsOnCtg==0) { // Insertion: tandem repeat expansion of reference bases [r1e-|d1|+1, r1e] to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1]
             final byte[] insertedSeq = Arrays.copyOfRange(contigSeq, c1e-Math.abs(distBetweenAlignRegionsOnRef), c1e);
             if (!chimericAlignment.isForwardStrandRepresentation) SequenceUtil.reverseComplement(insertedSeq);
             homologyForwardStrandRepresentation    = "";
@@ -226,7 +226,7 @@ class NovelAdjacencyReferenceLocations {
             dupSeqForwardStrandRepresentation      = new String(insertedSeq);
             dupSeqRepeatNumOnRef      = 1;
             dupSeqRepeatNumOnCtg      = 2;
-        } else if (distBetweenAlignRegionsOnRef<0 && distBetweenAlignRegionsOnCtg>0) {  // INS: reference bases [r1e-|d1|+1, r1e] is similar to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1] and an inserted sequence [c1e+1, c2b-1] in between the two intervals on contig
+        } else if (distBetweenAlignRegionsOnRef<0 && distBetweenAlignRegionsOnCtg>0) {  // Insertion: reference bases [r1e-|d1|+1, r1e] is similar to contig bases [c1e-|d1|+1, c1e] and [c2b, c2b+|d1|-1] and an inserted sequence [c1e+1, c2b-1] in between the two intervals on contig
             final byte[] insertedSeq = Arrays.copyOfRange(contigSeq, c1e-Math.abs(distBetweenAlignRegionsOnRef), c1e);
             if (!chimericAlignment.isForwardStrandRepresentation) SequenceUtil.reverseComplement(insertedSeq);
             homologyForwardStrandRepresentation    = "";
@@ -234,19 +234,19 @@ class NovelAdjacencyReferenceLocations {
             dupSeqForwardStrandRepresentation      = new String(insertedSeq);
             dupSeqRepeatNumOnRef      = 1;
             dupSeqRepeatNumOnCtg      = 2;
-        } else if (distBetweenAlignRegionsOnRef>0 && distBetweenAlignRegionsOnCtg>0) {  // DEL: deletion with scar, i.e. large non-conserved substitution, reference bases [r1e+1, r2b-1] is substituted with contig bases [c1e+1, c2b-1]
+        } else if (distBetweenAlignRegionsOnRef>0 && distBetweenAlignRegionsOnCtg>0) {  // Deletion: deletion with scar, i.e. large non-conserved substitution, reference bases [r1e+1, r2b-1] is substituted with contig bases [c1e+1, c2b-1]
             homologyForwardStrandRepresentation    = "";
             insertedSeqForwardStrandRepresentation = getInsertedSequence(firstContigRegion, secondContigRegion, contigSeq);
             dupSeqForwardStrandRepresentation      = "";
             dupSeqRepeatNumOnRef = dupSeqRepeatNumOnCtg = 0;
-        } else if (distBetweenAlignRegionsOnRef>0 && distBetweenAlignRegionsOnCtg<0) {  // DEL: a sequence of bases of length d1+HOM is deleted, and there's homology (which could be dup, but cannot tell): leftFlank+HOM+[r1e+1, r2b-1]+HOM+rightFlank -> leftFlank+HOM+rightFlank
+        } else if (distBetweenAlignRegionsOnRef>0 && distBetweenAlignRegionsOnCtg<0) {  // Deletion: a sequence of bases of length d1+HOM is deleted, and there's homology (which could be dup, but cannot tell): leftFlank+HOM+[r1e+1, r2b-1]+HOM+rightFlank -> leftFlank+HOM+rightFlank
             homologyForwardStrandRepresentation    = getHomology(firstContigRegion, secondContigRegion, contigSeq);
             insertedSeqForwardStrandRepresentation = "";
             dupSeqForwardStrandRepresentation      = "";
             dupSeqRepeatNumOnRef = dupSeqRepeatNumOnCtg = 0;
         } else if (distBetweenAlignRegionsOnRef<0 && distBetweenAlignRegionsOnCtg<0) {  // most complicated case, see below
-            // DEL: duplication with repeat number N1 on reference, N2 on contig, such that N1 <= 2*N2 (and N2<N1);
-            // INS: duplication with repeat number N1 on reference, N2 on contig, such that N2 <= 2*N1 (and N1<N2);
+            // Deletion: duplication with repeat number N1 on reference, N2 on contig, such that N1 <= 2*N2 (and N2<N1);
+            // Insertion: duplication with repeat number N1 on reference, N2 on contig, such that N2 <= 2*N1 (and N1<N2);
             // in both cases, the equal sign on the right can be taken only when there's pseudo-homology between starting bases of the duplicated sequence and starting bases of the right flanking region
             final int overlapOnLowerCNSequence, overlapOnHigherCNSequence;
             // the reference system with a shorter overlap (i.e. with less-negative distance between regions) has a higher repeat number
@@ -254,7 +254,7 @@ class NovelAdjacencyReferenceLocations {
             if (isExpansion) {
                 overlapOnLowerCNSequence = Math.abs(distBetweenAlignRegionsOnRef);
                 overlapOnHigherCNSequence = Math.abs(distBetweenAlignRegionsOnCtg);
-            } else {     // d1 is lower absolute value -> reference has higher copy number of the duplication, i.e. DEL
+            } else {     // d1 is lower absolute value -> reference has higher copy number of the duplication, i.e. Deletion
                 overlapOnLowerCNSequence = Math.abs(distBetweenAlignRegionsOnCtg);
                 overlapOnHigherCNSequence = Math.abs(distBetweenAlignRegionsOnRef);
             }

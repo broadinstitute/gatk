@@ -1,55 +1,86 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.TextCigarCodec;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class AlignmentRegionUnitTest {
 
     private static final List<String> refNames = Collections.singletonList("1");
-    private BwaMemAlignment createAlignment(final boolean fwdStrand, final int refStart, final int tigStart, final String cigar, final int nMismatches ) {
-        return new BwaMemAlignment( fwdStrand ? 0 : SAMFlag.READ_REVERSE_STRAND.intValue(),
-                                0, refStart, refStart+4, tigStart, tigStart+4, 60, nMismatches,
-                                0, 0, cigar, null, null,
-                                0, refStart+100, 104);
-    }
-    @Test
-    public void testNormalizeStrandOnCreation() throws Exception {
-        final AlignmentRegion ar1p1 = new AlignmentRegion("1", "1", 8,
-                createAlignment(true, 96, 0, "4M4S", 0 ),
-                refNames);
-        Assert.assertEquals(ar1p1.referenceInterval, new SimpleInterval("1", 97, 100));
-        Assert.assertEquals(ar1p1.startInAssembledContig, 1);
-        Assert.assertEquals(ar1p1.endInAssembledContig, 4);
-        Assert.assertTrue(ar1p1.forwardStrand);
-        Assert.assertEquals(ar1p1.forwardStrandCigar, TextCigarCodec.decode("4M4S"));
-        Assert.assertEquals(ar1p1.assembledContigLength, 8);
-        Assert.assertEquals(ar1p1.mismatches, 0);
-        Assert.assertEquals(ar1p1,
-                new AlignmentRegion("1", "1", new SimpleInterval("1", 97, 100),
-                                    TextCigarCodec.decode("4M4S"),
-                                    true, 60, 0, 1, 4));
 
-        final AlignmentRegion ar1p2 = new AlignmentRegion("1", "1", 8,
-                createAlignment(false, 196, 4, "4H4M", 1 ),
-                refNames);
-        Assert.assertEquals(ar1p2.referenceInterval, new SimpleInterval("1", 197, 200));
-        Assert.assertEquals(ar1p2.startInAssembledContig, 5);
-        Assert.assertEquals(ar1p2.endInAssembledContig, 8);
-        Assert.assertFalse(ar1p2.forwardStrand);
-        Assert.assertEquals(ar1p2.forwardStrandCigar, TextCigarCodec.decode("4H4M"));
-        Assert.assertEquals(ar1p2.assembledContigLength, 8);
-        Assert.assertEquals(ar1p2.mismatches, 1);
-        Assert.assertEquals(ar1p2,
-                new AlignmentRegion("1", "1", new SimpleInterval("1", 197, 200),
-                        TextCigarCodec.decode("4H4M"),
-                        false, 60, 1, 5, 8));
+    /**
+     * These alignment records are supposed to be associated with the 4 possible types of evidence we could see for an inversion,
+     *   where the chr1:101-200 bases are inverted, namely
+     * INV55, where lower  contig coordinate is associated with a forward  strand lower reference coordinate, and
+     *              higher contig coordinate is associated with a negative strand higher reference/contig coordinate
+     * INV55, where lower  contig coordinate is associated with a forward  strand higher reference coordinate, and
+     *              higher contig coordinate is associated with a negative strand lower reference/contig coordinate
+     * INV33, where lower  contig coordinate is associated with a negative strand lower reference coordinate, and
+     *              higher contig coordinate is associated with a forward  strand higher reference/contig coordinate
+     * INV33, where lower  contig coordinate is associated with a forward  strand higher reference coordinate, and
+     *              higher contig coordinate is associated with a negative strand lower reference/contig coordinate
+     * Finally, one must be aware of the fact that BWA always outputs CIGAR with a '+'-strand representation,
+     *   therefore we must use such in constructing the BwaMemAlignment's* @return objects stored in each array
+     * @return an array of arrays, each composed of
+     * [0] {@link BwaMemAlignment} object,
+     * [1] expected reference interval,
+     * [2] expected cigar,
+     * [3] expected strandedness,
+     * [4] expected start in assembled contig, 1-based, inclusive
+     * [5] expected end in assembled contig, 1-based, inclusive
+     * [6] expected contig length,
+     * [7] expected {@link AlignmentRegion} object (generated manually with all fields explicitly spell out and given to
+     *                                      {@link AlignmentRegion#AlignmentRegion(String, String, SimpleInterval, Cigar, boolean, int, int, int, int)},
+     *                                      intended to be used for testing concordance between the two constructors)
+     */
+    @DataProvider(name = "AlignmentRegionCtorTestForSimpleInversion")
+    private static Object[][] createInputsAndExpectedResults() {
+
+        final int[] alignmentStartsOnRef_0Based = {96, 196, 195, 95, 101, 201, 101, 201};
+        final int[] alignmentStartsOnTig_0BasedInclusive = {0, 4, 0, 5, 0, 6, 0, 7};
+        final int[] alignmentStartsOnTig_0BasedExclusive = {4, 8, 5, 10, 6, 12, 7, 14};
+        final int[] seqLen = {8, 8, 10, 10, 12, 12, 14, 14};
+        final boolean[] strandedness = {true, false, true, false, false, true, false, true};
+        final String[] cigarStrings = {"4M4S", "4M4H", "5M5S", "5M5H", "6S6M", "6H6M", "7S7M", "7H7M"}; // each different number represent a different contig's pair of chimeric alignments
+        final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
+
+
+        final Object[][] data = new Object[cigars.length][];
+        for(int i=0; i<cigars.length; ++i) {
+            final BwaMemAlignment bwaMemAlignment = new BwaMemAlignment(strandedness[i] ? 0 : SAMFlag.READ_REVERSE_STRAND.intValue(),
+                    0, alignmentStartsOnRef_0Based[i], alignmentStartsOnRef_0Based[i]+cigars[i].getReferenceLength(),
+                    alignmentStartsOnTig_0BasedInclusive[i], alignmentStartsOnTig_0BasedExclusive[i],
+                    60, 0, 1, 1, cigarStrings[i],
+                    null, null, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            final SimpleInterval referenceInterval = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[i]+1, bwaMemAlignment.getRefEnd());
+            data[i] = new Object[]{bwaMemAlignment, referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]), strandedness[i], alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentStartsOnTig_0BasedExclusive[i], seqLen[i],
+                    new AlignmentRegion("1", "1", referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]), strandedness[i], bwaMemAlignment.getMapQual(), bwaMemAlignment.getNMismatches(), alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentStartsOnTig_0BasedExclusive[i])};
+        }
+        return data;
+    }
+
+    @Test(dataProvider = "AlignmentRegionCtorTestForSimpleInversion")
+    public void testConstruction(final BwaMemAlignment bwaMemAlignment, final SimpleInterval expectedReferenceInterval, final Cigar expectedCigar,
+                                 final boolean expectedIsPositiveStrand, final int expectedStartOnContig_1BasedInclusive, final int expectedEndOnContig_1BasedInclusive,
+                                 final int expectedContigLength, final AlignmentRegion expectedAlignmentRegion) {
+
+        final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "1", expectedContigLength, bwaMemAlignment, refNames);
+        Assert.assertEquals(alignmentRegion.referenceInterval, expectedReferenceInterval);
+        Assert.assertEquals(alignmentRegion.cigarAlong5to3DirectionOfContig, expectedCigar);
+        Assert.assertEquals(alignmentRegion.forwardStrand, expectedIsPositiveStrand);
+        Assert.assertEquals(alignmentRegion.startInAssembledContig, expectedStartOnContig_1BasedInclusive);
+        Assert.assertEquals(alignmentRegion.endInAssembledContig, expectedEndOnContig_1BasedInclusive);
+        Assert.assertEquals(alignmentRegion, expectedAlignmentRegion);
     }
 
     @Test
@@ -58,7 +89,7 @@ public class AlignmentRegionUnitTest {
         final AlignmentRegion region1 = AlignmentRegion.fromString(line.split(AlignmentRegion.STRING_REP_SEPARATOR, -1));
         Assert.assertEquals(region1.referenceInterval, new SimpleInterval("1", 7043012, 7044153));
         Assert.assertTrue(region1.forwardStrand);
-        Assert.assertEquals(region1.forwardStrandCigar.toString(), "1141M1357S");
+        Assert.assertEquals(region1.cigarAlong5to3DirectionOfContig.toString(), "1141M1357S");
         Assert.assertEquals(region1.mapQual, 60);
         Assert.assertEquals(region1.startInAssembledContig, 1);
         Assert.assertEquals(region1.endInAssembledContig, 1141);
@@ -68,7 +99,7 @@ public class AlignmentRegionUnitTest {
         final AlignmentRegion region2 = AlignmentRegion.fromString(line2.split(AlignmentRegion.STRING_REP_SEPARATOR, -1));
         Assert.assertEquals(region2.referenceInterval, new SimpleInterval("1", 7044151, 7045306));
         Assert.assertTrue(region2.forwardStrand);
-        Assert.assertEquals(region2.forwardStrandCigar.toString(), "1343S1155M");
+        Assert.assertEquals(region2.cigarAlong5to3DirectionOfContig.toString(), "1343S1155M");
         Assert.assertEquals(region2.mapQual, 60);
         Assert.assertEquals(region2.startInAssembledContig, 1344);
         Assert.assertEquals(region2.endInAssembledContig, 2498);

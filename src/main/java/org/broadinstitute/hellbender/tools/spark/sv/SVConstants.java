@@ -28,7 +28,7 @@ public final class SVConstants {
 
 
         static final Integer DEFAULT_MIN_ALIGNMENT_LENGTH = 50; // Minimum flanking alignment length filters used when going through contig alignments.
-        static final String VARIANT_ID_FIELD_SEPARATOR = ";";
+        static final String VARIANT_ID_FIELD_SEPARATOR = "_";
         static final int CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD = 60;
         static final int GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY = 50; // alignment with gap of size >= 50 will be broken apart.
         static final int MISSING_NM = Integer.MIN_VALUE;
