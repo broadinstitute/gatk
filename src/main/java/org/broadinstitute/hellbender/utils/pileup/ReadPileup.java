@@ -342,8 +342,8 @@ public final class ReadPileup implements Iterable<PileupElement> {
      *
      * @return the newly filtered pileup
      */
-    public ReadPileup getOverlappingFragmentFilteredPileup() {
-        return getOverlappingFragmentFilteredPileup(true, baseQualTieBreaker);
+    public ReadPileup getOverlappingFragmentFilteredPileup(SAMFileHeader header) {
+        return getOverlappingFragmentFilteredPileup(true, baseQualTieBreaker, header);
     }
 
     /**
@@ -354,11 +354,22 @@ public final class ReadPileup implements Iterable<PileupElement> {
      *
      * @return the newly filtered pileup
      */
-    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker) {
+    public ReadPileup getOverlappingFragmentFilteredPileup(boolean discardDiscordant, Comparator<PileupElement> tieBreaker, SAMFileHeader header) {
+        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>();
+
+        for (ReadPileup pileup : this.splitBySample(header, null).values()) {
+            Collection<PileupElement> elements = filterSingleSampleForOverlaps(pileup, tieBreaker, discardDiscordant);
+            filteredPileupList.addAll(elements);
+        }
+
+        return new ReadPileup(loc, filteredPileupList);
+    }
+
+    private Collection<PileupElement> filterSingleSampleForOverlaps(ReadPileup pileup, Comparator<PileupElement> tieBreaker, boolean discardDiscordant) {
         Map<String, PileupElement> filteredPileup = new HashMap<String, PileupElement>();
         Set<String> readNamesDeleted = new HashSet<>();
 
-        for (PileupElement p : this) {
+        for (PileupElement p : pileup) {
             String readName = p.getRead().getName();
 
             // if we've never seen this read before, life is good
@@ -374,17 +385,12 @@ public final class ReadPileup implements Iterable<PileupElement> {
                 if (discardDiscordant && existing.getBase() != p.getBase()) {
                     filteredPileup.remove(readName);
                     readNamesDeleted.add(readName);
-                } else {
-                    if (tieBreaker.compare(existing, p) < 0) {
-                        filteredPileup.put(readName, p);
-                    }
+                } else if (tieBreaker.compare(existing, p) < 0) {
+                    filteredPileup.put(readName, p);
                 }
             }
         }
-
-        List<PileupElement> filteredPileupList = new ArrayList<PileupElement>(filteredPileup.values());
-
-        return new ReadPileup(loc, filteredPileupList);
+        return(filteredPileup.values());
     }
 
     @Override

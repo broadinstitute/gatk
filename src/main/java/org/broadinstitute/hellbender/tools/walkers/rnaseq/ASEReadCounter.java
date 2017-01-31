@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.rnaseq;
 
 
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
@@ -214,14 +214,15 @@ public class ASEReadCounter extends LocusWalker {
     }
 
     private ReadPileup filterPileup(final ReadPileup originalPileup, final CountPileupType countType) {
+        SAMFileHeader header = getHeaderForReads();
 
         final ReadPileup pileupWithDeletions;
         switch (countType) {
-            case COUNT_FRAGMENTS_REQUIRE_SAME_BASE: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(true, ReadPileup.baseQualTieBreaker);
+            case COUNT_FRAGMENTS_REQUIRE_SAME_BASE: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(true, ReadPileup.baseQualTieBreaker, header);
                 break;
             case COUNT_READS: pileupWithDeletions = originalPileup;
                 break;
-            case COUNT_FRAGMENTS: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(false, ReadPileup.baseQualTieBreaker);
+            case COUNT_FRAGMENTS: pileupWithDeletions = originalPileup.getOverlappingFragmentFilteredPileup(false, ReadPileup.baseQualTieBreaker, header);
                 break;
             default: throw new UserException("Must use valid CountPileupType");
         }
@@ -269,30 +270,18 @@ public class ASEReadCounter extends LocusWalker {
         }
 
         final StringBuilder line = new StringBuilder();
-        line.append(pileup.getLocation().getContig());
-        line.append(separator);
-        line.append(pileup.getLocation().getStart());
-        line.append(separator);
-        line.append(siteID);
-        line.append(separator);
-        line.append(refAllele);
-        line.append(separator);
-        line.append(altAllele);
-        line.append(separator);
-        line.append(refCount);
-        line.append(separator);
-        line.append(altCount);
-        line.append(separator);
-        line.append(totalNonFilteredCount);
-        line.append(separator);
-        line.append(lowMAPQDepth);
-        line.append(separator);
-        line.append(lowBaseQDepth);
-        line.append(separator);
-        line.append(rawDepth);
-        line.append(separator);
-        line.append(otherBasesCount);
-        line.append(separator);
+        line.append(pileup.getLocation().getContig()).append(separator);
+        line.append(pileup.getLocation().getStart()).append(separator);
+        line.append(siteID).append(separator);
+        line.append(refAllele).append(separator);
+        line.append(altAllele).append(separator);
+        line.append(refCount).append(separator);
+        line.append(altCount).append(separator);
+        line.append(totalNonFilteredCount).append(separator);
+        line.append(lowMAPQDepth).append(separator);
+        line.append(lowBaseQDepth).append(separator);
+        line.append(rawDepth).append(separator);
+        line.append(otherBasesCount).append(separator);
         line.append(improperPairsCount);
 
         return line.toString();

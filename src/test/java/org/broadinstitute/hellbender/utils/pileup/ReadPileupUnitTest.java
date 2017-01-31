@@ -653,6 +653,10 @@ public final class ReadPileupUnitTest extends BaseTest {
 
     @Test
     public void testOverlappingFragmentFilter() throws Exception {
+        final String rgID = "MY.ID";
+        final SAMReadGroupRecord rg = new SAMReadGroupRecord(rgID);
+        rg.setSample("MySample");
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithReadGroup(rg);
         final int readlength = 10;
         final String cigar = "10M";
         final byte[] lowQuals = Utils.repeatBytes((byte)10, readlength);
@@ -661,23 +665,28 @@ public final class ReadPileupUnitTest extends BaseTest {
         final byte[] basesAllC = Utils.repeatChars('C', readlength);
         final byte[] basesAllT = Utils.repeatChars('T', readlength);
 
-        GATKRead read1BasesDisagree = ArtificialReadUtils.createArtificialRead(basesAllA, lowQuals, cigar);
-        GATKRead read2BasesDisagree = ArtificialReadUtils.createArtificialRead(basesAllC, highQuals, cigar);
-        GATKRead read3BasesDisagree = ArtificialReadUtils.createArtificialRead(basesAllT, lowQuals, cigar);
+        GATKRead read1BasesDisagree = ArtificialReadUtils.createArtificialRead(header, basesAllA, lowQuals, cigar);
+        GATKRead read2BasesDisagree = ArtificialReadUtils.createArtificialRead(header, basesAllC, highQuals, cigar);
+        GATKRead read3BasesDisagree = ArtificialReadUtils.createArtificialRead(header, basesAllT, lowQuals, cigar);
         read1BasesDisagree.setName("BasesDisagree");
         read2BasesDisagree.setName("BasesDisagree");
         read3BasesDisagree.setName("BasesDisagree");
+        read1BasesDisagree.setReadGroup(rgID);
+        read2BasesDisagree.setReadGroup(rgID);
+        read3BasesDisagree.setReadGroup(rgID);
 
-        GATKRead read1BasesAgree = ArtificialReadUtils.createArtificialRead(basesAllA, lowQuals, cigar);
-        GATKRead read2BasesAgree = ArtificialReadUtils.createArtificialRead(basesAllA, highQuals, cigar);
+        GATKRead read1BasesAgree = ArtificialReadUtils.createArtificialRead(header, basesAllA, lowQuals, cigar);
+        GATKRead read2BasesAgree = ArtificialReadUtils.createArtificialRead(header, basesAllA, highQuals, cigar);
         read1BasesAgree.setName("BasesAgree");
         read2BasesAgree.setName("BasesAgree");
+        read1BasesAgree.setReadGroup(rgID);
+        read2BasesAgree.setReadGroup(rgID);
 
         final List<GATKRead> reads = Arrays.asList(read1BasesDisagree, read2BasesDisagree, read1BasesAgree, read2BasesAgree);
         final int off = 0;
         final ReadPileup pu = new ReadPileup(loc, reads, off);
 
-        final ReadPileup filteredPileupDiscardDiscordant = pu.getOverlappingFragmentFilteredPileup();
+        final ReadPileup filteredPileupDiscardDiscordant = pu.getOverlappingFragmentFilteredPileup(header);
         final List<GATKRead> filteredReadsDiscardDiscordant = filteredPileupDiscardDiscordant.getReads();
         Assert.assertFalse(filteredReadsDiscardDiscordant.contains(read1BasesDisagree), "Reads with disagreeing bases were kept.");
         Assert.assertFalse(filteredReadsDiscardDiscordant.contains(read2BasesDisagree), "Reads with disagreeing bases were kept.");
@@ -685,7 +694,7 @@ public final class ReadPileupUnitTest extends BaseTest {
         Assert.assertFalse(filteredReadsDiscardDiscordant.contains(read1BasesAgree), "The lower quality base was kept.");
         Assert.assertTrue(filteredReadsDiscardDiscordant.contains(read2BasesAgree), "The higher quality base is missing.");
 
-        final ReadPileup filteredPileupKeepDiscordant = pu.getOverlappingFragmentFilteredPileup(false, ReadPileup.baseQualTieBreaker);
+        final ReadPileup filteredPileupKeepDiscordant = pu.getOverlappingFragmentFilteredPileup(false, ReadPileup.baseQualTieBreaker, header);
         final List<GATKRead> filteredReadsKeepDiscordant = filteredPileupKeepDiscordant.getReads();
         Assert.assertFalse(filteredReadsKeepDiscordant.contains(read1BasesDisagree), "Low quality base was kept.");
         Assert.assertTrue(filteredReadsKeepDiscordant.contains(read2BasesDisagree), "High quality base is missing.");
