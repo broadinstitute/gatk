@@ -20,6 +20,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.PrintStream;
 import java.net.InetAddress;
@@ -29,7 +30,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Abstract class to facilitate writing command-line programs.
@@ -66,18 +69,14 @@ public abstract class CommandLineProgram {
     @Argument(fullName = "use_jdk_deflater", shortName = "jdk_deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
     public boolean useJdkDeflater = false;
 
-    /**
-    * Initialized in parseArgs.  Subclasses may want to access this to do their
-    * own validation, and then print usage using commandLineParser.
-    */
-    protected CommandLineParser commandLineParser;
+    private CommandLineParser commandLineParser;
 
     private final List<Header> defaultHeaders = new ArrayList<>();
 
     /**
-    * The reconstructed commandline used to run this program. Used for logging
-    * and debugging.
-    */
+     * The reconstructed commandline used to run this program. Used for logging
+     * and debugging.
+     */
     private String commandLine;
 
     /**
@@ -88,10 +87,10 @@ public abstract class CommandLineProgram {
     protected void onStartup() {}
 
     /**
-    * Do the work after command line has been parsed. RuntimeException may be
-    * thrown by this method, and are reported appropriately.
-    * @return the return value or null is there is none.
-    */
+     * Do the work after command line has been parsed. RuntimeException may be
+     * thrown by this method, and are reported appropriately.
+     * @return the return value or null is there is none.
+     */
     protected abstract Object doWork();
 
     /**
@@ -155,7 +154,7 @@ public abstract class CommandLineProgram {
                         " on " + System.getProperty("os.name") + " " + System.getProperty("os.version") +
                         " " + System.getProperty("os.arch") + "; " + System.getProperty("java.vm.name") +
                         " " + System.getProperty("java.runtime.version") +
-                        "; Version: " + commandLineParser.getVersion());
+                        "; Version: " + getCommandLineParser().getVersion());
 
                 Defaults.allDefaults().entrySet().stream().forEach(e->
                         logger.info(Defaults.class.getSimpleName() + "." + e.getKey() + " : " + e.getValue())
@@ -187,51 +186,39 @@ public abstract class CommandLineProgram {
             return 0;
         }
         return instanceMainPostParseArgs();
-
     }
 
     /**
-    * Put any custom command-line validation in an override of this method.
-    * clp is initialized at this point and can be used to print usage and access argv.
+     * Put any custom command-line validation in an override of this method.
+     * clp is initialized at this point and can be used to print usage and access argv.
      * Any arguments set by command-line parser can be validated.
-    * @return null if command line is valid.  If command line is invalid, returns an array of error message
-    * to be written to the appropriate place.
-    * @throws CommandLineException if command line is invalid and handling as exception is preferred.
-    */
+     * @return null if command line is valid.  If command line is invalid, returns an array of error message
+     * to be written to the appropriate place.
+     * @throws CommandLineException if command line is invalid and handling as exception is preferred.
+     */
     protected String[] customCommandLineValidation() {
         return null;
     }
 
     /**
-    *
-    * @return true if command line is valid
-    */
-    protected boolean parseArgs(final String[] argv) {
+     * Parse arguments and initialize any values annotated with {@link Argument}
+     * @return true if program should be executed, false if an information only argument like {@link SpecialArgumentsCollection#HELP_FULLNAME} was specified
+     * @throws CommandLineException if command line validation fails
+     */
+    protected final boolean parseArgs(final String[] argv) {
 
-        commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors());
-        try{
-            final boolean ret = commandLineParser.parseArguments(System.err, argv);
-            commandLine = commandLineParser.getCommandLine();
-            if (!ret) {
-                return false;
-            }
-            final String[] customErrorMessages = customCommandLineValidation();
-            if (customErrorMessages != null) {
-                for (final String msg : customErrorMessages) {
-                    System.err.println(msg);
-                }
-                commandLineParser.usage(System.err, false);
-                return false;
-            }
-            return true;
-        } catch (final CommandLineException e){
-            //The CommandLineException is treated specially - we display help and no blow up
-            commandLineParser.usage(System.err, true);
-            printDecoratedUserExceptionMessage(System.err, e);
-            //rethrow e - this will be caught upstream and the right exit code will be used.
-            //we don't exit here though - only Main.main is allowed to call System.exit.
-            throw e;
+        final boolean ret = getCommandLineParser().parseArguments(System.err, argv);
+        commandLine = getCommandLineParser().getCommandLine();
+        if (!ret) {
+            return false;
         }
+        final String[] customErrorMessages = customCommandLineValidation();
+        if (customErrorMessages != null) {
+            throw new CommandLineException("Command Line Validation failed:" + Arrays.stream(customErrorMessages).collect(
+                    Collectors.joining(", ")));
+        }
+        return true;
+
     }
 
     /**
@@ -239,19 +226,6 @@ public abstract class CommandLineProgram {
      * Default implementation returns null. Subclasses can override this to return a custom list.
      */
     protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() { return new ArrayList<>(); }
-
-    /**
-     * Prints the given message (may be null) to the provided stream, adding adornments and formatting.
-     */
-    public static void printDecoratedUserExceptionMessage(final PrintStream ps, final Exception e){
-        Utils.nonNull(ps, "stream");
-        Utils.nonNull(e, "exception");
-        ps.println("***********************************************************************");
-        ps.println();
-        ps.println(e.getMessage());
-        ps.println();
-        ps.println("***********************************************************************");
-    }
 
     /** Gets a MetricsFile with default headers already written into it. */
     protected <A extends MetricBase,B extends Comparable<?>> MetricsFile<A,B> getMetricsFile() {
@@ -267,14 +241,24 @@ public abstract class CommandLineProgram {
      * Returns the version of this tool. It is the version stored in the manifest of the jarfile.
      */
     public final String getVersion() {
-        return commandLineParser == null ? "SNAPSHOT" : commandLineParser.getVersion();
+        return getCommandLineParser().getVersion();
     }
 
     /**
-     * Returns the commandline used to run this program.
+     * @return the commandline used to run this program, will be null if arguments have not yet been parsed
      */
     public final String getCommandLine() {
         return commandLine;
+    }
+
+    /**
+     * @return get usage and help information for this command line program if it is available
+     *
+     */
+    public final String getUsage(){
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        getCommandLineParser().usage(new PrintStream(baos), true);
+        return baos.toString();
     }
 
     /**
@@ -294,4 +278,13 @@ public abstract class CommandLineProgram {
         return this.defaultHeaders;
     }
 
+    /**
+     * @return this programs CommandLineParser.  If one is not initialized yet this will initialize it.
+     */
+    protected final CommandLineParser getCommandLineParser() {
+        if( commandLineParser == null) {
+            commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors());
+        }
+        return commandLineParser;
+    }
 }

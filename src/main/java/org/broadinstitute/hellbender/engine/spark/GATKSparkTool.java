@@ -305,7 +305,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      */
     public ReadFilter makeReadFilter() {
         final GATKReadFilterPluginDescriptor readFilterPlugin =
-                commandLineParser.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
+                getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
         return readFilterPlugin.getMergedReadFilter(getHeaderForReads());
     }
 

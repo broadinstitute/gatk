@@ -179,7 +179,7 @@ public abstract class GATKTool extends CommandLineProgram {
      */
      public CountingReadFilter makeReadFilter(){
         final GATKReadFilterPluginDescriptor readFilterPlugin =
-                commandLineParser.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
+                getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
         return hasReads() ?
                 readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads()) :
                 new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
