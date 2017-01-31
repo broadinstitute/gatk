@@ -248,7 +248,7 @@ public final class TableUtils {
     public static void checkMandatoryColumns(final TableColumnCollection columns, final TableColumnCollection mandatoryColumns,
                                              final Function<String, RuntimeException> formatExceptionFactory) {
         if (!columns.containsAll(mandatoryColumns.names())) {
-            final Set<String> missingColumns = Sets.difference(new HashSet<>(columns.names()), new HashSet<>(mandatoryColumns.names()));
+            final Set<String> missingColumns = Sets.difference(new HashSet<>(mandatoryColumns.names()), new HashSet<>(columns.names()));
             throw formatExceptionFactory.apply("Bad header in file.  Not all mandatory columns are present.  Missing: " + StringUtils.join(missingColumns, ", "));
         }
     }
