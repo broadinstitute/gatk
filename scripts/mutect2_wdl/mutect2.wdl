@@ -51,7 +51,7 @@ task M2 {
   }
 
   runtime {
-      #docker: "$__docker__"
+      docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
       memory: "5 GB"
       disks: "local-disk " + 500 + " HDD"
   }
@@ -77,6 +77,12 @@ task MakeOutputVcfName {
       fi
   }
 
+  runtime {
+    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+    memory: "5 GB"
+    disks: "local-disk " + 500 + " HDD"
+  }
+
   output {
       String output_name = read_string("name.tmp")
   }
@@ -94,7 +100,7 @@ task MergeVCFs {
   }
 
   runtime {
-    #docker: "$__docker__"
+    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
     memory: "3 GB"
     disks: "local-disk " + 300 + " HDD"
   }
@@ -115,35 +121,42 @@ task Filter {
   }
 
   runtime {
-    #docker: "$__docker__"
+    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
     memory: "5 GB"
     disks: "local-disk " + 500 + " HDD"
   }
 
   output {
     File m2_filtered_vcf = "${output_prepend}-filtered.vcf"
+    File m2_filtered_vcf_index = "${output_prepend}-filtered.vcf.idx"
   }
 }
 
-# Warning: this task does not work in the cloud.
 task SplitIntervals {
   File gatk4_jar
-  Int scatterCount
+  Int scatter_count
   File intervals
 
   command {
-    mkdir intervalFileDir
-    java -jar ${gatk4_jar} IntervalListTools -I ${intervals} -O intervalFileDir -SCATTER_COUNT ${scatterCount}
+    mkdir interval-files
+    java -jar ${gatk4_jar} IntervalListTools -I ${intervals} -O interval-files -SCATTER_COUNT ${scatter_count}
+
+    find $PWD/interval-files -iname scattered.intervals | sort > interval-files.txt
+    i=1
+    while read file; do
+      mv $file $i.interval_list
+      ((i++))
+    done < interval-files.txt
   }
 
   runtime {
-    #docker: "$__docker__"
+    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
     memory: "3 GB"
     disks: "local-disk " + 100 + " HDD"
   }
 
   output {
-    Array[File] intervalFiles = glob("intervalFileDir/temp_*/scattered.intervals")
+    Array[File] interval_files = glob("*.interval_list")
   }
 }
 
@@ -156,6 +169,12 @@ task CollectSequencingArtifactMetrics {
     command {
             java -jar ${gatk4_jar} CollectSequencingArtifactMetrics \
                 -I ${bam_file} -O ${output_prepend}  -R ${ref_fasta} --VALIDATION_STRINGENCY SILENT
+    }
+
+    runtime {
+      docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+      memory: "5 GB"
+      disks: "local-disk " + 500 + " HDD"
     }
 
     output {
@@ -177,8 +196,15 @@ task FilterByOrientationBias {
                 -V ${m2_vcf} -P ${pre_adapter_detail_metrics} --output ${output_prepend}.ob_filtered.vcf
     }
 
+    runtime {
+      docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+      memory: "5 GB"
+      disks: "local-disk " + 500 + " HDD"
+    }
+
     output {
         File orientation_bias_vcf = "${output_prepend}.ob_filtered.vcf"
+        File orientation_bias_vcf_index = "${output_prepend}.ob_filtered.vcf.idx"
         File orientation_bias_vcf_summary = "${output_prepend}.ob_filtered.vcf.summary"
     }
 }
@@ -215,11 +241,11 @@ workflow Mutect2 {
   call SplitIntervals {
     input:
       gatk4_jar = gatk4_jar,
-      scatterCount = scatter_count,
+      scatter_count = scatter_count,
       intervals = intervals
   }
 
-  scatter (subintervals in SplitIntervals.intervalFiles ) {
+  scatter (subintervals in SplitIntervals.interval_files ) {
     call M2 {
       input: 
         gatk4_jar = gatk4_jar,
@@ -277,7 +303,10 @@ workflow Mutect2 {
 
   output {
         File unfiltered_vcf = MergeVCFs.output_vcf
+        File unfiltered_vcf_index = MergeVCFs.output_vcf_index
         File filtered_vcf = Filter.m2_filtered_vcf
+        File filtered_vcf_index = Filter.m2_filtered_vcf_index
         File? ob_filtered_vcf = FilterByOrientationBias.orientation_bias_vcf
+        File? ob_filtered_vcf_index = FilterByOrientationBias.orientation_bias_vcf_index
     }
 }

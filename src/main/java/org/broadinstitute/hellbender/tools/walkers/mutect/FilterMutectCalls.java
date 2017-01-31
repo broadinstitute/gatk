@@ -46,7 +46,7 @@ public final class FilterMutectCalls extends VariantWalker {
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.ARTIFACT_IN_NORMAL_FILTER_NAME, "artifact_in_normal"));
 
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
-        vcfWriter = GATKVariantContextUtils.createVCFWriter(new File(outputVcf), getBestAvailableSequenceDictionary(), lenientVCFProcessing);
+        vcfWriter = createVCFWriter(new File(outputVcf));
         vcfWriter.writeHeader(vcfHeader);
     }
 

@@ -140,7 +140,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public void onTraversalStart() {
         m2Engine = new Mutect2Engine(MTAC, getHeaderForReads(), referenceArguments.getReferenceFileName());
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
-        vcfWriter = GATKVariantContextUtils.createVCFWriter(new File(outputVCF), sequenceDictionary, false);
+        vcfWriter = createVCFWriter(new File(outputVCF));
         m2Engine.writeHeader(vcfWriter, sequenceDictionary);
     }
 
