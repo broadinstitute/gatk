@@ -6,11 +6,16 @@ import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
+import org.broadinstitute.hellbender.conf.GATKConf;
+import org.broadinstitute.hellbender.conf.GATKConfBuilder;
+import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * This is the main class of Hellbender and is the way of executing individual command line programs.
@@ -19,8 +24,7 @@ import java.util.*;
  *
  * If you want your own single command line program, extend this class and override if required:
  *
- * - {@link #getPackageList()} to return a list of java packages in which to search for classes that extend CommandLineProgram.
- * - {@link #getClassList()} to return a list of single classes to include (e.g. required input pre-processing tools).
+ * - {@link #getConfiguration()} to setup the configuration on startup.
  * - {@link #getCommandLineName()} for the name of the toolkit.
  * - {@link #handleResult(Object)} for handle the result of the tool.
  * - {@link #handleNonUserException(Exception)} for handle non {@link UserException}.
@@ -57,20 +61,8 @@ public class Main {
     private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 3;
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
-    /**
-     * The packages we wish to include in our command line.
-     */
-    protected List<String> getPackageList() {
-        final List<String> packageList = new ArrayList<>();
-        packageList.addAll(Arrays.asList("org.broadinstitute.hellbender"));
-        return packageList;
-    }
-
-    /**
-     * The single classes we wish to include in our command line.
-     */
-    protected List<Class<? extends CommandLineProgram>> getClassList() {
-        return Collections.emptyList();
+    protected GATKConf getConfiguration() {
+        return GATKConfBuilder.getDefaultConfiguration();
     }
 
     /** Returns the command line that will appear in the usage. */
@@ -87,12 +79,27 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      *
      */
-    public Object instanceMain(final String[] args, final List<String> packageList, final List<Class<? extends CommandLineProgram>> classList, final String commandLineName) {
-        final CommandLineProgram program = extractCommandLineProgram(args, packageList, classList, commandLineName);
+    public Object instanceMain(final String[] args, final GATKConf configuration, final String commandLineName) {
+        // first set up the codecs
+        FeatureManager.setCodecPackages(getConfiguration().getGATKProperty(GATKConf.CODEC_PACKAGE_LIST_KEY));
+        final List<Class<? extends CommandLineProgram>> classList = configuration.getGATKProperty(GATKConf.TOOL_CLASS_LIST_KEY).stream()
+                .map(c -> {
+                    try {
+                        final Class<? extends CommandLineProgram> clazz = Class.forName(c).asSubclass(CommandLineProgram.class);
+                        return clazz;
+                    } catch (ClassNotFoundException e) {
+                        throw new GATKException.ConfigurationException(GATKConf.TOOL_CLASS_LIST_KEY, "class " + c + " not found", e);
+                    } catch (ClassCastException e) {
+                        throw new GATKException.ConfigurationException(GATKConf.TOOL_CLASS_LIST_KEY, "class " +  c + "is not a CommandLineProgram", e);
+                    }
+                }).collect(Collectors.toList());
+        final CommandLineProgram program = extractCommandLineProgram(args, configuration.getGATKProperty(GATKConf.TOOL_PACKAGE_LIST_KEY), classList, commandLineName);
         if (null == program) return null; // no program found!
         // we can lop off the first two arguments but it requires an array copy or alternatively we could update CLP to remove them
         // in the constructor do the former in this implementation.
         final String[] mainArgs = Arrays.copyOfRange(args, 1, args.length);
+        // we set the configuration to the clp
+        program.setConfiguration(configuration);
         return program.instanceMain(mainArgs);
     }
 
@@ -100,7 +107,8 @@ public class Main {
      * This method is not intended to be used outside of the GATK framework and tests.
      */
     public Object instanceMain(final String[] args) {
-        return instanceMain(args, getPackageList(), getClassList(), getCommandLineName());
+        final GATKConf configuration = getConfiguration();
+        return instanceMain(args, configuration, getCommandLineName());
     }
 
     /**
