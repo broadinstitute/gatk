@@ -48,8 +48,8 @@ task M2 {
 
   runtime {
     docker: "$__docker__"
-    memory: "$__large_memory__"
-    disks: "local-disk " + $__large_disk__ + " HDD"
+    memory: "5 GB"
+    disks: "local-disk " + 500 + " HDD"
   }
 
   output {
@@ -70,8 +70,8 @@ task MergeVCFs {
 
   runtime {
     docker: "$__docker__"
-    memory: "$__medium_memory__"
-    disks: "local-disk " + $__medium_disk__ + " HDD"
+    memory: "3 GB"
+    disks: "local-disk " + 300 + " HDD"
   }
 
   output {
@@ -91,8 +91,8 @@ task Filter {
 
   runtime {
     docker: "$__docker__"
-    memory: "$__large_memory__"
-    disks: "local-disk " + $__large_disk__ + " HDD"
+    memory: "5 GB"
+    disks: "local-disk " + 500 + " HDD"
   }
 
   output {
@@ -113,8 +113,8 @@ task SplitIntervals {
 
   runtime {
     docker: "$__docker__"
-    memory: "$__medium_memory__"
-    disks: "local-disk " + $__small_disk__ + " HDD"
+    memory: "3 GB"
+    disks: "local-disk " + 100 + " HDD"
   }
 
   output {
