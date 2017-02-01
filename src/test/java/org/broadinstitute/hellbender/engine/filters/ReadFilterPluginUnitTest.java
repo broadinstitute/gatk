@@ -215,6 +215,15 @@ public class ReadFilterPluginUnitTest {
     }
 
     @Test
+    public void testDisableNotEnabledFilter() {
+        final CommandLineParser clp = new CommandLineArgumentParser(new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
+        clp.parseArguments(System.out, new String[] {
+                "-disableReadFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName()
+        });
+    }
+
+    @Test
     public void testDisableMultipleFilters() {
         List<ReadFilter> defaultFilters = new ArrayList<>();
         defaultFilters.add(ReadFilterLibrary.GOOD_CIGAR);
