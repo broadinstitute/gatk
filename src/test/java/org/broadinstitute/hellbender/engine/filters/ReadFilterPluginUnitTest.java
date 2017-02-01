@@ -164,13 +164,25 @@ public class ReadFilterPluginUnitTest {
         clp.parseArguments(System.out, new String[] {"--RF", "fakeFilter"});
     }
 
-    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
-    public void testEnableTwiceFilter() {
+    @DataProvider(name = "duplicateFilters")
+    public Object[][] duplicateFilters() {
+        return new Object[][] {
+                {new String[] {
+                        "--RF", ReadLengthReadFilter.class.getSimpleName(),
+                        "--RF", ReadLengthReadFilter.class.getSimpleName()}},
+                {new String[] {
+                        "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                        "--RF", ReadLengthReadFilter.class.getSimpleName(),
+                        "--RF", ReadLengthReadFilter.class.getSimpleName()}
+                }
+        };
+    }
+
+    @Test(dataProvider = "duplicateFilters", expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testEnableDuplicateFilter(final String[] arguments) {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
-        clp.parseArguments(System.out, new String[] {
-                "--RF", ReadLengthReadFilter.class.getSimpleName(),
-                "--RF", ReadLengthReadFilter.class.getSimpleName()});
+        clp.parseArguments(System.out, arguments);
     }
 
     @Test
