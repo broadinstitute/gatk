@@ -17,5 +17,5 @@
   "Mutect2.dbsnp_index": "$__dbsnp_index__",
   "Mutect2.cosmic": "$__cosmic__",
   "Mutect2.cosmic_index": "$__cosmic_index__",
-  "Mutect2.picard_jar": "$__picard_jar__"
+  "Mutect2.is_run_orientation_bias_filter": "$__is_run_orientation_bias_filter__"
 }
