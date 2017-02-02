@@ -41,7 +41,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME,
             shortName = StandardArgumentDefinitions.DISABLE_READ_FILTER_SHORT_NAME,
             doc="Read filters to be disabled before analysis", optional=true)
-    public final Set<String> disableFilters = new HashSet<>();
+    public final List<String> disableFilters = new ArrayList<>();
 
     @Argument(fullName = "disableAllReadFilters",
             shortName = "disableAllReadFilters",
@@ -213,6 +213,17 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
             throw new CommandLineException.BadArgumentValue(
                     String.format("The read filter(s) are specified more than once: %s",
                             Utils.join(", ", duplicateUserFilterNames)));
+        }
+
+        // throw if any disabled filter is duplicated
+        final Set<String> uniqueDisabledFiltersNames = new HashSet<>();
+        final Set<String> duplicateDisabledFilterNames = disableFilters
+                .stream().filter(name -> !uniqueDisabledFiltersNames.add(name))
+                .collect(Collectors.toSet());
+        if (!duplicateDisabledFilterNames.isEmpty()) {
+            throw new CommandLineException.BadArgumentValue(
+                    String.format("Disabled read filter(s) are specified more than once: %s",
+                            Utils.join(", ", duplicateDisabledFilterNames)));
         }
 
         // throw if any filter is both enabled *and* disabled by the user
