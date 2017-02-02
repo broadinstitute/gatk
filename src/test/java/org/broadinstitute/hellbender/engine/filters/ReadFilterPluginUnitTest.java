@@ -185,6 +185,24 @@ public class ReadFilterPluginUnitTest {
         clp.parseArguments(System.out, arguments);
     }
 
+    @DataProvider(name = "duplicateDisabledFilters")
+    public Object[][] duplicateDisabledFilters() {
+        return new Object[][] {
+                {Collections.singletonList(ReadFilterLibrary.MAPPED),
+                        new String[]{
+                                "--DF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                                "--DF", ReadFilterLibrary.MAPPED.getClass().getSimpleName()}
+                }
+        };
+    }
+
+    @Test(dataProvider = "duplicateDisabledFilters", expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testDisableDuplicateFilter(final List<ReadFilter> defaults, final String[] arguments) {
+        CommandLineParser clp = new CommandLineArgumentParser(new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(defaults)));
+        clp.parseArguments(System.out, arguments);
+    }
+
     @Test
     public void testDisableOneFilter() {
         CommandLineParser clp = new CommandLineArgumentParser(
