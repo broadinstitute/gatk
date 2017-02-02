@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.common.base.Stopwatch;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,6 +9,7 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UnknownFormatConversionException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -61,6 +61,8 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     // number of times the user asks for data with a lower index than what we already have
     // (so they're not following the expected pattern of increasing indexes)
     public long nbGoingBack = 0;
+    // number of times the user asks for data past the end of the file
+    public long nbReadsPastEnd = 0;
 
     /**
      * WorkUnit holds a buffer and the instructions for what to put in it.
@@ -96,7 +98,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             }
             chan.position(pos);
             // read until buffer is full, or EOF
-            while (chan.read(buf) > 0) {}
+            while (chan.read(buf) >= 0 && buf.hasRemaining()) {}
             return buf;
         }
 
@@ -106,7 +108,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
 
         public WorkUnit resetForIndex(long blockIndex) {
             this.blockIndex = blockIndex;
-            buf.flip();
+            buf.clear();
             futureBuf = null;
             return this;
         }
@@ -130,6 +132,25 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
         this.size = chan.size();
         this.open = true;
         exec = Executors.newFixedThreadPool(1);
+    }
+
+    public String getStatistics() {
+        try {
+            double returnedPct = (bytesRead > 0 ? (100.0 * bytesReturned / bytesRead) : 100.0);
+            return String
+                .format("Bytes read: %12d\n  returned: %12d ( %3.2f %% )", bytesRead, bytesReturned,
+                    returnedPct)
+                + String.format("\nReads past the end: %3d", nbReadsPastEnd)
+                + String.format("\nReads forcing re-fetching of an earlier block: %3d", nbGoingBack)
+                // A near-hit is when we're already fetching the data the user is asking for,
+                // but we're not done loading it in.
+                + String
+                .format("\nCache\n hits:      %12d\n near-hits: %12d\n misses:    %12d", nbHit,
+                    nbNearHit, nbMiss);
+        } catch (UnknownFormatConversionException x) {
+            // let's not crash the whole program, instead just return no info
+            return "(error while formatting statistics)";
+        }
     }
 
     // if we don't already have that block and the fetching thread is idle,
@@ -215,7 +236,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
      * Otherwise this method behaves exactly as specified in the {@link
      * ReadableByteChannel} interface.
      *
-     * @param dst
+     * @param dst buffer to write into
      */
     @Override
     public int read(ByteBuffer dst) throws IOException {
@@ -227,9 +248,18 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             src = fetch(position);
             msWaitingForData += waitingForData.elapsed(TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
+            // Restore interrupted status
+            Thread.currentThread().interrupt();
             return 0;
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
+        }
+        if (null == src) {
+            // the caller is asking for a block past EOF
+            nbReadsPastEnd++;
+            betweenCallsToRead.reset();
+            betweenCallsToRead.start();
+            return -1; // EOF
         }
         Stopwatch copyingData = Stopwatch.createStarted();
         int bytesToCopy = dst.remaining();
@@ -237,7 +267,19 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
         // src.position is how far we've written into the array
         long blockIndex = position / bufSize;
         int offset = (int)(position - (blockIndex * bufSize));
+        // src |==============---------------------|
+        //     :<---src.pos-->------src.limit----->:
+        // |---:--position->
+        //     :<--offset-->
+        //     ^ blockIndex*bufSize
         int availableToCopy = src.position() - offset;
+        if (availableToCopy < 0) {
+            // the caller is asking to read past the end of the file
+            nbReadsPastEnd++;
+            betweenCallsToRead.reset();
+            betweenCallsToRead.start();
+            return -1; // EOF
+        }
         if (availableToCopy < bytesToCopy) {
             bytesToCopy = availableToCopy;
         }
