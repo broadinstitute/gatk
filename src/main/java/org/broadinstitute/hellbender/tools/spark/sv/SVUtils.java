@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
  */
 public final class SVUtils {
 
+    private static final String REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT = "#";
+
     /**
      * Read a file of kmers.
      * Each line must be exactly SVConstants.KMER_SIZE characters long, and must match [ACGT]*.
@@ -83,6 +85,9 @@ public final class SVUtils {
             int lineNo = 0;
             while ( (line = rdr.readLine()) != null ) {
                 ++lineNo;
+                if (line.startsWith(REFERENCE_GAP_INTERVAL_FILE_COMMENT_LINE_PROMPT)) {
+                    continue;
+                }
                 final String[] tokens = line.split("\t");
                 if ( tokens.length != 3 ) {
                     throw new GATKException("Interval file "+intervalsFile+" line "+
