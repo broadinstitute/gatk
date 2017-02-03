@@ -256,9 +256,7 @@ public abstract class CommandLineProgram {
      *
      */
     public final String getUsage(){
-        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        getCommandLineParser().usage(new PrintStream(baos), true);
-        return baos.toString();
+        return getCommandLineParser().usage(true);
     }
 
     /**

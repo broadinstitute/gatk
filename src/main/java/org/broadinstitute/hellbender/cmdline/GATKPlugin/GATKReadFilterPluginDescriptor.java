@@ -187,6 +187,23 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         return filters;
     }
 
+    /**
+     * Get the list of default plugins used for this instance of this descriptor. Used for help/doc generation.
+     * @return List of T
+     */
+    @Override
+    public List<Object> getDefaultInstances() { return new ArrayList<>(toolDefaultReadFilters.values()); }
+
+    /**
+     * Return the class representing the instance of the plugin specified by {@code pluginName}
+     * @param pluginName Name of the plugin requested
+     * @return Class object for the plugin instance requested
+     */
+    @Override
+    public Class<?> getClassForInstance(final String pluginName) {
+        return readFilters.get(pluginName).getClass();
+    }
+
     // Return the allowable values for readFilterNames/disableReadFilter
     @Override
     public Set<String> getAllowedValuesForDescriptorArgument(final String longArgName) {
