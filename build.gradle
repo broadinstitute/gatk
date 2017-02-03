@@ -94,7 +94,7 @@ compileTestJava {
 }
 
 dependencies {
-    compile 'org.broadinstitute:barclay:1.0.0'
+    compile 'org.broadinstitute:barclay:1.0.0-15-g631813f-SNAPSHOT'
     compile 'com.intel:genomicsdb:0.3.0'
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'

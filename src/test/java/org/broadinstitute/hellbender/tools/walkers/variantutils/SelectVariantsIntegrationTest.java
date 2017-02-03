@@ -328,7 +328,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testSelectFromMultiAllelic() throws IOException {
         final String testFile = getToolTestDataDir() + "multi-allelic.bi-allelicInGIH.vcf";
-        final String samplesFile = getToolTestDataDir() + "GIH.samples.list";
+        final String samplesFile = getToolTestDataDir() + "GIH.samples.files";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
                 baseTestString(" -sf " + samplesFile + " --excludeNonVariants -trimAlternates", testFile),
