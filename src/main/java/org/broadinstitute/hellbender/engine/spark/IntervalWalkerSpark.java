@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Iterator;
@@ -57,8 +58,7 @@ public abstract class IntervalWalkerSpark extends GATKSparkTool {
     public JavaRDD<IntervalWalkerContext> getIntervals(JavaSparkContext ctx) {
         SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         // don't shard the intervals themselves, since we want each interval to be processed by a single task
-        final List<ShardBoundary> intervalShardBoundaries = getIntervals().stream()
-                .map(i -> new ShardBoundary(i, i)).collect(Collectors.toList());
+        final List<ShardBoundary> intervalShardBoundaries = Utils.map(getIntervals(), i -> new ShardBoundary(i, i));
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, getReads(), GATKRead.class, sequenceDictionary, intervalShardBoundaries, Integer.MAX_VALUE, shuffle);
         Broadcast<ReferenceMultiSource> bReferenceSource = hasReference() ? ctx.broadcast(getReference()) : null;
         Broadcast<FeatureManager> bFeatureManager = features == null ? null : ctx.broadcast(features);

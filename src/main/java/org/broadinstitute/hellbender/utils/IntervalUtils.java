@@ -887,10 +887,7 @@ public final class IntervalUtils {
             return Collections.emptyList();
         }
 
-        final List<GenomeLoc> expanded = locs.stream()
-                .map(loc -> parser.createPaddedGenomeLoc(loc, basePairs))
-                .collect(Collectors.toList());
-
+        final List<GenomeLoc> expanded = Utils.map(locs, loc -> parser.createPaddedGenomeLoc(loc, basePairs));
         return sortAndMergeIntervals(parser, expanded, IntervalMergingRule.ALL).toList();
     }
 
@@ -929,22 +926,16 @@ public final class IntervalUtils {
      */
     public static List<GenomeLoc> genomeLocsFromLocatables(final GenomeLocParser parser, final Collection<? extends Locatable> locatables) {
         Utils.nonNull(parser, "the input genome-loc parser cannot be null");
-
         Utils.nonNull(locatables, "the input locatable collection cannot be null");
         Utils.containsNoNull(locatables, "some element in the locatable input collection is null");
-
-        final List<GenomeLoc> result = locatables.stream().map(parser::createGenomeLoc).collect(Collectors.toList());
-        return Collections.unmodifiableList(result);
+        return Collections.unmodifiableList(Utils.map(locatables, parser::createGenomeLoc));
     }
 
     /**
      * Builds a list of intervals that cover the whole given sequence.
      */
     public static List<SimpleInterval> getAllIntervalsForReference(final SAMSequenceDictionary sequenceDictionary) {
-        return GenomeLocSortedSet.createSetFromSequenceDictionary(sequenceDictionary)
-                .stream()
-                .map(SimpleInterval::new)
-                .collect(Collectors.toList());
+        return Utils.map(GenomeLocSortedSet.createSetFromSequenceDictionary(sequenceDictionary), SimpleInterval::new);
     }
 
 

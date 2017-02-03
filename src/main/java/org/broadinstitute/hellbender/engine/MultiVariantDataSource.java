@@ -189,7 +189,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      */
     public String getName() {
         return "MultiVariantDataSource: ("
-                + Utils.join(", ", featureDataSources.stream().map(fds -> fds.getName()).collect(Collectors.toList()))
+                + Utils.join(", ", Utils.map(featureDataSources, fds -> fds.getName()))
                 + ")";
     }
 

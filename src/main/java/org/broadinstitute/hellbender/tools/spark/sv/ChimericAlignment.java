@@ -88,7 +88,7 @@ class ChimericAlignment {
     static List<ChimericAlignment> fromSplitAlignments(final Tuple2<Iterable<AlignmentRegion>, byte[]> input) {
 
         final byte[] sequence = input._2;
-        final List<AlignmentRegion> alignmentRegionsSortedByContigCoord = StreamSupport.stream(input._1().spliterator(), false).sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());
+        final List<AlignmentRegion> alignmentRegionsSortedByContigCoord = Utils.stream(input._1()).sorted(Comparator.comparing(a -> a.startInAssembledContig)).collect(Collectors.toList());
         if (alignmentRegionsSortedByContigCoord.size() < 2) {
             return new ArrayList<>();
         }

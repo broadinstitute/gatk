@@ -815,7 +815,7 @@ public final class SelectVariants extends VariantWalker {
         if (file != null) {
             Set<String> ids = new LinkedHashSet<>();
             try (final XReadLines xrl = new XReadLines(file)) {
-                ids.addAll(xrl.readLines().stream().map(String::trim).collect(Collectors.toList()));
+                ids.addAll(Utils.map(xrl.readLines(), String::trim));
                 logger.info("Selecting only variants with one of " + ids.size() + " IDs from " + file);
             } catch (IOException e) {
                 throw new UserException.CouldNotReadInputFile(file, e);
@@ -1030,8 +1030,8 @@ public final class SelectVariants extends VariantWalker {
                 AlleleSubsettingUtils.subsetAlleles(oldGs, 0, vc.getAlleles(), sub.getAlleles(), GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
 
         if (fractionGenotypes > 0) {
-            final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
-                    new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make()).collect(Collectors.toList());
+            final List<Genotype> genotypes = Utils.map(newGC, genotype -> randomGenotypes.nextDouble() > fractionGenotypes
+                    ? genotype : new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make());
             newGC = GenotypesContext.create(new ArrayList<>(genotypes));
         }
 

@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.ArrayList;
@@ -130,9 +131,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         intervalShards = intervals.stream()
                 .flatMap(interval -> Shard.divideIntervalIntoShards(interval, readShardSize, readShardPadding, sequenceDictionary).stream())
                 .collect(Collectors.toList());
-        List<SimpleInterval> paddedIntervalsForReads =
-                intervals.stream().map(interval -> interval.expandWithinContig(readShardPadding, sequenceDictionary)).collect(Collectors.toList());
-        return paddedIntervalsForReads;
+        return Utils.map(intervals, interval -> interval.expandWithinContig(readShardPadding, sequenceDictionary));
     }
 
     /**

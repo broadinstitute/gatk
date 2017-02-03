@@ -627,7 +627,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
     private List<Double> calculateMLEAlleleFrequencies(final List<Integer> alleleCountsofMLE, final GenotypesContext genotypes) {
         final long AN = genotypes.stream().flatMap(g -> g.getAlleles().stream()).filter(Allele::isCalled).count();
-        return alleleCountsofMLE.stream().map(AC -> Math.min(1.0, (double) AC / AN)).collect(Collectors.toList());
+        return Utils.map(alleleCountsofMLE, AC -> Math.min(1.0, (double) AC / AN));
     }
 
     /**

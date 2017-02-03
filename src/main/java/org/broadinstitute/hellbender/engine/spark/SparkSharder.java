@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
@@ -71,7 +72,7 @@ public class SparkSharder {
                                                                 SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
                                                                 int maxLocatableLength, boolean useShuffle) {
 
-        List<ShardBoundary> paddedIntervals = intervals.stream().map(sb -> new ShardBoundary(sb.getInterval(), sb.getPaddedInterval()) {
+        List<ShardBoundary> paddedIntervals = Utils.map(intervals, sb -> new ShardBoundary(sb.getInterval(), sb.getPaddedInterval()) {
             private static final long serialVersionUID = 1L;
             @Override
             public String getContig() {
@@ -85,7 +86,7 @@ public class SparkSharder {
             public int getEnd() {
                 return getPaddedInterval().getEnd();
             }
-        }).collect(Collectors.toList());
+        });
         if (useShuffle) {
             OverlapDetector<ShardBoundary> overlapDetector = OverlapDetector.create(paddedIntervals);
             Broadcast<OverlapDetector<ShardBoundary>> overlapDetectorBroadcast = ctx.broadcast(overlapDetector);

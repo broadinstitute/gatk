@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -90,6 +91,6 @@ public final class ReadGroupCovariate implements Covariate {
     }
 
     public static List<String> getReadGroupIDs(final SAMFileHeader header) {
-        return header.getReadGroups().stream().map(rg -> getID(rg)).collect(Collectors.toList());
+        return Utils.map(header.getReadGroups(), rg -> getID(rg));
     }
 }

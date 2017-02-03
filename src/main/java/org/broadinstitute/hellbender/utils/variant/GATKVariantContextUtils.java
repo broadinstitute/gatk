@@ -1193,10 +1193,7 @@ public final class GATKVariantContextUtils {
         public Allele remap(Allele a)                   { return map != null && map.containsKey(a) ? map.get(a) : a; }
 
         public List<Allele> remap(List<Allele> as) {
-            List<Allele> newAs = as.stream()
-                    .map(this::remap)
-                    .collect(Collectors.toList());
-            return newAs;
+            return Utils.map(as, this::remap);
         }
 
     }

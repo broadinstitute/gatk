@@ -201,7 +201,7 @@ public class OverhangFixingManager {
             writeReads(targetQueueSize);
         }
 
-        List<SplitRead> newReadGroup = readGroup.stream().map(SplitRead::new).collect(Collectors.toList());
+        List<SplitRead> newReadGroup = Utils.map(readGroup, SplitRead::new);
 
         // Check every stored read for an overhang with the new splice
         for ( final Splice splice : splices) {
@@ -342,9 +342,7 @@ public class OverhangFixingManager {
 
             // Repair the supplementary groups together and add them into the writer
             if (outputToFile) {
-                SplitNCigarReads.repairSupplementaryTags(waitingGroup.stream()
-                        .map( r -> r.read )
-                        .collect(Collectors.toList()), header);
+                SplitNCigarReads.repairSupplementaryTags(Utils.map(waitingGroup, r -> r.read), header);
                 for (SplitRead splitRead : waitingGroup) {
                     writer.addRead(splitRead.read);
                 }

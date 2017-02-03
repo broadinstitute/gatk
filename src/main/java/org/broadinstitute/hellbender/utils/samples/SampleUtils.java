@@ -25,8 +25,7 @@ public class SampleUtils {
         if (files != null) {
             for (final File file : files) {
                 try (XReadLines reader = new XReadLines(file)) {
-                    List<String> lines = reader.readLines();
-                    samplesFromFiles.addAll(lines.stream().collect(Collectors.toList()));
+                    reader.readLines().forEach(samplesFromFiles::add);
                 } catch (IOException e) {
                     throw new UserException.CouldNotReadInputFile(file, e);
                 }

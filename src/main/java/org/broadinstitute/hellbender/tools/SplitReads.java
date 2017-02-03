@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.readersplitters.LibraryNameSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReadGroupIdSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.ReaderSplitter;
 import org.broadinstitute.hellbender.tools.readersplitters.SampleNameSplitter;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
@@ -131,9 +132,7 @@ public final class SplitReads extends ReadWalker {
         final SAMFileHeader samFileHeaderIn = getHeaderForReads();
 
         // Build up a list of key options at each level.
-        final List<List<?>> splitKeys = splitters.stream()
-                .map(splitter -> splitter.getSplitsBy(samFileHeaderIn))
-                .collect(Collectors.toList());
+        final List<List<?>> splitKeys = Utils.map(splitters, splitter -> splitter.getSplitsBy(samFileHeaderIn));
 
         // For every combination of keys, add a SAMFileWriter.
         addKey(splitKeys, 0, "", key -> {

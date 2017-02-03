@@ -1053,6 +1053,12 @@ public final class Utils {
         return stream(() -> iterator);
     }
 
+    public static <T, R> List<R> map(final Collection<T> input, final Function<T, R> function) {
+        final List<R> result = new ArrayList<R>(input.size());
+        input.forEach(element -> result.add(function.apply(element)));
+        return result;
+    }
+
     /**
      * Like Guava's {@link Iterators#transform(Iterator, com.google.common.base.Function)}, but runs a fixed number
      * ({@code numThreads}) of transformations in parallel, while maintaining ordering of the output iterator.
