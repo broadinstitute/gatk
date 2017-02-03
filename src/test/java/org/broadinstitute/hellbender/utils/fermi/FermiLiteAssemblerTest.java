@@ -20,7 +20,7 @@ public class FermiLiteAssemblerTest extends BaseTest {
     public void testFermiLiteAssembly() {
         final List<GATKRead> readsList = new ArrayList<>(1200);
         final ReadsDataSource reads = new ReadsDataSource(Paths.get(getToolTestDataDir()+"x.bam"));
-        for ( GATKRead read : reads ) {
+        for ( final GATKRead read : reads ) {
             readsList.add(read);
         }
         final Assembly assembly = new FermiLiteAssembler().createAssembly(readsList);
@@ -30,7 +30,7 @@ public class FermiLiteAssemblerTest extends BaseTest {
             final ReferenceSequence seq = refSeqFile.nextSequence();
             Assert.assertEquals(assembly.getContig(0).getSequence(), seq.getBases());
         }
-        catch ( IOException ioe ) {
+        catch ( final IOException ioe ) {
             throw new GATKException("can't read expected contig sequence", ioe);
         }
     }

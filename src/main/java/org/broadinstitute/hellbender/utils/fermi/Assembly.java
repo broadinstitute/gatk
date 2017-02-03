@@ -22,19 +22,19 @@ public final class Assembly {
     /** a sequence of bases, coverage data, and connections to other contigs */
     public final static class Contig {
         private final byte[] sequence;
-        private final int nSupportingReads;
         private final byte[] perBaseCoverage;
+        private final int nSupportingReads;
         private List<Connection> connections;
 
-        Contig( final byte[] sequence, final int nSupportingReads, final byte[] perBaseCoverage ) {
+        Contig( final byte[] sequence, final byte[] perBaseCoverage, final int nSupportingReads ) {
             this.sequence = sequence;
-            this.nSupportingReads = nSupportingReads;
             this.perBaseCoverage = perBaseCoverage;
+            this.nSupportingReads = nSupportingReads;
         }
 
         public byte[] getSequence() { return sequence; }
-        public int getNSupportingReads() { return nSupportingReads; }
         public byte[] getPerBaseCoverage() { return perBaseCoverage; }
+        public int getNSupportingReads() { return nSupportingReads; }
         public List<Connection> getConnections() { return Collections.unmodifiableList(connections); }
 
         void setConnections( final List<Connection> connections ) {
@@ -70,12 +70,12 @@ public final class Assembly {
         }
         try ( final Writer writer =
                       new OutputStreamWriter(new BufferedOutputStream(BucketUtils.createFile(fileName, pipelineOptions))) ) {
-            writer.write("H\tVN:Z:1\n");
-            for ( Contig contig : contigs ) {
+            writer.write("H\tVN:Z:1.0\n");
+            for ( final Contig contig : contigs ) {
                 final int contigId = idMap.get(contig);
                 writer.write("S\ttig" + contigId + "\t" + new String(contig.getSequence()) +
                         "\tLN:i:" + contig.getSequence().length + "\tRC:i:" + contig.getNSupportingReads() + "\n");
-                for ( Connection connection : contig.getConnections() ) {
+                for ( final Connection connection : contig.getConnections() ) {
                     final int targetId = idMap.get(connection.getTarget());
                     if ( contigId <= targetId ) {
                         final int overlapLen = connection.getOverlapLen();

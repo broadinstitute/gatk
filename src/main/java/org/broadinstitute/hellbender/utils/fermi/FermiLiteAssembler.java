@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.fermi;
 
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -10,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class FermiLiteAssembler implements Assembler {
+public class FermiLiteAssembler {
     private static volatile boolean nativeLibLoaded = false;
 
     public FermiLiteAssembler() {
@@ -31,19 +30,8 @@ public class FermiLiteAssembler implements Assembler {
         if ( !nativeLibLoaded ) {
             synchronized (FermiLiteAssembler.class) {
                 if ( !nativeLibLoaded ) {
-                    final String libNameOverride = System.getProperty("LIBFML_PATH");
-                    final String libName;
-                    if ( libNameOverride != null ) libName = libNameOverride;
-                    else if ( NativeUtils.runningOnPPCArchitecture() ) libName = null;
-                    else if (NativeUtils.runningOnMac()) libName = "/libfml.Darwin.dylib";
-                    else if (NativeUtils.runningOnLinux()) libName = "/libfml.Linux.so";
-                    else libName = null;
-                    if ( libName == null ) {
-                        throw new UserException.HardwareFeatureException("We have a JNI binding for fermi-lite only for Linux and Mac.");
-                    }
-                    if ( !NativeUtils.loadLibraryFromClasspath(libName) ) {
-                        throw new UserException.HardwareFeatureException("Misconfiguration: Unable to load fermi-lite native library "+libName);
-                    }
+                    NativeUtils.loadLibrary("LIBFML_PATH", null, "/libfml.Darwin.dylib", "/libfml.Linux.so", "fermi-lite");
+                    nativeLibLoaded = true;
                 }
             }
         }
@@ -51,9 +39,13 @@ public class FermiLiteAssembler implements Assembler {
 
     // Writes the number of reads, and then seqs and quals for each into a ByteBuffer.
     private static ByteBuffer makeReadData( final Collection<GATKRead> reads ) {
-        // capacity calculation:  for each GATKRead we need two bytes (one for the base, one for the qual)
-        //  for the length of the GATKRead (plus 1 for the null terminators), plus 4 bytes to give the array length.
-        int capacity = reads.stream().mapToInt(GATKRead -> 2*(GATKRead.getLength()+1)).sum() + 4;
+        // capacity calculation:
+        //   4 bytes to give the number of reads, plus
+        //   for each GATKRead,
+        //     for each base call, we need two bytes (one for the base, one for the qual)
+        //     additionally, we need two bytes for the terminating nulls after the calls
+        //     i.e., 2*(length+1)
+        final int capacity = reads.stream().mapToInt(GATKRead -> 2*(GATKRead.getLength()+1)).sum() + 4;
         final ByteBuffer readData = ByteBuffer.allocateDirect(capacity);
         readData.order(ByteOrder.nativeOrder());
         readData.putInt(reads.size()); // array length
@@ -94,7 +86,7 @@ public class FermiLiteAssembler implements Assembler {
             assemblyData.get(seq);
             final byte[] coverage = new byte[seqLen];
             assemblyData.get(coverage);
-            contigs.add(new Assembly.Contig(seq,nSupportingReads,coverage));
+            contigs.add(new Assembly.Contig(seq,coverage,nSupportingReads));
             assemblyData.position(mark);
             seqOffset += 2*seqLen;
         }
@@ -109,10 +101,10 @@ public class FermiLiteAssembler implements Assembler {
             while ( nConnections-- > 0 ) {
                 int overlapLen = assemblyData.getInt();
                 final boolean isRC = overlapLen < 0;
-                overlapLen = overlapLen << 1 >> 1;
+                overlapLen = overlapLen & Integer.MAX_VALUE; // turn off highest bit (which is now in isRC)
                 int contigId = assemblyData.getInt();
                 final boolean isTargetRC = contigId < 0;
-                contigId = contigId << 1 >> 1;
+                contigId = contigId & Integer.MAX_VALUE; // turn off highest bit (which is now in isTargetRC)
                 connections.add(new Assembly.Connection(contigs.get(contigId), overlapLen, isRC, isTargetRC));
             }
             contig.setConnections(connections);
