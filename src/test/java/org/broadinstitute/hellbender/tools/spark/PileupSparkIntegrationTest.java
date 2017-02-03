@@ -1,13 +1,22 @@
 package org.broadinstitute.hellbender.tools.spark;
 
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSource;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -83,7 +92,7 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
     }
-    
+
     @Test(dataProvider = "shuffle")
     public void testInsertLengthPileup(boolean useShuffle) throws Exception {
         final File out = createTempFile();
@@ -102,6 +111,38 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
         this.runCommandLine(args.getArgsArray());
         File expected = new File(TEST_DATA_DIR, "expectedInsertLengthPileup.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+    }
+
+    @Test(dataProvider = "shuffle")
+    public void testFeaturesPileupHdfs(boolean useShuffle) throws Exception {
+
+        MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
+            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
+            final Path vcfPath = new Path(workingDirectory, "dbsnp_138.b37.20.21.vcf");
+            final Path idxPath = new Path(workingDirectory, "dbsnp_138.b37.20.21.vcf.idx");
+            cluster.getFileSystem().copyFromLocalFile(new Path(dbsnp_138_b37_20_21_vcf), vcfPath);
+            cluster.getFileSystem().copyFromLocalFile(new Path(dbsnp_138_b37_20_21_vcf + ".idx"), idxPath);
+
+            final File out = createTempFile();
+            final ArgumentsBuilder args = new ArgumentsBuilder();
+            args.add("--input");
+            args.add(NA12878_20_21_WGS_bam);
+            args.add("--output");
+            args.add(out.getAbsolutePath());
+            args.add("--reference");
+            args.add(b37_reference_20_21);
+            args.add("-L 20:10000092-10000112");
+            args.add("-metadata " + vcfPath.toString());
+            if (useShuffle) {
+                args.add("--shuffle");
+            }
+            this.runCommandLine(args.getArgsArray());
+            File expected = new File(TEST_DATA_DIR, "expectedFeaturesPileup.txt");
+            IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
+
+        });
+
+
     }
 
 }

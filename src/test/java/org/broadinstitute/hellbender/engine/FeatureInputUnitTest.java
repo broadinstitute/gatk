@@ -73,6 +73,28 @@ public final class FeatureInputUnitTest extends BaseTest {
                 {"myname:gendb://", "gendb://", "myname"}
         };
     }
+    
+    @DataProvider(name = "GcsPathAndNameData")
+    public Object[][] gcsPathAndNameData() {
+        return new Object[][] {
+                // input String, expected Feature path, expected logical name
+                {"gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf"},
+                {"myname:gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname"},
+                {"myname,key1=value1:gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname"},
+                {"myname//:gs://bucket/user/my.vcf", "gs://bucket/user/my.vcf", "myname//"}
+        };
+    }
+    
+    @DataProvider(name = "HdfsPathAndNameData")
+    public Object[][] hdfsPathAndNameData() {
+        return new Object[][] {
+                // input String, expected Feature path, expected logical name
+                {"hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "hdfs://localhost:8020/user/my.vcf"},
+                {"myname:hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
+                {"myname,key1=value1:hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname"},
+                {"myname//:hdfs://localhost/user/my.vcf", "hdfs://localhost/user/my.vcf", "myname//"}
+        };
+    }
 
     @Test(dataProvider = "GenDbPathAndNameData")
     public void testGenDbPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
@@ -80,6 +102,22 @@ public final class FeatureInputUnitTest extends BaseTest {
 
         Assert.assertEquals(gendbInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
         Assert.assertEquals(gendbInput.getName(), expectedLogicalName, "wrong logical name");
+    }
+
+    @Test(dataProvider = "GcsPathAndNameData")
+    public void testGcsPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
+        final FeatureInput<VariantContext> gcsInput = new FeatureInput<>(inputString);
+
+        Assert.assertEquals(gcsInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
+        Assert.assertEquals(gcsInput.getName(), expectedLogicalName, "wrong logical name");
+    }
+
+    @Test(dataProvider = "HdfsPathAndNameData")
+    public void testHdfsPathAndName( final String inputString, final String expectedFeaturePath, final String expectedLogicalName ) {
+        final FeatureInput<VariantContext> hdfsInput = new FeatureInput<>(inputString);
+
+        Assert.assertEquals(hdfsInput.getFeaturePath(), expectedFeaturePath, "wrong featurePath");
+        Assert.assertEquals(hdfsInput.getName(), expectedLogicalName, "wrong logical name");
     }
 
     @Test
