@@ -52,7 +52,6 @@ repositories {
     }
 
     mavenLocal()
-
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.9.1')
