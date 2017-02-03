@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.utils.nio;
 
-import org.testng.annotations.Test;
-import org.testng.Assert;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 /**
  *
@@ -50,6 +50,40 @@ public class SeekableByteChannelPrefetcherTest {
         testSeeking(chan1, chan2, (int)chan1.size()-127);
         testSeeking(chan1, chan2, (int)chan1.size()-128);
         testSeeking(chan1, chan2, (int)chan1.size()-129);
+    }
+
+    @Test
+    public void testPartialBuffers() throws Exception {
+        SeekableByteChannel chan1 = Files.newByteChannel(Paths.get(input));
+        SeekableByteChannel chan2 = new SeekableByteChannelPrefetcher(
+          Files.newByteChannel(Paths.get(input)), 1024);
+        // get a partial buffer
+        testSeeking(chan1, chan2, (int) chan1.size() - 127);
+        // make sure normal reads can use the full buffer
+        for (int i = 0; i < 2; i++) {
+            testSeeking(chan1, chan2, i * 1024);
+        }
+        // get a partial buffer, replacing one of the full ones
+        testSeeking(chan1, chan2, (int) chan1.size() - 127);
+        // make sure the buffers are still OK
+        for (int i = 0; i < 2; i++) {
+            testSeeking(chan1, chan2, i * 1024);
+        }
+  }
+
+    @Test
+    public void testEOF() throws Exception {
+        SeekableByteChannel chan1 = Files.newByteChannel(Paths.get(input));
+        SeekableByteChannel chan2 = new SeekableByteChannelPrefetcher(
+            Files.newByteChannel(Paths.get(input)), 1024);
+        // read the final 128 bytes, exactly.
+        testSeeking(chan1, chan2, (int) chan1.size() - 128);
+        // read truncated because we're asking for beyond EOF
+        testSeeking(chan1, chan2, (int) chan1.size() - 64);
+        // read starting past EOF
+        testSeeking(chan1, chan2, (int) chan1.size() + 128);
+        // read more than a whole block past EOF
+        testSeeking(chan1, chan2, (int) chan1.size() + 1024 * 2);
     }
 
     private void testReading(SeekableByteChannel chan1, SeekableByteChannel chan2, int howMuch) throws IOException {
