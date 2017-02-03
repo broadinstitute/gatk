@@ -63,6 +63,9 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     public long nbGoingBack = 0;
     // number of times the user asks for data past the end of the file
     public long nbReadsPastEnd = 0;
+    // timing statistics have an overhead, so only turn them on when debugging performance
+    // issues.
+    private static final boolean trackTime = false;
 
     /**
      * WorkUnit holds a buffer and the instructions for what to put in it.
@@ -241,59 +244,72 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     @Override
     public int read(ByteBuffer dst) throws IOException {
         if (!open) throw new ClosedChannelException();
-        msBetweenCallsToRead += betweenCallsToRead.elapsed(TimeUnit.MILLISECONDS);
-        ByteBuffer src;
         try {
-            Stopwatch waitingForData = Stopwatch.createStarted();
-            src = fetch(position);
-            msWaitingForData += waitingForData.elapsed(TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            // Restore interrupted status
-            Thread.currentThread().interrupt();
-            return 0;
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
+            if (trackTime) {
+                msBetweenCallsToRead += betweenCallsToRead.elapsed(TimeUnit.MILLISECONDS);
+            }
+            ByteBuffer src;
+            try {
+                Stopwatch waitingForData;
+                if (trackTime) {
+                    waitingForData = Stopwatch.createStarted();
+                }
+                src = fetch(position);
+                if (trackTime) {
+                    msWaitingForData += waitingForData.elapsed(TimeUnit.MILLISECONDS);
+                }
+            } catch (InterruptedException e) {
+                // Restore interrupted status
+                Thread.currentThread().interrupt();
+                return 0;
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+            if (null == src) {
+                // the caller is asking for a block past EOF
+                nbReadsPastEnd++;
+                return -1; // EOF
+            }
+            Stopwatch copyingData;
+            if (trackTime) {
+                copyingData = Stopwatch.createStarted();
+            }
+            int bytesToCopy = dst.remaining();
+            byte[] array = src.array();
+            // src.position is how far we've written into the array
+            long blockIndex = position / bufSize;
+            int offset = (int)(position - (blockIndex * bufSize));
+            // src |==============---------------------|
+            //     :<---src.pos-->------src.limit----->:
+            // |---:--position->
+            //     :<--offset-->
+            //     ^ blockIndex*bufSize
+            int availableToCopy = src.position() - offset;
+            if (availableToCopy < 0) {
+                // the caller is asking to read past the end of the file
+                nbReadsPastEnd++;
+                return -1; // EOF
+            }
+            if (availableToCopy < bytesToCopy) {
+                bytesToCopy = availableToCopy;
+            }
+            dst.put(array, offset, bytesToCopy);
+            position += bytesToCopy;
+            if (trackTime) {
+                msCopyingData += copyingData.elapsed(TimeUnit.MILLISECONDS);
+            }
+            bytesReturned += bytesToCopy;
+            if (availableToCopy == 0) {
+                // EOF
+                return -1;
+            }
+            return bytesToCopy;
+        } finally {
+            if (trackTime) {
+                betweenCallsToRead.reset();
+                betweenCallsToRead.start();
+            }
         }
-        if (null == src) {
-            // the caller is asking for a block past EOF
-            nbReadsPastEnd++;
-            betweenCallsToRead.reset();
-            betweenCallsToRead.start();
-            return -1; // EOF
-        }
-        Stopwatch copyingData = Stopwatch.createStarted();
-        int bytesToCopy = dst.remaining();
-        byte[] array = src.array();
-        // src.position is how far we've written into the array
-        long blockIndex = position / bufSize;
-        int offset = (int)(position - (blockIndex * bufSize));
-        // src |==============---------------------|
-        //     :<---src.pos-->------src.limit----->:
-        // |---:--position->
-        //     :<--offset-->
-        //     ^ blockIndex*bufSize
-        int availableToCopy = src.position() - offset;
-        if (availableToCopy < 0) {
-            // the caller is asking to read past the end of the file
-            nbReadsPastEnd++;
-            betweenCallsToRead.reset();
-            betweenCallsToRead.start();
-            return -1; // EOF
-        }
-        if (availableToCopy < bytesToCopy) {
-            bytesToCopy = availableToCopy;
-        }
-        dst.put(array, offset, bytesToCopy);
-        position += bytesToCopy;
-        msCopyingData += copyingData.elapsed(TimeUnit.MILLISECONDS);
-        bytesReturned += bytesToCopy;
-        betweenCallsToRead.reset();
-        betweenCallsToRead.start();
-        if (availableToCopy == 0) {
-            // EOF
-            return -1;
-        }
-        return bytesToCopy;
     }
 
     /**
