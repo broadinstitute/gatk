@@ -31,7 +31,7 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
 
     @Override
     void initializeFeatures() {
-        features = new FeatureManager(this);
+        features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
         initializeDrivingFeatures();
     }
 

@@ -32,7 +32,7 @@ public abstract class IntervalWalker extends GATKTool {
         // when our query intervals are overlapping and gradually increasing in position (as they are
         // with ReadWalkers, typically), but with IntervalWalkers our query intervals are guaranteed
         // to be non-overlapping, since our interval parsing code always merges overlapping intervals.
-        features = new FeatureManager(this, 0);
+        features = new FeatureManager(this, 0, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
         if ( features.isEmpty() ) {  // No available sources of Features for this tool
             features = null;
         }

@@ -159,9 +159,9 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
             SamReaderFactory customSamReaderFactory,
             int cloudPrefetchBuffer, int cloudIndexPrefetchBuffer) {
         this(samPaths, samIndices, customSamReaderFactory,
-            (cloudPrefetchBuffer > 0 ? is -> addPrefetcher(cloudPrefetchBuffer, is)
+            (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is)
                                      : Function.identity()),
-            (cloudIndexPrefetchBuffer > 0 ? is -> addPrefetcher(cloudIndexPrefetchBuffer, is)
+            (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is)
                 : Function.identity()));
     }
 
@@ -491,13 +491,5 @@ public final class ReadsDataSource implements GATKDataSource<GATKRead>, AutoClos
         return getHeader().getSequenceDictionary();
     }
 
-
-    private static SeekableByteChannel addPrefetcher(int bufferSizeMB, SeekableByteChannel x) {
-        try {
-            return new SeekableByteChannelPrefetcher(x, bufferSizeMB * 1024 * 1024);
-        } catch (IOException ex) {
-            throw new GATKException("Unable to initialize the prefetcher: " + ex);
-        }
-    }
 
 }

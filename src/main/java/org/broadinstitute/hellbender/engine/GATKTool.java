@@ -94,7 +94,7 @@ public abstract class GATKTool extends CommandLineProgram {
     public int cloudPrefetchBuffer = 40;
 
     @Argument(fullName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_LONG_NAME, shortName = StandardArgumentDefinitions.CLOUD_INDEX_PREFETCH_BUFFER_SHORT_NAME, doc = "Size of the cloud-only prefetch buffer (in MB; 0 to disable). Defaults to cloudPrefetchBuffer if unset.", optional=true)
-    private int cloudIndexPrefetchBuffer = -1;
+    public int cloudIndexPrefetchBuffer = -1;
 
     /*
      * TODO: Feature arguments for the current tool are currently discovered through reflection via FeatureManager.
@@ -234,7 +234,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * By default, this method initializes the FeatureManager to use the lookahead cache of {@link FeatureDataSource#DEFAULT_QUERY_LOOKAHEAD_BASES} bases.
      */
     void initializeFeatures() {
-        features = new FeatureManager(this);
+        features = new FeatureManager(this, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }
