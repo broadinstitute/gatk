@@ -24,7 +24,7 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
     //       of variants separate from any other potential sources of Features
     @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
                 doc = "One or more VCF files containing variants", common = false, optional = false)
-    public List<String> drivingVariantFiles = new ArrayList<String>();
+    public List<String> drivingVariantFiles = new ArrayList<>();
 
     // NOTE: keeping the driving source of variants separate from other, supplementary FeatureInputs in our FeatureManager
     // in GATKTool we do add the driving source to the Feature manager but we do need to treat it differently and thus this
@@ -61,10 +61,10 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
 
                     //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
                     //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
-                    features.addToFeatureSources(0, featureInput, VariantContext.class);
+                    features.addToFeatureSources(0, featureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
                 }
         );
-        drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD);
+        drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
 
         //Note: the intervals for the driving variants are set in onStartup
     }

@@ -67,10 +67,11 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     public long nbReadsPastEnd = 0;
 
     /**
-     * A wrapper function to pass into
+     * Wraps the provided SeekableByteChannel within a SeekableByteChannelPrefetcher, using the provided buffer size
+     *
      * @param bufferSizeMB buffer size in MB
      * @param channel channel to wrap in the prefetcher
-     * @return
+     * @return wrapped channel
      */
     public static SeekableByteChannel addPrefetcher(int bufferSizeMB, SeekableByteChannel channel) {
         try {

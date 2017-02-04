@@ -63,12 +63,25 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      */
     public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases) {
-        Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
-        Utils.validateArg( featureInputs != null && featureInputs.size() > 0, "FeatureInputs list must be non-null and non-empty");
+        this(featureInputs, queryLookaheadBases, 0, 0);
+    }
+
+    /**
+     * Creates a MultiVariantDataSource backed by the provided FeatureInputs. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInputs List of FeatureInput<VariantContext>> specifying sources of VariantContexts
+     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
+     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     */
+    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
+        Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
+        Utils.validateArg(featureInputs != null && featureInputs.size() > 0, "FeatureInputs list must be non-null and non-empty");
 
         featureInputs.forEach(
                 featureInput -> featureDataSources.add(
-                        new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class)));
+                        new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer)));
 
         // Ensure that the merged header and sequence dictionary that we use are in sync with each
         // other, and reflect the actual dictionaries used to do validation:

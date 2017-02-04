@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
 import java.io.IOException;
@@ -181,7 +182,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *                          that produce this type of Feature. May be null, which results in an unrestricted search.
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType) {
-        this(featureInput, queryLookaheadBases, targetFeatureType, Function.identity(), Function.identity());
+        this(featureInput, queryLookaheadBases, targetFeatureType, 0, 0);
     }
 
     /**
@@ -192,12 +193,16 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
      *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
-                             final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
-                             final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
         Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
+
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
 
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.
@@ -250,13 +255,16 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         Utils.nonNull(codec);
         try {
             final String absolutePath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
+
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
             // a query by interval is attempted.
+            final boolean requireIndex = false;
 
-            if (BucketUtils.isCloudStorageUrl(absolutePath)){
-                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, false, Function.identity(), Function.identity());
+            // Only apply the wrappers if the feature input is on Google Cloud Storage
+            if ( BucketUtils.isCloudStorageUrl(absolutePath) ) {
+                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
             } else {
-                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, false, cloudWrapper, cloudIndexWrapper);
+                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, Function.identity(), Function.identity());
             }
         }
         catch ( final TribbleException e ) {
