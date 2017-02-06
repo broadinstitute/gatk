@@ -14,13 +14,17 @@ import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Enables traversals and queries over sources of Features, which are metadata associated with a location
@@ -178,12 +182,31 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      *                          that produce this type of Feature. May be null, which results in an unrestricted search.
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType) {
+        this(featureInput, queryLookaheadBases, targetFeatureType, 0, 0);
+    }
+
+    /**
+     * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInput a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     */
+    public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
         Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
 
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
+        final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
+
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.
-        this.featureReader = getFeatureReader(featureInput, targetFeatureType);
+        this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper);
 
         if (isGenomicsDBPath(featureInput.getFeaturePath())) {
             //genomics db uri's have no associated index file to read from, but they do support random access
@@ -211,7 +234,9 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType) {
+    private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
+                                                                         Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
+                                                                         Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         if (isGenomicsDBPath(featureInput.getFeaturePath())) {
             try {
                 return (FeatureReader<T>)getGenomicsDBFeatureReader(featureInput.getFeaturePath());
@@ -222,17 +247,25 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
             final Path featurePath = IOUtils.getPath(featureInput.getFeaturePath());
             IOUtils.assertFileIsReadable(featurePath);
             final FeatureCodec<T, ?> codec = (FeatureCodec<T, ?>) FeatureManager.getCodecForFile(featurePath, targetFeatureType);
-            return getTribbleFeatureReader(featureInput, codec);
+            return getTribbleFeatureReader(featureInput, codec, cloudWrapper, cloudIndexWrapper);
         }
     }
 
-    private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec) {
+    private static <T extends Feature> AbstractFeatureReader<T, ?> getTribbleFeatureReader(final FeatureInput<T> featureInput, final FeatureCodec<T, ?> codec, Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper, Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
         Utils.nonNull(codec);
         try {
             final String absolutePath = IOUtils.getPath(featureInput.getFeaturePath()).toAbsolutePath().toUri().toString();
+
             // Instruct the reader factory to not require an index. We will require one ourselves as soon as
             // a query by interval is attempted.
-            return AbstractFeatureReader.getFeatureReader(absolutePath, codec, false);
+            final boolean requireIndex = false;
+
+            // Only apply the wrappers if the feature input is on Google Cloud Storage
+            if ( BucketUtils.isCloudStorageUrl(absolutePath) ) {
+                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, cloudWrapper, cloudIndexWrapper);
+            } else {
+                return AbstractFeatureReader.getFeatureReader(absolutePath, null, codec, requireIndex, Function.identity(), Function.identity());
+            }
         }
         catch ( final TribbleException e ) {
             throw new GATKException("Error initializing feature reader for path " +  featureInput.getFeaturePath(), e);

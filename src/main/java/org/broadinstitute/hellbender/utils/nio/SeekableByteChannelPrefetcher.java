@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.nio;
 
 import com.google.common.base.Stopwatch;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -63,6 +65,21 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     public long nbGoingBack = 0;
     // number of times the user asks for data past the end of the file
     public long nbReadsPastEnd = 0;
+
+    /**
+     * Wraps the provided SeekableByteChannel within a SeekableByteChannelPrefetcher, using the provided buffer size
+     *
+     * @param bufferSizeMB buffer size in MB
+     * @param channel channel to wrap in the prefetcher
+     * @return wrapped channel
+     */
+    public static SeekableByteChannel addPrefetcher(int bufferSizeMB, SeekableByteChannel channel) {
+        try {
+            return new SeekableByteChannelPrefetcher(channel, bufferSizeMB * 1024 * 1024);
+        } catch (IOException ex) {
+            throw new GATKException("Unable to initialize the prefetcher: " + ex);
+        }
+    }
 
     /**
      * WorkUnit holds a buffer and the instructions for what to put in it.
