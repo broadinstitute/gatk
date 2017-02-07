@@ -10,6 +10,7 @@
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  dbsnp, dbsnp_index: optional database of known germline variants
 #  cosmic, cosmic_index: optional database of known somatic variants
+#  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  is_run_oncotator: if true, annotate the M2 VCFs using oncotator.  Important:  This requires a docker image and should
 #   not be run in environments where docker is unavailable (e.g. SGE cluster on a Broad on-prem VM).  Access to docker
@@ -79,13 +80,48 @@ task M2 {
   }
 }
 
+task CalculateContamination {
+  String gatk4_jar
+  File intervals
+  File tumor_bam
+  File tumor_bam_index
+  File? variants
+  File? variants_index
+  String m2_docker
+  File? gatk4_jar_override
+  Int preemptible_attempts
+
+  command {
+  # Use GATK Jar override if specified
+      GATK_JAR=${gatk4_jar}
+      if [[ "${gatk4_jar_override}" == *.jar ]]; then
+          GATK_JAR=${gatk4_jar_override}
+      fi
+
+    java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} -L ${intervals} -V ${variants} -O pileups.table
+    java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
+  }
+
+  runtime {
+      docker: "${m2_docker}"
+      memory: "5 GB"
+      disks: "local-disk " + 500 + " HDD"
+      preemptible: "${preemptible_attempts}"
+  }
+
+  output {
+    File contamination_table = "contamination.table"
+  }
+}
+
 # HACK: cromwell can't handle the optional normal sample name in output or input --
 # string interpolation of optionals only works inside a command block
 # thus we use this hack
-task MakeOutputVcfName {
+task ProcessOptionalArguments {
   String tumor_sample_name
   String? normal_bam
   String? normal_sample_name
+  String? variants_for_contamination
   Int preemptible_attempts
   String m2_docker
 
@@ -94,6 +130,12 @@ task MakeOutputVcfName {
         echo "${tumor_sample_name}-vs-${normal_sample_name}" > name.tmp
       else
         echo "${tumor_sample_name}-tumor-only" > name.tmp
+      fi
+
+      if [[ "${variants_for_contamination}" == *.vcf ]]; then
+         echo true > has_variants_for_contamination.tmp
+      else
+         echo false > has_variants_for_contamination.tmp
       fi
   }
 
@@ -106,6 +148,7 @@ task MakeOutputVcfName {
 
   output {
       String output_name = read_string("name.tmp")
+      Boolean has_variants_for_contamination = read_boolean("has_variants_for_contamination.tmp")
   }
 }
 
@@ -145,6 +188,7 @@ task MergeVCFs {
 task Filter {
   String gatk4_jar
   File unfiltered_calls
+  File? contamination_table
   String output_prepend
   File? gatk4_jar_override
   Int preemptible_attempts
@@ -157,7 +201,8 @@ task Filter {
         GATK_JAR=${gatk4_jar_override}
     fi
 
-  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V ${unfiltered_calls} -O ${output_prepend}-filtered.vcf
+  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V ${unfiltered_calls} -O ${output_prepend}-filtered.vcf \
+       ${"-contaminationTable " + contamination_table}
   }
 
   runtime {
@@ -180,6 +225,7 @@ task SplitIntervals {
   File? gatk4_jar_override
   Int preemptible_attempts
   String m2_docker
+
   command {
     # Use GATK Jar override if specified
     GATK_JAR=${gatk4_jar}
@@ -276,6 +322,7 @@ task FilterByOrientationBias {
 
     output {
         File orientation_bias_vcf = "${output_prepend}.ob_filtered.vcf"
+        File orientation_bias_vcf_index = "${output_prepend}.ob_filtered.vcf.idx"
         File orientation_bias_vcf_summary = "${output_prepend}.ob_filtered.vcf.summary"
     }
 }
@@ -314,6 +361,7 @@ task oncotate_m2 {
 
     runtime {
         docker: "${oncotator_docker}"
+        memory: "5 GB"
         bootDiskSizeGb: 10
         disks: "local-disk 150 SSD"
         preemptible: "${preemptible_attempts}"
@@ -345,6 +393,8 @@ workflow Mutect2 {
   File? dbsnp_index
   File? cosmic
   File? cosmic_index
+  File? variants_for_contamination
+  File? variants_for_contamination_index
   Boolean is_run_orientation_bias_filter
   Boolean is_run_oncotator
   String m2_docker
@@ -355,13 +405,29 @@ workflow Mutect2 {
   String? onco_ds_local_db_dir
   Array[String] artifact_modes
 
-  call MakeOutputVcfName {
+  call ProcessOptionalArguments {
     input:
       tumor_sample_name = tumor_sample_name,
       normal_bam = normal_bam,
       normal_sample_name = normal_sample_name,
+      variants_for_contamination = variants_for_contamination,
       preemptible_attempts = preemptible_attempts,
       m2_docker=m2_docker
+  }
+
+  if (ProcessOptionalArguments.has_variants_for_contamination) {
+      call CalculateContamination {
+          input:
+            gatk4_jar = gatk4_jar,
+            intervals = intervals,
+            tumor_bam = tumor_bam,
+            tumor_bam_index = tumor_bam_index,
+            variants = variants_for_contamination,
+            variants_index = variants_for_contamination_index,
+            gatk4_jar_override = gatk4_jar_override,
+            preemptible_attempts = preemptible_attempts,
+            m2_docker = m2_docker
+      }
   }
 
   call SplitIntervals {
@@ -395,7 +461,7 @@ workflow Mutect2 {
         dbsnp_index = dbsnp_index,
         cosmic = cosmic,
         cosmic_index = cosmic_index,
-        output_vcf_name = MakeOutputVcfName.output_name,
+        output_vcf_name = ProcessOptionalArguments.output_name,
         gatk4_jar_override = gatk4_jar_override,
         preemptible_attempts = preemptible_attempts,
         m2_docker = m2_docker
@@ -406,7 +472,7 @@ workflow Mutect2 {
     input:
       gatk4_jar = gatk4_jar,
       input_vcfs = M2.output_vcf,
-      output_vcf_name = MakeOutputVcfName.output_name,
+      output_vcf_name = ProcessOptionalArguments.output_name,
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
       m2_docker = m2_docker
@@ -416,7 +482,8 @@ workflow Mutect2 {
     input:
       gatk4_jar = gatk4_jar,
       unfiltered_calls = MergeVCFs.output_vcf,
-      output_prepend = MakeOutputVcfName.output_name,
+      contamination_table = CalculateContamination.contamination_table,
+      output_prepend = ProcessOptionalArguments.output_name,
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
       m2_docker = m2_docker
@@ -428,7 +495,7 @@ workflow Mutect2 {
           gatk4_jar = gatk4_jar,
           bam_file = tumor_bam,
           ref_fasta = ref_fasta,
-          output_prepend = MakeOutputVcfName.output_name,
+          output_prepend = ProcessOptionalArguments.output_name,
           gatk4_jar_override = gatk4_jar_override,
           preemptible_attempts = preemptible_attempts,
           m2_docker = m2_docker
@@ -437,7 +504,7 @@ workflow Mutect2 {
       call FilterByOrientationBias {
         input:
            gatk4_jar = gatk4_jar,
-           output_prepend = MakeOutputVcfName.output_name,
+           output_prepend = ProcessOptionalArguments.output_name,
            m2_vcf = Filter.m2_filtered_vcf,
            pre_adapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_detail_metrics,
            gatk4_jar_override = gatk4_jar_override,
@@ -479,6 +546,8 @@ workflow Mutect2 {
         File filtered_vcf = Filter.m2_filtered_vcf
         File filtered_vcf_index = Filter.m2_filtered_vcf_index
         File? ob_filtered_vcf = FilterByOrientationBias.orientation_bias_vcf
+        File? ob_filtered_vcf_index = FilterByOrientationBias.orientation_bias_vcf_index
+        File? contamination_table = CalculateContamination.contamination_table
 
         # select_first() fails if nothing resulve to non-null, so putting in "/dev/null" for now.
         File? oncotated_m2_vcf = select_first([oncotate_m2_ob.oncotated_m2_vcf, oncotate_m2_no_ob.oncotated_m2_vcf, "null"])

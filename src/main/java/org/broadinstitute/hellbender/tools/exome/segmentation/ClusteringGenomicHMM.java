@@ -77,7 +77,7 @@ public abstract class ClusteringGenomicHMM<DATA, HIDDEN> implements HiddenMarkov
         return Math.log((nextState.equals(currentState) ? pRemember : 0) + (1 - pRemember)*weights.get(nextState));
     }
 
-    protected static double calculateDistance(final Locatable from, final Locatable to) {
+    public static double calculateDistance(final Locatable from, final Locatable to) {
         if (!from.getContig().equals(to.getContig())) {
             return Double.POSITIVE_INFINITY;
         } else {

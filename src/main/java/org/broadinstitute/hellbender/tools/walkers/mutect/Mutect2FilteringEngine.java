@@ -1,6 +1,12 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import com.google.common.primitives.Doubles;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.math3.util.DoubleArray;
+import org.apache.commons.math3.util.MathArrays;
+import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
 import org.broadinstitute.hellbender.utils.GATKProtectedVariantContextUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -8,17 +14,39 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import java.util.*;
 
 /**
- * Created by davidben on 9/15/16.
+ * Created by David Benjamin on 9/15/16.
  */
 public class Mutect2FilteringEngine {
 
     public final static String ARTIFACT_IN_NORMAL_FILTER_NAME = "artifact_in_normal";
+    public final static String CONTAMINATION_FILTER_NAME = "contamination";
+
     public static final List<String> M_2_FILTER_NAMES = Arrays.asList(GATKVCFConstants.STR_CONTRACTION_FILTER_NAME, GATKVCFConstants.PON_FILTER_NAME,
             GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME, GATKVCFConstants.CLUSTERED_EVENTS_FILTER_NAME,
             GATKVCFConstants.TUMOR_LOD_FILTER_NAME, GATKVCFConstants.GERMLINE_RISK_FILTER_NAME, GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME,
             GATKVCFConstants.STRAND_ARTIFACT_FILTER_NAME);
 
-    private Mutect2FilteringEngine() { }
+    private M2FiltersArgumentCollection MTFAC;
+    private final double contamination;
+    private final String tumorSample;
+
+
+    public Mutect2FilteringEngine(final M2FiltersArgumentCollection MTFAC, final String tumorSample) {
+        this.MTFAC = MTFAC;
+        contamination = MTFAC.contaminationTable == null ? 0.0 : ContaminationRecord.readContaminationTable(MTFAC.contaminationTable).get(0).getContamination();
+        this.tumorSample = tumorSample;
+    }
+
+    // very naive M1-style contamination filter -- remove calls with AF less than the contamination fraction
+    private void applyContaminationFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
+        final Genotype tumorGenotype = vc.getGenotype(tumorSample);
+        final double[] alleleFractions = GATKProtectedVariantContextUtils.getAttributeAsDoubleArray(tumorGenotype, VCFConstants.ALLELE_FREQUENCY_KEY,
+                () -> new double[] {1.0}, 1.0);
+        final double maxFraction = MathUtils.arrayMax(alleleFractions);
+        if (maxFraction < contamination) {
+            filters.add(CONTAMINATION_FILTER_NAME);
+        }
+    }
 
     private static void applyTriallelicFilter(final VariantContext vc, final Collection<String> filters) {
         if (vc.getNAlleles() > 2) {
@@ -65,14 +93,18 @@ public class Mutect2FilteringEngine {
     }
 
     private static void applyGermlineVariantFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        if (!vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY)) {
+        if (!vc.hasAttribute(GATKVCFConstants.NORMAL_LOD_KEY) || !vc.hasAttribute(GATKVCFConstants.TUMOR_LOD_KEY)) {
             return;
         }
+
+        final double[] tumorLods = getArrayAttribute(vc, GATKVCFConstants.TUMOR_LOD_KEY);
+        final int indexOfMaxTumorLod = MathUtils.maxElementIndex(tumorLods);
+
         final boolean siteInCosmic = vc.hasAttribute(SomaticGenotypingEngine.IN_COSMIC_VCF_ATTRIBUTE);
         final boolean siteInDbsnp = vc.hasAttribute(SomaticGenotypingEngine.IN_DBSNP_VCF_ATTRIBUTE);
         if (siteInDbsnp && !siteInCosmic ) {
-            // take the normal LOD of the first alt allele, which has the highest tumor LOD
-            final double normalLod = getArrayAttribute(vc, GATKVCFConstants.NORMAL_LOD_KEY)[0];
+            // take the normal LOD of the best somatic alt allele
+            final double normalLod = getArrayAttribute(vc, GATKVCFConstants.NORMAL_LOD_KEY)[indexOfMaxTumorLod];
             if (normalLod < MTFAC.NORMAL_DBSNP_LOD_THRESHOLD) {
                 filters.add(GATKVCFConstants.GERMLINE_RISK_FILTER_NAME);
             }
@@ -124,7 +156,7 @@ public class Mutect2FilteringEngine {
     }
 
     //TODO: building a list via repeated side effects is ugly
-    public static Set<String> calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc) {
+    public Set<String> calculateFilters(final M2FiltersArgumentCollection MTFAC, final VariantContext vc) {
         final Set<String> filters = new HashSet<>();
         applyEventDistanceFilters(vc, filters);
         applyTriallelicFilter(vc, filters);
@@ -134,6 +166,7 @@ public class Mutect2FilteringEngine {
         applyClusteredReadPositionFilter(MTFAC, vc, filters);
         applyStrandBiasFilter(MTFAC, vc, filters);
         applySTRFilter(vc, filters);
+        applyContaminationFilter(MTFAC, vc, filters);
 
         return filters;
     }

@@ -3,6 +3,9 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.contamination.ContaminationRecord;
+
+import java.io.File;
 
 public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 9345L;
@@ -46,4 +49,8 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
      */
     @Argument(fullName = "pir_mad_threshold", optional = true, doc="threshold for clustered read position artifact MAD")
     public double PIR_MAD_THRESHOLD = 3;
+
+    @Argument(shortName = "contaminationTable", fullName = "contaminationTable", optional = true, doc="Table containing contamination information.")
+    public File contaminationTable = null;
+
 }

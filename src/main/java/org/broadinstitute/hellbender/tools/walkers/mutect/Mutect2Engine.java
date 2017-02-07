@@ -52,6 +52,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     public static final List<String> STRAND_ARTIFACT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.TLOD_FWD_KEY, GATKVCFConstants.TLOD_REV_KEY,
             GATKVCFConstants.TUMOR_SB_POWER_FWD_KEY, GATKVCFConstants.TUMOR_SB_POWER_REV_KEY);
 
+    public static final String TUMOR_SAMPLE_KEY_IN_VCF_HEADER = "tumor_sample";
+    public static final String NORMAL_SAMPLE_KEY_IN_VCF_HEADER = "normal_sample";
+
     private static final Logger logger = LogManager.getLogger(Mutect2Engine.class);
     private final static List<VariantContext> NO_CALLS = Collections.emptyList();
 
@@ -201,11 +204,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
     private Set<VCFHeaderLine> getSampleHeaderLines(){
         final Set<VCFHeaderLine> sampleLines = new HashSet<>();
         if (hasNormal()) {
-            final Map<String, String> normalSampleHeaderAttributes = ImmutableMap.of("ID", "NORMAL", "name", MTAC.normalSampleName);
-            sampleLines.add(new VCFSimpleHeaderLine("sample", normalSampleHeaderAttributes));
+            sampleLines.add(new VCFHeaderLine(NORMAL_SAMPLE_KEY_IN_VCF_HEADER, MTAC.normalSampleName));
         }
-        final Map<String, String> tumorSampleHeaderAttributes = ImmutableMap.of("ID", "TUMOR", "name", MTAC.tumorSampleName);
-        sampleLines.add(new VCFSimpleHeaderLine("sample", tumorSampleHeaderAttributes));
+        sampleLines.add(new VCFHeaderLine(TUMOR_SAMPLE_KEY_IN_VCF_HEADER, MTAC.tumorSampleName));
         return sampleLines;
     }
 

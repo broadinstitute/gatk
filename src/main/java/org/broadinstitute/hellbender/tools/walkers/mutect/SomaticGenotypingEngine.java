@@ -146,9 +146,6 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
                 continue;
             }
 
-            // sort from greatest to least LOD
-            Collections.sort(somaticAltAlleles, (a1, a2) -> -Double.compare(tumorLods.getAlt(a1), tumorLods.getAlt(a2)));
-
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC);
             callVcb.attribute(GATKVCFConstants.TUMOR_LOD_KEY, somaticAltAlleles.stream().mapToDouble(tumorLods::getAlt).toArray());
 

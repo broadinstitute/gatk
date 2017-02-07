@@ -8,6 +8,7 @@
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  dbsnp, dbsnp_index: optional database of known germline variants
 #  cosmic, cosmic_index: optional database of known somatic variants
+#  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  pair_list: a tab-separated table with no header in the following format:
 #   TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX</TAB>NORMAL_1_SAMPLE</TAB>
@@ -39,6 +40,7 @@ task CreateOutputList {
 
 	runtime {
         docker: "ubuntu:14.04"
+        memory: "1 GB"
         preemptible: "${preemptible_attempts}"
 	}
 
@@ -64,6 +66,8 @@ workflow Mutect2_Multi {
 	File? dbsnp_index
 	File? cosmic
 	File? cosmic_index
+	File? variants_for_contamination
+    File? variants_for_contamination_index
 	Boolean is_run_orientation_bias_filter
 	Boolean is_run_oncotator
     String m2_docker
@@ -106,7 +110,8 @@ workflow Mutect2_Multi {
                     dbsnp_index = dbsnp_index,
                     cosmic = cosmic,
                     cosmic_index = cosmic_index,
-                    picard_jar = picard_jar,
+                    variants_for_contamination = variants_for_contamination,
+                    variants_for_contamination_index = variants_for_contamination_index,
                     is_run_orientation_bias_filter = is_run_orientation_bias_filter,
                     is_run_oncotator=is_run_oncotator,
                     oncotator_docker=oncotator_docker,
@@ -151,6 +156,7 @@ workflow Mutect2_Multi {
         Array[File] unfiltered_vcf_files = Mutect2.unfiltered_vcf
         Array[File] filtered_vcf_files = Mutect2.filtered_vcf
         Array[File?] ob_filtered_vcf_files = Mutect2.ob_filtered_vcf
-        Array[File?] oncotated_m2_vcf_files = Mutect2.oncotated_m2_vcf
+
+        Array[File?] contamination_tables = Mutect2.contamination_table
     }
 }

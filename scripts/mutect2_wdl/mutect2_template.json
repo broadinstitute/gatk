@@ -17,6 +17,8 @@
   "Mutect2.dbsnp_index": "$__dbsnp_index__",
   "Mutect2.cosmic": "$__cosmic__",
   "Mutect2.cosmic_index": "$__cosmic_index__",
+  "Mutect2.variants_for_contamination": "$__variants_for_contamination__",
+  "Mutect2.variants_for_contamination_index": "$__variants_for_contamination_index__",
   "Mutect2.is_run_orientation_bias_filter": "$__is_run_orientation_bias_filter__",
   "Mutect2.is_run_oncotator": "$__is_run_oncotator__",
   "Mutect2.m2_docker": "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4",

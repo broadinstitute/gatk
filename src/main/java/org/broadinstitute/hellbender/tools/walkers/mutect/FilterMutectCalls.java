@@ -44,6 +44,7 @@ public final class FilterMutectCalls extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
         Mutect2FilteringEngine.M_2_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerLines::add);
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.ARTIFACT_IN_NORMAL_FILTER_NAME, "artifact_in_normal"));
+        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.CONTAMINATION_FILTER_NAME, "contamination"));
 
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());
         vcfWriter = createVCFWriter(new File(outputVcf));
@@ -52,10 +53,12 @@ public final class FilterMutectCalls extends VariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
+        final String tumorSample = getHeaderForVariants().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
+        final Mutect2FilteringEngine filteringEngine = new Mutect2FilteringEngine(MTFAC, tumorSample);
         // TODO: implement sophisticated filtering
         for (final VariantContext vc : unfilteredCalls) {
             final VariantContextBuilder vcb = new VariantContextBuilder(vc);
-            vcb.filters(Mutect2FilteringEngine.calculateFilters(MTFAC, vc));
+            vcb.filters(filteringEngine.calculateFilters(MTFAC, vc));
             vcfWriter.add(vcb.make());
         }
         return "SUCCESS";
