@@ -1,4 +1,4 @@
-#  Run Mutect 2 on a list of tumor-normal pairs
+#  Run Mutect 2 on a list of tumors or tumor-normal pairs
 #
 #  Description of inputs
 #  gatk4_jar: java jar file containing gatk 4 (protected)
@@ -13,6 +13,11 @@
 #   TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX</TAB>NORMAL_1_SAMPLE</TAB>
 #   TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX</TAB>NORMAL_2_SAMPLE</TAB>
 #   . . .
+#  Temporarily, while waiting for a Cromwell bug to be resolved, tumor-only input looks like
+#  TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>
+#  TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>
+#   . . .
+#  That is, you actually write out "NO NORMAL" thrice per row
 
 import "mutect2.wdl" as m2
 
@@ -33,6 +38,7 @@ task CreateOutputList {
 	}
 }
 
+
 workflow Mutect2 {
     # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
 	String gatk4_jar
@@ -51,30 +57,43 @@ workflow Mutect2 {
 	File? cosmic_index
 	Boolean is_run_orientation_bias_filter
 
-	scatter(pair in pairs) {
-		call m2.Mutect2 {
-			input:
-				gatk4_jar = gatk4_jar,
-				intervals = intervals,
-				ref_fasta = ref_fasta,
-				ref_fasta_index = ref_fasta_index,
-				ref_dict = ref_dict,
-				tumor_bam = pair[0],
-				tumor_bam_index = pair[1],
-				tumor_sample_name = pair[2],
-				normal_bam = pair[3],
-				normal_bam_index = pair[4],
-				normal_sample_name = pair[5],
-				pon = pon,
-				pon_index = pon_index,
-				scatter_count = scatter_count,
-				dbsnp = dbsnp,
-				dbsnp_index = dbsnp_index,
-				cosmic = cosmic,
-				cosmic_index = cosmic_index,
-				is_run_orientation_bias_filter = is_run_orientation_bias_filter
-		}
-	}
+	scatter( row in pairs ) {
+	    #The non-hack way, but there's a bug
+	    #      In WDL, variables inside the block can be used outside the block.
+	    #      If the conditional block is run, they retain their values.
+	    #      Otherwise, they evaluate to null, which in WDL is equivalent to an empty optional
+	    #      If we simply tried to use eg row[3] below it could cause an out-of-bounds exception
+        #if(length(pairs[n]) == 6) {
+        #    File normal_bam = row[3]
+        #    File normal_bam_index = row[4]
+        #    String normal_sample_name = row[5]
+        #}
+
+            call m2.Mutect2 {
+                input:
+                    gatk4_jar = gatk4_jar,
+                    intervals = intervals,
+                    ref_fasta = ref_fasta,
+                    ref_fasta_index = ref_fasta_index,
+                    ref_dict = ref_dict,
+                    tumor_bam = row[0],
+                    tumor_bam_index = row[1],
+                    tumor_sample_name = row[2],
+                    normal_bam = row[3],
+                    normal_bam_index = row[4],
+                    normal_sample_name = row[5],
+                    pon = pon,
+                    pon_index = pon_index,
+                    scatter_count = scatter_count,
+                    dbsnp = dbsnp,
+                    dbsnp_index = dbsnp_index,
+                    cosmic = cosmic,
+                    cosmic_index = cosmic_index,
+                    picard_jar = picard_jar,
+                    is_run_orientation_bias_filter = is_run_orientation_bias_filter
+            }
+    }
+
 
 	call CreateOutputList as unfilteredOutputList {
 		input:
@@ -92,7 +111,7 @@ workflow Mutect2 {
         call CreateOutputList as orientationBiasFilteredOutputList {
             input:
                 output_name = "ob_filtered",
-                vcfs = select_first(Mutect2.ob_filtered_vcf)
+                vcfs = select_all(Mutect2.ob_filtered_vcf)
         }
     }
 
