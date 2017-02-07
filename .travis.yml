@@ -7,8 +7,9 @@ jdk:
 - oraclejdk8
 env:
   matrix:
-  - CLOUD=mandatory
-  - CLOUD=false
+  - TEST_TYPE=cloud
+  - TEST_TYPE=integration TEST_VERBOSITY=minimal
+  - TEST_TYPE=unit TEST_VERBOSITY=minimal
   global:
   #for genomics db
   - LD_LIBRARY_PATH=$TRAVIS_BUILD_DIR/dependencies/libcsv/.libs
@@ -36,8 +37,6 @@ env:
   - secure: "E0LWXgX3aWSE/DWHXXDx4vrAq4uX6vKg402wToaZ5otbHQ/UP0H7/FA5jomavAXoC46oMVHZcEltZ5OVhuJ0NW8yYxUCecJ1D/YvVQmnfFABcV/qLM+k4e2rYQOKVw/pejB2gG8XdTA+XE2WyTeENbmIkputS8f1ndKWCmZxuuk="
 matrix:
   fast_finish: true
-  allow_failures:
-    - env: CLOUD=todo
 before_cache:
   - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
 cache:
@@ -61,26 +60,25 @@ before_install:
 - sudo apt-get install -y --force-yes r-base
 - R --version
 install:
-- if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
+- if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't bother building";
   else
     ./gradlew assemble;
     ./gradlew installDist;
   fi
 script:
-#basic sanity test to check that gatk-launch actually runs something
-- ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam
 #run tests
 #install git-lfs
-- if [[ $TRAVIS_SECURE_ENV_VARS == false && $CLOUD == mandatory ]]; then
+- if [[ $TRAVIS_SECURE_ENV_VARS == false && $TEST_TYPE == cloud ]]; then
     echo "Can't run cloud tests without keys so don't run tests";
   else
+    ./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam;
     bash scripts/install_git_lfs.sh;
     travis_wait 30 ./gradlew jacocoTestReport;
   fi
 after_success:
 - bash <(curl -s https://codecov.io/bash)
-- if [[ $TRAVIS_BRANCH == master && $CLOUD == false ]]; then ./gradlew uploadArchives; fi
+- if [[ $TRAVIS_BRANCH == master && $TEST_TYPE == integration ]]; then ./gradlew uploadArchives; fi
 after_failure:
 - dmesg | tail -100
 after_script:
