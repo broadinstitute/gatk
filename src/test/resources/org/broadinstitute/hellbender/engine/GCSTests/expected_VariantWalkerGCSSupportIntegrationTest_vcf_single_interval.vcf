@@ -1,0 +1,210 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=NC,Description="Inconsistent Genotype Submission For At Least One Sample">
+##GATKCommandLine.SelectVariants=<ID=SelectVariants,Version=3.4-46-gbc02625,Date="Wed Aug 19 10:29:53 EDT 2015",Epoch=1439994593766,CommandLineOptions="analysis_type=SelectVariants input_file=[] showFullBamList=false read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] disable_read_filter=[] intervals=[20:10000000-10250000, 21:10000000-10250000] excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=human_g1k_v37.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 refactor_NDN_cigar_string=false fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false no_cmdline_in_header=false sites_only=false never_trim_vcf_format_field=false bcf=false bam_compression=null simplifyBAM=false disable_bam_indexing=false generate_md5=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false variant_index_type=DYNAMIC_SEEK variant_index_parameter=-1 logging_level=INFO log_to_file=null help=false version=false variant=(RodBinding name=variant source=dbsnp_138.b37.vcf) discordance=(RodBinding name= source=UNBOUND) concordance=(RodBinding name= source=UNBOUND) out=/home/unix/droazen/bundle_snippets/dbsnp_138.b37.20.21.vcf sample_name=[] sample_expressions=null sample_file=null exclude_sample_name=[] exclude_sample_file=[] exclude_sample_expressions=[] selectexpressions=[] invertselect=false excludeNonVariants=false excludeFiltered=false preserveAlleles=false removeUnusedAlternates=false restrictAllelesTo=ALL keepOriginalAC=false keepOriginalDP=false mendelianViolation=false invertMendelianViolation=false mendelianViolationQualThreshold=0.0 select_random_fraction=0.0 remove_fraction_genotypes=0.0 selectTypeToInclude=[] selectTypeToExclude=[] keepIDs=null excludeIDs=null fullyDecode=false justRead=false maxIndelSize=2147483647 minIndelSize=0 maxFilteredGenotypes=2147483647 minFilteredGenotypes=0 maxFractionFilteredGenotypes=1.0 minFractionFilteredGenotypes=0.0 setFilteredGtToNocall=false ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES=false filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##GATKCommandLine=<ID=LeftAlignAndTrimVariants,Version=2.7-63-g8d09086,Date="Mon Nov 04 10:02:23 EST 2013",Epoch=1383577343781,CommandLineOptions="analysis_type=LeftAlignAndTrimVariants input_file=[] read_buffer_size=null phone_home=AWS gatk_key=null tag=NA read_filter=[] intervals=null excludeIntervals=null interval_set_rule=UNION interval_merging=ALL interval_padding=0 reference_sequence=/humgen/1kg/reference/human_g1k_v37.fasta nonDeterministicRandomSeed=false disableDithering=false maxRuntime=-1 maxRuntimeUnits=MINUTES downsampling_type=BY_SAMPLE downsample_to_fraction=null downsample_to_coverage=1000 baq=OFF baqGapOpenPenalty=40.0 fix_misencoded_quality_scores=false allow_potentially_misencoded_quality_scores=false useOriginalQualities=false defaultBaseQualities=-1 performanceLog=null BQSR=null quantize_quals=0 disable_indel_quals=false emit_original_quals=false preserve_qscores_less_than=6 globalQScorePrior=-1.0 allow_bqsr_on_reduced_bams_despite_repeated_warnings=false validation_strictness=SILENT remove_program_records=false keep_program_records=false sample_rename_mapping_file=null unsafe=null disable_auto_index_creation_and_locking_when_reading_rods=false num_threads=1 num_cpu_threads_per_data_thread=1 num_io_threads=0 monitorThreadEfficiency=false num_bam_file_handles=null read_group_black_list=null pedigree=[] pedigreeString=[] pedigreeValidationType=STRICT allow_intervals_with_unindexed_bam=false generateShadowBCF=false logging_level=INFO log_to_file=null help=false version=false variant=(RodBinding name=variant source=138/00-All.vcf) trimAlleles=false splitMultiallelics=false out=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub no_cmdline_in_header=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub sites_only=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub bcf=org.broadinstitute.sting.gatk.io.stubs.VariantContextWriterStub filter_reads_with_N_cigar=false filter_mismatching_base_and_quals=false filter_bases_not_stored=false">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=ASP,Number=0,Type=Flag,Description="Is Assembly specific. This is set if the variant only maps to one assembly">
+##INFO=<ID=ASS,Number=0,Type=Flag,Description="In acceptor splice site FxnCode = 73">
+##INFO=<ID=CAF,Number=.,Type=String,Description="An ordered, comma delimited list of allele frequencies based on 1000Genomes, starting with the reference allele followed by alternate alleles as ordered in the ALT column. Where a 1000Genomes alternate allele is not in the dbSNPs alternate allele set, the allele is added to the ALT column.  The minor allele is the second largest value in the list, and was previuosly reported in VCF as the GMAF.  This is the GMAF reported on the RefSNP and EntrezSNP pages and VariationReporter">
+##INFO=<ID=CDA,Number=0,Type=Flag,Description="Variation is interrogated in a clinical diagnostic assay">
+##INFO=<ID=CFL,Number=0,Type=Flag,Description="Has Assembly conflict. This is for weight 1 and 2 variant that maps to different chromosomes on different assemblies.">
+##INFO=<ID=CLNACC,Number=.,Type=String,Description="Variant Accession and Versions">
+##INFO=<ID=CLNALLE,Number=.,Type=Integer,Description="Variant alleles from REF or ALT columns.  0 is REF, 1 is the first ALT allele, etc.  This is used to match alleles with other corresponding clinical (CLN) INFO tags.  A value of -1 indicates that no allele was found to match a corresponding HGVS allele name.">
+##INFO=<ID=CLNDBN,Number=.,Type=String,Description="Variant disease name">
+##INFO=<ID=CLNDSDB,Number=.,Type=String,Description="Variant disease database name">
+##INFO=<ID=CLNDSDBID,Number=.,Type=String,Description="Variant disease database ID">
+##INFO=<ID=CLNHGVS,Number=.,Type=String,Description="Variant names from HGVS.    The order of these variants corresponds to the order of the info in the other clinical  INFO tags.">
+##INFO=<ID=CLNORIGIN,Number=.,Type=String,Description="Allele Origin. One or more of the following values may be added: 0 - unknown; 1 - germline; 2 - somatic; 4 - inherited; 8 - paternal; 16 - maternal; 32 - de-novo; 64 - biparental; 128 - uniparental; 256 - not-tested; 512 - tested-inconclusive; 1073741824 - other">
+##INFO=<ID=CLNSIG,Number=.,Type=String,Description="Variant Clinical Significance, 0 - unknown, 1 - untested, 2 - non-pathogenic, 3 - probable-non-pathogenic, 4 - probable-pathogenic, 5 - pathogenic, 6 - drug-response, 7 - histocompatibility, 255 - other">
+##INFO=<ID=CLNSRC,Number=.,Type=String,Description="Variant Clinical Chanels">
+##INFO=<ID=CLNSRCID,Number=.,Type=String,Description="Variant Clinical Channel IDs">
+##INFO=<ID=COMMON,Number=1,Type=Integer,Description="RS is a common SNP.  A common SNP is one that has at least one 1000Genomes population with a minor allele of frequency >= 1% and for which 2 or more founders contribute to that minor allele frequency.">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=DSS,Number=0,Type=Flag,Description="In donor splice-site FxnCode = 75">
+##INFO=<ID=G5,Number=0,Type=Flag,Description=">5% minor allele frequency in 1+ populations">
+##INFO=<ID=G5A,Number=0,Type=Flag,Description=">5% minor allele frequency in each and all populations">
+##INFO=<ID=GENEINFO,Number=1,Type=String,Description="Pairs each of gene symbol:gene id.  The gene symbol and id are delimited by a colon (:) and each pair is delimited by a vertical bar (|)">
+##INFO=<ID=GNO,Number=0,Type=Flag,Description="Genotypes available. The variant has individual genotype (in SubInd table).">
+##INFO=<ID=HD,Number=0,Type=Flag,Description="Marker is on high density genotyping kit (50K density or greater).  The variant may have phenotype associations present in dbGaP.">
+##INFO=<ID=INT,Number=0,Type=Flag,Description="In Intron FxnCode = 6">
+##INFO=<ID=KGPROD,Number=0,Type=Flag,Description="Has 1000 Genome submission">
+##INFO=<ID=KGPhase1,Number=0,Type=Flag,Description="1000 Genome phase 1 (incl. June Interim phase 1)">
+##INFO=<ID=KGPilot123,Number=0,Type=Flag,Description="1000 Genome discovery all pilots 2010(1,2,3)">
+##INFO=<ID=KGValidated,Number=0,Type=Flag,Description="1000 Genome validated">
+##INFO=<ID=LSD,Number=0,Type=Flag,Description="Submitted from a locus-specific database">
+##INFO=<ID=MTP,Number=0,Type=Flag,Description="Microattribution/third-party annotation(TPA:GWAS,PAGE)">
+##INFO=<ID=MUT,Number=0,Type=Flag,Description="Is mutation (journal citation, explicit fact): a low frequency variation that is cited in journal and other reputable sources">
+##INFO=<ID=NOC,Number=0,Type=Flag,Description="Contig allele not present in variant allele list. The reference sequence allele at the mapped position is not present in the variant allele list, adjusted for orientation.">
+##INFO=<ID=NOV,Number=0,Type=Flag,Description="Rs cluster has non-overlapping allele sets. True when rs set has more than 2 alleles from different submissions and these sets share no alleles in common.">
+##INFO=<ID=NSF,Number=0,Type=Flag,Description="Has non-synonymous frameshift A coding region variation where one allele in the set changes all downstream amino acids. FxnClass = 44">
+##INFO=<ID=NSM,Number=0,Type=Flag,Description="Has non-synonymous missense A coding region variation where one allele in the set changes protein peptide. FxnClass = 42">
+##INFO=<ID=NSN,Number=0,Type=Flag,Description="Has non-synonymous nonsense A coding region variation where one allele in the set changes to STOP codon (TER). FxnClass = 41">
+##INFO=<ID=OM,Number=0,Type=Flag,Description="Has OMIM/OMIA">
+##INFO=<ID=OTH,Number=0,Type=Flag,Description="Has other variant with exactly the same set of mapped positions on NCBI refernce assembly.">
+##INFO=<ID=OTHERKG,Number=0,Type=Flag,Description="non-1000 Genome submission">
+##INFO=<ID=PH3,Number=0,Type=Flag,Description="HAP_MAP Phase 3 genotyped: filtered, non-redundant">
+##INFO=<ID=PM,Number=0,Type=Flag,Description="Variant is Precious(Clinical,Pubmed Cited)">
+##INFO=<ID=PMC,Number=0,Type=Flag,Description="Links exist to PubMed Central article">
+##INFO=<ID=R3,Number=0,Type=Flag,Description="In 3' gene region FxnCode = 13">
+##INFO=<ID=R5,Number=0,Type=Flag,Description="In 5' gene region FxnCode = 15">
+##INFO=<ID=REF,Number=0,Type=Flag,Description="Has reference A coding region variation where one allele in the set is identical to the reference sequence. FxnCode = 8">
+##INFO=<ID=RS,Number=1,Type=Integer,Description="dbSNP ID (i.e. rs number)">
+##INFO=<ID=RSPOS,Number=1,Type=Integer,Description="Chr position reported in dbSNP">
+##INFO=<ID=RV,Number=0,Type=Flag,Description="RS orientation is reversed">
+##INFO=<ID=S3D,Number=0,Type=Flag,Description="Has 3D structure - SNP3D table">
+##INFO=<ID=SAO,Number=1,Type=Integer,Description="Variant Allele Origin: 0 - unspecified, 1 - Germline, 2 - Somatic, 3 - Both">
+##INFO=<ID=SLO,Number=0,Type=Flag,Description="Has SubmitterLinkOut - From SNP->SubSNP->Batch.link_out">
+##INFO=<ID=SSR,Number=1,Type=Integer,Description="Variant Suspect Reason Codes (may be more than one value added together) 0 - unspecified, 1 - Paralog, 2 - byEST, 4 - oldAlign, 8 - Para_EST, 16 - 1kg_failed, 1024 - other">
+##INFO=<ID=SYN,Number=0,Type=Flag,Description="Has synonymous A coding region variation where one allele in the set does not change the encoded amino acid. FxnCode = 3">
+##INFO=<ID=TPA,Number=0,Type=Flag,Description="Provisional Third Party Annotation(TPA) (currently rs from PHARMGKB who will give phenotype data)">
+##INFO=<ID=U3,Number=0,Type=Flag,Description="In 3' UTR Location is in an untranslated region (UTR). FxnCode = 53">
+##INFO=<ID=U5,Number=0,Type=Flag,Description="In 5' UTR Location is in an untranslated region (UTR). FxnCode = 55">
+##INFO=<ID=VC,Number=1,Type=String,Description="Variation Class">
+##INFO=<ID=VLD,Number=0,Type=Flag,Description="Is Validated.  This bit is set if the variant has 2+ minor allele count based on frequency or genotype data.">
+##INFO=<ID=VP,Number=1,Type=String,Description="Variation Property.  Documentation is at ftp://ftp.ncbi.nlm.nih.gov/snp/specs/dbSNP_BitField_latest.pdf">
+##INFO=<ID=WGT,Number=1,Type=Integer,Description="Weight, 00 - unmapped, 1 - weight 1, 2 - weight 2, 3 - weight 3 or more">
+##INFO=<ID=WTD,Number=0,Type=Flag,Description="Is Withdrawn by submitter If one member ss is withdrawn by submitter, then this bit is set.  If all member ss' are withdrawn, then the rs is deleted to SNPHistory">
+##INFO=<ID=dbSNPBuildID,Number=1,Type=Integer,Description="First dbSNP Build for RS">
+##contig=<ID=1,length=249250621>
+##contig=<ID=2,length=243199373>
+##contig=<ID=3,length=198022430>
+##contig=<ID=4,length=191154276>
+##contig=<ID=5,length=180915260>
+##contig=<ID=6,length=171115067>
+##contig=<ID=7,length=159138663>
+##contig=<ID=8,length=146364022>
+##contig=<ID=9,length=141213431>
+##contig=<ID=10,length=135534747>
+##contig=<ID=11,length=135006516>
+##contig=<ID=12,length=133851895>
+##contig=<ID=13,length=115169878>
+##contig=<ID=14,length=107349540>
+##contig=<ID=15,length=102531392>
+##contig=<ID=16,length=90354753>
+##contig=<ID=17,length=81195210>
+##contig=<ID=18,length=78077248>
+##contig=<ID=19,length=59128983>
+##contig=<ID=20,length=63025520>
+##contig=<ID=21,length=48129895>
+##contig=<ID=22,length=51304566>
+##contig=<ID=X,length=155270560>
+##contig=<ID=Y,length=59373566>
+##contig=<ID=MT,length=16569>
+##contig=<ID=GL000207.1,length=4262>
+##contig=<ID=GL000226.1,length=15008>
+##contig=<ID=GL000229.1,length=19913>
+##contig=<ID=GL000231.1,length=27386>
+##contig=<ID=GL000210.1,length=27682>
+##contig=<ID=GL000239.1,length=33824>
+##contig=<ID=GL000235.1,length=34474>
+##contig=<ID=GL000201.1,length=36148>
+##contig=<ID=GL000247.1,length=36422>
+##contig=<ID=GL000245.1,length=36651>
+##contig=<ID=GL000197.1,length=37175>
+##contig=<ID=GL000203.1,length=37498>
+##contig=<ID=GL000246.1,length=38154>
+##contig=<ID=GL000249.1,length=38502>
+##contig=<ID=GL000196.1,length=38914>
+##contig=<ID=GL000248.1,length=39786>
+##contig=<ID=GL000244.1,length=39929>
+##contig=<ID=GL000238.1,length=39939>
+##contig=<ID=GL000202.1,length=40103>
+##contig=<ID=GL000234.1,length=40531>
+##contig=<ID=GL000232.1,length=40652>
+##contig=<ID=GL000206.1,length=41001>
+##contig=<ID=GL000240.1,length=41933>
+##contig=<ID=GL000236.1,length=41934>
+##contig=<ID=GL000241.1,length=42152>
+##contig=<ID=GL000243.1,length=43341>
+##contig=<ID=GL000242.1,length=43523>
+##contig=<ID=GL000230.1,length=43691>
+##contig=<ID=GL000237.1,length=45867>
+##contig=<ID=GL000233.1,length=45941>
+##contig=<ID=GL000204.1,length=81310>
+##contig=<ID=GL000198.1,length=90085>
+##contig=<ID=GL000208.1,length=92689>
+##contig=<ID=GL000191.1,length=106433>
+##contig=<ID=GL000227.1,length=128374>
+##contig=<ID=GL000228.1,length=129120>
+##contig=<ID=GL000214.1,length=137718>
+##contig=<ID=GL000221.1,length=155397>
+##contig=<ID=GL000209.1,length=159169>
+##contig=<ID=GL000218.1,length=161147>
+##contig=<ID=GL000220.1,length=161802>
+##contig=<ID=GL000213.1,length=164239>
+##contig=<ID=GL000211.1,length=166566>
+##contig=<ID=GL000199.1,length=169874>
+##contig=<ID=GL000217.1,length=172149>
+##contig=<ID=GL000216.1,length=172294>
+##contig=<ID=GL000215.1,length=172545>
+##contig=<ID=GL000205.1,length=174588>
+##contig=<ID=GL000219.1,length=179198>
+##contig=<ID=GL000224.1,length=179693>
+##contig=<ID=GL000223.1,length=180455>
+##contig=<ID=GL000195.1,length=182896>
+##contig=<ID=GL000212.1,length=186858>
+##contig=<ID=GL000222.1,length=186861>
+##contig=<ID=GL000200.1,length=187035>
+##contig=<ID=GL000193.1,length=189789>
+##contig=<ID=GL000194.1,length=191469>
+##contig=<ID=GL000225.1,length=211173>
+##contig=<ID=GL000192.1,length=547496>
+##dbSNP_BUILD_ID=138
+##fileDate=20130806
+##phasing=partial
+##source=SelectVariants
+##variationPropertyDocumentationUrl=ftp://ftp.ncbi.nlm.nih.gov/snp/specs/dbSNP_BitField_latest.pdf	
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+20	10004031	rs149257405	G	A	.	.	CAF=[0.9982,0.001837];COMMON=1;KGPROD;KGPhase1;R3;RS=149257405;RSPOS=10004031;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=134
+20	10004049	rs112115724	C	A	.	.	CAF=[0.9027,0.09734];COMMON=1;KGPROD;KGPhase1;OTHERKG;R3;RS=112115724;RSPOS=10004049;SAO=0;SSR=0;VC=SNV;VP=0x050000040001100016000100;WGT=1;dbSNPBuildID=132
+20	10004094	rs1988590	A	C	.	.	CAF=[0.2635,0.7365];COMMON=1;G5;G5A;GNO;KGPROD;KGPhase1;OTHERKG;R3;RS=1988590;RSPOS=10004094;SAO=0;SLO;SSR=0;VC=SNV;VP=0x050100040001130116000100;WGT=1;dbSNPBuildID=92
+20	10004104	rs183534690	C	T	.	.	CAF=[0.9982,0.001837];COMMON=1;KGPROD;KGPhase1;R3;RS=183534690;RSPOS=10004104;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=135
+20	10004125	rs187890174	G	A	.	.	CAF=[0.994,0.005969];COMMON=1;KGPROD;KGPhase1;R3;RS=187890174;RSPOS=10004125;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=135
+20	10004130	rs192439246	G	A	.	.	CAF=[0.994,0.005969];COMMON=1;KGPROD;KGPhase1;R3;RS=192439246;RSPOS=10004130;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=135
+20	10004147	rs1988591	A	G	.	.	CAF=[0.1965,0.8035];COMMON=1;GNO;KGPROD;KGPhase1;KGPilot123;OTHERKG;R3;RS=1988591;RSPOS=10004147;SAO=0;SLO;SSR=0;VC=SNV;VP=0x05010004000110011e000100;WGT=1;dbSNPBuildID=92
+20	10004178	rs184419331	C	T	.	.	CAF=[0.9963,0.003673];COMMON=1;KGPROD;KGPhase1;R3;RS=184419331;RSPOS=10004178;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=135
+20	10004193	rs113552177	G	T	.	.	CAF=[0.9922,0.007805];COMMON=1;GNO;KGPROD;KGPhase1;OTHERKG;R3;RS=113552177;RSPOS=10004193;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000116000100;WGT=1;dbSNPBuildID=132
+20	10004194	rs189046596	C	A	.	.	CAF=[0.9977,0.002296];COMMON=1;KGPROD;KGPhase1;R3;RS=189046596;RSPOS=10004194;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=135
+20	10004222	rs33962027	C	CA,CAA	.	.	GNO;OTHERKG;R3;RS=33962027;RSPOS=10004240;SAO=0;SLO;SSR=0;VC=DIV;VP=0x050100040001000102000200;WGT=1;dbSNPBuildID=126
+20	10004222	rs71332903	C	CA,CAA	.	.	GNO;OTHERKG;RS=71332903;RSPOS=10004222;SAO=0;SLO;SSR=0;VC=DIV;VP=0x050100000001000102000200;WGT=1;dbSNPBuildID=130
+20	10004222	rs372743847	CAA	C,CG	.	.	KGPROD;KGPhase1;KGPilot123;NOC;R3;RS=372743847;RSPOS=10004223;SAO=0;SSR=0;VC=DIV;VP=0x05000004000100001c000210;WGT=1;dbSNPBuildID=138
+20	10004223	rs35794218	A	AA,AG	.	.	CAF=[0.8209,.,0.1791];COMMON=1;NOC;OTHERKG;R3;RS=35794218;RSPOS=10004223;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000002000110;WGT=1;dbSNPBuildID=126
+20	10004224	rs1988592	A	G	.	.	CAF=[0.8535,0.1465];COMMON=1;G5;G5A;GNO;KGPROD;KGPhase1;OTHERKG;R3;RS=1988592;RSPOS=10004224;SAO=0;SLO;SSR=0;VC=SNV;VP=0x050100040001130116000100;WGT=1;dbSNPBuildID=92
+20	10004241	rs199887276	G	A	.	.	HD;OTHERKG;R3;RS=199887276;RSPOS=10004241;RV;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000402000100;WGT=1;dbSNPBuildID=137
+20	10004241	rs34225317	G	GA	.	.	OTHERKG;R3;RS=34225317;RSPOS=10004241;SAO=0;SSR=0;VC=DIV;VP=0x050000040001100002000200;WGT=1;dbSNPBuildID=126
+20	10004298	rs146493122	G	A	.	.	CAF=[0.9927,0.007346];COMMON=1;HD;KGPROD;KGPhase1;OTHERKG;R3;RS=146493122;RSPOS=10004298;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000416000100;WGT=1;dbSNPBuildID=134
+20	10004351	rs6057092	C	G	.	.	CAF=[0.186,0.814];COMMON=1;G5;G5A;GNO;KGPROD;KGPhase1;KGPilot123;OTHERKG;R3;RS=6057092;RSPOS=10004351;SAO=0;SLO;SSR=0;VC=SNV;VP=0x05010004000113011e000100;WGT=1;dbSNPBuildID=114
+20	10004389	rs6057093	T	G	.	.	CAF=[0.1846,0.8154];COMMON=1;G5;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;PH3;R3;RS=6057093;RSPOS=10004389;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010004000115051f000100;WGT=1;dbSNPBuildID=114
+20	10004457	rs192956077	G	C	.	.	CAF=[0.9991,0.0009183];COMMON=0;KGPROD;KGPhase1;R3;RS=192956077;RSPOS=10004457;SAO=0;SSR=0;VC=SNV;VP=0x050000040001000014000100;WGT=1;dbSNPBuildID=135
+20	10004566	rs183813037	C	T	.	.	CAF=[0.9995,0.0004591];COMMON=0;KGPROD;KGPhase1;RS=183813037;RSPOS=10004566;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
+20	10004606	rs7270213	C	T	.	.	CAF=[0.9927,0.007346];COMMON=1;KGPROD;KGPhase1;OTHERKG;RS=7270213;RSPOS=10004606;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000016000100;WGT=1;dbSNPBuildID=116
+20	10004610	rs2064654	A	C	.	.	CAF=[0.1864,0.8136];COMMON=1;G5;G5A;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;PH3;RS=2064654;RSPOS=10004610;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010000000117051f000100;WGT=1;dbSNPBuildID=94
+20	10004647	rs12480892	G	A	.	.	CAF=[0.994,0.005969];COMMON=1;GNO;HD;KGPROD;KGPhase1;OTHERKG;RS=12480892;RSPOS=10004647;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000516000100;WGT=1;dbSNPBuildID=120
+20	10004675	rs188978613	A	G	.	.	CAF=[0.9959,0.004132];COMMON=1;KGPROD;KGPhase1;RS=188978613;RSPOS=10004675;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
+20	10004725	rs10485737	A	G	.	.	CAF=[0.7792,0.2208];COMMON=1;G5;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;PH3;RS=10485737;RSPOS=10004725;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010000000115051f000100;WGT=1;dbSNPBuildID=119
+20	10004769	rs5840348	TAAAACTATGC	T	.	.	OTHERKG;RS=5840348;RSPOS=10004777;SAO=0;SSR=0;VC=DIV;VP=0x050000000001000002000200;WGT=1;dbSNPBuildID=114
+20	10004769	rs35683259	TAAAACTATGC	T	.	.	CAF=[0.8751,0.1249];COMMON=1;KGPROD;KGPhase1;KGPilot123;OTHERKG;RS=35683259;RSPOS=10004770;SAO=0;SSR=0;VC=DIV;VP=0x05000000000100001e000200;WGT=1;dbSNPBuildID=126
+20	10004838	rs368487684	T	C	.	.	OTHERKG;RS=368487684;RSPOS=10004838;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000002000100;WGT=1;dbSNPBuildID=138
+20	10004874	rs725567	A	C	.	.	CAF=[0.08678,0.9132];COMMON=1;G5;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;PH3;RS=725567;RSPOS=10004874;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010000000115051f000100;WGT=1;dbSNPBuildID=86
+20	10004887	rs725566	A	G	.	.	CAF=[0.876,0.124];COMMON=1;G5;G5A;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;RS=725566;RSPOS=10004887;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010000000117051e000100;WGT=1;dbSNPBuildID=86
+20	10004902	rs181536552	C	T	.	.	CAF=[0.9995,0.0004591];COMMON=0;KGPROD;KGPhase1;RS=181536552;RSPOS=10004902;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
+20	10004937	rs6077628	C	T	.	.	OTHERKG;RS=6077628;RSPOS=10004937;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000002000100;WGT=1;dbSNPBuildID=114
+20	10005010	rs725565	C	T	.	.	CAF=[0.185,0.815];COMMON=1;G5;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;PH3;RS=725565;RSPOS=10005010;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010000000115051f000100;WGT=1;dbSNPBuildID=86
+20	10005065	rs6077629	C	T	.	.	OTHERKG;RS=6077629;RSPOS=10005065;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000002000100;WGT=1;dbSNPBuildID=114
+20	10005114	rs186376878	T	A	.	.	CAF=[0.9977,0.002296];COMMON=1;KGPROD;KGPhase1;RS=186376878;RSPOS=10005114;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
+20	10005116	rs112587879	A	C	.	.	CAF=[0.989,0.01102];COMMON=1;GNO;KGPROD;KGPhase1;OTHERKG;RS=112587879;RSPOS=10005116;SAO=0;SLO;SSR=0;VC=SNV;VP=0x050100000001100116000100;WGT=1;dbSNPBuildID=132
+20	10005179	rs190571403	C	G	.	.	CAF=[0.9986,0.001377];COMMON=1;KGPROD;KGPhase1;RS=190571403;RSPOS=10005179;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
+20	10005187	rs11699347	G	A	.	.	OTHERKG;RS=11699347;RSPOS=10005187;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000002000100;WGT=1;dbSNPBuildID=120
+20	10005278	rs11697447	A	G	.	.	CAF=[0.978,0.02204];COMMON=1;HD;KGPROD;KGPhase1;OTHERKG;RS=11697447;RSPOS=10005278;SAO=0;SSR=0;VC=SNV;VLD;VP=0x050000000001140416000100;WGT=1;dbSNPBuildID=120
+20	10005427	rs6057094	C	T	.	.	CAF=[0.185,0.815];COMMON=1;G5;G5A;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;RS=6057094;RSPOS=10005427;SAO=0;SLO;SSR=0;VC=SNV;VP=0x05010000000113051e000100;WGT=1;dbSNPBuildID=114
+20	10005465	rs6077630	G	A	.	.	CAF=[0.9339,0.06612];COMMON=1;G5;G5A;HD;KGPROD;KGPhase1;OTHERKG;RS=6077630;RSPOS=10005465;SAO=0;SSR=0;VC=SNV;VLD;VP=0x050000000001170416000100;WGT=1;dbSNPBuildID=114
+20	10005499	rs6077631	A	G	.	.	CAF=[0.185,0.815];COMMON=1;G5;G5A;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;RS=6077631;RSPOS=10005499;SAO=0;SLO;SSR=0;VC=SNV;VP=0x05010000000113051e000100;WGT=1;dbSNPBuildID=114
+20	10005583	rs181967313	C	A	.	.	CAF=[0.9991,0.0009183];COMMON=1;KGPROD;KGPhase1;RS=181967313;RSPOS=10005583;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
+20	10005587	rs6108375	A	G	.	.	CAF=[0.3673,0.6327];COMMON=1;G5;G5A;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;RS=6108375;RSPOS=10005587;SAO=0;SLO;SSR=0;VC=SNV;VLD;VP=0x05010000000117051e000100;WGT=1;dbSNPBuildID=114
+20	10005618	rs373450216	C	T	.	.	OTHERKG;RS=373450216;RSPOS=10005618;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000002000100;WGT=1;dbSNPBuildID=138
+20	10005696	rs140983642	G	A	.	.	CAF=[0.9991,0.0009183];COMMON=1;KGPROD;KGPhase1;RS=140983642;RSPOS=10005696;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=134
+20	10005713	rs6118855	G	A	.	.	OTHERKG;RS=6118855;RSPOS=10005713;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000002000100;WGT=1;dbSNPBuildID=114
+20	10005723	rs6108376	A	G	.	.	CAF=[0.185,0.815];COMMON=1;G5;G5A;GNO;HD;KGPROD;KGPhase1;KGPilot123;OTHERKG;RS=6108376;RSPOS=10005723;SAO=0;SLO;SSR=0;VC=SNV;VP=0x05010000000113051e000100;WGT=1;dbSNPBuildID=114
+20	10005982	rs186160230	G	A	.	.	CAF=[0.9995,0.0004591];COMMON=0;KGPROD;KGPhase1;RS=186160230;RSPOS=10005982;SAO=0;SSR=0;VC=SNV;VP=0x050000000001000014000100;WGT=1;dbSNPBuildID=135
