@@ -81,6 +81,11 @@ script:
 after_success:
 - bash <(curl -s https://codecov.io/bash)
 - if [[ $TRAVIS_BRANCH == master && $TEST_TYPE == integration ]]; then ./gradlew uploadArchives; fi
+# if this is actually a commit to master and not a pull request build into master, then publish master-snapshot
+- if [[ $TRAVIS_BRANCH == master && $TRAVIS_PULL_REQUEST == false && $TEST_TYPE == integration ]]; then 
+    git tag master;
+    ./gradlew uploadArchives; 
+  fi
 after_failure:
 - dmesg | tail -100
 after_script:
