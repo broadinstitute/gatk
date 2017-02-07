@@ -27,7 +27,6 @@ option_list <- list(
 
 opt <- parse_args(OptionParser(option_list=option_list))
 print(opt)
-save(opt, file="debug.RData")
 
 sample_name=opt[["sample_name"]]
 tn_file=opt[["targets_file"]]

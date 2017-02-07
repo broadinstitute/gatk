@@ -215,6 +215,7 @@ workflow case_gatk_acnv_workflow {
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
           pre_tn_file=TumorNormalizeSomaticReadCounts.pre_tn_file,
           called_file=TumorCaller.called_file,
+          ref_fasta_dict=ref_fasta_dict,
           output_dir="${plots_dir}CopyRatio_Plots/${row[0]}/",
           mem=4
     }
@@ -226,6 +227,7 @@ workflow case_gatk_acnv_workflow {
           tumor_hets=BayesianHetPulldownPaired.tumor_hets,
           acnv_segments=AllelicCNV.acnv_final_segs,
           tn_file=TumorNormalizeSomaticReadCounts.tn_file,
+          ref_fasta_dict=ref_fasta_dict,
           output_dir="${plots_dir}ACNV_plots/${row[0]}",
           mem=4
     }
@@ -661,6 +663,7 @@ task PlotSegmentedCopyRatio {
     File tn_file
     File pre_tn_file
     File called_file
+    File ref_fasta_dict
     String output_dir
     Int mem
 
@@ -668,6 +671,7 @@ task PlotSegmentedCopyRatio {
         mkdir -p ${output_dir} && \
         java -Xmx${mem}g -jar ${gatk_jar} PlotSegmentedCopyRatio --tangentNormalized ${tn_file} \
          --preTangentNormalized ${pre_tn_file} --segments ${called_file} \
+         -SD ${ref_fasta_dict} \
          --output ${output_dir} --outputPrefix ${entity_id}
     }
 
@@ -685,6 +689,7 @@ task PlotACNVResults {
     File tumor_hets
     File tn_file
     File acnv_segments
+    File ref_fasta_dict
     String output_dir
     Int mem
 
@@ -692,6 +697,7 @@ task PlotACNVResults {
         mkdir -p ${output_dir} && \
         java -Xmx${mem}g -jar ${gatk_jar} PlotACNVResults --hets ${tumor_hets} \
          --tangentNormalized ${tn_file} --segments ${acnv_segments} \
+         -SD ${ref_fasta_dict} \
          --output ${output_dir} --outputPrefix ${entity_id}
     }
 
