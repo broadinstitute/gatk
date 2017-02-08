@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.tools.spark.linkedreads;
 import avro.shaded.com.google.common.collect.Iterators;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
+import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.hadoop.mapred.FileOutputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -16,13 +18,21 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import scala.Symbol;
 import scala.Tuple2;
 
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static org.broadinstitute.hellbender.utils.runtime.StreamLocation.File;
 
 @CommandLineProgramProperties(
         summary = "Computes the coverage by long molecules from linked-read data",
@@ -46,6 +56,11 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             shortName = "writeSAM", fullName = "writeSAM",
             optional = true)
     public boolean writeSAM = true;
+
+    @Argument(doc = "shardedOutput",
+            shortName = "shardedOutput", fullName = "shardedOutput",
+            optional = true)
+    public boolean shardedOutput = true;
 
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
@@ -100,19 +115,47 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                                     (intervalTree1, intervalTree2) -> combineIntervalLists(intervalTree1, intervalTree2, finalClusterSize)
                             );
 
-            final JavaRDD<String> intervalsByBarcode;
-            intervalsByBarcode = barcodeIntervals.flatMap(x -> {
+            final JavaPairRDD<SimpleInterval, String> intervalsByBarcode;
+            intervalsByBarcode = barcodeIntervals.flatMapToPair(x -> {
                 final String barcode = x._1;
                 final Map<String, IntervalTree<List<ReadInfo>>> contigIntervalTreeMap = x._2;
-                final List<String> results = new ArrayList<>();
+
+                final List<Tuple2<SimpleInterval, String>> results = new ArrayList<>();
                 for (final String contig : contigIntervalTreeMap.keySet()) {
                     for (final IntervalTree.Node<List<ReadInfo>> next : contigIntervalTreeMap.get(contig)) {
-                        results.add(intervalTreeToBedRecord(barcode, contig, next));
+                        results.add(new Tuple2<>(new SimpleInterval(contig, next.getStart(), next.getEnd()), intervalTreeToBedRecord(barcode, contig, next)));
                     }
                 }
                 return results.iterator();
             });
-            intervalsByBarcode.saveAsTextFile(out);
+
+            if (shardedOutput) {
+                intervalsByBarcode.values().saveAsTextFile(out);
+            } else {
+                final String shardedOutputDirectory = this.out + ".parts";
+                final int numParts = intervalsByBarcode.getNumPartitions();
+                intervalsByBarcode.sortByKey(new SimpleIntervalComparator(headerForReads.getSequenceDictionary())).values().saveAsTextFile(shardedOutputDirectory);
+                final BlockCompressedOutputStream blockCompressedOutputStream = new BlockCompressedOutputStream(out);
+                for (int i = 0; i < numParts; i++) {
+                    String fileName = String.format("part-%1$05d", i);
+                    try {
+                        final BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(fileName));
+                        int bite;
+                        while ((bite= bufferedInputStream.read()) != -1) {
+                            blockCompressedOutputStream.write(bite);
+                        }
+                        bufferedInputStream.close();
+                    } catch (IOException e) {
+                        throw new GATKException(e.getMessage());
+                    }
+                }
+                try {
+                    blockCompressedOutputStream.close();
+                } catch (IOException e) {
+                    throw new GATKException(e.getMessage());
+                }
+
+            }
         }
 
     }
