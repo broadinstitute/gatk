@@ -227,7 +227,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
     public Object[][] testReadFilterData() {
         return new Object[][]{
                 {"print_reads_one_malformed_read.sam", null, ".sam", Collections.emptyList(), 7},
-                {"print_reads_one_malformed_read.sam", null, ".sam", Arrays.asList("--disableAllReadFilters"), 8},
+                {"print_reads_one_malformed_read.sam", null, ".sam", Arrays.asList("--disableToolDefaultReadFilters"), 8},
                 {"print_reads_one_malformed_read.sam", null, ".sam",
                         Arrays.asList("--disableReadFilter", "WellformedReadFilter"), 8},
                 {"print_reads.sorted.sam", null, ".sam",
@@ -255,7 +255,7 @@ public final class PrintReadsSparkIntegrationTest extends CommandLineProgramTest
                                 "--minReadLength", "100",
                                 "--maxReadLength", "101"),
                         2},
-                {"print_reads.sorted.bam", null, ".sam", Arrays.asList("--disableAllReadFilters"), 8},
+                {"print_reads.sorted.bam", null, ".sam", Arrays.asList("--disableToolDefaultReadFilters"), 8},
                 {"print_reads.sorted.bam", null, ".sam",
                         Arrays.asList(
                                 "--readFilter", ReadNameReadFilter.class.getSimpleName(),
