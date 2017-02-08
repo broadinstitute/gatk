@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.TextCigarCodec;
+import org.apache.commons.io.output.NullOutputStream;
 import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
@@ -13,6 +14,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +22,9 @@ import java.util.function.Consumer;
 
 
 public class ReadFilterPluginUnitTest {
+
+    // null print stream for the tests
+    private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
 
     //Filters with arguments to verify filter test method actually filters
     @DataProvider(name="filtersWithFilteringArguments")
@@ -57,7 +62,7 @@ public class ReadFilterPluginUnitTest {
                 "--readFilter", filter,
                 argName, argValue
         };
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
 
         // to ensure that the filter is actually working, verify that the test record
@@ -97,7 +102,7 @@ public class ReadFilterPluginUnitTest {
                 "--readFilter", filter  // no args, just enable filters
         };
 
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
     }
 
     // fail if a filter's arguments are passed but the filter itself is not enabled
@@ -113,14 +118,14 @@ public class ReadFilterPluginUnitTest {
         String[] args = { argName, argValue }; // no read filter set
 
         // no need to instantiate the filters - dependency errors are caught by the command line parser
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
     }
 
     @Test
     public void testNoFiltersSpecified() {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
-        clp.parseArguments(System.out, new String[]{});
+        clp.parseArguments(nullMessageStream, new String[]{});
 
         // get the command line read filters
         final GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
@@ -142,7 +147,7 @@ public class ReadFilterPluginUnitTest {
                 "--readFilter", ReadNameReadFilter.class.getSimpleName(),
                 "--readName", "fred"
         };
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
 
         // default read name is rejected by the readName filter
@@ -161,7 +166,7 @@ public class ReadFilterPluginUnitTest {
     public void testEnableNonExistentFilter() {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
-        clp.parseArguments(System.out, new String[] {"--RF", "fakeFilter"});
+        clp.parseArguments(nullMessageStream, new String[] {"--RF", "fakeFilter"});
     }
 
     @DataProvider(name = "duplicateFilters")
@@ -182,7 +187,7 @@ public class ReadFilterPluginUnitTest {
     public void testEnableDuplicateFilter(final String[] arguments) {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
-        clp.parseArguments(System.out, arguments);
+        clp.parseArguments(nullMessageStream, arguments);
     }
 
     @DataProvider(name = "duplicateDisabledFilters")
@@ -200,7 +205,7 @@ public class ReadFilterPluginUnitTest {
     public void testDisableDuplicateFilter(final List<ReadFilter> defaults, final String[] arguments) {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(defaults)));
-        clp.parseArguments(System.out, arguments);
+        clp.parseArguments(nullMessageStream, arguments);
     }
 
     @Test
@@ -210,7 +215,7 @@ public class ReadFilterPluginUnitTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(
                         Collections.singletonList(ReadFilterLibrary.GOOD_CIGAR)
                 )));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "--RF", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
                 "-disableReadFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
@@ -239,7 +244,7 @@ public class ReadFilterPluginUnitTest {
         defaultFilters.add(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS);
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(defaultFilters)));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "-disableReadFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName(),
                 "-disableReadFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName()});
@@ -271,7 +276,7 @@ public class ReadFilterPluginUnitTest {
         defaultFilters.add(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS);
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(defaultFilters)));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "--disableAllReadFilters"});
 
@@ -295,7 +300,7 @@ public class ReadFilterPluginUnitTest {
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(
                         Collections.singletonList(new SampleReadFilter())
                 )));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 "--sample", "fred",
                 "-disableReadFilter", SampleReadFilter.class.getSimpleName()});
 
@@ -307,7 +312,7 @@ public class ReadFilterPluginUnitTest {
     public void testEnableDisableConflict() {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 "--RF", "GoodCigarReadFilter",
                 "--disableReadFilter", "GoodCigarReadFilter"});
     }
@@ -321,7 +326,7 @@ public class ReadFilterPluginUnitTest {
 
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
               Collections.singletonList(new GATKReadFilterPluginDescriptor(orderedDefaults)));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 "-readFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "-readFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
                 "-readFilter", ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()});
@@ -373,7 +378,7 @@ public class ReadFilterPluginUnitTest {
 
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(orderedDefaults)));
-        clp.parseArguments(System.out, new String[] {
+        clp.parseArguments(nullMessageStream, new String[] {
                 //disable one just to mix things up
                 "-disableReadFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
                 "-readFilter", ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS.getClass().getSimpleName(),
@@ -415,7 +420,7 @@ public class ReadFilterPluginUnitTest {
                 "--minReadLength", "10",
                 "--maxReadLength", "20"
         };
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
         ReadFilter rf = instantiateFilter(clp, header);
 
         read.setBases(new byte[5]);
@@ -452,7 +457,7 @@ public class ReadFilterPluginUnitTest {
                     new GATKReadFilterPluginDescriptor(Collections.singletonList(new ReadGroupReadFilter()))
             )
         );
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
 
         SAMFileHeader samHeader = createHeaderWithReadGroups();
         ReadFilter rf = instantiateFilter(clp, samHeader);
@@ -474,7 +479,7 @@ public class ReadFilterPluginUnitTest {
 
         // ReadGroupReadFilter has a required "keepReadGroup" arg; don't provide it and fail
         String[] args = {};
-        clp.parseArguments(System.out, args);
+        clp.parseArguments(nullMessageStream, args);
     }
 
     private ReadFilter instantiateFilter(

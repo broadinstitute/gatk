@@ -205,10 +205,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     @Override
     public void validateArguments() {
         // throw if any filter is duplicated
-        final Set<String> uniqueUserFiltersNames = new HashSet<>();
-        final Set<String> duplicateUserFilterNames = userReadFilterNames
-                .stream().filter(name -> !uniqueUserFiltersNames.add(name))
-                .collect(Collectors.toSet());
+        final Set<String> duplicateUserFilterNames = Utils.getDuplicatedItems(userReadFilterNames);
         if (!duplicateUserFilterNames.isEmpty()) {
             throw new CommandLineException.BadArgumentValue(
                     String.format("The read filter(s) are specified more than once: %s",
@@ -216,10 +213,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         }
 
         // throw if any disabled filter is duplicated
-        final Set<String> uniqueDisabledFiltersNames = new HashSet<>();
-        final Set<String> duplicateDisabledFilterNames = disableFilters
-                .stream().filter(name -> !uniqueDisabledFiltersNames.add(name))
-                .collect(Collectors.toSet());
+        final Set<String> duplicateDisabledFilterNames = Utils.getDuplicatedItems(disableFilters);
         if (!duplicateDisabledFilterNames.isEmpty()) {
             throw new CommandLineException.BadArgumentValue(
                     String.format("Disabled read filter(s) are specified more than once: %s",
