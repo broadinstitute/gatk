@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import java.io.Serializable;
 import java.util.Comparator;
 
-class SimpleIntervalComparator implements Comparator<SimpleInterval>, Serializable {
+public class SimpleIntervalComparator implements Comparator<SimpleInterval>, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final SAMSequenceDictionary referenceSequenceDictionary;

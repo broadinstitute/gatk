@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.spark.linkedreads;
 
-import avro.shaded.com.google.common.collect.Iterators;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
@@ -8,7 +7,6 @@ import htsjdk.samtools.util.Interval;
 import htsjdk.samtools.util.IntervalTree;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.hadoop.mapred.FileOutputFormat;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -22,17 +20,14 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import scala.Symbol;
 import scala.Tuple2;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.broadinstitute.hellbender.utils.runtime.StreamLocation.File;
 
 @CommandLineProgramProperties(
         summary = "Computes the coverage by long molecules from linked-read data",
