@@ -732,4 +732,26 @@ public final class UtilsUnitTest extends BaseTest {
         final int[] array = new int[] {1,3,5,7,9};
         Assert.assertEquals(array, Utils.stream(Ints.asList(array).iterator()).mapToInt(n -> n).toArray());
     }
+
+    @DataProvider
+    public Object[][] getCollectionsForDuplicatedItemsTest() {
+        return new Object[][] {
+                {Collections.emptyList(), Collections.emptySet()},
+                {Collections.singletonList("U"), Collections.emptySet()},
+                {Arrays.asList("U1", "U2"), Collections.emptySet()},
+                {Arrays.asList("D", "D"), Collections.singleton("D")},
+                {Arrays.asList("U", "D", "D"), Collections.singleton("D")},
+                {Arrays.asList("D", "U", "D"), Collections.singleton("D")},
+                {Arrays.asList("D", "D", "U"), Collections.singleton("D")},
+                {Arrays.asList("D1", "D1", "D2", "D2"), new HashSet<>(Arrays.asList("D1", "D2"))},
+                {Arrays.asList("D1", "D2", "D1", "D2"), new HashSet<>(Arrays.asList("D1", "D2"))},
+                {Arrays.asList("D1", "D2", "D2", "D1"), new HashSet<>(Arrays.asList("D1", "D2"))}
+        };
+    }
+
+    @Test(dataProvider = "getCollectionsForDuplicatedItemsTest")
+    public void testGetDuplicatedItems(final Collection<?> collection, final Set<?> duplicated) {
+        final Set<?> result = Utils.getDuplicatedItems(collection);
+        Assert.assertEquals(result, duplicated);
+    }
 }
