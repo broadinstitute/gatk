@@ -180,4 +180,14 @@ public interface HMM<D, T, S> {
         return result;
     }
 
+    // override if transition matrix elements can share computation
+    default void fillLogTransitionMatrix(final double[][] logTransitionMatrixBuffer, final T fromPosition, final T toPosition) {
+        final List<S> states = hiddenStates();
+        final int K = states.size();
+        for (int fromStateIndex = 0; fromStateIndex < K; fromStateIndex++) {
+            for (int toStateIndex = 0; toStateIndex < K; toStateIndex++) {
+                logTransitionMatrixBuffer[fromStateIndex][toStateIndex] = logTransitionProbability(states.get(fromStateIndex), fromPosition, states.get(toStateIndex), toPosition);
+            }
+        }
+    }
 }

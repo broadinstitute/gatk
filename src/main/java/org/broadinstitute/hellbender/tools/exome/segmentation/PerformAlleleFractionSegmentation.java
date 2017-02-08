@@ -6,6 +6,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.ExomeStandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
+import org.broadinstitute.hellbender.tools.exome.GetBayesianHetCoverage;
+import org.broadinstitute.hellbender.tools.exome.GetHetCoverage;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
 import org.broadinstitute.hellbender.tools.exome.SegmentUtils;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCountCollection;
@@ -18,7 +20,7 @@ import java.util.List;
  * Groups contiguous targets with the same minor allele fraction for a single sample.
  *
  *  <p>
- *     The --tumorHets file is from {@link GetBayesianHetCoverage}, preferably, but can also come from {@link org.broadinstitute.hellbender.tools.exome.GetHetCoverage}.
+ *     The --tumorHets file is from {@link GetBayesianHetCoverage}, preferably, but can also come from {@link GetHetCoverage}.
  *      For example,
  * </p>
  *
@@ -34,8 +36,8 @@ import java.util.List;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Segment genomic data into regions of constant minor allele fraction.  Only supports one sample input.",
-        oneLineSummary = "(Experimental) Segment genomic data into regions of constant minor allele fraction",
+        summary = "(EXPERIMENTAL) Segment genomic data into regions of constant minor allele fraction.  Only supports one sample input.",
+        oneLineSummary = "(EXPERIMENTAL) Segment genomic data into regions of constant minor allele fraction",
         programGroup = CopyNumberProgramGroup.class
 )
 public final class PerformAlleleFractionSegmentation extends CommandLineProgram {
@@ -80,7 +82,7 @@ public final class PerformAlleleFractionSegmentation extends CommandLineProgram 
         final AllelicPanelOfNormals allelicPoN =
                 allelicPoNFile != null ? AllelicPanelOfNormals.read(allelicPoNFile) : AllelicPanelOfNormals.EMPTY_PON;
         final AllelicCountCollection acc = new AllelicCountCollection(snpCountsFile);
-        final AlleleFractionSegmenter segmenter = new AlleleFractionSegmenter(initialNumStates, acc, allelicPoN);
+        final AlleleFractionSegmenter segmenter = new AlleleFractionSegmenter(initialNumStates, acc);
         final List<ModeledSegment> segments = segmenter.getModeledSegments();
 
         SegmentUtils.writeModeledSegmentFile(outputSegmentsFile, segments, sampleName, true);

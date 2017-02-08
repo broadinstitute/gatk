@@ -357,17 +357,18 @@ public final class ForwardBackwardAlgorithm {
         // Then we do the rest t_1, t_2, ... and so on.
         // Array re-used to hold the elements of log-sum-exp operations:
         final double[] logSumBuffer = new double[states.size()];
+        final double[][] logTransitionBuffer = new double[states.size()][states.size()];
+
         for (int thisPositionIndex = 1; thisPositionIndex < data.size(); thisPositionIndex++) {
             final int previousPositionIndex = thisPositionIndex - 1;
             final T previousPosition = positions.get(previousPositionIndex);
             final T thisPosition = positions.get(thisPositionIndex);
+            model.fillLogTransitionMatrix(logTransitionBuffer, previousPosition, thisPosition);
             for (int thisStateIndex = 0; thisStateIndex < numStates; thisStateIndex++) {
                 final S thisState = states.get(thisStateIndex);
                 for (int previousStateIndex = 0; previousStateIndex < numStates; previousStateIndex++) {
-                    logSumBuffer[previousStateIndex] =
-                            result[previousPositionIndex][previousStateIndex]
-                                    + model.logTransitionProbability(states.get(previousStateIndex),
-                                        previousPosition, thisState, thisPosition);
+                    logSumBuffer[previousStateIndex] = result[previousPositionIndex][previousStateIndex]
+                                    + logTransitionBuffer[previousStateIndex][thisStateIndex];
                 }
                 result[thisPositionIndex][thisStateIndex] = GATKProtectedMathUtils.logSumExp(logSumBuffer)
                         + model.logEmissionProbability(data.get(thisPositionIndex), thisState, thisPosition);
@@ -416,17 +417,18 @@ public final class ForwardBackwardAlgorithm {
 
         // "small" buffer array reused to do the log-sum-exp trick:
         final double[] logSumBuffer = new double[states.size()];
+        final double[][] logTransitionBuffer = new double[states.size()][states.size()];
 
         for (int thisPositionIndex = length - 2; thisPositionIndex >= 0; --thisPositionIndex) {
             final int nextPositionIndex = thisPositionIndex + 1;
             final T thisPosition = positionList.get(thisPositionIndex);
             final T nextPosition = positionList.get(nextPositionIndex);
+            model.fillLogTransitionMatrix(logTransitionBuffer, thisPosition, nextPosition);
             for (int thisStateIndex = 0; thisStateIndex < numStates; thisStateIndex++) {
                 final S thisState = states.get(thisStateIndex);
                 for (int nextStateIndex = 0; nextStateIndex < numStates; nextStateIndex++) {
                     logSumBuffer[nextStateIndex] = result[nextPositionIndex][nextStateIndex]
-                                    + model.logTransitionProbability(thisState, thisPosition,
-                                                states.get(nextStateIndex), nextPosition)
+                                    + logTransitionBuffer[thisStateIndex][nextStateIndex]
                                     + model.logEmissionProbability(dataList.get(nextPositionIndex),
                                                 states.get(nextStateIndex), nextPosition);
                 }

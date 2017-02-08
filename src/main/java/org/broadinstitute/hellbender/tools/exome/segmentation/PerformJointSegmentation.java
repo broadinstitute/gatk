@@ -29,8 +29,8 @@ import java.util.stream.Collectors;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Segment genomic data into regions of constant copy ratio and allele fraction.  Only supports one sample input.",
-        oneLineSummary = "(Experimental) Segment genomic data into regions of constant copy ratio and allele fraction",
+        summary = "(EXPERIMENTAL) Segment genomic data into regions of constant copy ratio and allele fraction.  Only supports one sample input.",
+        oneLineSummary = "(EXPERIMENTAL) Segment genomic data into regions of constant copy ratio and allele fraction",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature
@@ -104,7 +104,7 @@ public class PerformJointSegmentation extends CommandLineProgram {
             throw new UserException.BadInput("could not read input file");
         }
 
-        final JointAFCRSegmenter jointSegmenter = JointAFCRSegmenter.createJointSegmenter(initialNumCRStates, rcc, initialNumAFStates, acc, allelicPoN);
+        final JointAFCRSegmenter jointSegmenter = JointAFCRSegmenter.createJointSegmenter(initialNumCRStates, rcc, initialNumAFStates, acc);
         final List<Pair<SimpleInterval, AFCRHiddenState>> segmentation = jointSegmenter.findSegments();
 
         final List<ACNVModeledSegment> segments = segmentation.stream().map(pair ->

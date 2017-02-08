@@ -22,8 +22,8 @@ import java.util.List;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Segment genomic data into regions of constant copy ratio.  Only supports one sample input.",
-        oneLineSummary = "(Experimental) Segment genomic data into regions of constant copy ratio",
+        summary = "(EXPERIMENTAL) Segment genomic data into regions of constant copy ratio.  Only supports one sample input.",
+        oneLineSummary = "(EXPERIMENTAL) Segment genomic data into regions of constant copy ratio",
         programGroup = CopyNumberProgramGroup.class
 )
 @DocumentedFeature

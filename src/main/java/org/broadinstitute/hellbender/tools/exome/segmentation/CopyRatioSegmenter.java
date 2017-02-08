@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
 import com.google.common.primitives.Doubles;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
 import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
@@ -13,7 +12,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -28,7 +26,6 @@ public final class CopyRatioSegmenter extends ScalarHMMSegmenter<Double> {
     private static final double MAX_REASONABLE_CAUCHY_WIDTH = 1.0;
     private static final double MIN_LOG_2_COPY_RATIO = -5.0;
     private static final double MAX_LOG_2_COPY_RATIO = 5.0;
-    private static final List<Double> CONSTANT_LOG_2_COPY_RATIO_OF_1 = Arrays.asList(0.0);
     private static final double MIN_INITIAL_LOG_2_COPY_RATIO = -3.0;
     private static final double MAX_INITIAL_LOG_2_COPY_RATIO = 2.0;
 
@@ -38,7 +35,7 @@ public final class CopyRatioSegmenter extends ScalarHMMSegmenter<Double> {
      */
     public CopyRatioSegmenter(final int initialNumStates, final ReadCountCollection rcc) {
         super(rcc.targets().stream().map(SimpleInterval::new).collect(Collectors.toList()), Doubles.asList(rcc.getColumn(0)),
-                CONSTANT_LOG_2_COPY_RATIO_OF_1, initialNonConstantLog2CopyRatios(initialNumStates - 1));
+                initialLog2CopyRatios(initialNumStates));
         Utils.validateArg(rcc.columnNames().size() == 1, "Only single-sample ReadCountCollection is supported.");
         logCoverageCauchyWidth = DEFAULT_INITIAL_CAUCHY_WIDTH;
     }
@@ -47,14 +44,9 @@ public final class CopyRatioSegmenter extends ScalarHMMSegmenter<Double> {
      * evenly-spaced log-2 copy ratios
      * @param K the initial number of hidden states
      */
-    private static List<Double> initialNonConstantLog2CopyRatios(final int K) {
+    private static List<Double> initialLog2CopyRatios(final int K) {
         ParamUtils.isPositive(K, "must have at least one non-constant state");
-        final double spacing = (MAX_INITIAL_LOG_2_COPY_RATIO  - MIN_INITIAL_LOG_2_COPY_RATIO) / (K + 1);
-        final int numNegativeStates = K / 2;
-        final int numPositiveStates = K - numNegativeStates;
-        final List<Double> negativeStates = Doubles.asList(GATKProtectedMathUtils.createEvenlySpacedPoints(MIN_INITIAL_LOG_2_COPY_RATIO, spacing, numNegativeStates));
-        final List<Double> positiveStates = Doubles.asList(GATKProtectedMathUtils.createEvenlySpacedPoints(spacing, MAX_INITIAL_LOG_2_COPY_RATIO, numPositiveStates));
-        return ListUtils.union(negativeStates, positiveStates);
+        return Doubles.asList(GATKProtectedMathUtils.createEvenlySpacedPoints(MIN_INITIAL_LOG_2_COPY_RATIO, MAX_INITIAL_LOG_2_COPY_RATIO, K));
     }
 
     public List<ModeledSegment> getModeledSegments() {
@@ -66,7 +58,7 @@ public final class CopyRatioSegmenter extends ScalarHMMSegmenter<Double> {
 
     @Override
     protected ClusteringGenomicHMM<Double, Double> makeModel() {
-        return new CopyRatioHMM(getStates(), getWeights(), getMemoryLength(), logCoverageCauchyWidth);
+        return new CopyRatioHMM(getStates(), getMemoryLength(), logCoverageCauchyWidth);
     }
 
     @Override

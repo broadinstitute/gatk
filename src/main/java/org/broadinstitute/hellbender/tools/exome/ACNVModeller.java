@@ -100,8 +100,6 @@ public final class ACNVModeller {
         this.numSamplesAlleleFraction = numSamplesAlleleFraction;
         this.numBurnInAlleleFraction = numBurnInAlleleFraction;
         this.ctx = ctx;
-        copyRatioModeller = new CopyRatioModeller(segmentedGenome);
-        alleleFractionModeller = new AlleleFractionModeller(segmentedGenome, allelicPoN);
         logger.info("Fitting initial model...");
         fitModel();
     }

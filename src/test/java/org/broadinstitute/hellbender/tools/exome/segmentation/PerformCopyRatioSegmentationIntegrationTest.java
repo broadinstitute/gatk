@@ -10,8 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
 /**
  * Created by davidben on 7/25/16.
  */
