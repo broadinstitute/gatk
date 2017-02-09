@@ -36,12 +36,12 @@ import java.util.stream.Collectors;
 )
 public final class SplitReads extends ReadWalker {
 
+    public static final String SAMPLE_SHORT_NAME = "SM";
+    public static final String READ_GROUP_SHORT_NAME = "RG";
+    public static final String LIBRARY_NAME_SHORT_NAME = "LB";
     public static final String SAMPLE_LONG_NAME = "splitSample";
-    public static final String SAMPLE_SHORT_NAME = "splitSM";
     public static final String READ_GROUP_LONG_NAME = "splitReadGroup";
-    public static final String READ_GROUP_SHORT_NAME = "splitRG";
     public static final String LIBRARY_NAME_LONG_NAME = "splitLibraryName";
-    public static final String LIBRARY_NAME_SHORT_NAME = "splitLB";
     public static final String UNKNOWN_OUT_PREFIX = "unknown";
 
 
