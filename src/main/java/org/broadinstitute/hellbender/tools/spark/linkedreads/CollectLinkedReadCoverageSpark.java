@@ -20,11 +20,15 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.seqdoop.hadoop_bam.util.NIOFileUtil;
 import scala.Tuple2;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -51,11 +55,6 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
             shortName = "writeSAM", fullName = "writeSAM",
             optional = true)
     public boolean writeSAM = true;
-
-    @Argument(doc = "shardedOutput",
-            shortName = "shardedOutput", fullName = "shardedOutput",
-            optional = true)
-    public boolean shardedOutput = true;
 
     @Argument(fullName = "minEntropy", shortName = "minEntropy", doc="Minimum trigram entropy of reads for filter", optional=true)
     public double minEntropy = 4.5;
@@ -130,14 +129,17 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                 final String shardedOutputDirectory = this.out + ".parts";
                 final int numParts = intervalsByBarcode.getNumPartitions();
                 intervalsByBarcode.sortByKey(new SimpleIntervalComparator(headerForReads.getSequenceDictionary())).values().saveAsTextFile(shardedOutputDirectory);
-                final BlockCompressedOutputStream blockCompressedOutputStream = new BlockCompressedOutputStream(out);
+                //final BlockCompressedOutputStream outputStream = new BlockCompressedOutputStream(out);
+                final OutputStream outputStream;
+
+                outputStream = new BlockCompressedOutputStream(out);
                 for (int i = 0; i < numParts; i++) {
                     String fileName = String.format("part-%1$05d", i);
                     try {
-                        final BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(fileName));
+                        final BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream(shardedOutputDirectory + System.getProperty("file.separator") + fileName));
                         int bite;
                         while ((bite= bufferedInputStream.read()) != -1) {
-                            blockCompressedOutputStream.write(bite);
+                            outputStream.write(bite);
                         }
                         bufferedInputStream.close();
                     } catch (IOException e) {
@@ -145,14 +147,38 @@ public class CollectLinkedReadCoverageSpark extends GATKSparkTool {
                     }
                 }
                 try {
-                    blockCompressedOutputStream.close();
+                    outputStream.close();
                 } catch (IOException e) {
                     throw new GATKException(e.getMessage());
                 }
-
+                try {
+                    deleteRecursive(NIOFileUtil.asPath(shardedOutputDirectory));
+                } catch (IOException e) {
+                    throw new GATKException(e.getMessage());
+                }
             }
         }
 
+    }
+
+    /**
+     * Delete the given directory and all of its contents if non-empty.
+     * @param directory the directory to delete
+     * @throws IOException
+     */
+    static void deleteRecursive(Path directory) throws IOException {
+        Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
 

@@ -30,6 +30,6 @@ public class ReadEntropyFilter extends ReadFilter {
 
     @Override
     public boolean test(final GATKRead read) {
-        return computeEntropy(read.getBasesString()) > minEntropy;
+        return minEntropy > 0 ? computeEntropy(read.getBasesString()) > minEntropy : true;
     }
 }

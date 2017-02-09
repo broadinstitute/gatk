@@ -8,12 +8,13 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.Serializable;
 import java.util.function.Predicate;
 
-public class LinkedReadAnalysisFilter extends ReadFilter {
+public class LinkedReadAnalysisFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1l;
 
-    Predicate<GATKRead> filter;
+    final Predicate<GATKRead> filter;
 
     public LinkedReadAnalysisFilter(final double minEntropy) {
         final Predicate<GATKRead> readPredicate = ReadFilterLibrary.MAPPED
@@ -22,15 +23,10 @@ public class LinkedReadAnalysisFilter extends ReadFilter {
                 .and(ReadFilterLibrary.PRIMARY_ALIGNMENT)
                 .and(new BarcodedReadFilter())
                 .and(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO)
-                .and(new OverclippedReadFilter());
+                .and(new OverclippedReadFilter())
+                .and(new ReadEntropyFilter(minEntropy));
         this.filter = readPredicate;
-        if (minEntropy > 0) {
-            this.filter = this.filter.and(new ReadEntropyFilter(minEntropy));
-        }
     }
-
-
-
 
     @Override
     public boolean test(final GATKRead read) {
