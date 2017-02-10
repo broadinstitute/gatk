@@ -5,7 +5,7 @@ import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 public enum OrientationBiasFilterSummaryTableColumn {
 
-    SAMPLE("Sample"), ARTIFACT_MODE("Artifact_Mode"), OBQ(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME),
+    SAMPLE("Sample"), ARTIFACT_MODE("Artifact_Mode"),  ARTIFACT_MODE_COMPLEMENT("Artifact_Mode_Complement"), OBQ(OrientationBiasFilterConstants.PRE_ADAPTER_METRIC_FIELD_NAME),
     NUM_OB("Num_Artifact_Mode"), NUM_FILTERED("Num_Artifact_Mode_Filtered"), NUM_NOT_AM("Num_Not_Artifact_Mode"), NUM_VARIANTS("Num_NonRef_Passing_Variants");
 
     private final String columnName;

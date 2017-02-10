@@ -1,0 +1,21 @@
+{
+  "Mutect2_Multi.gatk4_jar": "/root/gatk-protected.jar",
+  "Mutect2_Multi.intervals": "$__intervals__",
+  "Mutect2_Multi.ref_fasta": "$__ref_fasta__",
+  "Mutect2_Multi.ref_fasta_index": "$__ref_fasta_index__",
+  "Mutect2_Multi.ref_dict": "$__ref_dict__",
+  "Mutect2_Multi.pair_list": "$__pair_list__",
+  "Mutect2_Multi.pon": "$__pon__",
+  "Mutect2_Multi.pon_index": "$__pon_index__",
+  "Mutect2_Multi.scatter_count": "$__scatter_count__",
+  "Mutect2_Multi.dbsnp": "$__dbsnp__",
+  "Mutect2_Multi.dbsnp_index": "$__dbsnp_index__",
+  "Mutect2_Multi.cosmic": "$__cosmic__",
+  "Mutect2_Multi.cosmic_index": "$__cosmic_index__",
+  "Mutect2_Multi.is_run_orientation_bias_filter": true,
+  "Mutect2_Multi.is_run_oncotator": "$__is_run_oncotator__",
+  "Mutect2_Multi.m2_docker": "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4",
+  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
+  "Mutect2_Multi.preemptible_attempts": 2,
+  "Mutect2.artifact_modes": ["G/T", "C/T"]
+}

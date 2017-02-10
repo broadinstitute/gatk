@@ -36,9 +36,16 @@ task CountFalsePositives {
 	File ref_fasta_index
 	File ref_dict
 	File intervals
+	File? gatk4_jar_override
 
 	command {
-		java -jar ${gatk4_jar} CountFalsePositives \
+      # Use GATK Jar override if specified
+      GATK_JAR=${gatk4_jar}
+      if [[ "${gatk4_jar_override}" == *.jar ]]; then
+          GATK_JAR=${gatk4_jar_override}
+      fi
+
+	  java -jar $GATK_JAR CountFalsePositives \
 		-V ${filtered_vcf} \
 		-R ${ref_fasta} \
 		-L ${intervals} \
@@ -73,7 +80,13 @@ workflow Mutect2ReplicateValidation {
 	File? dbsnp_index
 	File? cosmic
 	File? cosmic_index
-	Boolean run_orientation_bias_filter
+	Boolean is_run_orientation_bias_filter
+	Boolean is_run_oncotator
+	String oncotator_docker
+	String m2_docker
+	File? gatk4_jar_override
+	Int preemptible_attempts
+	Array[String] artifact_modes
 
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
@@ -96,7 +109,14 @@ workflow Mutect2ReplicateValidation {
 				dbsnp_index=dbsnp_index,
 				cosmic=cosmic,
 				cosmic_index=cosmic_index,
-				is_run_orientation_bias_filter=run_orientation_bias_filter
+				picard_jar = picard_jar,
+                is_run_orientation_bias_filter = is_run_orientation_bias_filter,
+                is_run_oncotator=is_run_oncotator,
+                oncotator_docker=oncotator_docker,
+                m2_docker = m2_docker,
+                gatk4_jar_override = gatk4_jar_override,
+                preemptible_attempts = preemptible_attempts,
+                artifact_modes = artifact_modes
 		}
 
 		call CountFalsePositives {
@@ -107,7 +127,8 @@ workflow Mutect2ReplicateValidation {
 				ref_fasta=ref_fasta,
 				ref_fasta_index=ref_fasta_index,
 				ref_dict=ref_dict,
-				intervals=intervals
+				intervals=intervals,
+				gatk4_jar_override=gatk4_jar_override
 		}
 	}
 

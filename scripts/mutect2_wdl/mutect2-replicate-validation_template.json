@@ -1,0 +1,23 @@
+{
+  "Mutect2ReplicateValidation.replicate_pair_list": "$__replicate_pair_list__",
+  "Mutect2ReplicateValidation.gatk4_jar_override": "$__gatk4_jar__",
+  "Mutect2ReplicateValidation.gatk4_jar": "WE_USUALLY_USE_OVERRIDE",
+  "Mutect2ReplicateValidation.is_run_orientation_bias_filter": "true",
+  "Mutect2ReplicateValidation.scatter_count": "$__scatter_count__",
+  "Mutect2ReplicateValidation.intervals": "$__intervals__",
+  "Mutect2ReplicateValidation.is_run_oncotator": "$__is_run_oncotator__",
+  "Mutect2ReplicateValidation.preemptible_attempts": 2,
+  "Mutect2ReplicateValidation.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
+  "Mutect2ReplicateValidation.pon": "$__pon__",
+  "Mutect2ReplicateValidation.pon_index": "$__pon_index__",
+  "Mutect2ReplicateValidation.dbsnp": "$__dbsnp__",
+  "Mutect2ReplicateValidation.dbsnp_index": "$__dbsnp_index__",
+  "Mutect2ReplicateValidation.m2_docker": "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282",
+  "Mutect2ReplicateValidation.cosmic": "$__cosmic__",
+  "Mutect2ReplicateValidation.cosmic_index": "$__cosmic_index__",
+  "Mutect2ReplicateValidation.ref_fasta": "$__ref_fasta__",
+  "Mutect2ReplicateValidation.artifact_modes": ["G/T"],
+  "Mutect2ReplicateValidation.ref_fasta_index": "$__ref_fasta_index__",
+  "Mutect2ReplicateValidation.ref_dict": "$__ref_dict__"
+}
+

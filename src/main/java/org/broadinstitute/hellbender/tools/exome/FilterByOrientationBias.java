@@ -31,12 +31,14 @@ import java.util.stream.Collectors;
                 "Used for the OxoG (G/T) and Deamination (FFPE) (C/T) artifacts that get introduced into our SNV calling.\n" +
                 "\n" +
                 "Notes:  All variants are held in RAM.\n This tool will only catch artifacts in diploid organisms.  Others will cause an error.\n" +
-                "Triallelic sites may not be considered for filtering -- the behavior of this tool is undefined for triallelic sites.\n" +
-                "This tool was tested only with output for GATK4 Mutect and makes assumptions about the existence of fields produced by GATK4 Mutect.\n" +
-                "ALT_F1R2 and ALT_F2R1 tags must be present in all SNP variants.\n" +
-                "Do NOT specify artifact modes that are reverse complements of each other.  Behavior of this tool is undefined when that happens.  For example, do not specify C/A and G/T in the same run.\n" +
-                "Any variants that are filtered in the input file are not considered for filtering here, nor are these variants used in deciding cutoff.\n" +
-                "Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
+                " Triallelic sites may not be considered for filtering -- the behavior of this tool is undefined for triallelic sites.\n" +
+                " If you do not wish to filter, you must skip the filter entirely.  You cannot do a dummy/non-filter operation with this tool.\n" +
+                " Sites-only VCF files are NOT supported.  At least one sample must be present in the VCF file for any filtering to be done.  If no samples are present in the VCF file, no filtering annotation is actually performed.\n" +
+                " This tool was tested only with output for GATK4 Mutect and makes assumptions about the existence of fields produced by GATK4 Mutect.\n" +
+                " ALT_F1R2 and ALT_F2R1 tags must be present in all SNP variants.\n" +
+                " Do NOT specify artifact modes that are reverse complements of each other.  Behavior of this tool is undefined when that happens.  For example, do not specify C/A and G/T in the same run.\n" +
+                " Any variants that are filtered in the input file are not considered for filtering here, nor are these variants used in deciding cutoff.\n" +
+                " Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
         oneLineSummary = "Filter M2 Somatic VCFs using the Orientation Bias Filter.",
         programGroup = VariantProgramGroup.class
 )
@@ -48,6 +50,7 @@ public class FilterByOrientationBias extends VariantWalker {
     public static final String ARTIFACT_MODES_FULL_NAME = "artifactModes";
 
     public static final String DEFAULT_ARTIFACT_MODE = "G/T";
+    public static final String SUMMARY_FILE_SUFFIX = ".summary";
 
     @Argument(
             doc="Output Somatic SNP/Indel VCF file",
@@ -64,7 +67,7 @@ public class FilterByOrientationBias extends VariantWalker {
     protected File preAdapterMetricsFile;
 
     @Argument(
-            doc = "PreAdapter Detail artifacts of interest on the forward strand.  'C/A' for a single artifact.  Separated by commas to assume multiple artifacts at the same time:  'C/A,T/G'  Artifacts must be one base to one base (e.g. 'CC/CA' is illegal).  G>T is OxoG.",
+            doc = "PreAdapter Detail artifacts of interest on the forward strand.  'C/A' for a single artifact.  Specify this parameter multiple times to process multiple artifacts at the same time:  'C/A,T/G'  Artifacts must be one base to one base (e.g. 'CC/CA' is illegal).  G>T is OxoG.",
             shortName = ARTIFACT_MODES_SHORT_NAME,
             fullName = ARTIFACT_MODES_FULL_NAME,
             optional = true
@@ -78,7 +81,7 @@ public class FilterByOrientationBias extends VariantWalker {
     private VariantContextWriter vcfWriter;
 
     /** Each has an OxoQ annotation */
-    private List<VariantContext> firstPassVariants = new ArrayList<>();;
+    private List<VariantContext> firstPassVariants = new ArrayList<>();
 
     @Override
     public void onTraversalStart() {
@@ -166,7 +169,10 @@ public class FilterByOrientationBias extends VariantWalker {
         finalVariants.forEach(vcfWriter::add);
 
         logger.info("Writing a simple summary table...");
-        final List<String> sampleNames = finalVariants.get(0).getSampleNamesOrderedByName();
+        List<String> sampleNames = new ArrayList<>();
+        if (finalVariants.size() != 0) {
+            sampleNames = finalVariants.get(0).getSampleNamesOrderedByName();
+        }
         final List<Pair<String, Transition>> sampleTransitionCombinations =  new ArrayList<>();
         for (Transition relevantTransition : relevantTransitions) {
             for (String sampleName : sampleNames) {
@@ -174,7 +180,7 @@ public class FilterByOrientationBias extends VariantWalker {
             }
         }
 
-        OrientationBiasUtils.writeOrientationBiasSummaryTable(sampleTransitionCombinations, finalVariants, transitionToPreAdapterScoreMap, new File(outputFile.getAbsolutePath() + ".summary"));
+        OrientationBiasUtils.writeOrientationBiasSummaryTable(sampleTransitionCombinations, finalVariants, transitionToPreAdapterScoreMap, new File(outputFile.getAbsolutePath() + SUMMARY_FILE_SUFFIX));
         return null;
     }
 

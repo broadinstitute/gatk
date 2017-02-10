@@ -10,14 +10,15 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.picard.analysis.artifacts.Transition;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableWriter;
+import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -171,14 +172,25 @@ public class OrientationBiasUtils {
                      TableUtils.writer(outFile, OrientationBiasFilterSummaryTableColumn.COLUMNS,
                              //lambda for creating DataLine with sampleName and segment fields
                              (sampleTransitionPair, dataLine) -> {
-                                 dataLine.append(sampleTransitionPair.getLeft())
-                                 .append(sampleTransitionPair.getRight() + "(" +
-                                         sampleTransitionPair.getRight().complement() + ")")
-                                 .append(preAdapterScoreMap.getOrDefault(sampleTransitionPair.getRight(), OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE))
-                                 .append(calculateNumTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()))
-                                 .append(calculateNumTransitionFilteredByOrientationBias(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()))
-                                 .append(calculateNumNotTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()))
-                                 .append(calculateUnfilteredNonRefGenotypeCount(variantContexts, sampleTransitionPair.getLeft()));
+                                 // Create instance of a sample artifact mode and then write it.
+                                 final OrientationSampleTransitionSummary obSampleTransition = new OrientationSampleTransitionSummary(
+                                         sampleTransitionPair.getLeft(),
+                                         sampleTransitionPair.getRight(),
+                                         sampleTransitionPair.getRight().complement(),
+                                         preAdapterScoreMap.getOrDefault(sampleTransitionPair.getRight(), OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE),
+                                         calculateNumTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
+                                         calculateNumTransitionFilteredByOrientationBias(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
+                                         calculateNumNotTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
+                                         calculateUnfilteredNonRefGenotypeCount(variantContexts, sampleTransitionPair.getLeft())
+                                 );
+                                 dataLine.append(obSampleTransition.getSample())
+                                         .append(obSampleTransition.getArtifactMode().toString())
+                                         .append(obSampleTransition.getArtifactModeComplement().toString())
+                                         .append(obSampleTransition.getObq())
+                                         .append(obSampleTransition.getNumArtifactMode())
+                                         .append(obSampleTransition.getNumArtifactModeFiltered())
+                                         .append(obSampleTransition.getNumNotArtifactMode())
+                                         .append(obSampleTransition.getNumNonRefPassingVariants());
                              }
                      )) {
             for (final Pair<String, Transition> sampleTransition : sampleTransitionsWithoutComplement) {
@@ -188,6 +200,44 @@ public class OrientationBiasUtils {
             throw new UserException.CouldNotCreateOutputFile(outFile, e);
         }
     }
+
+    /**
+     * @param inputFile summary file written by {@link org.broadinstitute.hellbender.tools.exome.FilterByOrientationBias}
+     * @return
+     */
+    public static List<OrientationSampleTransitionSummary> readOrientationBiasSummaryTable (final File inputFile) {
+        return readOrientationBiasSummaryTable(inputFile, OrientationBiasUtils::toOrientationSampleTransitionSummary);
+    }
+
+    private static<T extends OrientationSampleTransitionSummary> List<T> readOrientationBiasSummaryTable (final File inputFile,
+                                                                                            final Function<DataLine, T> dataLineToSummaryFunction) {
+        Utils.nonNull(inputFile);
+        Utils.regularReadableUserFile(inputFile);
+        final TableColumnCollection mandatoryColumns = OrientationBiasFilterSummaryTableColumn.COLUMNS;
+        try (final TableReader<T> reader = TableUtils.reader(inputFile,
+                (columns, formatExceptionFactory) -> {
+                    TableUtils.checkMandatoryColumns(columns, mandatoryColumns, formatExceptionFactory);
+                    //return the lambda to translate dataLines into called segments
+                    return dataLineToSummaryFunction;
+                })) {
+            return reader.stream().collect(Collectors.toList());
+        } catch (final IOException | UncheckedIOException e) {
+            throw new UserException.CouldNotReadInputFile(inputFile, e);
+        }
+    }
+
+    private static OrientationSampleTransitionSummary toOrientationSampleTransitionSummary(final DataLine dataLine) {
+        final Transition am = Transition.valueOf(dataLine.get(OrientationBiasFilterSummaryTableColumn.ARTIFACT_MODE.toString()).replace(">", "to"));
+        final Transition amC = Transition.valueOf(dataLine.get(OrientationBiasFilterSummaryTableColumn.ARTIFACT_MODE_COMPLEMENT.toString()).replace(">", "to"));
+        return new OrientationSampleTransitionSummary(dataLine.get(OrientationBiasFilterSummaryTableColumn.SAMPLE),
+                am, amC, Double.parseDouble(dataLine.get(OrientationBiasFilterSummaryTableColumn.OBQ)),
+                        Integer.parseInt(dataLine.get(OrientationBiasFilterSummaryTableColumn.NUM_OB)),
+                        Integer.parseInt(dataLine.get(OrientationBiasFilterSummaryTableColumn.NUM_FILTERED)),
+                        Integer.parseInt(dataLine.get(OrientationBiasFilterSummaryTableColumn.NUM_NOT_AM)),
+                        Integer.parseInt(dataLine.get(OrientationBiasFilterSummaryTableColumn.NUM_VARIANTS))
+                );
+    }
+
 
     /** Includes complements.  Excludes filtered variant contexts.  Excludes genotypes that were filtered by something other than the orientation bias filter. */
     @VisibleForTesting

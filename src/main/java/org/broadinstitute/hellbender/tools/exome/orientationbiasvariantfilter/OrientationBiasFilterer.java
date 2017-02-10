@@ -115,7 +115,7 @@ public class OrientationBiasFilterer {
      * @param relevantTransitionsWithoutComplements Transitions to filter.  Do not include complements. Never {@code null}.
      * @param preAdapterQAnnotatedVariants Variant contexts that have already been annotated by {@link OrientationBiasFilterer#annotateVariantContextWithPreprocessingValues(VariantContext, SortedSet, Map)} Never {@code null}.
      * @param preAdapterQScoreMap Mapping from Transition to the preAdapterQ score.  relevantTransitions should be included as keys, but not required. Never {@code null}.
-     * @return The same variant contexts with the genotypes filter field populated with orientation bias filtering results..
+     * @return The same variant contexts with the genotypes filter field populated with orientation bias filtering results.  If the variant contexts have no samples, then the variant contexts are returned without any annotation.
      */
     public static List<VariantContext> annotateVariantContextsWithFilterResults(final double fdrThreshold, final SortedSet<Transition> relevantTransitionsWithoutComplements, final List<VariantContext> preAdapterQAnnotatedVariants,
                                                                                 final Map<Transition, Double> preAdapterQScoreMap) {
@@ -124,6 +124,11 @@ public class OrientationBiasFilterer {
         final SortedSet<Transition> relevantTransitions = new TreeSet<>();
         relevantTransitions.addAll(relevantTransitionsWithoutComplements);
         relevantTransitions.addAll(OrientationBiasUtils.createReverseComplementTransitions(relevantTransitionsWithoutComplements));
+
+        if (preAdapterQAnnotatedVariants.size() == 0) {
+            logger.info("No samples found in this file.  NO FILTERING BEING DONE.");
+            return preAdapterQAnnotatedVariants;
+        }
 
         final List<String> sampleNames = preAdapterQAnnotatedVariants.get(0).getSampleNamesOrderedByName();
         final Map<String, SortedMap<Genotype, VariantContext>> sampleNameToVariants = createSampleToGenotypeVariantContextSortedMap(sampleNames, preAdapterQAnnotatedVariants);
