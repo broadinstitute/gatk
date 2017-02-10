@@ -17,8 +17,8 @@ import java.util.List;
  */
 public class VariantWalkerGCSSupportIntegrationTest extends CommandLineProgramTest {
 
-    private static final String TEST_VCF_ON_GCS = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/dbsnp_138.b37.20.10000000-10010000.vcf";
-    private static final String TEST_BGZIPPED_VCF_ON_GCS = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/dbsnp_138.b37.20.10000000-10010000.vcf.block.gz";
+    private static final String TEST_VCF_ON_GCS = "org/broadinstitute/hellbender/engine/dbsnp_138.b37.20.10000000-10010000.vcf";
+    private static final String TEST_BGZIPPED_VCF_ON_GCS = "org/broadinstitute/hellbender/engine/dbsnp_138.b37.20.10000000-10010000.vcf.block.gz";
     private static final String EXPECTED_OUTPUT_DIR = publicTestDir + "org/broadinstitute/hellbender/engine/GCSTests/";
 
     @Override
@@ -58,7 +58,7 @@ public class VariantWalkerGCSSupportIntegrationTest extends CommandLineProgramTe
         }
 
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " -V " + vcf +
+                " -V " + getGCPTestInputPath() + vcf +
                 intervalArg +
                 " -O %s",
                 Collections.singletonList(expectedOutput)
