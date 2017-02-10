@@ -20,6 +20,7 @@ public final class StandardArgumentDefinitions {
     public static final String ASSUME_SORTED_LONG_NAME = "assumeSorted";
     public static final String READ_FILTER_LONG_NAME = "readFilter";
     public static final String DISABLE_READ_FILTER_LONG_NAME = "disableReadFilter";
+    public static final String DISABLE_TOOL_DEFAULT_READ_FILTERS = "disableToolDefaultReadFilters";
     public static final String CREATE_OUTPUT_BAM_INDEX_LONG_NAME = "createOutputBamIndex";
     public static final String CREATE_OUTPUT_BAM_MD5_LONG_NAME = "createOutputBamMD5";
     public static final String CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME = "createOutputVariantIndex";

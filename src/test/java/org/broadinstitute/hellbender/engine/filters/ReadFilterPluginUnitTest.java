@@ -254,19 +254,41 @@ public class ReadFilterPluginUnitTest {
         CommandLineParser clp = new CommandLineArgumentParser(new Object(),
                 Collections.singletonList(new GATKReadFilterPluginDescriptor(defaultFilters)));
         clp.parseArguments(System.out, new String[] {
-                "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
-                "--disableAllReadFilters"});
+                "--disableToolDefaultReadFilters"});
 
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        Assert.assertTrue(readFilterPlugin.disableAllReadFilters);
+        Assert.assertTrue(readFilterPlugin.disableToolDefaultReadFilters);
 
         List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
-        Assert.assertEquals(readFilters.size(), 1); // allow all
+        Assert.assertEquals(readFilters.size(), 0); // allow all
 
         ReadFilter rf = instantiateFilter(clp, createHeaderWithReadGroups());
         Assert.assertEquals(
                 rf.getClass().getSimpleName(),
                 ReadFilterLibrary.ALLOW_ALL_READS.getClass().getSimpleName());
+    }
+
+    @Test
+    public void testDisableAllFiltersKeepsUserProvided() {
+        List<ReadFilter> defaultFilters = new ArrayList<>();
+        defaultFilters.add(ReadFilterLibrary.GOOD_CIGAR);
+        defaultFilters.add(ReadFilterLibrary.HAS_MATCHING_BASES_AND_QUALS);
+        CommandLineParser clp = new CommandLineArgumentParser(new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(defaultFilters)));
+        clp.parseArguments(System.out, new String[] {
+                "--RF", ReadFilterLibrary.MAPPED.getClass().getSimpleName(),
+                "--disableToolDefaultReadFilters"});
+
+        GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
+        Assert.assertTrue(readFilterPlugin.disableToolDefaultReadFilters);
+
+        List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();
+        Assert.assertEquals(readFilters.size(), 1); // mapped
+
+        ReadFilter rf = instantiateFilter(clp, createHeaderWithReadGroups());
+        Assert.assertEquals(
+                rf.getClass().getSimpleName(),
+                ReadFilterLibrary.MAPPED.getClass().getSimpleName());
     }
 
     @Test(expectedExceptions = CommandLineException.class)
