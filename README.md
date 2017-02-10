@@ -199,15 +199,24 @@ If you are looking for the codebase of the current production version of GATK, p
 
 ##Testing GATK4
 
-* To run all tests, run **`./gradlew test`**.
-    * Test report is in `build/reports/tests/index.html`.
-    * What will happen depends on the value of the `CLOUD` environment variable: if it's `false` or
-      unset then only local tests are run, if it's `mandatory` then it'll run only the cloud tests,
-      and if it's `together` it will run both sets of tests.
+* To run the tests, run **`./gradlew test`**.
+    * Test report is in `build/reports/tests/test/index.html`.
+    * What will happen depends on the value of the `TEST_TYPE` environment variable: 
+       * unset or any other value         : run non-cloud unit and integration tests, this is the default
+       * `cloud`, `unit`, `integration`   : run only the cloud, unit, or integration tests
+       * `all`                            : run the entire test suite
+
+         
     * Note that `git lfs` must be installed and set up as described in the "Requirements" section above
       in order for all tests to pass.
     * Cloud tests require being logged into `gcloud` and authenticated with a project that has access
-      to the test data.
+      to the test data.  They also require setting several certain environment variables.
+      * `HELLBENDER_TEST_PROJECT` : your google cloud project 
+      * `HELLBENDER_TEST_APIKEY` : your google cloud API key
+      * `HELLBENDER_TEST_STAGING` : a gs:// path to a writable location
+      * `HELLBENDER_TEST_INPUTS` : path to cloud test data, ex: gs://hellbender/test/resources/
+      
+    * setting the environment variable `TEST_VERBOSITY=minimal` will produce much less output from the test suite 
 
 * To run a subset of tests, use gradle's test filtering (see [gradle doc](https://docs.gradle.org/current/userguide/java_plugin.html)), e.g.,
     * `./gradlew test --tests *SomeSpecificTestClass`
@@ -215,7 +224,7 @@ If you are looking for the codebase of the current production version of GATK, p
     * `./gradlew test --tests *SomeTest.someSpecificTestMethod`
 
 * To run tests and compute coverage reports, run **`./gradlew jacocoTestReport`**. The report is then in `build/reports/jacoco/test/html/index.html`.
-  (IntelliJ 14 has a good coverage tool that is preferable for development).
+  (IntelliJ has a good coverage tool that is preferable for development).
 
 * We use [Travis-CI](https://travis-ci.org/broadinstitute/gatk) as our continuous integration provider.
 

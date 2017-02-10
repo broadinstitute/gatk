@@ -210,30 +210,30 @@ tasks.withType(Jar) {
 
 test {
     outputs.upToDateWhen { false }  //tests will never be "up to date" so you can always rerun them
-    String CI = "$System.env.CI"
-    String CLOUD = "$System.env.CLOUD"
-    String SPARK = "$System.env.SPARK"
-    useTestNG{
-        if (CLOUD =="mandatory") {
+    String TEST_VERBOSITY = "$System.env.TEST_VERBOSITY"
+
+    /**
+     * Valid options for TEST_TYPE are:
+     * cloud, integration, unit  : run one of the three disjoint partitions of the test suite
+     * all                       : run all the tests
+     * anything else             : run the non-cloud tests
+     */
+    String TEST_TYPE = "$System.env.TEST_TYPE"
+
+    useTestNG {
+        if (TEST_TYPE == "cloud") {
             // run only the cloud tests
             includeGroups 'cloud', 'bucket'
-        } else if (CLOUD == "todo") {
-            // run only the in-development cloud tests
-            includeGroups 'cloud_todo', 'bucket_todo'
-        } else if (CLOUD == "together") {
-            // run both local tests and mandatory cloud tests, together.
-            // This is good when e.g. you are done for the day and want to run tests on your machine overnight.
-            excludeGroups 'cloud_todo', 'bucket_todo'
+        } else if (TEST_TYPE == "integration"){
+            include "**/*IntegrationTest.class"
+            excludeGroups "cloud", "bucket"
+        } else if (TEST_TYPE == "unit") {
+            exclude "**/*IntegrationTest.class"
+            excludeGroups "cloud", "bucket"
+        } else if (TEST_TYPE == "all"){
+            //include everything
         } else {
-            // run only the local tests
-            excludeGroups 'cloud', 'bucket', 'cloud_todo', 'bucket_todo'
-        }
-        if (SPARK == "false") {
-            // exclude Spark tests
-            doFirst {
-                println( "Skipping Spark Tests")
-            }
-            excludeGroups 'spark'
+            excludeGroups "cloud", "bucket"
         }
     }
 
@@ -248,8 +248,7 @@ test {
     minHeapSize = "1G"
     maxHeapSize = "4G"
 
-
-    if (CI == "true" && CLOUD == "false" ) {
+    if (TEST_VERBOSITY == "minimal") {
         int count = 0
         // listen to events in the test execution lifecycle
 
@@ -283,8 +282,8 @@ test {
             }
         }
     }
-
 }
+
 
 task wrapper(type: Wrapper) {
     gradleVersion = '3.1'
