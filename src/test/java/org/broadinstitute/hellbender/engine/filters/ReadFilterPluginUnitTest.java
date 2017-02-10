@@ -14,12 +14,33 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 
 public class ReadFilterPluginUnitTest {
+
+    @DataProvider(name = "defaultFiltersForAllowedValues")
+    public Object[][] defaultFiltersForAllowedValues() {
+        return new Object[][] {
+                {Collections.emptyList()},
+                {Collections.singletonList(ReadFilterLibrary.GOOD_CIGAR)},
+                {Arrays.asList(ReadFilterLibrary.MAPPED, ReadFilterLibrary.GOOD_CIGAR)},
+                {Arrays.asList(ReadFilterLibrary.GOOD_CIGAR, ReadFilterLibrary.MAPPED)}
+        };
+    }
+
+    @Test(dataProvider = "defaultFiltersForAllowedValues")
+    public void testGetAllowedValuesForDescriptorArgument(final List<ReadFilter> defaultFilters) {
+        final CommandLineParser clp = new CommandLineArgumentParser(new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(defaultFilters)));
+        clp.parseArguments(System.out, new String[]{});
+        Assert.assertEquals(clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class).getAllowedValuesForDescriptorArgument("disableReadFilter"),
+                defaultFilters.stream().map(rf -> rf.getClass().getSimpleName()).collect(Collectors.toSet()));
+    }
 
     //Filters with arguments to verify filter test method actually filters
     @DataProvider(name="filtersWithFilteringArguments")
@@ -212,6 +233,15 @@ public class ReadFilterPluginUnitTest {
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()));
         Assert.assertTrue(readFilterPlugin.isDisabledFilter(
                 ReadFilterLibrary.GOOD_CIGAR.getClass().getSimpleName()));
+    }
+
+    @Test
+    public void testDisableNotEnabledFilter() {
+        final CommandLineParser clp = new CommandLineArgumentParser(new Object(),
+                Collections.singletonList(new GATKReadFilterPluginDescriptor(null)));
+        clp.parseArguments(System.out, new String[] {
+                "-disableReadFilter", ReadFilterLibrary.MAPPED.getClass().getSimpleName()
+        });
     }
 
     @Test
