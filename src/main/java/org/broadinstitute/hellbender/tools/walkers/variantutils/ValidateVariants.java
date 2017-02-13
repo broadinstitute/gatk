@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -91,6 +92,7 @@ import java.util.*;
         oneLineSummary = "Validate VCF",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class ValidateVariants extends VariantWalker {
     static final Logger logger = LogManager.getLogger(ValidateVariants.class);
 

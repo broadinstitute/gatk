@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.MetricsReadFilter;
@@ -32,6 +33,7 @@ import java.util.List;
         oneLineSummary = "CollectBaseDistributionByCycle on Spark",
         programGroup = SparkProgramGroup.class
 )
+@DocumentedFeature
 public final class CollectBaseDistributionByCycleSpark extends GATKSparkTool {
 
     private static final long serialVersionUID = 1L;

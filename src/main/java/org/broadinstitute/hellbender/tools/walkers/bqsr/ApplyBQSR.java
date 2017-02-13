@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -24,6 +25,7 @@ import java.io.File;
         oneLineSummary = "Applies the BQSR table to the input SAM/BAM/CRAM",
         programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class ApplyBQSR extends ReadWalker{
 
     private static final Logger logger = LogManager.getLogger(ApplyBQSR.class);

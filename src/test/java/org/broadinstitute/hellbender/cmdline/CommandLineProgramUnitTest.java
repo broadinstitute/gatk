@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.cmdline;
 
 
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import org.broadinstitute.barclay.argparser.SpecialArgumentsCollection;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.junit.Assert;
 import org.testng.annotations.Test;

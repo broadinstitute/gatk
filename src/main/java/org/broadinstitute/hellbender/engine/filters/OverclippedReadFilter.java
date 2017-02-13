@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine.filters;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 /**
@@ -17,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * </p>
  *
  */
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class OverclippedReadFilter extends ReadFilter{
 
     static final long serialVersionUID = 1L;

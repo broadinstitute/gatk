@@ -11,6 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -136,6 +137,7 @@ import java.util.regex.Pattern;
         oneLineSummary = "Clip reads in a SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class ClipReads extends ReadWalker {
 
     private final Logger logger = LogManager.getLogger(ClipReads.class);

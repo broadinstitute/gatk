@@ -5,10 +5,12 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.QCProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -156,6 +158,7 @@ import java.util.Optional;
         oneLineSummary = "Tool to analyze and evaluate base recalibration tables for BQSR",
         programGroup = QCProgramGroup.class
 )
+@DocumentedFeature
 public final class AnalyzeCovariates extends CommandLineProgram {
 
     private final Logger logger = LogManager.getLogger(AnalyzeCovariates.class);

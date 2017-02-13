@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
@@ -23,8 +24,6 @@ import java.text.DecimalFormat;
 /**
  * From a SAM/BAM/CRAM file, produce a new SAM/BAM/CRAM by filtering aligned reads or a list of read
  * names provided in a file (one readname per line)
- * <p/>
- * $Id$
  */
 @CommandLineProgramProperties(
         summary = "Produces a new SAM/BAM/CRAM file by including or excluding aligned reads " +
@@ -32,6 +31,7 @@ import java.text.DecimalFormat;
         oneLineSummary = "Creates a new SAM/BAM/CRAM file by including or excluding aligned reads",
         programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class FilterReads extends PicardCommandLineProgram {
 
     private static final Logger log = LogManager.getLogger();

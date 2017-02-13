@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -13,6 +15,7 @@ import java.util.Set;
  * Keep only reads for a given sample.
  * Matching is done by case-sensitive exact match.
  */
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class SampleReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 

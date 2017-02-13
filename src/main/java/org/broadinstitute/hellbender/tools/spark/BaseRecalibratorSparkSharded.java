@@ -10,6 +10,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
@@ -46,6 +47,7 @@ import java.util.concurrent.TimeUnit;
         oneLineSummary = "BaseRecalibrator on Spark (experimental sharded implementation)",
         programGroup = SparkProgramGroup.class
 )
+@DocumentedFeature
 public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
     private static final long serialVersionUID = 1L;
 

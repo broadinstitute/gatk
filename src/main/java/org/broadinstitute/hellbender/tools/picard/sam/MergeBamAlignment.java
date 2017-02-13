@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SamPairUtil;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
@@ -34,6 +35,7 @@ import java.util.List;
         oneLineSummary = "Merges alignment data from a SAM/BAM with data in an unmapped SAM/BAM/CRAM file",
         programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class MergeBamAlignment extends PicardCommandLineProgram {
 
     @Argument(shortName = "UNMAPPED",

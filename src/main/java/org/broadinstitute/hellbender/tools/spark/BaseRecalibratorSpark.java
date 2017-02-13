@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -35,6 +36,7 @@ import java.util.List;
         oneLineSummary = "BaseRecalibrator on Spark",
         programGroup = SparkProgramGroup.class
 )
+@DocumentedFeature
 public class BaseRecalibratorSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -31,6 +32,7 @@ import java.io.File;
         oneLineSummary = "Updates the sequence dictionary in a variant file.",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class UpdateVCFSequenceDictionary extends VariantWalker {
     static final Logger logger = LogManager.getLogger(UpdateVCFSequenceDictionary.class);
 

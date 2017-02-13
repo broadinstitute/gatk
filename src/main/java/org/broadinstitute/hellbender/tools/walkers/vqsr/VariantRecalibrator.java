@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -152,6 +153,7 @@ import java.util.*;
         oneLineSummary = "Build a recalibration model to score variant quality for filtering purposes",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public class VariantRecalibrator extends MultiVariantWalker {
 
     private static final String PLOT_TRANCHES_RSCRIPT = "plot_Tranches.R";

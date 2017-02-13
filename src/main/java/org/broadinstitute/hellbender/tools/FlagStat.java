@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -17,6 +18,7 @@ import java.text.NumberFormat;
 	oneLineSummary = "A reimplementation of the 'samtools flagstat' subcommand",
     programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class FlagStat extends ReadWalker {
 
     private final FlagStatus sum = new FlagStatus();

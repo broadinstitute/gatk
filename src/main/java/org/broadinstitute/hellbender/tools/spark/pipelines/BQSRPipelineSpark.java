@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -35,6 +36,7 @@ import java.util.List;
         usageExample = "BQSRPipelineSpark -I in.bam --knownSites in.vcf -O out.bam",
         programGroup = SparkPipelineProgramGroup.class
 )
+@DocumentedFeature
 /**
  * BQSR. The final result is analysis-ready reads.
  */

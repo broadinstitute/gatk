@@ -6,6 +6,7 @@ import htsjdk.samtools.metrics.Header;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -25,6 +26,7 @@ import java.util.List;
         oneLineSummary = "CollectQualityYieldMetrics on Spark",
         programGroup = SparkProgramGroup.class
 )
+@DocumentedFeature
 public final class CollectQualityYieldMetricsSpark extends MetricsCollectorSparkTool<QualityYieldMetricsArgumentCollection> {
 
     private static final long serialVersionUID = 1L;

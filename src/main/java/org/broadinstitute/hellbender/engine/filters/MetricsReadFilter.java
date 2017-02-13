@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.engine.filters;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+@DocumentedFeature(groupName= HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
 public final class MetricsReadFilter extends ReadFilter {
   // TODO: Should this be something more unique, such as a timestamp, in order
   // to behave with Spark's serialization?
