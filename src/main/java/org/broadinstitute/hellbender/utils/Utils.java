@@ -28,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -1097,5 +1098,13 @@ public final class Utils {
                 }
             }
         };
+    }
+
+    /** Gets duplicated items in the collection. */
+    public static <T> Set<T> getDuplicatedItems(final Collection<T> objects) {
+        final Set<T> unique = new HashSet<>();
+        return objects.stream()
+                .filter(name -> !unique.add(name))
+                .collect(Collectors.toSet());
     }
 }
