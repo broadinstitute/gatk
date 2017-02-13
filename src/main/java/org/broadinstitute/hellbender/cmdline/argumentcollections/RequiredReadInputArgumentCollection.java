@@ -15,7 +15,7 @@ import java.util.List;
  */
 public final class RequiredReadInputArgumentCollection extends ReadInputArgumentCollection {
     private static final long serialVersionUID = 1L;
-    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = false)
+    @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME, doc = "BAM/SAM/CRAM file containing reads", optional = false, common = true)
     public List<String> readFilesNames;
 
     @Override

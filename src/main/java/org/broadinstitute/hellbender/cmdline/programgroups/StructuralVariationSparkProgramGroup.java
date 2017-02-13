@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
  * Tools for structural variation analysis that runs on Spark.
@@ -8,12 +9,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 public final class StructuralVariationSparkProgramGroup implements CommandLineProgramGroup {
 
     @Override
-    public String getName() {
-        return "Spark tools for structural variation analysis";
-    }
+    public String getName() { return HelpConstants.DOC_CAT_SPARK_SV; }
 
     @Override
-    public String getDescription() {
-        return "Structural variation analysis tools that use Apache Spark for scaling out (experimental)";
-    }
+    public String getDescription() { return HelpConstants.DOC_CAT_SPARK_SV_SUMMARY; }
 }

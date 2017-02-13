@@ -1,16 +1,13 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 public class TestSparkProgramGroup implements CommandLineProgramGroup {
 
     @Override
-    public String getName() {
-        return "Spark Validation tools";
-    }
+    public String getName() { return HelpConstants.DOC_CAT_SPARK_VALIDATION; }
 
     @Override
-    public String getDescription() {
-        return "Tools written in Spark to compare aspects of two different files";
-    }
+    public String getDescription() { return HelpConstants.DOC_CAT_SPARK_VALIDATION_SUMMARY; }
 }

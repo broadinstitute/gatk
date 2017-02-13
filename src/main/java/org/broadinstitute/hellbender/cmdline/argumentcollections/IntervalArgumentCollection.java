@@ -51,7 +51,7 @@ public abstract class IntervalArgumentCollection implements Serializable {
      * (e.g. -XL myFile.intervals).
      * @return strings gathered from the command line -XL argument to be parsed into intervals to exclude
      */
-    @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing", optional = true)
+    @Argument(fullName = "excludeIntervals", shortName = "XL", doc = "One or more genomic intervals to exclude from processing", optional = true, common = true)
     protected final List<String> excludeIntervalStrings = new ArrayList<>();
 
     /**
@@ -63,21 +63,21 @@ public abstract class IntervalArgumentCollection implements Serializable {
      *
      * Note that if you specify both -L and -XL, the -XL interval set will be subtracted from the -L interval set.
      */
-    @Argument(fullName = "interval_set_rule", shortName = "isr", doc = "Set merging approach to use for combining interval inputs")
+    @Argument(fullName = "interval_set_rule", shortName = "isr", doc = "Set merging approach to use for combining interval inputs", common = true)
     protected IntervalSetRule intervalSetRule = IntervalSetRule.UNION;
     /**
      * Use this to add padding to the intervals specified using -L. For example, '-L 1:100' with a
      * padding value of 20 would turn into '-L 1:80-120'. This is typically used to add padding around targets when
      * analyzing exomes.
      */
-    @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval you are including.")
+    @Argument(fullName = "interval_padding", shortName = "ip", doc = "Amount of padding (in bp) to add to each interval you are including.", common = true)
     protected int intervalPadding = 0;
     /**
      * Use this to add padding to the intervals specified using -XL. For example, '-XL 1:100' with a
      * padding value of 20 would turn into '-XL 1:80-120'. This is typically used to add padding around targets when
      * analyzing exomes.
      */
-    @Argument(fullName = "interval_exclusion_padding", shortName= "ixp", doc = "Amount of padding (in bp) to add to each interval you are excluding.")
+    @Argument(fullName = "interval_exclusion_padding", shortName= "ixp", doc = "Amount of padding (in bp) to add to each interval you are excluding.", common = true)
     protected int intervalExclusionPadding = 0;
     /**
      * Full parameters for traversal, including our parsed intervals and a flag indicating whether unmapped records

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 	oneLineSummary = "Count bases in a SAM/BAM/CRAM file",
     programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class CountBases extends ReadWalker {
 
     private long count = 0;

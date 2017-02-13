@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
  * Copy Number tool group.
@@ -9,12 +10,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
  */
 public final class CopyNumberProgramGroup implements CommandLineProgramGroup {
     @Override
-    public String getName() {
-        return "Copy Number Analysis";
-    }
+    public String getName() { return HelpConstants.DOC_CAT_CNV; }
 
     @Override
-    public String getDescription() {
-        return "Tools to analyze copy number data.";
-    }
+    public String getDescription() { return HelpConstants.DOC_CAT_CNV_SUMMARY; }
 }

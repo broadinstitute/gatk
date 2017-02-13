@@ -35,17 +35,17 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
     @Argument(fullName = StandardArgumentDefinitions.READ_FILTER_LONG_NAME,
             shortName = StandardArgumentDefinitions.READ_FILTER_SHORT_NAME,
-            doc="Read filters to be applied before analysis", optional=true)
+            doc="Read filters to be applied before analysis", optional=true, common = true)
     public final List<String> userReadFilterNames = new ArrayList<>(); // preserve order
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME,
             shortName = StandardArgumentDefinitions.DISABLE_READ_FILTER_SHORT_NAME,
-            doc="Read filters to be disabled before analysis", optional=true)
+            doc="Read filters to be disabled before analysis", optional=true, common = true)
     public final List<String> disableFilters = new ArrayList<>();
 
     @Argument(fullName = "disableAllReadFilters",
             shortName = "disableAllReadFilters",
-            doc = "Disable all read filters", common = false, optional = true)
+            doc = "Disable all read filters", common = true, optional = true)
     public boolean disableAllReadFilters = false;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance

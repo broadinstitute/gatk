@@ -55,30 +55,30 @@ public abstract class GATKTool extends CommandLineProgram {
     protected final ReferenceInputArgumentCollection referenceArguments = requiresReference() ? new RequiredReferenceInputArgumentCollection() :  new OptionalReferenceInputArgumentCollection();
 
     public static final String SECONDS_BETWEEN_PROGRESS_UPDATES_NAME = "secondsBetweenProgressUpdates";
-    @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true)
+    @Argument(fullName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, shortName = SECONDS_BETWEEN_PROGRESS_UPDATES_NAME, doc = "Output traversal statistics every time this many seconds elapse", optional = true, common = true)
     private double secondsBetweenProgressUpdates = ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES;
 
-    @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true, common = true)
     private boolean disableSequenceDictionaryValidation = false;
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
-            doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true)
+            doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
     public boolean createOutputBamIndex = true;
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
-            doc = "If true, create a MD5 digest for any BAM/SAM/CRAM file created", optional=true)
+            doc = "If true, create a MD5 digest for any BAM/SAM/CRAM file created", optional=true, common = true)
     public boolean createOutputBamMD5 = false;
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME,
-            doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional=true)
+            doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional=true, common = true)
     public boolean createOutputVariantIndex = true;
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_MD5_SHORT_NAME,
-            doc = "If true, create a a MD5 digest any VCF file created.", optional=true)
+            doc = "If true, create a a MD5 digest any VCF file created.", optional=true, common = true)
     public boolean createOutputVariantMD5 = false;
 
     @Argument(fullName= StandardArgumentDefinitions.LENIENT_LONG_NAME,
@@ -86,7 +86,7 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "Lenient processing of VCF files", common = true, optional = true)
     protected boolean lenientVCFProcessing = false;
 
-    @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, shortName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true)
+    @Argument(fullName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, shortName = StandardArgumentDefinitions.ADD_OUTPUT_SAM_PROGRAM_RECORD, doc = "If true, adds a PG tag to created SAM/BAM/CRAM files.", optional=true, common = true)
     public boolean addOutputSAMProgramRecord = true;
 
     // default value of 40MB based on a test with CountReads (it's 5x faster than no prefetching)
@@ -141,7 +141,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * Uses the read filter plugin.
      */
     @Override
-    protected List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
+    public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
         return Collections.singletonList(new GATKReadFilterPluginDescriptor(getDefaultReadFilters()));
     }
 

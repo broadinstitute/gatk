@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -80,6 +81,7 @@ import java.util.List;
         oneLineSummary = "Generates recalibration table for BQSR",
         programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class BaseRecalibrator extends ReadWalker {
     protected static final Logger logger = LogManager.getLogger(BaseRecalibrator.class);
 

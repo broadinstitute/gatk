@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -45,6 +46,7 @@ import java.util.List;
  * ReadsPipelineSpark is our standard pipeline that takes aligned reads (likely from BWA) and runs MarkDuplicates
  * and BQSR. The final result is analysis-ready reads.
  */
+@DocumentedFeature
 public class ReadsPipelineSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 

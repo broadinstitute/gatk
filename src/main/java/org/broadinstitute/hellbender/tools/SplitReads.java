@@ -6,6 +6,7 @@ import htsjdk.samtools.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ReadProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
         oneLineSummary = "Outputs reads from a SAM/BAM/CRAM by read group, sample and library name",
         programGroup = ReadProgramGroup.class
 )
+@DocumentedFeature
 public final class SplitReads extends ReadWalker {
 
     public static final String SAMPLE_SHORT_NAME = "SM";

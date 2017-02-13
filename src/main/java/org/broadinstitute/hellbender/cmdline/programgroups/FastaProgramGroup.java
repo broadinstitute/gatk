@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.cmdline.programgroups;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
+import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 public final class FastaProgramGroup implements CommandLineProgramGroup {
     @Override
-    public String getName() { return "Fasta"; }
+    public String getName() { return HelpConstants.DOC_CAT_FASTA; }
     @Override
-    public String getDescription() { return "Tools for analysis and manipulation of files in fasta format"; }
+    public String getDescription() { return HelpConstants.DOC_CAT_FASTA_SUMMARY; }
 }

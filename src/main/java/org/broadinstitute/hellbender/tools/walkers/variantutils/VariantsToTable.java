@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -86,6 +87,7 @@ import java.util.function.Function;
         oneLineSummary = "Extract specific fields from a VCF file to a tab-delimited table",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class VariantsToTable extends VariantWalker {
 
     static final Logger logger = LogManager.getLogger(VariantsToTable.class);

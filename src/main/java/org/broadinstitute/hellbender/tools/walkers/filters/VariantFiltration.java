@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
@@ -60,6 +61,7 @@ import static java.util.Collections.singleton;
         oneLineSummary = "Hard-filter variants VCF (mark them as FILTER)",
         programGroup = VariantProgramGroup.class
 )
+@DocumentedFeature
 public final class VariantFiltration extends VariantWalker {
 
     /**
