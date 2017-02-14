@@ -93,7 +93,7 @@ public abstract class GATKTool extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_LONG_NAME,
             shortName = StandardArgumentDefinitions.DISABLE_BAM_INDEX_CACHING_SHORT_NAME,
-            doc = "If true, don't cache bam indexes, this will save memory but may decrease performance if many intervals are specified.",
+            doc = "If true, don't cache bam indexes, this will reduce memory requirements but may harm performance if many intervals are specified.  Caching is automatically disabled if there are no intervals specified.",
             optional = true)
     public boolean disableBamIndexCaching = false;
 
@@ -204,16 +204,16 @@ public abstract class GATKTool extends CommandLineProgram {
      */
     void initializeReads() {
         if (! readArguments.getReadFiles().isEmpty()) {
-            final SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
+            SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(readArguments.getReadValidationStringency());
             if (hasReference()) { // pass in reference if available, because CRAM files need it
-                factory.referenceSequence(referenceArguments.getReferenceFile());
+                factory = factory.referenceSequence(referenceArguments.getReferenceFile());
             }
             else if (hasCramInput()) {
                 throw new UserException.MissingReference("A reference file is required when using CRAM files.");
             }
 
             if(bamIndexCachingShouldBeEnabled()) {
-                factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
+                factory = factory.enable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES);
             }
 
             reads = new ReadsDataSource(readArguments.getReadPaths(), readArguments.getReadIndexPaths(), factory, cloudPrefetchBuffer,
