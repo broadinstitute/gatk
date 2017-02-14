@@ -221,7 +221,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Helper method that simply returns a boolean regarding whether the input has CRAM files or not.
      */
-    private boolean hasCramInput() {
+    public boolean hasCramInput() {
         return readArguments.getReadFiles().stream().anyMatch(IOUtils::isCramFile);
     }
 
