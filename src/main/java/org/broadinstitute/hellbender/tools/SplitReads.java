@@ -41,6 +41,9 @@ public final class SplitReads extends ReadWalker {
     public static final String SAMPLE_SHORT_NAME = "SM";
     public static final String READ_GROUP_SHORT_NAME = "RG";
     public static final String LIBRARY_NAME_SHORT_NAME = "LB";
+    public static final String SAMPLE_LONG_NAME = "splitSample";
+    public static final String READ_GROUP_LONG_NAME = "splitReadGroup";
+    public static final String LIBRARY_NAME_LONG_NAME = "splitLibraryName";
     public static final String UNKNOWN_OUT_PREFIX = "unknown";
 
 
@@ -49,15 +52,15 @@ public final class SplitReads extends ReadWalker {
             doc = "The directory to output SAM/BAM/CRAM files.")
     public File OUTPUT_DIRECTORY = new File("");
 
-    @Argument(shortName = SAMPLE_SHORT_NAME,
+    @Argument(fullName = SAMPLE_LONG_NAME, shortName = SAMPLE_SHORT_NAME,
             doc = "Split file by sample.")
     public boolean SAMPLE;
 
-    @Argument(shortName = READ_GROUP_SHORT_NAME,
+    @Argument(fullName = READ_GROUP_LONG_NAME, shortName = READ_GROUP_SHORT_NAME,
             doc = "Split file by read group.")
     public boolean READ_GROUP;
 
-    @Argument(shortName = LIBRARY_NAME_SHORT_NAME,
+    @Argument(fullName = LIBRARY_NAME_LONG_NAME, shortName = LIBRARY_NAME_SHORT_NAME,
             doc = "Split file by library.")
     public boolean LIBRARY_NAME;
 
