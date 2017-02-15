@@ -238,7 +238,7 @@ task wrapper(type: Wrapper) {
 
 tasks.withType(ShadowJar) {
     from(project.sourceSets.main.output)
-    baseName = project.name + '-all'
+    baseName = project.name + '-package'
     mergeServiceFiles()
 
     // Suggested by the akka devs to make sure that we do not get the spark configuration error.
@@ -254,13 +254,17 @@ tasks.withType(ShadowJar) {
 }
 
 shadowJar {
-    classifier = 'spark_standalone'
+    classifier = 'local'
     doLast {
         // Create a symlink to the newly created jar.  The name will be hellbender-protected.jar and
         //  it will be at the same level as the newly created jar.  (overwriting symlink, if it exists)
         // Please note that this will cause failures in Windows, which does not support symlinks.
         createAllSymlinks(destinationDir.toString(), archivePath, "")
     }
+}
+
+task localJar {
+    dependsOn shadowJar 
 }
 
 task sparkJar(type: ShadowJar) {
