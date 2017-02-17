@@ -30,3 +30,4 @@ dbsnp_138.b37.20.21.vcf.blockgz.gz filter=lfs diff=lfs merge=lfs -text
 dbsnp_138.b37.20.21.vcf.blockgz.gz.tbi filter=lfs diff=lfs merge=lfs -text
 tiledb_bin filter=lfs diff=lfs merge=lfs -text
 VQSR/** filter=lfs diff=lfs merge=lfs -text
+human_g1k_v37.20.21.fasta.img filter=lfs diff=lfs merge=lfs -text

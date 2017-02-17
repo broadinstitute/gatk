@@ -4,22 +4,18 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.github.lindenb.jbwa.jni.AlnRgn;
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.TextCigarCodec;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.util.List;
 import java.util.Objects;
 
-// TODO: 11/26/16 this class is indicating there are two coordinate systems, one on the reference, the other on the assembled contig,
-//       the only asymmetry should be that the sequence have exact match to the contig, but has, in theory, in-exact alignment to the reference
-
 /**
- * A wrapper that wraps around the {@link AlnRgn} type returned by jBWA to represent one (out of the potentially multiple)
- * alignment record(s) of an locally-assembled contig.
+ * A wrapper around the Alignment returned by the BWA aligner.
  */
 @DefaultSerializer(AlignmentRegion.Serializer.class)
 class AlignmentRegion {
@@ -36,28 +32,22 @@ class AlignmentRegion {
     final boolean forwardStrand;
     final int mapQual;
     final int mismatches;
-
-    // contig "exact-match" alignment info
     final int assembledContigLength;
-    final int startInAssembledContig;   // 1-based, inclusive
-    final int endInAssembledContig;     // 1-based, inclusive
+    final int startInAssembledContig;
+    final int endInAssembledContig;
 
-    // TODO: the referenceInterval initialization/assignment needs +1 because of a bug in the jBWA this code depends on. fix it when Ted's binding is in.
-    @VisibleForTesting
-    public AlignmentRegion(final String assemblyId, final String contigId, final AlnRgn alnRgn) {
-        this.assemblyId = assemblyId;
+    public AlignmentRegion(final String assemblyId, final String contigId, final int contigLen,
+                           final BwaMemAlignment alignment, final List<String> refNames) {
         this.contigId = contigId;
-
-        this.forwardStrand = alnRgn.getStrand() == '+';
-        final Cigar alignmentCigar = TextCigarCodec.decode(alnRgn.getCigar());
-        this.forwardStrandCigar = forwardStrand ? alignmentCigar : CigarUtils.invertCigar(alignmentCigar);
-        this.referenceInterval = new SimpleInterval(alnRgn.getChrom(), (int) alnRgn.getPos() + 1, (int) (alnRgn.getPos() + forwardStrandCigar.getReferenceLength()));
-        this.mapQual = alnRgn.getMQual();
-        this.mismatches = alnRgn.getNm();
-
-        this.assembledContigLength = forwardStrandCigar.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(forwardStrandCigar);
-        this.startInAssembledContig = startOfAlignmentInContig();
-        this.endInAssembledContig = endOfAlignmentInContig();
+        this.assemblyId = assemblyId;
+        this.forwardStrand = (alignment.getSamFlag()& SAMFlag.READ_REVERSE_STRAND.intValue())==0;
+        this.forwardStrandCigar = TextCigarCodec.decode(alignment.getCigar());
+        this.referenceInterval = new SimpleInterval(refNames.get(alignment.getRefId()), alignment.getRefStart()+1, alignment.getRefEnd());
+        this.mapQual = alignment.getMapQual();
+        this.assembledContigLength = contigLen;
+        this.startInAssembledContig = alignment.getSeqStart()+1;
+        this.endInAssembledContig = alignment.getSeqEnd();
+        this.mismatches = alignment.getNMismatches();
     }
 
     @VisibleForTesting

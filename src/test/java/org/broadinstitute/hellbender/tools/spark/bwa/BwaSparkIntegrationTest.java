@@ -33,6 +33,7 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         args.addArgument("shardedOutput", "true");
         args.add("numReducers=1");
         args.addOutput(output);
+        args.addFileArgument("bwamemIndexImage", getTestFile("ref.fa.img"));
         this.runCommandLine(args.getArgsArray());
 
         SamAssertionUtils.assertSamsEqual(new File(output, "part-r-00000.bam"), expectedSam);

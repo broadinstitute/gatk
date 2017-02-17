@@ -20,7 +20,6 @@ import org.broadinstitute.hellbender.engine.filters.*;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.tools.spark.sv.ContainsKmerReadFilterSpark;
 import org.broadinstitute.hellbender.tools.spark.sv.SVKmer;
@@ -139,11 +138,12 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
             optional=true)
     public float DUST_T = 20.0f;
 
-    @ArgumentCollection
-    private OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
+    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
+            fullName = "bwamemIndexImage")
+    private String indexImageFile;
 
     @ArgumentCollection
-    private BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
+    private OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
 
     @Override
     public boolean requiresReads() { return true; }
@@ -185,7 +185,7 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         logger.info("Reads remaining after kmer filtering: " + readsKmerFiltered.count());
 
         //Filter unpaired reads
-        final JavaRDD<GATKRead> readsFilteredPaired = retainPairs(ctx,readsKmerFiltered);
+        final JavaRDD<GATKRead> readsFilteredPaired = retainPairs(readsKmerFiltered);
         logger.info("Reads remaining after unpaired filtering: " + readsFilteredPaired.count());
 
         //BWA filtering against user-specified host organism reference
@@ -210,12 +210,12 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
 
     private JavaRDD<GATKRead> doHostBWA(final JavaSparkContext ctx, final SAMFileHeader readsHeader, final JavaRDD<GATKRead> reads) {
 
-        final BwaSparkEngine engine = new BwaSparkEngine(bwaArgs.numThreads, bwaArgs.fixedChunkSize, HOST_REF_PATH);
+        final BwaSparkEngine engine = new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary());
         final GCSOptions gcsOptions = getAuthenticatedGCSOptions(); // null if we have no api key
         final ReferenceMultiSource hostReference = new ReferenceMultiSource(gcsOptions, HOST_REF_PATH, getReferenceWindowFunction());
         final SAMSequenceDictionary hostRefDict = hostReference.getReferenceSequenceDictionary(header.getSequenceDictionary());
         readsHeader.setSequenceDictionary(hostRefDict);
-        return engine.alignWithBWA(ctx, reads, readsHeader);
+        return engine.align(reads);
     }
 
     @SuppressWarnings("unchecked")
@@ -231,7 +231,7 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
         return reads.filter(new ContainsKmerReadFilterSpark(ctx.broadcast(kmerLibSet),KMER_SIZE));
     }
 
-    private static JavaRDD<GATKRead> retainPairs(final JavaSparkContext ctx, JavaRDD<GATKRead> reads) {
+    private static JavaRDD<GATKRead> retainPairs(JavaRDD<GATKRead> reads) {
         JavaRDD<GATKRead> pairedReads = reads.groupBy(read -> read.getName())
                                             .values()
                                             .filter(p -> {

@@ -1,21 +1,23 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
-import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkPipelineProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
-import org.broadinstitute.hellbender.tools.spark.bwa.BwaArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.bwa.BwaSparkEngine;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.utils.read.markduplicates.MarkDuplicatesScoringStrategy;
 import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateFinder;
+
+import java.io.IOException;
 
 /**
  * Runs BWA and MarkDuplicates on Spark. It's an example of how to compose those two tools.
@@ -37,29 +39,32 @@ public final class BwaAndMarkDuplicatesPipelineSpark extends GATKSparkTool {
     @Override
     public boolean requiresReference() { return true; }
 
-    /**
-     *  command-line arguments to specify the BWA behavior
-     */
-    @ArgumentCollection
-    private BwaArgumentCollection bwaArgs = new BwaArgumentCollection();
+    @Argument(doc = "the bwa mem index image file name that you've distributed to each executor",
+            fullName = "bwamemIndexImage")
+    private String indexImageFile;
 
     @Argument(shortName = "DS", fullName ="duplicates_scoring_strategy", doc = "The scoring strategy for choosing the non-duplicate among candidates.")
     public MarkDuplicatesScoringStrategy duplicatesScoringStrategy = MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES;
 
     @Argument(doc = "the output bam", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, optional = false)
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     protected String output;
 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
-        final JavaRDD<GATKRead> initialReads = getReads();
-        final String referenceFileName = referenceArguments.getReferenceFileName();
-        final BwaSparkEngine engine = new BwaSparkEngine(bwaArgs.numThreads, bwaArgs.fixedChunkSize, referenceFileName);
-        final SAMFileHeader readsHeader = engine.makeHeaderForOutput(getHeaderForReads(), getReferenceSequenceDictionary());
-        final JavaRDD<GATKRead> alignedReads = engine.alignWithBWA(ctx, initialReads, readsHeader);
-
-        final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, getHeaderForReads(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
-        final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
-        writeReads(ctx, output, markedReads);
+        try (final BwaSparkEngine engine = new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary())) {
+            final JavaRDD<GATKRead> alignedReads = engine.align(getReads());
+            final JavaRDD<GATKRead> markedReadsWithOD = MarkDuplicatesSpark.mark(alignedReads, engine.getHeader(), duplicatesScoringStrategy, new OpticalDuplicateFinder(), getRecommendedNumReducers());
+            final JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.cleanupTemporaryAttributes(markedReadsWithOD);
+            try {
+                ReadsSparkSink.writeReads(ctx, output,
+                        referenceArguments.getReferenceFile().getAbsolutePath(),
+                        markedReads, engine.getHeader(),
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE,
+                        getRecommendedNumReducers());
+            } catch (IOException e) {
+                throw new GATKException("unable to write bam: " + e);
+            }
+        }
     }
 }

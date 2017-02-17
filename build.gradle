@@ -179,9 +179,8 @@ dependencies {
     compile('com.intel.gkl:gkl:0.1.2') {
         exclude module: 'htsjdk'
     }
-    
-    //This is identical to jbwa:1.0.0 but includes an additional native library to support ppc64
-    compile 'com.github.lindenb:jbwa:1.0.0_ppc64'
+
+    compile 'org.broadinstitute:gatk-bwamem-jni:1.0.0-rc1-SNAPSHOT'
 
     //needed for DataflowAssert
     testCompile 'org.hamcrest:hamcrest-all:1.3'

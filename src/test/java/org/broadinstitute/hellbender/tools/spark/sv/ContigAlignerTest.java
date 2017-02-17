@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -16,7 +17,7 @@ public class ContigAlignerTest extends BaseTest {
 
     @BeforeClass
     public void setup() throws Exception {
-        contigAligner = new ContigAligner(b37_reference_20_21);
+        contigAligner = new ContigAligner(b37_reference_20_21+".img");
     }
 
     @Test
@@ -96,7 +97,7 @@ public class ContigAlignerTest extends BaseTest {
         final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
         final List<AlignmentRegion> alignmentRegions = contigAligner.alignContigs("1", contigsCollection);
-        Assert.assertEquals(2, alignmentRegions.size());
+        Assert.assertEquals(alignmentRegions.size(), 2);
 
         final AlignmentRegion breakpoint1Region1 = alignmentRegions.get(0);
         Assert.assertEquals(breakpoint1Region1.referenceInterval, new SimpleInterval("20", 1388956, 1389146));
@@ -126,7 +127,7 @@ public class ContigAlignerTest extends BaseTest {
         final ContigsCollection contigsCollection = new ContigsCollection(contigsData);
 
         final List<AlignmentRegion> alignmentRegions = contigAligner.alignContigs("1", contigsCollection);
-        Assert.assertEquals(2, alignmentRegions.size());
+        Assert.assertEquals(alignmentRegions.size(), 2);
 
         final AlignmentRegion breakpoint1Region1 = alignmentRegions.get(0);
         Assert.assertEquals(breakpoint1Region1.referenceInterval, new SimpleInterval("20", 1000000, 1000099));
@@ -145,6 +146,6 @@ public class ContigAlignerTest extends BaseTest {
 
     @AfterClass
     public void tearDown() throws Exception {
-        contigAligner.close();
+        BwaMemIndexSingleton.closeInstance();
     }
 }
