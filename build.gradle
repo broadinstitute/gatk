@@ -55,7 +55,7 @@ repositories {
 
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','2.8.1-22-gb05d1f2-SNAPSHOT')
+final htsjdkVersion = System.getProperty('htsjdk.version','2.9.0-1-g55bf01b-20170217.164935-1')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.7.1')
 
