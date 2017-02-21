@@ -59,7 +59,6 @@ public final class AFPriorProviderUnitTest extends BaseTest {
         new HeterozygosityAFPriorProvider(0.999).buildPriors(2);
     }
 
-
     @Test(dataProvider="CustomProviderData")
     public void testCustomProvider(final int ploidy) {
         final double[] priors = new double[ploidy];
@@ -133,9 +132,13 @@ public final class AFPriorProviderUnitTest extends BaseTest {
         new CustomAFPriorProvider(Arrays.asList(0.5, 0.6));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testCustomPriorsError() throws Exception {
-        new CustomAFPriorProvider(Arrays.asList(0.5, 0.4)).buildPriors(17);
+    @Test
+    public void testCustomPriors() throws Exception {
+        final List<Double> PRIORS = Arrays.asList(0.5, 0.4);
+        double[] priors = new CustomAFPriorProvider(PRIORS).buildPriors(17);
+        for ( int i = 0;  i < priors.length; i++ ) {
+            final double value = i == 0 ? 1 - PRIORS.stream().mapToDouble(Double::doubleValue).sum() : PRIORS.get(i-1);
+            Assert.assertEquals(priors[i], Math.log10(value), TOLERANCE);
+        }
     }
-
 }
