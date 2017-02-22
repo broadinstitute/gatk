@@ -82,7 +82,7 @@ public class CountingReadFilter extends ReadFilter {
 
     protected String getSummaryLineForLevel(final int indentLevel) {
         if (0 == filteredCount) {
-            return 0 == indentLevel ? "" : "No reads filtered by: " + getName();
+            return "No reads filtered by: " + getName();
         }
         else {
             return getIndentString(indentLevel) + Long.toString(filteredCount) + " read(s) filtered by: " + getName() + " \n";
@@ -185,6 +185,13 @@ public class CountingReadFilter extends ReadFilter {
                         + (lhs.getFilteredCount() > 0 ? indent + lhs.getSummaryLineForLevel(indentLevel + 1) : "")
                         + (rhs.getFilteredCount() > 0 ? indent + rhs.getSummaryLineForLevel(indentLevel + 1) : "");
             }
+        }
+
+        @Override
+        public void resetFilteredCount() {
+            super.resetFilteredCount();
+            this.lhs.resetFilteredCount();
+            this.rhs.resetFilteredCount();
         }
 
         @Override
