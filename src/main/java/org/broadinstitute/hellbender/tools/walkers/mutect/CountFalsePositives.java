@@ -27,7 +27,7 @@ import static org.broadinstitute.hellbender.tools.walkers.mutect.FalsePositiveRe
 )
 
 /**
- * Created by tsato on 12/28/16.
+ * Created by Takuto Sato on 12/28/16.
  */
 public class CountFalsePositives extends VariantWalker {
     @Argument(
@@ -36,8 +36,8 @@ public class CountFalsePositives extends VariantWalker {
             doc = "Output file"
     )
     private File outputFile = null;
-    MutableLong indelFalsePositiveCount = new MutableLong();
-    MutableLong snpFalsePositiveCount = new MutableLong();
+    long indelFalsePositiveCount = 0;
+    long snpFalsePositiveCount = 0;
     String id;
 
     // TODO: eventually use tumor and normal sample names instead of the file name. To do so we must extract them from the vcf, which I don't know how.
@@ -55,9 +55,9 @@ public class CountFalsePositives extends VariantWalker {
         }
 
         if (variant.isIndel()) {
-            indelFalsePositiveCount.increment();
+            indelFalsePositiveCount++;
         } else {
-            snpFalsePositiveCount.increment();
+            snpFalsePositiveCount++;
         }
     }
 
@@ -67,7 +67,7 @@ public class CountFalsePositives extends VariantWalker {
         final long targetTerritory = intervals.stream().mapToInt(i -> i.size()).sum();
 
         try ( FalsePositiveTableWriter writer = new FalsePositiveTableWriter(outputFile) ) {
-            FalsePositiveRecord falsePositiveRecord = new FalsePositiveRecord(id, snpFalsePositiveCount.longValue(), indelFalsePositiveCount.longValue(), targetTerritory);
+            FalsePositiveRecord falsePositiveRecord = new FalsePositiveRecord(id, snpFalsePositiveCount, indelFalsePositiveCount, targetTerritory);
             writer.writeRecord(falsePositiveRecord);
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while opening %s", outputFile));

@@ -44,11 +44,6 @@ public class CountFalsePositivesTest extends CommandLineProgramTest {
         Assert.assertEquals(record.getIndelFalsePositives(), 276);
     }
 
-    @Test
-    public void testMultiAllelic() throws Exception {
-
-    }
-
     private class FalsePositiveRecordReader extends TableReader<FalsePositiveRecord> {
         private FalsePositiveRecordReader(final File falsePositiveTable) throws IOException {
             super(falsePositiveTable);
