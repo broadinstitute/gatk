@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 /**
  * Created by tsato on 2/14/17.

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.concordance;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;

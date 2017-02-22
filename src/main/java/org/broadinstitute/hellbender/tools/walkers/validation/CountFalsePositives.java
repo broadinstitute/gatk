@@ -1,8 +1,7 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.mutable.MutableLong;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -17,8 +16,6 @@ import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-
-import static org.broadinstitute.hellbender.tools.walkers.mutect.FalsePositiveRecord.*;
 
 @CommandLineProgramProperties(
         summary = "Count PASS (false positive) variants in a vcf file for Mutect2 NA12878 normal-normal evaluation",
@@ -78,18 +75,18 @@ public class CountFalsePositives extends VariantWalker {
 
     private class FalsePositiveTableWriter extends TableWriter<FalsePositiveRecord> {
         private FalsePositiveTableWriter(final File output) throws IOException {
-            super(output, new TableColumnCollection(ID_COLUMN_NAME, SNP_COLUMN_NAME,
-                    INDEL_COLUMN_NAME, SNP_FPR_COLUMN_NAME, INDEL_FPR_COLUMN_NAME, TARGET_TERRITORY_COLUMN_NAME));
+            super(output, new TableColumnCollection(FalsePositiveRecord.ID_COLUMN_NAME, FalsePositiveRecord.SNP_COLUMN_NAME,
+                    FalsePositiveRecord.INDEL_COLUMN_NAME, FalsePositiveRecord.SNP_FPR_COLUMN_NAME, FalsePositiveRecord.INDEL_FPR_COLUMN_NAME, FalsePositiveRecord.TARGET_TERRITORY_COLUMN_NAME));
         }
 
         @Override
         protected void composeLine(final FalsePositiveRecord falsePositiveRecord, final DataLine dataLine) {
-            dataLine.set(ID_COLUMN_NAME, falsePositiveRecord.getId())
-                    .set(SNP_COLUMN_NAME, falsePositiveRecord.getSnpFalsePositives())
-                    .set(INDEL_COLUMN_NAME, falsePositiveRecord.getIndelFalsePositives())
-                    .set(SNP_FPR_COLUMN_NAME, falsePositiveRecord.getSnpFalsePositiveRate())
-                    .set(INDEL_FPR_COLUMN_NAME, falsePositiveRecord.getIndelFalsePositiveRate())
-                    .set(TARGET_TERRITORY_COLUMN_NAME, falsePositiveRecord.getTargetTerritory());
+            dataLine.set(FalsePositiveRecord.ID_COLUMN_NAME, falsePositiveRecord.getId())
+                    .set(FalsePositiveRecord.SNP_COLUMN_NAME, falsePositiveRecord.getSnpFalsePositives())
+                    .set(FalsePositiveRecord.INDEL_COLUMN_NAME, falsePositiveRecord.getIndelFalsePositives())
+                    .set(FalsePositiveRecord.SNP_FPR_COLUMN_NAME, falsePositiveRecord.getSnpFalsePositiveRate())
+                    .set(FalsePositiveRecord.INDEL_FPR_COLUMN_NAME, falsePositiveRecord.getIndelFalsePositiveRate())
+                    .set(FalsePositiveRecord.TARGET_TERRITORY_COLUMN_NAME, falsePositiveRecord.getTargetTerritory());
         }
     }
 }

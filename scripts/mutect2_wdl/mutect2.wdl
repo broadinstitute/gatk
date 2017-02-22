@@ -46,7 +46,7 @@ task M2 {
   Int preemptible_attempts
 
   command {
-  if [[ ${normal_bam} == *.bam ]]; then
+  if [[ "_${normal_bam}" == *.bam ]]; then
       normal_command_line="-I ${normal_bam} -normal ${normal_sample_name}"
   fi
 
@@ -126,7 +126,7 @@ task ProcessOptionalArguments {
   String m2_docker
 
   command {
-      if [[ ${normal_bam} == *.bam ]]; then
+      if [[ "_${normal_bam}" == *.bam ]]; then
         echo "${tumor_sample_name}-vs-${normal_sample_name}" > name.tmp
       else
         echo "${tumor_sample_name}-tumor-only" > name.tmp
