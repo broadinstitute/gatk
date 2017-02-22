@@ -74,6 +74,7 @@ public class AddContextDataToReadSpark {
             // Join Reads with ReferenceBases
             withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.OVERLAPS_PARTITIONER)) {
+
             return addUsingOverlapsPartitioning(ctx, reads, referenceSource, variants, sequenceDictionary, shardSize, shardPadding);
         } else {
             throw new UserException("Unknown JoinStrategy");

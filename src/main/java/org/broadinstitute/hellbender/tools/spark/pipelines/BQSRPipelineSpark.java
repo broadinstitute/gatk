@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.pipelines;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -27,6 +28,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.util.List;
@@ -90,7 +92,14 @@ public final class BQSRPipelineSpark extends GATKSparkTool {
         //Should this get the getUnfilteredReads? getReads will merge default and command line filters.
         //but the code below uses other filters for other parts of the pipeline that do not honor
         //the commandline.
-        final JavaRDD<GATKRead> initialReads = getReads();
+        JavaRDD<GATKRead> initialReads = getReads();
+
+        if (joinStrategy.equals(JoinStrategy.OVERLAPS_PARTITIONER)) {
+            // the overlaps partitioner requires that reads are coordinate-sorted
+            final SAMFileHeader readsHeader = getHeaderForReads().clone();
+            readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+            initialReads = SparkUtils.coordinateSortReads(initialReads, readsHeader, numReducers);
+        }
 
         // The initial reads have already had the WellformedReadFilter applied to them, which
         // is all the filtering that ApplyBQSR wants. BQSR itself wants additional filtering

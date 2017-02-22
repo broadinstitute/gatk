@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -26,6 +27,7 @@ import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.PrintStream;
@@ -85,6 +87,14 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
         }
 
         JavaRDD<GATKRead> initialReads = getReads();
+
+        if (joinStrategy.equals(JoinStrategy.OVERLAPS_PARTITIONER)) {
+            // the overlaps partitioner requires that reads are coordinate-sorted
+            final SAMFileHeader readsHeader = getHeaderForReads().clone();
+            readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+            initialReads = SparkUtils.coordinateSortReads(initialReads, readsHeader, numReducers);
+        }
+
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
         JavaRDD<GATKVariant> bqsrKnownVariants = variantsSparkSource.getParallelVariants(knownVariants, getIntervals());
 
