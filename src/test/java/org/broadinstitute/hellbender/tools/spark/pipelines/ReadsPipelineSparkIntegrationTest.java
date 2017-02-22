@@ -74,12 +74,14 @@ public class ReadsPipelineSparkIntegrationTest extends CommandLineProgramTest {
                 //Note: these output files were created by running Picard 1.130 and GATK3.46
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + expectedSingleKnownSites)},
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE", getResourceDir() + expectedSingleKnownSites)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER", getResourceDir() + expectedSingleKnownSites)},
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20_queryNameSorted, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST", getResourceDir() + expectedMultipleKnownSites)},
 
                 // Output generated with GATK4
                 {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
                 {new PipelineTest(GRCh37Ref_2021, hiSeqCram_chr20, ".cram", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy SHUFFLE --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSitesCram)},
                 {new PipelineTest(GRCh37Ref2bit_chr2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy BROADCAST --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
+                {new PipelineTest(GRCh37Ref_2021, hiSeqBam_chr20, ".bam", dbSNPb37_20, "-indelBQSR -enableBAQ " +"--joinStrategy OVERLAPS_PARTITIONER --knownSites " + more20Sites, getResourceDir() + expectedMultipleKnownSites)},
         };
     }
 

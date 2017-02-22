@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark;
 
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -82,6 +83,10 @@ public class BaseRecalibratorSpark extends GATKSparkTool {
     protected void runTool( JavaSparkContext ctx ) {
         if (joinStrategy == JoinStrategy.BROADCAST && ! getReference().isCompatibleWithSparkBroadcast()){
             throw new UserException.Require2BitReferenceForBroadcast();
+        }
+
+        if (joinStrategy == JoinStrategy.OVERLAPS_PARTITIONER && getHeaderForReads().getSortOrder() != SAMFileHeader.SortOrder.coordinate) {
+            throw new UserException.BadInput("Reads must be coordinate sorted when using the overlaps partitioner join strategy.");
         }
 
         JavaRDD<GATKRead> initialReads = getReads();
