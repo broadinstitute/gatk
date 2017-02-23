@@ -15,23 +15,6 @@
 
 # Here we implement steps 1 and 2.
 
-
-
-# This task takes an interval list and intersects it with itself in order to remove empty intervals which GATK does not support
-task RemoveEmptyIntervals {
-    File input_intervals
-    File gatk_jar
-
-    command {
-        java -jar ${gatk_jar} IntervalListTools \
-            -I ${input_intervals} -I ${input_intervals} -ACTION INTERSECT -O non-empty.interval_list
-    }
-
-    output {
-        File non_empty_intervals = "non-empty.interval_list"
-    }
-}
-
 # Uses select_variants to create a VCF that is subsetted by sample and by interval list
 task CreateSubVcf {
     File gatk_jar
@@ -141,7 +124,6 @@ workflow HapmapSensitivityTruth {
     File dbsnp_idx
     Int min_indel_spacing
 
-    call RemoveEmptyIntervals { input: input_intervals = intervals, gatk_jar = gatk_jar }
 
     call CreateSubVcf {
         input:
@@ -149,7 +131,7 @@ workflow HapmapSensitivityTruth {
             hapmap = hapmap,
             hapmap_idx = hapmap_idx,
             sample_file = sample_file,
-            intervals = RemoveEmptyIntervals.non_empty_intervals,
+            intervals = intervals,
             dbsnp = dbsnp,
             dbsnp_idx = dbsnp_idx,
     }
