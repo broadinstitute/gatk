@@ -33,22 +33,17 @@ public class ReadMetadata {
         final int nReadGroups = header.getReadGroups().size();
         final List<PartitionStatistics> perPartitionStatistics =
                 reads.mapPartitions(readItr -> Collections.singletonList(new PartitionStatistics(readItr, nReadGroups)).iterator())
-                        .collect();
+                     .collect();
         nPartitions = perPartitionStatistics.size();
-        nReads = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNReads).sum();
         maxReadsInPartition = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNReads).max().orElse(0L);
-        final long nReadBases = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNBases).sum();
+        final PartitionStatistics combinedStatistics = new PartitionStatistics(perPartitionStatistics, nReadGroups);
+        nReads = combinedStatistics.getNReads();
         final long nRefBases = header.getSequenceDictionary().getSequences()
                 .stream().mapToLong(SAMSequenceRecord::getSequenceLength).sum();
-        coverage = (int)((nReadBases + nRefBases - 1) / nRefBases);
-        readGroupToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(header.getReadGroups().size()));
-        final Map<String, long[]> combinedMaps =
-                perPartitionStatistics.stream()
-                        .map(PartitionStatistics::getReadGroupToFragmentSizeCountMap)
-                        .reduce(new HashMap<>(SVUtils.hashMapCapacity(nReadGroups)), ReadMetadata::combineMaps);
-        for ( final Map.Entry<String, long[]> entry : combinedMaps.entrySet() ) {
-            readGroupToFragmentStatistics.put(entry.getKey(),
-                    new ReadGroupFragmentStatistics(entry.getValue()));
+        coverage = (int)((combinedStatistics.getNBases() + nRefBases - 1) / nRefBases);
+        readGroupToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(nReadGroups+1));
+        for ( final Map.Entry<String, long[]> entry : combinedStatistics.getReadGroupToFragmentSizeCountMap().entrySet() ) {
+            readGroupToFragmentStatistics.put(entry.getKey(), new ReadGroupFragmentStatistics(entry.getValue()));
         }
     }
 
@@ -150,22 +145,6 @@ public class ReadMetadata {
         return 47*(47*contigNameToID.hashCode() + readGroupToFragmentStatistics.hashCode());
     }
 
-    private static Map<String, long[]> combineMaps( final Map<String, long[]> accumulator,
-                                                   final Map<String, long[]> element ) {
-        for ( final Map.Entry<String, long[]> entry : element.entrySet() ) {
-            final String readGroup = entry.getKey();
-            final long[] accumCounts = accumulator.get(readGroup);
-            if ( accumCounts == null ) accumulator.put(readGroup, entry.getValue());
-            else {
-                final long[] counts = entry.getValue();
-                for ( int idx = 0; idx != accumCounts.length; ++idx ) {
-                    accumCounts[idx] += counts[idx];
-                }
-            }
-        }
-        return accumulator;
-    }
-
     private static Map<String, Integer> buildContigNameToIDMap(final SAMFileHeader header) {
         final List<SAMSequenceRecord> contigs = header.getSequenceDictionary().getSequences();
         final Map<String, Integer> contigNameToID = new HashMap<>(SVUtils.hashMapCapacity(contigs.size()));
@@ -196,25 +175,47 @@ public class ReadMetadata {
         private final long nBases;
 
         public PartitionStatistics( final Iterator<GATKRead> readItr, final int nReadGroups ) {
-            readGroupToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nReadGroups));
+            readGroupToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nReadGroups)+1);
             long reads = 0L;
             long bases = 0L;
+            final int arrLen = MAX_TRACKED_FRAGMENT_LENGTH + 1;
             while ( readItr.hasNext() ) {
                 final GATKRead read = readItr.next();
                 reads += 1L;
                 bases += read.getLength();
-                if ( read.isFirstOfPair() && !read.isSecondaryAlignment() && !read.isSupplementaryAlignment() &&
-                        !read.isUnmapped() && !read.mateIsUnmapped() &&
-                        Objects.equals(read.getContig(),read.getMateContig())) {
-                    int tLen = Math.abs(read.getFragmentLength());
-                    if ( tLen > MAX_TRACKED_FRAGMENT_LENGTH ) tLen = MAX_TRACKED_FRAGMENT_LENGTH;
+                int tLen = Math.abs(read.getFragmentLength());
+                if ( tLen != 0 &&
+                        read.getMappingQuality() >= 60 &&
+                        read.isReverseStrand() &&
+                        !read.mateIsReverseStrand() &&
+                        !read.isSecondaryAlignment() &&
+                        !read.isSupplementaryAlignment() &&
+                        !read.isDuplicate() ) {
+                    if ( tLen > MAX_TRACKED_FRAGMENT_LENGTH || tLen < 0 ) tLen = MAX_TRACKED_FRAGMENT_LENGTH;
                     final String readGroup = read.getReadGroup();
-                    long[] counts = readGroupToFragmentSizeCountMap.get(readGroup);
-                    if ( counts == null ) {
-                        counts = new long[MAX_TRACKED_FRAGMENT_LENGTH + 1];
-                        readGroupToFragmentSizeCountMap.put(readGroup, counts);
-                    }
+                    final long[] counts =
+                            readGroupToFragmentSizeCountMap.computeIfAbsent(readGroup, grp -> new long[arrLen]);
                     counts[tLen] += 1;
+                }
+            }
+            nReads = reads;
+            nBases = bases;
+        }
+
+        public PartitionStatistics( final Iterable<PartitionStatistics> perPartitionStatistics, final int nReadGroups ) {
+            readGroupToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nReadGroups)+1);
+            long reads = 0L;
+            long bases = 0L;
+            for ( final PartitionStatistics stats : perPartitionStatistics ) {
+                reads += stats.nReads;
+                bases += stats.nBases;
+                for ( final Map.Entry<String, long[]> entry : stats.readGroupToFragmentSizeCountMap.entrySet() ) {
+                    readGroupToFragmentSizeCountMap.merge( entry.getKey(), entry.getValue(), (accumCounts, counts) -> {
+                        for ( int idx = 0; idx != accumCounts.length; ++idx ) {
+                            accumCounts[idx] += counts[idx];
+                        }
+                        return accumCounts;
+                    });
                 }
             }
             nReads = reads;
