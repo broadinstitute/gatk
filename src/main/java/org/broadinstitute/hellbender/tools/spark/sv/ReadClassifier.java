@@ -15,6 +15,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     @VisibleForTesting static final int MIN_SOFT_CLIP_LEN = 30; // minimum length of an interesting soft clip
     @VisibleForTesting static final int MIN_INDEL_LEN = 40; // minimum length of an interesting indel
     private static final byte MIN_QUALITY = 15; // minimum acceptable quality in a soft-clip window
+    private static final int MAX_LOW_QUALITY_SCORES = 3; // maximum # of low quality base calls in soft-clip window
     private static final float MAX_ZISH_SCORE = 6.f; // maximum fragment-length "z" score for a normal fragment
     private static final float MIN_CRAZY_ZISH_SCORE = 100.f; // "z" score that's probably associated with a mapping error
     private final ReadMetadata readMetadata;
@@ -35,7 +36,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         return evidenceList.iterator();
     }
 
-    @VisibleForTesting void checkForSplitRead( final GATKRead read,
+    private void checkForSplitRead( final GATKRead read,
                                                final List<BreakpointEvidence> evidenceList ) {
         final List<CigarElement> cigarElements = read.getCigar().getCigarElements();
         if ( hasInitialSoftClip(cigarElements, read) ) {
@@ -55,9 +56,10 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         if ( firstEle.getOperator() == CigarOperator.HARD_CLIP && itr.hasNext() ) {
             firstEle = itr.next();
         }
+        final int clipStart = firstEle.getLength() - MIN_SOFT_CLIP_LEN;
         return firstEle.getOperator() == CigarOperator.SOFT_CLIP &&
-                firstEle.getLength() >= MIN_SOFT_CLIP_LEN &&
-                isHighQualityRegion(read.getBaseQualities(), 0);
+                clipStart >= 0 &&
+                isHighQualityRegion(read.getBaseQualities(), clipStart);
     }
 
     private static boolean hasFinalSoftClip( final List<CigarElement> cigarElements, final GATKRead read ) {
@@ -74,8 +76,13 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     }
 
     private static boolean isHighQualityRegion( final byte[] quals, int idx ) {
+        int lowQuals = 0;
         for ( final int end = idx+MIN_SOFT_CLIP_LEN; idx != end; ++idx ) {
-            if ( quals[idx] < MIN_QUALITY ) return false;
+            if ( quals[idx] < MIN_QUALITY ) {
+                lowQuals += 1;
+                if ( lowQuals > MAX_LOW_QUALITY_SCORES ) return false;
+            }
+   
         }
         return true;
     }
@@ -99,7 +106,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
         }
     }
 
-    @VisibleForTesting void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
+    private void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
         if ( read.mateIsUnmapped() ) {
             evidenceList.add(new BreakpointEvidence.MateUnmapped(read, readMetadata));
         } else if ( !read.getContig().equals(read.getMateContig()) ) {
