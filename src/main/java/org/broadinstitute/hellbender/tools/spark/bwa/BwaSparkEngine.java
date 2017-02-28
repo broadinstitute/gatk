@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.bwa;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFlag;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -10,6 +11,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.seqdoop.hadoop_bam.BAMInputFormat;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -99,11 +102,17 @@ public final class BwaSparkEngine implements AutoCloseable {
             final List<GATKRead> outputReads = new ArrayList<>(allAlignments.stream().mapToInt(List::size).sum());
             for ( int idx = 0; idx != nReads; ++idx ) {
                 final GATKRead originalRead = inputReads.get(idx);
+                final String readName = originalRead.getName();
+                final byte[] bases = originalRead.getBases();
+                final byte[] quals = originalRead.getBaseQualities();
+                final String readGroup = originalRead.getReadGroup();
                 final List<BwaMemAlignment> alignments = allAlignments.get(idx);
                 final long nPrimaries = alignments.stream().filter(aln->(aln.getSamFlag()&SAMFlag.NOT_PRIMARY_ALIGNMENT.intValue())==0).count();
                 for ( final BwaMemAlignment alignment : alignments ) {
-                    final GATKRead rec =
-                            BwaMemAlignmentUtils.applyAlignment(originalRead, alignment, refNames, readsHeader, false, true);
+                    final SAMRecord samRecord =
+                            BwaMemAlignmentUtils.applyAlignment(readName, bases, quals, readGroup,
+                                                                alignment, refNames, readsHeader, false, true);
+                    final GATKRead rec = SAMRecordToGATKReadAdapter.headerlessReadAdapter(samRecord);
                     if ( nPrimaries > 1 ) {
                         final StringBuilder saTag = new StringBuilder();
                         alignments.stream()
