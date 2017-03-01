@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.recalibration.covariates;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
+import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -79,7 +80,7 @@ public final class ReadGroupCovariate implements Covariate {
 
     private int keyForReadGroup(final String readGroupId) {
         if ( ! readGroupLookupTable.containsKey(readGroupId) ) {
-            throw new IllegalStateException("missing readgroup " + readGroupId);
+            throw new IllegalStateException("The covariates table is missing " + RecalUtils.READGROUP_COLUMN_NAME + " " + readGroupId + " in " + RecalUtils.READGROUP_REPORT_TABLE_TITLE);
         }
         return readGroupLookupTable.get(readGroupId);
     }

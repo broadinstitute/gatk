@@ -24,6 +24,7 @@ import java.util.TreeSet;
  * Container class for GATK report tables
  */
 public final class GATKReport {
+    public static final String RECAL_FILE = "input covariates table file for base quality score recalibration";
     public static final String GATKREPORT_HEADER_PREFIX = "#:GATKReport.";
     public static final GATKReportVersion LATEST_REPORT_VERSION = GATKReportVersion.V1_1;
     private static final String SEPARATOR = ":";
@@ -93,9 +94,12 @@ public final class GATKReport {
         try {
             reportHeader = reader.readLine();
         } catch (IOException e) {
-            throw new UserException("Couldn't read RecalibrationReport", e);
+            throw new UserException("Could not read " + RECAL_FILE, e);
         }
 
+        if ( reportHeader == null ) {
+            throw new UserException(RECAL_FILE + " is empty.");
+        }
 
         // Read the first line for the version and number of tables.
         version = GATKReportVersion.fromHeader(reportHeader);

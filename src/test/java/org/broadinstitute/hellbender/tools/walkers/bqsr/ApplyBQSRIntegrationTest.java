@@ -104,6 +104,26 @@ public final class ApplyBQSRIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testMissingReadGroup() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -I " + hiSeqBamAligned +
+                        " --bqsr_recal_file " + resourceDir + "HiSeq.20mb.1RG.table.missingRG.gz" +
+                        " -O /dev/null", 0,
+                IllegalStateException.class);
+        spec.executeTest("testMissingReadGroup", this);
+    }
+
+    @Test
+    public void testemptyBqsrRecalFile() throws IOException {
+        IntegrationTestSpec spec = new IntegrationTestSpec(
+                " -I " + hiSeqBamAligned +
+                        " --bqsr_recal_file " + createTempFile("emptyBqsrRecal", "").toString() +
+                        " -O /dev/null", 0,
+                UserException.class);
+        spec.executeTest("testemptyBqsrRecalFile", this);
+    }
+
+    @Test
     public void testPRNoFailWithHighMaxCycle() throws IOException {
         IntegrationTestSpec spec = new IntegrationTestSpec(
                         " -I " + hiSeqBamAligned +
