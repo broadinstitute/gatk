@@ -77,7 +77,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
                     className = rfClass.getName();
                 }
                 // we want to remember the order in which these were provided, and also keep the
-                // actual instances in case they have any additiona any state provided by the tool
+                // actual instances in case they have any additional state provided by the tool
                 // when they were created
                 toolDefaultReadFilterNamesInOrder.add(className);
                 toolDefaultReadFilters.put(className, f);
@@ -189,7 +189,10 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
     /**
      * Get the list of default plugins used for this instance of this descriptor. Used for help/doc generation.
-     * @return List of T
+     *
+     * NOTE: this method does not account for disabled default filters and just return ALL default instances.
+     * The refactored interface in Barclay changes it's contract to allows returning a list with only 'enabled' default
+     * instances. We'll change the implementation when we integrate the updated interface.
      */
     @Override
     public List<Object> getDefaultInstances() { return new ArrayList<>(toolDefaultReadFilters.values()); }
@@ -261,7 +264,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
             }
         });
 
-        // warn on redundant enabling of filters already enabled by default
+        // warn if a filter is both default and enabled by the user
         final Set<String> redundant = new HashSet<>(toolDefaultReadFilters.keySet());
         redundant.retainAll(userEnabledReadFilterNames);
         redundant.forEach(
