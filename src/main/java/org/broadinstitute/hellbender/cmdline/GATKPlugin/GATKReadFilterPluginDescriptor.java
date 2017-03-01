@@ -49,16 +49,16 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     public boolean disableToolDefaultReadFilters = false;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
-    private Map<String, ReadFilter> allDiscoveredReadFilters = new HashMap<>();
-
-    // List of default filters in the order they were specified by the tool
-    private List<String> toolDefaultReadFilterNamesInOrder = new ArrayList<>();
+    private final Map<String, ReadFilter> allDiscoveredReadFilters = new HashMap<>();
 
     // Map of read filter (simple) class names to the corresponding default plugin instance
-    private Map<String, ReadFilter> toolDefaultReadFilters = new HashMap<>();
+    // it is a LinkedHashMap because we want to remember the order in which these were provided, and also keep the
+    // actual instances in case they have any additional state provided by the tool
+    // when they were created
+    private final Map<String, ReadFilter> toolDefaultReadFilters = new LinkedHashMap<>();
 
     // Set of dependent args for which we've seen values (requires predecessor)
-    private Set<String> requiredPredecessors = new HashSet<>();
+    private final Set<String> requiredPredecessors = new HashSet<>();
 
     /**
      * @param toolDefaultFilters Default filters that may be supplied with arguments
@@ -76,10 +76,6 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
                 if (className.length() == 0) {
                     className = rfClass.getName();
                 }
-                // we want to remember the order in which these were provided, and also keep the
-                // actual instances in case they have any additional state provided by the tool
-                // when they were created
-                toolDefaultReadFilterNamesInOrder.add(className);
                 toolDefaultReadFilters.put(className, f);
             });
         }
@@ -380,10 +376,10 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         final List<ReadFilter> finalFilters =
                 disableToolDefaultReadFilters ?
                         new ArrayList<>(userEnabledReadFilterNames.size()) :
-                        toolDefaultReadFilterNamesInOrder
+                        toolDefaultReadFilters.entrySet()
                                 .stream()
-                                .filter(s -> !isDisabledFilter(s))
-                                .map(s -> toolDefaultReadFilters.get(s))
+                                .filter(e -> !isDisabledFilter(e.getKey()))
+                                .map(e -> e.getValue())
                                 .collect(Collectors.toList());
 
         // now add in any additional filters enabled on the command line (preserving order)
