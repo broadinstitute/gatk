@@ -14,8 +14,11 @@ import java.io.Serializable;
 public final class MappingQualityReadFilter extends ReadFilter implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName="minimumMappingQuality", shortName="minimumMappingQuality", optional=true)
+    @Argument(fullName="minimumMappingQuality", shortName="minimumMappingQuality", doc = "Minimum mapping quality to keep (inclusive)", optional=true)
     public int minMappingQualityScore = 10;
+
+    @Argument(fullName="maximumMappingQuality", shortName="maximumMappingQuality", doc = "Maximum mapping quality to keep (exclusive)", optional=true)
+    public Integer maxMappingQualityScore = null;
 
     // Command line parser requires a no-arg constructor
     public MappingQualityReadFilter() {}
@@ -24,8 +27,15 @@ public final class MappingQualityReadFilter extends ReadFilter implements Serial
         this.minMappingQualityScore = minMappingQualityScore;
     }
 
+    public MappingQualityReadFilter( final int minMappingQualityScore, final Integer maxMappingQualityScore) {
+        this.minMappingQualityScore = minMappingQualityScore;
+        this.maxMappingQualityScore = maxMappingQualityScore;
+    }
+
     @Override
     public boolean test( final GATKRead read ) {
-        return read.getMappingQuality() >= minMappingQualityScore;
+        final int mq = read.getMappingQuality();
+        return  mq >= minMappingQualityScore
+                && (maxMappingQualityScore == null || mq <= maxMappingQualityScore);
     }
 }

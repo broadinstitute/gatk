@@ -414,6 +414,24 @@ public final class ReadFilterLibraryUnitTest {
 
         f = new MappingQualityReadFilter(9);
         Assert.assertTrue(f.test(read), read.toString());//pass
+
+        // with maximum mapping quality
+        f = new MappingQualityReadFilter(1, 10);
+        Assert.assertFalse(f.test(read), read.toString());//fail
+
+        f = new MappingQualityReadFilter(9, 12);
+        Assert.assertTrue(f.test(read), read.toString());//pass
+
+        // limit range to the same mapping quality
+        f = new MappingQualityReadFilter(11, 11);
+        Assert.assertTrue(f.test(read), read.toString());//pass
+
+        // limit range to lower/higher mapping quality
+        f = new MappingQualityReadFilter(10, 10);
+        Assert.assertFalse(f.test(read), read.toString());//fail
+
+        f = new MappingQualityReadFilter(12, 12);
+        Assert.assertFalse(f.test(read), read.toString());//fail
     }
 
     @Test
