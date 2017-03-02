@@ -31,12 +31,12 @@ public class ReadMetadata {
         contigNameToID = buildContigNameToIDMap(header);
 
         final int nReadGroups = header.getReadGroups().size();
-        final List<PartitionStatistics> perPartitionStatistics =
-                reads.mapPartitions(readItr -> Collections.singletonList(new PartitionStatistics(readItr, nReadGroups)).iterator())
+        final List<FragmentLengthCounts> perPartitionStatistics =
+                reads.mapPartitions(readItr -> Collections.singletonList(new FragmentLengthCounts(readItr, nReadGroups)).iterator())
                      .collect();
         nPartitions = perPartitionStatistics.size();
-        maxReadsInPartition = perPartitionStatistics.stream().mapToLong(PartitionStatistics::getNReads).max().orElse(0L);
-        final PartitionStatistics combinedStatistics = new PartitionStatistics(perPartitionStatistics, nReadGroups);
+        maxReadsInPartition = perPartitionStatistics.stream().mapToLong(FragmentLengthCounts::getNReads).max().orElse(0L);
+        final FragmentLengthCounts combinedStatistics = new FragmentLengthCounts(perPartitionStatistics, nReadGroups);
         nReads = combinedStatistics.getNReads();
         final long nRefBases = header.getSequenceDictionary().getSequences()
                 .stream().mapToLong(SAMSequenceRecord::getSequenceLength).sum();
@@ -167,14 +167,14 @@ public class ReadMetadata {
         }
     }
 
-    @DefaultSerializer(PartitionStatistics.Serializer.class)
-    public static final class PartitionStatistics {
+    @DefaultSerializer(FragmentLengthCounts.Serializer.class)
+    public static final class FragmentLengthCounts {
         private final static int MAX_TRACKED_FRAGMENT_LENGTH = 10000;
         private final Map<String, long[]> readGroupToFragmentSizeCountMap;
         private final long nReads;
         private final long nBases;
 
-        public PartitionStatistics( final Iterator<GATKRead> readItr, final int nReadGroups ) {
+        public FragmentLengthCounts(final Iterator<GATKRead> readItr, final int nReadGroups ) {
             readGroupToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nReadGroups)+1);
             long reads = 0L;
             long bases = 0L;
@@ -185,6 +185,7 @@ public class ReadMetadata {
                 bases += read.getLength();
                 int tLen = Math.abs(read.getFragmentLength());
                 if ( tLen != 0 &&
+                        read.isPaired() &&
                         read.getMappingQuality() >= 60 &&
                         read.isReverseStrand() &&
                         !read.mateIsReverseStrand() &&
@@ -202,11 +203,11 @@ public class ReadMetadata {
             nBases = bases;
         }
 
-        public PartitionStatistics( final Iterable<PartitionStatistics> perPartitionStatistics, final int nReadGroups ) {
+        public FragmentLengthCounts(final Iterable<FragmentLengthCounts> perPartitionStatistics, final int nReadGroups ) {
             readGroupToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nReadGroups)+1);
             long reads = 0L;
             long bases = 0L;
-            for ( final PartitionStatistics stats : perPartitionStatistics ) {
+            for ( final FragmentLengthCounts stats : perPartitionStatistics ) {
                 reads += stats.nReads;
                 bases += stats.nBases;
                 for ( final Map.Entry<String, long[]> entry : stats.readGroupToFragmentSizeCountMap.entrySet() ) {
@@ -222,7 +223,7 @@ public class ReadMetadata {
             nBases = bases;
         }
 
-        private PartitionStatistics( final Kryo kryo, final Input input ) {
+        private FragmentLengthCounts(final Kryo kryo, final Input input ) {
             final boolean refs = kryo.getReferences();
             kryo.setReferences(false);
             int nEntries = input.readInt();
@@ -260,17 +261,17 @@ public class ReadMetadata {
         }
 
         public static final class Serializer
-                extends com.esotericsoftware.kryo.Serializer<PartitionStatistics> {
+                extends com.esotericsoftware.kryo.Serializer<FragmentLengthCounts> {
             @Override
             public void write( final Kryo kryo, final Output output,
-                               final PartitionStatistics partitionStatistics ) {
-                partitionStatistics.serialize(kryo, output);
+                               final FragmentLengthCounts fragmentLengthCounts) {
+                fragmentLengthCounts.serialize(kryo, output);
             }
 
             @Override
-            public PartitionStatistics read( final Kryo kryo, final Input input,
-                                             final Class<PartitionStatistics> klass ) {
-                return new PartitionStatistics(kryo, input);
+            public FragmentLengthCounts read(final Kryo kryo, final Input input,
+                                             final Class<FragmentLengthCounts> klass ) {
+                return new FragmentLengthCounts(kryo, input);
             }
         }
     }

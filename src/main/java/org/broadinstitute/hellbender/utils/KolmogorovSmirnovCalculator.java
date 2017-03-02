@@ -1,5 +1,10 @@
 package org.broadinstitute.hellbender.utils;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+
 import java.util.Arrays;
 
 /**
@@ -7,17 +12,12 @@ import java.util.Arrays;
  * Build this with a reference histogram of counts and a significance level,
  * and then test other histograms to see whether they're likely to be drawn from the same population or not.
  */
+@DefaultSerializer(KolmogorovSmirnovCalculator.Serializer.class)
 public class KolmogorovSmirnovCalculator {
-    private final double cOfAlpha;
     private final long nCounts;
     private final float[] cdf;
 
-    public KolmogorovSmirnovCalculator(final long[] refHisto, final float alpha ) {
-        if ( alpha <= 0.f || alpha >= 1. ) {
-            throw new IllegalArgumentException("Alpha should be a small positive number, like maybe .05 -- "+
-                    alpha+" is not appropriate.");
-        }
-        cOfAlpha = Math.sqrt(-.5*Math.log(alpha/2.));
+    public KolmogorovSmirnovCalculator( final long[] refHisto ) {
         nCounts = Arrays.stream(refHisto).sum();
         if ( nCounts < 1 ) {
             throw new IllegalArgumentException("Empty reference histogram.");
@@ -34,7 +34,12 @@ public class KolmogorovSmirnovCalculator {
         }
     }
 
-    public boolean isDifferent( final long[] sampleHisto ) {
+    public boolean isDifferent( final long[] sampleHisto, final float alpha ) {
+        if ( alpha <= 0.f || alpha >= 1. ) {
+            throw new IllegalArgumentException("Alpha should be a small positive number, like maybe .05 -- "+
+                    alpha+" is not appropriate.");
+        }
+        final double cOfAlpha = Math.sqrt(-.5*Math.log(alpha/2.));
         if ( sampleHisto.length != cdf.length ) {
             throw new IllegalArgumentException("Sample histogram and reference histogram have different lengths.");
         }
@@ -73,5 +78,32 @@ public class KolmogorovSmirnovCalculator {
             idx += 1; // this could run off the end, but the while condition will fail before we attempt to use it
         }
         return false;
+    }
+
+    private KolmogorovSmirnovCalculator( final Kryo kryo, final Input input ) {
+        nCounts = input.readLong();
+        final int length = input.readInt();
+        cdf = input.readFloats(length);
+    }
+
+    private void serialize( final Kryo kryo, final Output output ) {
+        output.writeLong(nCounts);
+        output.writeInt(cdf.length);
+        output.writeFloats(cdf);
+    }
+
+    public static final class Serializer
+            extends com.esotericsoftware.kryo.Serializer<KolmogorovSmirnovCalculator> {
+        @Override
+        public void write(final Kryo kryo, final Output output,
+                          final KolmogorovSmirnovCalculator calc ) {
+            calc.serialize(kryo, output);
+        }
+
+        @Override
+        public KolmogorovSmirnovCalculator read(final Kryo kryo, final Input input,
+                                                     final Class<KolmogorovSmirnovCalculator> klass ) {
+            return new KolmogorovSmirnovCalculator(kryo, input);
+        }
     }
 }

@@ -8,6 +8,7 @@ import java.util.Random;
 
 public final class KolmogorovSmirnovCalculatorTest {
     private static final int ARR_LEN = 1000;
+    private static final float SIGNIFICANCE = .05f;
     private static Random random;
 
     @BeforeMethod
@@ -18,36 +19,36 @@ public final class KolmogorovSmirnovCalculatorTest {
     @Test
     public void testNormalDistribution() {
         final KolmogorovSmirnovCalculator calc =
-                new KolmogorovSmirnovCalculator(genNormalSample(480, 25, 10000), .05f);
-        Assert.assertFalse(calc.isDifferent(genNormalSample(480, 25, 100)));
+                new KolmogorovSmirnovCalculator(genNormalSample(480, 25, 10000));
+        Assert.assertFalse(calc.isDifferent(genNormalSample(480, 25, 100),SIGNIFICANCE));
         // these numbers were jiggled by hand until the difference was barely detectable
-        Assert.assertTrue(calc.isDifferent(genNormalSample(489, 25, 100)));
-        Assert.assertTrue(calc.isDifferent(genNormalSample(473, 25, 100)));
-        Assert.assertTrue(calc.isDifferent(genNormalSample(480, 15, 100)));
-        Assert.assertTrue(calc.isDifferent(genNormalSample(480, 42, 100)));
+        Assert.assertTrue(calc.isDifferent(genNormalSample(489, 25, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genNormalSample(473, 25, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genNormalSample(480, 15, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genNormalSample(480, 42, 100),SIGNIFICANCE));
     }
 
     @Test
     public void testLogNormalDistribution() {
         final KolmogorovSmirnovCalculator calc =
-                new KolmogorovSmirnovCalculator(genLogNormalSample(480, 25, 10000), .05f);
-        Assert.assertFalse(calc.isDifferent(genLogNormalSample(480, 25, 100)));
-        Assert.assertTrue(calc.isDifferent(genLogNormalSample(489, 25, 100)));
-        Assert.assertTrue(calc.isDifferent(genLogNormalSample(473, 25, 100)));
-        Assert.assertTrue(calc.isDifferent(genLogNormalSample(480, 15, 100)));
-        Assert.assertTrue(calc.isDifferent(genLogNormalSample(480, 42, 100)));
+                new KolmogorovSmirnovCalculator(genLogNormalSample(480, 25, 10000));
+        Assert.assertFalse(calc.isDifferent(genLogNormalSample(480, 25, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genLogNormalSample(489, 25, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genLogNormalSample(473, 25, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genLogNormalSample(480, 15, 100),SIGNIFICANCE));
+        Assert.assertTrue(calc.isDifferent(genLogNormalSample(480, 42, 100),SIGNIFICANCE));
     }
 
     @Test
     public void testBiModalDistribution() {
         final KolmogorovSmirnovCalculator calc =
-                new KolmogorovSmirnovCalculator(genNormalSample(480, 25, 10000), .05f);
+                new KolmogorovSmirnovCalculator(genNormalSample(480, 25, 10000));
         final long[] sample1 = genNormalSample(480, 25, 50);
         final long[] sample2 = genNormalSample(500, 25, 50);
         for ( int idx = 0; idx != ARR_LEN; ++idx ) {
             sample1[idx] += sample2[idx];
         }
-        Assert.assertTrue(calc.isDifferent(sample1));
+        Assert.assertTrue(calc.isDifferent(sample1,SIGNIFICANCE));
     }
 
     private static long[] genNormalSample( final int mean, final int stdDev, final int nSamples ) {
