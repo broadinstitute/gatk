@@ -24,6 +24,9 @@ public final class ExomeStandardArgumentDefinitions {
     public static final String SNP_FILE_LONG_NAME = "snpIntervals";
     public static final String SNP_FILE_SHORT_NAME = "SNP";
 
+    public static final String SITES_FILE_LONG_NAME = "siteIntervals";
+    public static final String SITES_FILE_SHORT_NAME = "SITES";
+
     public static final String ALLELIC_COUNTS_FILE_LONG_NAME = "hets";
     public static final String ALLELIC_COUNTS_FILE_SHORT_NAME = "HET";
 
