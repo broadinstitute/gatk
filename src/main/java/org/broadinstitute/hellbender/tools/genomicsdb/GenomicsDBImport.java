@@ -1,23 +1,34 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.intel.genomicsdb.VCF2TileDB;
+import com.intel.genomicsdb.ChromosomeInterval;
+import com.intel.genomicsdb.GenomicsDBImportConfiguration;
+import com.intel.genomicsdb.GenomicsDBImporter;
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.AbstractFeatureReader;
+import htsjdk.tribble.FeatureCodec;
+import htsjdk.tribble.FeatureReader;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFUtils;
+import org.apache.commons.collections.OrderedBidiMap;
+import org.apache.commons.collections.map.HashedMap;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.hellbender.cmdline.GenomicsDBCommandLineProgram;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.ColumnPartitionArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.GenomicsDBProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.json.simple.parser.ContainerFactory;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.io.FileReader;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 
 /**
@@ -30,134 +41,179 @@ import java.util.*;
  * the database
  */
 @CommandLineProgramProperties(
-  summary = "Import VCF to GenomicsDB",
-  oneLineSummary = "Import VCF to GenomicsDB",
+  summary = "Import VCFs to GenomicsDB",
+  oneLineSummary = "Import VCFs to GenomicsDB",
   programGroup = GenomicsDBProgramGroup.class
 )
-public final class GenomicsDBImport extends GenomicsDBCommandLineProgram {
+public final class GenomicsDBImport extends GATKTool {
+  private static final long serialVersionUID = 1L;
 
-  @Argument(doc = "Input Loader JSON File. This configuration file contains execution parameters " +
-    "for loading variants to GenomicsDB. Please refer to " +
-    "https://github.com/Intel-HLS/GenomicsDB/wiki/Importing-VCF-data-into-GenomicsDB#execution-parameters-for-the-import-program" +
-    "for more information",
-    fullName = LOADER_JSON_FULL_NAME,
-    shortName = LOADER_JSON_SHORT_NAME,
-    common=true)
-  private String loaderJSONFile = "";
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_WORKSPACE_LONG_NAME,
+    shortName = StandardArgumentDefinitions.GENOMICSDB_WORKSPACE_SHORT_NAME,
+    doc = "Workspace where the database will be persisted. " +
+      "Must be either a local path or full path of a " +
+      "parallel file system like Lustre or NFS",
+    optional = false)
+  private String workspace = "";
 
-  @Argument(doc = "Input JSON File with Stream Ids. This configuration file contains stream names " +
-    "and corresponding file names for all samples",
-    fullName = STREAM_ID_JSON_FULL_NAME,
-    shortName = STREAM_ID_JSON_SHORT_NAME,
-    common=true)
-  private String streamIdJSONFile = "";
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_PRODUCE_COMBINED_VCF_LONG_NAME,
+    shortName = StandardArgumentDefinitions.GENOMICSDB_PRODUCE_COMBINED_VCF_SHORT_NAME,
+    doc = "Produce Combined VCF using GenomicsDB import Tool")
+  Boolean produceCombinedVCF = false;
 
-  @Argument(doc = "Rank of the process",
-    fullName = PARTITION_INDEX_FULL_NAME,
-    shortName = PARTITION_INDEX_SHORT_NAME,
+  @ArgumentCollection
+  ColumnPartitionArgumentCollection columnPartitionArgumentCollection =
+    new ColumnPartitionArgumentCollection();
+
+  @Argument(fullName = StandardArgumentDefinitions.COLUMN_PARTITION_BUFFER_LIMIT_LONG_NAME,
+    shortName = StandardArgumentDefinitions.COLUMN_PARTITION_BUFFER_LIMIT_SHORT_NAME,
+    doc = "To produce a column major array, the program allocates abuffer for every" +
+      " input sample/callSet.")
+  int columnPartitionBuffer = 10485760;
+
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_SEGMENT_SIZE_LONG_NAME,
+    shortName = StandardArgumentDefinitions.GENOMICSDB_SEGMENT_SIZE_SHORT_NAME,
+    doc = "Buffer size in bytes allocated for TileDB attributes during the" +
+      "loading process. Should be large enough to hold one cell worth of data.",
     optional = true)
-  private int partitionIndex = 0;
+  int segmentSize = 10485760;
 
-  /**
-   * Do the work after command line has been parsed. RuntimeException may be
-   * thrown by this method, and are reported appropriately.
-   *
-   * @return the return value or null is there is none.
-   */
+  @Argument(fullName="variants", shortName="V",doc="variant files")
+  List<FeatureInput<VariantContext>> variantContexts;
+
   @Override
-  protected Object doWork() {
+  public boolean requiresIntervals() { return true; }
 
-    VCF2TileDB loader = new VCF2TileDB(loaderJSONFile, partitionIndex);
-    try {
-      JSONParser parser = new JSONParser();
-      Object obj = parser.parse(new FileReader(streamIdJSONFile), new LinkedHashFactory<String,String>());
-      LinkedHashMap<?, ?> streamNameToFileName = (LinkedHashMap<?,?>) obj;
-      long rowIdx = 0;
-      for (Object currObj : streamNameToFileName.entrySet()) {
-        Map.Entry<?, ?> entry = (Map.Entry<?, ?>) currObj;
-        VCFFileStreamInfo currInfo = new VCFFileStreamInfo(entry.getValue().toString(),
-          loaderJSONFile, partitionIndex);
-        LinkedHashMap<Integer, com.intel.genomicsdb.VCF2TileDB.SampleInfo> sampleIndexToInfo =
-          new LinkedHashMap<>();
+  @Override
+    public boolean requiresReads() { return false; }
 
-        // Increments row index after every 
-        rowIdx = com.intel.genomicsdb.VCF2TileDB.initializeSampleInfoMapFromHeader(sampleIndexToInfo,
-          currInfo.mVCFHeader, rowIdx);
-        loader.addSortedVariantContextIterator(entry.getKey().toString(),
-          currInfo.mVCFHeader, currInfo.mIterator,
-          bufferCapacity, VariantContextWriterBuilder.OutputType.BCF_STREAM,
-          sampleIndexToInfo); //pass sorted VC iterators
-      }
-      loader.importBatch();
-      assert loader.isDone();
-    } catch (IOException e) {
-      throw new UserException(streamIdJSONFile + ": No such file or directory" + e);
-    } catch (ParseException pe)  {
-      throw new UserException("Parse error for file: " + streamIdJSONFile + pe);
-    }
-    return null;
+  @Override
+  public boolean requiresReference() {
+    return false;
   }
 
+  GenomicsDBImporter importer;
+  private boolean done = false;
+  private List<SimpleInterval> intervalsForTraversal;
+
+  /**
+   * A complete traversal from start to finish. Tool authors who wish to "roll their own" traversal
+   * from scratch can extend this class directly and implement this method. Walker authors should
+   * instead extend a Walker class and implement the Walker-appropriate apply() method, since the
+   * Walker base classes implement the various kinds of traversals for you.
+   */
+  @Override
+  public void traverse() {
+    try {
+      importer.importBatch();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  /**
+   * From the command line validate
+   * 1. GenomicsDB workspace exists
+   * 2. GenomicsDB workspace is a valid one
+   *
+   * @return  Error messages for the exceptions
+   */
   @Override
   protected String[] customCommandLineValidation() {
     String[] messages = new String[2];
     int index = 0;
-    
-    if (loaderJSONFile.isEmpty()) {
-      messages[index++] = "Must provide an input loader JSON file. " +
-        "Please visit https://github.com/Intel-HLS/GenomicsDB/wiki/Java-interface-for-importing-VCF-CSV-files-into-TileDB-GenomicsDB" +
-        " for more information";
+
+    File workspaceDir = new File(workspace);
+
+    if (!Files.isDirectory(workspaceDir.toPath()))
+      messages[index++] = "No such directory or workspace found: " + workspace;
+
+    boolean check = new File(workspace + "/__tiledb_workspace.tdb").exists();
+    if (Files.isDirectory(workspaceDir.toPath()) && !check) {
+      messages[index++] = "Not a valid GenomicsDB workspace: " + workspace;
     }
 
-    if (streamIdJSONFile.isEmpty()) {
-      messages[index++] = "Must provide a stream JSON file. ";
-    }
-    
-    if (index == 0) return null;
-    return messages;
+    return index==0 ? null : messages;
   }
-}
-
-
-/**
- * Factory object to maintain order of keys in simple JSON parsing
- * - use LinkedHashMap
- */
-class LinkedHashFactory<E, S> implements ContainerFactory
-{
-  @Override
-  public List<E> creatArrayContainer()
-  {
-    return new ArrayList<>();
-  }
-
-  @Override
-  public Map<E,S> createObjectContainer()
-  {
-    return new LinkedHashMap<>();
-  }
-}
-
-/**
- * A container class to maintain the input VCF streams
- */
-class VCFFileStreamInfo
-{
-  VCFHeader mVCFHeader = null;
-  Iterator<VariantContext> mIterator = null;
 
   /**
-   * Constructor
-   * @param fileName path to VCF file
+   * Before traversal, fix configuration parameters and initialize
+   * GenomicsDB. Hard-coded to handle only VCF files and headers
    */
-  VCFFileStreamInfo(final String fileName,
-                    final String loaderJSONFile,
-                    final int partitionIndex) throws IOException, ParseException
-  {
-    AbstractFeatureReader<VariantContext, LineIterator> reader =
-      AbstractFeatureReader.getFeatureReader(fileName, new VCFCodec(), false);
-    mVCFHeader = (VCFHeader)(reader.getHeader());
-    mIterator = com.intel.genomicsdb.VCF2TileDB.columnPartitionIterator(
-      reader, loaderJSONFile, partitionIndex);
+  @Override
+  public void onTraversalStart() {
+
+    List<VCFHeader> headers = new ArrayList<>();
+    FeatureCodec<VariantContext,LineIterator> codec = new VCFCodec();
+
+    Map<String, FeatureReader<VariantContext>> sampleToVCMap =
+      new HashMap<String, FeatureReader<VariantContext>>();
+    for (FeatureInput<VariantContext> variant : variantContexts) {
+      AbstractFeatureReader<VariantContext, LineIterator> reader =
+        AbstractFeatureReader.getFeatureReader(String.valueOf(variant), codec, false);
+      headers.add((VCFHeader)reader.getHeader());
+
+      // We assume only one sample per file
+      String sampleName = ((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0);
+      sampleToVCMap.put(sampleName, reader);
+    }
+
+    Set<VCFHeaderLine> mergedHeader = VCFUtils.smartMergeHeaders(headers, true);
+
+    List<GenomicsDBImportConfiguration.Partition> partitions = new ArrayList<>();
+    GenomicsDBImportConfiguration.Partition.Builder pB =
+      GenomicsDBImportConfiguration.Partition.newBuilder();
+    GenomicsDBImportConfiguration.Partition p0 =
+      pB
+        .setBegin(0)
+        .setTiledbWorkspace(workspace)
+        .setTiledbArrayName("array0")
+        .build();
+    partitions.add(p0);
+
+    GenomicsDBImportConfiguration.ImportConfiguration.Builder importBuilder =
+      GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
+    GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
+      importBuilder
+        .addAllColumnPartitions(partitions)
+        .setCompressTiledbArray(true)
+        .setSizePerColumnPartition(1000)
+        .build();
+
+    try {
+      importer = new GenomicsDBImporter(
+        sampleToVCMap,
+        mergedHeader,
+        toChromosomeInterval(intervalsForTraversal.get(0)),
+        importConfiguration);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private ChromosomeInterval toChromosomeInterval(SimpleInterval interval) {
+    return new ChromosomeInterval(
+      interval.getContig(), interval.getStart(), interval.getEnd());
+  }
+
+  /**
+   * Close the GenomicsDB importer
+   * once all variants are written
+   */
+  @Override
+  public void closeTool() {
+    done = importer.isDone();
+  }
+
+  public void initializeIntervals() {
+    if (intervalArgumentCollection.intervalsSpecified()) {
+      final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
+      if ( sequenceDictionary == null ) {
+        throw new UserException("Sequence Dictionary is null");
+      }
+
+      intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
+    }
   }
 }
+

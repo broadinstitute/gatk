@@ -19,19 +19,22 @@ import java.util.List;
 public final class RequiredVariantInputArgumentCollection extends VariantInputArgumentCollection {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "One or more files containing variants", optional = false)
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
+      shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
+      doc = "One or more files containing variants", optional = false)
     public List<FeatureInput<VariantContext>> variantFiles;
 
-    public List<String> variantFilesNames;
+    public List<String> variantFileNames;
 
     /**
      * Get the list of BAM/SAM/CRAM files specified at the command line.
-     * Paths are the preferred format, as this can handle both local disk and NIO direct access to cloud storage.
+     * Paths are the preferred format, as this can handle both local
+     * disk and NIO direct access to cloud storage.
      */
     @Override
     public List<Path> getVariantPaths() {
         ArrayList<Path> ret = new ArrayList<>();
-        for (String fn : variantFilesNames) {
+        for (String fn : variantFileNames) {
             ret.add(IOUtils.getPath(fn));
         }
         return ret;
@@ -43,7 +46,7 @@ public final class RequiredVariantInputArgumentCollection extends VariantInputAr
     @Override
     public List<File> getVariantFiles() {
       ArrayList<File> ret = new ArrayList<>();
-      for (String fn : variantFilesNames) {
+      for (String fn : variantFileNames) {
         ret.add(new File(fn));
       }
       return ret;
