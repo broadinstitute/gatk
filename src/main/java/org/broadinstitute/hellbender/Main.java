@@ -10,9 +10,15 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.ClassUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.*;
+import java.util.List;
 
 /**
  * This is the main class of Hellbender and is the way of executing individual command line programs.
@@ -137,19 +143,24 @@ public class Main {
      */
     protected final void mainEntry(final String[] args) {
         final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
+        final JFrame snpy = displaySnpy("I see you're trying to GATK, can I help?");
         try {
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
+            waitForSnpy(snpy);
             System.exit(0);
         } catch (final CommandLineException e){
             System.err.println(program.getUsage());
             handleUserException(e);
+            waitForSnpy(snpy);
             System.exit(COMMANDLINE_EXCEPTION_EXIT_VALUE);
         } catch (final UserException e){
             handleUserException(e);
+            waitForSnpy(snpy);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
         } catch (final Exception e){
             handleNonUserException(e);
+            waitForSnpy(snpy);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         }
     }
@@ -389,5 +400,38 @@ public class Main {
             }
         }
         return message.toString();
+    }
+
+    private JFrame displaySnpy(String message){
+        BufferedImage img= null;
+        try {
+            img = ImageIO.read(getClass().getClassLoader().getResourceAsStream("snpy.jpg"));
+        } catch (IOException e) {
+            //pass
+        }
+        ImageIcon icon=new ImageIcon(img);
+        JFrame frame=new JFrame();
+        frame.setLayout(new FlowLayout());
+        JLabel lbl=new JLabel();
+        lbl.setIcon(icon);
+        JLabel greeting = new JLabel();
+        greeting.setText(message);
+        frame.add(lbl);
+        frame.add(greeting);
+        frame.setSize(img.getWidth()+50,img.getHeight()+50);
+        frame.setVisible(true);
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        new Thread( frame.set)
+        return frame;
+    }
+
+    private void waitForSnpy(JFrame frame) {
+        while(frame.isShowing()){
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
