@@ -1,10 +1,10 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.validation;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.walkers.validation.AnnotateVcfWithBamDepth;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

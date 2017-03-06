@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.validation;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;

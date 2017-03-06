@@ -1,7 +1,8 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.validation;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.tools.walkers.validation.MixingFraction;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -9,8 +10,6 @@ import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 1/31/17.

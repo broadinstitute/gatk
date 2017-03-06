@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.validation;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -67,7 +67,7 @@ public class AnnotateVcfWithBamDepth extends VariantWalker {
     public void apply(final VariantContext vc, final ReadsContext readsContext, final ReferenceContext refContext, final FeatureContext fc) {
         final MutableInt depth = new MutableInt(0);
         for (final GATKRead read : readsContext) {
-            if (!read.failsVendorQualityCheck() && !read.isDuplicate() && !read.isUnmapped() && new SimpleInterval(read).contains(vc) ) {
+            if (!read.failsVendorQualityCheck() && !read.isDuplicate() && !read.isUnmapped() && read.getEnd() > read.getStart() && new SimpleInterval(read).contains(vc) ) {
                 depth.increment();
             }
         }

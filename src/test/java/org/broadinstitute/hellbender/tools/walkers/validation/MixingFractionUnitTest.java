@@ -1,5 +1,6 @@
-package org.broadinstitute.hellbender.tools.walkers.mutect.validation;
+package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import org.broadinstitute.hellbender.tools.walkers.validation.MixingFraction;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.Assert;
@@ -9,8 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.testng.Assert.*;
 
 /**
  * Created by David Benjamin on 1/31/17.
