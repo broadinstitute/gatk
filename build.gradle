@@ -68,7 +68,7 @@ configurations.all {
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
         // later versions explode Hadoop
-        force 'com.google.protobuf:protobuf-java:3.0.0-beta-1'
+        force 'com.google.protobuf:protobuf-java:3.0.0'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
