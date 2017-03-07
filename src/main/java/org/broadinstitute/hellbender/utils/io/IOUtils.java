@@ -577,16 +577,6 @@ public final class IOUtils {
             }
         } catch (com.google.cloud.storage.StorageException cloudBoom) {
             // probably a permissions problem, or perhaps a disabled account.
-            logger.debug(cloudBoom.toString());
-            logger.debug("code: " + cloudBoom.getCode());
-            logger.debug("location: " + cloudBoom.getLocation());
-            logger.debug("reason: " + cloudBoom.getReason());
-            logger.debug("message: " + cloudBoom.getMessage());
-            String msg = "";
-            for (StackTraceElement x : cloudBoom.getStackTrace()) {
-                msg += x.toString() + "\n";
-            }
-            logger.debug("stack trace:\n" + msg);
             // Looks like this for a disabled bucket error:
             //   A USER ERROR has occurred: Couldn't read file gs://foo/bar. Error was:
             //   403: The account for bucket "foo" has been disabled.
@@ -594,6 +584,8 @@ public final class IOUtils {
             // (use `gcloud auth application-default revoke` to forget the default credentials)
             //   A USER ERROR has occurred: Couldn't read file gs://(...). Error was:
             //   401: Anonymous users does not have storage.objects.get access to object (...).
+            // The user can see the underlying exception by passing
+            // -DGATK_STACKTRACE_ON_USER_EXCEPTION=true
             throw new UserException.CouldNotReadInputFile(path, cloudBoom.getCode() + ": " + cloudBoom.getMessage(), cloudBoom);
         }
     }
