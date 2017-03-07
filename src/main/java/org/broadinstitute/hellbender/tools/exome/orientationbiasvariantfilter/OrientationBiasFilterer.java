@@ -84,7 +84,7 @@ public class OrientationBiasFilterer {
                         // FOB for the complement is ALT_F2R1/(ALT_F2R1 + ALT_F1R2) and for the actual artifact mode is ALT_F1R2/(ALT_F2R1 + ALT_F1R2)
                         // FOB is the fraction of alt reads indicating orientation bias error (taking into account artifact mode complement).
                         if (isRelevantArtifact || isRelevantArtifactComplement) {
-                            final int totalAltAlleleCount = genotype.getAD()[i];
+                            final int totalAltAlleleCount = genotype.hasAD() ? genotype.getAD()[i] : 0;
                             final double fob = calculateFob(genotype, isRelevantArtifact);
                             genotypeBuilder.attribute(OrientationBiasFilterConstants.P_ARTIFACT_FIELD_NAME, ArtifactStatisticsScorer.calculateArtifactPValue(totalAltAlleleCount, (int) Math.round(fob * totalAltAlleleCount), BIAS_P));
                             genotypeBuilder.attribute(OrientationBiasFilterConstants.FOB, fob);

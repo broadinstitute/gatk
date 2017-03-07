@@ -24,6 +24,7 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
     public static final String emptyVcf = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty.vcf";
     public static final String emptyVcfNoSamples = TEST_RESOURCE_DIR.getAbsolutePath() + "/empty_and_no_samples.vcf";
     public static final String smallM2VcfMore = TEST_RESOURCE_DIR.getAbsolutePath() + "/small_m2_more_variants.vcf";
+    public static final String nullADField = TEST_RESOURCE_DIR.getAbsolutePath() + "/null_AD_field.vcf";
     public static final String preAdapterQFile = TEST_RESOURCE_DIR.getAbsolutePath() + "/SAMPLE9.pre_adapter_detail_metrics";
 
     @Test
@@ -73,6 +74,22 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
         Assert.assertEquals(summaries.stream().filter(s -> s.getSample().equals("TUMOR")).map(s -> s.getArtifactModeComplement()).filter(am -> am.equals(Transition.CtoA)).count(), 1);
         Assert.assertEquals(summaries.stream().filter(s -> s.getArtifactModeComplement().equals(s.getArtifactMode().complement())).count(), summaries.size());
         Assert.assertEquals(summaries.stream().filter(s -> s.getSample().equals("TUMOR")).map(s -> s.getArtifactModeComplement()).filter(am -> am.equals(Transition.CtoA)).count(), 1);
+    }
+
+    @Test
+    public void testNullADField() throws IOException {
+        final File outputFile = File.createTempFile("ob_", ".vcf");
+        final List<String> arguments = new ArrayList<>();
+        arguments.add("-" + FilterByOrientationBias.PRE_ADAPTER_METRICS_DETAIL_FILE_SHORT_NAME);
+        arguments.add(preAdapterQFile);
+        arguments.add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+        arguments.add(nullADField);
+        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+        arguments.add(outputFile.getAbsolutePath());
+        runCommandLine(arguments);
+
+        //Make sure we don't get an NPE
+        Assert.assertTrue(outputFile.exists());
     }
 
     @Test
