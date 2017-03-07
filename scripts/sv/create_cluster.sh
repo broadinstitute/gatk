@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script creates a Google Dataproc cluster suitable for running the GATK-SV pipeline.
+# This script deletes a Google Dataproc cluster used for running the GATK-SV pipeline.
 
 set -eu
 if [[ "$#" -ne 3 ]]; then

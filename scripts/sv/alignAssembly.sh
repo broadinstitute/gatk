@@ -14,10 +14,14 @@ if [[ -z ${GATK_DIR+x} || -z ${CLUSTER_NAME+x} || -z ${MASTER_NODE+x} || -z ${PR
     PROJECT_OUTPUT_DIR="$MASTER_NODE"/"$OUTPUT_DIR"
 fi
 
+REFERENCE_IMG_LOCATION="$MASTER_NODE"/reference/Homo_sapiens_assembly19.fasta.64.img
+
+echo "Assuming reference image: " "$REFERENCE_IMG_LOCATION"
+
 cd "$GATK_DIR" 
 
 ./gatk-launch AlignAssembledContigsSpark \
-    -R "$MASTER_NODE"/reference/Homo_sapiens_assembly19.fasta \
+    --bwamemIndexImage "$REFERENCE_IMG_LOCATION" \
     --inputFile "$PROJECT_OUTPUT_DIR"/assembly_0 \
     -O "$PROJECT_OUTPUT_DIR"/aligned_assemblies \
     -- \

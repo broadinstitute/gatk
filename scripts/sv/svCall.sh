@@ -2,9 +2,12 @@
 
 set -eu
 
-if [[ "$#" -ne 3 ]]; then
+if [[ "$#" -lt 3 ]]; then
     echo "Please provide: local directory of GATK build, cluster name, output dir on the cluster"
+    echo "                reference location, "
     exit 1
+else
+    echo "assuming default reference, sample and reference image locations (see below)"
 fi
 
 GATK_DIR=$1
@@ -18,6 +21,7 @@ export GATK_DIR
 export CLUSTER_NAME
 export MASTER_NODE
 export PROJECT_OUTPUT_DIR
+
 
 ./scanBam.sh
 

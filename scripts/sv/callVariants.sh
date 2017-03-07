@@ -14,14 +14,19 @@ if [[ -z ${GATK_DIR+x} || -z ${CLUSTER_NAME+x} || -z ${MASTER_NODE+x} || -z ${PR
     PROJECT_OUTPUT_DIR="$MASTER_NODE"/"$OUTPUT_DIR"
 fi
 
+REFERENCE_LOCATION="$MASTER_NODE"/reference/Homo_sapiens_assembly19.fasta
+TWOBIT_REFERENCE_LOCATION="$MASTER_NODE"/reference/Homo_sapiens_assembly19.2bit
+echo "Assuming reference: " "$REFERENCE_LOCATION"
+echo "Assuming 2-bit reference: " "$TWOBIT_REFERENCE_LOCATION"
+
 cd "$GATK_DIR" 
 
 ./gatk-launch CallVariantsFromAlignedContigsSpark \
     --inputAlignments "$PROJECT_OUTPUT_DIR"/aligned_assemblies \
     --inputAssemblies "$PROJECT_OUTPUT_DIR"/assembly_0 \
     --outputPath "$PROJECT_OUTPUT_DIR"/variants \
-    -R "$MASTER_NODE"/reference/Homo_sapiens_assembly19.2bit \
-    -fastaReference "$MASTER_NODE"/reference/Homo_sapiens_assembly19.fasta \
+    -R "$TWOBIT_REFERENCE_LOCATION" \
+    -fastaReference "$REFERENCE_LOCATION" \
     -- \
     --sparkRunner GCS \
     --cluster "$CLUSTER_NAME" \
