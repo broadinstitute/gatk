@@ -290,9 +290,14 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
 
     /**
      * Returns the column collection for this reader.
+     * @throws IllegalStateException if this methods is invoked before the table column can be determined
+     *  (e.g. when processing a comment line before the header extending {@link #processCommentLine(String, long)}).
      * @return never {@code null}.
      */
     public TableColumnCollection columns() {
+        if (columns == null) {
+            throw new IllegalStateException();
+        }
         return columns;
     }
 
@@ -344,7 +349,9 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         nextRecordFetched = true;
         String[] line;
         while ((line = csvReader.readNext()) != null) {
-            if (!isCommentLine(line) && !isHeaderLine(line)) {
+            if (isCommentLine(line)) {
+                processCommentLine(line, reader.getLineNumber());
+            } else if (!isHeaderLine(line)) {
                 if (line.length != columns.columnCount()) {
                     throw formatException(String.format("mismatch between number of values in line (%d) and number of columns (%d)", line.length, columns.columnCount()));
                 } else {
@@ -358,6 +365,41 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
         return null;
     }
 
+    private void processCommentLine(final String[] line, final long lineNumber) {
+        final StringBuilder builder = new StringBuilder();
+        builder.append(line[0].substring(TableUtils.COMMENT_PREFIX.length()));
+        for (int i = 1; i < line.length; i++)
+            builder.append(TableUtils.COLUMN_SEPARATOR_STRING).append(line[i]);
+        processCommentLine(builder.toString(), lineNumber);
+    }
+
+    /**
+     * Called with the content of the comment line every time one is found in the input.
+     * <p>
+     *     The comment prefix string ({@link TableUtils#COMMENT_PREFIX}) is not included in the
+     *     input string.
+     * </p>
+     * <p>
+     *     Notice that since comments might be present before the header line, so the result of invoking {@link #columns()} is undefined.
+     * </p>
+     * @param commentText the input comment string.
+     * @param lineNumber the source line number that contains the comment line.
+     */
+    protected void processCommentLine(final String commentText, final long lineNumber) {
+        // do nothing by default.
+    }
+
+    /**
+     * Determines whether a line is a repetition of the header.
+     *
+     * <p>
+     *     By default, input lines that match the header exactly are ignored. By overriding this method
+     *     extending classes may change what is interpretated as a repetition of the header (e.g. just treat such
+     *     lines as regular data line)
+     * </p>
+     * @param line the input line.
+     * @return {@code true} if the input line is a header line and it should be ignored.
+     */
     protected boolean isHeaderLine(final String[] line) {
         return columns.matchesExactly(line);
     }
@@ -374,7 +416,9 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
     private String[] skipCommentLines() throws IOException {
         String[] line;
         while ((line = csvReader.readNext()) != null) {
-            if (!isCommentLine(line)) {
+            if (isCommentLine(line)) {
+                processCommentLine(line, reader.getLineNumber());
+            } else {
                 break;
             }
         }
