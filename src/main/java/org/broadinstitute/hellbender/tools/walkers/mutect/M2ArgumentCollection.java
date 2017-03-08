@@ -66,7 +66,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Only variants with tumor LODs exceeding this threshold can pass filtering.
      */
     @Argument(fullName = "tumor_lod", optional = true, doc = "LOD threshold for calling tumor variant")
-    public double TUMOR_LOD_THRESHOLD = 6.3;
+    public double TUMOR_LOD_THRESHOLD = 5.3;
 
     /**
      * This is a measure of the minimum evidence to support that a variant observed in the tumor is not also present in the normal.

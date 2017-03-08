@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import htsjdk.tribble.readers.LineIterator;
-import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFCodec;
 import junit.framework.Assert;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -16,9 +13,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.util.ArrayList;
-import java.util.Optional;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;

@@ -6,6 +6,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+import org.testng.internal.junit.ArrayAsserts;
 
 import java.util.Arrays;
 import java.util.List;
@@ -280,5 +281,16 @@ public class GATKProtectedMathUtilsTest {
         final double[] array3 = {0.0, 1.0, 2.0, 3.0};
         final double[] array4 = {0.0, 1.0, 2.0, 0.0};
         Assert.assertEquals(GATKProtectedMathUtils.maxDifference(Doubles.asList(array3), Doubles.asList(array4)), 3.0, 1e-10);
+    }
+
+    @Test
+    public void testSumArrayFunction(){
+        final int min = 0;
+        final int max = 5;
+
+        // use 1 + 2 + ... + n = n(n+1)/2
+        // [0,1,2] + [1,2,3] + ... + [4,5,6] = [0 + 1 + ... + 4, 1 + ... + 5, 2 + ... + 6] = [10, 15, 21 - 1] = [10, 15, 20]
+        final double[] array1 = { 10, 15, 20 };
+        ArrayAsserts.assertArrayEquals(GATKProtectedMathUtils.sumArrayFunction(min, max, i -> new double[]{ (double)i, i + 1.0, i + 2.0 }), array1, 1e-8);
     }
 }
