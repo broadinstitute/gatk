@@ -72,6 +72,10 @@ public class UserException extends RuntimeException {
             super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), message));
         }
 
+        public CouldNotReadInputFile(Path file, String message, Throwable cause) {
+            super(String.format("Couldn't read file %s. Error was: %s", file.toAbsolutePath().toUri(), message), cause);
+        }
+
         public CouldNotReadInputFile(String file, String message) {
             super(String.format("Couldn't read file %s. Error was: %s", file, message));
         }
