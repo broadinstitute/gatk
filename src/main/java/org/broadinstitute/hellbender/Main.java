@@ -184,6 +184,8 @@ public class Main {
 
         if(printStackTraceOnUserExceptions()) {
             e.printStackTrace();
+        } else {
+            System.out.println("Use -DSTACK_TRACE_ON_USEREXCEPTION to print the stack trace.");
         }
     }
 
