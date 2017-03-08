@@ -114,6 +114,8 @@ dependencies {
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
+    compile group: 'com.googlecode.protobuf-java-format', name: 'protobuf-java-format', version: '1.2'
+    compile group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion

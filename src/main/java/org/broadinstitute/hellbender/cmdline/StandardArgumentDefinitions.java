@@ -34,9 +34,9 @@ public final class StandardArgumentDefinitions {
     public static final String ADD_OUTPUT_SAM_PROGRAM_RECORD = "addOutputSAMProgramRecord";
 
     public static final String GENOMICSDB_WORKSPACE_LONG_NAME = "GenomicsDBWorkspace";
-    public static final String GENOMICSDB_PRODUCE_COMBINED_VCF_LONG_NAME = "produceCombinedVCF";
-    public static final String COLUMN_PARTITION_BUFFER_LIMIT_LONG_NAME = "columnPartitionBufferSize";
+    public static final String GENOMICSDB_ARRAY_LONG_NAME = "GenomicsDBArray";
     public static final String GENOMICSDB_SEGMENT_SIZE_LONG_NAME = "segmentSize";
+    public static final String SIZE_PER_COLUMN_PARTITION_PER_SAMPLE_LONG_NAME = "sizePerColumnPartitionPerSample";
 
     public static final String INPUT_SHORT_NAME = "I";
     public static final String OUTPUT_SHORT_NAME = "O";
@@ -71,9 +71,9 @@ public final class StandardArgumentDefinitions {
     public static final String DISABLE_BAM_INDEX_CACHING_SHORT_NAME = "DBIC";
 
     public static final String GENOMICSDB_WORKSPACE_SHORT_NAME = "GW";
-    public static final String GENOMICSDB_PRODUCE_COMBINED_VCF_SHORT_NAME = "CMVCF";
-    public static final String COLUMN_PARTITION_BUFFER_LIMIT_SHORT_NAME = "CPBS";
+    public static final String GENOMICSDB_ARRAY_SHORT_NAME = "GA";
     public static final String GENOMICSDB_SEGMENT_SIZE_SHORT_NAME = "S";
+    public static final String SIZE_PER_COLUMN_PARTITION_PER_SAMPLE_SHORT_NAME = "CPS";
 
     public static final String SPARK_PROPERTY_NAME = "conf";
 

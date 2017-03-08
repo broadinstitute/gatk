@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.intel.genomicsdb.ChromosomeInterval;
-import com.intel.genomicsdb.GenomicsDBImportConfiguration;
 import com.intel.genomicsdb.GenomicsDBImporter;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.AbstractFeatureReader;
@@ -13,13 +12,9 @@ import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFUtils;
-import org.apache.commons.collections.OrderedBidiMap;
-import org.apache.commons.collections.map.HashedMap;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.cmdline.argumentcollections.ColumnPartitionArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.GenomicsDBProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -46,40 +41,44 @@ import java.util.*;
   programGroup = GenomicsDBProgramGroup.class
 )
 public final class GenomicsDBImport extends GATKTool {
+
   private static final long serialVersionUID = 1L;
+  private final long DEFAULT_SIZE_PER_COLUMN_PARTITION_PER_SAMPLE = 16*1024L;
+  private final long DEFAULT_SEGMENT_SIZE = 1048576L;
+  private final String DEFAULT_ARRAY_NAME_PREFIX = "genomicsdb_array";
 
   @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_WORKSPACE_LONG_NAME,
     shortName = StandardArgumentDefinitions.GENOMICSDB_WORKSPACE_SHORT_NAME,
     doc = "Workspace where the database will be persisted. " +
       "Must be either a local path or full path of a " +
-      "parallel file system like Lustre or NFS",
-    optional = false)
+      "parallel file system like Lustre or NFS")
   private String workspace = "";
 
-  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_PRODUCE_COMBINED_VCF_LONG_NAME,
-    shortName = StandardArgumentDefinitions.GENOMICSDB_PRODUCE_COMBINED_VCF_SHORT_NAME,
-    doc = "Produce Combined VCF using GenomicsDB import Tool")
-  Boolean produceCombinedVCF = false;
-
-  @ArgumentCollection
-  ColumnPartitionArgumentCollection columnPartitionArgumentCollection =
-    new ColumnPartitionArgumentCollection();
-
-  @Argument(fullName = StandardArgumentDefinitions.COLUMN_PARTITION_BUFFER_LIMIT_LONG_NAME,
-    shortName = StandardArgumentDefinitions.COLUMN_PARTITION_BUFFER_LIMIT_SHORT_NAME,
-    doc = "To produce a column major array, the program allocates abuffer for every" +
-      " input sample/callSet.")
-  int columnPartitionBuffer = 10485760;
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_ARRAY_LONG_NAME,
+  shortName = StandardArgumentDefinitions.GENOMICSDB_ARRAY_SHORT_NAME,
+  doc = "TileDB array name used by GenomicsDB",
+  optional = true)
+  private String arrayName = DEFAULT_ARRAY_NAME_PREFIX;
+  
 
   @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_SEGMENT_SIZE_LONG_NAME,
     shortName = StandardArgumentDefinitions.GENOMICSDB_SEGMENT_SIZE_SHORT_NAME,
-    doc = "Buffer size in bytes allocated for TileDB attributes during the" +
-      "loading process. Should be large enough to hold one cell worth of data.",
+    doc = "Buffer size in bytes allocated for GenomicsDB attributes during " +
+      "import. Should be large enough to hold one variant data for one sample",
     optional = true)
-  int segmentSize = 10485760;
+  private
+  long segmentSize = DEFAULT_SEGMENT_SIZE;
 
   @Argument(fullName="variants", shortName="V",doc="variant files")
+  private
   List<FeatureInput<VariantContext>> variantContexts;
+
+  @Argument(fullName = StandardArgumentDefinitions.SIZE_PER_COLUMN_PARTITION_PER_SAMPLE_LONG_NAME,
+  shortName = StandardArgumentDefinitions.SIZE_PER_COLUMN_PARTITION_PER_SAMPLE_SHORT_NAME,
+  doc = "Buffer size in bytes allocated to GenomicsDB variant readers. Default is 16KBytes." +
+    " Larger values are better as smaller values cause frequent disk writes",
+  optional = true)
+  private long sizePerColumnPartitionPerSample = DEFAULT_SIZE_PER_COLUMN_PARTITION_PER_SAMPLE;
 
   @Override
   public boolean requiresIntervals() { return true; }
@@ -92,24 +91,11 @@ public final class GenomicsDBImport extends GATKTool {
     return false;
   }
 
-  GenomicsDBImporter importer;
-  private boolean done = false;
-  private List<SimpleInterval> intervalsForTraversal;
+  // The GenomicsDB importer object
+  private GenomicsDBImporter importer = null;
 
-  /**
-   * A complete traversal from start to finish. Tool authors who wish to "roll their own" traversal
-   * from scratch can extend this class directly and implement this method. Walker authors should
-   * instead extend a Walker class and implement the Walker-appropriate apply() method, since the
-   * Walker base classes implement the various kinds of traversals for you.
-   */
-  @Override
-  public void traverse() {
-    try {
-      importer.importBatch();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
+  // Intervals from command line (singleton for now)
+  private List<ChromosomeInterval> intervals;
 
   /**
    * From the command line validate
@@ -123,6 +109,11 @@ public final class GenomicsDBImport extends GATKTool {
     String[] messages = new String[2];
     int index = 0;
 
+    if (workspace.isEmpty()) {
+      messages[index] = " Must specify a workspace with -GW or --GenomicsDBWorkspace option";
+      return messages;
+    }
+
     File workspaceDir = new File(workspace);
 
     if (!Files.isDirectory(workspaceDir.toPath()))
@@ -131,6 +122,11 @@ public final class GenomicsDBImport extends GATKTool {
     boolean check = new File(workspace + "/__tiledb_workspace.tdb").exists();
     if (Files.isDirectory(workspaceDir.toPath()) && !check) {
       messages[index++] = "Not a valid GenomicsDB workspace: " + workspace;
+    }
+
+    if (sizePerColumnPartitionPerSample < 1024L) {
+      messages[index++] = "Size per column partition per sample is tool small." +
+        " Consider using larger size than 10KBytes";
     }
 
     return index==0 ? null : messages;
@@ -143,11 +139,12 @@ public final class GenomicsDBImport extends GATKTool {
   @Override
   public void onTraversalStart() {
 
+    initializeIntervals();
+
     List<VCFHeader> headers = new ArrayList<>();
     FeatureCodec<VariantContext,LineIterator> codec = new VCFCodec();
 
-    Map<String, FeatureReader<VariantContext>> sampleToVCMap =
-      new HashMap<String, FeatureReader<VariantContext>>();
+    Map<String, FeatureReader<VariantContext>> sampleToVCMap = new HashMap<>();
     for (FeatureInput<VariantContext> variant : variantContexts) {
       AbstractFeatureReader<VariantContext, LineIterator> reader =
         AbstractFeatureReader.getFeatureReader(String.valueOf(variant), codec, false);
@@ -159,41 +156,58 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     Set<VCFHeaderLine> mergedHeader = VCFUtils.smartMergeHeaders(headers, true);
+    sizePerColumnPartitionPerSample *= sampleToVCMap.size();
 
-    List<GenomicsDBImportConfiguration.Partition> partitions = new ArrayList<>();
-    GenomicsDBImportConfiguration.Partition.Builder pB =
-      GenomicsDBImportConfiguration.Partition.newBuilder();
-    GenomicsDBImportConfiguration.Partition p0 =
-      pB
-        .setBegin(0)
-        .setTiledbWorkspace(workspace)
-        .setTiledbArrayName("array0")
-        .build();
-    partitions.add(p0);
-
-    GenomicsDBImportConfiguration.ImportConfiguration.Builder importBuilder =
-      GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
-    GenomicsDBImportConfiguration.ImportConfiguration importConfiguration =
-      importBuilder
-        .addAllColumnPartitions(partitions)
-        .setCompressTiledbArray(true)
-        .setSizePerColumnPartition(1000)
-        .build();
+    logger.info("Writing data to array - " + workspace + "/" + arrayName);
 
     try {
-      importer = new GenomicsDBImporter(
-        sampleToVCMap,
-        mergedHeader,
-        toChromosomeInterval(intervalsForTraversal.get(0)),
-        importConfiguration);
+      importer = new GenomicsDBImporter(sampleToVCMap, mergedHeader,
+        intervals.get(0), workspace, arrayName,
+        sizePerColumnPartitionPerSample, segmentSize);
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
-  private ChromosomeInterval toChromosomeInterval(SimpleInterval interval) {
-    return new ChromosomeInterval(
-      interval.getContig(), interval.getStart(), interval.getEnd());
+  /**
+   * A complete traversal from start to finish. Tool authors who wish to "roll their own" traversal
+   * from scratch can extend this class directly and implement this method. Walker authors should
+   * instead extend a Walker class and implement the Walker-appropriate apply() method, since the
+   * Walker base classes implement the various kinds of traversals for you.
+   */
+  @Override
+  public void traverse() {
+    try {
+      importer.importBatch();
+      logger.info("Current batch written to disk");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  /**
+   * Loads our intervals using the best available sequence
+   * dictionary (as returned by {@link #getBestAvailableSequenceDictionary})
+   * to parse/verify them. Does nothing if no intervals were specified.
+   */
+  private void initializeIntervals() {
+    if ( intervalArgumentCollection.intervalsSpecified() ) {
+      final SAMSequenceDictionary intervalDictionary = getBestAvailableSequenceDictionary();
+      if ( intervalDictionary == null ) {
+        throw new UserException("We require at least one input source that " +
+          "has a sequence dictionary (reference or reads) when intervals are specified");
+      }
+
+      intervals = new ArrayList<>();
+
+      List<SimpleInterval> simpleIntervalList =
+        intervalArgumentCollection.getIntervals(intervalDictionary);
+
+      for (SimpleInterval simpleInterval : simpleIntervalList) {
+        intervals.add(new ChromosomeInterval(simpleInterval.getContig(),
+          simpleInterval.getStart(), simpleInterval.getEnd()));
+      }
+    }
   }
 
   /**
@@ -202,18 +216,8 @@ public final class GenomicsDBImport extends GATKTool {
    */
   @Override
   public void closeTool() {
-    done = importer.isDone();
-  }
-
-  public void initializeIntervals() {
-    if (intervalArgumentCollection.intervalsSpecified()) {
-      final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-      if ( sequenceDictionary == null ) {
-        throw new UserException("Sequence Dictionary is null");
-      }
-
-      intervalsForTraversal = intervalArgumentCollection.getIntervals(sequenceDictionary);
-    }
+    assert importer.isDone();
+    logger.info("Successfully imported " + variantContexts.size() + " callsets");
   }
 }
 

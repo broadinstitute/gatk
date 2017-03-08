@@ -24,16 +24,5 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
   @Test
   public void testGenomicsDBImporter() throws IOException {
-
-    File inputVCF = new File(getTestDataDir(), "genomicsdb_import.vcf");
-
-    IntegrationTestSpec spec = new IntegrationTestSpec(
-      " -L 1:249000000 ",
-      Arrays.asList(" -V " +
-        inputVCF.getAbsolutePath() +
-        " -GW " +
-        GENOMICSDB_WORKSPACE.toString()));
-
-    spec.executeTest("testGenomicsDBImporter", this);
   }
 }

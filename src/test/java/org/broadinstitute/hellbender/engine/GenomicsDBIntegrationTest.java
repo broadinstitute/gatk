@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
-import genomicsdb.GenomicsDBUtils;
+import com.intel.genomicsdb.GenomicsDBUtils;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.SelectVariants;
