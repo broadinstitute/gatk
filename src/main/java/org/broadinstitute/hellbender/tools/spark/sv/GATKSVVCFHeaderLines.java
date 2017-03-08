@@ -31,8 +31,8 @@ public class GATKSVVCFHeaderLines {
     public static final String INSERTED_SEQUENCE_MAPPINGS = "INSERTED_SEQUENCE_MAPPINGS";
     public static final String HOMOLOGY = "HOMOLOGY";
     public static final String HOMOLOGY_LENGTH = "HOMOLOGY_LENGTH";
-    public static final String INV_3_TO_5 = "INV_3_TO_5";
-    public static final String INV_5_TO_3 = "INV_5_TO_3";
+    public static final String INV33 = "INV33";
+    public static final String INV55 = "INV55";
     public static final String DUPLICATED_SEQUENCE = "DUPLICATED_SEQUENCE";
     public static final String DUPLICATION_NUMBERS = "DUP_NUM";
 
@@ -55,14 +55,11 @@ public class GATKSVVCFHeaderLines {
 
         vcfHeaderLines.put(HOMOLOGY, new VCFInfoHeaderLine(HOMOLOGY, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "Homologous sequence from contig at the breakpoint"));
         vcfHeaderLines.put(HOMOLOGY_LENGTH, new VCFInfoHeaderLine(HOMOLOGY_LENGTH, 1, VCFHeaderLineType.Integer, "Length of homologous sequence"));
-        vcfHeaderLines.put(INV_3_TO_5, new VCFInfoHeaderLine(INV_3_TO_5, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
-        vcfHeaderLines.put(INV_5_TO_3, new VCFInfoHeaderLine(INV_5_TO_3, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
+        vcfHeaderLines.put(INV33, new VCFInfoHeaderLine(INV33, 0, VCFHeaderLineType.Flag, "Whether the event represents a 3' to 5' inversion"));
+        vcfHeaderLines.put(INV55, new VCFInfoHeaderLine(INV55, 0, VCFHeaderLineType.Flag, "Whether the event represents a 5' to 3' inversion"));
 
         vcfHeaderLines.put(DUPLICATED_SEQUENCE, new VCFInfoHeaderLine(DUPLICATED_SEQUENCE, 1, VCFHeaderLineType.String, "Duplicated sequence on the reference or on the alternate allele"));
         vcfHeaderLines.put(DUPLICATION_NUMBERS, new VCFInfoHeaderLine(DUPLICATION_NUMBERS, VCFHeaderLineCount.R, VCFHeaderLineType.Integer, "Number of times the sequence is duplicated on reference and on the alternate alleles"));
     }
 
-    enum SVTYPES {
-        DEL, INS, DUP, INV, CNV, BND
-    }
 }
