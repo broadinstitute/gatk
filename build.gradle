@@ -52,12 +52,6 @@ repositories {
     }
 
     mavenLocal()
-
-    repositories {
-        flatDir {
-            dirs '/home/kdatta1/GenomicsDB/GenomicsDB/bin'
-        }
-    }
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.9.1')
