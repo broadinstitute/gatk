@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
@@ -13,6 +15,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Unit tests for {@link TableReader}.
@@ -596,6 +600,31 @@ public class TableReaderUnitTest extends BaseTest {
         Assert.assertNull(secondRecord);
     }
 
+    @Test(dataProvider = "processCommentData")
+    public void testProcessComments(final String[] lines) throws IOException {
+        final File testFile = createTestInput(lines);
+        final List<Pair<String,Long>> expected = IntStream.range(0, lines.length)
+                .mapToObj(i -> new ImmutablePair<>(lines[i], (long) (i + 1)))
+                .filter(p -> p.getLeft().startsWith(TableUtils.COMMENT_PREFIX))
+                .map(p -> new ImmutablePair<>(p.getLeft().substring(TableUtils.COMMENT_PREFIX.length()), p.getRight()))
+                .collect(Collectors.toList());
+        final List<Pair<String, Long>> actual = new ArrayList<>(expected.size());
+        try (final TableReader<Object> reader = new TableReader<Object>(testFile) {
+            @Override
+            protected Object createRecord(DataLine dataLine) {
+                return dataLine.hashCode();
+            }
+
+            @Override
+            protected void processCommentLine(final String comment, final long ln) {
+                actual.add(new ImmutablePair<>(comment, ln));
+            }
+        }) {
+            reader.toList();
+        }
+        Assert.assertEquals(actual, expected);
+    }
+
     private File createTestInput(final String... lines) throws IOException {
         final File testFile = createTempFile("test", ".tab");
         final PrintWriter testWriter = new PrintWriter(new FileWriter(testFile));
@@ -675,5 +704,9 @@ public class TableReaderUnitTest extends BaseTest {
         };
     }
 
-
+    @DataProvider(name = "processCommentData")
+    public Object[][] processCommentData() {
+        return Stream.concat(Stream.of(headerOnlyData()), Stream.of(ordinaryValuesData()))
+                .toArray(Object[][]::new);
+    }
 }
