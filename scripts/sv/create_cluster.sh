@@ -22,6 +22,6 @@ gcloud dataproc clusters create ${CLUSTER_NAME} \
     --num-workers 10 \
     --image-version preview \
     --project ${PROJECT} \
-    --initialization-actions gs://${INITIALIZATION_BUCKET}/initialization_scripts/dataproc_initialization_new_bucket.sh \
+    --initialization-actions gs://${INITIALIZATION_BUCKET}/initialization_scripts/dataproc_initialization_new_bucket_copy_ref_img.sh \
     --initialization-action-timeout 60m
 
