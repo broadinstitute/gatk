@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender;
 
+import com.google.cloud.storage.StorageException;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.cmdline.ClassFinder;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -148,6 +149,9 @@ public class Main {
         } catch (final UserException e){
             handleUserException(e);
             System.exit(USER_EXCEPTION_EXIT_VALUE);
+        } catch (final StorageException e) {
+            handleStorageException(e);
+            System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
         } catch (final Exception e){
             handleNonUserException(e);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
@@ -188,6 +192,24 @@ public class Main {
      * @param exception the exception to handle (never an {@link UserException}).
      */
     protected void handleNonUserException(final Exception exception) {
+        exception.printStackTrace();
+    }
+
+    /**
+     * Handle any exception that does not come from the user. Default implementation prints the stack trace.
+     * @param exception the exception to handle (never an {@link UserException}).
+     */
+    protected void handleStorageException(final StorageException exception) {
+        // HTTP error code
+        System.out.println("code:      " + exception.getCode());
+        // user-friendly message
+        System.out.println("message:   " + exception.getMessage());
+        // short reason code, eg. "invalidArgument"
+        System.out.println("reason:    " + exception.getReason());
+        // eg. the name of the argument that was invalid
+        System.out.println("location:  " + exception.getLocation());
+        // true indicates the server thinks the same request may succeed later
+        System.out.println("retryable: " + exception.isRetryable());
         exception.printStackTrace();
     }
 
