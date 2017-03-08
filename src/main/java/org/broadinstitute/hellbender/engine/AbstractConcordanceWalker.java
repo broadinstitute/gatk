@@ -95,6 +95,7 @@ public abstract class AbstractConcordanceWalker extends GATKTool {
     @Override
     protected final void onStartup() {
         super.onStartup();
+
         initializeTruthVariantsIfNecessary();
         evalVariants = new FeatureDataSource<>(new FeatureInput<>(evalVariantsFile, "eval"), CACHE_LOOKAHEAD, VariantContext.class);
 

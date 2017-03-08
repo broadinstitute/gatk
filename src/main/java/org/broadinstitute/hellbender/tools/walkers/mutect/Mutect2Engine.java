@@ -19,7 +19,7 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingOutputMode;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.downsampling.AlleleBiasedDownsamplingUtils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -289,64 +289,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         return (MTAC.normalSampleName != null);
     }
 
-    /**
-     * Calculate the genotype likelihoods for the sample in pileup for being hom-ref contrasted with being ref vs. alt
-     *
-     * @param pileup the read backed pileup containing the data we want to evaluate
-     * @param refBase the reference base at this pileup position
-     * @param minBaseQual the min base quality for a read in the pileup at the pileup position to be included in the calculation
-     * @return genotype likelihoods of [AA,AB]
-     */
-    protected double[] calcGenotypeLikelihoodsOfRefVsAny(final ReadPileup pileup, final byte refBase, final byte minBaseQual, final double f) {
-        double homRefLog10Likelihood = 0;
-        double hetLog10Likelihood = 0;
-        for( final PileupElement p : pileup ) {
-            if( p.isDeletion() || p.getQual() > minBaseQual ) {
-                // TODO: why not use base qualities here?
-                //double pobs = QualityUtils.qualToErrorProbLog10(qual);
-                final double pobs = 1 - pow(10, (30 / -10.0));
-                if( isNonRef(refBase, p)) {
-                    hetLog10Likelihood += Math.log10(f*pobs + (1-f)*pobs/3);
-                    homRefLog10Likelihood += Math.log10((1-pobs)/3);
-                } else {
-                    hetLog10Likelihood += Math.log10(f*(1-pobs)/3 + (1-f)*pobs);
-                    homRefLog10Likelihood += Math.log10(pobs);
-                }
-            }
-        }
-
-        return new double[]{homRefLog10Likelihood, hetLog10Likelihood};
-    }
-
-    protected int getCountOfNonRefEvents(final ReadPileup pileup, final byte refBase, final byte minBaseQual) {
-        return (int) StreamSupport.stream(pileup.spliterator(), false)
-                .filter(p -> isNonRef(refBase, p))
-                .filter(p -> p.isDeletion() || p.getQual() >= minBaseQual)
-                .count();
-    }
-
-    protected double[] calcGenotypeLikelihoodsOfRefVsAny(final ReadPileup pileup, final byte refBase, final byte minBaseQual) {
-        final double f = calculateF(pileup, refBase, minBaseQual);
-        return calcGenotypeLikelihoodsOfRefVsAny(pileup, refBase, minBaseQual, f);
-    }
-
-    private double calculateF(final ReadPileup pileup, final byte refBase, final byte minBaseQual) {
-        int totalCount = 0, altCount = 0;
-        for( final PileupElement p : pileup ) {
-            if( p.isDeletion() || p.getQual() > minBaseQual ) {
-                if( isNonRef(refBase, p)) {
-                    altCount++;
-                }
-                totalCount++;
-            }
-        }
-        return (double) altCount / totalCount;
-    }
-
-    private boolean isNonRef(final byte refBase, final PileupElement p) {
-        return p.getBase() != refBase || p.isDeletion() || p.isBeforeDeletionStart() || p.isAfterDeletionEnd() || p.isBeforeInsertion() || p.isAfterInsertion() || p.isNextToSoftClip();
-    }
-
     protected Map<String, List<GATKRead>> splitReadsBySample( final Collection<GATKRead> reads ) {
         return AssemblyBasedCallerUtils.splitReadsBySample(samplesList, header, reads);
     }
@@ -364,8 +306,18 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext featureContext) {
+        final byte refBase = ref.getBase();
+        final SimpleInterval refInterval = ref.getInterval();
         if( context == null || context.getBasePileup().isEmpty() ) {
-            return new ActivityProfileState(ref.getInterval(), 0.0);
+            return new ActivityProfileState(refInterval, 0.0);
+        }
+
+        // because new pileups must be allocated when getting the tumor and normal pileups, we first
+        // opportunistically check whether the combined pileup has no evidence of variation, which we will define as
+        // having at most one variant read
+        final int totalNonRef = countNonRef(refBase, context);
+        if (totalNonRef < MTAC.minVariantsInPileup) {
+            return new ActivityProfileState(refInterval, 0.0);
         }
 
         final Map<String, AlignmentContext> splitContexts = context.splitContextBySampleName(header);
@@ -374,40 +326,37 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         // if there are no tumor reads... there is no activity!
         if (tumorContext == null) {
-            return new ActivityProfileState(ref.getInterval(), 0);
+            return new ActivityProfileState(refInterval, 0);
         }
 
-        final ReadPileup tumorPileup = tumorContext.getBasePileup().makeFilteredPileup(el -> el.getMappingQual() >= MTAC.MIN_MAPPING_QUALITY_SCORE);
-        final double[] tumorGLs = calcGenotypeLikelihoodsOfRefVsAny(tumorPileup, ref.getBase(), MTAC.minBaseQualityScore);
-        final double tumorLod = tumorGLs[1] - tumorGLs[0];
-
-        // NOTE: do I want to convert to a probability (or just keep this as a LOD score)
-
-        // also at this point, we should throw out noisy sites (hence the nonRefInNormalCheck) but this is non-optimal
-        double prob = 0;
-        if (tumorLod > MTAC.INITIAL_TUMOR_LOD_THRESHOLD) {
-
-            // TODO: should we even do this performance optimization?
-            // in any case, we have to handle the case where there is no normal (and thus no normal context) which is
-            // different than having a normal but having no reads (where we should not enter the active region)
-            // TODO: as mentioned above, when we provide the normal bam but there are no normal reads in the region, we call it active. This does not seem right to me.
-            if (hasNormal() && normalContext != null) {
-                final int nonRefInNormal = getCountOfNonRefEvents(normalContext.getBasePileup(), ref.getBase(), MTAC.minBaseQualityScore);
-
-                final double[] normalGLs = calcGenotypeLikelihoodsOfRefVsAny(normalContext.getBasePileup(), ref.getBase(), MTAC.minBaseQualityScore, 0.5f);
-                final double normalLod = normalGLs[0] - normalGLs[1];
-
-                // TODO: parameterize these
-                if (normalLod > 1.0 && nonRefInNormal < 4) {
-                    prob = 1;
-                    logger.debug("At " + ref.getInterval().toString() + " tlod: " + tumorLod + " nlod: " + normalLod + " with normal non-ref of " + nonRefInNormal);
-                }
-            } else {
-                prob = 1;
-                logger.debug("At " + ref.getInterval().toString() + " tlod: " + tumorLod + " and no-normal calling");
-            }
+        final int tumorNonRef = countNonRef(refBase, tumorContext);
+        if (tumorNonRef < MTAC.minVariantsInPileup) {
+            return new ActivityProfileState(refInterval, 0.0);
         }
 
-        return new ActivityProfileState( ref.getInterval(), prob, ActivityProfileState.Type.NONE, null);
+        // since errors are rare, the number of errors (if reads are independent) is approximately a Poisson random variable,
+        // with mean equal to its variance
+        final double expectedTumorNonRefDueToError = StreamSupport.stream(tumorContext.getBasePileup().spliterator(), false)
+                .mapToDouble(pe -> QualityUtils.qualToErrorProb(pe.getQual()))
+                .sum();
+        final double tumorNonRefStdev = Math.sqrt(expectedTumorNonRefDueToError);
+
+        if (tumorNonRef < expectedTumorNonRefDueToError + MTAC.tumorStandardDeviationsThreshold * tumorNonRefStdev) {
+            return new ActivityProfileState(refInterval, 0.0);
+        }
+
+        if (hasNormal() && normalContext != null && countNonRef(refBase, normalContext) > normalContext.getBasePileup().size() * MTAC.minNormalVariantFraction) {
+            return new ActivityProfileState(refInterval, 0.0);
+        }
+
+        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
+    }
+
+    private boolean isNonRef(final byte refBase, final PileupElement p) {
+        return p.getBase() != refBase || p.isDeletion() || p.isBeforeDeletionStart() || p.isAfterDeletionEnd() || p.isBeforeInsertion() || p.isAfterInsertion() || p.isNextToSoftClip();
+    }
+
+    private int countNonRef(byte refBase, AlignmentContext context) {
+        return context.getBasePileup().getNumberOfElements(p -> isNonRef(refBase, p));
     }
 }

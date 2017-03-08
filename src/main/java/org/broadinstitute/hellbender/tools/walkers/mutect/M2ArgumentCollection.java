@@ -45,10 +45,22 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public FeatureInput<VariantContext> normalPanelFeatureInput;
 
     /**
-     * This is the LOD threshold that a variant must pass in the tumor to be emitted to the VCF. Note that the variant may pass this threshold yet still be annotated as FILTERed based on other criteria.
+     * Minimum number of variant reads in pileup to be considered an active region.
      */
-    @Argument(fullName = "initial_tumor_lod", optional = true, doc = "Initial LOD threshold for calling tumor variant")
-    public double INITIAL_TUMOR_LOD_THRESHOLD = 4.0;
+    @Argument(fullName = "min_variants_in_pileup", optional = true, doc = "Minimum number of reads in pileup to be considered active region.")
+    public int minVariantsInPileup = 2;
+
+    /**
+     * How many standard deviations above the expected number of variant reads due to error we require for a tumor pielup to be considered active
+     */
+    @Argument(fullName = "tumorStandardDeviationsThreshold", optional = true, doc = "How many standard deviations above the expected number of variant reads due to error we require for a tumor pielup to be considered active.")
+    public int tumorStandardDeviationsThreshold = 2;
+
+    /**
+     * Minimum allele fraction of variant reads in normal for a pileup to be considered inactive
+     */
+    @Argument(fullName = "minNormalVariantFraction", optional = true, doc = "Minimum number of reads in pileup to be considered active region.")
+    public double minNormalVariantFraction = 0.1;
 
     /**
      * Only variants with tumor LODs exceeding this threshold can pass filtering.
