@@ -56,6 +56,9 @@ public final class HelpConstants {
     public final static String DOC_CAT_TEST = "Test Tools";
     public final static String DOC_CAT_TEST_SUMMARY = "Tools for internal test purposes";
 
+    public final static String DOC_CAT_BWA_MEM_UTILS = "Bwa Mem JNI binding Tools";
+    public final static String DOC_CAT_BWA_MEM_UTILS_SUMMARY = "Bwa Mem JNI binding Tools";
+
     public final static String DOC_CAT_VARDISC = "Variant Discovery Tools";
     public final static String DOC_CAT_VAREVAL = "Variant Evaluation Tools";
     public final static String DOC_CAT_VARMANIP = "Variant Manipulation Tools";
