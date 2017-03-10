@@ -5,6 +5,9 @@ import com.google.common.collect.Iterables;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.SequenceUtil;
+import org.apache.commons.collections4.IterableUtils;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -12,6 +15,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.Serializable;
@@ -31,7 +35,33 @@ class AssemblyAlignmentParser implements Serializable {
     private static final boolean DEBUG_STATS = false;
 
     /**
-     * Loads the alignment regions and sequence of all locally-assembled contigs from the text file they are in;
+     * Converts a {@link GATKRead}, particularly the alignment and sequence information in it to the custom {@link AlignmentRegion} format.
+     */
+    @VisibleForTesting
+    static Tuple2<Iterable<AlignmentRegion>, byte[]> convertToAlignmentRegions(final Iterable<GATKRead> reads) {
+        Utils.validateArg(reads.iterator().hasNext(), "input collection of GATK reads is empty");
+
+        final GATKRead primaryAlignment = Utils.stream(reads).filter(r -> !(r.isSecondaryAlignment() || r.isSupplementaryAlignment()))
+                .findFirst()
+                .orElseThrow(() -> new GATKException("no primary alignment for read " + reads.iterator().next().getName()));
+
+        final byte[] bases = primaryAlignment.getBases();
+        if (primaryAlignment.isReverseStrand()) {
+            SequenceUtil.reverseComplement(bases);
+        }
+
+        final Iterable<AlignmentRegion> alignmentRegionIterable
+                = Utils.stream(reads)
+                .filter(r -> !r.isSecondaryAlignment())
+                .map(AlignmentRegion::new)
+                .map(ar -> breakGappedAlignment(ar, SVConstants.CallingStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY))
+                .flatMap(Utils::stream).collect(Collectors.toList());
+
+        return new Tuple2<>(alignmentRegionIterable, bases);
+    }
+
+    /**
+     * Loads the alignment regions and sequence of all locally-assembled contigs by SGA from the text file they are in;
      * one record for each contig.
      * @param ctx                       spark context for IO operations
      * @param pathToInputAlignments     path string to alignments of the contigs; format assumed to be consistent/parsable by {@link AlignmentRegion#toString()}
@@ -312,4 +342,5 @@ class AssemblyAlignmentParser implements Serializable {
         y.coalesce(1).saveAsTextFile(outPrefix+"_withMoreThanTwoAlignments");
         log.info(y.count() + " contigs have more than two alignments");
     }
+
 }
