@@ -12,8 +12,8 @@ import org.broadinstitute.hellbender.cmdline.programgroups.BwaMemUtilitiesProgra
  *
  */
 @CommandLineProgramProperties(
-        summary = "Counts filtered reads at het sites for allele specific expression estimate",
-        oneLineSummary = "Generates table of filtered base counts at het sites for allele specific expression",
+        summary = "Creates the image file for use by BwaMemAligner",
+        oneLineSummary = "Creates the image file for use by BwaMemAligner",
         programGroup = BwaMemUtilitiesProgramGroup.class
 )
 public final class BwaMemIndexImageCreator extends CommandLineProgram {
