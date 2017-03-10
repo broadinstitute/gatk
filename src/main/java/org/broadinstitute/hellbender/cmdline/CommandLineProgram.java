@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.cmdline;
 
 import com.intel.gkl.compression.IntelDeflaterFactory;
+import com.intel.gkl.compression.IntelInflaterFactory;
 import htsjdk.samtools.Defaults;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
+import htsjdk.samtools.util.BlockGunzipper;
 import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
@@ -68,6 +70,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
 
     @Argument(fullName = "use_jdk_deflater", shortName = "jdk_deflater", doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
     public boolean useJdkDeflater = false;
+
+    @Argument(fullName = "use_jdk_inflater", shortName = "jdk_inflater", doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
+    public boolean useJdkInflater = false;
 
     private CommandLineParser commandLineParser;
 
@@ -141,6 +146,9 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         if (! useJdkDeflater) {
             BlockCompressedOutputStream.setDefaultDeflaterFactory(new IntelDeflaterFactory());
         }
+        if (! useJdkInflater) {
+            BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
+        }
 
         if (!QUIET) {
             System.err.println("[" + ZonedDateTime.now().format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG)) +
@@ -161,6 +169,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
                 );
                 final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
                 logger.info("Deflater " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
+                final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
+                logger.info("Inflater " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
             }
             catch (final Exception e) { /* Unpossible! */ }
         }
