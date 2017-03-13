@@ -1,0 +1,19 @@
+{
+  "Mutect2_Multi.gatk4_jar": "/root/gatk-protected.jar",
+  "Mutect2_Multi.intervals": "/home/travis/build/broadinstitute/gatk-protected/scripts/m2_cromwell_tests/interval_list.interval_list",
+  "Mutect2_Multi.ref_fasta": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/human_g1k_v37.20.21.fasta",
+  "Mutect2_Multi.ref_fasta_index": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/human_g1k_v37.20.21.fasta.fai",
+  "Mutect2_Multi.ref_dict": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/human_g1k_v37.20.21.dict",
+  "Mutect2_Multi.pair_list": "/home/travis/build/broadinstitute/gatk-protected/scripts/m2_cromwell_tests/pair_list",
+  "Mutect2_Multi.scatter_count": 2,
+  "Mutect2_Multi.dbsnp": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/dbsnp_138.b37.20.21.vcf",
+  "Mutect2_Multi.dbsnp_index": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/dbsnp_138.b37.20.21.vcf.idx",
+  "Mutect2_Multi.is_run_orientation_bias_filter": true,
+  "Mutect2_Multi.is_run_oncotator": true,
+  "Mutect2_Multi.m2_docker": "__M2_DOCKER__",
+  "Mutect2_Multi.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
+  "Mutect2_Multi.preemptible_attempts": 2,
+  "Mutect2_Multi.artifact_modes": ["G/T", "C/T"],
+  "Mutect2_Multi.picard_jar": "/home/travis/picard.jar",
+  "Mutect2_Multi.onco_ds_local_db_dir": "/root/"
+}

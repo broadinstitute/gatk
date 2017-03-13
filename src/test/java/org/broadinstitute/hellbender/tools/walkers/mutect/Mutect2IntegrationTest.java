@@ -66,7 +66,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final Pair<Double, Double> concordance = calculateConcordance(filteredVcf, truthVcf);
         final double sensitivity = concordance.getLeft();
         final double fdr = concordance.getRight();
-        Assert.assertTrue(sensitivity > requiredSensitivity);
+        Assert.assertTrue("Sensitivity " + sensitivity + " was lower than required sensitivity of " + requiredSensitivity, sensitivity > requiredSensitivity);
         Assert.assertTrue(fdr < 0.5);
     }
 

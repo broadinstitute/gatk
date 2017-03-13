@@ -46,6 +46,7 @@ Recommended default values (where possible) are found in ``mutect2_multi_sample_
 - ``Mutect2_Multi.artifact_modes`` -- List of artifact modes to search for in the orientation bias filter.  For example to filter the OxoG artifact, you would specify ``["G/T"]``.  For both the FFPE artifact and the OxoG artifact, specify ``["G/T", "C/T"]``.  If you do not wish to search for any artifacts, please set ``Mutect2_Multi.is_run_orientation_bias_filter`` to ``false``.
 - ``Mutect2_Multi.onco_ds_tar_gz`` -- (optional)  A tar.gz file of the oncotator datasources -- often quite large (>15GB).  This will be uncompressed as part of the oncotator task.  Depending on backend used, this can be specified as a path on the local filesystem of a cloud storage container (e.g. gs://...).  Typically the Oncotator default datasource can be downloaded at ``ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/oncotator/``.  Do not put the FTP URL into the json file.
 - ``Mutect2_Multi.onco_ds_local_db_dir`` -- (optional)  A direct path to the Oncotator datasource directory (uncompressed).  While this is the fastest approach, it cannot be used with docker unless your docker image already has the datasources in it.  For cromwell backends without docker, this can be a local filesystem path.  *This cannot be a cloud storage location*
+- ``Mutect2_Multi.picard_jar`` -- A direct path to a picard jar for using ``CollectSequencingArtifactMetrics``.  This parameter requirement will be eliminated in the future.
 
  Note:  If neither ``Mutect2_Multi.onco_ds_tar_gz`` nor ``Mutect2_Multi.onco_ds_local_db_dir`` are specified, the Oncotator task will download and uncompress for each execution.
 
@@ -94,6 +95,7 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.onco_ds_tar_gz`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.onco_ds_local_db_dir`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.artifact_modes`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.picard_jar`` -- Please see parameter description above in the mutect2_multi_sample.
 
 #### mutect2-replicate-validation
 

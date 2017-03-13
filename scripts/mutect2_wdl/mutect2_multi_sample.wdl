@@ -39,7 +39,7 @@ task CreateOutputList {
 	}
 
 	runtime {
-        docker: "ubuntu:14.04"
+        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
         memory: "1 GB"
         preemptible: "${preemptible_attempts}"
 	}
@@ -77,6 +77,7 @@ workflow Mutect2_Multi {
     File? onco_ds_tar_gz
     String? onco_ds_local_db_dir
     Array[String] artifact_modes
+    File picard_jar
 
 	scatter( row in pairs ) {
 	    #The non-hack way, but there's a bug
@@ -120,7 +121,8 @@ workflow Mutect2_Multi {
                     preemptible_attempts = preemptible_attempts,
                     onco_ds_tar_gz = onco_ds_tar_gz,
                     onco_ds_local_db_dir = onco_ds_local_db_dir,
-                    artifact_modes = artifact_modes
+                    artifact_modes = artifact_modes,
+                    picard_jar=picard_jar
             }
     }
 

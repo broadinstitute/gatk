@@ -140,7 +140,7 @@ task ProcessOptionalArguments {
   }
 
   runtime {
-    docker: "${m2_docker}"
+    docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
     memory: "2 GB"
     disks: "local-disk " + 10 + " HDD"
     preemptible: "${preemptible_attempts}"
@@ -372,6 +372,47 @@ task oncotate_m2 {
     }
 }
 
+##########
+# Due to a bug in the GATK4 implementation of CollectSequencingArtifactMetrics and the eventual inclusion of picard in GATK4
+#   we need to include picard in this WDL
+# For Broad internal ref_fasta is /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
+task CollectSequencingArtifactMetricsPicard {
+    String entity_id
+    File bam_file
+    String output_location_prepend
+    File picard_jar
+    File ref_fasta
+    File ref_fai
+    Int preemptible_attempts
+
+    command {
+        # TODO: Do not hardcode memory requirements
+      java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics \
+       I=${bam_file} \
+       O=${output_location_prepend} \
+       R=${ref_fasta}
+
+      # Convert to GATK format
+      sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
+        "${output_location_prepend}.pre_adapter_detail_metrics" > ${entity_id}.gatk.pre_adapter_detail_metrics
+
+    }
+    runtime {
+        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
+        memory: "5 GB"
+        preemptible: "${preemptible_attempts}"
+        disks: "local-disk " + 500 + " HDD"
+    }
+    output {
+        File pre_adapter_detail_metrics = "${output_location_prepend}.pre_adapter_detail_metrics"
+        File pre_adapter_summary_metrics = "${output_location_prepend}.pre_adapter_summary_metrics"
+        File bait_bias_detail_metrics = "${output_location_prepend}.bait_bias_detail_metrics"
+        File bait_bias_summary_metrics = "${output_location_prepend}.bait_bias_summary_metrics"
+        File gatk_pre_adapter_detail_metrics = "${entity_id}.gatk.pre_adapter_detail_metrics"
+    }
+}
+
+##############
 
 workflow Mutect2 {
   # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
@@ -404,6 +445,7 @@ workflow Mutect2 {
   File? onco_ds_tar_gz
   String? onco_ds_local_db_dir
   Array[String] artifact_modes
+  File picard_jar
 
   call ProcessOptionalArguments {
     input:
@@ -490,15 +532,26 @@ workflow Mutect2 {
   }
 
   if(is_run_orientation_bias_filter) {
-      call CollectSequencingArtifactMetrics {
+      #call CollectSequencingArtifactMetrics {
+      #  input:
+      #    gatk4_jar = gatk4_jar,
+      #    bam_file = tumor_bam,
+      #    ref_fasta = ref_fasta,
+      #    output_prepend = ProcessOptionalArguments.output_name,
+      #    gatk4_jar_override = gatk4_jar_override,
+      #    preemptible_attempts = preemptible_attempts,
+      #    m2_docker = m2_docker
+      #}
+
+      call CollectSequencingArtifactMetricsPicard {
         input:
-          gatk4_jar = gatk4_jar,
-          bam_file = tumor_bam,
-          ref_fasta = ref_fasta,
-          output_prepend = ProcessOptionalArguments.output_name,
-          gatk4_jar_override = gatk4_jar_override,
-          preemptible_attempts = preemptible_attempts,
-          m2_docker = m2_docker
+            entity_id=tumor_sample_name,
+            bam_file=tumor_bam,
+            output_location_prepend=ProcessOptionalArguments.output_name,
+            picard_jar=picard_jar,
+            ref_fasta=ref_fasta,
+            ref_fai=ref_fasta_index,
+            preemptible_attempts=preemptible_attempts
       }
 
       call FilterByOrientationBias {
@@ -506,7 +559,7 @@ workflow Mutect2 {
            gatk4_jar = gatk4_jar,
            output_prepend = ProcessOptionalArguments.output_name,
            m2_vcf = Filter.m2_filtered_vcf,
-           pre_adapter_detail_metrics = CollectSequencingArtifactMetrics.pre_adapter_detail_metrics,
+           pre_adapter_detail_metrics = CollectSequencingArtifactMetricsPicard.gatk_pre_adapter_detail_metrics,
            gatk4_jar_override = gatk4_jar_override,
            preemptible_attempts = preemptible_attempts,
            m2_docker = m2_docker,

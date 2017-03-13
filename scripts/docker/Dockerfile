@@ -1,4 +1,3 @@
-# VERSION 0.2 -- very basic setup of an image.
 FROM ubuntu:14.04
 
 ## Not supported by docker-compose

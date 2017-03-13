@@ -4,7 +4,6 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.walkers.validation.AnnotateVcfWithBamDepth;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -53,7 +52,7 @@ public class AnnotateVcfWithBamDepthIntegrationTest extends CommandLineProgramTe
                 .map(vc -> vc.getAttributeAsInt(AnnotateVcfWithBamDepth.POOLED_BAM_DEPTH_ANNOTATION_NAME, -1))
                 .collect(Collectors.toList());
 
-        final List<Integer> firstSeveralDepthsFromIGV = Arrays.asList(33, 39, 19, 35, 26, 27);
+        final List<Integer> firstSeveralDepthsFromIGV = Arrays.asList(33, 39, 19, 35, 25, 27);
 
         Assert.assertEquals(bamDepths.subList(0, firstSeveralDepthsFromIGV.size()), firstSeveralDepthsFromIGV);
     }
