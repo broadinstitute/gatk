@@ -32,7 +32,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final FindBreakpointEvidenceSpark.Params params = FindBreakpointEvidenceSpark.defaultParams;
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
     private final ReadsSparkSource readsSource = new ReadsSparkSource(ctx);
-    private final SAMFileHeader header = readsSource.getHeader(readsFile, null, null);
+    private final SAMFileHeader header = readsSource.getHeader(readsFile, null);
     private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null, 0L);
     private final JavaRDD<GATKRead> mappedReads = reads.filter(read -> !read.isUnmapped());
     private final ReadMetadata readMetadataExpected = new ReadMetadata(header, reads);

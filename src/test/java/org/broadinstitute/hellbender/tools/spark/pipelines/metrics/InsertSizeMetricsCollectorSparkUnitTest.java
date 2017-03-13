@@ -64,7 +64,7 @@ public class InsertSizeMetricsCollectorSparkUnitTest extends CommandLineProgramT
         JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
         ReadsSparkSource readSource = new ReadsSparkSource(ctx, ValidationStringency.DEFAULT_STRINGENCY);
 
-        SAMFileHeader samHeader = readSource.getHeader(inputPath, referencePath, null);
+        SAMFileHeader samHeader = readSource.getHeader(inputPath, referencePath);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputPath, referencePath);
 
         InsertSizeMetricsArgumentCollection isArgs = new InsertSizeMetricsArgumentCollection();

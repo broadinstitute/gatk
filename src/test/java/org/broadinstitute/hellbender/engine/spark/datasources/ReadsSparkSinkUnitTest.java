@@ -121,7 +121,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
 
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
-        SAMFileHeader header = readSource.getHeader(inputBam, referenceFile, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
 
         ReadsSparkSink.writeReads(ctx, outputPath, referenceFile, rddParallelReads, header, ReadsWriteFormat.SINGLE);
 
@@ -157,7 +157,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, referenceFile);
         rddParallelReads = rddParallelReads.repartition(2); // ensure that the output is in two shards
-        SAMFileHeader header = readSource.getHeader(inputBam, referenceFile, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, referenceFile);
 
         ReadsSparkSink.writeReads(ctx, outputFile.getAbsolutePath(), referenceFile, rddParallelReads, header, ReadsWriteFormat.SHARDED);
         int shards = outputFile.listFiles((dir, name) -> !name.startsWith(".") && !name.startsWith("_")).length;
@@ -184,7 +184,7 @@ public class ReadsSparkSinkUnitTest extends BaseTest {
         ReadsSparkSource readSource = new ReadsSparkSource(ctx);
         JavaRDD<GATKRead> rddParallelReads = readSource.getParallelReads(inputBam, null)
                 .filter(r -> !r.isUnmapped()); // filter out unmapped reads (see comment below)
-        SAMFileHeader header = readSource.getHeader(inputBam, null, null);
+        SAMFileHeader header = readSource.getHeader(inputBam, null);
 
         ReadsSparkSink.writeReads(ctx, outputDirectory.getAbsolutePath(), null, rddParallelReads, header, ReadsWriteFormat.ADAM);
 

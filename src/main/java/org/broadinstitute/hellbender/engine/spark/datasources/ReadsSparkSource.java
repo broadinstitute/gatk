@@ -23,6 +23,7 @@ import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
 import org.broadinstitute.hellbender.engine.AuthHolder;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -90,7 +91,7 @@ public final class ReadsSparkSource implements Serializable {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getParallelReads(final String readFileName, final String referencePath, final List<SimpleInterval> intervals, final long splitSize) {
-        SAMFileHeader header = getHeader(readFileName, referencePath, null);
+        SAMFileHeader header = getHeader(readFileName, referencePath);
 
         // use the Hadoop configuration attached to the Spark context to maintain cumulative settings
         final Configuration conf = ctx.hadoopConfiguration();
@@ -174,19 +175,13 @@ public final class ReadsSparkSource implements Serializable {
      * Loads the header using Hadoop-BAM.
      * @param filePath path to the bam.
      * @param referencePath Reference path or null if not available. Reference is required for CRAM files.
-     * @param auth authentication information if using GCS.
      * @return the header for the bam.
      */
-    public SAMFileHeader getHeader(final String filePath, final String referencePath, final AuthHolder auth) {
+    public SAMFileHeader getHeader(final String filePath, final String referencePath) {
         // GCS case
         if (BucketUtils.isCloudStorageUrl(filePath)) {
-            try {
-                Storage.Objects storageClient = auth.makeStorageClient();
-                try (final SamReader reader = BAMIO.openBAM(storageClient, filePath, validationStringency)) {
-                    return reader.getFileHeader();
-                }
-            } catch (Exception e) {
-                throw new UserException("Failed to read bam header from " + filePath + "\n Caused by:" + e.getMessage(), e);
+            try (ReadsDataSource readsDataSource = new ReadsDataSource(IOUtils.getPath(filePath))) {
+                return readsDataSource.getHeader();
             }
         }
 

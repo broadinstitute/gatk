@@ -235,7 +235,7 @@ public class ReadsSparkSourceUnitTest extends BaseTest {
      * @return RDD of (SAMRecord-backed) GATKReads from the file.
      */
     public JavaRDD<GATKRead> getSerialReads(final JavaSparkContext ctx, final String bam, final String referencePath, final ValidationStringency validationStringency) {
-        final SAMFileHeader readsHeader = new ReadsSparkSource(ctx, validationStringency).getHeader(bam, referencePath, null);
+        final SAMFileHeader readsHeader = new ReadsSparkSource(ctx, validationStringency).getHeader(bam, referencePath);
 
         final SamReaderFactory samReaderFactory;
         if (referencePath != null) {
