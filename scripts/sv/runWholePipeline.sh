@@ -50,4 +50,6 @@ REF_TWOBIT=$(echo "${REF_FASTA}" | sed 's/.fasta$/.2bit/')
     --num-executors 20 \
     --driver-memory 30G \
     --executor-memory 30G \
-    --conf spark.yarn.executor.memoryOverhead=5000
+    --conf spark.yarn.executor.memoryOverhead=5000 \
+    --conf spark.network.timeout=300 \
+    --conf spark.executor.heartbeatInterval=60

@@ -41,6 +41,10 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "minEvidenceCount")
         public int minEvidenceCount = defaultParams.minEvidenceCount;
 
+        @Argument(doc = "Minimum number of reads in cluster that share the same target locus to declare an interval of interest.",
+                fullName = "minCoherentEvidenceCount")
+        public int minCoherentEvidenceCount = defaultParams.minCoherentEvidenceCount;
+
         @Argument(doc = "Minimum number of localizing kmers in a valid interval.", fullName="minKmersPerInterval")
         public int minKmersPerInterval = defaultParams.minKmersPerInterval;
 

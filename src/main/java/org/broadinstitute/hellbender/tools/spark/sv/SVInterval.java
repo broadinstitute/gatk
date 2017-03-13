@@ -107,4 +107,5 @@ public final class SVInterval implements Comparable<SVInterval> {
             return new SVInterval(kryo, input);
         }
     }
+
 }
