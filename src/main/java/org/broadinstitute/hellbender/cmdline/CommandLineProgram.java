@@ -266,7 +266,7 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
      *
      */
     public final String getUsage(){
-        return getCommandLineParser().usage(true);
+        return getCommandLineParser().usage(true, specialArgumentsCollection.SHOW_HIDDEN);
     }
 
     /**
