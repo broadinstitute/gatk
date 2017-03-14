@@ -1,0 +1,18 @@
+{
+  "HapmapSensitivity.gatk_jar": "$__gatk_jar__",
+  "HapmapSensitivity.intervals": "$__intervals__",
+  "HapmapSensitivity.ref_fasta": "$__ref_fasta__",
+  "HapmapSensitivity.ref_fasta_index": "$__ref_fasta_index__",
+  "HapmapSensitivity.ref_dict": "$__ref_dict__",
+  "HapmapSensitivity.hapmap_truth_vcf": "$__hapmap_truth__",
+  "HapmapSensitivity.hapmap_truth__vcf_idx": "$__hapmap_truth_idx__",
+  "HapmapSensitivity.pooled_bam": "$__pooled_bam__",
+  "HapmapSensitivity.pooled_bam_index": "$__pooled_bam_idx__",
+  "HapmapSensitivity.pooled_sample_name": "$__pooled_sample_name__",
+  "HapmapSensitivity.pon": "$__pon__",
+  "HapmapSensitivity.pon_idx": "$__pon_idx__",
+  "HapmapSensitivity.python_sensitivity_script": "$__python_sensitivity_script__",
+  "HapmapSensitivity.scatter_count": "$__scatter_count__",
+  "HapmapSensitivity.is_run_orientation_bias_filter": "$__is_run_orientation_bias_filter__",
+  "HapmapSensitivity.artifact_modes": ["G/T"]
+}
