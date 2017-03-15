@@ -8,6 +8,8 @@ import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Target table file codec.
@@ -42,7 +44,16 @@ public class TargetCodec extends AsciiFeatureCodec<Target> {
 
     @Override
     public boolean canDecode(final String path) {
-        final File file = new File(path);
+        File file;
+        try {
+            // Use the URI constructor so that we can handle file:// URIs
+            final URI uri = new URI(path);
+            file = uri.isAbsolute() ? new File(uri) : new File(path);
+        }
+        catch ( Exception e ) {  // Contract for canDecode() mandates that all exception be trapped
+            return false;
+        }
+        
         if (!file.canRead() || !file.isFile()) {
             return false;
         }

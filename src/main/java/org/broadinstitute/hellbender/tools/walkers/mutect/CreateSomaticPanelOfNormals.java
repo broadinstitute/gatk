@@ -44,7 +44,8 @@ import java.util.stream.StreamSupport;
  *  java -jar gatk.jar Mutect2 -R reference.fasta -I normal2.bam -tumor normal1SampleName -o output2.vcf
  *  . . .
  *
- *  2) Create a file with all the paths to the vcfs in step 1.  The following are the contents of vcfs.list:
+ *  2) Create one or more files ending in ".list" with all the paths to the vcfs in step 1.  The following are the
+ *     contents of vcfs.list:
  *  output1.vcf
  *  output2.vcf
  *  . . .
@@ -56,6 +57,9 @@ import java.util.stream.StreamSupport;
  *  java -jar gatk.jar -R reference.fasta -I tumor.bam -tumor tumorSampleName \
  *    [-I matchedNormal.bam -normal matchedNormalSampleName] \
  *    -PON pon.vcf
+ *
+ *  Note that multiple .list files may be passed in by specifying the -vcfs option multiple times. It's also possible
+ *  to just provide the VCFs explicitly on the command line, rather than via .list files.
  *
  * Created by David Benjamin on 2/17/17.
  */
@@ -70,13 +74,13 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
     public static final String INPUT_VCFS_LIST_SHORT_NAME = "vcfs";
 
     /**
-     * Plain text file listing one normal vcf per line. This argument can be specified
-     * multiple times in order to provide multiple vcf lists.
+     * The VCFs can be input as either one or more .list file(s) containing one VCF per line, or VCFs can be
+     * specified explicitly on the command line.
      */
     @Argument(fullName = INPUT_VCFS_LIST_LONG_NAME,
             shortName = INPUT_VCFS_LIST_SHORT_NAME,
-            doc="File containing a list of samples to include", optional = false)
-    private Set<File> vcfLists = new LinkedHashSet<>(0);
+            doc="VCFs for samples to include. May be specified either one at a time, or as one or more .list file containing multiple VCFs, one per line.", optional = false)
+    private Set<File> vcfs = new LinkedHashSet<>(0);
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -84,7 +88,7 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
     private File outputVcf = null;
 
     public Object doWork() {
-        final List<File> inputVcfs = getInputVcfs(vcfLists);
+        final List<File> inputVcfs = new ArrayList<>(vcfs);
         final Collection<CloseableIterator<VariantContext>> iterators = new ArrayList<>(inputVcfs.size());
         final Collection<VCFHeader> headers = new HashSet<>(inputVcfs.size());
         final VCFHeader headerOfFirstVcf = new VCFFileReader(inputVcfs.get(0), false).getFileHeader();
@@ -133,19 +137,5 @@ public class CreateSomaticPanelOfNormals extends CommandLineProgram {
                     .make();
             writer.add(outputVc);
         }
-    }
-
-    private static List<File> getInputVcfs (Collection<File> files) {
-        final List<File> result = new ArrayList<>();
-        for (final File file : files) {
-            try (XReadLines reader = new XReadLines(file)) {
-                for (final String path : reader) {
-                    result.add(new File(path));
-                }
-            } catch (IOException e) {
-                throw new UserException.CouldNotReadInputFile(file, e);
-            }
-        }
-        return result;
     }
 }
