@@ -380,8 +380,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
         readsSource = new ReadsSparkSource(sparkContext, readArguments.getReadValidationStringency());
         readsHeader = readsSource.getHeader(
                 readInput,
-                hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null,
-                getAuthHolder());
+                hasReference() ?  referenceArguments.getReferenceFile().getAbsolutePath() : null);
     }
 
     /**
