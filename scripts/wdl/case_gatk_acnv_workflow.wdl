@@ -397,7 +397,7 @@ task CalculateTargetCoverage {
           then
               java -Xmx${mem}g -jar ${gatk_jar} CalculateTargetCoverage --output ${entity_id}.coverage.tsv \
                 --groupBy ${grouping} --transform ${transform} --targets ${padded_target_file} --targetInformationColumns FULL \
-                --input ${input_bam} --reference ${ref_fasta} --disableAllReadFilters ${disable_all_read_filters} \
+                --input ${input_bam} --reference ${ref_fasta} --disableToolDefaultReadFilters ${disable_all_read_filters} \
                 $(if [ ${keep_duplicate_reads} = true ]; then echo " --disableReadFilter NotDuplicateReadFilter "; else echo ""; fi) \
                 --interval_set_rule UNION --interval_padding 0 \
                 --secondsBetweenProgressUpdates 10.0 --disableSequenceDictionaryValidation ${disable_sequence_dictionary_validation} \
