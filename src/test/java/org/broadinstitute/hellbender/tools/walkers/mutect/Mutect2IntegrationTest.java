@@ -182,8 +182,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), 0.97},
-                {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), 0.95},
+                //{new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), 0.97},
+                //{new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), 0.95},
                 {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), 0.90},
                 {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), 0.65}
         };
@@ -201,13 +201,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private Pair<Double, Double> calculateConcordance(final File outputVcf, final File truthVcf ) {
         final Set<String> outputKeys = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
                 .filter(vc -> vc.getFilters().isEmpty())
+                .filter(vc -> ! vc.isSymbolicOrSV())
                 .map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
         final Set<String> truthKeys = StreamSupport.stream(new FeatureDataSource<VariantContext>(truthVcf).spliterator(), false)
                 .filter(vc -> vc.getFilters().isEmpty())
+                .filter(vc -> ! vc.isSymbolicOrSV())
                 .map(vc -> keyForVariant(vc)).collect(Collectors.toSet());
 
         final long truePositives = outputKeys.stream().filter(truthKeys::contains).count();
         final long falsePositives = outputKeys.size() - truePositives;
+
+        // for debugging
+        final List<VariantContext> falseNegatives = StreamSupport.stream(new FeatureDataSource<VariantContext>(truthVcf).spliterator(), false)
+                .filter(vc -> vc.getFilters().isEmpty())
+                .filter(vc -> ! vc.isSymbolicOrSV())
+                .filter(vc -> !outputKeys.contains(keyForVariant(vc)))
+                .collect(Collectors.toList());
+
+        final List<VariantContext> falsePositivesList = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+                .filter(vc -> vc.getFilters().isEmpty())
+                .filter(vc -> !truthKeys.contains(keyForVariant(vc)))
+                .collect(Collectors.toList());
+
+
         final double sensitivity = (double) truePositives / truthKeys.size();
         final double fdr = (double) falsePositives / outputKeys.size();
         return new ImmutablePair<>(sensitivity, fdr);
