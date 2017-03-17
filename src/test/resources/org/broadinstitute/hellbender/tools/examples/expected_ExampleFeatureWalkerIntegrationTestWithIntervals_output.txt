@@ -1,0 +1,15 @@
+Current feature: htsjdk.tribble.bed.FullBEDFeature:1:11-300
+	Overlapping reference bases: NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
+
+	Overlapping read at 1:200-275
+	Overlapping read at 1:205-280
+	Overlapping read at 1:210-285
+
+	Overlapping variant at 1:100-100. Ref: G* Alt(s): [A]
+	Overlapping variant at 1:199-200. Ref: GG* Alt(s): [G]
+	Overlapping variant at 1:200-200. Ref: G* Alt(s): [A]
+	Overlapping variant at 1:203-206. Ref: GGGG* Alt(s): [G]
+	Overlapping variant at 1:280-280. Ref: G* Alt(s): [A]
+	Overlapping variant at 1:284-286. Ref: GGG* Alt(s): [G]
+	Overlapping variant at 1:285-285. Ref: G* Alt(s): [A]
+	Overlapping variant at 1:286-286. Ref: G* Alt(s): [A]
