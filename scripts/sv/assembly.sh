@@ -2,9 +2,14 @@
 
 set -eu
 
-if [[ -z ${GATK_DIR+x} || -z ${CLUSTER_NAME+x} || -z ${MASTER_NODE+x} || -z ${PROJECT_OUTPUT_DIR+x} ]]; then 
+# either have the required variables set in the running environment, or provide them 
+#  in command line
+if [[ -z ${GATK_DIR+x} || -z ${CLUSTER_NAME+x} || -z ${PROJECT_OUTPUT_DIR+x} ]]; then 
     if [[ "$#" -ne 3 ]]; then
-        echo "Please provide: local directory of GATK build, cluster name, output dir on the cluster"
+        echo -e "Please provide:"
+        echo -e "  [1] local directory of GATK build (required)"
+        echo -e "  [2] cluster name (required)"
+        echo -e "  [3] output directory on the cluster (required)"
     exit 1
     fi
     GATK_DIR=$1
