@@ -1,17 +1,13 @@
 package org.broadinstitute.hellbender.utils.bwa;
 
-import org.broadinstitute.hellbender.BwaMemIntegrationTest;
+import org.broadinstitute.hellbender.BwaMemTestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -36,12 +32,12 @@ public class BwaMemIndexImageCreatorTest extends CommandLineProgramTest {
                 "--output", tempImage.getAbsolutePath()));
         runCommandLine(args);
 
-        // pigg-backing on the existing integration test
-        final BwaMemIndex index = new BwaMemIndex(tempImage.getAbsolutePath());
-        BwaMemIntegrationTest.singleReadAlingment(index);
-        BwaMemIntegrationTest.chimericContigAlignment(index);
-
-        index.close();
+        // piggy-backing on the existing integration test
+        try( final BwaMemIndex index = new BwaMemIndex(tempImage.getAbsolutePath()) ){
+            BwaMemTestUtils.assertCorrectSingleReadAlignment(index);
+            BwaMemTestUtils.assertCorrectChimericContigAlignment(index);
+            index.close();
+        }
     }
 
 }

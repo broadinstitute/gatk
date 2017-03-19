@@ -4,7 +4,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
- * Program group for using non-essential part of JNI binding to Bwa Mem
+ * Program group for using misc part of JNI binding to Bwa Mem
  */
 public final class BwaMemUtilitiesProgramGroup implements CommandLineProgramGroup {
 
