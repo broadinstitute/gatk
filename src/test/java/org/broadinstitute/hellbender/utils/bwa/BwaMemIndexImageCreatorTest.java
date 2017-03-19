@@ -36,7 +36,6 @@ public class BwaMemIndexImageCreatorTest extends CommandLineProgramTest {
         try( final BwaMemIndex index = new BwaMemIndex(tempImage.getAbsolutePath()) ){
             BwaMemTestUtils.assertCorrectSingleReadAlignment(index);
             BwaMemTestUtils.assertCorrectChimericContigAlignment(index);
-            index.close();
         }
     }
 
