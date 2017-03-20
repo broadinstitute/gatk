@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.nio;
 
-import com.google.cloud.AuthCredentials;
 import com.google.cloud.RetryParams;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
@@ -60,10 +59,11 @@ public final class GcsNioIntegrationTest extends BaseTest {
         }
     }
 
+    // TODO(jpmartin):uncomment once getAuthenticatedGcs is back
     /**
      * Opening the private file even when the user is not logged in on gcloud should work
      * when we provide explicit credentials.
-     */
+     *
     @Test(groups = {"cloud"})
     public void openPrivateFileWithExplicitCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
@@ -88,7 +88,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
      * That means that you must NOT set $GOOGLE_APPLICATION_CREDENTIALS
      * Yet you must set getGoogleServiceAccountKeyPath() (you may have to switch it to a different
      * environment variable).
-     */
+     *
     @Test(enabled = false, groups = {"cloud"}, expectedExceptions = {StorageException.class})
     public void explicitCredentialsAreNotKept() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
@@ -110,7 +110,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
         byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
         return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
     }
-
+*/
 
     private void helpDebugAuthError() {
         final String key = "GOOGLE_APPLICATION_CREDENTIALS";

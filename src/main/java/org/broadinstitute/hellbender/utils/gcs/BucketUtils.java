@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.services.storage.Storage;
-import com.google.cloud.AuthCredentials;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
+import com.google.cloud.HttpTransportOptions;
 import com.google.cloud.RetryParams;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
@@ -394,6 +396,8 @@ public final class BucketUtils {
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
+    // TODO(jpmartin): uncomment once shaded.cloud_nio.com.google.auth.Credentials is visible.
+    // Then also uncomment in GcsNioIntegrationTest.
     /**
      * Get an authenticated GCS-backed NIO FileSystem object representing the selected projected and bucket.
      * Credentials are found automatically when running on Compute/App engine, logged into gcloud, or
@@ -403,16 +407,21 @@ public final class BucketUtils {
      *
      * Note that most of the time it's enough to just open a file via
      * Files.newInputStream(Paths.get(URI.create( path ))).
-     */
+     *
     public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
         StorageOptions.Builder builder = StorageOptions.newBuilder()
                 .setProjectId(projectId);
         if (null != credentials) {
-            builder = builder.setAuthCredentials((AuthCredentials.createForJson(new ByteArrayInputStream(credentials))));
+            com.google.auth.Credentials c = GoogleCredentials.fromStream(new ByteArrayInputStream(credentials));
+            (shaded.cloud_nio.com.google.auth.Credentials) sc = c;
+            builder = builder.setCredentials(sc);
         }
         // generous timeouts, to avoid tests failing when not warranted.
-        StorageOptions storageOptions = builder.setConnectTimeout(60000)
-            .setReadTimeout(60000)
+        StorageOptions storageOptions = builder
+            .setTransportOptions(HttpTransportOptions.newBuilder()
+                .setConnectTimeout(60000)
+                .setReadTimeout(60000)
+                .build())
             .setRetryParams(RetryParams.newBuilder()
                     .setRetryMaxAttempts(10)
                     .setRetryMinAttempts(6)
@@ -424,5 +433,5 @@ public final class BucketUtils {
 
         // 2. Create GCS filesystem object with those credentials
         return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
-    }
+    }*/
 }
