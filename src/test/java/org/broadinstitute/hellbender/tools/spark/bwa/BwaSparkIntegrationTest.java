@@ -22,7 +22,8 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         final File expectedSam = getTestFile("bwa.sam");
 
         final File ref = getTestFile("ref.fa");
-        final File input = getTestFile("R.bam");
+        final File input = getTestFile("R.bam"); // this is a queryname sorted, paired, and unaligned input
+
         final File output = createTempFile("bwa", ".bam");
         Assert.assertTrue(output.delete());
 
@@ -60,5 +61,4 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
 
         SamAssertionUtils.assertSamsEqual(new File(output, "part-r-00000.bam"), expectedSam);
     }
-
 }

@@ -285,7 +285,7 @@ public final class ReadFilterLibrary {
     public static final PairedReadFilter PAIRED = new PairedReadFilter();
     public static final ProperlyPairedReadFilter PROPERLY_PAIRED = new ProperlyPairedReadFilter();
     public static final PassesVendorQualityCheckReadFilter PASSES_VENDOR_QUALITY_CHECK = new PassesVendorQualityCheckReadFilter();
-    public static final PrimaryLineReadFilter PRIMARY_ALIGNMENT = new PrimaryLineReadFilter();
+    public static final PrimaryLineReadFilter PRIMARY_LINE = new PrimaryLineReadFilter();
     public static final ReadLengthEqualsCigarLengthReadFilter READLENGTH_EQUALS_CIGARLENGTH = new ReadLengthEqualsCigarLengthReadFilter();
     public static final SecondOfPairReadFilter SECOND_OF_PAIR = new SecondOfPairReadFilter();
     public static final SeqIsStoredReadFilter SEQ_IS_STORED = new SeqIsStoredReadFilter();

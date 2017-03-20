@@ -784,22 +784,22 @@ public final class ReadFilterLibraryUnitTest {
     public void testPrimaryAlignmentReadFilter() {
         // simple primary read (pass)
         final GATKRead read = simpleGoodRead(createHeaderWithReadGroups());
-        Assert.assertTrue(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertTrue(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
         // supplementary read (filter out)
         read.setIsSupplementaryAlignment(true);
         read.setIsSecondaryAlignment(false);
-        Assert.assertFalse(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
         // only secondary (filter out)
         read.setIsSupplementaryAlignment(false);
         read.setIsSecondaryAlignment(true);
-        Assert.assertFalse(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
         // both supplementary and secondary (filter out)
         read.setIsSupplementaryAlignment(true);
         read.setIsSecondaryAlignment(true);
-        Assert.assertFalse(ReadFilterLibrary.PRIMARY_ALIGNMENT.test(read));
+        Assert.assertFalse(ReadFilterLibrary.PRIMARY_LINE.test(read));
 
     }
 

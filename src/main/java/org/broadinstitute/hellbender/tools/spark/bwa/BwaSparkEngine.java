@@ -8,6 +8,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -121,6 +122,9 @@ public final class BwaSparkEngine implements AutoCloseable {
             this.bwaMemIndex = BwaMemIndexCache.getInstance(indexFileName);
             this.readsHeader = readsHeader;
             this.alignsPairs = alignsPairs;
+            if ( alignsPairs && readsHeader.getSortOrder() != SAMFileHeader.SortOrder.queryname ) {
+                throw new UserException("Input must be queryname sorted unless you use single-ended alignment mode.");
+            }
         }
 
         Iterator<GATKRead> apply( final Iterator<GATKRead> readItr ) {
@@ -129,8 +133,17 @@ public final class BwaSparkEngine implements AutoCloseable {
                 inputReads.add(readItr.next());
             }
             final int nReads = inputReads.size();
-            if (alignsPairs && (nReads & 1) != 0 ) {
-                throw new GATKException("We're supposed to be aligning paired reads, but there are an odd number of them.");
+            if ( alignsPairs ) {
+                if ( (nReads & 1) != 0 ) {
+                    throw new GATKException("We're supposed to be aligning paired reads, but there are an odd number of them.");
+                }
+                for ( int idx = 0; idx != nReads; idx += 2 ) {
+                    final String readName1 = inputReads.get(idx).getName();
+                    final String readName2 = inputReads.get(idx+1).getName();
+                    if ( !Objects.equals(readName1,readName2) ) {
+                        throw new GATKException("Read pair has varying template name: "+readName1+" .vs "+readName2);
+                    }
+                }
             }
             final List<List<BwaMemAlignment>> allAlignments;
             if ( nReads == 0 ) allAlignments = Collections.emptyList();

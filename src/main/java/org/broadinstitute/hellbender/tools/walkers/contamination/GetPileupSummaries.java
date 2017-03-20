@@ -142,7 +142,7 @@ public class GetPileupSummaries extends MultiVariantWalker {
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.PRIMARY_LINE);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);

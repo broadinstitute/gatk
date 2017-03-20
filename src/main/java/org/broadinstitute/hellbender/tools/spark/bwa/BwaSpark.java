@@ -10,6 +10,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -17,6 +18,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Runs BWA",
@@ -43,6 +46,12 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     public boolean requiresReads() {
         return true;
+    }
+
+    @Override
+    public List<ReadFilter> getDefaultReadFilters() {
+        // 1) unmapped or neither secondary nor supplementary and 2) has some sequence
+        return Arrays.asList(ReadFilterLibrary.PRIMARY_LINE, ReadFilterLibrary.SEQ_IS_STORED);
     }
 
     @Override
