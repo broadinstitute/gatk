@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.AuthCredentials;
+import com.google.cloud.HttpTransportOptions;
 import com.google.cloud.RetryParams;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
@@ -411,8 +412,11 @@ public final class BucketUtils {
             builder = builder.setAuthCredentials((AuthCredentials.createForJson(new ByteArrayInputStream(credentials))));
         }
         // generous timeouts, to avoid tests failing when not warranted.
-        StorageOptions storageOptions = builder.setConnectTimeout(60000)
-            .setReadTimeout(60000)
+        StorageOptions storageOptions = builder
+            .setTransportOptions(HttpTransportOptions.newBuilder()
+                .setConnectTimeout(60000)
+                .setReadTimeout(60000)
+                .build())
             .setRetryParams(RetryParams.newBuilder()
                     .setRetryMaxAttempts(10)
                     .setRetryMinAttempts(6)
