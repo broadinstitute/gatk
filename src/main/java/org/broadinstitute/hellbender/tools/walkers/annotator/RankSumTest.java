@@ -33,7 +33,7 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
                                         final VariantContext vc,
                                         final ReadLikelihoods<Allele> likelihoods) {
         Utils.nonNull(vc, "vc is null");
-        Utils.nonNull(likelihoods, "likelihoods has to be non-null");
+
         final GenotypesContext genotypes = vc.getGenotypes();
         if (genotypes == null || genotypes.isEmpty()) {
             return Collections.emptyMap();
@@ -44,17 +44,19 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
 
         final int refLoc = vc.getStart();
 
-        for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
-            final GATKRead read = bestAllele.read;
-            final Allele allele = bestAllele.allele;
-            if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
-                final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
-                // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
-                if ( value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ ) {
-                    if (allele.isReference()) {
-                        refQuals.add(value.getAsDouble());
-                    } else if (vc.hasAllele(allele)) {
-                        altQuals.add(value.getAsDouble());
+        if( likelihoods != null) {
+            for (final ReadLikelihoods<Allele>.BestAllele bestAllele : likelihoods.bestAlleles()) {
+                final GATKRead read = bestAllele.read;
+                final Allele allele = bestAllele.allele;
+                if (bestAllele.isInformative() && isUsableRead(read, refLoc)) {
+                    final OptionalDouble value = getElementForRead(read, refLoc, bestAllele);
+                    // Bypass read if the clipping goal is not reached or the refloc is inside a spanning deletion
+                    if (value.isPresent() && value.getAsDouble() != INVALID_ELEMENT_FROM_READ) {
+                        if (allele.isReference()) {
+                            refQuals.add(value.getAsDouble());
+                        } else if (vc.hasAllele(allele)) {
+                            altQuals.add(value.getAsDouble());
+                        }
                     }
                 }
             }
