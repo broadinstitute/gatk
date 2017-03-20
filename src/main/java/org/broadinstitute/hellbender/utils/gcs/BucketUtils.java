@@ -396,7 +396,8 @@ public final class BucketUtils {
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
     }
 
-    // TODO(jpmartin): uncomment once shaded.cloud_nio.com.google.auth.Credentials is visible
+    // TODO(jpmartin): uncomment once shaded.cloud_nio.com.google.auth.Credentials is visible.
+    // Then also uncomment in GcsNioIntegrationTest.
     /**
      * Get an authenticated GCS-backed NIO FileSystem object representing the selected projected and bucket.
      * Credentials are found automatically when running on Compute/App engine, logged into gcloud, or
