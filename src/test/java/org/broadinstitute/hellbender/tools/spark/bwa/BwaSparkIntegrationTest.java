@@ -20,13 +20,14 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         final File expectedSam = getTestFile("bwa.sam");
 
         final File ref = getTestFile("ref.fa");
-        final File input = getTestFile("R.bam");
+        final File input = getTestFile("R.bam"); // this is a queryname sorted, paired, and unaligned input
+
         final File output = createTempFile("bwa", ".bam");
         if (!output.delete()) {
             Assert.fail();
         }
 
-        ArgumentsBuilder args = new ArgumentsBuilder();
+        final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addFileArgument("reference", ref);
         args.addFileArgument("input", input);
         args.add("disableSequenceDictionaryValidation=true"); // disable since input does not have a sequence dictionary
@@ -39,4 +40,6 @@ public final class BwaSparkIntegrationTest extends CommandLineProgramTest {
         SamAssertionUtils.assertSamsEqual(new File(output, "part-r-00000.bam"), expectedSam);
     }
 
+    //TODO: we ought to add a test for unpaired mode
+    //TODO: we ought to add a test for realignment
 }

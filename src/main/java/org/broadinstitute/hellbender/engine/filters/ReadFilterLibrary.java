@@ -145,14 +145,12 @@ public final class ReadFilterLibrary {
         @Override public boolean test(final GATKRead read) {
             return read.isProperlyPaired();}}
 
-    //TODO: should this reject supplementary alignments ? If not it should be
-    //removed since its redundant with NotSecondaryAlignmentReadFilter
-    //https://github.com/broadinstitute/gatk/issues/2165
+    //* this now tests for unmapped or neither secondary nor supplementary as its name suggests */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
     public static class PrimaryAlignmentReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
-            return ! read.isSecondaryAlignment();}}
+            return read.isUnmapped() || !(read.isSecondaryAlignment()||read.isSupplementaryAlignment());}}
 
     //Note: do not call getCigar to avoid creation of new Cigar objects
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)

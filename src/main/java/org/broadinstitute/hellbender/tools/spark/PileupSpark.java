@@ -76,7 +76,7 @@ public final class PileupSpark extends LocusWalkerSpark {
         filterList.add(ReadFilterLibrary.MAPPED);
         filterList.add(ReadFilterLibrary.NOT_DUPLICATE);
         filterList.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
-        filterList.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filterList.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
         filterList.add(new WellformedReadFilter());
         return filterList;
     }

@@ -6,6 +6,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.datasources.ReadsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -13,6 +15,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 
 @CommandLineProgramProperties(summary = "Runs BWA",
         oneLineSummary = "BWA on Spark",
@@ -29,6 +33,9 @@ public final class BwaSpark extends GATKSparkTool {
             fullName = "bwamemIndexImage")
     private String indexImageFile;
 
+    @Argument(doc = "do pairwise alignment", fullName = "pairedMode", optional = true)
+    private boolean pairedMode = true;
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -40,15 +47,25 @@ public final class BwaSpark extends GATKSparkTool {
     }
 
     @Override
-    protected void runTool(final JavaSparkContext ctx) {
+    public List<ReadFilter> getDefaultReadFilters() {
+        // 1) unmapped or neither secondary nor supplementary and 2) has some sequence
+        return Collections.singletonList(ReadFilterLibrary.PRIMARY_ALIGNMENT.and(ReadFilterLibrary.SEQ_IS_STORED));
+    }
+
+    @Override
+    protected void runTool( final JavaSparkContext ctx ) {
         try ( final BwaSparkEngine engine =
-                      new BwaSparkEngine(ctx, indexImageFile, getHeaderForReads(), getReferenceSequenceDictionary()) ) {
+                      new BwaSparkEngine(ctx,
+                              indexImageFile,
+                              getHeaderForReads(),
+                              getReferenceSequenceDictionary(),
+                              pairedMode) ) {
             final JavaRDD<GATKRead> reads = engine.align(getReads());
 
             try {
                 ReadsSparkSink.writeReads(ctx, output, null, reads, engine.getHeader(),
-                                            shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
-            } catch (final IOException e) {
+                        shardedOutput ? ReadsWriteFormat.SHARDED : ReadsWriteFormat.SINGLE);
+            } catch ( final IOException e ) {
                 throw new GATKException("Unable to write aligned reads", e);
             }
         }
