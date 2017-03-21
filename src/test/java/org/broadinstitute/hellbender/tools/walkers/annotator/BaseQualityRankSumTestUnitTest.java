@@ -118,9 +118,9 @@ public final class BaseQualityRankSumTestUnitTest {
         Assert.assertTrue(annotate.isEmpty());
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testMapNotNull() {
+    @Test
+    public void testNullLikelihoodsReturnsEmpty() {
         final BaseQualityRankSumTest ann = new BaseQualityRankSumTest();
-        ann.annotate(null, mock(VariantContext.class), null);
+        Assert.assertEquals(ann.annotate(null, mock(VariantContext.class), null), Collections.emptyMap());
     }
 }
