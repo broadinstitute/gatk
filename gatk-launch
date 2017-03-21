@@ -43,15 +43,26 @@ GATK_LOCAL_JAR_ENV_VARIABLE = "GATK_LOCAL_JAR"
 GATK_SPARK_JAR_ENV_VARIABLE = "GATK_SPARK_JAR"
 BIN_PATH = script + "/build/libs"
 
-EXTRA_JAVA_OPTIONS="-Dsamjdk.compression_level=1 -DGATK_STACKTRACE_ON_USER_EXCEPTION=true "
+EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
+                   "-Dsamjdk.use_async_io_read_samtools=false " \
+                   "-Dsamjdk.use_async_io_write_samtools=false " \
+                   "-Dsamjdk.use_async_io_write_tribble=false " \
+                   "-Dsamjdk.compression_level=1 " \
+                   "-Dsnappy.disable=true "
+
+PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
+                  "-Dsamjdk.use_async_io_write_samtools=true",
+                  "-Dsamjdk.use_async_io_write_tribble=false",
+                  "-Dsamjdk.compression_level=1",
+                  "-Dsnappy.disable=true"]
 
 DEFAULT_SPARK_ARGS = ["--conf", "spark.kryoserializer.buffer.max=512m",
 "--conf", "spark.driver.maxResultSize=0",
 "--conf", "spark.driver.userClassPathFirst=true",
 "--conf", "spark.io.compression.codec=lzf",
 "--conf", "spark.yarn.executor.memoryOverhead=600",
-"--conf", "spark.driver.extraJavaOptions=" + EXTRA_JAVA_OPTIONS,
-"--conf", "spark.executor.extraJavaOptions=" + EXTRA_JAVA_OPTIONS]
+"--conf", "spark.driver.extraJavaOptions=" + EXTRA_JAVA_OPTIONS_SPARK,
+"--conf", "spark.executor.extraJavaOptions=" + EXTRA_JAVA_OPTIONS_SPARK]
 
 class GATKLaunchException(Exception):
     pass
@@ -145,13 +156,17 @@ def getSparkSubmitCommand(sparkSubmitCommand):
 def getLocalGatkRunCommand():
     localJarFromEnv = getJarFromEnv(GATK_LOCAL_JAR_ENV_VARIABLE)
     if localJarFromEnv is not None:
-        return ["java", "-jar", localJarFromEnv]
+        return formatLocalJarCommand(localJarFromEnv)
 
     wrapperScript = getGatkWrapperScript(throwIfNotFound=False)
     if wrapperScript is not None:
         return [wrapperScript]
 
-    return ["java", "-jar", getLocalJar()]  # will throw if local jar not found
+    return formatLocalJarCommand(getLocalJar())  # will throw if local jar not found
+
+
+def formatLocalJarCommand(localJarFromEnv):
+    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS  + [ "-jar", localJarFromEnv]
 
 def getGatkWrapperScript(throwIfNotFound=True):
     if not os.path.exists(GATK_RUN_SCRIPT):
