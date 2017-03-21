@@ -165,8 +165,8 @@ def getLocalGatkRunCommand():
     return formatLocalJarCommand(getLocalJar())  # will throw if local jar not found
 
 
-def formatLocalJarCommand(localJarFromEnv):
-    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS  + [ "-jar", localJarFromEnv]
+def formatLocalJarCommand(localJar):
+    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS  + [ "-jar", localJar]
 
 def getGatkWrapperScript(throwIfNotFound=True):
     if not os.path.exists(GATK_RUN_SCRIPT):
