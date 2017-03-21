@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Utilities for dealing with google buckets
+ * Utilities for dealing with google buckets.
  */
 public final class BucketUtils {
     public static final String GCS_PREFIX = "gs://";
