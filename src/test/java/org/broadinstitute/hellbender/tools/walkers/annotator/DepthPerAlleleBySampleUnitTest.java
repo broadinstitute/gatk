@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
@@ -39,10 +40,16 @@ public final class DepthPerAlleleBySampleUnitTest extends BaseTest {
         Assert.assertEquals(new DepthPerAlleleBySample().getDescriptions(), Collections.singletonList(VCFStandardHeaderLines.getFormatLine(VCFConstants.GENOTYPE_ALLELE_DEPTHS)));
     }
 
-    @Test
-    public void testUsingReads(){
-        final int refDepth = 20;
-        final int altDepth = 17;
+    @DataProvider(name = "ReadDepthData")
+    public Object[][] readDepthData() {
+        return new Object[][]{
+                {20, 17},
+                {0, 0}
+        };
+    }
+
+    @Test(dataProvider = "ReadDepthData")
+    public void testUsingReads(final int refDepth, final int altDepth){
         final int[] expectedAD = {refDepth, altDepth};
 
         final int dpDepth = 30; //Note: using a different value on purpose so that we can check that reads are preferred over DP

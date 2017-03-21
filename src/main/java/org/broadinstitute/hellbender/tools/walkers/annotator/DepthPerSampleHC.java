@@ -57,6 +57,7 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
         // check that there are reads
         final String sample = g.getSampleName();
         if (likelihoods.sampleReadCount(likelihoods.indexOfSample(sample)) == 0) {
+            gb.DP(0);
             return;
         }
 
