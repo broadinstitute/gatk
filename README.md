@@ -116,12 +116,12 @@ If you are looking for the codebase of the current production version of GATK, p
   ```
   ./gatk-launch PrintReads -I gs://mybucket/path/to/my.bam -L 1:10000-20000 -O output.bam
   ```
-* For public datasets, that will just work. For private datasets you must set up authentication.
+* You must set up your credentials first. There are three options:
 * Option (a): run in a Google Cloud Engine VM
   * If you are running in a Google VM then your credentials are already in the VM and will be picked up by GATK, you don't need to do anything special.
 * Option (b): use your own account
   * Install [Google Cloud SDK](https://cloud.google.com/sdk/)
-  * Log into you account:
+  * Log into your account:
   ```
   gcloud auth application-default login
   ```
