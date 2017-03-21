@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.services.storage.Storage;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.HttpTransportOptions;
 import com.google.cloud.RetryParams;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
@@ -393,9 +391,28 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/");
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
+        CloudStorageConfiguration cloudConfig = CloudStorageConfiguration.builder()
+            // if the channel errors out, re-open up to this many times
+            .maxChannelReopens(3)
+            .build();
+        StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
+        return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
     }
 
+    private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {
+        return builder
+            .setTransportOptions(HttpTransportOptions.newBuilder()
+                .setConnectTimeout(60000)
+                .setReadTimeout(60000)
+                .build())
+            .setRetryParams(RetryParams.newBuilder()
+                .setRetryMaxAttempts(10)
+                .setRetryMinAttempts(6)
+                .setMaxRetryDelayMillis(30000)
+                .setTotalRetryPeriodMillis(120000)
+                .setInitialRetryDelayMillis(250)
+                .build());
+    }
     // TODO(jpmartin): uncomment once shaded.cloud_nio.com.google.auth.Credentials is visible.
     // Then also uncomment in GcsNioIntegrationTest.
     /**
@@ -417,19 +434,7 @@ public final class BucketUtils {
             builder = builder.setCredentials(sc);
         }
         // generous timeouts, to avoid tests failing when not warranted.
-        StorageOptions storageOptions = builder
-            .setTransportOptions(HttpTransportOptions.newBuilder()
-                .setConnectTimeout(60000)
-                .setReadTimeout(60000)
-                .build())
-            .setRetryParams(RetryParams.newBuilder()
-                    .setRetryMaxAttempts(10)
-                    .setRetryMinAttempts(6)
-                    .setMaxRetryDelayMillis(30000)
-                    .setTotalRetryPeriodMillis(120000)
-                    .setInitialRetryDelayMillis(250)
-                    .build())
-            .build();
+        StorageOptions storageOptions = setGenerousTimeouts(builder).build();
 
         // 2. Create GCS filesystem object with those credentials
         return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
