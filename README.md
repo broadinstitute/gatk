@@ -110,6 +110,35 @@ If you are looking for the codebase of the current production version of GATK, p
   ./gatk-launch PrintReadsSpark -I input.bam -O output.bam
   ```
 
+####Running GATK4 with inputs on Google Cloud Storage:
+
+* GATK can read BAM or VCF inputs from a Google Cloud Storage bucket. Just use the "gs://" prefix:
+  ```
+  ./gatk-launch PrintReads -I gs://mybucket/path/to/my.bam -L 1:10000-20000 -O output.bam
+  ```
+* You must set up your credentials first. There are three options:
+* Option (a): run in a Google Cloud Engine VM
+  * If you are running in a Google VM then your credentials are already in the VM and will be picked up by GATK, you don't need to do anything special.
+* Option (b): use your own account
+  * Install [Google Cloud SDK](https://cloud.google.com/sdk/)
+  * Log into your account:
+  ```
+  gcloud auth application-default login
+  ```
+  * Done! GATK will use the application-default credentials you set up there.
+* Option (c): use a service account
+  * Create a new service account on the Google Cloud web page and download the JSON key file
+  * Install [Google Cloud SDK](https://cloud.google.com/sdk/)
+  * Tell gcloud about the key file:
+  ```
+  gcloud auth activate-service-account --key-file "$PATH_TO_THE_KEY_FILE"
+  ```
+  * Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to the file
+  ```
+  export GOOGLE_APPLICATION_CREDENTIALS="$PATH_TO_THE_KEY_FILE"
+  ```
+  * Done! GATK will pick up the service account. You can also do this in a VM if you'd like to override the default credentials.
+
 ####Running GATK4 Spark tools on a Spark cluster:
 
 **`./gatk-launch ToolName toolArguments -- --sparkRunner SPARK --sparkMaster <master_url> additionalSparkArguments`**
