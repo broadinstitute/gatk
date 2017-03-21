@@ -35,6 +35,20 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
         initializeDrivingFeatures();
     }
 
+    /**
+     * Set the intervals for traversal in the driving features.
+     *
+     * Marked final so that subclasses don't override it. Subclasses should override {@link #onTraversalStart} instead.
+     */
+    @Override
+    protected final void onStartup() {
+        super.onStartup();
+        // set the intervals for the feature here, because they are not initialized when initialize features is set
+        if ( hasIntervals() ) {
+            drivingFeatures.setIntervalsForTraversal(intervalsForTraversal);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private void initializeDrivingFeatures() {
         final File drivingFile = getDrivingFeatureFile();
@@ -46,10 +60,6 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
             features.addToFeatureSources(0, drivingFeaturesInput, codec.getFeatureType(), cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
         } else {
             throw new UserException("File " + drivingFile + " contains features of the wrong type.");
-        }
-
-        if ( hasIntervals() ) {
-            drivingFeatures.setIntervalsForTraversal(intervalsForTraversal);
         }
     }
 
@@ -95,14 +105,6 @@ public abstract class FeatureWalker<F extends Feature> extends GATKTool {
      *                       empty List).
      */
     public abstract void apply(final F feature, final ReadsContext readsContext, final ReferenceContext referenceContext, final FeatureContext featureContext );
-
-    /**
-     * Marked final so that subclasses don't override it. Subclasses should override {@link #onTraversalStart} instead.
-     */
-    @Override
-    protected final void onStartup() {
-        super.onStartup();
-    }
 
     /**
      * Close the reads and reference data sources.

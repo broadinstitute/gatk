@@ -24,4 +24,18 @@ public final class ExampleFeatureWalkerIntegrationTest extends CommandLineProgra
         );
         testSpec.executeTest("testExampleIntervalWalker", this);
     }
+
+    @Test
+    public void testExampleFeatureWalkerWithIntervals() throws IOException {
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                " -R " + hg19MiniReference +
+                        " -I " + TEST_DATA_DIRECTORY + "reads_data_source_test1.bam" +
+                        " -F " + TEST_DATA_DIRECTORY + "example_features.bed" +
+                        " -L 1 " +
+                        " -auxiliaryVariants " + TEST_DATA_DIRECTORY + "feature_data_source_test.vcf" +
+                        " -O %s",
+                Arrays.asList(TEST_OUTPUT_DIRECTORY + "expected_ExampleFeatureWalkerIntegrationTestWithIntervals_output.txt")
+        );
+        testSpec.executeTest("testExampleIntervalWalker", this);
+    }
 }

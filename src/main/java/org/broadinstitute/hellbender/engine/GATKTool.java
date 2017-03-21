@@ -411,9 +411,9 @@ public abstract class GATKTool extends CommandLineProgram {
      *
      * The data sources are initialized in the following order:
      *   initializeReference
-     *   initializeReads
-     *   initializeIntervals
+     *   initializeReads (must be initialized after reference for CRAM files)
      *   initializeFeatures
+     *   initializeIntervals (must be initialized after all other sources, because they require a sequence dictionary)
      *
      * Then, data sources are checked by calls to:
      *    validateSequenceDictionaries (unless disabled by disableSequenceDictionaryValidation)
