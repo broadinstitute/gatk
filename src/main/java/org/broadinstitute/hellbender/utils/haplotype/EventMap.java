@@ -170,12 +170,9 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
     public void addVC(final VariantContext vc, final boolean merge) {
         Utils.nonNull(vc);
         if ( containsKey(vc.getStart()) ) {
-            if ( merge ) {
-                final VariantContext prev = get(vc.getStart());
-                put(vc.getStart(), makeBlock(prev, vc));
-            } else {
-                throw new IllegalStateException("Will not merge previously bound variant contexts as merge is false at " + vc);
-            }
+            Utils.validate(merge, () -> "Will not merge previously bound variant contexts as merge is false at " + vc);
+            final VariantContext prev = get(vc.getStart());
+            put(vc.getStart(), makeBlock(prev, vc));
         } else
             put(vc.getStart(), vc);
     }

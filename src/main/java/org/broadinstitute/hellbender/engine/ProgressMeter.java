@@ -165,12 +165,8 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has been started before or has been stopped already
      */
     public void start() {
-        if (started){
-            throw new IllegalStateException("the progress meter has been started already");
-        }
-        if (stopped){
-            throw new IllegalStateException("the progress meter has been stopped already");
-        }
+        Utils.validate( !started, "the progress meter has been started already");
+        Utils.validate( !stopped, "the progress meter has been stopped already");
         started = true;
         logger.info("Starting traversal");
         printHeader();
@@ -191,12 +187,8 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void update( final Locatable currentLocus ) {
-        if (! started){
-            throw new IllegalStateException("the progress meter has not been started yet");
-        }
-        if (stopped){
-            throw new IllegalStateException("the progress meter has been stopped already");
-        }
+        Utils.validate(started, "the progress meter has not been started yet");
+        Utils.validate( !stopped, "the progress meter has been stopped already");
         ++numRecordsProcessed;
         if ( numRecordsProcessed % recordsBetweenTimeChecks == 0 ) {
             currentTimeMs = timeFunction.getAsLong();
@@ -214,12 +206,8 @@ public final class ProgressMeter {
      * @throws IllegalStateException if the meter has not been started yet or has been stopped already
      */
     public void stop() {
-        if (! started){
-            throw new IllegalStateException("the progress meter has not been started yet");
-        }
-        if (stopped){
-            throw new IllegalStateException("the progress meter has been stopped already");
-        }
+        Utils.validate(started, "the progress meter has not been started yet");
+        Utils.validate( !stopped, "the progress meter has been stopped already");
         this.stopped = true;
         currentTimeMs = timeFunction.getAsLong();
         logger.info(String.format("Traversal complete. Processed %d total records in %.1f minutes.", numRecordsProcessed, elapsedTimeInMinutes()));

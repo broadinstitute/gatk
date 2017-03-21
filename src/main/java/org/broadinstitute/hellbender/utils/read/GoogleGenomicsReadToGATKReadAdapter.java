@@ -380,9 +380,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
     @Override
     public boolean mateIsUnmapped() {
-        if ( ! isPaired() ) {
-            throw new IllegalStateException("Cannot get mate information for an unpaired read");
-        }
+        Utils.validate(isPaired(), "Cannot get mate information for an unpaired read");
 
         return positionIsUnmapped(genomicsRead.getNextMatePosition());
     }
@@ -409,9 +407,7 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
 
     @Override
     public boolean mateIsReverseStrand() {
-        if ( ! isPaired() ) {
-            throw new IllegalStateException("Cannot get mate information for an unpaired read");
-        }
+        Utils.validate(isPaired(), "Cannot get mate information for an unpaired read");
 
         final Position matePosition = assertFieldValueNotNull(genomicsRead.getNextMatePosition(), "mate position");
         return assertFieldValueNotNull(matePosition.getReverseStrand(), "mate strand");

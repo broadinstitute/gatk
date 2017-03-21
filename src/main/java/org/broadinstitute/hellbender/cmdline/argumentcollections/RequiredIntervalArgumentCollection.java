@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,10 +24,7 @@ public final class RequiredIntervalArgumentCollection extends IntervalArgumentCo
 
     @Override
     protected void addToIntervalStrings(String newInterval) {
-        if ( traversalParameters != null ) {
-            throw new IllegalStateException("addToIntervalStrings() cannot be called after interval parsing is complete");
-        }
-
+        Utils.validate(traversalParameters == null, "addToIntervalStrings() cannot be called after interval parsing is complete");
         intervalStrings.add(newInterval);
     }
 }

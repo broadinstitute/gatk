@@ -962,8 +962,7 @@ public final class AlignmentUtils {
 
         final Cigar result = trimCigar(cigar, start, end, true);
 
-        if ( result.getReferenceLength() != end - start + 1)
-            throw new IllegalStateException("trimCigarByReference failure: start " + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result);
+        Utils.validate(result.getReferenceLength() == end - start + 1, () -> "trimCigarByReference failure: start " + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result);
         return result;
     }
 
@@ -983,8 +982,8 @@ public final class AlignmentUtils {
         final Cigar result = trimCigar(cigar, start, end, false);
 
         final int expectedSize = end - start + 1;
-        if ( result.getReadLength() != expectedSize)
-            throw new IllegalStateException("trimCigarByBases failure: start " + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result + " with size " + result.getReadLength() + " expected " + expectedSize + " for input cigar " + cigar);
+        Utils.validate(result.getReadLength() == expectedSize, () -> "trimCigarByBases failure: start "
+                + start + " end " + end + " for " + cigar + " resulted in cigar with wrong size " + result + " with size " + result.getReadLength() + " expected " + expectedSize + " for input cigar " + cigar);
         return result;
     }
 

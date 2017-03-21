@@ -9,7 +9,6 @@ import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Reads the contents of a tab separated value formatted text input into
@@ -295,9 +294,7 @@ public abstract class TableReader<R> implements Closeable, Iterable<R> {
      * @return never {@code null}.
      */
     public TableColumnCollection columns() {
-        if (columns == null) {
-            throw new IllegalStateException();
-        }
+        Utils.validate(columns != null, "columns are null");
         return columns;
     }
 

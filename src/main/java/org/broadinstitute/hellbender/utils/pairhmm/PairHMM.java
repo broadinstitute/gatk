@@ -256,7 +256,7 @@ public abstract class PairHMM implements Closeable{
                                                                   final boolean recacheReadValues,
                                                                   final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
 
-        if ( ! initialized ) throw new IllegalStateException("Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
+        Utils.validate(initialized, "Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
         Utils.nonNull(haplotypeBases, "haplotypeBases may not be null");
         Utils.validateArg( haplotypeBases.length <= maxHaplotypeLength, () -> "Haplotype bases is too long, got " + haplotypeBases.length + " but max is " + maxHaplotypeLength);
         Utils.nonNull(readBases);
@@ -277,11 +277,8 @@ public abstract class PairHMM implements Closeable{
 
         final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
 
-        if ( result > 0.0) {
-            throw new IllegalStateException("PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));
-        } else if (!MathUtils.goodLog10Probability(result)) {
-            throw new IllegalStateException("Invalid Log Probability: " + result);
-        }
+        Utils.validate(result <= 0.0, () -> "PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));
+        Utils.validate(MathUtils.goodLog10Probability(result), () -> "Invalid Log Probability: " + result);
 
         // Warning: This assumes no downstream modification of the haplotype bases (saves us from copying the array). It is okay for the haplotype caller.
         previousHaplotypeBases = haplotypeBases;

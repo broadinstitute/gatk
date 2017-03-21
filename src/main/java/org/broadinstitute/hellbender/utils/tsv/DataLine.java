@@ -283,9 +283,7 @@ public final class DataLine {
      */
     public String get(final int index) {
         Utils.validIndex(index, values.length);
-        if (values[index] == null) {
-            throw new IllegalStateException("requested column value at " + index + " has not been initialized yet");
-        }
+        Utils.validate(values[index] != null, () -> "requested column value at " + index + " has not been initialized yet");
         return values[index];
     }
 
@@ -400,11 +398,8 @@ public final class DataLine {
      */
     public String get(final String columnName) {
         final int index = columnIndex(columnName);
-        if (values[index] == null) {
-            throw new IllegalStateException(String.format("the value for column '%s' is undefined", columnName));
-        } else {
-            return values[index];
-        }
+        Utils.validate(values[index] != null, () -> String.format("the value for column '%s' is undefined", columnName));
+        return values[index];
     }
 
     /**
@@ -586,9 +581,7 @@ public final class DataLine {
      * @throws IllegalStateException if the next column to set is beyond the last column.
      */
     public DataLine append(final String value) {
-        if (nextIndex == values.length) {
-            throw new IllegalStateException("gone beyond of the end of the data-line");
-        }
+        Utils.validate(nextIndex < values.length, "gone beyond of the end of the data-line");
         values[nextIndex++] = value;
         return this;
     }

@@ -723,8 +723,7 @@ public final class GATKVariantContextUtils {
 
         // cycle through and add info from the other VCs, making sure the loc/reference matches
         for ( final VariantContext vc : VCs ) {
-            if ( longestVC.getStart() != vc.getStart() )
-                throw new IllegalStateException("BUG: attempting to merge VariantContexts with different start sites: first="+ first.toString() + " second=" + vc.toString());
+            Utils.validate(longestVC.getStart() == vc.getStart(), () -> "BUG: attempting to merge VariantContexts with different start sites: first="+ first.toString() + " second=" + vc.toString());
 
             if ( VariantContextUtils.getSize(vc) > VariantContextUtils.getSize(longestVC) )
                 longestVC = vc; // get the longest location
@@ -919,8 +918,7 @@ public final class GATKVariantContextUtils {
                                                            final VariantContext oneVC,
                                                            final Collection<Allele> currentAlleles) {
         final Allele myRef = oneVC.getReference();
-        if ( refAllele.length() <= myRef.length() ) throw new IllegalStateException("BUG: myRef="+myRef+" is longer than refAllele="+refAllele);
-
+        Utils.validate(refAllele.length() > myRef.length(), () -> "BUG: myRef="+myRef+" is longer than refAllele="+refAllele);
         final byte[] extraBases = Arrays.copyOfRange(refAllele.getBases(), myRef.length(), refAllele.length());
 
         final Map<Allele, Allele> map = new LinkedHashMap<>();
@@ -1265,8 +1263,7 @@ public final class GATKVariantContextUtils {
         final byte[] ref = vc.getReference().getBases();
         final byte[] alt = vc.getAlternateAllele(0).getBases();
 
-        if ( ref.length != alt.length )
-            throw new IllegalStateException("ref and alt alleles for MNP have different lengths");
+        Utils.validate(ref.length == alt.length, "ref and alt alleles for MNP have different lengths");
 
         final List<VariantContext> result = new ArrayList<>(ref.length);
 

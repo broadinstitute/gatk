@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -113,9 +114,7 @@ public final class ProcessController {
      * @return The output of the command.
      */
     public ProcessOutput exec(ProcessSettings settings) {
-        if (destroyed)
-            throw new IllegalStateException("This controller was destroyed");
-
+        Utils.validate(!destroyed, "This controller was destroyed");
         ProcessBuilder builder = new ProcessBuilder(settings.getCommand());
         builder.directory(settings.getDirectory());
 

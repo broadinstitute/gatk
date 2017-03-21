@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.util.Histogram;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
 
@@ -75,11 +76,7 @@ public final class DuplicationMetrics extends MetricBase implements Serializable
 
             double m = 1.0, M = 100.0;
 
-            if (c >= n || f(m*c, c, n) < 0) {
-                throw new IllegalStateException("Invalid values for pairs and unique pairs: "
-                        + n + ", " + c);
-
-            }
+            Utils.validate(c < n && f(m * c, c, n) >= 0, () -> "Invalid values for pairs and unique pairs: " + n + ", " + c);
 
             while( f(M*c, c, n) >= 0 ) M *= 10.0;
 

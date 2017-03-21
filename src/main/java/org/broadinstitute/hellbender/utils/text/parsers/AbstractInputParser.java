@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.text.parsers;
 import htsjdk.samtools.util.AbstractIterator;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.RuntimeIOException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
 
@@ -49,10 +50,7 @@ implements Iterable<String[]>, CloseableIterator<String[]> {
      */
     @Override
     public Iterator<String[]> iterator() {
-        if (isIterating()) {
-            throw new IllegalStateException("iterator() method can only be called once, before the" +
-                    "first call to hasNext()");
-        }
+        Utils.validate(!isIterating(), "iterator() method can only be called once, before the first call to hasNext()");
         hasNext();
         return this;
     }

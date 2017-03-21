@@ -683,6 +683,25 @@ public final class Utils {
         }
     }
 
+    /**
+     * Check a condition that should always be true and throw an {@link IllegalStateException} if false.  If msg is not a
+     * String literal i.e. if it requires computation, use the Supplier<String> version, below.
+     */
+    public static void validate(final boolean condition, final String msg){
+        if (!condition){
+            throw new IllegalStateException(msg);
+        }
+    }
+
+    /**
+     * Check a condition that should always be true and throw an {@link IllegalStateException} if false.
+     */
+    public static void validate(final boolean condition, final Supplier<String> msg){
+        if (!condition){
+            throw new IllegalStateException(msg.get());
+        }
+    }
+
 
     /**
      * Checks that a user provided file is in fact a regular (i.e. not a directory or a special device) readable file.

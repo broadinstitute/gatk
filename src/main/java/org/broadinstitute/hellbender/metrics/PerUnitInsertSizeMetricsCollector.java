@@ -180,10 +180,8 @@ public final class PerUnitInsertSizeMetricsCollector
                     Histogram<Integer> sourceHist = sourceCollector.histograms.get(po);
                     // as a check, make sure the bin and value labels for the histograms for this PO
                     // are the same in both histograms
-                    if (!targetHist.getBinLabel().equals(sourceHist.getBinLabel()) ||
-                            !targetHist.getValueLabel().equals(sourceHist.getValueLabel())) {
-                        throw new IllegalStateException("Internal error combining collectors: attempt to combine mismatched histograms");
-                    }
+                    Utils.validate(targetHist.getBinLabel().equals(sourceHist.getBinLabel()) &&
+                            targetHist.getValueLabel().equals(sourceHist.getValueLabel()), "Internal error combining collectors: attempt to combine mismatched histograms");
 
                     Histogram<Integer> combinedHist = new Histogram<>(targetHist.getBinLabel(), targetHist.getValueLabel());
                     combinedHist.addHistogram(sourceHist);
@@ -197,14 +195,10 @@ public final class PerUnitInsertSizeMetricsCollector
 
     // Safely validate that two strings are equal, even if one or both are null.
     private static void validateEquals(final String source, final String target, final String message) {
-        if ( ! Objects.equals(source, target) ) {
-            throw new IllegalStateException(
-                    String.format("%s (%s : %s)",
+        Utils.validate( Objects.equals(source, target), () -> String.format("%s (%s : %s)",
                             message,
                             source == null ? "null" : source,
-                            target == null ? "null" : target)
-            );
-        }
+                            target == null ? "null" : target));
     }
 
     private String createHistogramValuePrefix() {
