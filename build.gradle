@@ -77,7 +77,7 @@ build.dependsOn installDist
 check.dependsOn installDist
 
 dependencies {
-    compile 'org.broadinstitute:gatk:4.alpha.2-182-g5d2f859-20170315.140748-1'
+    compile 'org.broadinstitute:gatk:4.alpha.2-184-g88c181d-20170320.193607-1'
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
 
     testCompile 'org.testng:testng:6.8.8'

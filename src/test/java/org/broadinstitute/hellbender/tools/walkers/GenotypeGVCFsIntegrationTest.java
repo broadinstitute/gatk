@@ -43,7 +43,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 {"combined_genotype_gvcf_exception.nocall.vcf", "combined_genotype_gvcf_exception.output.vcf", NO_EXTRA_ARGS},  //same test as above but with ./.
                 {basePairGVCF, "ndaTest.expected.vcf", Collections.singletonList("-nda")},  //annotating with the number of alleles discovered option
                 {basePairGVCF, "maxAltAllelesTest.expected.vcf", Arrays.asList("--maxAltAlleles", "1")}, //restricting the max number of alt alleles
-                {basePairGVCF, "standardConfTest.expected.vcf", Arrays.asList("-stand_call_conf", "300", "-stand_emit_conf", "100")}, //changing call and emission confidence
+                {basePairGVCF, "standardConfTest.expected.vcf", Arrays.asList("-stand_call_conf", "300")}, //changing call confidence
                 {"spanningDel.combined.g.vcf", "spanningDel.combined.g.vcf.expected.vcf", NO_EXTRA_ARGS},
                 {"spanningDel.delOnly.g.vcf", "spanningDel.delOnly.g.vcf.expected.vcf", NO_EXTRA_ARGS},
                 {"CEUTrio.20.21.gatk3.4.g.vcf", "CEUTrio.20.21.expected.vcf", Arrays.asList("--dbsnp", "src/test/resources/large/dbsnp_138.b37.20.21.vcf")},

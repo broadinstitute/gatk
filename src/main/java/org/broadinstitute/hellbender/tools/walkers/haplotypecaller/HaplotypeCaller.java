@@ -112,7 +112,6 @@ import java.util.List;
  *     -I sample1.bam [-I sample2.bam ...] \
  *     [--dbsnp dbSNP.vcf] \
  *     [-stand_call_conf 30] \
- *     [-stand_emit_conf 10] \
  *     [-L targets.interval_list] \
  *     -o output.raw.snps.indels.vcf
  * </pre>
@@ -125,7 +124,6 @@ import java.util.List;
  *     -I sample1.bam \
  *     [--dbsnp dbSNP.vcf] \
  *     -stand_call_conf 20 \
- *     -stand_emit_conf 20 \
  *     -o output.raw.snps.indels.vcf
  * </pre>
  *
