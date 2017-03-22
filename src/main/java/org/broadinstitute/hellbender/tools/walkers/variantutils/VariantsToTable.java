@@ -49,12 +49,10 @@ import java.util.function.Function;
  * </p>
  *
  * <h3>Input</h3>
- * <p>
  * <ul>
  *     <li>A VCF file</li>
  *     <li>A list of -F fields to write</li>
  * </ul>
- * </p>
  *
  * <h3>Output</h3>
  * <p>
@@ -76,9 +74,11 @@ import java.util.function.Function;
  *     1        20  rs10    99      10
  * </pre>
  *
- * <h3>Caveat</h3>
- * <p>If a VCF record is missing a value, then the tool by default throws an error, but the special value NA can
- * be emitted instead if requested at the command line using --allowMissingData.</p>
+ * <h3>Caveats</h3>
+ * <ul>
+ *     <li>Some annotations cannot be applied to all variant sites, so VCFs typically contain records where some annotation values are missing. By default this tool throws an error if you request export of an annotation for which not all records have values. You can override this behavior by setting --allowMissingData in the command line. As a result, the tool will emit the special value NA for the missing annotations in those records.</li>
+ *     <li>When you request export of sample-level annotations (FORMAT field annotations such as GT), the annotations will be identified per-sample. If multiple samples are present in the VCF, the columns will be ordered alphabetically by sample name (SM tag).</li>
+ * </ul>
  */
 @CommandLineProgramProperties(
         summary = "This tool is designed to extract fields from the VCF to a table format " +
