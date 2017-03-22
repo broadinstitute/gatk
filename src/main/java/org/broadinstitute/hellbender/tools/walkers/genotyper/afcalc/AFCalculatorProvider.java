@@ -47,9 +47,9 @@ public abstract class AFCalculatorProvider {
     }
 
     /**
-     * Returns a AF calculator given the required homogeneous ploidy and allele count (including the reference).
+     * Returns a AF calculator given the required homogeneous ploidy and maximum alt allele count.
      * @param ploidy the required ploidy.
-     * @param maximumAltAlleles the allele count.
+     * @param maximumAltAlleles the maximum alt allele count.
      * @return never {@code null}
      */
     public abstract AFCalculator getInstance(final int ploidy, final int maximumAltAlleles);
