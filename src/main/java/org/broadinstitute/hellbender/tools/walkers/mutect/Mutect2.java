@@ -20,15 +20,13 @@ import java.util.List;
 /**
  * Call somatic SNPs and indels via local re-assembly of haplotypes
  *
- * <p>Mutect2 is a somatic SNP and indel caller that combines the DREAM challenge-winning somatic genotyping engine of the original Mutect (<a href='http://www.nature.com/nbt/journal/v31/n3/full/nbt.2514.html'>Cibulskis et al., 2013</a>) with the assembly-based machinery of HaplotypeCaller.</p>
+ * <p>MuTect2 is a somatic SNP and indel caller that combines the DREAM challenge-winning somatic genotyping engine of the original MuTect (<a href='http://www.nature.com/nbt/journal/v31/n3/full/nbt.2514.html'>Cibulskis et al., 2013</a>) with the assembly-based machinery of <a href="https://www.broadinstitute.org/gatk/documentation/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php">HaplotypeCaller</a>.</p>
  *
- * <p>The basic operation of Mutect2 proceeds similarly to that of the <a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_haplotypecaller_HaplotypeCaller.php">HaplotypeCaller</a>   </p>
- *
- * <h3>Differences from HaplotypeCaller</h3>
- * <p>While the HaplotypeCaller relies on a ploidy assumption (diploid by default) to inform its genotype likelihood and
- * variant quality calculations, Mutect2 allows for a varying allelic fraction for each variant, as is often seen in tumors with purity less
- * than 100%, multiple subclones, and/or copy number variation (either local or aneuploidy). Mutect2 also differs from the HaplotypeCaller in that it does apply some hard filters
- * to variants before producing output.</p>
+ * <h3>How MuTect2 works</h3>
+ * <p>The basic operation of MuTect2 proceeds similarly to that of the HaplotypeCaller, with a few key differences.</p>
+ * <p>While the HaplotypeCaller relies on a ploidy assumption (diploid by default) to inform its genotype likelihood and variant quality calculations, MuTect2 allows for a varying allelic fraction for each variant, as is often seen in tumors with purity less than 100%, multiple subclones, and/or copy number variation (either local or aneuploidy). MuTect2 also differs from the HaplotypeCaller in that it does apply some hard filters to variants before producing output. Finally, some of the parameters used for ActiveRegion determination and graph assembly are set to different default values in MuTect2 compared to HaplotypeCaller.</p>
+ * <p>Note that MuTect2 is designed to produce somatic variant calls only, and includes some logic to skip variant sites that are very clearly germline based on the evidence present in the Normal sample compared to the Tumor sample. This is done at an early stage to avoid spending computational resources on germline events. As a result the tool is NOT capable of emitting records for variant calls that are clearly germline unless it is run in artifact-detection mode, which is used for Panel-Of-Normals creation.</p>
+ * <p>Note also that the GVCF generation capabilities of HaplotypeCaller are NOT available in MuTect2, even though some of the relevant arguments are listed below. There are currently no plans to make GVCF calling available in MuTect2.</p>
  *
  * <h3>Usage examples</h3>
  * <p>These are example commands that show how to run Mutect2 for typical use cases. Square brackets ("[ ]")
