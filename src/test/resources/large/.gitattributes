@@ -35,5 +35,4 @@ Homo_sapiens_assembly38.20.21.fasta filter=lfs diff=lfs merge=lfs -text
 gvcfs/HG00096.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
 gvcfs/HG00268.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
 gvcfs/NA19625.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
-gvcfs/expected.combined.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
 gvcfs/combined.gatk3.7.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
