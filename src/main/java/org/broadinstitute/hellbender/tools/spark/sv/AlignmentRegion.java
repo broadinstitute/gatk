@@ -28,6 +28,7 @@ import java.util.Objects;
 class AlignmentRegion {
 
     static final String STRING_REP_SEPARATOR= "\t";
+    static final String PACKED_STRING_REP_SEPARATOR= "_";
     static final String DUMMY_ASM_ID = "ASSEMBLY";
 
     final String assemblyId;
@@ -120,7 +121,10 @@ class AlignmentRegion {
      *          Note that the format is NOT the same as that used in {@link #toString()}.
      */
     String toPackedString() {
-        return assemblyId + "-" + contigId + ":" + startInAssembledContig + "-" + endInAssembledContig + ":" + referenceInterval.getContig() + ',' + referenceInterval.getStart() + ',' + (forwardStrand ? '+' : '-') + ',' + TextCigarCodec.encode(cigarAlong5to3DirectionOfContig) + ',' + mapQual + ',' + mismatches;
+        return assemblyId + PACKED_STRING_REP_SEPARATOR + contigId + PACKED_STRING_REP_SEPARATOR +
+                startInAssembledContig + PACKED_STRING_REP_SEPARATOR + endInAssembledContig + PACKED_STRING_REP_SEPARATOR +
+                referenceInterval.getContig() + PACKED_STRING_REP_SEPARATOR + referenceInterval.getStart() + PACKED_STRING_REP_SEPARATOR + (forwardStrand ? '+' : '-') + PACKED_STRING_REP_SEPARATOR +
+                TextCigarCodec.encode(cigarAlong5to3DirectionOfContig) + PACKED_STRING_REP_SEPARATOR + mapQual + PACKED_STRING_REP_SEPARATOR + mismatches;
     }
 
     @Override
