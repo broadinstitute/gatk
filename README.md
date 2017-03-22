@@ -7,7 +7,7 @@
 **This project is in an early stage of development.  It is subject to change without warning. Do not use this code for production work.**
 
 
-###GATK 4 (codename Hellbender)
+### GATK 4 (codename Hellbender)
 
 This repository contains the next generation GATK/Picard engine and the freely available tools (see [LICENSE](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT)). See also the [gatk-protected](https://github.com/broadinstitute/gatk-protected) repository for additional GATK tools that are distributed under a different license.
 
@@ -22,7 +22,7 @@ If you are looking for the current version of GATK to use in production work, pl
 
 If you are looking for the codebase of the current production version of GATK, please see either the [GATK development framework repository](https://github.com/broadgsa/gatk/) or the [full GATK tools repository](https://github.com/broadgsa/gatk-protected/).
 
-##Requirements
+## Requirements
 * Java 8
 * Git 2.5 or greater
 * Optional, but recommended:
@@ -33,7 +33,7 @@ If you are looking for the codebase of the current production version of GATK, p
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater (needed to download large files for the complete test suite).
       Run `git lfs install` after downloading, followed by `git lfs pull` to download the large files. The download is ~500 MB.
 
-##Quick Start Guide
+## Quick Start Guide
 
 * Build the GATK: `./gradlew installAll`
 * Get help on running the GATK: `./gatk-launch --help`
@@ -41,7 +41,7 @@ If you are looking for the codebase of the current production version of GATK, p
 * Run a tool: `./gatk-launch PrintReads -I src/test/resources/NA12878.chr17_69k_70k.dictFix.bam -O output.bam`
 * Get help on a particular tool: `./gatk-launch PrintReads --help`
 
-##Building GATK4
+## Building GATK4
 
 * To do a fast build that lets you run GATK tools locally (but not on a cluster) from inside a git clone, run
         
@@ -79,7 +79,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * Gradle keeps a cache of dependencies used to build GATK.  By default this goes in `~/.gradle`.  If there is insufficient free space in your home directory, you can change the location of the cache by setting the `GRADLE_USER_HOME` environment variable.
 
-##Running GATK4
+## Running GATK4
 
 * The standard way to run GATK4 tools is via the **`gatk-launch`** wrapper script located in the root directory of a clone of this repository.
     * Requires Python 2.6 or greater.
@@ -110,7 +110,7 @@ If you are looking for the codebase of the current production version of GATK, p
   ./gatk-launch PrintReadsSpark -I input.bam -O output.bam
   ```
 
-####Running GATK4 with inputs on Google Cloud Storage:
+#### Running GATK4 with inputs on Google Cloud Storage:
 
 * GATK can read BAM or VCF inputs from a Google Cloud Storage bucket. Just use the "gs://" prefix:
   ```
@@ -139,7 +139,7 @@ If you are looking for the codebase of the current production version of GATK, p
   ```
   * Done! GATK will pick up the service account. You can also do this in a VM if you'd like to override the default credentials.
 
-####Running GATK4 Spark tools on a Spark cluster:
+#### Running GATK4 Spark tools on a Spark cluster:
 
 **`./gatk-launch ToolName toolArguments -- --sparkRunner SPARK --sparkMaster <master_url> additionalSparkArguments`**
 * Examples:
@@ -164,7 +164,7 @@ If you are looking for the codebase of the current production version of GATK, p
    `gatk-launch` invokes the `spark-submit` tool behind-the-scenes.
 * Note that the examples above use YARN but we have successfully run GATK4 on Mesos as well.
 
-####Running GATK4 Spark tools on Google Cloud Dataproc:
+#### Running GATK4 Spark tools on Google Cloud Dataproc:
   * You must have a [Google cloud services](https://cloud.google.com/) account, and have spun up a Dataproc cluster
     in the [Google Developer's console](https://console.developers.google.com). You may need to have the "Allow API access to all Google Cloud services in the same project" option enabled (settable when you create a cluster).
   * You need to have installed the Google Cloud SDK from https://cloud.google.com/sdk/, since
@@ -226,7 +226,7 @@ If you are looking for the codebase of the current production version of GATK, p
    JAVA_OPTS="-Dsamjdk.use_async_io_samtools=false" ./gatk-launch <rest of command>
 ```
 
-##Testing GATK4
+## Testing GATK4
 
 * To run the tests, run **`./gradlew test`**.
     * Test report is in `build/reports/tests/test/index.html`.
@@ -268,7 +268,7 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * To output stack traces for `UserException` set the environment variable `GATK_STACKTRACE_ON_USER_EXCEPTION=true`
 
-##General guidelines for GATK4 developers
+## General guidelines for GATK4 developers
 
 * **Do not put private or restricted data into the repo.**
 
@@ -303,10 +303,10 @@ If you are looking for the codebase of the current production version of GATK, p
 
 * If you push to master or mess the commit history, you owe us 1 growler or tasty snacks at happy hour. If you break the master build, you owe 3 growlers (or lots of tasty snacks). Beer may be replaced by wine (in the color and vintage of buyer's choosing) in proportions of 1 growler = 1 bottle. 
 
-##Note on 2bit Reference
+## Note on 2bit Reference
 * Note: Some GATK Spark tools by default require the reference file to be in 2bit format (notably `BaseRecalibratorSpark`,`BQSRPipelineSpark` and `ReadsPipelineSpark`). You can convert your fasta to 2bit by using the `faToTwoBit` utility from [UCSC](http://hgdownload.soe.ucsc.edu/admin/exe/) - see also the [documentation for `faToTwoBit`](https://genome.ucsc.edu/goldenpath/help/blatSpec.html#faToTwoBitUsage).
 
-##R Dependency
+## R Dependency
 Certain GATK tools may optionally generate plots if R is installed.  We recommend **R v3.1.3** if you want to produce plots.  If you are uninterested in plotting, R is still required by several of the unit tests.  Plotting is currently untested and should be viewed as a convinience rather than a primary output.  
 
 R installation is not part of the gradle build.  See http://cran.r-project.org/ for general information on installing R for your system.
@@ -327,7 +327,7 @@ R
 source("scripts/install_R_packages.R")
 ```
 
-##Creating a GATK project in the IntelliJ IDE (last tested with version 2016.2.4):
+## Creating a GATK project in the IntelliJ IDE (last tested with version 2016.2.4):
 
 * Ensure that you have `gradle` and the Java 8 JDK installed
 
@@ -353,7 +353,7 @@ source("scripts/install_R_packages.R")
 
 * Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
 
-##Setting up debugging in IntelliJ
+## Setting up debugging in IntelliJ
 
 * Follow the instructions above for creating an IntelliJ project for GATK
 
@@ -373,7 +373,7 @@ source("scripts/install_R_packages.R")
 
 * In future debugging sessions, you can simply adjust the "Program Arguments" in the "GATK debug" configuration as needed
 
-##Setting up profiling using JProfiler from IntelliJ
+## Setting up profiling using JProfiler from IntelliJ
 
    * JProfiler has great integration with IntelliJ (we're using IntelliJ Ultimate 2016.1) so the setup is trivial.
    
@@ -381,19 +381,19 @@ source("scripts/install_R_packages.R")
    
    * Right click on a test method/class/package and select "Profile" 
     
-##Setting up profiling using JProfiler (not using IntelliJ)
+## Setting up profiling using JProfiler (not using IntelliJ)
     
    * Build a full GATK4 jar using `./gradlew localJar`
 
    * In the "Session Settings" window, select the GATK4 jar, eg. `~/gatk/build/libs/gatk-package-4.alpha-196-gb542813-SNAPSHOT-local.jar` for "Main class or executable JAR" and enter the right "Arguments"
 
-##Updating the Intellij project when dependencies change
+## Updating the Intellij project when dependencies change
 If there are dependency changes in `build.gradle` it is necessary to refresh the gradle project. This is easily done with the following steps.
 
 * Open the gradle tool window  ( "View" -> "Tool Windows" -> "Gradle" )
 * Click the refresh button in the Gradle tool window.  It is in the top left of the gradle view and is represented by two blue arrows.
 
-##Uploading Archives to Sonatype (to make them available via maven central)
+## Uploading Archives to Sonatype (to make them available via maven central)
 To upload snapshots to Sonatype you'll need the following:
 
 * You must have a registered account on the sonatype JIRA (and be approved as a gatk uploader)
@@ -419,7 +419,7 @@ To perform an upload, use
 
 Currently all builds are considered snapshots.  The archive name is based off of `git describe`.
 
-###Further Reading on Spark
+### Further Reading on Spark
 
 [Apache Spark](https://spark.apache.org/) is a fast and general engine for large-scale data processing.
 GATK4 can run on any Spark cluster, such as an on-premise Hadoop cluster with HDFS storage and the Spark
@@ -444,7 +444,7 @@ of executors and memory settings at the following:
 * [How-to: Tune Your Apache Spark Jobs (Part 2)](http://blog.cloudera.com/blog/2015/03/how-to-tune-your-apache-spark-jobs-part-2/)
 
 
-###How to contribute
+### How to contribute
 (Note: section inspired by, and some text copied from, [Apache Parquet](https://github.com/apache/parquet-mr))
  
 We welcome all contributions to the GATK project. The contribution can be a [issue report]( https://github.com/broadinstitute/gatk/issues) 
@@ -474,16 +474,16 @@ We tend to do fairly close readings of pull requests, and you may get a lot of c
 
 Thank you for getting involved!
 
-##Discussions
+## Discussions
 * [GATK forum](http://gatkforums.broadinstitute.org/) for general discussions on how to use the GATK.
 * [Issue tracker](https://github.com/broadinstitute/gatk/issues) to report errors and enhancement ideas. 
 * Discussions also take place in github pull requests
 * For committers, we have a publicly-visible google group [gatk-dev-public](https://groups.google.com/a/broadinstitute.org/forum/?hl=en#!forum/gatk-dev-public)
 * For committers, we have a hipchat room at the Broad called 'Hellbender (aka GATK4)'.
 
-##Authors
+## Authors
 The authors list is maintained in the [AUTHORS](https://github.com/broadinstitute/gatk/edit/master/AUTHORS) file. 
 See also the [Contributors](https://github.com/broadinstitute/gatk/graphs/contributors) list at github. 
 
-##License
+## License
 Licensed under the BSD License. See the [LICENSE.txt](https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT) file.
