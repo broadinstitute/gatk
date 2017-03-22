@@ -103,7 +103,7 @@ public final class GenotypeCalculationArgumentCollection implements Serializable
      * will then be performed in the subsequent GenotypeGVCFs command.
      */
     @Argument(fullName = "standard_min_confidence_threshold_for_calling", shortName = "stand_call_conf", doc = "The minimum phred-scaled confidence threshold at which variants should be called", optional = true)
-    public double STANDARD_CONFIDENCE_FOR_CALLING = 30.0;
+    public double STANDARD_CONFIDENCE_FOR_CALLING = 10.0;
 
     /**
      * If there are more than this number of alternate alleles presented to the genotyper (either through discovery or GENOTYPE_GIVEN ALLELES),
