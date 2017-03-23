@@ -13,15 +13,10 @@ import java.util.List;
 /**
  * Test if image can be successfully created.
  */
-public class BwaMemIndexImageCreatorTest extends CommandLineProgramTest {
+public class BwaMemIndexImageCreatorIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_DATA_DIR = new File("src/test/resources/large/");
     private static final File testReferenceFasta = new File(TEST_DATA_DIR, "human_g1k_v37.20.21.fasta");
-
-    @Override
-    public String getTestedClassName() {
-        return BwaMemIndexImageCreator.class.getSimpleName();
-    }
 
     @Test
     public void testImageFileGeneration() throws Exception {
