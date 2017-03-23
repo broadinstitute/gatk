@@ -112,12 +112,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
                     " sample name " + MTAC.normalSampleName);
         }
 
-        //TODO: add required annotations for all the filtering steps I propose
-        //TODO: how about add this annotation regardless but *filter* optionally?
-        if (MTAC.ENABLE_CLUSTERED_READ_POSITION_FILTER) {
-            MTAC.annotationsToUse.add("ClusteredReadPosition");
-        }
-
         annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(MTAC.annotationGroupsToUse,
                 MTAC.annotationsToUse,
                 MTAC.annotationsToExclude,

@@ -5,6 +5,7 @@ import org.broadinstitute.barclay.argparser.Argument;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -20,6 +21,15 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Advanced
     @Argument(fullName = "annotation", shortName = "A", doc = "One or more specific annotations to apply to variant calls", optional = true)
     public List<String> annotationsToUse = new ArrayList<>();
+
+    /**
+     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
+     * the VariantAnnotator -list argument to view available groups. Note that this usage is not recommended because
+     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
+     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     */
+    @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
+    public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{"StandardAnnotation", "StandardHCAnnotation"}));
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
