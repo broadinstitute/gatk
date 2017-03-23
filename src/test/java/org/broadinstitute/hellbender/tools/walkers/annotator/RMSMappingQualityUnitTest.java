@@ -2,11 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import com.google.cloud.dataflow.sdk.repackaged.com.google.common.collect.Sets;
 import com.google.common.collect.ImmutableMap;
-import htsjdk.samtools.TextCigarCodec;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -14,17 +10,17 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
-import org.broadinstitute.hellbender.utils.genotyper.*;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
+import org.broadinstitute.hellbender.utils.genotyper.ReadLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public final class RMSMappingQualityUnitTest {
 
@@ -221,6 +217,19 @@ public final class RMSMappingQualityUnitTest {
     }
 
     @Test
+    //this test mimics the behavior in gatk3, it's not necessarily the right thing to do
+    public void testMultipleRawMQOnlyFirstIsSeen(){
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, "2000,1000,")
+                .attribute(VCFConstants.DEPTH_KEY, 20)
+                .make();
+        final VariantContext output = new RMSMappingQuality().finalizeRawMQ(vc);
+        Assert.assertFalse(output.hasAttribute( GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
+        Assert.assertTrue(output.hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY));
+        Assert.assertEquals(output.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, -1.0), 10.0, 0.01);
+    }
+
+    @Test
     public void testNoRawMQ(){
         final String OTHER_KEY = "SOME_OTHER_ANNOTATION";
         final String VALUE = "value";
@@ -231,5 +240,25 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertFalse(output.hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY));
         Assert.assertFalse(output.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
         Assert.assertEquals(output.getAttribute(OTHER_KEY), VALUE);
+    }
+
+    @Test
+    public void testGetNumReads(){
+        final Allele refAllele = Allele.create("A", true);
+        final Allele altAllele = Allele.create("T");
+        final Genotype homRefDP = new GenotypeBuilder("sample1", Arrays.asList(refAllele, refAllele)).DP(5).make();
+        final Genotype homRefMinDP = new  GenotypeBuilder("sample2", Arrays.asList(refAllele, refAllele))
+                .DP(11)
+                .attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, 10).make();
+        final Genotype hetAlt = new GenotypeBuilder("sample3", Arrays.asList(refAllele, altAllele)).DP(100).make();
+        final VariantContext vc = new VariantContextBuilder().alleles(Arrays.asList(refAllele, altAllele))
+                .chr("1")
+                .start(15L)
+                .stop(15L)
+                .genotypes(homRefDP, homRefMinDP, hetAlt)
+                .attribute(VCFConstants.DEPTH_KEY, 5 + 10 + 100)
+                .make();
+
+        Assert.assertEquals(RMSMappingQuality.getNumOfReads(vc), 115 - 5 - 10);
     }
 }

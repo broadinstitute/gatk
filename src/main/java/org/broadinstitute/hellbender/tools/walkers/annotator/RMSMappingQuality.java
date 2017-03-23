@@ -57,7 +57,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
         final Map<String, Object> annotations = new HashMap<>();
         final ReducibleAnnotationData<Number> myData = new ReducibleAnnotationData<>(null);
         calculateRawData(vc, likelihoods, myData);
-        final String annotationString = formatedValue((double) myData.getAttributeMap().get(Allele.NO_CALL));
+        final String annotationString = formattedValue((double) myData.getAttributeMap().get(Allele.NO_CALL));
         annotations.put(getRawKeyName(), annotationString);
         return annotations;
     }
@@ -85,7 +85,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     }
 
     @VisibleForTesting
-    static String formatedValue(double rms) {
+    static String formattedValue(double rms) {
         return String.format("%.2f", rms);
     }
 
@@ -93,7 +93,6 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     public List<String> getKeyNames() {
         return Arrays.asList(VCFConstants.RMS_MAPPING_QUALITY_KEY, getRawKeyName());
     }
-
 
     @Override
     public List<VCFInfoHeaderLine> getDescriptions() {
@@ -112,36 +111,38 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
             return vc;
         } else {
             final double squareSum = parseRawDataString(rawMQdata);
-            final String finalizedRMSMAppingQuality = makeFinalizedAnnotationString(vc, squareSum);
-            final VariantContext result = new VariantContextBuilder(vc)
+            final int numOfReads = getNumOfReads(vc);
+            final double rms = Math.sqrt(squareSum / (double)numOfReads);
+            final String finalizedRMSMAppingQuality = formattedValue(rms);
+            return new VariantContextBuilder(vc)
                     .rmAttribute(getRawKeyName())
                     .attribute(getKeyNames().get(0), finalizedRMSMAppingQuality)
                     .make();
-            return result;
         }
     }
 
     private static double parseRawDataString(String rawDataString) {
         try {
+            /*
+             * TODO: this is copied from gatk3 where it ignored all but the first value, we should figure out if this is
+             * the right thing to do or if it should just convert the string without trying to split it and fail if
+             * there is more than one value
+             */
             final double squareSum = Double.parseDouble(rawDataString.split(",")[0]);
             return squareSum;
         } catch (final NumberFormatException e){
             throw new UserException.BadInput("malformed " + GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY +" annotation: " + rawDataString);
         }
-
-    }
-
-
-    private static String makeFinalizedAnnotationString(final VariantContext vc, final double squareSum) {
-        final int numOfReads = getNumOfReads(vc);
-        return formatedValue(Math.sqrt(squareSum /numOfReads));
     }
 
     /**
      *
-     * @return the number of reads at the vc position (-1 if all read data is null)
+     * @return the number of reads at the given site, calculated as InfoField {@link VCFConstants#DEPTH_KEY} minus the
+     * format field {@link GATKVCFConstants#MIN_DP_FORMAT_KEY} or DP of each of the HomRef genotypes at that site
+     * @throws UserException.BadInput if the {@link VCFConstants#DEPTH_KEY} is missing or if the calculated depth is <= 0
      */
-    private static int getNumOfReads(final VariantContext vc) {
+    @VisibleForTesting
+    static int getNumOfReads(final VariantContext vc) {
         //don't use the full depth because we don't calculate MQ for reference blocks
         int numOfReads = vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, -1);
         if(vc.hasGenotypes()) {
@@ -150,8 +151,7 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
                     //site-level DP contribution will come from MIN_DP for gVCF-called reference variants or DP for BP resolution
                     if (gt.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) {
                         numOfReads -= Integer.parseInt(gt.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY).toString());
-                    }
-                    else if (gt.hasDP()) {
+                    } else if (gt.hasDP()) {
                         numOfReads -= gt.getDP();
                     }
                 }
