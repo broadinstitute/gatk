@@ -161,6 +161,10 @@ public class UserException extends RuntimeException {
     public static class BadInput extends UserException {
         private static final long serialVersionUID = 0L;
 
+        public BadInput(String message, Throwable cause){
+            super(String.format("Bad input: %s", message), cause);
+        }
+
         public BadInput(String message) {
             super(String.format("Bad input: %s", message));
         }
