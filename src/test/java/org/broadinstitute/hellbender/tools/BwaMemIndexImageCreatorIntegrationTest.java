@@ -1,7 +1,8 @@
-package org.broadinstitute.hellbender.utils.bwa;
+package org.broadinstitute.hellbender.tools;
 
 import org.broadinstitute.hellbender.BwaMemTestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
 

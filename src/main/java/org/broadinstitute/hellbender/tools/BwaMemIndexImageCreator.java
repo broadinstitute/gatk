@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bwa;
+package org.broadinstitute.hellbender.tools;
 
 import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -6,6 +6,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.BwaMemUtilitiesProgramGroup;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
 
 
 /**
