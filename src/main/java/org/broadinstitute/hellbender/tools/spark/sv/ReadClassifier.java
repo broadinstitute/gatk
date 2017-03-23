@@ -110,7 +110,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     private void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
         if ( read.mateIsUnmapped() ) {
             evidenceList.add(new BreakpointEvidence.MateUnmapped(read, readMetadata));
-        } else if ( !read.getContig().equals(read.getMateContig()) ) {
+        } else if ( readMetadata.getMoleculeID(read.getContig()) != readMetadata.getMoleculeID(read.getMateContig()) ) {
             evidenceList.add(new BreakpointEvidence.InterContigPair(read, readMetadata));
         } else if ( read.isReverseStrand() == read.mateIsReverseStrand() ) {
             evidenceList.add(new BreakpointEvidence.SameStrandPair(read, readMetadata));

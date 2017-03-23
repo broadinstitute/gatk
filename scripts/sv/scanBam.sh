@@ -33,6 +33,7 @@ cd "$GATK_DIR"
     -O "$PROJECT_OUTPUT_DIR"/fastq \
     --exclusionIntervals "$INTERVAL_KILL_LIST" \
     --kmersToIgnore "$KMER_KILL_LIST" \
+    --contigNameToMoleculeName "$ALT_MOL_FILE" \
     --kmerIntervals "$PROJECT_OUTPUT_DIR"/kmerIntervals \
     --breakpointEvidenceDir "$PROJECT_OUTPUT_DIR"/evidence \
     --breakpointIntervals "$PROJECT_OUTPUT_DIR"/intervals \

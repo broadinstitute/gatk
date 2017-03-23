@@ -31,6 +31,7 @@ REF_FASTA="$MASTER_NODE"/$5
 REF_2BIT=$(echo $REF_FASTA | sed 's/.fasta$/.2bit/')
 INTERVAL_KILL_LIST=$(echo $REF_FASTA | sed 's/.fasta$/.kill.intervals/')
 KMER_KILL_LIST=$(echo $REF_FASTA | sed 's/.fasta$/.kill.kmers/')
+ALT_MOL_FILE=$(echo $REF_FASTA | sed 's/.fasta$/.mol')
 REF_INDEX_IMG=$6
 
 export GATK_DIR
@@ -43,6 +44,7 @@ export REF_2BIT
 export REF_INDEX_IMG
 export INTERVAL_KILL_LIST
 export KMER_KILL_LIST
+export ALT_MOL_FILE
 
 ./scanBam.sh
 

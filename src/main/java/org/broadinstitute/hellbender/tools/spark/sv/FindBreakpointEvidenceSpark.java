@@ -109,7 +109,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
     private String outputDir;
 
-    @Argument(doc = "file for read metadata", fullName = "readMetadata", optional = true)
+    @Argument(doc = "file for read metadata output", fullName = "readMetadata", optional = true)
     private String metadataFile;
 
     @Argument(doc = "directory for evidence output", fullName = "breakpointEvidenceDir", optional = true)
@@ -144,6 +144,14 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     @Argument(doc = "file containing ubiquitous kmer list. see FindBadGenomicKmersSpark to generate it.",
             fullName = "kmersToIgnore")
     private String kmersToIgnoreFile;
+
+    /**
+     * This is a path to a tab-delimited, two-column text file that gives alt-contig names, and the contig from
+     * which they are derived.
+     */
+    @Argument(doc = "file explaining from what molecule alt contigs in the reference are derived",
+            fullName = "contigNameToMoleculeName", optional = true)
+    private String contigNameToMoleculeNameFile;
 
     @Override
     public boolean requiresReads()
@@ -249,7 +257,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         final JavaRDD<GATKRead> mappedReads =
                 unfilteredReads.filter(read ->
                         !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
-        final ReadMetadata readMetadata = new ReadMetadata(header, mappedReads);
+        final ReadMetadata readMetadata = new ReadMetadata(header, contigNameToMoleculeNameFile, pipelineOptions, mappedReads);
         if ( locations.metadataFile != null ) writeMetadata(readMetadata, locations.metadataFile, pipelineOptions);
         log("Metadata retrieved.");
 
