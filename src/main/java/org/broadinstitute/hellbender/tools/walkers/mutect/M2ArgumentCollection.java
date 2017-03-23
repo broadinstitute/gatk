@@ -95,9 +95,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     /**
      * Which annotations to add to the output VCF file. See the VariantAnnotator -list argument to view available annotations.
-     * //TODO: port TandemRepeatAnnotator and put it here
      */
     @Advanced
     @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls", optional = true)
-    protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"DepthPerAlleleBySample", "BaseQualitySumPerAlleleBySample", "OxoGReadCounts"}));
+    protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"DepthPerAlleleBySample", "TandemRepeat", "OxoGReadCounts"}));
 }

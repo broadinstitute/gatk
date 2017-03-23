@@ -48,8 +48,8 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private static void applyTriallelicFilter(final VariantContext vc, final Collection<String> filters) {
-        if (vc.getNAlleles() > 2) {
+    private void applyTriallelicFilter(final VariantContext vc, final Collection<String> filters) {
+        if (vc.getNAlleles() > (MTFAC.numAltAllelesThreshold + 1)) {
             filters.add(GATKVCFConstants.TRIALLELIC_SITE_FILTER_NAME);
         }
     }
@@ -71,19 +71,8 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    //TODO: make an annotation corresponding to this filter
-    private static void applyClusteredReadPositionFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
-        if (MTFAC.ENABLE_CLUSTERED_READ_POSITION_FILTER) {
-            final Double tumorFwdPosMedian = (Double) vc.getAttribute(GATKVCFConstants.MEDIAN_LEFT_OFFSET_KEY);
-            final Double tumorRevPosMedian = (Double) vc.getAttribute(GATKVCFConstants.MEDIAN_RIGHT_OFFSET_KEY);
-            final Double tumorFwdPosMAD = (Double) vc.getAttribute(GATKVCFConstants.MAD_MEDIAN_LEFT_OFFSET_KEY);
-            final Double tumorRevPosMAD = (Double) vc.getAttribute(GATKVCFConstants.MAD_MEDIAN_RIGHT_OFFSET_KEY);
-            //If the variant is near the read end (median threshold) and the positions are very similar (MAD threshold) then filter
-            if ((tumorFwdPosMedian != null && tumorFwdPosMedian <= MTFAC.PIR_MEDIAN_THRESHOLD && tumorFwdPosMAD != null && tumorFwdPosMAD <= MTFAC.PIR_MAD_THRESHOLD) ||
-                    (tumorRevPosMedian != null && tumorRevPosMedian <= MTFAC.PIR_MEDIAN_THRESHOLD && tumorRevPosMAD != null && tumorRevPosMAD <= MTFAC.PIR_MAD_THRESHOLD))
-                filters.add(GATKVCFConstants.CLUSTERED_READ_POSITION_FILTER_NAME);
-        }
-    }
+    //TODO: make an annotation and filter for read position
+
 
     private static void applyPanelOfNormalsFilter(final M2FiltersArgumentCollection MTFAC, final VariantContext vc, final Collection<String> filters) {
         final boolean siteInPoN = vc.hasAttribute(SomaticGenotypingEngine.IN_PON_VCF_ATTRIBUTE);
@@ -148,9 +137,9 @@ public class Mutect2FilteringEngine {
         }
     }
 
-    private static void applyEventDistanceFilters(final VariantContext vc, final Collection<String> filters) {
+    private void applyEventDistanceFilters(final VariantContext vc, final Collection<String> filters) {
         final Integer eventCount = vc.getAttributeAsInt(GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, -1);
-        if (eventCount >= 3) {
+        if (eventCount > MTFAC.maxEventsInHaplotype) {
             filters.add(GATKVCFConstants.HOMOLOGOUS_MAPPING_EVENT_FILTER_NAME);
         }
     }
@@ -163,7 +152,6 @@ public class Mutect2FilteringEngine {
         applyPanelOfNormalsFilter(MTFAC, vc, filters);
         applyGermlineVariantFilter(MTFAC, vc, filters);
         applyArtifactInNormalFilter(MTFAC, vc, filters);
-        applyClusteredReadPositionFilter(MTFAC, vc, filters);
         applyStrandBiasFilter(MTFAC, vc, filters);
         applySTRFilter(vc, filters);
         applyContaminationFilter(MTFAC, vc, filters);
