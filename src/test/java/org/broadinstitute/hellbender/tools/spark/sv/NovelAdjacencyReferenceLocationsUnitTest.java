@@ -158,7 +158,8 @@ public class NovelAdjacencyReferenceLocationsUnitTest extends BaseTest{
         Assert.assertEquals(chimericAlignment.regionWithLowerCoordOnContig, region1);
         Assert.assertEquals(chimericAlignment.regionWithHigherCoordOnContig, region3);
         Assert.assertEquals(chimericAlignment.insertionMappings.size(), 1);
-        Assert.assertEquals(chimericAlignment.insertionMappings.get(0), "1_contig-1_484_525_20_23103196_-_483S42M968S_60_2");
+        final String expectedInsertionMappingsString = String.join(AlignmentRegion.PACKED_STRING_REP_SEPARATOR, "1", "contig-1", "484", "525", "20", "23103196", "-", "483S42M968S", "60", "2");
+        Assert.assertEquals(chimericAlignment.insertionMappings.get(0), expectedInsertionMappingsString);//"1_contig-1_484_525_20_23103196_-_483S42M968S_60_2");
         final NovelAdjacencyReferenceLocations breakpoints = new NovelAdjacencyReferenceLocations(chimericAlignment);
         Assert.assertTrue(breakpoints.complication.homologyForwardStrandRep.isEmpty());
         Assert.assertEquals(breakpoints.complication.insertedSequenceForwardStrandRep, "TGAGAGTTGGCCCGAACACTGCTGGATTCCACTTCA");

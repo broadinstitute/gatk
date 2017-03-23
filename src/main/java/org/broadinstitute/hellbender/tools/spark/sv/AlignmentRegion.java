@@ -121,10 +121,14 @@ class AlignmentRegion {
      *          Note that the format is NOT the same as that used in {@link #toString()}.
      */
     String toPackedString() {
-        return assemblyId + PACKED_STRING_REP_SEPARATOR + contigId + PACKED_STRING_REP_SEPARATOR +
-                startInAssembledContig + PACKED_STRING_REP_SEPARATOR + endInAssembledContig + PACKED_STRING_REP_SEPARATOR +
-                referenceInterval.getContig() + PACKED_STRING_REP_SEPARATOR + referenceInterval.getStart() + PACKED_STRING_REP_SEPARATOR + (forwardStrand ? '+' : '-') + PACKED_STRING_REP_SEPARATOR +
-                TextCigarCodec.encode(cigarAlong5to3DirectionOfContig) + PACKED_STRING_REP_SEPARATOR + mapQual + PACKED_STRING_REP_SEPARATOR + mismatches;
+        return String.join(PACKED_STRING_REP_SEPARATOR,
+                assemblyId, contigId, String.valueOf(startInAssembledContig), String.valueOf(endInAssembledContig),
+                referenceInterval.getContig(), String.valueOf(referenceInterval.getStart()), (forwardStrand ? "+" : "-"),
+                TextCigarCodec.encode(cigarAlong5to3DirectionOfContig), String.valueOf(mapQual), String.valueOf(mismatches));
+//        return assemblyId + PACKED_STRING_REP_SEPARATOR + contigId + PACKED_STRING_REP_SEPARATOR +
+//                startInAssembledContig + PACKED_STRING_REP_SEPARATOR + endInAssembledContig + PACKED_STRING_REP_SEPARATOR +
+//                referenceInterval.getContig() + PACKED_STRING_REP_SEPARATOR + referenceInterval.getStart() + PACKED_STRING_REP_SEPARATOR + (forwardStrand ? '+' : '-') + PACKED_STRING_REP_SEPARATOR +
+//                TextCigarCodec.encode(cigarAlong5to3DirectionOfContig) + PACKED_STRING_REP_SEPARATOR + mapQual + PACKED_STRING_REP_SEPARATOR + mismatches;
     }
 
     @Override
