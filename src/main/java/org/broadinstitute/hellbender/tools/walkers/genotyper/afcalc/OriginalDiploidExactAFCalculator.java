@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.MathArrays;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collections;
 import java.util.List;
@@ -87,7 +88,7 @@ final class OriginalDiploidExactAFCalculator extends ExactAFCalculator {
                                                       final double[] log10AlleleFrequencyPriors,
                                                       final double[] log10AlleleFrequencyLikelihoods,
                                                       final double[] log10AlleleFrequencyPosteriors) {
-        final List<double[]> genotypeLikelihoods = getGLs(vc.getGenotypes(), true);
+        final List<double[]> genotypeLikelihoods = getGLs(vc.getGenotypes(), true, vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
         final int numSamples = genotypeLikelihoods.size()-1;
         final int numChr = 2*numSamples;
 
