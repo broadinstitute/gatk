@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -18,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
@@ -187,5 +189,47 @@ public final class RMSMappingQualityUnitTest {
         Assert.assertEquals(split.length, 2);
         Assert.assertEquals(split[0], String.format("%.2f", 0.0));
         Assert.assertEquals(split[1], String.format("%.2f", 0.0));
+    }
+
+    @Test
+    public void testFinalizeRawMQ(){
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, "2000")
+                .attribute(VCFConstants.DEPTH_KEY, 20)
+                .make();
+        final VariantContext output = new RMSMappingQuality().finalizeRawMQ(vc);
+        Assert.assertFalse(output.hasAttribute( GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
+        Assert.assertTrue(output.hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY));
+        Assert.assertEquals(output.getAttributeAsDouble(VCFConstants.RMS_MAPPING_QUALITY_KEY, -1.0), 10.0, 0.01);
+    }
+
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testBadRawMQ(){
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, "fiftyeight")
+                .make();
+        new RMSMappingQuality().finalizeRawMQ(vc);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testNoDepth(){
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                .attribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY, "2000")
+                .make();
+        new RMSMappingQuality().finalizeRawMQ(vc);
+    }
+
+    @Test
+    public void testNoRawMQ(){
+        final String OTHER_KEY = "SOME_OTHER_ANNOTATION";
+        final String VALUE = "value";
+        final VariantContext vc = new VariantContextBuilder(makeVC())
+                    .attribute(OTHER_KEY, VALUE)
+                    .make();
+        final VariantContext output = new RMSMappingQuality().finalizeRawMQ(vc);
+        Assert.assertFalse(output.hasAttribute(VCFConstants.RMS_MAPPING_QUALITY_KEY));
+        Assert.assertFalse(output.hasAttribute(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY));
+        Assert.assertEquals(output.getAttribute(OTHER_KEY), VALUE);
     }
 }

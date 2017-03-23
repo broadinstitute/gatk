@@ -3,10 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -96,4 +98,70 @@ public final class RMSMappingQuality extends InfoFieldAnnotation implements Stan
     public List<VCFInfoHeaderLine> getDescriptions() {
         return Arrays.asList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)), GATKVCFHeaderLines.getInfoLine(getRawKeyName()));
     }
+
+    /**
+     * converts {@link GATKVCFConstants#RAW_RMS_MAPPING_QUALITY_KEY} into  {@link VCFConstants#RMS_MAPPING_QUALITY_KEY}  annotation if present
+     * @param vc which potentially contains rawMQ
+     * @return if vc contained {@link GATKVCFConstants#RAW_RMS_MAPPING_QUALITY_KEY} it will be replaced with {@link VCFConstants#RMS_MAPPING_QUALITY_KEY}
+     * otherwise return the original vc
+     */
+    public VariantContext finalizeRawMQ(final VariantContext vc) {
+        final String rawMQdata = vc.getAttributeAsString(getRawKeyName(), null);
+        if (rawMQdata == null) {
+            return vc;
+        } else {
+            final double squareSum = parseRawDataString(rawMQdata);
+            final String finalizedRMSMAppingQuality = makeFinalizedAnnotationString(vc, squareSum);
+            final VariantContext result = new VariantContextBuilder(vc)
+                    .rmAttribute(getRawKeyName())
+                    .attribute(getKeyNames().get(0), finalizedRMSMAppingQuality)
+                    .make();
+            return result;
+        }
+    }
+
+    private static double parseRawDataString(String rawDataString) {
+        try {
+            final double squareSum = Double.parseDouble(rawDataString.split(",")[0]);
+            return squareSum;
+        } catch (final NumberFormatException e){
+            throw new UserException.BadInput("malformed " + GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_KEY +" annotation: " + rawDataString);
+        }
+
+    }
+
+
+    private static String makeFinalizedAnnotationString(final VariantContext vc, final double squareSum) {
+        final int numOfReads = getNumOfReads(vc);
+        return formatedValue(Math.sqrt(squareSum /numOfReads));
+    }
+
+    /**
+     *
+     * @return the number of reads at the vc position (-1 if all read data is null)
+     */
+    private static int getNumOfReads(final VariantContext vc) {
+        //don't use the full depth because we don't calculate MQ for reference blocks
+        int numOfReads = vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, -1);
+        if(vc.hasGenotypes()) {
+            for(final Genotype gt : vc.getGenotypes()) {
+                if(gt.isHomRef()) {
+                    //site-level DP contribution will come from MIN_DP for gVCF-called reference variants or DP for BP resolution
+                    if (gt.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) {
+                        numOfReads -= Integer.parseInt(gt.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY).toString());
+                    }
+                    else if (gt.hasDP()) {
+                        numOfReads -= gt.getDP();
+                    }
+                }
+            }
+        }
+        if (numOfReads <= 0){
+            throw new UserException.BadInput("Cannot calculate Root Mean Square Mapping Quality if there are 0 or less reads." +
+                                                     "\nNumber of reads recorded as :" +numOfReads +
+                                                     "\nIn VariantContext: "+ vc.toStringDecodeGenotypes());
+        }
+        return numOfReads;
+    }
+
 }
