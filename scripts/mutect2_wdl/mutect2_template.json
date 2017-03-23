@@ -24,5 +24,6 @@
   "Mutect2.m2_docker": "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4",
   "Mutect2.oncotator_docker": "broadinstitute/oncotator:1.9.2.0",
   "Mutect2.preemptible_attempts": 2,
-  "Mutect2.artifact_modes": ["G/T"]
+  "Mutect2.artifact_modes": ["G/T", "C/T"],
+  "Mutect2.picard_jar": "$__picard_jar__"
 }

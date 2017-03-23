@@ -1,3 +1,9 @@
+/scripts/docker/cromwell-workflow-logs
+/scripts/docker/cromwell-executions
+/scripts/docker/test_m2_wdl.metadata
+/scripts/docker/mutect2.wdl
+/test_m2_wdl_multi_mod.json
+/mutect2.wdl
 /scripts/docker/clone_repo.sh
 /scripts/docker/checkout_tag.sh
 /scripts/docker/GITHUB_TAG

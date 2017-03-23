@@ -5,9 +5,10 @@ jdk:
 - oraclejdk8
 env:
   matrix:
-  - RUN_CROMWELL=true TEST_DOCKER=false
-  - RUN_CROMWELL=false TEST_DOCKER=false
-  - RUN_CROMWELL=false TEST_DOCKER=true
+  - RUN_ACNV_WDL=true TEST_DOCKER=false RUN_M2_WDL=false
+  - RUN_ACNV_WDL=false TEST_DOCKER=false RUN_M2_WDL=false
+  - RUN_ACNV_WDL=false TEST_DOCKER=true RUN_M2_WDL=false
+  - RUN_ACNV_WDL=false TEST_DOCKER=false RUN_M2_WDL=true
   global:
   #limit gradle jvm memory usage
   - GRADLE_OPTS=-Xmx512m
@@ -27,21 +28,32 @@ before_install:
 # Install git-lfs, and fetch the large test files
 - sudo bash scripts/install_git_lfs.sh
 # Download cromwell jar 
-- if [[ $RUN_CROMWELL == true ]]; then
+- if [[ $RUN_ACNV_WDL == true ]]; then
     wget -O ~/cromwell-0.19.3.jar https://github.com/broadinstitute/cromwell/releases/download/0.19.3/cromwell-0.19.3.jar;
+  fi
+- if [[ $RUN_M2_WDL == true ]]; then
+    wget -O ~/cromwell-0.25.jar https://github.com/broadinstitute/cromwell/releases/download/25/cromwell-25.jar;
+    wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
   fi
 
 install:
-- if [[ $RUN_CROMWELL == true ]]; then 
+- if [[ $RUN_ACNV_WDL == true ]]; then 
     ./gradlew shadowJar;
+  elif [[$RUN_M2_WDL == true ]]; then
+    ./gradlew shaowJar;
   elif [[$TEST_DOCKER == false ]]; then
     ./gradlew assemble;
   fi 
 
 script:
-- if [[ $RUN_CROMWELL == true ]]; then
+- echo "Branch  ${TRAVIS_BRANCH}"
+- echo `git rev-parse ${TRAVIS_BRANCH}`
+
+- if [[ $RUN_ACNV_WDL == true ]]; then
     echo "Running ACNV pipeline";
     bash scripts/acnv_cromwell_tests/run_acnv_pipelines.sh;
+  elif [[ $RUN_M2_WDL == true ]]; then
+    sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
     echo "Building docker image with unit tests...";
     cd scripts/docker/;
@@ -51,7 +63,7 @@ script:
   fi
 
 after_success:
-- if [[ $RUN_CROMWELL == false ]] && [[ $TEST_DOCKER == false ]]; then
+- if [[ $RUN_ACNV_WDL == false ]] && [[ $TEST_DOCKER == false ]] && [[ $RUN_M2_WDL == false ]]; then
     ./gradlew jacocoTestReport coveralls;
   fi
 

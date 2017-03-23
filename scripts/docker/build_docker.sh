@@ -10,13 +10,14 @@ REPO_PRJ=${REPO}/${PROJECT}
 #################################################
 # Parsing arguments
 #################################################
-while getopts "e:pslr" option; do
+while getopts "e:pslru" option; do
 	case "$option" in
 		e) GITHUB_TAG="$OPTARG" ;;
 		p) IS_PUSH=true ;;
 		s) IS_HASH=true ;;
 		l) IS_NOT_LATEST=true ;;
 		r) IS_NOT_REMOVE_UNIT_TEST_CONTAINER=true ;;
+		u) IS_NOT_RUN_UNIT_TESTS=true ;;
 	esac
 done
 
@@ -30,6 +31,7 @@ Optional arguments:  \n \
 \t\t Unless -l is specified, this will also push this image to the 'latest' tag. \n \
 -s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  git hashes cannot be pushed as latest, so -l is implied.  \n \
 -l \t Do not also push the image to the 'latest' tag. \n \
+-u \t Do not run the unit tests. \n \
 -r \t Do not remove the unit test docker container.  This is useful for debugging failing unit tests. \n" $0
 	exit 1
 fi
@@ -73,15 +75,20 @@ else
 	docker build -t ${REPO_PRJ}:${GITHUB_TAG} --build-arg GITHUB_TAG=${GITHUB_TAG} .
 fi
 
-# Run unit tests
-echo "Running unit tests..."
-REMOVE_CONTAINER_STRING=" --rm "
-if [ -n "${IS_NOT_REMOVE_UNIT_TEST_CONTAINER}" ] ; then
-	REMOVE_CONTAINER_STRING=" "
+
+if [ -z "${IS_NOT_RUN_UNIT_TESTS}" ] ; then
+
+	# Run unit tests
+	echo "Running unit tests..."
+	REMOVE_CONTAINER_STRING=" --rm "
+	if [ -n "${IS_NOT_REMOVE_UNIT_TEST_CONTAINER}" ] ; then
+		REMOVE_CONTAINER_STRING=" "
+	fi
+
+	echo docker run ${REMOVE_CONTAINER_STRING} -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+	docker run ${REMOVE_CONTAINER_STRING} -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
+	echo " Unit tests passed..."
 fi
-echo docker run ${REMOVE_CONTAINER_STRING} -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-docker run ${REMOVE_CONTAINER_STRING} -t ${REPO_PRJ}:${GITHUB_TAG} bash /root/run_unit_tests.sh
-echo " Unit tests passed..."
 
 ## Push
 if [ -n "${IS_PUSH}" ]; then
