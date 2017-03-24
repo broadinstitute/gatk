@@ -27,7 +27,7 @@ download and use an appropriate gradle version automatically.
 #### R Required Packages
 R packages can be installed using the install_R_packages.R script inside the scripts directory.
 
-##Building GATK4
+## Building GATK4
 
 * To do a fast build that lets you run GATK tools from within a git clone locally (but not on a cluster), run:
         
@@ -54,7 +54,7 @@ R packages can be installed using the install_R_packages.R script inside the scr
 
         ./gradlew clean
         
-##Running GATK4
+## Running GATK4
 
 * The standard way to run GATK4 tools is via the **`gatk-launch`** wrapper script located in the root directory of a clone of this repository.
     * Requires Python 2.6 or greater.
@@ -112,7 +112,7 @@ R packages can be installed using the install_R_packages.R script inside the scr
     
 * **See the [GATK4 public README](https://github.com/broadinstitute/hellbender/blob/master/README.md) for full instructions on using `gatk-launch` to run tools on a Spark/Dataproc cluster.**
 
-##Testing GATK4
+## Testing GATK4
 
 * To run the tests, run **`./gradlew test`**.
     * Test report is in `build/reports/tests/test/index.html`. 
