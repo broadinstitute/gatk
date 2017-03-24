@@ -123,9 +123,9 @@ public class SVVariantConsensusCallUnitTest extends BaseTest {
         final Map<String, Object> attributeMap =
                 SVVariantConsensusCall.getEvidenceRelatedAnnotations(Collections.singletonList(new ChimericAlignment(region1, region2, contigSeq, Collections.emptyList())));
 
-        Assert.assertEquals(((String)attributeMap.get(GATKSVVCFHeaderLines.MAPPING_QUALITIES)).split(GATKSVVCFHeaderLines.FORMAT_FIELD_SEPARATOR),
+        Assert.assertEquals(((String)attributeMap.get(GATKSVVCFHeaderLines.MAPPING_QUALITIES)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
                             expectedMappingQualitiesAsStrings);
-        Assert.assertEquals(((String)attributeMap.get(GATKSVVCFHeaderLines.ALIGN_LENGTHS)).split(GATKSVVCFHeaderLines.FORMAT_FIELD_SEPARATOR),
+        Assert.assertEquals(((String)attributeMap.get(GATKSVVCFHeaderLines.ALIGN_LENGTHS)).split(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR),
                             expectedAlignmentLengthsAsStrings);
     }
 
