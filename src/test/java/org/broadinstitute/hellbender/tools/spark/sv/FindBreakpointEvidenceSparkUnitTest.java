@@ -20,7 +20,7 @@ import java.util.*;
 
 public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private static final SVInterval[] testIntervals =
-            { new SVInterval(1, 33140528, 33141497), new SVInterval(1, 33143116, 33143539) };
+            { new SVInterval(1, 33140934, 33141485), new SVInterval(1, 33143116, 33143539) };
 
     private final String toolDir = getToolTestDataDir();
     private final String readsFile = toolDir+"SVBreakpointsTest.bam";

@@ -46,7 +46,18 @@ public class ReadClassifierTest extends BaseTest {
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.SameStrandPair(read, readMetadata)));
         read.setIsReverseStrand(true);
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.OutiesPair(read, readMetadata)));
+        read.setMatePosition(read.getContig(), read.getStart() + 2);
+        checkClassification(classifier, read, Collections.emptyList());
+
+        read.setMatePosition(read.getContig(), read.getStart() + 2 + ReadClassifier.ALLOWED_SHORT_FRAGMENT_OVERHANG);
+        checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.OutiesPair(read, readMetadata)));
+
         read.setIsReverseStrand(false);
+        read.setMateIsReverseStrand(true);
+        read.setMatePosition(read.getContig(), read.getStart() - 2);
+        checkClassification(classifier, read, Collections.emptyList());
+        read.setIsReverseStrand(false);
+
         read.setMatePosition(header.getSequenceDictionary().getSequence(1).getSequenceName(), rightStart);
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.InterContigPair(read, readMetadata)));
     }
