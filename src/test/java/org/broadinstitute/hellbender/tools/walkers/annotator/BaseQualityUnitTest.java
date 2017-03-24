@@ -32,7 +32,7 @@ public class BaseQualityUnitTest {
         final VariantContext vc = new VariantContextBuilder("source", "5", variantSite, variantSite, alleles).make();
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList("SAMPLE");
 
-        //7 reads
+        //7 reads of length = 3 -- the middle base is at the variant position
         final Map<String, List<GATKRead>> readMap = new LinkedHashMap<>();
         final List<GATKRead> reads = new ArrayList<>();
         final byte[] quals = new byte[]{30, 30, 30, 30, 25, 25, 25};
