@@ -35,7 +35,7 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = "enable_strand_artifact_filter", optional = true, doc = "turn on strand artifact filter")
     public boolean ENABLE_STRAND_ARTIFACT_FILTER = false;
 
-    @Argument(fullName = "maxAltAlleles", optional = true, doc="filter variants with too many alt alleles")
+    @Argument(fullName = "maxAltAllelesThreshold", optional = true, doc="filter variants with too many alt alleles")
     public int numAltAllelesThreshold = 1;
 
     @Argument(fullName = "maxEventsInHaplotype", optional = true, doc="Variants coming from a haplotype with more than this many events are filtered")

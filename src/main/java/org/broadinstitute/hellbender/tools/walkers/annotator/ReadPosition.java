@@ -17,7 +17,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import java.util.*;
 
 /**
- * Created by davidben on 3/20/17.
+ * Created by David Benjamin on 3/20/17.
  */
 public class ReadPosition extends InfoFieldAnnotation {
     public static final String REFERENCE_MEDIAN_POSITION_KEY = "REF_MED_POS";
