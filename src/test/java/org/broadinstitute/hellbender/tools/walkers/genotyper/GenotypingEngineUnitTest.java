@@ -19,35 +19,39 @@ import org.testng.Assert;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class GenotypingEngineUnitTest extends BaseTest {
 
-    private GenotypingEngine<UnifiedArgumentCollection> genotypingEngine;
-    private final Allele refAllele = Allele.create("TCCTTCCTTCCCTCCCTCCCTC", true);
-    private final Allele altT = Allele.create("T");
-    private List<Allele> allelesDel;
-    private  final List<Allele> gtAlleles = GATKVariantContextUtils.noCallAlleles(2);
+    private static final Allele refAllele = Allele.create("TCCTTCCTTCCCTCCCTCCCTC", true);
+    private static final Allele altT = Allele.create("T");
+    private static final List<Allele> allelesDel = Collections.unmodifiableList(Arrays.asList(refAllele,
+                                                                                           Allele.create("TCTTTCCTTCCCTCCCTCCCTCCCTCCCTTCCTTCCCTCCCTCCCTC"),
+                                                                                           Allele.create("TCCCTCCCTCCCTTCCTTCCCTCCCTCCCTC"),
+                                                                                           altT,
+                                                                                           GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
+
+    private static final List<Allele> gtAlleles = GATKVariantContextUtils.noCallAlleles(2);
+    private static final SampleList SAMPLES = new IndexedSampleList("test");
+
+    private GenotypingEngine<?> genotypingEngine;
+    private static final Allele refA = Allele.create("A", true);
 
     @BeforeTest
     public void init() {
-        final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
-        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
-        uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
-        final SampleList samples = new IndexedSampleList("test");
-        genotypingEngine = new MinimalGenotypingEngine(uac, samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
-
-        allelesDel = new ArrayList<>(Arrays.asList(refAllele,
-                Allele.create("TCTTTCCTTCCCTCCCTCCCTCCCTCCCTTCCTTCCCTCCCTCCCTC"),
-                Allele.create("TCCCTCCCTCCCTTCCTTCCCTCCCTCCCTC"),
-                altT,
-                GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
-
+        genotypingEngine = getGenotypingEngine();
         final int deletionSize = refAllele.length() - altT.length();
-
         final int start = 1;
         final VariantContext deletionVC = new VariantContextBuilder("testDeletion", "1", start, start + deletionSize, allelesDel).make();
         genotypingEngine.recordDeletion(deletionSize, deletionVC);
+    }
+
+    private static GenotypingEngine<?> getGenotypingEngine() {
+        final GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
+        final UnifiedArgumentCollection uac = new UnifiedArgumentCollection();
+        uac.genotypeArgs = new GenotypeCalculationArgumentCollection(genotypeArgs);
+        return new MinimalGenotypingEngine(uac, SAMPLES, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
     }
 
     @DataProvider(name="testCoveredByDeletionData")
@@ -88,5 +92,19 @@ public class GenotypingEngineUnitTest extends BaseTest {
                 genotypes(genotypesSpanDel).make();
         final VariantContext vcOut1 = genotypingEngine.calculateGenotypes(vcSpanDel, GenotypeLikelihoodsCalculationModel.INDEL, null);
         Assert.assertFalse(vcOut1.getAlleles().contains(Allele.SPAN_DEL));
+    }
+
+    @Test //test for https://github.com/broadinstitute/gatk/issues/2530
+    public void testNoIndexOutOfBoundsExceptionWhenSubsettingToNoAlleles(){
+        final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA, altT))
+                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, altT))).make();
+        getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null);
+    }
+
+    @Test
+    public void testGenotypesWithNonRefSymbolicAllelesAreNotNulled(){
+        final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))).make();
+        Assert.assertNotNull(getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null));
     }
 }
