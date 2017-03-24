@@ -55,8 +55,10 @@ script:
   elif [[ $RUN_M2_WDL == true ]]; then
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
-    echo "Building docker image with unit tests...";
-    cd scripts/docker/;
+    echo "Building docker image with unit tests..." ;
+    echo "${TRAVIS_BRANCH}" ;
+    cp -rfp scripts/docker/Dockerfile . ;
+    cp -rfp scripts/docker/build_docker.sh . ;
     sudo bash build_docker.sh  -e `git rev-parse ${TRAVIS_BRANCH}` -s;
   else
     ./gradlew check;

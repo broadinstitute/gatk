@@ -1,3 +1,4 @@
+#JENKINS expects this file to be copied as Dockerfile to the root of the repo when Jenkins job is run for building
 FROM ubuntu:14.04
 
 ## Not supported by docker-compose
@@ -77,13 +78,12 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
 #  This Dockerfile is getting the specified tag of gatk4-protected
 #  This Dockerfile generates a jar file that will work without spark or in spark standalone.  Not on a spark cluster.
 
-RUN git clone https://github.com/broadinstitute/gatk-protected.git
-
 # Install R dependencies and build the shadowJar
 ENV GITHUB_TAG ${GITHUB_TAG}
 ENV GITHUB_DIR ${GITHUB_DIR}
+RUN mkdir -p /root/gatk-protected/
+COPY . /root/gatk-protected/
 WORKDIR /root/gatk-protected/
-RUN git checkout ${GITHUB_DIR}${GITHUB_TAG}
 RUN Rscript /root/gatk-protected/scripts/install_R_packages.R
 RUN ./gradlew clean compileTestJava shadowJar
 
