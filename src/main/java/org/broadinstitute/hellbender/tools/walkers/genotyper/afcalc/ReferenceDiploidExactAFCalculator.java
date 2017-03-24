@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 
@@ -25,7 +26,7 @@ public final class ReferenceDiploidExactAFCalculator extends ExactAFCalculator {
         Utils.nonNull(stateTracker, "stateTracker is null");
         final int numAlternateAlleles = vc.getNAlleles() - 1;
 
-        final List<double[]> genotypeLikelihoods = getGLs(vc.getGenotypes(), true);
+        final List<double[]> genotypeLikelihoods = getGLs(vc.getGenotypes(), true, vc.hasAllele(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE));
         final int numSamples = genotypeLikelihoods.size()-1;
         final int numChr = 2*numSamples;
 

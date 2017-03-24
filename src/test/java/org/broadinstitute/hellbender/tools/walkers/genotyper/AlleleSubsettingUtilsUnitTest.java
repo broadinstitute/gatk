@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
@@ -35,7 +36,10 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
 
         final GenotypesContext oldGs = selectedVCwithGTs.getGenotypes();
         final GenotypesContext actual = selectedVCwithGTs.getNAlleles() == originalVC.getNAlleles() ? oldGs :
-                                        AlleleSubsettingUtils.subsetAlleles(oldGs, 0, originalVC.getAlleles(), selectedVCwithGTs.getAlleles(), GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+                                        AlleleSubsettingUtils.subsetAlleles(oldGs, 0, originalVC.getAlleles(),
+                                                                            selectedVCwithGTs.getAlleles(),
+                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES,
+                                                                            originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0));
 
         Assert.assertEquals(actual.size(), expectedGenotypes.size());
         for ( final Genotype expected : expectedGenotypes ) {
@@ -216,4 +220,17 @@ public class AlleleSubsettingUtilsUnitTest extends BaseTest {
         Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 0, 2));
         Assert.assertThrows(IllegalArgumentException.class, () -> AlleleSubsettingUtils.calculateMostLikelyAlleles(vc, 2, 0));
     }
+
+    @Test
+    public void testUninformativePLsAreKeptWhenDepthIsNotZero(){
+        final Allele Aref = Allele.create("A", true);
+        final List<Allele> alleles = Arrays.asList(Aref);
+        final Genotype uniformativePL = new GenotypeBuilder("sample", alleles).PL(new int[] {0}).make();
+        final GenotypesContext result  = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(uniformativePL), 2,
+                                                                      alleles, alleles, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, 10 );
+        final Genotype genotype = result.get(0);
+        Assert.assertTrue(genotype.hasPL());
+        Assert.assertEquals(genotype.getPL(), new int[]{0});
+    }
+
 }
