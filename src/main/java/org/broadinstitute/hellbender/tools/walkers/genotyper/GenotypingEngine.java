@@ -246,7 +246,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
 
         final AFCalculator afCalculator = configuration.genotypeArgs.USE_NEW_AF_CALCULATOR ? newAFCalculator
                 : afCalculatorProvider.getInstance(vc,defaultPloidy,maxAltAlleles);
-        final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy,maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
+        final AFCalculationResult AFresult = afCalculator.getLog10PNonRef(reducedVC, defaultPloidy, maxAltAlleles, getAlleleFrequencyPriors(vc,defaultPloidy,model));
         final OutputAlleleSubset outputAlternativeAlleles = calculateOutputAlleleSubset(AFresult, vc);
 
         // posterior probability that at least one alt allele exists in the samples
@@ -264,10 +264,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
 
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
-        //skip this if we are already looking at a vc with a NON_REF allele i.e. if we are in GenotypeGVCFs
+        // skip this if we are already looking at a vc with a NON_REF allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
                 && !forceSiteEmission()
-                && outputAlternativeAlleles.alleles.get(0) != GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE) {
+                && !outputAlternativeAlleles.alleles.contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
             // technically, at this point our confidence in a reference call isn't accurately estimated
             //  because it didn't take into account samples with no data, so let's get a better estimate
             final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
