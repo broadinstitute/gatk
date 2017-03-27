@@ -97,7 +97,7 @@ public class GenotypingEngineUnitTest extends BaseTest {
     @Test //test for https://github.com/broadinstitute/gatk/issues/2530
     public void testNoIndexOutOfBoundsExceptionWhenSubsettingToNoAlleles(){
         final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA, altT))
-                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, altT))).make();
+                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, refA))).make();
         getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null);
     }
 
