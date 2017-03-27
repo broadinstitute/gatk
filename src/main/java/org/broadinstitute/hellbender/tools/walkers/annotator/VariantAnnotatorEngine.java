@@ -242,20 +242,21 @@ public final class VariantAnnotatorEngine {
      * @param ref the reference context of the variant to annotate or null if there is none
      * @param likelihoods likelihoods indexed by sample, allele, and read within sample. May be null
      * @param addAnnot function that indicates if the given annotation type should be added to the variant
-     *
+     * @param annotGenotype function that indicates if the given genotype should be annotated
      */
     public VariantContext annotateContext(final VariantContext vc,
                                           final FeatureContext features,
                                           final ReferenceContext ref,
                                           final ReadLikelihoods<Allele> likelihoods,
-                                          final Predicate<VariantAnnotation> addAnnot) {
+                                          final Predicate<VariantAnnotation> addAnnot,
+                                          final Predicate<Genotype> annotGenotype) {
         Utils.nonNull(vc, "vc cannot be null");
         Utils.nonNull(features, "features cannot be null");
         Utils.nonNull(addAnnot, "addAnnot cannot be null");
 
         // annotate genotypes, creating another new VC in the process
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
-        builder.genotypes(annotateGenotypes(ref, vc, likelihoods, addAnnot));
+        builder.genotypes(annotateGenotypes(ref, vc, likelihoods, addAnnot, annotGenotype));
         final VariantContext newGenotypeAnnotatedVC = builder.make();
 
         final Map<String, Object> infoAnnotMap = new LinkedHashMap<>(newGenotypeAnnotatedVC.getAttributes());
@@ -282,10 +283,24 @@ public final class VariantAnnotatorEngine {
         return variantOverlapAnnotator.annotateOverlaps(features, variantOverlapAnnotator.annotateRsID(features, annotated));
     }
 
+    /**
+     * Annotates the given variant context for called Genotypes - adds all annotations that satisfy the predicate.
+     *
+     * @see #annotateContext(VariantContext, FeatureContext, ReferenceContext, ReadLikelihoods, Predicate, Predicate)
+     */
+    public VariantContext annotateContext(final VariantContext vc,
+                                          final FeatureContext features,
+                                          final ReferenceContext ref,
+                                          final ReadLikelihoods<Allele> likelihoods,
+                                          final Predicate<VariantAnnotation> addAnnot) {
+        return annotateContext(vc, features, ref, likelihoods, addAnnot, Genotype::isCalled);
+    }
+
     private GenotypesContext annotateGenotypes(final ReferenceContext ref,
                                                final VariantContext vc,
                                                final ReadLikelihoods<Allele> likelihoods,
-                                               final Predicate<VariantAnnotation> addAnnot) {
+                                               final Predicate<VariantAnnotation> addAnnot,
+                                               final Predicate<Genotype> annotGenotype) {
         if ( genotypeAnnotations.isEmpty() ) {
             return vc.getGenotypes();
         }
@@ -294,7 +309,7 @@ public final class VariantAnnotatorEngine {
         for ( final Genotype genotype : vc.getGenotypes() ) {
             final GenotypeBuilder gb = new GenotypeBuilder(genotype);
             for ( final GenotypeAnnotation annotation : genotypeAnnotations) {
-                if (addAnnot.test(annotation)) {
+                if (addAnnot.test(annotation) && annotGenotype.test(genotype)) {
                     annotation.annotate(ref, vc, genotype, gb, likelihoods);
                 }
             }
