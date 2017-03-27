@@ -52,8 +52,8 @@ public final class DepthPerSampleHC extends GenotypeAnnotation implements Standa
         Utils.nonNull(g);
         Utils.nonNull(gb);
 
-        if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn("Annotation will not be calculated, genotype is not called or alleleLikelihoodMap is null");
+        if ( likelihoods == null ) {
+            logger.warn("Annotation will not be calculated, alleleLikelihoodMap is null");
             return;
         }
 

@@ -47,7 +47,7 @@ public final class DepthPerAlleleBySample extends GenotypeAnnotation implements 
         Utils.nonNull(gb, "gb is null");
         Utils.nonNull(vc, "vc is null");
 
-        if ( g == null || !g.isCalled() || likelihoods == null) {
+        if ( g == null || likelihoods == null) {
             return;
         }
         final Set<Allele> alleles = new LinkedHashSet<>(vc.getAlleles());
