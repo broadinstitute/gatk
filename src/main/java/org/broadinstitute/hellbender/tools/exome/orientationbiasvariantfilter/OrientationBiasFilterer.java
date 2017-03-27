@@ -202,8 +202,14 @@ public class OrientationBiasFilterer {
         for (final VariantContext vc : preAdapterQAnnotatedVariants) {
             if (newGenotypes.containsKey(vc)) {
                 final GenotypesContext gcc = GenotypesContext.copy(vc.getGenotypes());
-                newGenotypes.get(vc).forEach(gcc::replace);
-                finalVariants.add(new VariantContextBuilder(vc).genotypes(gcc).make());
+                final List<Genotype> newGenotypesForThisVariantContext = newGenotypes.get(vc);
+                newGenotypesForThisVariantContext.forEach(gcc::replace);
+                final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(vc).genotypes(gcc);
+                if (newGenotypesForThisVariantContext.stream().anyMatch(g -> (g != null) && (g.getFilters() != null) && (g.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)))) {
+                    variantContextBuilder.filter(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT);
+                }
+                final VariantContext updatedVariantContext = variantContextBuilder.make();
+                finalVariants.add(updatedVariantContext);
             } else {
                 finalVariants.add(vc);
             }
@@ -344,6 +350,7 @@ public class OrientationBiasFilterer {
         headerLines.add(new VCFFormatHeaderLine(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_ARTIFACT_MODE, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Whether the variant can be one of the given REF/ALT artifact modes."));
         headerLines.add(new VCFFormatHeaderLine(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_RC_ARTIFACT_MODE, VCFHeaderLineCount.A, VCFHeaderLineType.String, "Whether the variant can be one of the given REF/ALT artifact mode complements."));
         headerLines.add(new VCFFormatHeaderLine(VCFConstants.GENOTYPE_FILTER_KEY, 1, VCFHeaderLineType.String, "Genotype-level filter"));
+        headerLines.add(new VCFFilterHeaderLine(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT, "Orientation bias (in one of the specified artifact mode(s) or complement) seen in one or more samples."));
         headerLines.add(new VCFSimpleHeaderLine("orientation_bias_artifact_modes", String.join("|", transitions), "The artifact modes that were used for orientation bias artifact filtering for this VCF"));
         headerLines.add(new VCFHeaderLine("command", commandLine));
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples());
