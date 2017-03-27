@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
 
 /**
  * An abstract ArgumentCollection for defining the set of read filter descriptor plugin arguments that are exposed to the user on the command line.
@@ -17,25 +16,17 @@ public abstract class GATKReadFilterArgumentCollection implements Serializable {
 
     /**
      * Returns the enabled filter names. Order should be honored.
-     *
-     * Default implementation returns an empty list.
      */
-    public Collection<String> getUserEnabledReadFilterNames() {
-        return Collections.emptyList();
-    }
+    public abstract List<String> getUserEnabledReadFilterNames();
 
     /**
      * Returns the disabled read filter names. Order should be honored.
-     *
-     * Default implementation returns an empty list.
      */
-    public Collection<String> getUserDisabledReadFilterNames() {
-        return Collections.emptyList();
-    }
+    public abstract List<String> getUserDisabledReadFilterNames();
 
     /**
      * Returns {@code true} if all default filters are disabled; {@code false} otherwise.
      */
-    public abstract boolean disableToolDefaultReadFilters();
+    public abstract boolean getDisableToolDefaultReadFilters();
 
 }

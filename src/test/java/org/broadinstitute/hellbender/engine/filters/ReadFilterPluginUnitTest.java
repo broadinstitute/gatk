@@ -349,7 +349,7 @@ public class ReadFilterPluginUnitTest {
         clp.parseArguments(nullMessageStream, args);
 
         GATKReadFilterPluginDescriptor readFilterPlugin = clp.getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
-        Assert.assertTrue(readFilterPlugin.userArgs.disableToolDefaultReadFilters());
+        Assert.assertTrue(readFilterPlugin.userArgs.getDisableToolDefaultReadFilters());
 
         // no instances because no readFilter was provided
         List<ReadFilter> readFilters = readFilterPlugin.getAllInstances();

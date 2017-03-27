@@ -6,7 +6,8 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import java.util.*;
 
 /**
- * {@link GATKReadFilterArgumentCollection} for optional read filters in the command line. It allows:
+ * Default {@link GATKReadFilterArgumentCollection} applied in GATK for optional read filters in the command line.
+ * It contains arguments that allow the user to:
  *
  * - Provide a list of read filters to apply.
  * - Disable some and/or all read filters.
@@ -31,21 +32,21 @@ public class DefaultGATKReadFilterArgumentCollection extends GATKReadFilterArgum
             doc = "Disable all tool default read filters", common = true, optional = true)
     public boolean disableToolDefaultReadFilters = false;
 
-    /** Returns a list with the read filters provided by the user, preserving the order. */
+    /** Returns the list with the read filters provided by the user, preserving the order. */
     @Override
-    public Collection<String> getUserEnabledReadFilterNames() {
+    public List<String> getUserEnabledReadFilterNames() {
         return userEnabledReadFilterNames;
     }
 
-    /** Returns a set of filters disabled by the user. */
+    /** Returns the set of filters disabled by the user. */
     @Override
-    public Collection<String> getUserDisabledReadFilterNames() {
+    public List<String> getUserDisabledReadFilterNames() {
         return userDisabledReadFilterNames;
     }
 
     /** {@inheritDoc}. */
     @Override
-    public boolean disableToolDefaultReadFilters() {
+    public boolean getDisableToolDefaultReadFilters() {
         return disableToolDefaultReadFilters;
     }
 

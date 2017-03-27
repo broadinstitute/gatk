@@ -37,7 +37,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     // the purpose of this argument collection is to allow the caller to control the exposure of the command line arguments
     @VisibleForTesting
     @ArgumentCollection
-    public GATKReadFilterArgumentCollection userArgs;
+    public final GATKReadFilterArgumentCollection userArgs;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
     private final Map<String, ReadFilter> allDiscoveredReadFilters = new HashMap<>();
@@ -320,7 +320,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      */
     public boolean isDisabledFilter(final String filterName) {
         return userArgs.getUserDisabledReadFilterNames().contains(filterName)
-                || (userArgs.disableToolDefaultReadFilters() && !userArgs.getUserEnabledReadFilterNames().contains(filterName));
+                || (userArgs.getDisableToolDefaultReadFilters() && !userArgs.getUserEnabledReadFilterNames().contains(filterName));
     }
 
     /**
@@ -375,7 +375,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         // on the command line
         // if --disableToolDefaultReadFilters is specified, just initialize an empty list with initial capacity of user filters
         final List<ReadFilter> finalFilters =
-                userArgs.disableToolDefaultReadFilters() ?
+                userArgs.getDisableToolDefaultReadFilters() ?
                         new ArrayList<>(userArgs.getUserEnabledReadFilterNames().size()) :
                         toolDefaultReadFilters.entrySet()
                                 .stream()
