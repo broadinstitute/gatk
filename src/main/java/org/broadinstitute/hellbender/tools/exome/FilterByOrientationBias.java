@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
                 " ALT_F1R2 and ALT_F2R1 tags must be present in all SNP variants.\n" +
                 " Do NOT specify artifact modes that are reverse complements of each other.  Behavior of this tool is undefined when that happens.  For example, do not specify C/A and G/T in the same run.\n" +
                 " Any variants that are filtered in the input file are not considered for filtering here, nor are these variants used in deciding cutoff.\n" +
+                " The Orientation Bias puts a filter tag in both the genotype (FORMAT) and variant (FILTER) fields.\n" +
                 " Common artifacts:\n G/T (OxoG)\n C/T (deamination) ",
         oneLineSummary = "Filter M2 Somatic VCFs using the Orientation Bias Filter.",
         programGroup = VariantProgramGroup.class

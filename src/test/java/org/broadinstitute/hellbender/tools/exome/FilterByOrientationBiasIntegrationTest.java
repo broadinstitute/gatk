@@ -52,17 +52,28 @@ public class FilterByOrientationBiasIntegrationTest extends CommandLineProgramTe
         Assert.assertTrue(FileUtils.sizeOf(outputFile) > 0);
         Assert.assertTrue(FileUtils.sizeOf(summaryFile) > 0);
 
-        // Make sure that every entry has a orientation_bias filter in the genotype on the TUMOR sample if G/T or C/A
+        boolean is_variant_context_tested = false;
+
+        // Make sure that every entry has a orientation_bias filter in the genotype on the TUMOR sample if G/T or C/A.
+        //  Also, make sure that the variant context has the filter as well.  Not just the genotypes.
         for (final VariantContext vc: variantContexts) {
             final Genotype tumorGenotype = vc.getGenotype("TUMOR");
             Assert.assertTrue((tumorGenotype.getFilters() == null) || (tumorGenotype.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT)) ||
                     !OrientationBiasUtils.isGenotypeInTransitionWithComplement(tumorGenotype, Transition.transitionOf('G', 'T')));
+
+            // If we see a filtered genotype, make sure the variant context was filtered as well.
+            if ((tumorGenotype.getFilters() != null) && (tumorGenotype.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT))) {
+                Assert.assertTrue(vc.getFilters().contains(OrientationBiasFilterConstants.IS_ORIENTATION_BIAS_CUT));
+                is_variant_context_tested = true;
+            }
 
             final Genotype normalGenotype = vc.getGenotype("NORMAL");
             Assert.assertTrue((normalGenotype.getFilters() == null)
                     || normalGenotype.getFilters().equals(VCFConstants.UNFILTERED)
                     || normalGenotype.getFilters().equals(VCFConstants.PASSES_FILTERS_v4));
         }
+
+        Assert.assertTrue(is_variant_context_tested, "Unit test may be broken.  Should have tested that variant context contained filter as well as genotype fields.");
 
         final List<OrientationSampleTransitionSummary> summaries = OrientationBiasUtils.readOrientationBiasSummaryTable(summaryFile);
         Assert.assertEquals(summaries.size(), 2);

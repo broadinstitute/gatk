@@ -179,7 +179,7 @@ public class OrientationBiasUtils {
                                          sampleTransitionPair.getRight().complement(),
                                          preAdapterScoreMap.getOrDefault(sampleTransitionPair.getRight(), OrientationBiasFilterer.PRE_ADAPTER_METRIC_NOT_ARTIFACT_SCORE),
                                          calculateNumTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
-                                         calculateNumTransitionFilteredByOrientationBias(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
+                                         calculateNumTransitionGenotypeFilteredByOrientationBias(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
                                          calculateNumNotTransition(sampleTransitionPair.getLeft(), variantContexts, sampleTransitionPair.getRight()),
                                          calculateUnfilteredNonRefGenotypeCount(variantContexts, sampleTransitionPair.getLeft())
                                  );
@@ -203,7 +203,7 @@ public class OrientationBiasUtils {
 
     /**
      * @param inputFile summary file written by {@link org.broadinstitute.hellbender.tools.exome.FilterByOrientationBias}
-     * @return
+     * @return list of the summaries that were read by this method
      */
     public static List<OrientationSampleTransitionSummary> readOrientationBiasSummaryTable (final File inputFile) {
         return readOrientationBiasSummaryTable(inputFile, OrientationBiasUtils::toOrientationSampleTransitionSummary);
@@ -270,7 +270,7 @@ public class OrientationBiasUtils {
 
     /** Includes complements */
     @VisibleForTesting
-    static long calculateNumTransitionFilteredByOrientationBias(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
+    static long calculateNumTransitionGenotypeFilteredByOrientationBias(final String sampleName, final List<VariantContext> variantContexts, final Transition transition) {
         final Transition complement = transition.complement();
         return getNumArtifactGenotypeStream(sampleName, variantContexts, transition, complement)
                 .filter(g -> (g != null) && (g.getFilters() != null)
