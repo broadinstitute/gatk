@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,8 +34,8 @@ public final class BwaSpark extends GATKSparkTool {
             fullName = "bwamemIndexImage")
     private String indexImageFile;
 
-    @Argument(doc = "do pairwise alignment", fullName = "pairedMode", optional = true)
-    private boolean pairedMode = true;
+    @Argument(doc = "do single-ended alignment", fullName = "singleEndedMode", optional = true)
+    private boolean singleEndedMode = false;
 
     @Override
     public boolean requiresReference() {
@@ -49,7 +50,7 @@ public final class BwaSpark extends GATKSparkTool {
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
         // 1) unmapped or neither secondary nor supplementary and 2) has some sequence
-        return Collections.singletonList(ReadFilterLibrary.PRIMARY_ALIGNMENT.and(ReadFilterLibrary.SEQ_IS_STORED));
+        return Arrays.asList(ReadFilterLibrary.PRIMARY_LINE, ReadFilterLibrary.SEQ_IS_STORED);
     }
 
     @Override
@@ -59,7 +60,7 @@ public final class BwaSpark extends GATKSparkTool {
                               indexImageFile,
                               getHeaderForReads(),
                               getReferenceSequenceDictionary(),
-                              pairedMode) ) {
+                              !singleEndedMode) ) {
             final JavaRDD<GATKRead> reads = engine.align(getReads());
 
             try {

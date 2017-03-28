@@ -147,7 +147,7 @@ public final class ReadFilterLibrary {
 
     //* this now tests for unmapped or neither secondary nor supplementary as its name suggests */
     @DocumentedFeature(groupName=HelpConstants.DOC_CAT_READFILTERS, groupSummary=HelpConstants.DOC_CAT_READFILTERS_SUMMARY)
-    public static class PrimaryAlignmentReadFilter extends ReadFilter {
+    public static class PrimaryLineReadFilter extends ReadFilter {
         private static final long serialVersionUID = 1L;
         @Override public boolean test(final GATKRead read) {
             return read.isUnmapped() || !(read.isSecondaryAlignment()||read.isSupplementaryAlignment());}}
@@ -208,7 +208,7 @@ public final class ReadFilterLibrary {
     public static final PairedReadFilter PAIRED = new PairedReadFilter();
     public static final ProperlyPairedReadFilter PROPERLY_PAIRED = new ProperlyPairedReadFilter();
     public static final PassesVendorQualityCheckReadFilter PASSES_VENDOR_QUALITY_CHECK = new PassesVendorQualityCheckReadFilter();
-    public static final PrimaryAlignmentReadFilter PRIMARY_ALIGNMENT = new PrimaryAlignmentReadFilter();
+    public static final PrimaryLineReadFilter PRIMARY_LINE = new PrimaryLineReadFilter();
     public static final ReadLengthEqualsCigarLengthReadFilter READLENGTH_EQUALS_CIGARLENGTH = new ReadLengthEqualsCigarLengthReadFilter();
     public static final SecondOfPairReadFilter SECOND_OF_PAIR = new SecondOfPairReadFilter();
     public static final SeqIsStoredReadFilter SEQ_IS_STORED = new SeqIsStoredReadFilter();

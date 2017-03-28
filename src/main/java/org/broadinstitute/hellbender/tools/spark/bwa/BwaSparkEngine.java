@@ -7,6 +7,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -45,7 +46,7 @@ public final class BwaSparkEngine implements AutoCloseable {
         Utils.nonNull(indexFileName);
         Utils.nonNull(inputHeader);
         if ( pairedMode && inputHeader.getSortOrder() != SAMFileHeader.SortOrder.queryname ) {
-            throw new GATKException("Input must be queryname sorted to use paired alignment mode.");
+            throw new UserException("Input must be queryname sorted unless you use single-ended alignment mode.");
         }
 
         this.ctx = ctx;
