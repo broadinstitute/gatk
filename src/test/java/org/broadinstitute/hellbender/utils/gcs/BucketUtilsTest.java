@@ -89,6 +89,13 @@ public final class BucketUtilsTest extends BaseTest {
     }
 
     @Test
+    public void testGetPathOnGcsDirectory() throws Exception {
+        final String dirPath = "gs://bucket/my/dir/";
+        final Path pathOnGcs = BucketUtils.getPathOnGcs(dirPath);
+        Assert.assertEquals(pathOnGcs.toUri().toString(), dirPath);
+    }
+
+    @Test
     public void testCopyAndDeleteHDFS() throws Exception {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");

@@ -390,7 +390,8 @@ public final class BucketUtils {
      * To transform other types of string URLs into Paths, use IOUtils.getPath instead.
      */
     public static java.nio.file.Path getPathOnGcs(String gcsUrl) {
-        final String[] split = gcsUrl.split("/");
+        // use a split limit of -1 to preserve empty split tokens, especially trailing slashes on directory names
+        final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
         return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);

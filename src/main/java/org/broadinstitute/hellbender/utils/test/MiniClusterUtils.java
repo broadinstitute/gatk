@@ -15,14 +15,27 @@ import java.util.UUID;
 public final class MiniClusterUtils {
 
     /**
+     * @return a new empty cluster with the given Configuration
+     * @throws IOException
+     */
+    public static MiniDFSCluster getMiniCluster(Configuration otherConf) throws IOException {
+        final File baseDir = BaseTest.createTempDir("minicluster_storage");
+        final Configuration configuration;
+        if (otherConf != null) {
+            configuration = new Configuration(otherConf);
+        } else {
+            configuration = new Configuration();
+        }
+        configuration.set(MiniDFSCluster.HDFS_MINIDFS_BASEDIR, baseDir.getAbsolutePath());
+        return new MiniDFSCluster.Builder(configuration).build();
+    }
+
+    /**
      * @return a new empty cluster
      * @throws IOException
      */
     public static MiniDFSCluster getMiniCluster() throws IOException {
-        final File baseDir = BaseTest.createTempDir("minicluster_storage");
-        final Configuration conf = new Configuration();
-        conf.set(MiniDFSCluster.HDFS_MINIDFS_BASEDIR, baseDir.getAbsolutePath());
-        return new MiniDFSCluster.Builder(conf).build();
+        return getMiniCluster(null);
     }
 
     /**
