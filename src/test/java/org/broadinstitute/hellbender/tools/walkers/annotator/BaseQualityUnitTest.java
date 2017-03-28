@@ -27,18 +27,19 @@ public class BaseQualityUnitTest {
         final List<Allele> alleles = Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false));
         final AlleleList<Allele> alleleList = new IndexedAlleleList<>(alleles);
 
-        // variant is a SNP at position 10
+        // variant is a SNP at position 20
+        final int chromosomeIndex = 5;
         final int variantSite = 20;
-        final VariantContext vc = new VariantContextBuilder("source", "5", variantSite, variantSite, alleles).make();
+        final VariantContext vc = new VariantContextBuilder("source", Integer.toString(chromosomeIndex), variantSite, variantSite, alleles).make();
         final org.broadinstitute.hellbender.utils.genotyper.SampleList sampleList = new IndexedSampleList("SAMPLE");
 
         //7 reads of length = 3 -- the middle base is at the variant position
         final Map<String, List<GATKRead>> readMap = new LinkedHashMap<>();
         final List<GATKRead> reads = new ArrayList<>();
         final byte[] quals = new byte[]{30, 30, 30, 30, 25, 25, 25};
-        for (int r = 0; r < 7; r++) {
+        for (int r = 0; r < quals.length; r++) {
             final GATKRead read = ArtificialReadUtils.createArtificialRead(SAM_HEADER,
-                    "RRR00" + r, 0, 19, "ACG".getBytes(), new byte[]{4, quals[r], 55}, "3M");
+                    "RRR00" + r, chromosomeIndex, 19, "ACG".getBytes(), new byte[]{4, quals[r], 55}, "3M");
             read.setMappingQuality(60);
             reads.add(read);
         }
