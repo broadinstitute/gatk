@@ -22,7 +22,7 @@ if [[ "${ROLE}" == 'Master' ]]; then
     hadoop distcp "$REFLOC"/* hdfs://"$NAME":8020/reference/ &
     hadoop distcp "$SAMPLE"/* hdfs://"$NAME":8020/data/
 else
-    if [[ "$REFLOC" =~ .+/ ]]; then
+    if [[ "$REFLOC" =~ .+/$ ]]; then
         mkdir -p /reference && gsutil -m cp "$REFLOC"*.img /reference/
     else
         mkdir -p /reference && gsutil -m cp "$REFLOC"/*.img /reference/
