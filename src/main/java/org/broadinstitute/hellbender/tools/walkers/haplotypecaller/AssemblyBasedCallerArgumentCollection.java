@@ -170,14 +170,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
     public byte minBaseQualityScore = 10;
 
     //Annotations
-    /**
-     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
-     * the VariantAnnotator -list argument to view available groups. Note that this usage is not recommended because
-     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
-     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
-     */
-    @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
-    public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{"StandardAnnotation", "StandardHCAnnotation"}));
+
 
     /**
      * Which annotations to exclude from output in the VCF file.  Note that this argument has higher priority than the

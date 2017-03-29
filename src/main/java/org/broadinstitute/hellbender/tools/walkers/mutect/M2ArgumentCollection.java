@@ -84,9 +84,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     @Argument(fullName = "strand_artifact_lod", optional = true, doc = "LOD threshold for calling strand bias")
     public float STRAND_ARTIFACT_LOD_THRESHOLD = 2.0f;
 
-    @Argument(fullName = "enable_clustered_read_position_filter", optional = true, doc = "turn on clustered read position filter")
-    public boolean ENABLE_CLUSTERED_READ_POSITION_FILTER = false;
-
     /**
      * Reads with mapping qualities below this threshold will be filtered out
      */
@@ -95,9 +92,19 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     /**
      * Which annotations to add to the output VCF file. See the VariantAnnotator -list argument to view available annotations.
-     * //TODO: port TandemRepeatAnnotator and put it here
      */
     @Advanced
     @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to apply to variant calls", optional = true)
-    protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"DepthPerAlleleBySample", "BaseQualitySumPerAlleleBySample", "OxoGReadCounts"}));
+    protected List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"Coverage", "DepthPerAlleleBySample",
+            "TandemRepeat", "OxoGReadCounts", "FisherStrand", "ClippingRankSumTest", "ReadPosition", "BaseQuality"}));
+
+    /**
+     * Which groups of annotations to add to the output VCF file. The single value 'none' removes the default group. See
+     * the VariantAnnotator -list argument to view available groups. Note that this usage is not recommended because
+     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
+     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     */
+    @Argument(fullName = "group", shortName = "G", doc = "One or more classes/groups of annotations to apply to variant calls", optional = true)
+    public List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{}));
+
 }

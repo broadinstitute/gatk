@@ -35,20 +35,11 @@ public class M2FiltersArgumentCollection extends AssemblyBasedCallerArgumentColl
     @Argument(fullName = "enable_strand_artifact_filter", optional = true, doc = "turn on strand artifact filter")
     public boolean ENABLE_STRAND_ARTIFACT_FILTER = false;
 
-    @Argument(fullName = "enable_clustered_read_position_filter", optional = true, doc = "turn on clustered read position filter")
-    public boolean ENABLE_CLUSTERED_READ_POSITION_FILTER = false;
+    @Argument(fullName = "maxAltAllelesThreshold", optional = true, doc="filter variants with too many alt alleles")
+    public int numAltAllelesThreshold = 1;
 
-    /**
-     * This argument is used for the M1-style read position filter
-     */
-    @Argument(fullName = "pir_median_threshold", optional = true, doc="threshold for clustered read position artifact median")
-    public double PIR_MEDIAN_THRESHOLD = 10;
-
-    /**
-     * This argument is used for the M1-style read position filter
-     */
-    @Argument(fullName = "pir_mad_threshold", optional = true, doc="threshold for clustered read position artifact MAD")
-    public double PIR_MAD_THRESHOLD = 3;
+    @Argument(fullName = "maxEventsInHaplotype", optional = true, doc="Variants coming from a haplotype with more than this many events are filtered")
+    public int maxEventsInHaplotype = 2;
 
     @Argument(shortName = "contaminationTable", fullName = "contaminationTable", optional = true, doc="Table containing contamination information.")
     public File contaminationTable = null;
