@@ -143,7 +143,7 @@ public class Main {
      */
     protected final void mainEntry(final String[] args) {
         final CommandLineProgram program = extractCommandLineProgram(args, getPackageList(), getClassList(), getCommandLineName());
-        final JFrame snpy = displaySnpy("I see you're trying to GATK, can I help?");
+        final JFrame snpy = displaySnpy("I see you're trying to "+ args[0] + ", can I help?");
         try {
             final Object result = runCommandLineProgram(program, args);
             handleResult(result);
@@ -421,7 +421,6 @@ public class Main {
         frame.setSize(img.getWidth()+50,img.getHeight()+50);
         frame.setVisible(true);
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        new Thread( frame.set)
         return frame;
     }
 
