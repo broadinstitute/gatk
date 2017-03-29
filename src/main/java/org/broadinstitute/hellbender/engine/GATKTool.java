@@ -20,10 +20,12 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -32,6 +34,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Base class for all GATK tools. Tool authors that wish to write a "GATK" tool but not use one of
@@ -184,6 +187,56 @@ public abstract class GATKTool extends CommandLineProgram {
         return hasReads() ?
                 readFilterPlugin.getMergedCountingReadFilter(getHeaderForReads()) :
                 new CountingReadFilter(ReadFilterLibrary.ALLOW_ALL_READS);
+    }
+
+    /**
+     * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before filtering.
+     * The default implementation uses the {@link ReadTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (ie override and call super).
+     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
+     */
+    public ReadTransformer makePreReadFilterTransformer() {
+        return ReadTransformer.identity();
+    }
+
+    /**
+     * Returns the post-filter read transformer (simple or composite) that will be applied to the reads after filtering.
+     * The default implementation uses the {@link ReadTransformer#identity()}.
+     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
+     * the transformer object to avoid object allocation.
+     *
+     * Subclasses can extend to provide own transformers (ie override and call super).
+     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
+     */
+    public ReadTransformer makePostReadFilterTransformer(){
+        return ReadTransformer.identity();
+    }
+
+
+    /**
+     * Returns a stream over the reads, which are:
+     *
+     * 1. Transformed with {@link #makePreReadFilterTransformer()}.
+     * 2. Filtered with {@code filter}.
+     * 3. Transformed with {@link #makePostReadFilterTransformer()}.
+     *
+     * Note: the filter is passed to keep the state of {@link CountingReadFilter}, obtained with {@link #makeReadFilter()}.
+     */
+    protected Stream<GATKRead> getTransformedReadStream(final ReadFilter filter) {
+        // if has reads, return an transformed/filtered/transformed stream
+        if (hasReads()) {
+            final ReadTransformer preTransformer = makePreReadFilterTransformer();
+            final ReadTransformer postTransformer = makePostReadFilterTransformer();
+            return Utils.stream(reads)
+                    .map(preTransformer)
+                    .filter(filter)
+                    .map(postTransformer);
+        }
+        // returns an empty Stream if there are no reads
+        return Stream.empty();
     }
 
     /**

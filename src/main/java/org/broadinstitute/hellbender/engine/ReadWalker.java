@@ -85,12 +85,7 @@ public abstract class ReadWalker extends GATKTool {
         // Process each read in the input stream.
         // Supply reference bases spanning each read, if a reference is available.
         final CountingReadFilter countedFilter = makeReadFilter();
-        final ReadTransformer preTransformer = makePreReadFilterTransformer();
-        final ReadTransformer postTransformer = makePostReadFilterTransformer();
-        Utils.stream(reads)
-                .map(preTransformer)
-                .filter(countedFilter)
-                .map(postTransformer)
+        getTransformedReadStream(countedFilter)
                 .forEach(read -> {
                     final SimpleInterval readInterval = getReadInterval(read);
                     apply(read,

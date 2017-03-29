@@ -9,7 +9,6 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.IntervalOverlappingIterator;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
@@ -111,32 +110,6 @@ public abstract class LocusWalker extends GATKTool {
     }
 
     /**
-     * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link ReadTransformer#identity()}.
-     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
-     * the transformer object to avoid object allocation.
-     *
-     * Subclasses can extend to provide own transformers (ie override and call super).
-     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
-     */
-    public ReadTransformer makePreReadFilterTransformer() {
-        return ReadTransformer.identity();
-    }
-
-    /**
-     * Returns the post-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link ReadTransformer#identity()}.
-     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
-     * the transformer object to avoid object allocation.
-     *
-     * Subclasses can extend to provide own transformers (ie override and call super).
-     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
-     */
-    public ReadTransformer makePostReadFilterTransformer(){
-        return ReadTransformer.identity();
-    }
-
-    /**
      * Marked final so that tool authors don't override it. Tool authors should override onTraversalStart() instead.
      */
     @Override
@@ -163,15 +136,8 @@ public abstract class LocusWalker extends GATKTool {
                                           .map(SAMReadGroupRecord::getSample)
                                           .collect(Collectors.toSet());
         final CountingReadFilter countedFilter = makeReadFilter();
-        // get the transformers
-        final ReadTransformer preTransformer = makePreReadFilterTransformer();
-        final ReadTransformer postTransformer = makePostReadFilterTransformer();
         // get the filter and transformed iterator
-        final Iterator<GATKRead> readIterator = Utils.stream(reads)
-                .map(preTransformer)
-                .filter(countedFilter)
-                .map(postTransformer)
-                .iterator();
+        final Iterator<GATKRead> readIterator = getTransformedReadStream(countedFilter).iterator();
         // get the LIBS
         final LocusIteratorByState libs = new LocusIteratorByState(readIterator, getDownsamplingInfo(), keepUniqueReadListInLibs(), samples, header, includeDeletions(), includeNs());
         // prepare the iterator
