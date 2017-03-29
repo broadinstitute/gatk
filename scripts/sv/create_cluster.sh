@@ -46,7 +46,7 @@ if [[ "$#" -eq 5 ]]; then
 else
     gsutil cp $5 $6
     INIT_ACTION=$6
-    if [[ "$INIT_ACTION" =~ .+/ ]]; then
+    if [[ "$INIT_ACTION" =~ .+/$ ]]; then
         INIT_ACTION+=$(basename $5)
     else
         INIT_ACTION+="/"
