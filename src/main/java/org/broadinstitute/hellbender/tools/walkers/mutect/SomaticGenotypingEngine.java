@@ -10,7 +10,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.AFCalculatorProvider;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
@@ -83,14 +82,12 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
      *
      * The list of samples we're working with is obtained from the readLikelihoods
      * @param readLikelihoods                       Map from reads->(haplotypes,likelihoods)
-     * @param perSampleFilteredReadList              Map from sample to reads that were filtered after assembly and before calculating per-read likelihoods.
      * @param activeRegionWindow                     Active window
      *
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      */
     public CalledHaplotypes callMutations(
             final ReadLikelihoods<Haplotype> readLikelihoods,
-            final Map<String, List<GATKRead>> perSampleFilteredReadList,
             final AssemblyResultSet assemblyResultSet,
             final ReferenceContext referenceContext,
             final SimpleInterval activeRegionWindow,
@@ -174,8 +171,7 @@ public class SomaticGenotypingEngine extends AssemblyBasedCallerGenotypingEngine
             }
 
             final VariantContext call = addGenotypes(hasNormal, allSomaticAlleles, readAlleleLikelihoods, tumorAlleleFractions, callVcb);
-            // how should we be making use of _perSampleFilteredReadList_?
-            readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
+            readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, Collections.emptyMap(),
                     false, alleleMapper, readAlleleLikelihoods, call);
 
             final VariantContext annotatedCall =  annotationEngine.annotateContext(call, featureContext, referenceContext, readAlleleLikelihoods, a -> true);
