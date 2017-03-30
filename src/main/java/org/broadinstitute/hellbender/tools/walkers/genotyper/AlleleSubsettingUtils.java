@@ -221,7 +221,20 @@ public final class AlleleSubsettingUtils {
                 .collect(Collectors.toList());
     }
 
-    private static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
+    /** the likelihood sum for an alt allele is the sum over all samples of:
+     *
+     * 1) the number of copies of that allele for the sample's most likely genotype i.e. genotypes AB and BB contribute
+     * 1 and 2 for allele B, respectively
+     *
+     * multiplied by
+     *
+     * 2) the GL difference between this best genotype and the hom ref genotype
+     *
+     * Since GLs are log likelihoods, this quantity is thus
+     * SUM_samples log(likelihood alt / likelihood ref) * # alt copies
+     */
+    @VisibleForTesting
+    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
             final double[] gls = genotype.getLikelihoods().getAsVector();
