@@ -12,7 +12,7 @@ import java.util.List;
 public class GenotypeUtilsUnitTest {
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
-
+    private static final double DELTA_PRECISION = .001;
 
 
     @DataProvider
@@ -55,17 +55,17 @@ public class GenotypeUtilsUnitTest {
         final GenotypesContext genotypes = GenotypesContext.create(genotypesArray);
 
         return new Object[][]{
-                {vc, genotypes, false, new GenotypeCounts(0, 9, 91)},
-                {vc, genotypes, true, new GenotypeCounts(0, 0, 100)},
+                {vc, genotypes, false, new GenotypeCounts(0.000, 9.091, 90.909)},
+                {vc, genotypes, true, new GenotypeCounts(0.000, 0.000, 100.000)},
         };
     }
 
     @Test(dataProvider = "getGenotypeCountsParameters")
     public void testRounding(VariantContext vc, GenotypesContext gt, boolean round, GenotypeCounts expected) {
         final GenotypeCounts actual = GenotypeUtils.computeDiploidGenotypeCounts(vc, gt, round);
-        Assert.assertEquals(actual.getRefs(), expected.getRefs());
-        Assert.assertEquals(actual.getHets(), expected.getHets());
-        Assert.assertEquals(actual.getHoms(), expected.getHoms());
+        Assert.assertEquals(actual.getRefs(), expected.getRefs(), DELTA_PRECISION);
+        Assert.assertEquals(actual.getHets(), expected.getHets(), DELTA_PRECISION);
+        Assert.assertEquals(actual.getHoms(), expected.getHoms(), DELTA_PRECISION);
     }
 
 
