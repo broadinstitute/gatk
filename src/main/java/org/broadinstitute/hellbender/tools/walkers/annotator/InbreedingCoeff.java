@@ -42,7 +42,7 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
-    private static final boolean ROUND_GENOTYPE_COUNTS = true;
+    private static final boolean ROUND_GENOTYPE_COUNTS = false;
     private final Set<String> founderIds;
 
     public InbreedingCoeff(){
