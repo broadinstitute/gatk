@@ -16,8 +16,17 @@ public final class GenotypeUtils {
     }
 
     /**
-     * Returns a triple of ref/het/hom genotype counts. Skips non-diploid genotypes.
+     * Returns a triple of ref/het/hom genotype "counts".
      *
+     * The exact meaning of the count is dependent on the rounding behavior.
+     * if {@code roundContributionFromEachGenotype}: the counts are discrete integer counts of the most probable genotype for each {@link Genotype}
+     * else: they are the sum of the normalized likelihoods of each genotype and will not be integers
+     *
+     * Skips non-diploid genotypes.
+     *
+     *
+     * @param vc the VariantContext that the {@link Genotype}s originated from, non-null
+     * @param genotypes a GenotypesContext containing genotypes to count, these must be a subset of {@code vc.getGenotypes()}, non-null
      * @param roundContributionFromEachGenotype if this is true, the normalized likelihood from each genotype will be rounded before
      *                                          adding to the total count
      */

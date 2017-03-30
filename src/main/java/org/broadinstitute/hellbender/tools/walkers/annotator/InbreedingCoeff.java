@@ -42,6 +42,7 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
+    private static final boolean ROUND_GENOTYPE_COUNTS = true;
     private final Set<String> founderIds;
 
     public InbreedingCoeff(){
@@ -74,7 +75,7 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
 
     @VisibleForTesting
     static Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
-        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, false);
+        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
 
         final double refCount = t.getRefs();
         final double hetCount = t.getHets();

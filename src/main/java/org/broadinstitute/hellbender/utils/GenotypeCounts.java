@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 public final class GenotypeCounts {
 
+    //These are doubles instead of ints to match GATK3
     private final double ref;
     private final double het;
     private final double hom;

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils;
 
 import htsjdk.variant.variantcontext.*;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GenotypeUtilsUnitTest {
+public class GenotypeUtilsUnitTest extends BaseTest {
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
     private static final double DELTA_PRECISION = .001;
@@ -17,18 +18,21 @@ public class GenotypeUtilsUnitTest {
 
     @DataProvider
     public Object[][] getGTsWithAndWithoutLikelihoods(){
-        final GenotypeBuilder builder = new GenotypeBuilder("sample", Arrays.asList(Aref, T));
         final List<Allele> DIPLOID_ALLELES = Arrays.asList(Aref, T);
         final List<Allele> HAPLOID_ALLELES = Arrays.asList(Aref);
         final int[] SOME_PLS = {0, 4, 1};
         final int[] HAPLOID_PL = {0, 4};
         return new Object[][]{
-                {builder.noPL().alleles(DIPLOID_ALLELES).make(), false},
-                {builder.noPL().alleles(HAPLOID_ALLELES).make(), false},
-                {builder.PL(HAPLOID_PL).alleles(HAPLOID_ALLELES).make(), false},
-                {builder.PL(SOME_PLS).alleles(DIPLOID_ALLELES).make(), true},
+                {getGenotypeBuilder().noPL().alleles(DIPLOID_ALLELES).make(), false},
+                {getGenotypeBuilder().noPL().alleles(HAPLOID_ALLELES).make(), false},
+                {getGenotypeBuilder().PL(HAPLOID_PL).alleles(HAPLOID_ALLELES).make(), false},
+                {getGenotypeBuilder().PL(SOME_PLS).alleles(DIPLOID_ALLELES).make(), true},
                 {GenotypeBuilder.createMissing("sample", 2), false}
         };
+    }
+
+    private static GenotypeBuilder getGenotypeBuilder() {
+        return new GenotypeBuilder("sample", Arrays.asList(Aref, T));
     }
 
     @Test(dataProvider = "getGTsWithAndWithoutLikelihoods")
@@ -49,7 +53,7 @@ public class GenotypeUtilsUnitTest {
                                                                         Arrays.asList(Aref, T)).make();
         final ArrayList<Genotype> genotypesArray = new ArrayList<>();
         for(int i = 0; i<100; i++){
-            final Genotype g = new GenotypeBuilder("sample" + i, Arrays.asList(Aref, T)).PL(new int[]{100,10,0}).make();
+            final Genotype g = new GenotypeBuilder("sample" + i, Arrays.asList(T, T)).PL(new int[]{100,10,0}).make();
             genotypesArray.add(g);
         }
         final GenotypesContext genotypes = GenotypesContext.create(genotypesArray);

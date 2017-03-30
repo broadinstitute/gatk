@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_InbreedingCoeff;
 import org.broadinstitute.hellbender.utils.GenotypeUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -14,7 +15,7 @@ import java.util.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public final class InbreedingCoeffUnitTest {
+public final class InbreedingCoeffUnitTest extends BaseTest {
     private static final double DELTA_PRECISION = 0.001;
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
@@ -459,13 +460,12 @@ public final class InbreedingCoeffUnitTest {
         final ArrayList<Genotype> genotypes = new ArrayList<>();
         final int numberOfSamples = 200;
         for(int i = 0; i< numberOfSamples; i++){
-            final Genotype g = new GenotypeBuilder("sample" + i, Arrays.asList(Aref, T)).PL(new int[]{40,10,0}).make();
+            final Genotype g = new GenotypeBuilder("sample" + i, Arrays.asList(T, T)).PL(new int[]{40,10,0}).make();
             Assert.assertTrue(GenotypeUtils.isDiploidWithLikelihoods(g));
             genotypes.add(g);
         }
 
-        final Pair<Integer, Double> sampleCountAndCoefficientPair = InbreedingCoeff.calculateIC(vc,
-                                                                                    GenotypesContext.create(genotypes));
+        final Pair<Integer, Double> sampleCountAndCoefficientPair = InbreedingCoeff.calculateIC(vc, GenotypesContext.create(genotypes));
         final int sampleCount = sampleCountAndCoefficientPair.getLeft();
         final double inbreedingCoefficient = sampleCountAndCoefficientPair.getRight();
         Assert.assertEquals(sampleCount, numberOfSamples);
