@@ -42,6 +42,7 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
 
     private static final Logger logger = LogManager.getLogger(InbreedingCoeff.class);
     private static final int MIN_SAMPLES = 10;
+    private static final boolean ROUND_GENOTYPE_COUNTS = false;
     private final Set<String> founderIds;
 
     public InbreedingCoeff(){
@@ -69,16 +70,16 @@ public final class InbreedingCoeff extends InfoFieldAnnotation implements Standa
             logger.warn("Annotation will not be calculated, must provide at least " + MIN_SAMPLES + " samples");
             return Collections.emptyMap();
         }
-        return Collections.singletonMap(getKeyNames().get(0), (Object) String.format("%.4f", F));
+        return Collections.singletonMap(getKeyNames().get(0), String.format("%.4f", F));
     }
 
     @VisibleForTesting
-    Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
-        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes);
+    static Pair<Integer, Double> calculateIC(final VariantContext vc, final GenotypesContext genotypes) {
+        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
 
-        final int refCount = t.getRefs();
-        final int hetCount = t.getHets();
-        final int homCount = t.getHoms();
+        final double refCount = t.getRefs();
+        final double hetCount = t.getHets();
+        final double homCount = t.getHoms();
         // number of samples that have likelihoods
         final int sampleCount = (int) genotypes.stream().filter(g-> GenotypeUtils.isDiploidWithLikelihoods(g)).count();
 

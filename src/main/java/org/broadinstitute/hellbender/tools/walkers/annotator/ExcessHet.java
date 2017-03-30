@@ -28,6 +28,8 @@ import java.util.Map;
  */
 public final class ExcessHet extends InfoFieldAnnotation implements StandardAnnotation {
     private static final double MIN_NEEDED_VALUE = 1.0E-16;
+    private static final boolean ROUND_GENOTYPE_COUNTS = true;
+    
     public static final double PHRED_SCALED_MIN_P_VALUE = -10.0 * Math.log10(MIN_NEEDED_VALUE);
 
     @Override
@@ -49,12 +51,12 @@ public final class ExcessHet extends InfoFieldAnnotation implements StandardAnno
     }
 
     @VisibleForTesting
-    Pair<Integer, Double> calculateEH(final VariantContext vc, final GenotypesContext genotypes) {
-        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes);
+    static Pair<Integer, Double> calculateEH(final VariantContext vc, final GenotypesContext genotypes) {
+        final GenotypeCounts t = GenotypeUtils.computeDiploidGenotypeCounts(vc, genotypes, ROUND_GENOTYPE_COUNTS);
 
-        final int refCount = t.getRefs();
-        final int hetCount = t.getHets();
-        final int homCount = t.getHoms();
+        final int refCount = (int)t.getRefs();
+        final int hetCount = (int)t.getHets();
+        final int homCount = (int)t.getHoms();
         // number of samples that have likelihoods
         final int sampleCount = (int) genotypes.stream().filter(g->GenotypeUtils.isDiploidWithLikelihoods(g)).count();
 

@@ -2,25 +2,26 @@ package org.broadinstitute.hellbender.utils;
 
 public final class GenotypeCounts {
 
-    private final int ref;
-    private final int het;
-    private final int hom;
+    //These are doubles instead of ints to match GATK3
+    private final double ref;
+    private final double het;
+    private final double hom;
 
-    public GenotypeCounts(final int ref, final int het, final int hom ){
+    public GenotypeCounts(final double ref, final double het, final double hom ){
         this.ref = ref;
         this.het = het;
         this.hom = hom;
     }
 
-    public int getRefs() {
+    public double getRefs() {
         return ref;
     }
 
-    public int getHets() {
+    public double getHets() {
         return het;
     }
 
-    public int getHoms() {
+    public double getHoms() {
         return hom;
     }
 

@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.variant.variantcontext.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_InbreedingCoeff;
+import org.broadinstitute.hellbender.utils.GenotypeUtils;
+import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.testng.Assert;
@@ -13,7 +15,7 @@ import java.util.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public final class InbreedingCoeffUnitTest {
+public final class InbreedingCoeffUnitTest extends BaseTest {
     private static final double DELTA_PRECISION = 0.001;
     private static final Allele Aref = Allele.create("A", true);
     private static final Allele T = Allele.create("T");
@@ -48,7 +50,7 @@ public final class InbreedingCoeffUnitTest {
                 makeG("s9",T,T,7099,2530,0,7099,366,3056,14931),
                 makeG("s10",Aref,T,2530,0,7099,366,3056,14931));
 
-        final Pair<Integer, Double> pair1 = new InbreedingCoeff().calculateIC(test1, test1.getGenotypes());
+        final Pair<Integer, Double> pair1 = InbreedingCoeff.calculateIC(test1, test1.getGenotypes());
         final int count1 = pair1.getLeft();
         final double ICresult1 = pair1.getRight();
         Assert.assertEquals(count1, 10, "count1");
@@ -67,7 +69,7 @@ public final class InbreedingCoeffUnitTest {
             makeG("s9",Aref,T,5732,0,10876,6394,11408,17802),
             makeG("s10",Aref,T,2780,0,25045,824,23330,30939));
 
-        final Pair<Integer, Double> pair2 = new InbreedingCoeff().calculateIC(test2, test2.getGenotypes());
+        final Pair<Integer, Double> pair2 = InbreedingCoeff.calculateIC(test2, test2.getGenotypes());
         final int count2 = pair2.getLeft();
         final double ICresult2 = pair2.getRight();
         Assert.assertEquals(ICresult2, -1.0, DELTA_PRECISION, "Pass");
@@ -195,7 +197,7 @@ public final class InbreedingCoeffUnitTest {
                 makeG("s9", T, T, 7099, 2530, 0, 7099, 366, 3056, 14931),
                 makeG("s10", Aref, T, 2530, 0, 7099, 366, 3056, 14931));
 
-        final Pair<Integer, Double> pair1 = new InbreedingCoeff().calculateIC(test1, test1.getGenotypes());
+        final Pair<Integer, Double> pair1 = InbreedingCoeff.calculateIC(test1, test1.getGenotypes());
         final int count1 = pair1.getLeft();
         final double ICresult1 = pair1.getRight();
         Assert.assertEquals(count1, 10, "count1");
@@ -215,7 +217,7 @@ public final class InbreedingCoeffUnitTest {
         int numHetGTs = 1;
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final Pair<Integer, Double> p1 = new InbreedingCoeff().calculateIC(singleton, singleton.getGenotypes());
+        final Pair<Integer, Double> p1 = InbreedingCoeff.calculateIC(singleton, singleton.getGenotypes());
         final double ICsingleton = p1.getRight();
         final int IC1 = p1.getLeft();
 
@@ -225,7 +227,7 @@ public final class InbreedingCoeffUnitTest {
         }
 
         final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final Pair<Integer, Double> p2 = new InbreedingCoeff().calculateIC(common, common.getGenotypes());
+        final Pair<Integer, Double> p2 = InbreedingCoeff.calculateIC(common, common.getGenotypes());
         final double ICcommon = p2.getRight();
         final int IC2 = p1.getLeft();
 
@@ -276,7 +278,7 @@ public final class InbreedingCoeffUnitTest {
         int numHetGTs = 1;
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(T, Aref), allGTs.toArray(new Genotype[allGTs.size()]));
-        final Pair<Integer, Double> p1 = new InbreedingCoeff().calculateIC(singleton, singleton.getGenotypes());
+        final Pair<Integer, Double> p1 = InbreedingCoeff.calculateIC(singleton, singleton.getGenotypes());
         final double ICsingleton = p1.getRight();
         final int IC1 = p1.getLeft();
 
@@ -286,7 +288,7 @@ public final class InbreedingCoeffUnitTest {
         }
 
         final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final Pair<Integer, Double> p2 = new InbreedingCoeff().calculateIC(common, common.getGenotypes());
+        final Pair<Integer, Double> p2 = InbreedingCoeff.calculateIC(common, common.getGenotypes());
         final double ICcommon = p2.getRight();
         final int IC2 = p1.getLeft();
 
@@ -319,7 +321,7 @@ public final class InbreedingCoeffUnitTest {
         int numHetGTs = 1;
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double ICsingleton = new InbreedingCoeff().calculateIC(singleton, singleton.getGenotypes()).getRight();
+        final double ICsingleton = InbreedingCoeff.calculateIC(singleton, singleton.getGenotypes()).getRight();
 
         for ( int i = numHetGTs; i < 100; i++ ) {
             allGTs.add(makeG("het" + i, Aref, T, hetPLs));
@@ -327,7 +329,7 @@ public final class InbreedingCoeffUnitTest {
         }
 
         final VariantContext hundredton = makeVC("hundredton", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double IChundredton = new InbreedingCoeff().calculateIC(hundredton, hundredton.getGenotypes()).getRight();
+        final double IChundredton = InbreedingCoeff.calculateIC(hundredton, hundredton.getGenotypes()).getRight();
 
         Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(IChundredton), String.format("singleton=%f hundredton=%f", ICsingleton, IChundredton));
 
@@ -335,7 +337,7 @@ public final class InbreedingCoeffUnitTest {
             allGTs.add(makeG("het" + i, Aref, T, hetPLs));
 
         final VariantContext common = makeVC("common", Arrays.asList(Aref, T), allGTs.toArray(new Genotype[allGTs.size()]));
-        final double ICcommon = new InbreedingCoeff().calculateIC(common, common.getGenotypes()).getRight();
+        final double ICcommon = InbreedingCoeff.calculateIC(common, common.getGenotypes()).getRight();
 
         Assert.assertTrue(Math.abs(IChundredton) < Math.abs(ICcommon), String.format("hundredton=%f common=%f", IChundredton, ICcommon));
     }
@@ -389,14 +391,14 @@ public final class InbreedingCoeffUnitTest {
         singletonGTs.add(makeG("het0", Aref, T, hetPLs));
 
         final VariantContext singleton = makeVC("singleton", Arrays.asList(Aref, T), singletonGTs.toArray(new Genotype[singletonGTs.size()]));
-        final double ICsingleton = new InbreedingCoeff().calculateIC(singleton, singleton.getGenotypes()).getRight();
+        final double ICsingleton = InbreedingCoeff.calculateIC(singleton, singleton.getGenotypes()).getRight();
 
         final List<Genotype> allHetGTs = new ArrayList<>();
         for ( int i = 0; i < numGTs; i++ )
             allHetGTs.add(makeG("het" + i, Aref, T, hetPLs));
 
         final VariantContext allHet = makeVC("allHet", Arrays.asList(Aref, T), allHetGTs.toArray(new Genotype[allHetGTs.size()]));
-        final double ICHets = new InbreedingCoeff().calculateIC(allHet, allHet.getGenotypes()).getRight();
+        final double ICHets = InbreedingCoeff.calculateIC(allHet, allHet.getGenotypes()).getRight();
 
         Assert.assertTrue(Math.abs(ICsingleton) < Math.abs(ICHets), String.format("singleton=%f allHets=%f", ICsingleton, ICHets));
     }
@@ -433,7 +435,6 @@ public final class InbreedingCoeffUnitTest {
         Assert.assertTrue(annotate.isEmpty());
     }
 
-
     @Test
     public void testTinyCohorts_AS() {
 
@@ -452,4 +453,23 @@ public final class InbreedingCoeffUnitTest {
     }
 
 
+    @Test
+    public void testRoundingIsntAppliedToEachGenotype() {
+        final VariantContext vc = new VariantContextBuilder("in memory", "1", 100, 100,
+                                                                 Arrays.asList(Aref, T)).make();
+        final ArrayList<Genotype> genotypes = new ArrayList<>();
+        final int numberOfSamples = 200;
+        for(int i = 0; i< numberOfSamples; i++){
+            final Genotype g = new GenotypeBuilder("sample" + i, Arrays.asList(T, T)).PL(new int[]{40,10,0}).make();
+            Assert.assertTrue(GenotypeUtils.isDiploidWithLikelihoods(g));
+            genotypes.add(g);
+        }
+
+        final Pair<Integer, Double> sampleCountAndCoefficientPair = InbreedingCoeff.calculateIC(vc, GenotypesContext.create(genotypes));
+        final int sampleCount = sampleCountAndCoefficientPair.getLeft();
+        final double inbreedingCoefficient = sampleCountAndCoefficientPair.getRight();
+        Assert.assertEquals(sampleCount, numberOfSamples);
+        final double expectedValueFromGATK3_7 = 0.0456;
+        Assert.assertEquals(inbreedingCoefficient, -0.0456, DELTA_PRECISION);
+    }
 }
