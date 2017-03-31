@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.engine.spark.datasources;
 
-import com.google.api.services.storage.Storage;
-import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import htsjdk.samtools.*;
@@ -22,10 +20,8 @@ import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.broadcast.Broadcast;
 import org.bdgenomics.formats.avro.AlignmentRecord;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;

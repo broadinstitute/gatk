@@ -108,7 +108,8 @@ public class BaseRecalibratorSparkSharded extends SparkCommandLineProgram {
         List<GATKVariant> variants = VariantsSource.getVariantsList(localVariants);
 
         // get reads, reference, variants
-        JavaRDD<ContextShard> readsWithContext = AddContextDataToReadSparkOptimized.add(ctx, intervals, bam, variants, auth, readFilterToApply, rds);
+        JavaRDD<ContextShard> readsWithContext = AddContextDataToReadSparkOptimized.add(ctx, intervals, bam, variants,
+            readFilterToApply, rds);
 
         // run BaseRecalibratorEngine.
         BaseRecalibratorEngineSparkWrapper recal = new BaseRecalibratorEngineSparkWrapper(readsHeaderBcast, refDictionaryBcast, bqsrArgs);
