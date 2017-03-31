@@ -263,7 +263,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
      * @param dst buffer to write into
      */
     @Override
-    public int read(ByteBuffer dst) throws IOException {
+    public synchronized int read(ByteBuffer dst) throws IOException {
         if (!open) throw new ClosedChannelException();
         try {
             if (trackTime) {
