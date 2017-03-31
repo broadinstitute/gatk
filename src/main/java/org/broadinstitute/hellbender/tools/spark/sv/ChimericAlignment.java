@@ -107,9 +107,9 @@ class ChimericAlignment {
         // then iterate over the AR's in pair to identify CA's.
         while ( iterator.hasNext() ) {
             final AlignmentRegion next = iterator.next();
-            if (firstAlignmentIsTooShort(current, next, SVConstants.CallingStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH)) {
+            if (firstAlignmentIsTooShort(current, next, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH)) {
                 continue;
-            } else if (nextAlignmentMayBeNovelInsertion(current, next, SVConstants.CallingStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH)) {
+            } else if (nextAlignmentMayBeNovelInsertion(current, next, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH)) {
                 if (iterator.hasNext()) {
                     insertionAlignmentRegions.add(next.toPackedString());
                     continue;
@@ -133,7 +133,7 @@ class ChimericAlignment {
 
     // TODO: 11/22/16 it might also be suitable to consider the reference context this alignment region is mapped to and not simply apply a hard filter (need to think about how to test)
     static boolean mapQualTooLow(final AlignmentRegion next) {
-        return next.mapQual < SVConstants.CallingStepConstants.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
+        return next.mapQual < SVConstants.DiscoveryStepConstants.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD;
     }
 
     @VisibleForTesting

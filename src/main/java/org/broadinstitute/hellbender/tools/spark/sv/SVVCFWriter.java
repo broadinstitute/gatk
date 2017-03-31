@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
@@ -33,13 +34,25 @@ class SVVCFWriter {
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
     static void writeVCF(final PipelineOptions pipelineOptions, final String outputPath, String vcfFileName,
-                         final String fastaReference, final JavaRDD<VariantContext> variantContexts) {
+                         final String fastaReference, final JavaRDD<VariantContext> variantContexts,
+                         final Logger logger) {
 
         final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
 
         final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(variantContexts.collect(), referenceSequenceDictionary);
 
+        logNumOfVarByTypes(sortedVariantsList, logger);
+
         writeVariants(pipelineOptions, outputPath, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
+    }
+
+    private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
+
+        logger.info("Discovered " + sortedVariantsList.size() + " variants.");
+
+        sortedVariantsList.stream()
+                .collect(Collectors.groupingBy(vc -> (String)vc.getAttribute(GATKSVVCFHeaderLines.SVTYPE), Collectors.counting()))
+                .entrySet().forEach(pair -> logger.info(pair.getKey() + ": " + pair.getValue()));
     }
 
     // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample such that they have the same start, end and inversion evidence type

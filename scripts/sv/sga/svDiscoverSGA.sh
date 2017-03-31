@@ -41,6 +41,6 @@ export REF_INDEX_IMG
 
 baseDir=$(dirname -- "$0")
 ${baseDir}/scanBam.sh "$@"
-${baseDir}/assembly.sh
+${baseDir}/assemblySGA.sh
 ${baseDir}/alignAssembly.sh
 ${baseDir}/discoverVariantsSGA.sh

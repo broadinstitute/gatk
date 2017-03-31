@@ -6,8 +6,6 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.commons.collections4.IterableUtils;
-import org.apache.commons.collections4.IteratorUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -54,7 +52,7 @@ class AssemblyAlignmentParser implements Serializable {
                 = Utils.stream(reads)
                 .filter(r -> !r.isSecondaryAlignment())
                 .map(AlignmentRegion::new)
-                .map(ar -> breakGappedAlignment(ar, SVConstants.CallingStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY))
+                .map(ar -> breakGappedAlignment(ar, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY))
                 .flatMap(Utils::stream).collect(Collectors.toList());
 
         return new Tuple2<>(alignmentRegionIterable, bases);
@@ -90,7 +88,7 @@ class AssemblyAlignmentParser implements Serializable {
                                                                                           final String pathToInputAlignments) {
 
         return ctx.textFile(pathToInputAlignments).map(textLine -> AlignmentRegion.fromString(textLine.split(AlignmentRegion.STRING_REP_SEPARATOR,-1)))
-                .flatMap(oneRegion -> breakGappedAlignment(oneRegion, SVConstants.CallingStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY).iterator())
+                .flatMap(oneRegion -> breakGappedAlignment(oneRegion, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY).iterator())
                 .mapToPair(alignmentRegion -> new Tuple2<>(new Tuple2<>(alignmentRegion.assemblyId, alignmentRegion.contigId), alignmentRegion))
                 .groupByKey();
     }
@@ -199,7 +197,7 @@ class AssemblyAlignmentParser implements Serializable {
                     }
                     final Cigar cigarForNewAlignmentRegion = new Cigar(cigarMemoryList);
 
-                    final AlignmentRegion split = new AlignmentRegion(oneRegion.assemblyId, oneRegion.contigId, referenceInterval, cigarForNewAlignmentRegion, oneRegion.forwardStrand, originalMapQ, SVConstants.CallingStepConstants.ARTIFICIAL_MISMATCH, contigIntervalStart, contigIntervalEnd);
+                    final AlignmentRegion split = new AlignmentRegion(oneRegion.assemblyId, oneRegion.contigId, referenceInterval, cigarForNewAlignmentRegion, oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH, contigIntervalStart, contigIntervalEnd);
 
                     result.add(split);
 
@@ -235,7 +233,7 @@ class AssemblyAlignmentParser implements Serializable {
         final Cigar lastForwardStrandCigar = new Cigar(cigarMemoryList);
         int clippedNBasesFromEnd = SVVariantCallerUtils.getNumClippedBases(false, cigarElements);
         result.add(new AlignmentRegion(oneRegion.assemblyId, oneRegion.contigId, lastReferenceInterval, lastForwardStrandCigar,
-                oneRegion.forwardStrand, originalMapQ, SVConstants.CallingStepConstants.ARTIFICIAL_MISMATCH,
+                oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH,
                 contigIntervalStart, oneRegion.assembledContigLength-clippedNBasesFromEnd));
 
         return result;

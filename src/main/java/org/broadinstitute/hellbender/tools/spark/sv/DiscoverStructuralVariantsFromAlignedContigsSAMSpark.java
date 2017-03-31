@@ -1,24 +1,21 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
-import com.google.cloud.dataflow.sdk.options.PipelineOptions;
-import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
-import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
-
-import static org.broadinstitute.hellbender.tools.spark.sv.CallVariantsFromAlignedContigsSpark.*;
 
 /**
  * This tool takes a SAM file containing the alignments of assembled contigs or long reads to the reference
@@ -30,8 +27,9 @@ import static org.broadinstitute.hellbender.tools.spark.sv.CallVariantsFromAlign
 @CommandLineProgramProperties(summary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
         oneLineSummary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
         programGroup = SparkProgramGroup.class)
-public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool {
+public final class DiscoverStructuralVariantsFromAlignedContigsSAMSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
+    private static final Logger log = LogManager.getLogger(DiscoverStructuralVariantsFromAlignedContigsSAMSpark.class);
 
     @Argument(doc = "URL of the output path", shortName = "outputPath",
             fullName = "outputPath", optional = false)
@@ -43,7 +41,7 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
 
     @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
             fullName = "minAlignLength", optional = true)
-    private Integer minAlignLength = SVConstants.CallingStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
+    private Integer minAlignLength = SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
 
     @Override
     public boolean requiresReference() {
@@ -63,16 +61,16 @@ public final class CallVariantsFromAlignedContigsSAMSpark extends GATKSparkTool 
     @Override
     protected void runTool(final JavaSparkContext ctx) {
 
-        final JavaRDD<Iterable<GATKRead>> alignmentsGroupedByName = getReads().groupBy(GATKRead::getName).map(Tuple2::_2);
-        final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable = alignmentsGroupedByName.mapToPair(AssemblyAlignmentParser::convertToAlignmentRegions);
+        final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable
+                = getReads().groupBy(GATKRead::getName).map(Tuple2::_2).mapToPair(AssemblyAlignmentParser::convertToAlignmentRegions);
 
-        final Integer minAlignLengthFinal = minAlignLength;
+        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
 
-        final PipelineOptions pipelineOptions = getAuthenticatedGCSOptions();
-        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+        final JavaRDD<VariantContext> variants
+                = SVVariantConsensusDiscovery.discoverNovelAdjacencyFromChimericAlignments(alignmentRegionsIterable, log)
+                .map(tuple2 -> SVVariantConsensusDiscovery.discoverVariantsFromConsensus(tuple2, broadcastReference));
 
-        final JavaRDD<VariantContext> variants = callVariantsFromAlignmentRegions(ctx.broadcast(getReference()), alignmentRegionsIterable, LogManager.getLogger(CallVariantsFromAlignedContigsSAMSpark.class));
-        SVVCFWriter.writeVCF(pipelineOptions, outputPath, SVConstants.CallingStepConstants.INVERSIONS_OUTPUT_VCF, fastaReference, variants);
+        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputPath, SVConstants.DiscoveryStepConstants.CURRENTLY_CAPABLE_VARIANTS_VCF, fastaReference, variants, log);
     }
 
 }

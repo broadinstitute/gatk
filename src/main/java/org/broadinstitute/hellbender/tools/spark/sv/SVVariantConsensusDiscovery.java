@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Iterables;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -24,19 +28,40 @@ import static org.broadinstitute.hellbender.tools.spark.sv.NovelAdjacencyReferen
  * Given identified pair of breakpoints for a simple SV and its supportive evidence, i.e. chimeric alignments,
  * produce an VariantContext.
  */
-class SVVariantConsensusCall implements Serializable {
+class SVVariantConsensusDiscovery implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    /**
+     * This method processes an RDD containing alignment regions, scanning for chimeric alignments which match a set of filtering
+     * criteria, and emitting novel adjacency not present on the reference used for aligning the contigs.
+     *
+     * The input RDD is of the form:
+     * Tuple2 of:
+     *     {@code Iterable<AlignmentRegion>} AlignmentRegion objects representing all alignments for one contig
+     *     A byte array with the sequence content of the contig
+     * @param alignmentRegionsWithContigSequence A data structure as described above, where a list of AlignmentRegions and the sequence of the contig are keyed by a tuple of Assembly ID and Contig ID
+     * @param logger                             for logging information and accredit to the calling tool
+     */
+    static JavaPairRDD<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> discoverNovelAdjacencyFromChimericAlignments(
+            final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsWithContigSequence,
+            final Logger logger)
+    {
+        return alignmentRegionsWithContigSequence.filter(pair -> Iterables.size(pair._1())>1) // filter out any contigs that has less than two alignment records
+                .flatMap( input -> ChimericAlignment.fromSplitAlignments(input).iterator())              // 1. AR -> {CA}
+                .mapToPair(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca), ca))             // 2. CA -> NovelAdjacency
+                .groupByKey();                                                                           // 3. {consensus NovelAdjacency}
+    }
 
     // TODO: 12/12/16 does not handle translocation yet
     /**
-     * Third step in calling variants: produce a VC from a {@link NovelAdjacencyReferenceLocations} (consensus among different assemblies if they all point to the same breakpoint).
+     * Produces a VC from a {@link NovelAdjacencyReferenceLocations} (consensus among different assemblies if they all point to the same breakpoint).
      *
      * @param breakpointPairAndItsEvidence      consensus among different assemblies if they all point to the same breakpoint
      * @param broadcastReference                broadcasted reference
      * @throws IOException                      due to read operations on the reference
      */
-    static VariantContext callVariantsFromConsensus(final Tuple2<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> breakpointPairAndItsEvidence,
-                                                    final Broadcast<ReferenceMultiSource> broadcastReference)
+    static VariantContext discoverVariantsFromConsensus(final Tuple2<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> breakpointPairAndItsEvidence,
+                                                        final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
 
         final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations = breakpointPairAndItsEvidence._1;
@@ -91,8 +116,8 @@ class SVVariantConsensusCall implements Serializable {
         final SvType type;
         if (endConnectionType == FIVE_TO_THREE) { // no strand switch happening, so no inversion
             if (start==end) { // something is inserted
-                final boolean hasNoDupSeq = novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep.isEmpty();
-                final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.insertedSequenceForwardStrandRep.isEmpty();
+                final boolean hasNoDupSeq = !novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation();
+                final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty();
                 if (hasNoDupSeq) {
                     if (hasNoInsertedSeq) {
                         throw new GATKException("Something went wrong in type inference, there's suspected insertion happening but no inserted sequence could be inferred " + novelAdjacencyReferenceLocations.toString());
@@ -107,8 +132,8 @@ class SVVariantConsensusCall implements Serializable {
                     }
                 }
             } else {
-                final boolean hasNoDupSeq = novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep.isEmpty();
-                final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.insertedSequenceForwardStrandRep.isEmpty();
+                final boolean hasNoDupSeq = !novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation();
+                final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty();
                 if (hasNoDupSeq) {
                     if (hasNoInsertedSeq) {
                         type = new SvType.Deletion(novelAdjacencyReferenceLocations); // clean deletion
@@ -129,7 +154,7 @@ class SVVariantConsensusCall implements Serializable {
 
         // developer check to make sure new types are treated correctly
         try {
-            final SvType.TYPES x = SvType.TYPES.valueOf(type.toString());
+            SvType.TYPES.valueOf(type.toString());
         } catch (final IllegalArgumentException ex) {
             throw new GATKException.ShouldNeverReachHereException("Inferred type is not known yet: " + type.toString(), ex);
         }
@@ -144,18 +169,24 @@ class SVVariantConsensusCall implements Serializable {
 
         final Map<String, Object> attributeMap = new HashMap<>();
 
-        if (!novelAdjacencyReferenceLocations.complication.insertedSequenceForwardStrandRep.isEmpty()) {
-            attributeMap.put(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, novelAdjacencyReferenceLocations.complication.insertedSequenceForwardStrandRep);
+        if (!novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty()) {
+            attributeMap.put(GATKSVVCFHeaderLines.INSERTED_SEQUENCE, novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep());
         }
 
-        if (!novelAdjacencyReferenceLocations.complication.homologyForwardStrandRep.isEmpty()) {
-            attributeMap.put(GATKSVVCFHeaderLines.HOMOLOGY, novelAdjacencyReferenceLocations.complication.homologyForwardStrandRep);
-            attributeMap.put(GATKSVVCFHeaderLines.HOMOLOGY_LENGTH, novelAdjacencyReferenceLocations.complication.homologyForwardStrandRep.length());
+        if (!novelAdjacencyReferenceLocations.complication.getHomologyForwardStrandRep().isEmpty()) {
+            attributeMap.put(GATKSVVCFHeaderLines.HOMOLOGY, novelAdjacencyReferenceLocations.complication.getHomologyForwardStrandRep());
+            attributeMap.put(GATKSVVCFHeaderLines.HOMOLOGY_LENGTH, novelAdjacencyReferenceLocations.complication.getHomologyForwardStrandRep().length());
         }
 
-        if (!novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep.isEmpty()) {
-            attributeMap.put(GATKSVVCFHeaderLines.DUPLICATED_SEQUENCE, novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep);
-            attributeMap.put(GATKSVVCFHeaderLines.DUPLICATION_NUMBERS, new int[]{novelAdjacencyReferenceLocations.complication.dupSeqRepeatNumOnRef, novelAdjacencyReferenceLocations.complication.dupSeqRepeatNumOnCtg});
+        if (novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation()) {
+            attributeMap.put(GATKSVVCFHeaderLines.DUP_REPET_UNIT_REF_SPAN, novelAdjacencyReferenceLocations.complication.getDupSeqRepeatUnitRefSpan().toString());
+            if(!novelAdjacencyReferenceLocations.complication.getCigarStringsForDupSeqOnCtg().isEmpty()) {
+                attributeMap.put(GATKSVVCFHeaderLines.DUP_SEQ_CIGARS, StringUtils.join(novelAdjacencyReferenceLocations.complication.getCigarStringsForDupSeqOnCtg(), VCFConstants.INFO_FIELD_ARRAY_SEPARATOR));
+            }
+            attributeMap.put(GATKSVVCFHeaderLines.DUPLICATION_NUMBERS, new int[]{novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnRef(), novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnCtg()});
+            if(novelAdjacencyReferenceLocations.complication.isDupAnnotIsFromOptimization()) {
+                attributeMap.put(GATKSVVCFHeaderLines.DUP_ANNOTATIONS_IMPRECISE, "");
+            }
         }
         return attributeMap;
     }
@@ -195,7 +226,7 @@ class SVVariantConsensusCall implements Serializable {
 
         final Map<String, Object> attributeMap = new HashMap<>();
         attributeMap.put(GATKSVVCFHeaderLines.TOTAL_MAPPINGS, annotations.size());
-        attributeMap.put(GATKSVVCFHeaderLines.HQ_MAPPINGS, annotations.stream().filter(annotation -> annotation.minMQ == SVConstants.CallingStepConstants.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD).count());// todo: should use == or >=?
+        attributeMap.put(GATKSVVCFHeaderLines.HQ_MAPPINGS, annotations.stream().filter(annotation -> annotation.minMQ == SVConstants.DiscoveryStepConstants.CHIMERIC_ALIGNMENTS_HIGHMQ_THRESHOLD).count());// todo: should use == or >=?
         attributeMap.put(GATKSVVCFHeaderLines.MAPPING_QUALITIES, annotations.stream().map(annotation -> String.valueOf(annotation.minMQ)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFHeaderLines.ALIGN_LENGTHS, annotations.stream().map(annotation -> String.valueOf(annotation.minAL)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFHeaderLines.MAX_ALIGN_LENGTH, annotations.stream().map(annotation -> annotation.minAL).max(Comparator.naturalOrder()).orElse(0));

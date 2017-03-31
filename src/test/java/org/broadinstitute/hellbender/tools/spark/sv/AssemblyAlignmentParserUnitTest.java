@@ -116,8 +116,8 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
 
         final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
         Assert.assertEquals(generatedARList.size(), 2);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 126), TextCigarCodec.decode("56S27M68S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 57, 83));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 127, 158), TextCigarCodec.decode("98S32M21S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 99, 130));
+        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 126), TextCigarCodec.decode("56S27M68S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 57, 83));
+        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 127, 158), TextCigarCodec.decode("98S32M21S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 99, 130));
     }
 
     @Test
@@ -127,8 +127,8 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
 
         final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
         Assert.assertEquals(generatedARList.size(), 2);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 304), TextCigarCodec.decode("2S205M346S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 3, 207));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 307, 575), TextCigarCodec.decode("207S269M77S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 208, 476));
+        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 304), TextCigarCodec.decode("2S205M346S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 3, 207));
+        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 307, 575), TextCigarCodec.decode("207S269M77S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 208, 476));
     }
 
     @Test
@@ -140,12 +140,12 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
 
         Assert.assertEquals(generatedARList.size(), 6);
 
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 217), TextCigarCodec.decode("397S118M594S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 398, 515));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 220, 245), TextCigarCodec.decode("515S26M568S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 516, 541));
-        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 246, 295), TextCigarCodec.decode("547S50M512S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 548, 597));
-        Assert.assertEquals(generatedARList.get(3), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 296, 321), TextCigarCodec.decode("604S26M479S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 605, 630));
-        Assert.assertEquals(generatedARList.get(4), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 322, 329), TextCigarCodec.decode("631S8M470S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 632, 639));
-        Assert.assertEquals(generatedARList.get(5), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 343, 414), TextCigarCodec.decode("639S72M398S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 640, 711));
+        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 217), TextCigarCodec.decode("397S118M594S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 398, 515));
+        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 220, 245), TextCigarCodec.decode("515S26M568S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 516, 541));
+        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 246, 295), TextCigarCodec.decode("547S50M512S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 548, 597));
+        Assert.assertEquals(generatedARList.get(3), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 296, 321), TextCigarCodec.decode("604S26M479S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 605, 630));
+        Assert.assertEquals(generatedARList.get(4), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 322, 329), TextCigarCodec.decode("631S8M470S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 632, 639));
+        Assert.assertEquals(generatedARList.get(5), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 343, 414), TextCigarCodec.decode("639S72M398S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 640, 711));
     }
 
     @Test
@@ -154,12 +154,12 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         final Cigar cigar = TextCigarCodec.decode("10M10D10M60I10M10I10M50D10M");
         final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 209), cigar, true, 60, 0, 1, 120);
 
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, SVConstants.CallingStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY)).collect(Collectors.toList());
+        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY)).collect(Collectors.toList());
 
         Assert.assertEquals(generatedARList.size(), 3);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 129), TextCigarCodec.decode("10M10D10M100S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 1, 20));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 130, 149), TextCigarCodec.decode("80S10M10I10M10S"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 81, 110));
-        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 200, 209), TextCigarCodec.decode("110S10M"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 111, 120));
+        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 129), TextCigarCodec.decode("10M10D10M100S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 1, 20));
+        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 130, 149), TextCigarCodec.decode("80S10M10I10M10S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 81, 110));
+        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 200, 209), TextCigarCodec.decode("110S10M"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 111, 120));
     }
 
     @Test
@@ -169,9 +169,9 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
 
         final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
 
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 102), TextCigarCodec.decode("1H2S3M28S8H"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 4, 6));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 103, 112), TextCigarCodec.decode("1H10S10M13S8H"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 12, 21));
-        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 133, 138), TextCigarCodec.decode("1H20S6M7S8H"), true, 60, SVConstants.CallingStepConstants.MISSING_NM, 22, 27));
+        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 102), TextCigarCodec.decode("1H2S3M28S8H"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 4, 6));
+        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 103, 112), TextCigarCodec.decode("1H10S10M13S8H"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 12, 21));
+        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 133, 138), TextCigarCodec.decode("1H20S6M7S8H"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 22, 27));
     }
 
     @Test
@@ -188,11 +188,11 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1",
                 new SimpleInterval("1", 101, 110), TextCigarCodec.decode("10S10M15S"),
                 true, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 11, 20));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 11, 20));
         Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1",
                 new SimpleInterval("1", 111, 120), TextCigarCodec.decode("25S10M"),
                 true, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 26, 35));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 26, 35));
 
         // ending with 'I'
         cigar = TextCigarCodec.decode("10M5I10M10I");
@@ -205,11 +205,11 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1",
                 new SimpleInterval("1", 101, 110), TextCigarCodec.decode("10M25S"),
                 true, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 1, 10));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 1, 10));
         Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1",
                 new SimpleInterval("1", 111, 120), TextCigarCodec.decode("15S10M10S"),
                 true, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 16, 25));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 16, 25));
     }
 
     @Test
@@ -234,11 +234,11 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1",
                 new SimpleInterval("1", 101, 140), TextCigarCodec.decode("10H50S40M125S70H"),
                 true, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 61, 100));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 61, 100));
         Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1",
                 new SimpleInterval("1", 146, 160), TextCigarCodec.decode("10H90S15M110S70H"),
                 true, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 101, 115));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 101, 115));
     }
 
     @Test
@@ -253,11 +253,11 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("19149", "contig-8",
                 new SimpleInterval("chrUn_JTFH01000557v1_decoy", 416, 1459), TextCigarCodec.decode("10S1044M592S"),
                 false, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 11, 1054));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 11, 1054));
         Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("19149", "contig-8",
                 new SimpleInterval("chrUn_JTFH01000557v1_decoy", 21, 415), TextCigarCodec.decode("1176S395M75S"),
                 false, 60,
-                SVConstants.CallingStepConstants.MISSING_NM, 1177, 1571));
+                SVConstants.DiscoveryStepConstants.MISSING_NM, 1177, 1571));
     }
 
     @Test
