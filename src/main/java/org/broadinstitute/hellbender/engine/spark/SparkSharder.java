@@ -19,7 +19,6 @@ import org.apache.spark.rdd.RDD;
 import org.broadinstitute.hellbender.engine.Shard;
 import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import scala.Option;
 import scala.Tuple2;
@@ -124,7 +123,7 @@ public class SparkSharder {
                                                                                             SAMSequenceDictionary sequenceDictionary, List<I> intervals,
                                                                                             int maxLocatableLength, MapFunction<Tuple2<I, Iterable<L>>, T> f) {
         return joinOverlapping(ctx, locatables, locatableClass, sequenceDictionary, intervals, maxLocatableLength,
-                (FlatMapFunction2<Iterator<L>, Iterator<I>, T>) (locatablesIterator, shardsIterator) -> Iterators.transform(locatablesPerShard(locatablesIterator, shardsIterator, sequenceDictionary, maxLocatableLength), new Function<Tuple2<I,Iterable<L>>, T>() {
+                (FlatMapFunction2<Iterator<L>, Iterator<I>, T>) (locatablesIterator, shardsIterator) -> Iterators.transform(locatablesPerShard(locatablesIterator, shardsIterator, sequenceDictionary), new Function<Tuple2<I,Iterable<L>>, T>() {
                     @Nullable
                     @Override
                     public T apply(@Nullable Tuple2<I, Iterable<L>> input) {
@@ -203,7 +202,7 @@ public class SparkSharder {
      * Turn a pair of iterators over intervals and locatables, into a single iterator over pairs made up of an interval and
      * the locatables that overlap it. Intervals with no overlapping locatables are dropped.
      */
-    static <L extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<L>>> locatablesPerShard(Iterator<L> locatables, Iterator<I> shards, SAMSequenceDictionary sequenceDictionary, int maxLocatableLength) {
+    static <L extends Locatable, I extends Locatable> Iterator<Tuple2<I, Iterable<L>>> locatablesPerShard(Iterator<L> locatables, Iterator<I> shards, SAMSequenceDictionary sequenceDictionary) {
         if (!shards.hasNext()) {
             return Collections.emptyIterator();
         }
@@ -213,6 +212,7 @@ public class SparkSharder {
             // keep track of current and next, since locatables can overlap two shards
             I currentShard = peekingShards.next();
             I nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
+            List<L> overhangingLocatables = Lists.newArrayList();
             List<L> currentLocatables = Lists.newArrayList();
             List<L> nextLocatables = Lists.newArrayList();
 
@@ -225,18 +225,16 @@ public class SparkSharder {
                     if (toRightOf(currentShard, peekingLocatables.peek(), sequenceDictionary)) {
                         break;
                     }
-                    L locatable = peekingLocatables.next();
-                    if (locatable.getContig() != null) {
-                        int size = locatable.getEnd() - locatable.getStart() + 1;
-                        if (size > maxLocatableLength) {
-                            throw new UserException(String.format("Max size of locatable exceeded. Max size is %s, but locatable size is %s. Try increasing shard size and/or padding. Locatable: %s", maxLocatableLength, size, locatable));
-                        }
-                    }
+                    final L locatable = peekingLocatables.next();
                     if (overlaps(currentShard, locatable)) {
                         currentLocatables.add(locatable);
                     }
                     if (nextShard != null && overlaps(nextShard, locatable)) {
+                        // we are certain that no following shard would start before the nextShard start.
                         nextLocatables.add(locatable);
+                        if (locatable.getEnd() >= nextShard.getStart()) {
+                            overhangingLocatables.add(locatable);
+                        }
                     }
                 }
                 // current shard is finished, either because the current locatable is to the right of it, or there are no more locatables
@@ -244,8 +242,30 @@ public class SparkSharder {
                 currentShard = nextShard;
                 nextShard = peekingShards.hasNext() ? peekingShards.next() : null;
                 currentLocatables = nextLocatables;
-                nextLocatables = Lists.newArrayList();
+                nextLocatables = updateOverhangingLocatables();
                 return tuple;
+            }
+
+            private List<L> updateOverhangingLocatables() {
+                final List<L> result = Lists.newArrayList();
+                if (nextShard != null && !overhangingLocatables.isEmpty()) {
+                    final Iterator<L> it = overhangingLocatables.iterator();
+                    while (it.hasNext()) {
+                        final L oversizedLocatable = it.next();
+                        if (!Objects.equals(oversizedLocatable.getContig(), nextShard.getContig())) { // nextShard is on a different chromosome.
+                            overhangingLocatables.clear();
+                            break;
+                        } else if (nextShard.getStart() > oversizedLocatable.getEnd()) {
+                            it.remove();
+                        } else {
+                            result.add(oversizedLocatable);
+                            if (oversizedLocatable.getEnd() < nextShard.getStart()) { // we are certain that no following shard would start before the nextShard start.
+                                it.remove();
+                            }
+                        }
+                    }
+                }
+                return result;
             }
         };
         return Iterators.filter(iterator, input -> input._2().iterator().hasNext());

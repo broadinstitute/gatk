@@ -7,6 +7,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 public final class ExampleVariantWalkerSparkIntegrationTest extends CommandLineProgramTest {
 
@@ -33,5 +34,14 @@ public final class ExampleVariantWalkerSparkIntegrationTest extends CommandLineP
         File expected = new File(TEST_OUTPUT_DIRECTORY, "expected_ExampleVariantWalkerSparkIntegrationTest_output.txt");
         IntegrationTestSpec.assertEqualTextFiles(new File(out, "part-00000"), expected);
     }
-
+    
+    @Test
+    public void testLongVariants() throws Exception {
+        final File testOutput = createTempFile("output", ".txt");
+        IntegrationTestSpec testSpec = new IntegrationTestSpec(
+                        " -V " + TEST_OUTPUT_DIRECTORY + "input_long_variants.vcf" +
+                        " -O " + testOutput, Collections.emptyList()
+        );
+        testSpec.executeTest("testExampleAssemblyRegionWalker", this);
+    }
 }

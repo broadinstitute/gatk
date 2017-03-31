@@ -93,7 +93,7 @@ public class SparkSharderUnitTest extends BaseTest implements Serializable {
                 new SimpleInterval("1", 8, 12),
                 new SimpleInterval("1", 11, 22));
 
-        Iterator<Tuple2<SimpleInterval, Iterable<TestRead>>> it = SparkSharder.locatablesPerShard(reads.iterator(), intervals.iterator(), sequenceDictionary, STANDARD_READ_LENGTH);
+        Iterator<Tuple2<SimpleInterval, Iterable<TestRead>>> it = SparkSharder.locatablesPerShard(reads.iterator(), intervals.iterator(), sequenceDictionary);
         assertTrue(it.hasNext());
         Tuple2<SimpleInterval, Iterable<TestRead>> next = it.next();
         assertEquals(next._1(), intervals.get(0));
