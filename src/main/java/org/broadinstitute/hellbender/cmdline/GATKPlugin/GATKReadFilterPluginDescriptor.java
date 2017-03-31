@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -33,20 +34,10 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     private static final String pluginPackageName = "org.broadinstitute.hellbender.engine.filters";
     private static final Class<?> pluginBaseClass = org.broadinstitute.hellbender.engine.filters.ReadFilter.class;
 
-    @Argument(fullName = StandardArgumentDefinitions.READ_FILTER_LONG_NAME,
-            shortName = StandardArgumentDefinitions.READ_FILTER_SHORT_NAME,
-            doc="Read filters to be applied before analysis", optional=true, common = true)
-    public final List<String> userEnabledReadFilterNames = new ArrayList<>(); // preserve order
-
-    @Argument(fullName = StandardArgumentDefinitions.DISABLE_READ_FILTER_LONG_NAME,
-            shortName = StandardArgumentDefinitions.DISABLE_READ_FILTER_SHORT_NAME,
-            doc="Read filters to be disabled before analysis", optional=true, common = true)
-    public final List<String> userDisabledReadFilterNames = new ArrayList<>();
-
-    @Argument(fullName = StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
-            shortName = StandardArgumentDefinitions.DISABLE_TOOL_DEFAULT_READ_FILTERS,
-            doc = "Disable all tool default read filters", common = true, optional = true)
-    public boolean disableToolDefaultReadFilters = false;
+    // the purpose of this argument collection is to allow the caller to control the exposure of the command line arguments
+    @VisibleForTesting
+    @ArgumentCollection
+    public final GATKReadFilterArgumentCollection userArgs;
 
     // Map of read filter (simple) class names to the corresponding discovered plugin instance
     private final Map<String, ReadFilter> allDiscoveredReadFilters = new HashMap<>();
@@ -61,10 +52,12 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     private final Set<String> requiredPredecessors = new HashSet<>();
 
     /**
+     * @param userArgs           Argument collection to control the exposure of the command line arguments.
      * @param toolDefaultFilters Default filters that may be supplied with arguments
      *                           on the command line. May be null.
      */
-    public GATKReadFilterPluginDescriptor(final List<ReadFilter> toolDefaultFilters) {
+    public GATKReadFilterPluginDescriptor(final GATKReadFilterArgumentCollection userArgs, final List<ReadFilter> toolDefaultFilters) {
+        this.userArgs = userArgs;
         if (null != toolDefaultFilters) {
             toolDefaultFilters.forEach(f -> {
                 final Class<? extends ReadFilter> rfClass = f.getClass();
@@ -79,6 +72,14 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
                 toolDefaultReadFilters.put(className, f);
             });
         }
+    }
+
+    /**
+     * @param toolDefaultFilters Default filters that may be supplied with arguments
+     *                           on the command line. May be null.
+     */
+    public GATKReadFilterPluginDescriptor(final List<ReadFilter> toolDefaultFilters) {
+        this(new DefaultGATKReadFilterArgumentCollection(), toolDefaultFilters);
     }
 
     /////////////////////////////////////////////////////////
@@ -155,7 +156,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         // for the user to subsequently disable the required predecessor. That case is caught during final
         // validation done by the validateArguments method.
         String predecessorName = predecessorClass.getSimpleName();
-        boolean isAllowed = userEnabledReadFilterNames.contains(predecessorName)
+        boolean isAllowed = userArgs.getUserEnabledReadFilterNames().contains(predecessorName)
                 || (toolDefaultReadFilters.get(predecessorName) != null);
         if (isAllowed) {
             // Keep track of the ones we allow so we can validate later that they weren't subsequently disabled
@@ -175,8 +176,8 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      */
     @Override
     public List<ReadFilter> getAllInstances() {
-        final ArrayList<ReadFilter> filters = new ArrayList<>(userEnabledReadFilterNames.size());
-        userEnabledReadFilterNames.forEach(s -> {
+        final ArrayList<ReadFilter> filters = new ArrayList<>(userArgs.getUserEnabledReadFilterNames().size());
+        userArgs.getUserEnabledReadFilterNames().forEach(s -> {
             ReadFilter rf = allDiscoveredReadFilters.get(s);
             filters.add(rf);
         });
@@ -227,7 +228,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
     @Override
     public void validateArguments() {
         // throw if a filter is *enabled* more than once by the user
-        final Set<String> duplicateUserEnabledFilterNames = Utils.getDuplicatedItems(userEnabledReadFilterNames);
+        final Set<String> duplicateUserEnabledFilterNames = Utils.getDuplicatedItems(userArgs.getUserEnabledReadFilterNames());
         if (!duplicateUserEnabledFilterNames.isEmpty()) {
             throw new CommandLineException.BadArgumentValue(
                     String.format("The read filter(s) are enabled more than once: %s",
@@ -235,7 +236,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         }
 
         // throw if a filter is *disabled* more than once by the user
-        final Set<String> duplicateDisabledUserFilterNames = Utils.getDuplicatedItems(userDisabledReadFilterNames);
+        final Set<String> duplicateDisabledUserFilterNames = Utils.getDuplicatedItems(userArgs.getUserDisabledReadFilterNames());
         if (!duplicateDisabledUserFilterNames.isEmpty()) {
             throw new CommandLineException.BadArgumentValue(
                     String.format("The read filter(s) are disabled more than once: %s",
@@ -243,8 +244,8 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         }
 
         // throw if a filter is both enabled *and* disabled by the user
-        final Set<String> enabledAndDisabled = new HashSet<>(userEnabledReadFilterNames);
-        enabledAndDisabled.retainAll(userDisabledReadFilterNames);
+        final Set<String> enabledAndDisabled = new HashSet<>(userArgs.getUserEnabledReadFilterNames());
+        enabledAndDisabled.retainAll(userArgs.getUserDisabledReadFilterNames());
         if (!enabledAndDisabled.isEmpty()) {
             final String badFiltersList = Utils.join(", ", enabledAndDisabled);
             throw new CommandLineException(
@@ -252,7 +253,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         }
 
         // throw if a disabled filter doesn't exist; warn if it wasn't enabled by the tool in the first place
-        userDisabledReadFilterNames.forEach(s -> {
+        userArgs.getUserDisabledReadFilterNames().forEach(s -> {
             if (!allDiscoveredReadFilters.containsKey(s)) {
                 throw new CommandLineException.BadArgumentValue(String.format("Disabled filter (%s) does not exist", s));
             } else if (!toolDefaultReadFilters.containsKey(s)) {
@@ -262,7 +263,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
         // warn if a filter is both default and enabled by the user
         final Set<String> redundant = new HashSet<>(toolDefaultReadFilters.keySet());
-        redundant.retainAll(userEnabledReadFilterNames);
+        redundant.retainAll(userArgs.getUserEnabledReadFilterNames());
         redundant.forEach(
             s -> {
                 logger.warn(String.format("Redundant enabled filter (%s) is enabled for this tool by default", s));
@@ -278,7 +279,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         // enabled read filter. However, its possible for the user to subsequently try to disable that
         // predecessor, which is what we want to catch here.
         //
-        userDisabledReadFilterNames.forEach(s -> {
+        userArgs.getUserDisabledReadFilterNames().forEach(s -> {
             if (requiredPredecessors.contains(s)) {
                 String message = String.format("Values were supplied for (%s) that is also disabled", s);
                 if (toolDefaultReadFilters.containsKey(s)) {
@@ -295,7 +296,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
 
         // throw if a filter name was specified that has no corresponding instance
         final Map<String, ReadFilter> requestedReadFilters = new HashMap<>();
-        userEnabledReadFilterNames.forEach(s -> {
+        userArgs.getUserEnabledReadFilterNames().forEach(s -> {
             ReadFilter trf = allDiscoveredReadFilters.get(s);
             if (null == trf) {
                 if (!toolDefaultReadFilters.containsKey(s)) {
@@ -318,8 +319,8 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * the user and all tool defaults are disabled; {@code false} otherwise.
      */
     public boolean isDisabledFilter(final String filterName) {
-        return userDisabledReadFilterNames.contains(filterName)
-                || (disableToolDefaultReadFilters && !userEnabledReadFilterNames.contains(filterName));
+        return userArgs.getUserDisabledReadFilterNames().contains(filterName)
+                || (userArgs.getDisableToolDefaultReadFilters() && !userArgs.getUserEnabledReadFilterNames().contains(filterName));
     }
 
     /**
@@ -329,7 +330,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * @param samHeader - a SAMFileHeader to use to initialize read filter instances
      * @return Single merged read filter.
      */
-    public ReadFilter getMergedReadFilter(final SAMFileHeader samHeader) {
+    public final ReadFilter getMergedReadFilter(final SAMFileHeader samHeader) {
         Utils.nonNull(samHeader);
         return getMergedReadFilter(
                 samHeader,
@@ -344,7 +345,7 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
      * @param samHeader - a SAMFileHeader to use to initialize read filter instances
      * @return Single merged counting read filter.
      */
-    public CountingReadFilter getMergedCountingReadFilter(final SAMFileHeader samHeader) {
+    public final CountingReadFilter getMergedCountingReadFilter(final SAMFileHeader samHeader) {
         Utils.nonNull(samHeader);
         return getMergedReadFilter(
                 samHeader,
@@ -374,8 +375,8 @@ public class GATKReadFilterPluginDescriptor extends CommandLinePluginDescriptor<
         // on the command line
         // if --disableToolDefaultReadFilters is specified, just initialize an empty list with initial capacity of user filters
         final List<ReadFilter> finalFilters =
-                disableToolDefaultReadFilters ?
-                        new ArrayList<>(userEnabledReadFilterNames.size()) :
+                userArgs.getDisableToolDefaultReadFilters() ?
+                        new ArrayList<>(userArgs.getUserEnabledReadFilterNames().size()) :
                         toolDefaultReadFilters.entrySet()
                                 .stream()
                                 .filter(e -> !isDisabledFilter(e.getKey()))
