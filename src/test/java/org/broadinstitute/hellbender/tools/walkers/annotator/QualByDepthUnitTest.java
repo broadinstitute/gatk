@@ -37,14 +37,18 @@ public class QualByDepthUnitTest extends BaseTest {
         final List<Allele> ACG = Arrays.asList(A, C, G);
 
         final Genotype gAC = new GenotypeBuilder("1", AC).DP(10).AD(new int[]{5,5}).make();
+        final Genotype gACNoAD = new GenotypeBuilder("1", AC).DP(10).AD(new int[]{0,0}).make();
         final Genotype gAA = new GenotypeBuilder("2", AA).DP(10).AD(new int[]{10,0}).make();
         final Genotype gACerror = new GenotypeBuilder("3", AC).DP(10).AD(new int[]{9,1}).make();
-        final Genotype gACNoError = new GenotypeBuilder("3", AC).DP(17).AD(new int[]{8,2}).make();   //make DP distincive so that we can test the precendence properly
+        final Genotype gACNoError = new GenotypeBuilder("3", AC).DP(17).AD(new int[]{8,2}).make();   //make DP distinctive so that we can test the precedence properly
         final Genotype gGG = new GenotypeBuilder("4", GG).DP(10).AD(new int[]{1,9}).make();
 
         final double log10PError = -5;
         final double qual = -10.0 * log10PError;
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAC)).make(), qual / 10});   //het
+        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gACNoAD)).make(), 0.0});   // No AD
+        tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, ACG).log10PError(log10PError).genotypes(Arrays.asList(gAC, gACNoAD)).make(), qual / 10});   // No AD
+
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gACerror)).make(), qual / 10});       //het but use 1+X if AD=1,X
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAA, gAC)).make(), qual / 10});       //het, skip hom
         tests.add(new Object[]{new VariantContextBuilder("test", "20", 10, 10, AC).log10PError(log10PError).genotypes(Arrays.asList(gAC, gACerror)).make(), qual / 10});         //one het was OK, so use only depth from that one
@@ -61,11 +65,14 @@ public class QualByDepthUnitTest extends BaseTest {
     public void testUsingAD(final VariantContext vc, final double expectedQD) {
         final Map<String, Object> annotatedMap = new QualByDepth().annotate(null, vc, null);
         Assert.assertNotNull(annotatedMap, vc.toString());
-        final String QD = (String)annotatedMap.get(GATKVCFConstants.QUAL_BY_DEPTH_KEY);
-        Assert.assertEquals(Double.valueOf(QD), expectedQD, 0.0001);
-
-        Assert.assertEquals(new QualByDepth().getKeyNames(), Collections.singletonList(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
-        Assert.assertEquals(new QualByDepth().getDescriptions(), Collections.singletonList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY)));
+        if ( annotatedMap.containsKey(GATKVCFConstants.QUAL_BY_DEPTH_KEY) ) {
+            final String QD = (String) annotatedMap.get(GATKVCFConstants.QUAL_BY_DEPTH_KEY);
+            Assert.assertEquals(Double.valueOf(QD), expectedQD, 0.0001);
+            Assert.assertEquals(new QualByDepth().getKeyNames(), Collections.singletonList(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
+            Assert.assertEquals(new QualByDepth().getDescriptions(), Collections.singletonList(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY)));
+        } else {
+            Assert.assertTrue(annotatedMap.isEmpty());
+        }
     }
 
     @Test
