@@ -35,7 +35,7 @@ public final class TandemRepeat extends InfoFieldAnnotation {
             return Collections.emptyMap();
         }
 
-        final Pair<List<Integer>,byte[]> result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, ref.getForwardBases());
+        final Pair<List<Integer>,byte[]> result = GATKVariantContextUtils.getNumTandemRepeatUnits(vc, getRefBasesStartingAtVariantLocus(ref, vc));
         if (result == null) {
             return Collections.emptyMap();
         }
@@ -56,6 +56,12 @@ public final class TandemRepeat extends InfoFieldAnnotation {
                 GATKVCFConstants.STR_PRESENT_KEY,
                 GATKVCFConstants.REPEAT_UNIT_KEY,
                 GATKVCFConstants.REPEATS_PER_ALLELE_KEY);
+    }
+
+    private static byte[] getRefBasesStartingAtVariantLocus(final ReferenceContext ref, final VariantContext vc) {
+        final byte[] bases = ref.getBases();
+        final int startIndex = vc.getStart() - ref.getWindow().getStart();
+        return new String(bases).substring(startIndex).getBytes();
     }
 
 }
