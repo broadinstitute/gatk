@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
@@ -348,9 +349,7 @@ public abstract class AbstractAlignmentMerger {
             }
         }
         unmappedIterator.close();
-        if (alignedIterator.hasNext()) {
-            throw new IllegalStateException("Reads remaining on alignment iterator: " + alignedIterator.next().getReadName() + "!");
-        }
+        Utils.validate(!alignedIterator.hasNext(), () -> "Reads remaining on alignment iterator: " + alignedIterator.next().getReadName() + "!");
         alignedIterator.close();
 
         // Write the records to the output file in specified sorted order,
@@ -594,14 +593,12 @@ public abstract class AbstractAlignmentMerger {
     }
 
 
-    protected SAMProgramRecord getProgramRecord() { return this.programRecord; }
+    protected SAMProgramRecord getProgramRecord() { return programRecord; }
 
     protected void setProgramRecord(final SAMProgramRecord pg) {
-        if (this.programRecord != null) {
-            throw new IllegalStateException("Cannot set program record more than once on alignment merger.");
-        }
-        this.programRecord = pg;
-        this.header.addProgramRecord(pg);
+        Utils.validate(programRecord == null, "Cannot set program record more than once on alignment merger.");
+        programRecord = pg;
+        header.addProgramRecord(pg);
         SAMUtils.chainSAMProgramRecord(header, pg);
     }
 

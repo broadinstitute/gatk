@@ -5,6 +5,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
@@ -303,8 +304,7 @@ public final class AlignmentStateMachine {
      * @return a pileup element
      */
     public final PileupElement makePileupElement() {
-        if ( isLeftEdge() || isRightEdge() )
-            throw new IllegalStateException("Cannot make a pileup element from an edge alignment state");
+        Utils.validate(!(isLeftEdge() || isRightEdge()), "Cannot make a pileup element from an edge alignment state");
         return new PileupElement(read,
                 getReadOffset(),
                 getCurrentCigarElement(),

@@ -156,10 +156,7 @@ public final class BaseRecalibrationEngine implements Serializable {
      * and walks over this data to create summary data tables like by read group table.
      */
     public void finalizeData() {
-        if ( finalized ) {
-            throw new IllegalStateException("FinalizeData() has already been called");
-        }
-
+        Utils.validate(!finalized, "FinalizeData() has already been called");
         finalizeRecalibrationTables(recalTables);
         finalized = true;
     }
@@ -226,9 +223,7 @@ public final class BaseRecalibrationEngine implements Serializable {
      * @return the finalized recalibration table collected by this engine
      */
     public RecalibrationTables getFinalRecalibrationTables() {
-        if ( ! finalized ) {
-            throw new IllegalStateException("Cannot get final recalibration tables until finalizeData() has been called");
-        }
+        Utils.validate(finalized, "Cannot get final recalibration tables until finalizeData() has been called");
         return recalTables;
     }
 
@@ -245,9 +240,7 @@ public final class BaseRecalibrationEngine implements Serializable {
      * @param recalInfo data structure holding information about the recalibration values for a single read
      */
     private void updateRecalTablesForRead( final ReadRecalibrationInfo recalInfo ) {
-        if ( finalized ) {
-            throw new IllegalStateException("FinalizeData() has already been called");
-        }
+        Utils.validate(!finalized, "FinalizeData() has already been called");
 
         final GATKRead read = recalInfo.getRead();
         final ReadCovariates readCovariates = recalInfo.getCovariatesValues();

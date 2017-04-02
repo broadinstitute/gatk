@@ -130,9 +130,7 @@ public final class VariantAnnotatorEngine {
             }
         }
 
-        if (descriptions.contains(null)){
-            throw new IllegalStateException("getVCFAnnotationDescriptions should not contain null. This error is likely due to an incorrect implementation of getDescriptions() in one or more of the annotation classes");
-        }
+        Utils.validate(!descriptions.contains(null), "getVCFAnnotationDescriptions should not contain null. This error is likely due to an incorrect implementation of getDescriptions() in one or more of the annotation classes");
         return descriptions;
     }
 

@@ -364,8 +364,7 @@ public final class CigarUtils {
         }
 
         final Cigar result = AlignmentUtils.consolidateCigar(cigarToReturn);
-        if( result.getReferenceLength() != cigar.getReferenceLength() )
-            throw new IllegalStateException("leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
+        Utils.validate(result.getReferenceLength() == cigar.getReferenceLength(), () -> "leftAlignCigarSequentially failed to produce a valid CIGAR.  Reference lengths differ.  Initial cigar " + cigar + " left aligned into " + result);
         return result;
     }
 }

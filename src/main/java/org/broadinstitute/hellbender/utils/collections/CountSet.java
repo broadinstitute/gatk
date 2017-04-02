@@ -451,9 +451,7 @@ public final class CountSet implements Set<Integer> {
 
         @Override
         public void remove() {
-            if (next == 0) {
-                throw new IllegalStateException();
-            }
+            Utils.validate(next != 0, "Next should be non-zero.");
             if (next >= size) {
                 throw new NoSuchElementException();
             }

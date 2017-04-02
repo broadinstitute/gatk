@@ -28,6 +28,7 @@ import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 
 import java.io.File;
@@ -227,8 +228,7 @@ public final class GatherVcfs extends PicardCommandLineProgram {
                             final int blockLength = blockIn.available();
                             final byte[] blockContents = new byte[blockLength];
                             final int read = blockIn.read(blockContents);
-                            if (blockLength == 0 || read != blockLength)
-                                throw new IllegalStateException("Could not read available bytes from BlockCompressedInputStream.");
+                            Utils.validate(blockLength > 0 && read == blockLength, "Could not read available bytes from BlockCompressedInputStream.");
 
                             // Scan forward within the block to see if we can find the end of the header within this block
                             int firstNonHeaderByteIndex = -1;

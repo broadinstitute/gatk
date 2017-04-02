@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
@@ -419,27 +420,24 @@ public final class BAQ implements Serializable {
      * @return
      */
     public static byte[] calcBAQFromTag(GATKRead read, boolean overwriteOriginalQuals, boolean useRawQualsIfNoBAQTag) {
-        byte[] rawQuals = read.getBaseQualities();
-        byte[] newQuals = rawQuals;
         byte[] baq = getBAQTag(read);
+        Utils.validate(baq != null || useRawQualsIfNoBAQTag, () -> "Required BAQ tag to be present, but none was on read " + read.getName());
 
-        if ( baq != null ) {
+        final byte[] rawQuals = read.getBaseQualities();
+        if (baq == null) {
+            return rawQuals;
+        } else {
             // Offset to base alignment quality (BAQ), of the same length as the read sequence.
             // At the i-th read base, BAQi = Qi - (BQi - 64) where Qi is the i-th base quality.
-            newQuals = overwriteOriginalQuals ? rawQuals : new byte[rawQuals.length];
+            byte[] newQuals = overwriteOriginalQuals ? rawQuals : new byte[rawQuals.length];
             for ( int i = 0; i < rawQuals.length; i++) {
-                int rawQual = rawQuals[i];
-                int baq_delta = baq[i] - 64;
-                int newval =  rawQual - baq_delta;
+                int newval =  rawQuals[i] - baq[i] + 64;
                 if ( newval < 0 )
                     throw new UserException.MalformedRead(read, "BAQ tag error: the BAQ value is larger than the base quality");
                 newQuals[i] = (byte)newval;
             }
-        } else if ( ! useRawQualsIfNoBAQTag ) {
-            throw new IllegalStateException("Required BAQ tag to be present, but none was on read " + read.getName());
+            return newQuals;
         }
-
-        return newQuals;
     }
 
     /**

@@ -83,8 +83,7 @@ final class SamplePartitioner {
         Utils.nonNull(read);
         final String sampleName = read.getReadGroup() != null ? ReadUtils.getSampleName(read, header) : null;
         final Downsampler<GATKRead> downsampler = readsBySample.get(sampleName);
-        if ( downsampler == null )
-            throw new IllegalStateException("Offered read with sample name " + sampleName + " to SamplePartitioner " +
+        Utils.validate(downsampler != null, () -> "Offered read with sample name " + sampleName + " to SamplePartitioner " +
                     "but this sample wasn't provided as one of possible samples at construction");
 
         downsampler.submit(read);
@@ -120,7 +119,7 @@ final class SamplePartitioner {
      * @return a non-null collection of reads for sample in this cycle
      */
     public Collection<GATKRead> getReadsForSample(final String sampleName) {
-        if ( ! doneSubmittingReads ) throw new IllegalStateException("getReadsForSample called before doneSubmittingReads was called");
+        Utils.validate(doneSubmittingReads, "getReadsForSample called before doneSubmittingReads was called");
 
         final Downsampler<GATKRead> downsampler = readsBySample.get(sampleName);
         if ( downsampler == null ) throw new NoSuchElementException("Sample name not found");

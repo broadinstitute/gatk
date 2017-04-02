@@ -9,8 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -106,9 +104,7 @@ public final class TableUtils {
             @Override
             protected void processColumns(final TableColumnCollection columns) {
                 recordExtractor = recordExtractorFactory.apply(columns,this::formatException);
-                if (recordExtractor == null) {
-                    throw new IllegalStateException("the record extractor function cannot be null");
-                }
+                Utils.validate(recordExtractor != null, "the record extractor function cannot be null");
             }
 
             @Override
@@ -151,9 +147,7 @@ public final class TableUtils {
             @Override
             protected void processColumns(final TableColumnCollection columns) {
                 recordExtractor = recordExtractorFactory.apply(columns,this::formatException);
-                if (recordExtractor == null) {
-                    throw new IllegalStateException("the record extractor function cannot be null");
-                }
+                Utils.validate(recordExtractor != null, "the record extractor function cannot be null");
             }
 
             @Override
@@ -198,9 +192,7 @@ public final class TableUtils {
             @Override
             protected void processColumns(final TableColumnCollection columns) {
                 recordExtractor = recordExtractorFactory.apply(columns,this::formatException);
-                if (recordExtractor == null) {
-                    throw new IllegalStateException("the record extractor function cannot be null");
-                }
+                Utils.validate(recordExtractor != null, "the record extractor function cannot be null");
             }
 
             @Override

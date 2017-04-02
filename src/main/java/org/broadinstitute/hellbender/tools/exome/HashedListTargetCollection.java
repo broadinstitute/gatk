@@ -95,12 +95,8 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
             final String name = name(location);
             if (name != null) {
                 final T previous = result.put(name,location);
-                if (previous != null) {
-                    throw new IllegalStateException(
-                            String.format("more than one interval in the input list results in the same name (%s); " +
-                                            "perhaps repeated: '%s' and '%s'.",
-                                    name,previous,location));
-                }
+                Utils.validate(previous == null, () ->
+                        String.format("multiple input intervals have the same name (%s); perhaps repeated: '%s' and '%s'.", name,previous,location));
             }
         }
         return result;
@@ -146,9 +142,7 @@ public class HashedListTargetCollection<T extends Locatable> implements TargetCo
             return -1;
         } else {
             final int searchIndex = uncachedBinarySearch(location(target));
-            if (searchIndex < 0) { // checking just in case.
-                throw new IllegalStateException("could not found named interval amongst sorted intervals, impossible");
-            }
+            Utils.validate(searchIndex >= 0, "could not find named interval among sorted intervals, impossible");
             return searchIndex;
         }
     }

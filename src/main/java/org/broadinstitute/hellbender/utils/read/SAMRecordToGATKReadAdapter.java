@@ -365,9 +365,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public boolean mateIsUnmapped() {
-        if ( ! isPaired() ) {
-            throw new IllegalStateException("Cannot get mate information for an unpaired read");
-        }
+        Utils.validate(isPaired(), "Cannot get mate information for an unpaired read");
 
         return samRecord.getMateUnmappedFlag() ||
                samRecord.getMateReferenceName() == null || samRecord.getMateReferenceName().equals(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME) ||
@@ -394,9 +392,7 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
     @Override
     public boolean mateIsReverseStrand() {
-        if ( ! isPaired() ) {
-            throw new IllegalStateException("Cannot get mate information for an unpaired read");
-        }
+        Utils.validate(isPaired(), "Cannot get mate information for an unpaired read");
 
         return samRecord.getMateNegativeStrandFlag();
     }

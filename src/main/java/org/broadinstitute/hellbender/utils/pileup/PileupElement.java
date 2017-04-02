@@ -191,15 +191,11 @@ public final class PileupElement {
     private CigarElement getNextIndelCigarElement() {
         if ( isBeforeDeletionStart() ) {
             final CigarElement element = getNextOnGenomeCigarElement();
-            if ( element == null || element.getOperator() != CigarOperator.D ) {
-                throw new IllegalStateException("Immediately before deletion but the next cigar element isn't a deletion " + element);
-            }
+            Utils.validate(element != null && element.getOperator() == CigarOperator.D, () -> "Immediately before deletion but the next cigar element isn't a deletion " + element);
             return element;
         } else if ( isBeforeInsertion() ) {
             final CigarElement element = getBetweenNextPosition().get(0);
-            if ( element.getOperator() != CigarOperator.I ) {
-                throw new IllegalStateException("Immediately before insertion but the next cigar element isn't an insertion " + element);
-            }
+            Utils.validate(element.getOperator() == CigarOperator.I, () -> "Immediately before insertion but the next cigar element isn't an insertion " + element);
             return element;
         } else {
             return null;

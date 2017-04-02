@@ -207,8 +207,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * @return the current list of submitted reads
      */
     public List<GATKRead> transferSubmittedReads() {
-        if ( ! keepSubmittedReads ) throw new IllegalStateException("cannot transferSubmittedReads if you aren't keeping them");
-
+        Utils.validate(keepSubmittedReads,"cannot transferSubmittedReads if you aren't keeping them");
         final List<GATKRead> prevSubmittedReads = submittedReads;
         this.submittedReads = new LinkedList<>();
 

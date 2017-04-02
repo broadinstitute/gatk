@@ -6,6 +6,7 @@ import htsjdk.samtools.filter.SamRecordFilter;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.PeekableIterator;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -86,7 +87,7 @@ public final class MultiHitAlignedReadIterator implements CloseableIterator<Hits
     }
 
     private HitsForInsert nextMaybeEmpty() {
-        if (!peekIterator.hasNext()) throw new IllegalStateException();
+        Utils.validate(peekIterator.hasNext(), "iterator has no next");
         final String readName = peekIterator.peek().getReadName();
         final HitsForInsert hits = new HitsForInsert();
 

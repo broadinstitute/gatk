@@ -15,6 +15,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.ProgressLogger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
@@ -342,9 +343,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         String truthAllele2 = null;
         if (null == truthState) {
             // Truth State not yet determined - will need to use truth genotypes below
-            if (truthGenotype.getAlleles().size() != 2) {
-                throw new IllegalStateException("Genotype for Variant Context: " + truthContext + " does not have exactly 2 alleles");
-            }
+            Utils.validate(truthGenotype.getAlleles().size() == 2, () -> "Genotype for Variant Context: " + truthContext + " does not have exactly 2 alleles");
             truthAllele1 = truthGenotype.getAllele(0).getBaseString();
             truthAllele2 = truthGenotype.getAllele(1).getBaseString();
         }
@@ -352,9 +351,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         String callAllele1 = null;
         String callAllele2 = null;
         if (null == callState) {
-            if (callGenotype.getAlleles().size() != 2) {
-                throw new IllegalStateException("Genotype for Variant Context: " + callContext + " does not have exactly 2 alleles");
-            }
+            Utils.validate(callGenotype.getAlleles().size() == 2, () -> "Genotype for Variant Context: " + callContext + " does not have exactly 2 alleles");
             callAllele1 = callGenotype.getAllele(0).getBaseString();
             callAllele2 = callGenotype.getAllele(1).getBaseString();
         }
@@ -414,7 +411,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
          *  only once the call is known can this assignment be made.
          */
 
-        if (null == callState) {
+        if (callState == null) {
             // If callState is not null, it has not yet been determined, and the callContext has genotypes (i.e. the alleles are valid)
             if (allAlleles.indexOf(callAllele1) > 1 || allAlleles.indexOf(callAllele2) > 1) {
                 allAlleles.remove(2);
@@ -428,31 +425,18 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
         }
 
         // Truth
-        if (null == truthState) {
+        if (truthState == null) {
             final int allele0idx = allAlleles.indexOf(truthAllele1);
             final int allele1idx = allAlleles.indexOf(truthAllele2);
-
-            if (allele0idx == allele1idx) { //HOM
-                truthState = TruthState.getHom(allele0idx);
-            } else { //HET
-                truthState = TruthState.getVar(allele0idx, allele1idx);
-            }
+            truthState = allele0idx == allele1idx ? TruthState.getHom(allele0idx) : TruthState.getVar(allele0idx, allele1idx);
         }
 
         // Call
-        if (null == callState) {
+        if (callState == null) {
             final int allele0idx = allAlleles.indexOf(callAllele1);
             final int allele1idx = allAlleles.indexOf(callAllele2);
-
-            if (allele0idx == allele1idx) { //HOM
-                callState = CallState.getHom(allele0idx);
-            } else { //HET
-                callState = CallState.getHet(allele0idx, allele1idx);
-            }
-
-            if (null == callState) {
-                throw new IllegalStateException("This should never happen...  Could not classify the call variant: " + callGenotype);
-            }
+            callState = allele0idx == allele1idx ? CallState.getHom(allele0idx) : CallState.getHet(allele0idx, allele1idx);
+            Utils.validate(callState != null, "This should never happen...  Could not classify the call variant.");
         }
 
         return new TruthAndCallStates(truthState, callState);
@@ -460,9 +444,7 @@ public final class GenotypeConcordance extends PicardCommandLineProgram {
 
     final String getStringSuffix(final String longerString, final String shorterString, final String errorMsg) {
         // Truth reference is shorter than call reference
-        if (!longerString.startsWith(shorterString)) {
-            throw new IllegalStateException(errorMsg);
-        }
+        Utils.validate(longerString.startsWith(shorterString), errorMsg);
         return longerString.substring(shorterString.length());
     }
 }
@@ -517,7 +499,7 @@ final class PairedVariantSubContextIterator implements Iterator<VcTuple> {
 
     @Override
     public VcTuple next() {
-        if (!hasNext()) throw new IllegalStateException("next() called while hasNext() is false.");
+        Utils.validate(hasNext(), "next() called while hasNext() is false.");
 
         final VariantContext truthVariantContext = this.truthIterator.hasNext() ? this.truthIterator.peek() : null;
         final VariantContext callVariantContext = this.callIterator.hasNext() ? this.callIterator.peek() : null;
