@@ -36,13 +36,15 @@ public final class TandemRepeatUnitTest extends BaseTest {
         // A*,ATC, context = ATC ATC ATC : (ATC)3 -> (ATC)4
         final VariantContext vc = new VariantContextBuilder("foo", insLoc, insLocStart, insLocStop, Arrays.asList(nullR,atc)).make();
 
-        final SimpleInterval interval= new SimpleInterval(insLoc, insLocStart, insLocStop);
+        // we test that the interval from which the ReferenceContext is constructed does not need to exactly overlap
+        // the VariantContext.  The annotation should be able to handle this.
+        final SimpleInterval interval= new SimpleInterval(insLoc, insLocStart + 3, insLocStop + 4);
 
         final SimpleInterval interval1 = new SimpleInterval(insLoc, 1, refBytes.length);
         final ReferenceBases ref1 = new ReferenceBases(refBytes, interval1);
 
         final SAMSequenceDictionary dict = new SAMSequenceDictionary(Arrays.asList(new SAMSequenceRecord(insLoc, refBytes.length)));
-        final ReferenceContext ref = new ReferenceContext(ReferenceDataSource.of(ref1, dict), interval, 0, 20);
+        final ReferenceContext ref = new ReferenceContext(ReferenceDataSource.of(ref1, dict), interval, 20, 20);
         final InfoFieldAnnotation ann = new TandemRepeat();
         final Map<String, Object> a = ann.annotate(ref, vc, null);
 
