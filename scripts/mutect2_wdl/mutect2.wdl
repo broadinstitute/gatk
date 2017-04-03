@@ -234,15 +234,20 @@ task SplitIntervals {
     fi
 
 
-    mkdir interval-files
-    java -jar $GATK_JAR IntervalListTools -I ${intervals} -O interval-files -SCATTER_COUNT ${scatter_count}
 
-    find $PWD/interval-files -iname scattered.intervals | sort > interval-files.txt
-    i=1
-    while read file; do
-      mv $file $i.interval_list
-      ((i++))
-    done < interval-files.txt
+   if [[ "${scatter_count}" == 1 ]]; then
+        cp ${intervals} 1.interval_list
+   else
+        mkdir interval-files
+        java -jar $GATK_JAR IntervalListTools -I ${intervals} -O interval-files -SCATTER_COUNT ${scatter_count}
+
+        find $PWD/interval-files -iname scattered.intervals | sort > interval-files.txt
+        i=1
+        while read file; do
+          mv $file $i.interval_list
+          ((i++))
+        done < interval-files.txt
+   fi
   }
 
   runtime {
