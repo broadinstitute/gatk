@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.engine.spark;
 
-import com.google.api.services.storage.Storage;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
-import com.google.cloud.genomics.dataflow.readers.bam.BAMIO;
 
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
@@ -14,7 +12,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
-import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.engine.ReadContextData;
 import org.broadinstitute.hellbender.engine.ContextShard;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
@@ -25,6 +22,7 @@ import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.IntervalsSkipList;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -58,9 +56,10 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
      * Create shards with reads, variants, and reference bases, using default values for shard sizes and margin.
      * See the other methods here for an explanation of the various arguments.
      */
-     public static JavaRDD<ContextShard> add(JavaSparkContext ctx, final List<SimpleInterval> intervals,
-                                             String bam, final List<GATKVariant> variants, AuthHolder auth,
-                                             final ReadFilter optFilter, final ReferenceMultiSource rds) {
+     public static JavaRDD<ContextShard> add(JavaSparkContext ctx,
+         final List<SimpleInterval> intervals,
+         String bam, final List<GATKVariant> variants,
+         final ReadFilter optFilter, final ReferenceMultiSource rds) {
         // prepare shards for the intervals of interest
         List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, bigShardSize);
         // add variants
@@ -70,7 +69,8 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
         // subdivide, and add reads
         JavaRDD<ContextShard> reads;
         try {
-            reads = shards.flatMap(AddContextDataToReadSparkOptimized.subdivideAndFillReads(bam, auth, outputShardSize, margin, optFilter));
+            reads = shards.flatMap(AddContextDataToReadSparkOptimized.subdivideAndFillReads(bam,
+                outputShardSize, margin, optFilter));
         } catch (IOException x) {
             throw new UserException.CouldNotReadInputFile("Couldn't read "+bam+": "+x.getMessage(), x);
         }
@@ -104,12 +104,13 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
      * @return A FlatMapFunction that acts as described above.
      * @throws IOException
      */
-    public static FlatMapFunction<ContextShard,ContextShard> subdivideAndFillReads(String bam, AuthHolder auth, int outputShardSize, int margin, final ReadFilter optFilter) throws IOException {
+    public static FlatMapFunction<ContextShard,ContextShard> subdivideAndFillReads(String bam,
+        int outputShardSize, int margin, final ReadFilter optFilter) throws IOException {
             return new FlatMapFunction<ContextShard, ContextShard>() {
                 private static final long serialVersionUID = 1L;
                 @Override
                 public Iterator<ContextShard> call(ContextShard contextShard) throws Exception {
-                    return new SubdivideAndFillReadsIterator(bam, auth, outputShardSize, margin, optFilter, contextShard);
+                    return new SubdivideAndFillReadsIterator(bam, outputShardSize, margin, optFilter, contextShard);
                 }
             };
     }
@@ -169,12 +170,11 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
         private final List<SimpleInterval> subshards;
         private int currentSubShardIndex;
         private ArrayList<GATKRead> readsSoFar = new ArrayList<>();
-        private Storage.Objects storageClient = null;
         private SimpleInterval currentSubShard;
         private ContextShard nextOutput = null;
         private boolean readerClosed = false;
 
-        public SubdivideAndFillReadsIterator(String bam, AuthHolder auth, int outputShardSize, int margin, final ReadFilter optFilter, ContextShard shard) throws IOException, GeneralSecurityException, ClassNotFoundException {
+        public SubdivideAndFillReadsIterator(String bam, int outputShardSize, int margin, final ReadFilter optFilter, ContextShard shard) throws IOException, GeneralSecurityException, ClassNotFoundException {
             this.bam = bam;
             this.shard = shard;
             this.optFilter = optFilter;
@@ -188,8 +188,9 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
             currentSubShard = subshards.get(currentSubShardIndex);
 
             if (BucketUtils.isCloudStorageUrl(bam)) {
-                storageClient = auth.makeStorageClient();
-                reader = BAMIO.openBAM(storageClient, bam, ValidationStringency.SILENT);
+                reader = SamReaderFactory.make()
+                    .validationStringency(ValidationStringency.SILENT)
+                    .open(IOUtils.getPath(bam));
             } else if (BucketUtils.isHadoopUrl(bam)) {
                 throw new RuntimeException("Sorry, Hadoop paths aren't yet supported");
             } else {
