@@ -11,14 +11,13 @@
 #  variants_for_contamination, variants_for_contamination_index: vcf of common variants with allele frequencies fo calculating contamination
 #  is_run_orientation_bias_filter: if true, run the orientation bias filter post-processing step
 #  pair_list: a tab-separated table with no header in the following format:
-#   TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX</TAB>NORMAL_1_SAMPLE</TAB>
-#   TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX</TAB>NORMAL_2_SAMPLE</TAB>
+#   TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NORMAL_1_BAM</TAB>NORMAL_1_BAM_INDEX</TAB>NORMAL_1_SAMPLE
+#   TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NORMAL_2_BAM</TAB>NORMAL_2_BAM_INDEX</TAB>NORMAL_2_SAMPLE
 #   . . .
-#  Temporarily, while waiting for a Cromwell bug to be resolved, tumor-only input looks like
-#  TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>
-#  TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>NO_NORMAL</TAB>
+#  Tumor-only input is the same but without the columns for the normal:
+#  TUMOR_1_BAM</TAB>TUMOR_1_BAM_INDEX</TAB>TUMOR_1_SAMPLE
+#  TUMOR_2_BAM</TAB>TUMOR_2_BAM_INDEX</TAB>TUMOR_2_SAMPLE
 #   . . .
-#  That is, you actually write out "NO NORMAL" thrice per row
 
 import "mutect2.wdl" as m2
 
@@ -80,16 +79,13 @@ workflow Mutect2_Multi {
     File picard_jar
 
 	scatter( row in pairs ) {
-	    #The non-hack way, but there's a bug
-	    #      In WDL, variables inside the block can be used outside the block.
-	    #      If the conditional block is run, they retain their values.
-	    #      Otherwise, they evaluate to null, which in WDL is equivalent to an empty optional
-	    #      If we simply tried to use eg row[3] below it could cause an out-of-bounds exception
-        #if(length(pairs[n]) == 6) {
-        #    File normal_bam = row[3]
-        #    File normal_bam_index = row[4]
-        #    String normal_sample_name = row[5]
-        #}
+	    #      If the condition is true, variables inside the 'if' block retain their values outside the block.
+	    #      Otherwise they are treated as null, which in WDL is equivalent to an empty optional
+        if(length(row) == 6) {
+            File normal_bam = row[3]
+            File normal_bam_index = row[4]
+            String normal_sample_name = row[5]
+        }
 
             call m2.Mutect2 {
                 input:
@@ -101,9 +97,9 @@ workflow Mutect2_Multi {
                     tumor_bam = row[0],
                     tumor_bam_index = row[1],
                     tumor_sample_name = row[2],
-                    normal_bam = row[3],
-                    normal_bam_index = row[4],
-                    normal_sample_name = row[5],
+                    normal_bam = normal_bam,
+                    normal_bam_index = normal_bam_index,
+                    normal_sample_name = normal_sample_name,
                     pon = pon,
                     pon_index = pon_index,
                     scatter_count = scatter_count,
@@ -114,15 +110,15 @@ workflow Mutect2_Multi {
                     variants_for_contamination = variants_for_contamination,
                     variants_for_contamination_index = variants_for_contamination_index,
                     is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                    is_run_oncotator=is_run_oncotator,
-                    oncotator_docker=oncotator_docker,
+                    is_run_oncotator = is_run_oncotator,
+                    oncotator_docker = oncotator_docker,
                     m2_docker = m2_docker,
                     gatk4_jar_override = gatk4_jar_override,
                     preemptible_attempts = preemptible_attempts,
                     onco_ds_tar_gz = onco_ds_tar_gz,
                     onco_ds_local_db_dir = onco_ds_local_db_dir,
                     artifact_modes = artifact_modes,
-                    picard_jar=picard_jar
+                    picard_jar = picard_jar
             }
     }
 
