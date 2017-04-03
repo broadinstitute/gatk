@@ -206,12 +206,11 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
 
     /** Read a file of contig names that will be ignored when checking for inter-contig pairs. */
     private static Set<Integer> readCrossContigsToIgnoreFile( final String crossContigsToIgnoreFile,
-                                                              final PipelineOptions pipelineOptions,
                                                               final SAMSequenceDictionary dictionary ) {
         final Set<Integer> ignoreSet = new HashSet<>();
         try ( final BufferedReader rdr =
                       new BufferedReader(
-                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile,pipelineOptions))) ) {
+                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile))) ) {
             String line;
             while ( (line = rdr.readLine()) != null ) {
                 final int tigId = dictionary.getSequenceIndex(line);
@@ -488,7 +487,7 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         // record the kmers with their interval IDs
         if ( locations.kmerFile != null ) {
             try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                    BucketUtils.createFile(locations.kmerFile, pipelineOptions)))) {
+                    BucketUtils.createFile(locations.kmerFile)))) {
                 for (final KmerAndInterval kmerAndInterval : filteredKmerIntervals) {
                     writer.write(kmerAndInterval.toString(kSize) + " " + kmerAndInterval.getIntervalId() + "\n");
                 }

@@ -36,8 +36,8 @@ public final class SVUtils {
         final Set<SVKmer> kmers;
 
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(kmersFile, popts))) ) {
-            final long fileLength = BucketUtils.fileSize(kmersFile, popts);
+                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(kmersFile))) ) {
+            final long fileLength = BucketUtils.fileSize(kmersFile);
             kmers = new HopscotchSet<>((int)(fileLength/(kSize+1)));
             String line;
             while ( (line = rdr.readLine()) != null ) {
@@ -65,7 +65,7 @@ public final class SVUtils {
     public static <KType extends SVKmer> void writeKmersFile(final int kSize, final String kmersFile, final PipelineOptions popts,
                                                              final Collection<KType> kmers ) {
         try ( final Writer writer =
-                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(kmersFile, popts))) ) {
+                      new BufferedWriter(new OutputStreamWriter(BucketUtils.createFile(kmersFile))) ) {
             for ( final KType kmer : kmers ) {
                 writer.write(kmer.toString(kSize));
                 writer.write('\n');
@@ -81,9 +81,9 @@ public final class SVUtils {
                                                      final Map<String, Integer> contigNameMap ) {
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
-                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(intervalsFile, popts))) ) {
+                      new BufferedReader(new InputStreamReader(BucketUtils.openFile(intervalsFile))) ) {
             final int INTERVAL_FILE_LINE_LENGTH_GUESS = 25;
-            final long sizeGuess = BucketUtils.fileSize(intervalsFile, popts)/INTERVAL_FILE_LINE_LENGTH_GUESS;
+            final long sizeGuess = BucketUtils.fileSize(intervalsFile)/INTERVAL_FILE_LINE_LENGTH_GUESS;
             intervals = new ArrayList<>((int)sizeGuess);
             String line;
             int lineNo = 0;
@@ -119,7 +119,7 @@ public final class SVUtils {
     public static void writeIntervalsFile( final String intervalsFile, final PipelineOptions popts,
                                            final Collection<SVInterval> intervals, final List<String> contigNames ) {
         try (final OutputStreamWriter writer = new OutputStreamWriter(new BufferedOutputStream(
-                BucketUtils.createFile(intervalsFile, popts)))) {
+                BucketUtils.createFile(intervalsFile)))) {
             for (final SVInterval interval : intervals) {
                 final String seqName = contigNames.get(interval.getContig());
                 writer.write(seqName + "\t" + (interval.getStart()+1) + "\t" + interval.getEnd() + "\n");

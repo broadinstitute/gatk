@@ -37,7 +37,7 @@ public final class CountBasesSpark extends GATKSparkTool {
         System.out.println(count);
 
         if( out != null) {
-            try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out, getAuthenticatedGCSOptions())) ) {
+            try ( final PrintStream ps = new PrintStream(BucketUtils.createFile(out)) ) {
                 ps.print(count);
             }
         }

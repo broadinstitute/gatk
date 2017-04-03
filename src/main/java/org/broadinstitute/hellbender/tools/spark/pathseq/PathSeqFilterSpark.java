@@ -222,7 +222,7 @@ public final class PathSeqFilterSpark extends GATKSparkTool {
     private JavaRDD<GATKRead> doKmerFiltering(final JavaSparkContext ctx, final JavaRDD<GATKRead> reads) {
 
         final PipelineOptions options = getAuthenticatedGCSOptions();
-        Input input = new Input(BucketUtils.openFile(KMER_LIB_PATH, options));
+        Input input = new Input(BucketUtils.openFile(KMER_LIB_PATH));
         Kryo kryo=new Kryo();
         kryo.setReferences(false);
 

@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.gcs;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.util.IOUtil;
 import java.net.URI;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
@@ -59,7 +58,7 @@ public final class BucketUtilsTest extends BaseTest {
         final String src = publicTestDir+"empty.vcf";
         File dest = createTempFile("copy-empty",".vcf");
 
-        BucketUtils.copyFile(src, null, dest.getPath());
+        BucketUtils.copyFile(src, dest.getPath());
         IOUtil.assertFilesEqual(new File(src), dest);
     }
 
@@ -69,7 +68,7 @@ public final class BucketUtilsTest extends BaseTest {
         try (FileWriter fw = new FileWriter(dest)){
             fw.write("Goodbye, cruel world!");
         }
-        BucketUtils.deleteFile(dest.getPath(), null);
+        BucketUtils.deleteFile(dest.getPath());
         Assert.assertFalse(dest.exists(), "File '"+dest.getPath()+"' was not properly deleted as it should.");
     }
 
@@ -80,12 +79,12 @@ public final class BucketUtilsTest extends BaseTest {
         final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-copy-empty", ".vcf");
         Assert.assertTrue(BucketUtils.isCloudStorageUrl(intermediate), "!BucketUtils.isCloudStorageUrl(intermediate)");
         PipelineOptions popts = getAuthenticatedPipelineOptions();
-        BucketUtils.copyFile(src, popts, intermediate);
-        BucketUtils.copyFile(intermediate, popts, dest.getPath());
+        BucketUtils.copyFile(src, intermediate);
+        BucketUtils.copyFile(intermediate, dest.getPath());
         IOUtil.assertFilesEqual(new File(src), dest);
-        Assert.assertTrue(BucketUtils.fileExists(intermediate, popts));
-        BucketUtils.deleteFile(intermediate, popts);
-        Assert.assertFalse(BucketUtils.fileExists(intermediate, popts));
+        Assert.assertTrue(BucketUtils.fileExists(intermediate));
+        BucketUtils.deleteFile(intermediate);
+        Assert.assertFalse(BucketUtils.fileExists(intermediate));
     }
 
     @Test
@@ -105,12 +104,12 @@ public final class BucketUtilsTest extends BaseTest {
             Assert.assertTrue(BucketUtils.isHadoopUrl(intermediate), "!BucketUtils.isHadoopUrl(intermediate)");
 
             PipelineOptions popts = null;
-            BucketUtils.copyFile(src, popts, intermediate);
-            BucketUtils.copyFile(intermediate, popts, dest.getPath());
+            BucketUtils.copyFile(src, intermediate);
+            BucketUtils.copyFile(intermediate, dest.getPath());
             IOUtil.assertFilesEqual(new File(src), dest);
-            Assert.assertTrue(BucketUtils.fileExists(intermediate, popts));
-            BucketUtils.deleteFile(intermediate, popts);
-            Assert.assertFalse(BucketUtils.fileExists(intermediate, popts));
+            Assert.assertTrue(BucketUtils.fileExists(intermediate));
+            BucketUtils.deleteFile(intermediate);
+            Assert.assertFalse(BucketUtils.fileExists(intermediate));
         });
     }
 
@@ -129,9 +128,9 @@ public final class BucketUtilsTest extends BaseTest {
             }
         }
 
-        long fileSize = BucketUtils.fileSize(file1.getAbsolutePath(), null);
+        long fileSize = BucketUtils.fileSize(file1.getAbsolutePath());
         Assert.assertTrue(fileSize > 0);
-        long dirSize = BucketUtils.dirSize(dir.getAbsolutePath(), null);
+        long dirSize = BucketUtils.dirSize(dir.getAbsolutePath());
         Assert.assertEquals(dirSize, fileSize * 2);
     }
 

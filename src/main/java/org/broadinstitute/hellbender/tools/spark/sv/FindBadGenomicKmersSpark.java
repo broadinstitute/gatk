@@ -198,8 +198,8 @@ public final class FindBadGenomicKmersSpark extends GATKSparkTool {
                                                          final int maxDUSTScore,
                                                          final String fastaFilename,
                                                          final PipelineOptions options ) {
-        try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fastaFilename, options))) ) {
-            final List<SVKmer> kmers = new ArrayList<>((int) BucketUtils.fileSize(fastaFilename, options));
+        try ( BufferedReader rdr = new BufferedReader(new InputStreamReader(BucketUtils.openFile(fastaFilename))) ) {
+            final List<SVKmer> kmers = new ArrayList<>((int) BucketUtils.fileSize(fastaFilename));
             String line;
             final StringBuilder sb = new StringBuilder();
             final SVKmer kmerSeed = new SVKmerLong();

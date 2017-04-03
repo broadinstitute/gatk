@@ -127,7 +127,7 @@ public class SVFastqUtils {
             final PipelineOptions pipelineOptions,
             final Iterator<FastqRead> fastqReadItr ) {
         try ( final OutputStream writer =
-                      new BufferedOutputStream(BucketUtils.createFile(fileName, pipelineOptions)) ) {
+                      new BufferedOutputStream(BucketUtils.createFile(fileName)) ) {
             writeFastqStream(writer, fastqReadItr);
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write "+fileName, ioe);

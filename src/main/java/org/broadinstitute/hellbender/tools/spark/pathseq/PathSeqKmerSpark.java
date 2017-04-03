@@ -61,7 +61,7 @@ public final class PathSeqKmerSpark extends GATKSparkTool {
         final List<SVKmer> kmerList = findKmers(ctx, KMER_SIZE, referenceMultiSource, options, dict);
         final HopscotchSet<SVKmer> kmerSet = new HopscotchSet<>(kmerList);
 
-        final Output output = new Output(BucketUtils.createFile(OUTPUT_FILE, options));
+        final Output output = new Output(BucketUtils.createFile(OUTPUT_FILE));
         final Kryo kryo=new Kryo();
         kryo.setReferences(false);
         kryo.writeClassAndObject(output, kmerSet);
