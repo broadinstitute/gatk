@@ -29,7 +29,7 @@ task GatherTables {
 }
 
 task CountFalsePositives {
-	File gatk4_jar
+	String gatk4_jar
 	File filtered_vcf
 	File filtered_vcf_index
 	File ref_fasta
@@ -87,6 +87,7 @@ workflow Mutect2ReplicateValidation {
 	File? gatk4_jar_override
 	Int preemptible_attempts
 	Array[String] artifact_modes
+	File picard_jar
 
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
@@ -139,5 +140,7 @@ workflow Mutect2ReplicateValidation {
 
 	output {
 		File summary = GatherTables.summary
+		Array[File] false_positives_vcfs = Mutect2.filtered_vcf
+		Array[File] unfiltered_vcfs = Mutect2.unfiltered_vcf
 	}
 }

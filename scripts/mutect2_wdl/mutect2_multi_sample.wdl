@@ -137,24 +137,11 @@ workflow Mutect2_Multi {
     	    preemptible_attempts = preemptible_attempts
     }
 
-    if(is_run_orientation_bias_filter) {
-        call CreateOutputList as orientationBiasFilteredOutputList {
-            input:
-                output_name = "ob_filtered",
-                vcfs = select_all(Mutect2.ob_filtered_vcf),
-                preemptible_attempts = preemptible_attempts
-        }
-    }
-
     output {
         File unfiltered_vcfs = unfilteredOutputList.vcf_list
         File filtered_vcfs = filteredOutputList.vcf_list
-        File? ob_filtered_vcfs = orientationBiasFilteredOutputList.vcf_list
-
         Array[File] unfiltered_vcf_files = Mutect2.unfiltered_vcf
         Array[File] filtered_vcf_files = Mutect2.filtered_vcf
-        Array[File?] ob_filtered_vcf_files = Mutect2.ob_filtered_vcf
-
-        Array[File?] contamination_tables = Mutect2.contamination_table
+        Array[File] filtered_vcf_index_files = Mutect2.filtered_vcf_index
     }
 }
