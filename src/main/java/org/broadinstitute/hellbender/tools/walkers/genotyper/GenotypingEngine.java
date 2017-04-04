@@ -264,10 +264,10 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         final double phredScaledConfidence = (-10.0 * log10Confidence) + 0.0;
 
         // return a null call if we don't pass the confidence cutoff or the most likely allele frequency is zero
-        // skip this if we are already looking at a vc with a NON_REF allele i.e. if we are in GenotypeGVCFs
+        // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
                 && !forceSiteEmission()
-                && !outputAlternativeAlleles.alleles.contains(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE)) {
+                && (outputAlternativeAlleles.alleles.size() > 0 && !outputAlternativeAlleles.alleles.get(0).equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))) {
             // technically, at this point our confidence in a reference call isn't accurately estimated
             //  because it didn't take into account samples with no data, so let's get a better estimate
             final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
