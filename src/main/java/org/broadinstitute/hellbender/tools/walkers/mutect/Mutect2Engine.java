@@ -46,6 +46,9 @@ import static java.lang.Math.pow;
  * Created by davidben on 9/15/16.
  */
 public final class Mutect2Engine implements AssemblyRegionEvaluator {
+
+    private static final String MUTECT_VERSION = "2.1-beta";
+
     //TODO: move these lists to GATKVCFConstants
     public static final List<String> STANDARD_M_2_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOD_KEY, GATKVCFConstants.TUMOR_LOD_KEY,
             GATKVCFConstants.PANEL_OF_NORMALS_COUNT_KEY, GATKVCFConstants.HAPLOTYPE_COUNT_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY);
@@ -176,6 +179,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private Set<VCFHeaderLine> getM2HeaderLines(){
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
+
+        headerInfo.add(new VCFHeaderLine("Mutect Version", MUTECT_VERSION));
 
         STANDARD_M_2_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
         STRAND_ARTIFACT_INFO_FIELDS.stream().map(GATKVCFHeaderLines::getInfoLine).forEach(headerInfo::add);
