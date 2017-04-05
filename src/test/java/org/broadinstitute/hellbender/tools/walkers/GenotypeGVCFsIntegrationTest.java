@@ -23,7 +23,9 @@ import java.util.function.BiConsumer;
 
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
-    private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
+    //This value was originally 30 but was changed to 10.  We're setting most tests to use 30 to temporarily avoid having
+    //to update the expected outputs
+    private static final List<String> STAND_CALL_CONF_30 = Arrays.asList("-stand_call_conf", "30");
 
     private static <T> void assertForEachElementInLists(final List<T> actual, final List<T> expected, final BiConsumer<T, T> assertion) {
         Assert.assertEquals(actual.size(), expected.size(), "different number of elements in lists");
@@ -36,17 +38,17 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     public Object[][] gvcfsToGenotype() {
         String basePairGVCF = "gvcf.basepairResolution.gvcf";
         return new Object[][]{
-                {basePairGVCF, "gvcf.basepairResolution.output.vcf", NO_EXTRA_ARGS}, //base pair level gvcf
-                {"testUpdatePGT.gvcf", "testUpdatePGT.output.vcf", NO_EXTRA_ARGS},   //testUpdatePGTStrandAlleleCountsBySample
-                {"gvcfExample1.vcf", "gvcfExample1.vcf.expected.vcf", NO_EXTRA_ARGS}, //single sample vcf
-                {"combined_genotype_gvcf_exception.vcf", "combined_genotype_gvcf_exception.output.vcf", NO_EXTRA_ARGS}, //test that an input vcf with 0/0 already in GT field is overwritten
-                {"combined_genotype_gvcf_exception.nocall.vcf", "combined_genotype_gvcf_exception.output.vcf", NO_EXTRA_ARGS},  //same test as above but with ./.
-                {basePairGVCF, "ndaTest.expected.vcf", Collections.singletonList("-nda")},  //annotating with the number of alleles discovered option
-                {basePairGVCF, "maxAltAllelesTest.expected.vcf", Arrays.asList("--maxAltAlleles", "1")}, //restricting the max number of alt alleles
+                {basePairGVCF, "gvcf.basepairResolution.output.vcf", STAND_CALL_CONF_30}, //base pair level gvcf
+                {"testUpdatePGT.gvcf", "testUpdatePGT.output.vcf", STAND_CALL_CONF_30},   //testUpdatePGTStrandAlleleCountsBySample
+                {"gvcfExample1.vcf", "gvcfExample1.vcf.expected.vcf", STAND_CALL_CONF_30}, //single sample vcf
+                {"combined_genotype_gvcf_exception.vcf", "combined_genotype_gvcf_exception.output.vcf", STAND_CALL_CONF_30}, //test that an input vcf with 0/0 already in GT field is overwritten
+                {"combined_genotype_gvcf_exception.nocall.vcf", "combined_genotype_gvcf_exception.output.vcf", STAND_CALL_CONF_30},  //same test as above but with ./.
+                {basePairGVCF, "ndaTest.expected.vcf", Arrays.asList("-nda", "-stand_call_conf", "30")},  //annotating with the number of alleles discovered option
+                {basePairGVCF, "maxAltAllelesTest.expected.vcf", Arrays.asList("--maxAltAlleles", "1", "-stand_call_conf", "30")}, //restricting the max number of alt alleles
                 {basePairGVCF, "standardConfTest.expected.vcf", Arrays.asList("-stand_call_conf", "300")}, //changing call confidence
-                {"spanningDel.combined.g.vcf", "spanningDel.combined.g.vcf.expected.vcf", NO_EXTRA_ARGS},
-                {"spanningDel.delOnly.g.vcf", "spanningDel.delOnly.g.vcf.expected.vcf", NO_EXTRA_ARGS},
-                {"CEUTrio.20.21.gatk3.4.g.vcf", "CEUTrio.20.21.expected.vcf", Arrays.asList("--dbsnp", "src/test/resources/large/dbsnp_138.b37.20.21.vcf")},
+                {"spanningDel.combined.g.vcf", "spanningDel.combined.g.vcf.expected.vcf", STAND_CALL_CONF_30},
+                {"spanningDel.delOnly.g.vcf", "spanningDel.delOnly.g.vcf.expected.vcf", STAND_CALL_CONF_30},
+                {"CEUTrio.20.21.gatk3.4.g.vcf", "CEUTrio.20.21.expected.vcf", Arrays.asList("--dbsnp", "src/test/resources/large/dbsnp_138.b37.20.21.vcf", "-stand_call_conf", "30")},
                 //{basePairGVCF, "gvcf.basepairResolution.includeNonVariantSites.expected.vcf", Collections.singletonList("--includeNonVariantSites")
         };
     }

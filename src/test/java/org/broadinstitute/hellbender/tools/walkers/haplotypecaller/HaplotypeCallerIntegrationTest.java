@@ -35,7 +35,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
@@ -65,7 +66,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardAnnotation",
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
@@ -95,13 +97,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-R", b37_reference_20_21,
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
 
         final double concordance = calculateConcordance(output, gatk3Output);
-        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in VCF mode is < 99%");
+        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in VCF mode is < 99% (" +  concordance + ")");
     }
 
     /*
@@ -129,13 +132,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardAnnotation",
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
 
         final double concordance = calculateConcordance(output, gatk3Output);
-        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS VCF mode is < 99%");
+        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS VCF mode is < 99% (" +  concordance + ")");
     }
 
     /*
@@ -154,7 +158,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
@@ -182,7 +187,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-ERC", "GVCF",
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
@@ -213,13 +219,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:10000000-10100000",
                 "-O", output.getAbsolutePath(),
                 "-ERC", "GVCF",
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
 
         final double concordance = calculateConcordance(output, gatk3Output);
-        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in GVCF mode is < 99%");
+        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in GVCF mode is < 99% (" +  concordance + ")");
     }
 
     @Test
@@ -244,13 +251,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-G", "StandardHCAnnotation",
                 "-G", "AS_StandardAnnotation",
                 "-ERC", "GVCF",
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
 
         final double concordance = calculateConcordance(output, gatk3Output);
-        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS GVCF mode is < 99%.");
+        Assert.assertTrue(concordance >= 0.99, "Concordance with GATK 3.5 in AS GVCF mode is < 99% (" +  concordance + ")");
     }
 
     @Test
@@ -275,7 +283,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", testInterval,
                 "-O", vcfOutput.getAbsolutePath(),
                 "-bamout", bamOutput.getAbsolutePath(),
-                "-pairHMM", "AVX_LOGLESS_CACHING"
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "-stand_call_conf", "30.0"
         };
 
         runCommandLine(args);
@@ -304,7 +313,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L", "20:11363580-11363600",
                 "-O", output.getAbsolutePath(),
                 "-ploidy", "4",
-                "-maxGT", "15"
+                "-maxGT", "15",
+                "-stand_call_conf", "30.0"
         };
         runCommandLine(args);
 
