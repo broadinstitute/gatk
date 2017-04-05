@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##FILTER=<ID=lowZ,Description="Z < 10">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="read depth">
+##FORMAT=<ID=FT,Number=.,Type=String,Description="Genotype-level filter">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=Z,Number=1,Type=Integer,Description="Made up annotation to test behavior of VF when a value is missing">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="read depth">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Test1	Test2	Test3	Test4	Test5	Test6
+1	13504	.	G	A	.	PASS	DP=22	GT:DP:FT:Z	1/1:9:lowZ:9	1/1:10:PASS:10	./.:3:PASS:3	./.:0:PASS:0	./.:0:PASS:0	1/1:.:PASS
