@@ -282,7 +282,7 @@ test {
 
     testLogging {
         testLogging {
-            events "failed"
+            events "skipped", "failed"
             exceptionFormat = "full"
         }
         afterSuite { desc, result ->
