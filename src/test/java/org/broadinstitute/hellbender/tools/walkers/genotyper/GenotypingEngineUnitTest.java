@@ -112,10 +112,11 @@ public class GenotypingEngineUnitTest extends BaseTest {
     public Object[][] getAllelesLists(){
         return new Object[][]{
                 {Collections.emptyList(), true},
-                {Arrays.asList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), false},
-                {Arrays.asList(altT), true},
+                {Collections.singletonList((Allele) null), true},
+                {Collections.singletonList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), false},
+                {Collections.singletonList(altT), true},
                 {Arrays.asList(altT, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), true},
-                {Arrays.asList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, altT), false}
+                {Arrays.asList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, altT), false},
         };
     }
 
