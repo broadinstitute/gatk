@@ -107,4 +107,22 @@ public class GenotypingEngineUnitTest extends BaseTest {
                 .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))).make();
         Assert.assertNotNull(getGenotypingEngine().calculateGenotypes(vc, GenotypeLikelihoodsCalculationModel.SNP, null));
     }
+
+    @DataProvider
+    public Object[][] getAllelesLists(){
+        return new Object[][]{
+                {Collections.emptyList(), true},
+                {Collections.singletonList((Allele) null), true},
+                {Collections.singletonList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), false},
+                {Collections.singletonList(altT), true},
+                {Arrays.asList(altT, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE), true},
+                {Arrays.asList(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE, altT), false},
+        };
+    }
+
+    @Test(dataProvider = "getAllelesLists")
+    public void testNoAllelesOrFirstAlleleIsNotNonRef(List<Allele> alleles, boolean expectedValue){
+        Assert.assertEquals(GenotypingEngine.noAllelesOrFirstAlleleIsNotNonRef(alleles), expectedValue);
+    }
+
 }
