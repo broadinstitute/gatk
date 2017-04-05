@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.intel.gkl.pairhmm.IntelPairHmm;
+import com.intel.gkl.pairhmm.IntelPairHmmOMP;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.HaplotypeDataHolder;
@@ -26,6 +27,8 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     private long threadLocalSetupTimeDiff = 0;
     private long pairHMMSetupTime = 0;
 
+    public enum Implementation {AVX, OMP}
+
     private final PairHMMNativeBinding pairHmm;
 
     //Hold the mapping between haplotype and index in the list of Haplotypes passed to initialize
@@ -33,16 +36,31 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     private final Map<Haplotype, Integer> haplotypeToHaplotypeListIdxMap = new LinkedHashMap<>();
     private HaplotypeDataHolder[] mHaplotypeDataArray;
 
-    public VectorLoglessPairHMM(PairHMMNativeArguments args) throws UserException.HardwareFeatureException {
-        // TODO: connect GATK temp directory
-        final boolean isSupported = new IntelPairHmm().load(null);
+    public VectorLoglessPairHMM(Implementation implementation, PairHMMNativeArguments args) throws UserException.HardwareFeatureException {
+        final boolean isSupported;
 
-        if (!isSupported) {
-            throw new UserException.HardwareFeatureException("Machine does not support AVX PairHMM.");
+        switch (implementation) {
+            case AVX:
+                pairHmm = new IntelPairHmm();
+                isSupported = pairHmm.load(null);
+                if (!isSupported) {
+                    throw new UserException.HardwareFeatureException("Machine does not support AVX PairHMM.");
+                }
+                break;
+
+            case OMP:
+                pairHmm = new IntelPairHmmOMP();
+                isSupported = pairHmm.load(null);
+                if (!isSupported) {
+                    throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
+                }
+                logger.info("Maximum number of OpenMP threads for AVX : " + args.maxNumberOfThreads);
+                break;
+
+            default:
+                throw new UserException.HardwareFeatureException("Unknown PairHMM implementation.");
         }
 
-        // instantiate and initialize IntelPairHmm
-        pairHmm = new IntelPairHmm();
         pairHmm.initialize(args);
     }
 

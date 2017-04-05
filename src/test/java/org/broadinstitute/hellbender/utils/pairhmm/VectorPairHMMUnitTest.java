@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -23,22 +24,27 @@ public final class VectorPairHMMUnitTest extends BaseTest {
 
     private static final String pairHMMTestData = publicTestDir + "pairhmm-testdata.txt";
 
-   @BeforeClass
-    public void initialize() {
-       try {
-           new VectorLoglessPairHMM(null);
-       } catch (final Exception e) {
-           throw new SkipException("AVX PairHMM is not supported on this system or the library is not available");
-       }
-    }
-
+    // Return a list of supported VectorLoglessPairHMM implementations, skip the test if none are supported
     private List<N2MemoryPairHMM> getHMMs() {
-        final PairHMMNativeArguments args = new PairHMMNativeArguments();
+        List<N2MemoryPairHMM> list = new ArrayList<>();
+        PairHMMNativeArguments args = new PairHMMNativeArguments();
         args.useDoublePrecision = false;
         args.maxNumberOfThreads = 1;
-        final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM(args);
-        avxPairHMM.doNotUseTristateCorrection();
-        return Collections.singletonList(avxPairHMM);
+
+        for (VectorLoglessPairHMM.Implementation imp : VectorLoglessPairHMM.Implementation.values()) {
+            try {
+                final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM(imp, args);
+                avxPairHMM.doNotUseTristateCorrection();
+                list.add(avxPairHMM);
+            }
+            catch (UserException.HardwareFeatureException e ) {}
+        }
+
+        if (list.size() == 0) {
+            throw new SkipException("AVX PairHMM is not supported on this system or the library is not available");
+        }
+
+        return list;
     }
 
     // --------------------------------------------------------------------------------
