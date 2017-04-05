@@ -44,6 +44,9 @@ public final class BucketUtils {
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
 
+    // if the channel errors out, re-open up to this many times
+    public static final int NIO_MAX_REOPENS = 3;
+
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
 
@@ -393,7 +396,7 @@ public final class BucketUtils {
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
         CloudStorageConfiguration cloudConfig = CloudStorageConfiguration.builder()
             // if the channel errors out, re-open up to this many times
-            .maxChannelReopens(3)
+            .maxChannelReopens(NIO_MAX_REOPENS)
             .build();
         StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
         return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
