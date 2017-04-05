@@ -93,7 +93,6 @@ public class IntelInflaterDeflaterIntegrationTest extends CommandLineProgramTest
         final ArrayList<String> args = new ArrayList<>();
         args.add("--input"); args.add(ORIG_BAM.getAbsolutePath());
         args.add("--output"); args.add(outFile.getAbsolutePath());
-        args.add("--verbosity"); args.add("DEBUG");
         args.add("--use_jdk_inflater"); args.add(String.valueOf(use_jdk_inflater));
         args.add("--use_jdk_deflater"); args.add(String.valueOf(use_jdk_deflater));
 
