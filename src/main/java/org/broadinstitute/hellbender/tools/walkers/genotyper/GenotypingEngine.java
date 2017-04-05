@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
@@ -267,7 +268,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         // skip this if we are already looking at a vc with NON_REF as the first alt allele i.e. if we are in GenotypeGVCFs
         if ( !passesEmitThreshold(phredScaledConfidence, outputAlternativeAlleles.siteIsMonomorphic)
                 && !forceSiteEmission()
-                && (outputAlternativeAlleles.alleles.size() > 0 && !outputAlternativeAlleles.alleles.get(0).equals(GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))) {
+                && noAllelesOrFirstAlleleIsNotNonRef(outputAlternativeAlleles.alleles)) {
             // technically, at this point our confidence in a reference call isn't accurately estimated
             //  because it didn't take into account samples with no data, so let's get a better estimate
             final double[] AFpriors = getAlleleFrequencyPriors(vc, defaultPloidy, model);
@@ -311,6 +312,12 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         }
 
         return new VariantCallContext(vcCall, confidentlyCalled(phredScaledConfidence, probOfAtLeastOneAltAllele));
+    }
+
+    @VisibleForTesting
+    static boolean noAllelesOrFirstAlleleIsNotNonRef(List<Allele> altAlleles) {
+        Utils.nonNull(altAlleles);
+        return altAlleles.isEmpty() ||  altAlleles.get(0) != (GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE);
     }
 
     /**
