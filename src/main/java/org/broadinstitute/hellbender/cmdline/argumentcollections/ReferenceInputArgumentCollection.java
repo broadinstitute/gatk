@@ -17,4 +17,12 @@ public abstract class ReferenceInputArgumentCollection implements Serializable {
      * Get the name of the reference file specified at the command line.
      */
     public abstract String getReferenceFileName();
+
+    /**
+     * Checks whether a reference was specified.
+     * @return {@code true} iff a reference was specified.
+     */
+    public boolean hasReference() {
+        return getReferenceFile() != null;
+    }
 }

@@ -12,10 +12,14 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.Serializable;
+
 /**
  * Factory class for creating GenomeLocs
  */
-public final class GenomeLocParser {
+public final class GenomeLocParser implements Serializable {
+
+    private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(GenomeLocParser.class);
 
     public static final String UNMAPPED_LOC_NAME = "unmapped";

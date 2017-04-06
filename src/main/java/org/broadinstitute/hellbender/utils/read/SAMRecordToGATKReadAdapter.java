@@ -95,6 +95,34 @@ public class SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
     }
 
     @Override
+    public void resetPosition() {
+        samRecord.setReferenceName(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
+        samRecord.setAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+    }
+
+    @Override
+    public void unmap() {
+        samRecord.setReadUnmappedFlag(true);
+        samRecord.setReferenceName(mateIsUnmapped() ? SAMRecord.NO_ALIGNMENT_REFERENCE_NAME : getMateContig());
+        samRecord.setAlignmentStart(mateIsUnmapped() ? SAMRecord.NO_ALIGNMENT_START : getMateStart());
+        samRecord.setCigarString(SAMRecord.NO_ALIGNMENT_CIGAR);
+        samRecord.setMappingQuality(SAMRecord.NO_MAPPING_QUALITY);
+        samRecord.setProperPairFlag(false);
+        if (samRecord.getReadNegativeStrandFlag()) {
+            samRecord.reverseComplement(true);
+            samRecord.setReadNegativeStrandFlag(false);
+        }
+    }
+
+    @Override
+    public void unmapMate() {
+        samRecord.setMateUnmappedFlag(true);
+        samRecord.setMateReferenceName(SAMRecord.NO_ALIGNMENT_REFERENCE_NAME);
+        samRecord.setMateAlignmentStart(SAMRecord.NO_ALIGNMENT_START);
+        samRecord.setProperPairFlag(false);
+    }
+
+    @Override
     public void setPosition( final Locatable locatable ) {
         if ( locatable == null ) {
             throw new IllegalArgumentException("Cannot set read position to null");

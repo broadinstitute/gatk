@@ -26,7 +26,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -59,15 +58,8 @@ public abstract class GATKTool extends CommandLineProgram {
     @Argument(fullName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, shortName = StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, doc = "If specified, do not check the sequence dictionaries from our inputs for compatibility. Use at your own risk!", optional = true, common = true)
     private boolean disableSequenceDictionaryValidation = false;
 
-    @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_LONG_NAME,
-            shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
-            doc = "If true, create a BAM/CRAM index when writing a coordinate-sorted BAM/CRAM file.", optional=true, common = true)
-    public boolean createOutputBamIndex = true;
-
-    @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_LONG_NAME,
-            shortName=StandardArgumentDefinitions.CREATE_OUTPUT_BAM_MD5_SHORT_NAME,
-            doc = "If true, create a MD5 digest for any BAM/SAM/CRAM file created", optional=true, common = true)
-    public boolean createOutputBamMD5 = false;
+    @ArgumentCollection
+    private final OutputAlignmentArgumentCollection outputAlignmentArguments = new OutputAlignmentArgumentCollection(referenceArguments);
 
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME,
@@ -562,20 +554,7 @@ public abstract class GATKTool extends CommandLineProgram {
      * @return SAMFileWriter
      */
     public final SAMFileGATKReadWriter createSAMWriter(final File outputFile, final boolean preSorted) {
-        if (!hasReference() && IOUtils.isCramFile(outputFile)) {
-            throw new UserException.MissingReference("A reference file is required for writing CRAM files");
-        }
-
-        return new SAMFileGATKReadWriter(
-                        ReadUtils.createCommonSAMWriter(
-                                outputFile,
-                                referenceArguments.getReferenceFile(),
-                                getHeaderForSAMWriter(),
-                                preSorted,
-                                createOutputBamIndex,
-                                createOutputBamMD5
-                        )
-        );
+        return outputAlignmentArguments.createSAMWriter(outputFile, preSorted, getHeaderForSAMWriter());
     }
 
     /**

@@ -13,7 +13,7 @@ import java.util.List;
 public final class OptionalIntervalArgumentCollection extends IntervalArgumentCollection {
     private static final long serialVersionUID = 1L;
 
-    @Argument(fullName = "intervals", shortName = "L", doc = "One or more genomic intervals over which to operate", optional = true)
+    @Argument(fullName = INCLUDED_INTERVALS_FULL_NAME, shortName = INCLUDED_INTERVALS_SHORT_NAME, doc = "One or more genomic intervals over which to operate", optional = true)
     protected final List<String> intervalStrings = new ArrayList<>();
 
     @Override

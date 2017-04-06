@@ -36,3 +36,7 @@ gvcfs/HG00096.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
 gvcfs/HG00268.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
 gvcfs/NA19625.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
 gvcfs/combined.gatk3.7.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
+sv_evidence_sam_for_variants_input.vcf.gz filter=lfs diff=lfs merge=lfs -text
+sv_evidence_sam_for_variants_input.vcf.gz.tbi filter=lfs diff=lfs merge=lfs -text
+sv_evidence_for_variants_input.bam filter=lfs diff=lfs merge=lfs -text
+sv_evidence_for_variants_input.bai filter=lfs diff=lfs merge=lfs -text

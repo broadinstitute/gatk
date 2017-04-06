@@ -13,6 +13,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.util.Supplier;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
@@ -22,7 +23,9 @@ import org.broadinstitute.hellbender.utils.text.XReadLines;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 /**
@@ -52,10 +55,7 @@ public final class IntervalUtils {
      * The {@code null} contig is supported and comes last.
      * </p>
      */
-    public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR =
-            Comparator.comparing(Locatable::getContig,Comparator.nullsLast(String::compareTo))
-                    .thenComparingInt(Locatable::getStart)
-                    .thenComparingInt(Locatable::getEnd);
+    public static final Comparator<Locatable> LEXICOGRAPHICAL_ORDER_COMPARATOR = LocatableComparator.LEXICOGRAPHIC;
 
     private static final Logger logger = LogManager.getLogger(IntervalUtils.class);
 
@@ -173,7 +173,6 @@ public final class IntervalUtils {
 
         return sortAndMergeIntervals(genomeLocParser, allIntervals, intervalMergingRule);
     }
-
 
     /**
      * Turns a set of strings describing intervals into a parsed set of intervals.  Valid string elements can be files,
@@ -778,6 +777,36 @@ public final class IntervalUtils {
         }
     }
 
+    /**
+     * Returns the distance in base pairs of two locatables.
+     * <p>
+     *     The return distance is the absolute number of base pairs between both locatables
+     *     if they are mapped to the same chromosome. Otherwise this method return {@link Integer#MAX_VALUE}.
+     * </p>
+     * <p>
+     *     Overlapping and adjacent locatables have a distance of 0 base-pairs.
+     * </p>
+     * @param a the one input locatable.
+     * @param b the other input locatable.
+     * @return {@link Integer#MAX_VALUE} if either of the input locatable is unmapped or if they map
+     *   to different contigs.
+     * @throws IllegalArgumentException if either input locatable is {@code null}.
+     */
+    public static int distance(final Locatable a, final Locatable b) {
+        Utils.nonNull(a);
+        Utils.nonNull(b);
+        if (a.getContig() == null)
+            return Integer.MAX_VALUE;
+        else if (b.getContig() == null)
+            return Integer.MAX_VALUE;
+        else if (!a.getContig().equals(b.getContig()))
+            return Integer.MAX_VALUE;
+        else if (a.getStart() < b.getStart())
+            return Math.max(0, b.getStart() - a.getEnd());
+        else
+            return Math.max(0, a.getStart() - b.getEnd());
+    }
+
     private static final class SplitLocusRecursive {
         final List<GenomeLoc> split;
         final LinkedList<GenomeLoc> remaining;
@@ -833,6 +862,84 @@ public final class IntervalUtils {
      */
     private static Interval toInterval(final GenomeLoc loc, final int locIndex) {
         return new Interval(loc.getContig(), loc.getStart(), loc.getStop(), false, "interval_" + locIndex);
+    }
+
+
+    public static <L extends Locatable, C extends Collection<? super L>> C sortAndMergeLocatables(final Iterable<? extends L> elements,
+                                                                                              final BiPredicate<L, L> mergeable,
+                                                                                              final LocatableFactory<L> locatableFactory,
+                                                                                              final Supplier<C> resultSupplier) {
+        final List<L> unmerged = CollectionUtils.heapSort(elements, LEXICOGRAPHICAL_ORDER_COMPARATOR, ArrayList::new);
+        return mergeLocatables(unmerged, mergeable, locatableFactory, resultSupplier);
+    }
+
+    /**
+     * Return a collection where "mergeable" locatables that are contiguous in an input {@link Iterable}
+     * are merged.
+     *
+     * <p>
+     *
+     * </p>
+     *
+     * <p>
+     *     whether two locatables can be merged is determined using the input predicate {@code mergeable}.
+     *     The only constraint impose to this predicate is that the two locatables that are not mapped to
+     *     the same contig cannot be merged.
+     * </p>
+     * <p>
+     *     The class of the result collection is controlled by the input result supplier factory.
+     * </p>
+     * <p>
+     *     The merged elements will be added to this instance in the order they appear in the
+     *     input using the {@link Collection::add} operation.
+     * </p>
+     *
+     * @param elements the input elements
+     * @param mergeable predicate that determines what predicates are merged.
+     * @param locatableFactory factory for new merged locatables.
+     * @param resultSupplier factory for resulting collection.
+     * @param <L> the locatable class.
+     * @param <C> the return collection class.
+     *
+     * @throws IllegalArgumentException if any of the input arguments is {@code null}, {@code elements} contain any {@code null}
+     * , {@code locatableFactory} or {@code resultSupplier} return {@code null} instances.
+     * @return never {@code null}.
+     */
+    public static <L extends Locatable, C extends Collection<? super L>> C mergeLocatables(final Iterable<? extends L> elements,
+                                                                                   final BiPredicate<L, L> mergeable,
+                                                                                   final LocatableFactory<L> locatableFactory,
+                                                                                   final Supplier<C> resultSupplier) {
+        Utils.nonNull(elements, "the input elements iterable cannot be null");
+        Utils.nonNull(locatableFactory, "the locatable factory cannot be null");
+        Utils.nonNull(resultSupplier, "the result-supplier cannot be null");
+        Utils.nonNull(mergeable, "the mergeable predicate cannot be null");
+
+        final C result = Utils.nonNull(resultSupplier.get(), "the result collection supplier cannot supply a null");
+        final Iterator<? extends L> it = elements.iterator();
+        if (!it.hasNext())
+            return result;
+        else {
+            L current = it.next();
+            while (it.hasNext()) {
+                final L next = it.next();
+                if (next == null) {
+                    throw new IllegalArgumentException("the input elements cannot contain a null");
+                } else if (mergeable.test(current, next)) {
+                    if (!current.getContig().equals(next.getContig())) {
+                        throw new IllegalArgumentException("the mergeable predicate cannot evaluate to true for locatables in different contigs");
+                    } else {
+                        current = Utils.nonNull(locatableFactory.create(current.getContig(), Math.min(current.getStart(), next.getStart()),
+                                Math.max(current.getEnd(), next.getEnd())), "the input locatable factory must not return nulls");
+
+                    }
+                } else {
+                    result.add(current);
+                    current = next;
+                }
+            }
+            result.add(current);
+        }
+        return result;
     }
 
     /**
@@ -998,16 +1105,20 @@ public final class IntervalUtils {
     // Utility code related to the notion of splitting intervals at well-defined boundaries,
     // so that whichever intervals you start from, the resulting shards will line up.
 
+
     /**
-     *
      * Splits the given input intervals into shards of at most the requested size.
      * The shard boundaries lie at integer multiples of shardSize.
      *
      * chr2:1-200 -> chr2:1-100,chr2:101-200
      */
-    static public List<SimpleInterval> cutToShards(Iterable<SimpleInterval> intervals, int shardSize) {
-        ArrayList<SimpleInterval> ret = new ArrayList<>();
-        for (SimpleInterval i : intervals) {
+    public static <C extends Collection<SimpleInterval>> C cutToShards(final Iterable<SimpleInterval> intervals, final int shardSize, final Supplier<C> resultSupplier) {
+        Utils.nonNull(intervals);
+        Utils.nonNull(resultSupplier);
+        if (shardSize < 1)
+            throw new IllegalArgumentException("the shrad size must be at least 1");
+        final C ret = resultSupplier.get();
+        for (final SimpleInterval i : intervals) {
             int beginShard = shardIndex(i.getStart(), shardSize);
             int endShard = shardIndex(i.getEnd(), shardSize);
             if (beginShard==endShard) {
@@ -1022,6 +1133,17 @@ public final class IntervalUtils {
             ret.add(new SimpleInterval(i.getContig(), beginOfShard(endShard, shardSize), i.getEnd()));
         }
         return ret;
+    }
+
+    /**
+     *
+     * Splits the given input intervals into shards of at most the requested size.
+     * The shard boundaries lie at integer multiples of shardSize.
+     *
+     * chr2:1-200 -> chr2:1-100,chr2:101-200
+     */
+    static public List<SimpleInterval> cutToShardsList(Iterable<SimpleInterval> intervals, int shardSize) {
+        return cutToShards(intervals, shardSize, ArrayList::new);
     }
 
 
@@ -1049,3 +1171,5 @@ public final class IntervalUtils {
 
     // (end of shard-related code)
 }
+
+

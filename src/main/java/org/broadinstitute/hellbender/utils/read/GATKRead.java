@@ -69,6 +69,16 @@ public interface GATKRead extends Locatable {
     void setPosition( final String contig, final int start );
 
     /**
+     * Removes the mapping information for the record.
+     */
+    void unmap();
+
+    /**
+     * Removes the mapping information for the record mate.
+     */
+    void unmapMate();
+
+    /**
      * Set the position of the read using the position of an existing {@link Locatable}. Cannot be used to
      * set the read to an unmapped position; use {@link #setIsUnmapped} for that purpose.
      *
@@ -662,5 +672,15 @@ public interface GATKRead extends Locatable {
             return String.format("%s %s:%d-%d", getName(), getContig(), getStart(), getEnd());
         }
     }
+
+    /**
+     * Clears the location information for this read.
+     *
+     * <p>
+     *     This only affect the reference sequence name and start position. Any other alignment information, this read
+     *      or its mate, is kept.
+     * </p>
+     */
+    void resetPosition();
 }
 

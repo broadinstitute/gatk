@@ -11,6 +11,8 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
+import org.broadinstitute.hellbender.engine.OutputAlignmentArgumentCollection;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceWindowFunctions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
@@ -23,6 +25,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SerializableFunction;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -71,6 +74,10 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
 
     @ArgumentCollection
     protected IntervalArgumentCollection intervalArgumentCollection = requiresIntervals() ? new RequiredIntervalArgumentCollection() : new OptionalIntervalArgumentCollection();
+
+    @ArgumentCollection
+    protected final OutputAlignmentArgumentCollection outputAlignmentArguments = new OutputAlignmentArgumentCollection(referenceArguments);
+
 
     @Argument(doc = "maximum number of bytes to read from a file into each partition of reads. " +
             "Setting this higher will result in fewer partitions. Note that this will not be equal to the size of the partition in memory. " +
@@ -221,6 +228,14 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @return all reads from our reads input(s) as a {@link JavaRDD}, bounded by intervals if specified, and unfiltered.
      */
     public JavaRDD<GATKRead> getUnfilteredReads() {
+        return getUnfilteredReads(intervals);
+    }
+
+    /**
+     * Returns the reads source.
+     * @return never {@code null}
+     */
+    protected JavaRDD<GATKRead> getUnfilteredReads(final List<SimpleInterval> intervals) {
         // TODO: This if statement is a temporary hack until #959 gets resolved.
         if (readInput.endsWith(".adam")) {
             try {
@@ -237,6 +252,7 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             // If no intervals were specified (intervals == null), this will return all reads (mapped and unmapped)
             return readsSource.getParallelReads(readInput, refPath, intervals, bamPartitionSplitSize);
         }
+
     }
 
     /**

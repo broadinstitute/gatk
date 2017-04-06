@@ -1194,7 +1194,7 @@ public final class IntervalUtilsUnitTest extends BaseTest {
 
     @Test(dataProvider = "intervals")
     public void testCutToShards(ArrayList<SimpleInterval> input, int shardSize, ArrayList<SimpleInterval> expected) throws Exception {
-        List<SimpleInterval> actual = IntervalUtils.cutToShards(input, shardSize);
+        List<SimpleInterval> actual = IntervalUtils.cutToShardsList(input, shardSize);
         Assert.assertEquals(
                 actual,
                 expected

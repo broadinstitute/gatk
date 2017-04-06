@@ -61,7 +61,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
          String bam, final List<GATKVariant> variants,
          final ReadFilter optFilter, final ReferenceMultiSource rds) {
         // prepare shards for the intervals of interest
-        List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShards(intervals, bigShardSize);
+        List<SimpleInterval> shardedIntervals = IntervalUtils.cutToShardsList(intervals, bigShardSize);
         // add variants
         ArrayList<ContextShard> localShards = AddContextDataToReadSparkOptimized.fillVariants(shardedIntervals, variants, margin);
         // ship to cluster
@@ -183,7 +183,7 @@ public final class AddContextDataToReadSparkOptimized implements Serializable {
             firstValidPos = Math.max(shard.interval.getStart() - margin, 1);
             ArrayList<SimpleInterval> ints =new ArrayList<>();
             ints.add(shard.interval);
-            subshards = IntervalUtils.cutToShards(ints, outputShardSize);
+            subshards = IntervalUtils.cutToShardsList(ints, outputShardSize);
             currentSubShardIndex = 0;
             currentSubShard = subshards.get(currentSubShardIndex);
 

@@ -7,11 +7,16 @@ import com.google.api.services.genomics.model.Read;
 import com.google.cloud.genomics.gatk.common.GenomicsConverter;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.samtools.util.StringUtil;
+import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.BaseUtils;
+import org.broadinstitute.hellbender.utils.CollectionUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.Serializable;
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -133,6 +138,76 @@ public final class GoogleGenomicsReadToGATKReadAdapter implements GATKRead, Seri
         genomicsRead.getAlignment().getPosition().setReferenceName(contig);
         // Convert from a 1-based to a 0-based position
         genomicsRead.getAlignment().getPosition().setPosition((long)start - 1);
+    }
+
+    @Override
+    public void unmap() {
+        if (genomicsRead.getAlignment() != null) {
+            final boolean isReverse = genomicsRead.getAlignment().getPosition().getReverseStrand();
+            genomicsRead.setAlignment(null);
+            if (isReverse) { // need to reverse-complement the bases and reverse the qualities.
+                reverseComplement();
+            }
+            genomicsRead.setProperPlacement(false);
+        }
+    }
+
+    /**
+     * Revert and revert complement sequences whose order depend on whether the alignment is on the forward
+     * or negative backward strand.
+     */
+    private void reverseComplement() {
+        if (genomicsRead.getAlignedSequence() != null) {
+            genomicsRead.setAlignedSequence(SequenceUtil.reverseComplement(genomicsRead.getAlignedSequence()));
+        }
+        if (genomicsRead.getAlignedQuality() != null) {
+            genomicsRead.setAlignedQuality(CollectionUtils.reverse(genomicsRead.getAlignedQuality(), ArrayList<Integer>::new));
+        }
+        for (final String tag : SAMRecord.TAGS_TO_REVERSE_COMPLEMENT) {
+            final Object o = genomicsRead.get(tag);
+            if (o != null) {
+                if (o instanceof byte[]) {
+                    final byte[] newBytes = ((byte[]) o).clone();
+                    SequenceUtil.reverseComplement(newBytes);
+                    genomicsRead.set(tag, newBytes);
+                } else if (o instanceof CharSequence) {
+                    genomicsRead.set(tag, SequenceUtil.reverseComplement(o.toString()));
+                } else {
+                    throw new UnsupportedOperationException("cannot handle tag reverse-complement on type: " + o.getClass());
+                }
+            }
+        }
+        for (final String tag : SAMRecord.TAGS_TO_REVERSE) {
+            final Object o = genomicsRead.get(tag);
+            if (o != null) {
+                if (o.getClass().isArray()) {
+                    final int length = Array.getLength(o);
+                    final Object newO = Array.newInstance(o.getClass().getComponentType(), length);
+                    for (int i = 0; i < length; i++) {
+                        Array.set(newO, i, Array.get(o, length - i - 1));
+                    }
+                    genomicsRead.set(tag, newO);
+                } else if (o instanceof CharSequence) {
+                    genomicsRead.set(tag, StringUtils.reverse(o.toString()));
+                } else {
+                    throw new UnsupportedOperationException("cannot handle tag reverse on type: " + o.getClass());
+                }
+            }
+        }
+    }
+
+    @Override
+    public void unmapMate() {
+        genomicsRead.setNextMatePosition(null);
+        genomicsRead.setProperPlacement(false);
+    }
+
+    @Override
+    public void resetPosition() {
+        if (genomicsRead.getAlignment() != null && genomicsRead.getAlignment().getPosition() != null) {
+            genomicsRead.getAlignment().getPosition().setReferenceName(null);
+            genomicsRead.getAlignment().getPosition().setPosition(null);
+        }
     }
 
     @Override

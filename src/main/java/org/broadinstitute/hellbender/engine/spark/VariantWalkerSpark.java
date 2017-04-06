@@ -135,7 +135,8 @@ public abstract class VariantWalkerSpark extends GATKSparkTool {
     private static FlatMapFunction<Shard<VariantContext>, VariantWalkerContext> getVariantsFunction(
             final Broadcast<ReferenceMultiSource> bReferenceSource,
             final Broadcast<FeatureManager> bFeatureManager,
-            final SAMSequenceDictionary sequenceDictionary, final int variantShardPadding) {
+            final SAMSequenceDictionary sequenceDictionary,
+            final int variantShardPadding) {
         return (FlatMapFunction<Shard<VariantContext>, VariantWalkerContext>) shard -> {
             // get reference bases for this shard (padded)
             SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(variantShardPadding, sequenceDictionary);

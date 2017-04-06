@@ -27,6 +27,7 @@ import scala.reflect.ClassTag;
 import scala.reflect.ClassTag$;
 
 import javax.annotation.Nullable;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -70,7 +71,6 @@ public class SparkSharder {
     public static <L extends Locatable> JavaRDD<Shard<L>> shard(JavaSparkContext ctx, JavaRDD<L> locatables, Class<L> locatableClass,
                                                                 SAMSequenceDictionary sequenceDictionary, List<ShardBoundary> intervals,
                                                                 int maxLocatableLength, boolean useShuffle) {
-
         List<ShardBoundary> paddedIntervals = intervals.stream().map(sb -> new ShardBoundary(sb.getInterval(), sb.getPaddedInterval()) {
             private static final long serialVersionUID = 1L;
             @Override

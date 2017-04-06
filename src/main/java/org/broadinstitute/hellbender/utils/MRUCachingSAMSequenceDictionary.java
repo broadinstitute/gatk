@@ -5,6 +5,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
+import java.io.Serializable;
+
 /**
  * A wrapper class that provides efficient most recently used caching for the global
  * SAMSequenceDictionary underlying all of the GATK engine capabilities.  It is essential
@@ -16,7 +18,10 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
  * cached value is the actual SAMSequenceRecord of the most recently accessed value from
  * getSequence, along with local variables for the contig index and contig string.
  */
-final class MRUCachingSAMSequenceDictionary {
+final class MRUCachingSAMSequenceDictionary implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     /**
      * Our sequence dictionary
      */

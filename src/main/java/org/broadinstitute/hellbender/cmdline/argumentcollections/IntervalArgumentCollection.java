@@ -25,6 +25,9 @@ public abstract class IntervalArgumentCollection implements Serializable {
     protected final IntervalMergingRule intervalMerging = IntervalMergingRule.ALL;
     private static final long serialVersionUID = 1L;
 
+    public static final String INCLUDED_INTERVALS_SHORT_NAME = "L";
+    public static final String INCLUDED_INTERVALS_FULL_NAME = "intervals";
+
     /**
      * Subclasses must provide a -L argument and override this to return the results of that argument.
      *
