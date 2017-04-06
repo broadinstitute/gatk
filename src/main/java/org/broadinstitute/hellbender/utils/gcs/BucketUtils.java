@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.services.storage.Storage;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.HttpTransportOptions;
 import com.google.cloud.RetryParams;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
@@ -37,7 +35,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Utilities for dealing with google buckets
+ * Utilities for dealing with google buckets.
  */
 public final class BucketUtils {
     public static final String GCS_PREFIX = "gs://";
@@ -45,6 +43,9 @@ public final class BucketUtils {
 
     // slashes omitted since hdfs paths seem to only have 1 slash which would be weirder to include than no slashes
     public static final String FILE_PREFIX = "file:";
+
+    // if the channel errors out, re-open up to this many times
+    public static final int NIO_MAX_REOPENS = 3;
 
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.hellbender.utils.gcs");
@@ -394,9 +395,28 @@ public final class BucketUtils {
         final String[] split = gcsUrl.split("/", -1);
         final String BUCKET = split[2];
         final String pathWithoutBucket = String.join("/", Arrays.copyOfRange(split, 3, split.length));
-        return CloudStorageFileSystem.forBucket(BUCKET).getPath(pathWithoutBucket);
+        CloudStorageConfiguration cloudConfig = CloudStorageConfiguration.builder()
+            // if the channel errors out, re-open up to this many times
+            .maxChannelReopens(NIO_MAX_REOPENS)
+            .build();
+        StorageOptions sopt = setGenerousTimeouts(StorageOptions.newBuilder()).build();
+        return CloudStorageFileSystem.forBucket(BUCKET, cloudConfig, sopt).getPath(pathWithoutBucket);
     }
 
+    private static StorageOptions.Builder setGenerousTimeouts(StorageOptions.Builder builder) {
+        return builder
+            .setTransportOptions(HttpTransportOptions.newBuilder()
+                .setConnectTimeout(60000)
+                .setReadTimeout(60000)
+                .build())
+            .setRetryParams(RetryParams.newBuilder()
+                .setRetryMaxAttempts(10)
+                .setRetryMinAttempts(6)
+                .setMaxRetryDelayMillis(30000)
+                .setTotalRetryPeriodMillis(120000)
+                .setInitialRetryDelayMillis(250)
+                .build());
+    }
     // TODO(jpmartin): uncomment once shaded.cloud_nio.com.google.auth.Credentials is visible.
     // Then also uncomment in GcsNioIntegrationTest.
     /**
@@ -418,19 +438,7 @@ public final class BucketUtils {
             builder = builder.setCredentials(sc);
         }
         // generous timeouts, to avoid tests failing when not warranted.
-        StorageOptions storageOptions = builder
-            .setTransportOptions(HttpTransportOptions.newBuilder()
-                .setConnectTimeout(60000)
-                .setReadTimeout(60000)
-                .build())
-            .setRetryParams(RetryParams.newBuilder()
-                    .setRetryMaxAttempts(10)
-                    .setRetryMinAttempts(6)
-                    .setMaxRetryDelayMillis(30000)
-                    .setTotalRetryPeriodMillis(120000)
-                    .setInitialRetryDelayMillis(250)
-                    .build())
-            .build();
+        StorageOptions storageOptions = setGenerousTimeouts(builder).build();
 
         // 2. Create GCS filesystem object with those credentials
         return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);

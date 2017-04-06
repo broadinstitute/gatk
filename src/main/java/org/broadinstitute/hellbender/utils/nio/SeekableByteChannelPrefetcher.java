@@ -116,6 +116,10 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             if (pos > chan.size()) {
                 return null;
             }
+            if (pos < 0) {
+                // This should never happen, if the code's correct.
+                throw new IllegalArgumentException("blockIndex " + blockIndex + " has position " + pos + ": negative position is not valid.");
+            }
             chan.position(pos);
             // read until buffer is full, or EOF
             while (chan.read(buf) >= 0 && buf.hasRemaining()) {}
@@ -259,7 +263,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
      * @param dst buffer to write into
      */
     @Override
-    public int read(ByteBuffer dst) throws IOException {
+    public synchronized int read(ByteBuffer dst) throws IOException {
         if (!open) throw new ClosedChannelException();
         try {
             if (trackTime) {
