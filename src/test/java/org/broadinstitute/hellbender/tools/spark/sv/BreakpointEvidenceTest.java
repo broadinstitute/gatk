@@ -13,6 +13,7 @@ import org.testng.annotations.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class BreakpointEvidenceTest extends BaseTest {
@@ -22,7 +23,7 @@ public class BreakpointEvidenceTest extends BaseTest {
         final String groupName = header.getReadGroups().get(0).getReadGroupId();
         final int readSize = 151;
         final ReadMetadata.ReadGroupFragmentStatistics groupStats = new ReadMetadata.ReadGroupFragmentStatistics(401, 175, 20);
-        final ReadMetadata readMetadata = new ReadMetadata(header, groupStats, 1, 1L, 1L, 1);
+        final ReadMetadata readMetadata = new ReadMetadata(header, Collections.emptyMap(), groupStats, 1, 1L, 1L, 1);
         final String templateName = "xyzzy";
         final int readStart = 1010101;
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, templateName, 0, readStart, readSize);
@@ -52,7 +53,7 @@ public class BreakpointEvidenceTest extends BaseTest {
         final List<BreakpointEvidence> evidenceList = new ArrayList<>(7);
         final SAMFileHeader samHeader = ArtificialReadUtils.createArtificialSamHeader();
         final ReadMetadata.ReadGroupFragmentStatistics groupStatistics = new ReadMetadata.ReadGroupFragmentStatistics(400, 175, 20);
-        final ReadMetadata metadata = new ReadMetadata(samHeader, groupStatistics, 1, 2L, 2L, 1);
+        final ReadMetadata metadata = new ReadMetadata(samHeader, Collections.emptyMap(), groupStatistics, 1, 2L, 2L, 1);
         final List<GATKRead> readPair = ArtificialReadUtils.createPair(samHeader, "firstReadPair", 101, 1010, 1382, false, false);
         final GATKRead read = readPair.get(0);
         evidenceList.add(new BreakpointEvidence.SplitRead(read, metadata, true));

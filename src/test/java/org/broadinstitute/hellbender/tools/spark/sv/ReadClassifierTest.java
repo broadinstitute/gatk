@@ -19,7 +19,7 @@ public class ReadClassifierTest extends BaseTest {
         final int readSize = 151;
         final int fragmentLen = 400;
         final ReadMetadata.ReadGroupFragmentStatistics groupStats = new ReadMetadata.ReadGroupFragmentStatistics(fragmentLen, 175, 20);
-        final ReadMetadata readMetadata = new ReadMetadata(header, groupStats, 1, 2L, 2L, 1);
+        final ReadMetadata readMetadata = new ReadMetadata(header, Collections.emptyMap(), groupStats, 1, 2L, 2L, 1);
         final String templateName = "xyzzy";
         final int leftStart = 1010101;
         final int rightStart = leftStart + fragmentLen - readSize;

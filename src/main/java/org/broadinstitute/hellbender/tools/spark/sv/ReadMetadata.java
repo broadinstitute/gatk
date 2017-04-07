@@ -4,14 +4,17 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.spark.api.java.JavaRDD;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.*;
 import java.util.*;
 
 /**
@@ -20,6 +23,7 @@ import java.util.*;
 @DefaultSerializer(ReadMetadata.Serializer.class)
 public class ReadMetadata {
     private final Map<String, Integer> contigNameToID;
+    private final Map<Integer, Integer> altContigNameToMoleculeID;
     private final long nReads;
     private final long maxReadsInPartition;
     private final int nPartitions;
@@ -27,9 +31,11 @@ public class ReadMetadata {
     private final Map<String, ReadGroupFragmentStatistics> readGroupToFragmentStatistics;
 
     public ReadMetadata( final SAMFileHeader header,
+                         final String contigNameToMoleculeNameFile,
+                         final PipelineOptions pOpts,
                          final JavaRDD<GATKRead> reads ) {
         contigNameToID = buildContigNameToIDMap(header);
-
+        altContigNameToMoleculeID = buildAltContigToMoleculeMap(contigNameToMoleculeNameFile, pOpts, contigNameToID);
         final int nReadGroups = header.getReadGroups().size();
         final List<PartitionStatistics> perPartitionStatistics =
                 reads.mapPartitions(readItr -> Collections.singletonList(new PartitionStatistics(readItr, nReadGroups)).iterator())
@@ -53,9 +59,11 @@ public class ReadMetadata {
     }
 
     @VisibleForTesting
-    ReadMetadata( final SAMFileHeader header, final ReadGroupFragmentStatistics stats,
-                  final int nPartitions, final long nReads, final long maxReadsInPartition, final int coverage ) {
+    ReadMetadata( final SAMFileHeader header, final Map<Integer, Integer> altContigNameToMoleculeID,
+                  final ReadGroupFragmentStatistics stats, final int nPartitions, final long nReads,
+                  final long maxReadsInPartition, final int coverage ) {
         contigNameToID = buildContigNameToIDMap(header);
+        this.altContigNameToMoleculeID = altContigNameToMoleculeID;
         this.nPartitions = nPartitions;
         this.nReads = nReads;
         this.maxReadsInPartition = maxReadsInPartition;
@@ -71,11 +79,17 @@ public class ReadMetadata {
         int contigMapSize = input.readInt();
         contigNameToID = new HashMap<>(SVUtils.hashMapCapacity(contigMapSize));
         while ( contigMapSize-- > 0 ) {
-            final String contigName = kryo.readObject(input, String.class);
+            final String contigName = input.readString();
             final int contigId = input.readInt();
             contigNameToID.put(contigName, contigId);
         }
-
+        int altMapSize = input.readInt();
+        altContigNameToMoleculeID = new HashMap<>(SVUtils.hashMapCapacity(altMapSize));
+        while ( altMapSize-- > 0 ) {
+            final int altId = input.readInt();
+            final int moleculeId = input.readInt();
+            altContigNameToMoleculeID.put(altId, moleculeId);
+        }
         nReads = input.readLong();
         maxReadsInPartition = input.readLong();
         nPartitions = input.readInt();
@@ -84,7 +98,7 @@ public class ReadMetadata {
         int readGroupMapSize = input.readInt();
         readGroupToFragmentStatistics = new HashMap<>(SVUtils.hashMapCapacity(readGroupMapSize));
         while ( readGroupMapSize-- > 0 ) {
-            final String readGroupName = kryo.readObjectOrNull(input, String.class);
+            final String readGroupName = input.readString();
             final ReadGroupFragmentStatistics groupStats = kryo.readObject(input, ReadGroupFragmentStatistics.class);
             readGroupToFragmentStatistics.put(readGroupName, groupStats);
         }
@@ -93,7 +107,13 @@ public class ReadMetadata {
     private void serialize( final Kryo kryo, final Output output ) {
         output.writeInt(contigNameToID.size());
         for ( final Map.Entry<String, Integer> entry : contigNameToID.entrySet() ) {
-            kryo.writeObject(output, entry.getKey());
+            output.writeString(entry.getKey());
+            output.writeInt(entry.getValue());
+        }
+
+        output.writeInt(altContigNameToMoleculeID.size());
+        for ( final Map.Entry<Integer, Integer> entry : altContigNameToMoleculeID.entrySet() ) {
+            output.writeInt(entry.getKey());
             output.writeInt(entry.getValue());
         }
 
@@ -104,7 +124,7 @@ public class ReadMetadata {
 
         output.writeInt(readGroupToFragmentStatistics.size());
         for ( final Map.Entry<String, ReadGroupFragmentStatistics> entry : readGroupToFragmentStatistics.entrySet() ) {
-            kryo.writeObjectOrNull(output, entry.getKey(), String.class);
+            output.writeString(entry.getKey());
             kryo.writeObject(output, entry.getValue());
         }
     }
@@ -115,6 +135,13 @@ public class ReadMetadata {
         final Integer result = contigNameToID.get(contigName);
         if ( result == null ) throw new GATKException("No such contig name: "+contigName);
         return result;
+    }
+
+    public int getMoleculeID( final String contigName ) {
+        final Integer contigID = contigNameToID.get(contigName);
+        if ( contigID == null ) throw new GATKException("No such contig name: "+contigName);
+        final Integer moleculeID = altContigNameToMoleculeID.get(contigID);
+        return moleculeID != null ? moleculeID : contigID;
     }
 
     public long getNReads() { return nReads; }
@@ -142,12 +169,13 @@ public class ReadMetadata {
         if ( !(obj instanceof ReadMetadata) ) return false;
         final ReadMetadata that = (ReadMetadata)obj;
         return this.contigNameToID.equals(that.contigNameToID) &&
+                this.altContigNameToMoleculeID.equals(that.altContigNameToMoleculeID) &&
                 this.readGroupToFragmentStatistics.equals(that.readGroupToFragmentStatistics);
     }
 
     @Override
     public int hashCode() {
-        return 47*(47*contigNameToID.hashCode() + readGroupToFragmentStatistics.hashCode());
+        return 47*(47*(47*contigNameToID.hashCode()+altContigNameToMoleculeID.hashCode())+readGroupToFragmentStatistics.hashCode());
     }
 
     private static Map<String, long[]> combineMaps( final Map<String, long[]> accumulator,
@@ -174,6 +202,40 @@ public class ReadMetadata {
             contigNameToID.put(contigs.get(contigID).getSequenceName(), contigID);
         }
         return contigNameToID;
+    }
+
+    private static Map<Integer, Integer> buildAltContigToMoleculeMap( final String contigNameToMoleculeNameFile,
+                                                                      final PipelineOptions pOpts,
+                                                                      final Map<String, Integer> contigNameToID ) {
+        final Map<Integer, Integer> altMap = new HashMap<>();
+        if ( contigNameToMoleculeNameFile == null ) return altMap;
+        try ( final BufferedReader reader =
+              new BufferedReader(new InputStreamReader(BucketUtils.openFile(contigNameToMoleculeNameFile,pOpts))) ) {
+            String line;
+            while ( (line = reader.readLine()) != null ) {
+                if ( line.length() == 0 || line.charAt(0) == '#' ) continue;
+                final int tabIdx = line.indexOf('\t');
+                if ( tabIdx == -1 ) {
+                    throw new GATKException("molecule-name file, "+contigNameToMoleculeNameFile+
+                            ", not in two-column, tab-delimited format");
+                }
+                final Integer contigID = contigNameToID.get(line.substring(0, tabIdx));
+                final Integer moleculeID = contigNameToID.get(line.substring(tabIdx+1));
+                if ( contigID == null ||  moleculeID == null ) {
+                    throw new GATKException("molecule-name file, "+contigNameToMoleculeNameFile+
+                            ", contains unrecognized contig name in this line: "+line);
+                }
+                if ( altMap.containsKey(contigID) ) {
+                    throw new GATKException("molecule-name file, "+contigNameToMoleculeNameFile+
+                            ", contains repeated entry for contig "+line.substring(0,tabIdx));
+                }
+                altMap.put(contigID, moleculeID);
+            }
+        }
+        catch ( final IOException ioe ) {
+            throw new GATKException("Can't read contig molecule file "+contigNameToMoleculeNameFile, ioe);
+        }
+        return altMap;
     }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<ReadMetadata> {
@@ -209,11 +271,8 @@ public class ReadMetadata {
                     int tLen = Math.abs(read.getFragmentLength());
                     if ( tLen > MAX_TRACKED_FRAGMENT_LENGTH ) tLen = MAX_TRACKED_FRAGMENT_LENGTH;
                     final String readGroup = read.getReadGroup();
-                    long[] counts = readGroupToFragmentSizeCountMap.get(readGroup);
-                    if ( counts == null ) {
-                        counts = new long[MAX_TRACKED_FRAGMENT_LENGTH + 1];
-                        readGroupToFragmentSizeCountMap.put(readGroup, counts);
-                    }
+                    final int arrLen = MAX_TRACKED_FRAGMENT_LENGTH + 1;
+                    final long[] counts = readGroupToFragmentSizeCountMap.computeIfAbsent(readGroup,k->new long[arrLen]);
                     counts[tLen] += 1;
                 }
             }
@@ -227,7 +286,7 @@ public class ReadMetadata {
             int nEntries = input.readInt();
             readGroupToFragmentSizeCountMap = new HashMap<>(SVUtils.hashMapCapacity(nEntries));
             while ( nEntries-- > 0 ) {
-                final String readGroup = kryo.readObjectOrNull(input, String.class);
+                final String readGroup = input.readString();
                 final long[] counts = new long[MAX_TRACKED_FRAGMENT_LENGTH+1];
                 for ( int idx = 0; idx <= MAX_TRACKED_FRAGMENT_LENGTH; ++idx ) {
                     counts[idx] = input.readLong();
@@ -248,7 +307,7 @@ public class ReadMetadata {
             kryo.setReferences(false);
             output.writeInt(readGroupToFragmentSizeCountMap.size());
             for ( final Map.Entry<String, long[]> entry : readGroupToFragmentSizeCountMap.entrySet() ) {
-                kryo.writeObjectOrNull(output, entry.getKey(), String.class);
+                output.writeString(entry.getKey());
                 for ( final long value : entry.getValue() ) {
                     output.writeLong(value);
                 }
