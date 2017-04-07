@@ -21,6 +21,26 @@ if [[ "$#" -lt 6 ]]; then
     exit 1
 fi
 
+GATK_DIR=$1
+CLUSTER_NAME=$2
+
+MASTER_NODE="hdfs://""$CLUSTER_NAME""-m:8020"
+
+PROJECT_OUTPUT_DIR="$MASTER_NODE"/$3
+INPUT_BAM="$MASTER_NODE"/$4
+REF_FASTA="$MASTER_NODE"/$5
+REF_2BIT=$(echo $REF_FASTA | sed 's/.fasta$/.2bit/')
+REF_INDEX_IMG=$6
+
+export GATK_DIR
+export CLUSTER_NAME
+export PROJECT_OUTPUT_DIR
+export REF_FASTA
+export REF_2BIT
+export REF_INDEX_IMG
+
 baseDir=$(dirname -- "$0")
 ${baseDir}/scanBam.sh "$@"
-${baseDir}/discoverVariants.sh "$1" "$2" "$3" "$5"
+${baseDir}/assembly.sh
+${baseDir}/alignAssembly.sh
+${baseDir}/discoverVariantsSGA.sh

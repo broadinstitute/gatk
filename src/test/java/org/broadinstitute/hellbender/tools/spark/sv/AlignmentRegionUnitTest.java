@@ -48,7 +48,7 @@ public class AlignmentRegionUnitTest {
 
         final int[] alignmentStartsOnRef_0Based = {96, 196, 195, 95, 101, 201, 101, 201};
         final int[] alignmentStartsOnTig_0BasedInclusive = {0, 4, 0, 5, 0, 6, 0, 7};
-        final int[] alignmentStartsOnTig_0BasedExclusive = {4, 8, 5, 10, 6, 12, 7, 14};
+        final int[] alignmentEndsOnTig_0BasedExclusive = {4, 8, 5, 10, 6, 12, 7, 14};
         final int[] seqLen = {8, 8, 10, 10, 12, 12, 14, 14};
         final boolean[] strandedness = {true, false, true, false, false, true, false, true};
         final String[] cigarStrings = {"4M4S", "4M4H", "5M5S", "5M5H", "6S6M", "6H6M", "7S7M", "7H7M"}; // each different number represent a different contig's pair of chimeric alignments
@@ -59,12 +59,13 @@ public class AlignmentRegionUnitTest {
         for(int i=0; i<cigars.length; ++i) {
             final BwaMemAlignment bwaMemAlignment = new BwaMemAlignment(strandedness[i] ? 0 : SAMFlag.READ_REVERSE_STRAND.intValue(),
                     0, alignmentStartsOnRef_0Based[i], alignmentStartsOnRef_0Based[i]+cigars[i].getReferenceLength(),
-                    alignmentStartsOnTig_0BasedInclusive[i], alignmentStartsOnTig_0BasedExclusive[i],
+                    strandedness[i] ? alignmentStartsOnTig_0BasedInclusive[i] : seqLen[i]-alignmentEndsOnTig_0BasedExclusive[i],
+                    strandedness[i] ? alignmentEndsOnTig_0BasedExclusive[i] : seqLen[i]-alignmentStartsOnTig_0BasedInclusive[i],
                     60, 0, 1, 1, cigarStrings[i],
                     null, null, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
             final SimpleInterval referenceInterval = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[i]+1, bwaMemAlignment.getRefEnd());
-            data[i] = new Object[]{bwaMemAlignment, referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]), strandedness[i], alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentStartsOnTig_0BasedExclusive[i], seqLen[i],
-                    new AlignmentRegion("1", "1", referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]), strandedness[i], bwaMemAlignment.getMapQual(), bwaMemAlignment.getNMismatches(), alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentStartsOnTig_0BasedExclusive[i])};
+            data[i] = new Object[]{bwaMemAlignment, referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]), strandedness[i], alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentEndsOnTig_0BasedExclusive[i], seqLen[i],
+                    new AlignmentRegion("1", "1", referenceInterval, strandedness[i] ? cigars[i] : CigarUtils.invertCigar(cigars[i]), strandedness[i], bwaMemAlignment.getMapQual(), bwaMemAlignment.getNMismatches(), alignmentStartsOnTig_0BasedInclusive[i]+1, alignmentEndsOnTig_0BasedExclusive[i])};
         }
         return data;
     }
