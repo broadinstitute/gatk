@@ -59,8 +59,8 @@ class AlignmentRegion {
         this.mapQual = alignment.getMapQual();
         this.mismatches = alignment.getNMismatches();
         this.assembledContigLength = contigLen;
-        this.startInAssembledContig = alignment.getSeqStart()+1;
-        this.endInAssembledContig = alignment.getSeqEnd();
+        this.startInAssembledContig = startOfAlignmentInContig();
+        this.endInAssembledContig = endOfAlignmentInContig();
     }
 
     @VisibleForTesting
