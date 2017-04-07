@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.api.services.storage.Storage;
 import com.google.cloud.HttpTransportOptions;
-import com.google.cloud.RetryParams;
 import com.google.cloud.dataflow.sdk.options.GcsOptions;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.cloud.dataflow.sdk.util.GcsUtil;
@@ -26,6 +25,10 @@ import org.broadinstitute.hellbender.engine.AuthHolder;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import shaded.cloud_nio.com.google.auth.oauth2.GoogleCredentials;
+import shaded.cloud_nio.com.google.api.gax.core.RetrySettings;
+import shaded.cloud_nio.com.google.auth.Credentials;
+import shaded.cloud_nio.org.joda.time.Duration;
 
 import java.io.*;
 import java.nio.channels.Channels;
@@ -409,16 +412,18 @@ public final class BucketUtils {
                 .setConnectTimeout(60000)
                 .setReadTimeout(60000)
                 .build())
-            .setRetryParams(RetryParams.newBuilder()
-                .setRetryMaxAttempts(10)
-                .setRetryMinAttempts(6)
-                .setMaxRetryDelayMillis(30000)
-                .setTotalRetryPeriodMillis(120000)
-                .setInitialRetryDelayMillis(250)
+            .setRetrySettings(RetrySettings.newBuilder()
+                .setMaxAttempts(10)
+                .setMaxRetryDelay(Duration.millis(30000L))
+                .setTotalTimeout(Duration.millis(120000L))
+                .setInitialRetryDelay(Duration.millis(250L))
+                .setRetryDelayMultiplier(1.0)
+                .setInitialRpcTimeout(Duration.millis(120000L))
+                .setRpcTimeoutMultiplier(1.0)
+                .setMaxRpcTimeout(Duration.millis(120000L))
                 .build());
     }
-    // TODO(jpmartin): uncomment once shaded.cloud_nio.com.google.auth.Credentials is visible.
-    // Then also uncomment in GcsNioIntegrationTest.
+
     /**
      * Get an authenticated GCS-backed NIO FileSystem object representing the selected projected and bucket.
      * Credentials are found automatically when running on Compute/App engine, logged into gcloud, or
@@ -428,19 +433,17 @@ public final class BucketUtils {
      *
      * Note that most of the time it's enough to just open a file via
      * Files.newInputStream(Paths.get(URI.create( path ))).
-     *
+     **/
     public static java.nio.file.FileSystem getAuthenticatedGcs(String projectId, String bucket, byte[] credentials) throws IOException {
         StorageOptions.Builder builder = StorageOptions.newBuilder()
                 .setProjectId(projectId);
         if (null != credentials) {
-            com.google.auth.Credentials c = GoogleCredentials.fromStream(new ByteArrayInputStream(credentials));
-            (shaded.cloud_nio.com.google.auth.Credentials) sc = c;
-            builder = builder.setCredentials(sc);
+            builder = builder.setCredentials(GoogleCredentials.fromStream(new ByteArrayInputStream(credentials)));
         }
         // generous timeouts, to avoid tests failing when not warranted.
         StorageOptions storageOptions = setGenerousTimeouts(builder).build();
 
         // 2. Create GCS filesystem object with those credentials
         return CloudStorageFileSystem.forBucket(bucket, CloudStorageConfiguration.DEFAULT, storageOptions);
-    }*/
+    }
 }
