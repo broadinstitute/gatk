@@ -80,6 +80,22 @@ public final class GenomicsDBImport extends GATKTool {
   optional = true)
   private long sizePerColumnPartitionPerSample = DEFAULT_SIZE_PER_COLUMN_PARTITION_PER_SAMPLE;
 
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_VID_MAP_FILE_LONG_NAME,
+  shortName = StandardArgumentDefinitions.GENOMICSDB_VID_MAP_FILE_SHORT_NAME,
+  doc = "JSON file including INFO/FORMAT/FILTER fields from headers and contig maps")
+  private String vidMapJSONFile;
+
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_CALLSET_MAP_FILE_LONG_NAME,
+    shortName = StandardArgumentDefinitions.GENOMICSDB_CALLSET_MAP_FILE_SHORT_NAME,
+    doc = "JSON file including callset to GenomicsDB row maps")
+  private String callsetMapJSONFile;
+
+  @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_CREATE_WORKSPACE_LONG_NAME,
+  shortName = StandardArgumentDefinitions.GENOMICSDB_CREATE_WORKSPACE_SHORT_NAME,
+  doc = "Boolean flag - true means it will create GenomicsDB workspace, otherwise not",
+  optional = true)
+  private Boolean createWorkspace = false;
+
   @Override
   public boolean requiresIntervals() { return true; }
 
@@ -116,14 +132,17 @@ public final class GenomicsDBImport extends GATKTool {
 
     File workspaceDir = new File(workspace);
 
-    if (!Files.isDirectory(workspaceDir.toPath()))
-      messages[index++] = "No such directory or workspace found: " + workspace;
+    if (!createWorkspace) {
+      if (!Files.isDirectory(workspaceDir.toPath()))
+        messages[index++] = "No such directory or workspace found: " + workspace;
 
-    boolean check = new File(workspace + "/__tiledb_workspace.tdb").exists();
-    if (Files.isDirectory(workspaceDir.toPath()) && !check) {
-      messages[index++] = "Not a valid GenomicsDB workspace: " + workspace;
+      boolean check = new File(workspace + "/__tiledb_workspace.tdb").exists();
+
+      if (Files.isDirectory(workspaceDir.toPath()) && !check) {
+        messages[index++] = "Not a valid GenomicsDB workspace: " + workspace;
+      }
     }
-
+    
     if (sizePerColumnPartitionPerSample < 1024L) {
       messages[index++] = "Size per column partition per sample is tool small." +
         " Consider using larger size than 10KBytes";
@@ -138,6 +157,27 @@ public final class GenomicsDBImport extends GATKTool {
    */
   @Override
   public void onTraversalStart() {
+
+    File workspaceDir = new File(workspace);
+
+    if (createWorkspace) {
+
+      int ret = GenomicsDBImporter.createTileDBWorkspace(workspaceDir.getAbsolutePath());
+
+      if (ret > 0) {
+        try {
+          throw new IOException("Directory " + workspaceDir + " already exists");
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      } else if (ret < 0) {
+        try {
+          throw new IOException("Error creating GenomicsDB workspace");
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
 
     initializeIntervals();
 
