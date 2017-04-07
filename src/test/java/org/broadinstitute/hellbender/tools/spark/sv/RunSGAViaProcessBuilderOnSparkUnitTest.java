@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import htsjdk.samtools.fastq.FastqReader;
+import htsjdk.samtools.fastq.FastqRecord;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
-import htsjdk.samtools.fastq.FastqReader;
-import htsjdk.samtools.fastq.FastqRecord;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -15,7 +15,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;

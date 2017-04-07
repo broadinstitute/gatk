@@ -1,112 +1,35 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Iterables;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.SequenceUtil;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import scala.Tuple2;
 
 import java.io.Serializable;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.loadContigsCollectionKeyedByAssemblyId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
- * Implements a parser for parsing alignments of locally assembled contigs, and
- * generating {@link ChimericAlignment}'s from the alignments, if possible.
+ * Interface to load various upstream assembly and alignment format and turn into custom {@link AlignedAssembly} format.
+ * Implementations are expected to apply filter to the provided raw format contig alignments and
+ * break the gapped alignments by calling into {@link #breakGappedAlignment(AlignedAssembly.AlignmentInterval, int, int)}.
  */
-class AssemblyAlignmentParser implements Serializable {
-    private static final long serialVersionUID = 1L;
-    private static final Logger log = LogManager.getLogger(AssemblyAlignmentParser.class);
-    private static final boolean DEBUG_STATS = false;
+public interface AssemblyAlignmentParser extends Serializable {
+    static final long serialVersionUID = 1L;
 
     /**
-     * Converts a {@link GATKRead}, particularly the alignment and sequence information in it to the custom {@link AlignmentRegion} format.
+     * Implementations are expected to apply filter to the provided raw format contig alignments and break the alignment gaps.
      */
-    @VisibleForTesting
-    static Tuple2<Iterable<AlignmentRegion>, byte[]> convertToAlignmentRegions(final Iterable<GATKRead> reads) {
-        Utils.validateArg(reads.iterator().hasNext(), "input collection of GATK reads is empty");
-
-        final GATKRead primaryAlignment = Utils.stream(reads).filter(r -> !(r.isSecondaryAlignment() || r.isSupplementaryAlignment()))
-                .findFirst()
-                .orElseThrow(() -> new GATKException("no primary alignment for read " + reads.iterator().next().getName()));
-
-        final byte[] bases = primaryAlignment.getBases();
-        if (primaryAlignment.isReverseStrand()) {
-            SequenceUtil.reverseComplement(bases);
-        }
-
-        final Iterable<AlignmentRegion> alignmentRegionIterable
-                = Utils.stream(reads)
-                .filter(r -> !r.isSecondaryAlignment())
-                .map(AlignmentRegion::new)
-                .map(ar -> breakGappedAlignment(ar, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY))
-                .flatMap(Utils::stream).collect(Collectors.toList());
-
-        return new Tuple2<>(alignmentRegionIterable, bases);
-    }
-
-    /**
-     * Loads the alignment regions and sequence of all locally-assembled contigs by SGA from the text file they are in;
-     * one record for each contig.
-     * @param ctx                       spark context for IO operations
-     * @param pathToInputAlignments     path string to alignments of the contigs; format assumed to be consistent/parsable by {@link AlignmentRegion#toString()}
-     * @return                          an PairRDD for all assembled contigs with their alignment regions and sequence
-     */
-    static JavaPairRDD<Iterable<AlignmentRegion>, byte[]> prepAlignmentRegionsForCalling(final JavaSparkContext ctx,
-                                                                                         final String pathToInputAlignments,
-                                                                                         final String pathToInputAssemblies) {
-
-        final JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> alignmentRegionsKeyedByAssemblyAndContigId
-                = parseAlignments(ctx, pathToInputAlignments);
-        if (DEBUG_STATS) {
-            AssemblyAlignmentParser.debugStats(alignmentRegionsKeyedByAssemblyAndContigId, pathToInputAlignments);
-        }
-
-        final JavaPairRDD<Tuple2<String, String>, byte[]> contigSequences
-                = loadContigSequence(ctx, pathToInputAssemblies);
-
-        return alignmentRegionsKeyedByAssemblyAndContigId
-                .join(contigSequences)
-                .mapToPair(Tuple2::_2);
-    }
-
-    // TODO: 11/23/16 test
-    static JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> parseAlignments(final JavaSparkContext ctx,
-                                                                                          final String pathToInputAlignments) {
-
-        return ctx.textFile(pathToInputAlignments).map(textLine -> AlignmentRegion.fromString(textLine.split(AlignmentRegion.STRING_REP_SEPARATOR,-1)))
-                .flatMap(oneRegion -> breakGappedAlignment(oneRegion, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY).iterator())
-                .mapToPair(alignmentRegion -> new Tuple2<>(new Tuple2<>(alignmentRegion.assemblyId, alignmentRegion.contigId), alignmentRegion))
-                .groupByKey();
-    }
-
-    // TODO: 12/15/16 test
-    static JavaPairRDD<Tuple2<String, String>, byte[]> loadContigSequence(final JavaSparkContext ctx,
-                                                                          final String pathToInputAssemblies) {
-        return loadContigsCollectionKeyedByAssemblyId(ctx, pathToInputAssemblies)
-                .flatMapToPair(assemblyIdAndContigsCollection -> {
-                    final String assemblyId = assemblyIdAndContigsCollection._1;
-                    final ContigsCollection contigsCollection = assemblyIdAndContigsCollection._2;
-                    return contigsCollection.getContents().stream()
-                            .map(pair -> new Tuple2<>(new Tuple2<>(assemblyId, pair._1.toString()), pair._2.toString().getBytes()))
-                            .collect(Collectors.toList()).iterator();
-                });
-    }
-
-    // TODO: 1/18/17 handle mapping quality and mismatches of the new alignment better rather than artificial ones. this would ultimately require a re-alignment done right.
+    public JavaRDD<AlignedAssembly.AlignedContig> loadAndFilterAndParseContigAlignments(final JavaSparkContext ctx,
+                                                                                        final Logger toolLogger,
+                                                                                        Object... customArguments);
     /**
      * Break a gapped alignment into multiple alignment regions, based on input sensitivity: i.e. if the gap(s) in the input alignment
      * is equal to or larger than the size specified by {@code sensitivity}, two alignment regions will be generated.
@@ -141,18 +64,20 @@ class AssemblyAlignmentParser implements Serializable {
      * @return an iterable of size >= 1. if size==1, the returned iterable contains only the input (i.e. either no gap or hasn't reached sensitivity)
      */
     @VisibleForTesting
-    static Iterable<AlignmentRegion> breakGappedAlignment(final AlignmentRegion oneRegion, final int sensitivity) {
+    static Iterable<AlignedAssembly.AlignmentInterval> breakGappedAlignment(final AlignedAssembly.AlignmentInterval oneRegion,
+                                                                            final int sensitivity,
+                                                                            final int unclippedContigLen) {
 
         final List<CigarElement> cigarElements = checkCigarAndConvertTerminalInsertionToSoftClip(oneRegion.cigarAlong5to3DirectionOfContig);
         if (cigarElements.size() == 1) return new ArrayList<>( Collections.singletonList(oneRegion) );
 
-        final List<AlignmentRegion> result = new ArrayList<>(3); // blunt guess
+        final List<AlignedAssembly.AlignmentInterval> result = new ArrayList<>(3); // blunt guess
         final int originalMapQ = oneRegion.mapQual;
 
         final List<CigarElement> cigarMemoryList = new ArrayList<>();
-        final int clippedNBasesFromStart = SVVariantCallerUtils.getNumClippedBases(true, cigarElements);
+        final int clippedNBasesFromStart = SVVariantDiscoveryUtils.getNumClippedBases(true, cigarElements);
 
-        final int hardClippingAtBeginning = cigarElements.get(0).getOperator()==CigarOperator.H ? cigarElements.get(0).getLength() : 0;
+        final int hardClippingAtBeginning = cigarElements.get(0).getOperator()== CigarOperator.H ? cigarElements.get(0).getLength() : 0;
         final int hardClippingAtEnd = (cigarElements.get(cigarElements.size()-1).getOperator()== CigarOperator.H)? cigarElements.get(cigarElements.size()-1).getLength() : 0;
         final CigarElement hardClippingAtBeginningMaybeNull = hardClippingAtBeginning==0 ? null : new CigarElement(hardClippingAtBeginning, CigarOperator.H);
         int contigIntervalStart = 1 + clippedNBasesFromStart;
@@ -173,31 +98,31 @@ class AssemblyAlignmentParser implements Serializable {
 
                     // collapse cigar memory list into a single cigar for ref & contig interval computation
                     final Cigar memoryCigar = new Cigar(cigarMemoryList);
-                    final int effectiveReadLen = memoryCigar.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(memoryCigar) - SVVariantCallerUtils.getNumClippedBases(true, memoryCigar);
+                    final int effectiveReadLen = memoryCigar.getReadLength() + SVVariantDiscoveryUtils.getTotalHardClipping(memoryCigar) - SVVariantDiscoveryUtils.getNumClippedBases(true, memoryCigar);
 
                     // task 1: infer reference interval taking into account of strand
                     final SimpleInterval referenceInterval;
                     if (oneRegion.forwardStrand) {
                         referenceInterval = new SimpleInterval(oneRegion.referenceInterval.getContig(),
-                                                               refBoundary1stInTheDirectionOfContig,
-                                                          refBoundary1stInTheDirectionOfContig + (memoryCigar.getReferenceLength()-1));
+                                refBoundary1stInTheDirectionOfContig,
+                                refBoundary1stInTheDirectionOfContig + (memoryCigar.getReferenceLength()-1));
                     } else {
                         referenceInterval = new SimpleInterval(oneRegion.referenceInterval.getContig(),
-                                                         refBoundary1stInTheDirectionOfContig - (memoryCigar.getReferenceLength()-1), // step backward
-                                                               refBoundary1stInTheDirectionOfContig);
+                                refBoundary1stInTheDirectionOfContig - (memoryCigar.getReferenceLength()-1), // step backward
+                                refBoundary1stInTheDirectionOfContig);
                     }
 
                     // task 2: infer contig interval
                     final int contigIntervalEnd = contigIntervalStart + effectiveReadLen - 1;
 
                     // task 3: now add trailing cigar element and create the real cigar for the to-be-returned AR
-                    cigarMemoryList.add(new CigarElement(oneRegion.assembledContigLength-contigIntervalEnd-hardClippingAtEnd, CigarOperator.S));
+                    cigarMemoryList.add(new CigarElement(unclippedContigLen-contigIntervalEnd-hardClippingAtEnd, CigarOperator.S));
                     if (hardClippingAtEnd != 0) { // be faithful to hard clipping (as the accompanying bases have been hard-clipped away)
                         cigarMemoryList.add(new CigarElement(hardClippingAtEnd, CigarOperator.H));
                     }
-                    final Cigar cigarForNewAlignmentRegion = new Cigar(cigarMemoryList);
+                    final Cigar cigarForNewAlignmentInterval = new Cigar(cigarMemoryList);
 
-                    final AlignmentRegion split = new AlignmentRegion(oneRegion.assemblyId, oneRegion.contigId, referenceInterval, cigarForNewAlignmentRegion, oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH, contigIntervalStart, contigIntervalEnd);
+                    final AlignedAssembly.AlignmentInterval split = new AlignedAssembly.AlignmentInterval(referenceInterval, contigIntervalStart, contigIntervalEnd, cigarForNewAlignmentInterval, oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH);
 
                     result.add(split);
 
@@ -215,7 +140,7 @@ class AssemblyAlignmentParser implements Serializable {
 
                     break;
                 default:
-                    throw new GATKException("Alignment CIGAR contains an unexpected N or P element: " + oneRegion.toString()); // TODO: 1/20/17 still not quite sure if this is quite right, it doesn't blow up on NA12878 WGS, but who knows what happens in the future
+                    throw new GATKException("Alignment CIGAR contains an unexpected N or P element: " + oneRegion.toPackedString()); // TODO: 1/20/17 still not quite sure if this is quite right, it doesn't blow up on NA12878 WGS, but who knows what happens in the future
             }
         }
 
@@ -231,10 +156,11 @@ class AssemblyAlignmentParser implements Serializable {
         }
 
         final Cigar lastForwardStrandCigar = new Cigar(cigarMemoryList);
-        int clippedNBasesFromEnd = SVVariantCallerUtils.getNumClippedBases(false, cigarElements);
-        result.add(new AlignmentRegion(oneRegion.assemblyId, oneRegion.contigId, lastReferenceInterval, lastForwardStrandCigar,
-                oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH,
-                contigIntervalStart, oneRegion.assembledContigLength-clippedNBasesFromEnd));
+        int clippedNBasesFromEnd = SVVariantDiscoveryUtils.getNumClippedBases(false, cigarElements);
+        result.add(new AlignedAssembly.AlignmentInterval(lastReferenceInterval,
+                contigIntervalStart, unclippedContigLen-clippedNBasesFromEnd, lastForwardStrandCigar,
+                oneRegion.forwardStrand, originalMapQ, SVConstants.DiscoveryStepConstants.ARTIFICIAL_MISMATCH));
+
 
         return result;
     }
@@ -253,16 +179,13 @@ class AssemblyAlignmentParser implements Serializable {
     @VisibleForTesting
     static List<CigarElement> checkCigarAndConvertTerminalInsertionToSoftClip(final Cigar cigarAlongInput5to3Direction) {
 
-        final List<CigarElement> cigarElements = new ArrayList<>(cigarAlongInput5to3Direction.getCigarElements());
-        if (cigarElements.size()==1) {
-            return cigarElements;
-        }
+        if (cigarAlongInput5to3Direction.numCigarElements()<2 ) return cigarAlongInput5to3Direction.getCigarElements();
 
-        SVVariantCallerUtils.validateCigar(cigarElements);
+        final List<CigarElement> cigarElements = new ArrayList<>(cigarAlongInput5to3Direction.getCigarElements());
+        SVVariantDiscoveryUtils.validateCigar(cigarElements);
 
         final List<CigarElement> convertedList = convertInsToSoftClipFromOneEnd(cigarElements, true);
-        final List<CigarElement> result = convertInsToSoftClipFromOneEnd(convertedList, false);
-        return result;
+        return convertInsToSoftClipFromOneEnd(convertedList, false);
     }
 
     /**
@@ -273,8 +196,8 @@ class AssemblyAlignmentParser implements Serializable {
     @VisibleForTesting
     static List<CigarElement> convertInsToSoftClipFromOneEnd(final List<CigarElement> cigarElements,
                                                              final boolean fromStart) {
-        final int numHardClippingBasesFromOneEnd = SVVariantCallerUtils.getNumHardClippingBases(fromStart, cigarElements);
-        final int numSoftClippingBasesFromOneEnd = SVVariantCallerUtils.getNumSoftClippingBases(fromStart, cigarElements);
+        final int numHardClippingBasesFromOneEnd = SVVariantDiscoveryUtils.getNumHardClippingBases(fromStart, cigarElements);
+        final int numSoftClippingBasesFromOneEnd = SVVariantDiscoveryUtils.getNumSoftClippingBases(fromStart, cigarElements);
 
         final int indexOfFirstNonClippingOperation;
         if (numHardClippingBasesFromOneEnd==0 && numSoftClippingBasesFromOneEnd==0) { // no clipping
@@ -317,28 +240,4 @@ class AssemblyAlignmentParser implements Serializable {
         }
         return result;
     }
-
-    private static void debugStats(final JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> alignmentRegionsWithContigSequences, final String outPrefix) {
-        log.info(alignmentRegionsWithContigSequences.count() + " contigs");
-        final long noARs = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())==0).count();
-        log.info(noARs + " contigs have no alignments");
-        final long oneARs = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())==1).count();
-        log.info(oneARs + " contigs have only one alignments");
-
-        final JavaPairRDD<String, List<Tuple2<Integer, Integer>>> x = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())==2).mapToPair(tuple2 -> {
-            final Iterator<AlignmentRegion> it = tuple2._2().iterator();
-            final AlignmentRegion region1 = it.next(), region2 = it.next();
-            return new Tuple2<>(region1.assemblyId+":"+region1.contigId, Arrays.asList(new Tuple2<>(region1.mapQual, region1.referenceInterval.size()), new Tuple2<>(region2.mapQual, region2.referenceInterval.size())));
-        });
-        x.coalesce(1).saveAsTextFile(outPrefix+"_withTwoAlignments");
-        log.info(x.count() + " contigs have two alignments");
-
-        final JavaPairRDD<String, List<Tuple2<Integer, Integer>>> y = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())>2).mapToPair(tuple2 -> {
-            final AlignmentRegion region1 = tuple2._2().iterator().next();
-            return new Tuple2<>(region1.assemblyId+":"+region1.contigId, StreamSupport.stream(tuple2._2().spliterator(), false).map(ar -> new Tuple2<>(ar.mapQual, ar.referenceInterval.size())).collect(Collectors.toList()));
-        });
-        y.coalesce(1).saveAsTextFile(outPrefix+"_withMoreThanTwoAlignments");
-        log.info(y.count() + " contigs have more than two alignments");
-    }
-
 }

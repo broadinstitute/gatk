@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextWriter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -20,14 +21,12 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
- * An assembly with its contigs aligned to referece, or a reason that there isn't an assembly.
+ * An assembly with its contigs aligned to reference, or a reason that there isn't an assembly.
  */
 @DefaultSerializer(AlignedAssemblyOrExcuse.Serializer.class)
 public final class AlignedAssemblyOrExcuse {
@@ -111,38 +110,67 @@ public final class AlignedAssemblyOrExcuse {
     /**
      * write a SAM file containing records for each aligned contig
      */
-    public static void writeSAMFile( final String samFile, final PipelineOptions pOpts,
-                                     final SAMFileHeader header,
-                                     final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList ) {
+    static void writeSAMFile( final String samFile, final PipelineOptions pOpts,
+                              final SAMFileHeader header,
+                              final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList ) {
         try ( final OutputStream os = BucketUtils.createFile(samFile, pOpts) ) {
             final SAMTextWriter writer = new SAMTextWriter(os);
             writer.setSortOrder(SAMFileHeader.SortOrder.queryname, true);
             writer.setHeader(header);
-            final List<String> refNames =
-                    header.getSequenceDictionary().getSequences().stream()
-                            .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
-            for ( final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse : alignedAssemblyOrExcuseList ) {
-                if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) continue;
-                final FermiLiteAssembly assembly = alignedAssemblyOrExcuse.getAssembly();
-                final int assemblyId = alignedAssemblyOrExcuse.getAssemblyId();
-                final List<List<BwaMemAlignment>> allAlignments = alignedAssemblyOrExcuse.getContigAlignments();
-                final int nContigs = assembly.getNContigs();
-                for ( int contigIdx = 0; contigIdx != nContigs; ++contigIdx ) {
-                    final List<BwaMemAlignment> alignments = allAlignments.get(contigIdx);
-                    if ( alignments.isEmpty() ) continue;
-                    final FermiLiteAssembly.Contig contig = assembly.getContig(contigIdx);
-                    final String readName = String.format("asm%06d:tig%05d", assemblyId, contigIdx);
-                    final byte[] calls = contig.getSequence();
-                    for ( final BwaMemAlignment alignment : alignments ) {
-                        writer.addAlignment(BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null, alignment,
-                                refNames, header, false, false));
-                    }
-                }
-            }
+            turnIntoSAMRecordsForEachAssembly(header, alignedAssemblyOrExcuseList).forEach(ls -> ls.forEach(writer::addAlignment));
             writer.finish();
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write SAM file of aligned contigs.", ioe);
         }
+    }
+
+    /**
+     * Filters out failed assemblies and turn each assembly into an iterable of SAMRecords.
+     */
+    public static List<Iterable<SAMRecord>> turnIntoSAMRecordsForEachAssembly(final SAMFileHeader header, final List<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseList) {
+
+        final List<Iterable<SAMRecord>> result = new ArrayList<>(alignedAssemblyOrExcuseList.size());
+
+        final List<String> refNames =
+                header.getSequenceDictionary().getSequences().stream()
+                        .map(SAMSequenceRecord::getSequenceName).collect(Collectors.toList());
+
+        for ( final AlignedAssemblyOrExcuse alignedAssemblyOrExcuse : alignedAssemblyOrExcuseList ) {
+            if ( alignedAssemblyOrExcuse.getErrorMessage() != null ) continue;
+            final FermiLiteAssembly assembly = alignedAssemblyOrExcuse.getAssembly();
+            final int assemblyId = alignedAssemblyOrExcuse.getAssemblyId();
+            final List<List<BwaMemAlignment>> allAlignments = alignedAssemblyOrExcuse.getContigAlignments();
+            final int nContigs = assembly.getNContigs();
+            IntStream.range(0, nContigs).forEach(contigIdx ->
+                result.add(getAlignmentsForEachContig(header, refNames, assemblyId, contigIdx, assembly.getContig(contigIdx), allAlignments.get(contigIdx)))
+            );
+        }
+
+        return result;
+    }
+
+    public static List<SAMRecord> getAlignmentsForEachContig(final SAMFileHeader header, final List<String> refNames,
+                                                             final int assemblyId, final int contigIdx,
+                                                             final Contig contig, final List<BwaMemAlignment> alignments) {
+        if ( alignments.isEmpty() ) return new ArrayList<>();
+
+        final String readName = formatContigName(assemblyId, contigIdx);
+        final byte[] calls = contig.getSequence();
+        return alignments.stream()
+                .map(alignment -> BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null, alignment, refNames, header, false, false))
+                .collect(Collectors.toList());
+    }
+
+    public static String formatContigName(final int assemblyId, final int contigIdx) {
+        return formatAssemblyID(assemblyId) + ":" + formatContigID(contigIdx);
+    }
+
+    static String formatAssemblyID(final int assemblyId) {
+        return String.format("asm%06d", assemblyId);
+    }
+
+    static String formatContigID(final int contigIdx) {
+        return String.format("tig%05d", contigIdx);
     }
 
     /**
@@ -244,7 +272,7 @@ public final class AlignedAssemblyOrExcuse {
         return new Connection(target, overlapLen, isRC, isTargetRC);
     }
 
-    private static void writeAlignment( final BwaMemAlignment alignment, final Output output ) {
+    private static void writeAlignment(final BwaMemAlignment alignment, final Output output) {
         output.writeInt(alignment.getSamFlag());
         output.writeInt(alignment.getRefId());
         output.writeInt(alignment.getRefStart());
@@ -263,7 +291,7 @@ public final class AlignedAssemblyOrExcuse {
         output.writeInt(alignment.getTemplateLen());
     }
 
-    private static BwaMemAlignment readAlignment( final Input input ) {
+    private static BwaMemAlignment readAlignment(final Input input) {
         final int samFlag = input.readInt();
         final int refId = input.readInt();
         final int refStart = input.readInt();

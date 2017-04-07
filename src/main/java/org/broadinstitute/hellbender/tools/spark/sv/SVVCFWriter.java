@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.Options;
@@ -27,15 +28,15 @@ import java.util.stream.Collectors;
  * A utility class that writes out variants to a VCF file.
  * A work that should be improved as GATK SV pipeline matures.
  */
-class SVVCFWriter {
+public class SVVCFWriter {
 
     /**
      * FASTA and Broadcast references are both required because 2bit Broadcast references currently order their
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
-    static void writeVCF(final PipelineOptions pipelineOptions, final String outputPath, String vcfFileName,
-                         final String fastaReference, final JavaRDD<VariantContext> variantContexts,
-                         final Logger logger) {
+    public static void writeVCF(final PipelineOptions pipelineOptions, final String vcfFileName,
+                                final String fastaReference, final JavaRDD<VariantContext> variantContexts,
+                                final Logger logger) {
 
         final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
 
@@ -43,7 +44,7 @@ class SVVCFWriter {
 
         logNumOfVarByTypes(sortedVariantsList, logger);
 
-        writeVariants(pipelineOptions, outputPath, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
+        writeVariants(pipelineOptions, vcfFileName, sortedVariantsList, referenceSequenceDictionary);
     }
 
     private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
@@ -57,7 +58,8 @@ class SVVCFWriter {
 
     // TODO: right now there's an edge case that the "same" inversion events would be called three times on a test sample such that they have the same start, end and inversion evidence type
     //     but differ only in their inserted sequence, sorting these variants must take into account of such complications. the solution below is hackish
-    private static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants, SAMSequenceDictionary referenceSequenceDictionary) {
+    @VisibleForTesting
+    static List<VariantContext> sortVariantsByCoordinate(final List<VariantContext> variants, final SAMSequenceDictionary referenceSequenceDictionary) {
         return variants.stream().sorted((VariantContext v1, VariantContext v2) -> {
             final int x = IntervalUtils.compareLocatables(v1, v2, referenceSequenceDictionary);
             if (x == 0) {
@@ -70,10 +72,10 @@ class SVVCFWriter {
         }).collect(SVUtils.arrayListCollector(variants.size()));
     }
 
-    private static void writeVariants(final PipelineOptions pipelineOptions, final String outputPath, final String fileName,
+    private static void writeVariants(final PipelineOptions pipelineOptions, final String fileName,
                                       final List<VariantContext> variantsArrayList, final SAMSequenceDictionary referenceSequenceDictionary) {
         try (final OutputStream outputStream
-                     = new BufferedOutputStream(BucketUtils.createFile(outputPath + "/" + fileName, pipelineOptions))) {
+                     = new BufferedOutputStream(BucketUtils.createFile(fileName, pipelineOptions))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 

@@ -8,15 +8,13 @@ import org.broadinstitute.hellbender.utils.bwa.BwaMemIndexSingleton;
 import scala.Tuple2;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.ContigID;
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.ContigSequence;
-
-public class ContigAligner {
+class ContigAligner {
 
     private final String indexImageFile;
 
-    public ContigAligner(final String indexImageFile) {
+    ContigAligner(final String indexImageFile) {
         this.indexImageFile = indexImageFile;
     }
 
@@ -25,36 +23,45 @@ public class ContigAligner {
      * (secondary) alignments are filtered out, preserving the primary and supplementary alignments.
      * Within the output list, alignments are sorted first by contig (based on the order in which
      * the contigs were passed in, and then by their start position on the contig).
-     *
-     * @param assemblyId An identifier for the assembly or set of contigs
-     * @param contigsCollection The set of all canonical (primary or supplementary) alignments for the contigs.
-     */
-    public List<AlignmentRegion> alignContigs(final String assemblyId, final ContigsCollection contigsCollection) {
-        final List<AlignmentRegion> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
-        final BwaMemIndex index = BwaMemIndexSingleton.getInstance(indexImageFile);
-        try ( final BwaMemAligner aligner = new BwaMemAligner(index) ) {
-            final List<String> refNames = index.getReferenceContigNames();
-            final List<Tuple2<ContigID, ContigSequence>> contents = contigsCollection.getContents();
-            final List<byte[]> seqs = new ArrayList<>(contents.size());
-            for ( final Tuple2<ContigID, ContigSequence> contigInfo : contents ) {
-                seqs.add(contigInfo._2().toString().getBytes());
-            }
-            final Iterator<List<BwaMemAlignment>> alignmentsItr = aligner.alignSeqs(seqs).iterator();
-            for ( final Tuple2<ContigID, ContigSequence> contigInfo : contents ) {
-                final String contigId = contigInfo._1.toString();
-                final int contigLen = contigInfo._2().toString().length();
-                final List<BwaMemAlignment> alignments = alignmentsItr.next();
+     *  @param assemblyId An identifier for the assembly or set of contigs
+     * @param contigsCollection The set of all canonical (primary or supplementary) alignments for the contigs.*/
 
-                // filter out secondary alignments, convert to AlignmentRegion objects and sort by alignment start pos
-                alignments.stream()
+    AlignedAssembly alignContigs(final int assemblyId, final ContigsCollection contigsCollection) {
+
+        final List<AlignedAssembly.AlignedContig> alignedContigs = new ArrayList<>(contigsCollection.getContents().size());
+
+        final BwaMemIndex index = BwaMemIndexSingleton.getInstance(indexImageFile);
+
+        try ( final BwaMemAligner aligner = new BwaMemAligner(index) ) {
+
+            final List<String> refNames = index.getReferenceContigNames();
+
+            final List<Tuple2<ContigsCollection.ContigID, ContigsCollection.ContigSequence>> contents = contigsCollection.getContents();
+
+            final List<byte[]> seqs = contents.stream().map(contigInfo -> contigInfo._2.toString().getBytes()).collect(Collectors.toList());
+
+            final List<List<BwaMemAlignment>> allAlignments = aligner.alignSeqs(seqs);
+            for (int contigIdx = 0; contigIdx < seqs.size(); ++contigIdx) {
+
+                final int contigLen = seqs.get(contigIdx).length;
+
+                // filter out secondary alignments, convert to AlignmentInterval objects and sort by alignment start pos
+                final List<AlignedAssembly.AlignmentInterval> alignmentIntervals
+                        = allAlignments.get(contigIdx).stream()
                         .filter(a -> (a.getSamFlag()&SAMFlag.NOT_PRIMARY_ALIGNMENT.intValue())==0)
                         .filter(a -> (a.getSamFlag()&SAMFlag.READ_UNMAPPED.intValue())==0)
-                        .map(a -> new AlignmentRegion(assemblyId, contigId, contigLen, a, refNames))
+                        .map(a -> new AlignedAssembly.AlignmentInterval(a, refNames, contigLen))
                         .sorted(Comparator.comparing(a -> a.startInAssembledContig))
-                        .forEach(alignedContigs::add);
+                        .collect(Collectors.toList());
+
+                final String contigName =
+                        AlignedAssemblyOrExcuse.formatContigName(assemblyId,
+                                Integer.valueOf(contents.get(contigIdx)._1.toString().split(" ")[0].replace("contig", "").replace("-", "").replace(">", "")));
+
+                alignedContigs.add( new AlignedAssembly.AlignedContig(contigName, seqs.get(contigIdx), alignmentIntervals) );
             }
         }
 
-        return alignedContigs;
+        return new AlignedAssembly(assemblyId, alignedContigs);
     }
 }

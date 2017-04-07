@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * A class for experimenting with cmd line programs (such as bwa and sga) that's not part of GATK (or has Java bindings yet).
  */
-public abstract class ExternalCommandlineProgramModule {
+abstract class ExternalCommandlineProgramModule {
 
     public ExternalCommandlineProgramModule(){  }
 

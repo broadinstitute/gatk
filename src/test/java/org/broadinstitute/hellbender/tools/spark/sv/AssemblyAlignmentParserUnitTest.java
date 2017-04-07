@@ -1,30 +1,196 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.common.collect.Iterables;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
-import org.apache.commons.collections4.IterableUtils;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
+import org.broadinstitute.hellbender.utils.test.MiniClusterUtils;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 
+public class AssemblyAlignmentParserUnitTest extends BaseTest {
+    private static final String dummyRefName = "1";
+    private static final int dummyRefId = Integer.valueOf(dummyRefName) - 1;
+    private static final List<String> refNames = Collections.singletonList(dummyRefName);
 
-public class AssemblyAlignmentParserUnitTest extends BaseTest{
+    @Test(groups = "sv")
+    public void testExtractContigNameAndSequenceFromTextFile() throws Exception {
+        MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
+            //use the HDFS on the mini cluster
+            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
+            final Path tempPath = new Path(workingDirectory, "testLocalAssemblyFormatRead");
+            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
 
-    @Test
-    public void testConvertGATKReadToAlignmentRegions() throws Exception {
+            final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
+            final FSDataOutputStream fsOutStream = fs.create(tempPath);
+
+            final String packedFasta = ">contig-4 521 0|ATTTGTGAGCGCTTTGAGGCCTTTGGAGAAAAAGGAAATGTATTCACAGAAAAACTTGAAAAAAAGCTTCTGGTAAACTGT" +
+                    "TTTGTAATGTGTACAATCATTTCACAGAGATCAGTGTTTCTTTTCATTGAGCAGCTTGGAAACTCTATTGTTGTAGAATCTGCAAACGGATATTTTTCAGTG" +
+                    "CTTTGATGCCTGTGTTAAAAAAGGAAATATCCTCACATAAAAAATGACAGAAAATTTATGAGAAACTTCTTTGTGATGTGTGCATTTATGCCACAGAATTGA" +
+                    "ACCATTTTATGATTGAGCAGTTTGGAAACAGTCTTTTTGTGGAATCTAAAAAGAGATATTTATGAGCGCATTGAGGCCTACAGTAAAAAAGGAAATATCTTC" +
+                    "ACATAAAAACTAGCAAGGAGCTTTCTAAGAAACTGCTTTGTGATGCGTGAATTCATCTCACAGAGGTAAATGTTTCTTTGCATTGAACAGTGGAAACTCTGT" +
+                    "TCTTGTAGAATCTGCAAAGTGATATTTGTGAG|>contig-11 164 0|TCACAGAATTGAACGACCTCTTTGTTTGAGCAGTTTGGGAACAGCCTTTTTG" +
+                    "TAGATTCTGCAAAGGGATATTTGTAAGCCCTTTGAGGACTATGGTGAAAACGTAAATATCTTCACATAACTAGACAGAAGGTTGCTGAAAAGCTGCTTTGTG" +
+                    "ATGTGTGATT|>contig-0 207 0|GCATTGAACAGTGAAAACTCTGTTCTTGTAGAATCTGCAAAGTGATATTTGTGAGTGTTTTGAGGCCTATGGTGA" +
+                    "AAAAGGAAATATCTTCAGAAAAACTAGACAGAAGCTTTCTGAGAATATTCTTTGTGATATATGCATTCATCTCACAGAATTGAACGACCTCTTTGTTTGAGC" +
+                    "AGTTTGGGAACAGCCTTTTTGTAGATTCTG";
+            final String oneAssembly = "1\t" + packedFasta;
+
+            fsOutStream.writeBytes(oneAssembly);
+            fsOutStream.writeBytes("\n");
+            fsOutStream.close();
+            fs.deleteOnExit(tempPath);
+
+            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
+            final Map<String, byte[]> contigNameAndSequence = DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.extractContigNameAndSequenceFromTextFile(ctx, tempPath.toString()).collectAsMap();
+            Assert.assertEquals(contigNameAndSequence.size(), 3);
+            Assert.assertEquals(contigNameAndSequence.get("asm000001:tig00000"), "GCATTGAACAGTGAAAACTCTGTTCTTGTAGAATCTGCAAAGTGATATTTGTGAGTGTTTTGAGGCCTATGGTGAAAAAGGAAATATCTTCAGAAAAACTAGACAGAAGCTTTCTGAGAATATTCTTTGTGATATATGCATTCATCTCACAGAATTGAACGACCTCTTTGTTTGAGCAGTTTGGGAACAGCCTTTTTGTAGATTCTG".getBytes());
+            Assert.assertEquals(contigNameAndSequence.get("asm000001:tig00004"), "ATTTGTGAGCGCTTTGAGGCCTTTGGAGAAAAAGGAAATGTATTCACAGAAAAACTTGAAAAAAAGCTTCTGGTAAACTGTTTTGTAATGTGTACAATCATTTCACAGAGATCAGTGTTTCTTTTCATTGAGCAGCTTGGAAACTCTATTGTTGTAGAATCTGCAAACGGATATTTTTCAGTGCTTTGATGCCTGTGTTAAAAAAGGAAATATCCTCACATAAAAAATGACAGAAAATTTATGAGAAACTTCTTTGTGATGTGTGCATTTATGCCACAGAATTGAACCATTTTATGATTGAGCAGTTTGGAAACAGTCTTTTTGTGGAATCTAAAAAGAGATATTTATGAGCGCATTGAGGCCTACAGTAAAAAAGGAAATATCTTCACATAAAAACTAGCAAGGAGCTTTCTAAGAAACTGCTTTGTGATGCGTGAATTCATCTCACAGAGGTAAATGTTTCTTTGCATTGAACAGTGGAAACTCTGTTCTTGTAGAATCTGCAAAGTGATATTTGTGAG".getBytes());
+            Assert.assertEquals(contigNameAndSequence.get("asm000001:tig00011"), "TCACAGAATTGAACGACCTCTTTGTTTGAGCAGTTTGGGAACAGCCTTTTTGTAGATTCTGCAAAGGGATATTTGTAAGCCCTTTGAGGACTATGGTGAAAACGTAAATATCTTCACATAACTAGACAGAAGGTTGCTGAAAAGCTGCTTTGTGATGTGTGATT".getBytes());
+        });
+    }
+
+    /**
+     * 4 contigs of 3 assemblies pointing to the same inversion event.
+     *  contig 1 belongs to assembly 1
+     *  contig 2 and 3 belong to assembly 2
+     *  contig 4 belongs to assembly 3.
+     */
+    @DataProvider(name = "AlignedAssemblyTextParserText")
+    private Object[][] createInputsAndExpectedResults() {
+
+        final int[] alignmentStartsOnRef_0Based = {96, 196, 195, 95, 101, 201, 101, 201};
+        final int[] alignmentStartsOnTig_0BasedInclusive = {0, 4, 0, 5, 0, 6, 0, 7};
+        final int[] alignmentEndsOnTig_0BasedExclusive = {4, 8, 5, 10, 6, 12, 7, 14};
+        final int[] seqLen = {8, 8, 10, 10, 12, 12, 14, 14};
+        final int[] mapQual = {0, 1, 10, 20, 30, 40, 50, 60};
+        final int[] mismatches = {0, 1, 1, 0, 2, 3, 3, 2};
+        final boolean[] strandedness = {true, false, true, false, false, true, false, true};
+        final String[] cigarStrings = {"4M4S", "4M4H", "5M5S", "5M5H", "6S6M", "6H6M", "7S7M", "7H7M"}; // each different number represent a different contig's pair of chimeric alignments
+        final Cigar[] cigars = Arrays.stream(cigarStrings).map(TextCigarCodec::decode).toArray(Cigar[]::new);
+
+        // these sequence are technically wrong the for the inversion event, but the test purpose is for serialization so it is irrelevant
+        final byte[] dummySequenceForContigOne = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'A');
+
+        final byte[] dummySequenceForContigTwo = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'T');
+        final byte[] dummySequenceForContigThree = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'C');
+
+        final byte[] dummySequenceForContigFour = SVDiscoveryTestDataProvider.makeDummySequence(seqLen[0], (byte)'G');
+
+
+        final List<AlignedAssembly.AlignedContig> allContigs = new ArrayList<>();
+
+        for(int pair=0; pair<cigars.length/2; ++pair) {
+
+            final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForSimpleInversion = new ArrayList<>(8);
+            final SimpleInterval referenceIntervalLeft = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair]+1, alignmentStartsOnRef_0Based[2*pair]+cigars[2*pair].getReferenceLength()+1);
+            final AlignedAssembly.AlignmentInterval alignmentIntervalLeft = new AlignedAssembly.AlignmentInterval(referenceIntervalLeft, alignmentStartsOnTig_0BasedInclusive[2*pair]+1, alignmentEndsOnTig_0BasedExclusive[2*pair],
+                    strandedness[2*pair] ? cigars[2*pair] : CigarUtils.invertCigar(cigars[2*pair]),
+                    strandedness[2*pair], mapQual[2*pair], mismatches[2*pair]);
+            alignmentIntervalsForSimpleInversion.add(alignmentIntervalLeft);
+            final SimpleInterval referenceIntervalRight = new SimpleInterval(refNames.get(0), alignmentStartsOnRef_0Based[2*pair+1]+1, alignmentStartsOnRef_0Based[2*pair+1]+cigars[2*pair+1].getReferenceLength()+1);
+            final AlignedAssembly.AlignmentInterval alignmentIntervalRight = new AlignedAssembly.AlignmentInterval(referenceIntervalRight, alignmentStartsOnTig_0BasedInclusive[2*pair+1]+1, alignmentEndsOnTig_0BasedExclusive[2*pair+1],
+                    strandedness[2*pair+1] ? cigars[2*pair+1] : CigarUtils.invertCigar(cigars[2*pair+1]),
+                    strandedness[2*pair+1], mapQual[2*pair+1], mismatches[2*pair+1]);
+            alignmentIntervalsForSimpleInversion.add(alignmentIntervalRight);
+
+            if (pair == 0) {
+                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(0, 0), dummySequenceForContigOne, alignmentIntervalsForSimpleInversion) );
+            } else if (pair <3) {
+                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(1, pair-1), pair==1 ? dummySequenceForContigTwo : dummySequenceForContigThree, alignmentIntervalsForSimpleInversion) );
+            } else {
+                allContigs.add( new AlignedAssembly.AlignedContig(AlignedAssemblyOrExcuse.formatContigName(2, 0), dummySequenceForContigFour, alignmentIntervalsForSimpleInversion) );
+            }
+        }
+
+        final Object[][] data = new Object[4][];
+        data[0] = new Object[]{0, new AlignedAssembly(0, allContigs.subList(0, 1)), allContigs.subList(0, 1)};
+        data[1] = new Object[]{1, new AlignedAssembly(1, allContigs.subList(1, 3)), allContigs.subList(1, 3)};
+        data[2] = new Object[]{2, new AlignedAssembly(2, allContigs.subList(3, 4)), allContigs.subList(3, 4)};
+
+        final List<AlignedAssembly.AlignedContig> unmappedContig = Arrays.asList(new AlignedAssembly.AlignedContig("asm000004:tig00001", SVDiscoveryTestDataProvider.makeDummySequence(20, (byte)'N'), Collections.emptyList()));
+        data[3] = new Object[]{3, new AlignedAssembly(3, unmappedContig), unmappedContig};
+
+        return data;
+    }
+
+    @Test(dataProvider = "AlignedAssemblyTextParserText", groups = "sv")
+    public void testEncodeAndDecodeAlignedAssemblyAsHadoopTextFileStringList(final Integer assemblyId, final AlignedAssembly expectedAssembly,
+                                                                             final List<AlignedAssembly.AlignedContig> contigs) {
+        final Iterator<String> alignedContigStringIt = AlignAssembledContigsSpark.formatAlignedAssemblyAsHadoopTextFileStringList(expectedAssembly);
+        if (assemblyId==1) {
+            Assert.assertTrue(alignedContigStringIt.hasNext());
+            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_0 =
+                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseHadoopTextFileAlignmentIntervalLine(alignedContigStringIt.next());
+            Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments_0._1());
+            Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments_0._2());
+            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments_1 =
+                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseHadoopTextFileAlignmentIntervalLine(alignedContigStringIt.next());
+            Assert.assertEquals(contigs.get(1).contigName, contigNameAndAlignments_1._1());
+            Assert.assertEquals(contigs.get(1).alignmentIntervals, contigNameAndAlignments_1._2());
+        } else {
+            Assert.assertTrue(alignedContigStringIt.hasNext());
+            final Tuple2<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments =
+                    DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseHadoopTextFileAlignmentIntervalLine(alignedContigStringIt.next());
+            Assert.assertEquals(contigs.get(0).contigName, contigNameAndAlignments._1());
+            Assert.assertEquals(contigs.get(0).alignmentIntervals, contigNameAndAlignments._2());
+        }
+    }
+
+    @Test(groups = "sv")
+    public void testParseAlignedAssembledContigTextLine() throws Exception {
+        MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
+            //use the HDFS on the mini cluster
+            final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
+            final Path tempPath = new Path(workingDirectory, "testLocalAssemblyFormatRead");
+            final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
+
+            final FileSystem fs = tempPath.getFileSystem(ctx.hadoopConfiguration());
+            final FSDataOutputStream fsOutStream = fs.create(tempPath);
+
+            final String gappedAlignmentContig_1 = "asm000001:tig00001\t1-200%CTG=1START=101END=300%45M100D55M%+%60%3";
+            final String gappedAlignmentContig_2 = "asm000001:tig00002\t1-200%CTG=1START=106END=305%60M100D40M%-%60%5";
+            fsOutStream.writeBytes(gappedAlignmentContig_1);
+            fsOutStream.writeBytes("\n");
+            fsOutStream.writeBytes(gappedAlignmentContig_2);
+            fsOutStream.writeBytes("\n");
+            fsOutStream.close();
+            fs.deleteOnExit(tempPath);
+
+            Assert.assertTrue(SparkUtils.pathExists(ctx, tempPath));
+
+            final Map<String, List<AlignedAssembly.AlignmentInterval>> contigNameAndAlignments
+                    = DiscoverVariantsFromContigAlignmentsSGASpark.SGATextFormatAlignmentParser.parseAndBreakAlignmentTextRecords(ctx, tempPath.toString(), null).collectAsMap();
+
+            Assert.assertEquals(contigNameAndAlignments.keySet().size(), 2);
+            Assert.assertEquals(contigNameAndAlignments.get("asm000001:tig00001").size(), 2);
+            Assert.assertEquals(contigNameAndAlignments.get("asm000001:tig00002").size(), 2);
+        });
+    }
+
+    @Test(groups = "sv")
+    public void testConvertGATKReadsToAlignedContig() throws Exception {
         final String read1Seq = "ACACACACACACACACACACACACACACCAGAAGAAAAATTCTGGTAAAACTTATTTGTTCTTAAACATAAAACTAGAGGTGCAAAATAACATTAGTGTATGGTTAATATAGGAAAGATAAGCAATTTCATCTTCTTTGTACCCCACTTATTGGTACTCAACAAGTTTTGAATAAATTCGTGAAATAAAGAAAAAAACCAACAAGTTCATATCTCCAAGTAGTCTTGGTAATTTAAACACTTTCAAGTATCTTCATACCCTGTTAGTACTTCTTTCTGCTCTGTGTCAACAGAAGTATTCTCAACACTCTTGTGGTTAATTTGGTTAAAACTCATTACAAAGAACCCTAAGTTATCCGTCACAGCTGCTAAACCCATTAGTACAGGAGACTTTAAGGCCATAATGTGTCCATTTTCAGGATATAATTGAAGAGAGGCAAATGATACATGGTTTTCCAAAAATATTGGACCAGGGAGCCTCTTCAAGAAAGAATCCCTGATTCGGGAGTTCTTATACTTTTTCAAGAA";
         final byte[] read1Quals = new byte[read1Seq.length()];
         Arrays.fill(read1Quals, (byte)'A');
@@ -60,13 +226,12 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         reads.add(read2);
         reads.add(read3);
 
-        final Tuple2<Iterable<AlignmentRegion>, byte[]> alignmentRegionResults = AssemblyAlignmentParser.convertToAlignmentRegions(reads);
-        assertEquals(alignmentRegionResults._2(), read2.getBases());
+        final AlignedAssembly.AlignedContig alignedContig = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
+        assertEquals(alignedContig.contigSequence, read2.getBases());
 
-        final List<AlignmentRegion> alignmentRegions = IterableUtils.toList(alignmentRegionResults._1);
-        assertEquals(alignmentRegions.size(), 3);
+        assertEquals(alignedContig.alignmentIntervals.size(), 3);
 
-        final byte[] read4Bytes = SVCallerTestDataProvider.LONG_CONTIG1.getBytes();
+        final byte[] read4Bytes = SVDiscoveryTestDataProvider.LONG_CONTIG1.getBytes();
         final String read4Seq = new String(read4Bytes);
         final byte[] read4Quals = new byte[read4Seq.length()];
         Arrays.fill(read4Quals, (byte)'A');
@@ -91,214 +256,108 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         reads2.add(read4);
         reads2.add(read5);
 
-        final Tuple2<Iterable<AlignmentRegion>, byte[]> alignmentRegionResults2 = AssemblyAlignmentParser.convertToAlignmentRegions(reads2);
+        final AlignedAssembly.AlignedContig alignedContig2 = DiscoverVariantsFromContigAlignmentsSAMSpark.SAMFormattedContigAlignmentParser.parseReadsAndBreakGaps(reads2, null, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY, null);
         // these should be the reverse complements of each other
-        assertEquals(alignmentRegionResults2._2().length, read4.getBases().length);
+        assertEquals(alignedContig2.contigSequence.length, read4.getBases().length);
 
-        final List<AlignmentRegion> alignmentRegions2 = IterableUtils.toList(alignmentRegionResults2._1);
-        assertEquals(alignmentRegions2.size(), 2);
+        final List<AlignedAssembly.AlignmentInterval> alignmentIntervals2 = alignedContig2.alignmentIntervals;
+        assertEquals(alignmentIntervals2.size(), 2);
 
-        final AlignmentRegion alignmentRegion4 = alignmentRegions2.get(0);
-        assertEquals(alignmentRegion4.startInAssembledContig, 1);
-        assertEquals(alignmentRegion4.endInAssembledContig, read4Seq.length() - 1986);
+        final AlignedAssembly.AlignmentInterval alignmentInterval4 = alignmentIntervals2.get(0);
+        assertEquals(alignmentInterval4.startInAssembledContig, 1);
+        assertEquals(alignmentInterval4.endInAssembledContig, read4Seq.length() - 1986);
 
-        final AlignmentRegion alignmentRegion5 = alignmentRegions2.get(1);
-        assertEquals(alignmentRegion5.startInAssembledContig, 3604);
-        assertEquals(alignmentRegion5.endInAssembledContig, read4Seq.length());
-
+        final AlignedAssembly.AlignmentInterval alignmentInterval5 = alignmentIntervals2.get(1);
+        assertEquals(alignmentInterval5.startInAssembledContig, 3604);
+        assertEquals(alignmentInterval5.endInAssembledContig, read4Seq.length());
     }
 
-    @Test
-    public void testGappedAlignmentBreaker_OneInsertion() {
+    @Test(groups = "sv")
+    public void testConvertAlignedAssemblyOrExcuseToAlignedContigs() {
 
-        final Cigar cigar = TextCigarCodec.decode("56S27M15I32M21S");
-        final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 158), cigar, true, 60, 0, 57, 130);
+        // test "failed" assembly doesn't produce anything
+        final AlignedAssemblyOrExcuse excuse = new AlignedAssemblyOrExcuse(1, "justATest");
+        Assert.assertTrue(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.directToAlignmentInterval(Collections.singletonList(excuse), refNames, null).isEmpty());
 
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        Assert.assertEquals(generatedARList.size(), 2);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 126), TextCigarCodec.decode("56S27M68S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 57, 83));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 127, 158), TextCigarCodec.decode("98S32M21S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 99, 130));
+        final byte[] dummyContigSequence = SVDiscoveryTestDataProvider.makeDummySequence(1000, (byte)'T');
+        final byte[] dummyContigSequenceQuals = SVDiscoveryTestDataProvider.makeDummySequence(1000, (byte)'A');
+
+        final FermiLiteAssembly.Contig unmappedContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100); // totally random 100 supporting reads
+        final BwaMemAlignment unmappedContigAlignment = new BwaMemAlignment(4, -1, -1, -1, -1, -1, -1, -1, 0, 0, "", "", "", -1, -1, 0);
+
+        final FermiLiteAssembly.Contig contigWithAmbiguousMapping = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final BwaMemAlignment firstAmbiguousMapping = new BwaMemAlignment(256, dummyRefId, 1000000, 1001000, 0, 1000, 0, 20, 100, 100, "800M50I100M50D50M", "", "", -1, -1, 0); // technically not correct but doesn't matter for this case
+        final BwaMemAlignment secondAmbiguousMapping = new BwaMemAlignment(272, dummyRefId, 2000000, 2001000, 0, 1000, 0, 50, 100, 100, "700M50I200M50D50M", "", "", -1, -1, 0);
+
+        final FermiLiteAssembly.Contig cleanContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final BwaMemAlignment cleanAlignment = new BwaMemAlignment(0, dummyRefId, 1000000, 1001000, 0, 1000, 60, 0, 100, 0, "1000M", "", "", -1, -1, 0);
+
+        final FermiLiteAssembly.Contig contigWithGapInAlignment = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final BwaMemAlignment gappedAlignment = new BwaMemAlignment(0, dummyRefId,1000000, 1001000, 0, 1000, 60, 0, 100, 0, "700M50I200M50D50M", "", "", -1, -1, 0);
+
+        final List<List<BwaMemAlignment>> allAlignments = Arrays.asList(Collections.singletonList(unmappedContigAlignment), Arrays.asList(firstAmbiguousMapping, secondAmbiguousMapping), Collections.singletonList(cleanAlignment), Collections.singletonList(gappedAlignment));
+        final FermiLiteAssembly assembly = new FermiLiteAssembly(Arrays.asList(unmappedContig, contigWithAmbiguousMapping, cleanContig, contigWithGapInAlignment));
+
+        final AlignedAssemblyOrExcuse collection = new AlignedAssemblyOrExcuse(1, assembly, allAlignments);
+
+        Assert.assertEquals(StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.directToAlignmentInterval(Collections.singleton(collection), refNames, null).size(), 2);
+
+        final Iterable<AlignedAssembly.AlignedContig> result = StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser.forEachAssemblyNotExcuse(collection, refNames, null);
+        Assert.assertEquals(Iterables.size(result), 4);
+
+        final Iterator<AlignedAssembly.AlignedContig> it = result.iterator();
+
+        Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
+        Assert.assertTrue(it.next().alignmentIntervals.isEmpty());
+
+        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForCleanContig = it.next().alignmentIntervals;
+        Assert.assertEquals(alignmentIntervalsForCleanContig.size(), 1);
+        Assert.assertEquals(alignmentIntervalsForCleanContig.get(0), new AlignedAssembly.AlignmentInterval(new SimpleInterval(dummyRefName, 1000001, 1001000), 1, 1000, TextCigarCodec.decode("1000M"), true, 60, 0));
+
+        final List<AlignedAssembly.AlignmentInterval> alignmentIntervalsForContigWithGappedAlignment = it.next().alignmentIntervals;
+        Assert.assertEquals(alignmentIntervalsForContigWithGappedAlignment.size(), 3);
+
+        final List<AlignedAssembly.AlignedContig> parsedContigsViaSAMRoute
+                = new StructuralVariationDiscoveryPipelineSpark.InMemoryAlignmentParser().viaSAMRoute(Collections.singletonList(collection), hg19Header, null);
+
+        Assert.assertEquals(parsedContigsViaSAMRoute.size(), 2);
+        parsedContigsViaSAMRoute.containsAll(Utils.stream(result).filter(ctg -> !ctg.alignmentIntervals.isEmpty()).collect(Collectors.toList()));
     }
 
-    @Test
-    public void testGappedAlignmentBreaker_OneDeletion() {
-        final Cigar cigar = TextCigarCodec.decode("2S205M2D269M77S");
-        final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 575), cigar, true, 60, 0, 208, 476);
-
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        Assert.assertEquals(generatedARList.size(), 2);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 304), TextCigarCodec.decode("2S205M346S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 3, 207));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 307, 575), TextCigarCodec.decode("207S269M77S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 208, 476));
+    @DataProvider(name = "InvalidSimpleIntervalStrings")
+    private Object[][] createInvalidSimpleIntervalStrings() {
+        return new Object[][]{
+                {"fjdskjfklsdjf"},
+                {"1START=20000END=20010"},
+                {"CTG=1START=20000END=2d0"},
+                {"CTG=1START=20fd0END=200000"},
+                {"CTG=1START=20END=19"}
+        };
     }
 
-    @Test
-    public void testGappedAlignmentBreaker_Complex() {
-
-        final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 414), TextCigarCodec.decode("397S118M2D26M6I50M7I26M1I8M13D72M398S"), true, 60, 65, 398, 711);
-
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-
-        Assert.assertEquals(generatedARList.size(), 6);
-
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 217), TextCigarCodec.decode("397S118M594S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 398, 515));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 220, 245), TextCigarCodec.decode("515S26M568S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 516, 541));
-        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 246, 295), TextCigarCodec.decode("547S50M512S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 548, 597));
-        Assert.assertEquals(generatedARList.get(3), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 296, 321), TextCigarCodec.decode("604S26M479S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 605, 630));
-        Assert.assertEquals(generatedARList.get(4), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 322, 329), TextCigarCodec.decode("631S8M470S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 632, 639));
-        Assert.assertEquals(generatedARList.get(5), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 343, 414), TextCigarCodec.decode("639S72M398S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 640, 711));
+    @Test(dataProvider = "InvalidSimpleIntervalStrings", expectedExceptions = GATKException.class)
+    public void testEnCodeAndDecodeSimpleIntervalAsString_expectException(final String text) {
+        AlignAssembledContigsSpark.decodeStringAsSimpleInterval(text);
     }
 
-    @Test
-    public void testGappedAlignmentBreaker_Sensitivity() {
+    @DataProvider(name = "ValidSimpleIntervalStrings")
+    private Object[][] createSimpleIntervalStrings() {
+        final SimpleInterval first = new SimpleInterval("1", 20000, 20010);
+        final SimpleInterval second = new SimpleInterval("chr1", 20000, 20010);
+        final SimpleInterval third = new SimpleInterval("HLA-DRB1*15:03:01:02", 20000, 20010);
+        final SimpleInterval fourth = new SimpleInterval("chrUn_JTFH01001998v1_decoy", 20000, 20010);
+        final SimpleInterval fifth = new SimpleInterval("chr19_KI270938v1_alt", 20000, 20010);
+        final SimpleInterval sixth = new SimpleInterval("chrEBV", 20000, 20010);
+        final SimpleInterval seventh = new SimpleInterval("chrUn_KI270529v1", 20000, 20010);
+        final SimpleInterval eighth = new SimpleInterval("chr1_KI270713v1_random", 20000, 20010);
+        final SimpleInterval ninth = new SimpleInterval("chrM", 20000, 20010);
+        final SimpleInterval tenth = new SimpleInterval("chrX", 20000, 20010);
 
-        final Cigar cigar = TextCigarCodec.decode("10M10D10M60I10M10I10M50D10M");
-        final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 209), cigar, true, 60, 0, 1, 120);
-
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY)).collect(Collectors.toList());
-
-        Assert.assertEquals(generatedARList.size(), 3);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 129), TextCigarCodec.decode("10M10D10M100S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 1, 20));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 130, 149), TextCigarCodec.decode("80S10M10I10M10S"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 81, 110));
-        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 200, 209), TextCigarCodec.decode("110S10M"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 111, 120));
+        return new Object[][]{{first}, {second} , {third}, {fourth}, {fifth}, {sixth}, {seventh}, {eighth}, {ninth}, {tenth}};
     }
 
-    @Test
-    public void testGappedAlignmentBreaker_HardAndSoftClip() {
-
-        final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 138), TextCigarCodec.decode("1H2S3M5I10M20D6M7S8H"), true, 60, 0, 4, 27);
-
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 102), TextCigarCodec.decode("1H2S3M28S8H"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 4, 6));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 103, 112), TextCigarCodec.decode("1H10S10M13S8H"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 12, 21));
-        Assert.assertEquals(generatedARList.get(2), new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 133, 138), TextCigarCodec.decode("1H20S6M7S8H"), true, 60, SVConstants.DiscoveryStepConstants.MISSING_NM, 22, 27));
-    }
-
-    @Test
-    public void testGappedAlignmentBreaker_TerminalInsertionOperatorToSoftClip() {
-
-        // beginning with 'I'
-        Cigar cigar = TextCigarCodec.decode("10I10M5I10M");
-        AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 120), cigar,
-                true, 60, 0, 11, 35);
-
-        List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        Assert.assertEquals(generatedARList.size(), 2);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 110), TextCigarCodec.decode("10S10M15S"),
-                true, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 11, 20));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 111, 120), TextCigarCodec.decode("25S10M"),
-                true, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 26, 35));
-
-        // ending with 'I'
-        cigar = TextCigarCodec.decode("10M5I10M10I");
-        alignmentRegion = new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 120), cigar,
-                true, 60, 0, 1, 25);
-
-        generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        Assert.assertEquals(generatedARList.size(), 2);
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 110), TextCigarCodec.decode("10M25S"),
-                true, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 1, 10));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 111, 120), TextCigarCodec.decode("15S10M10S"),
-                true, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 16, 25));
-    }
-
-    @Test
-    public void testGappedAlignmentBreaker_TerminalInsertionNeighboringClippings(){
-
-        Cigar cigar = TextCigarCodec.decode("10H20S30I40M50I60S70H");
-        AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 140), cigar,
-                true, 60, 0, 61, 100);
-        List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        // no internal gap, so nothing should change
-        Assert.assertEquals(generatedARList.size(), 1);
-        Assert.assertEquals(generatedARList.get(0), alignmentRegion);
-
-        cigar = TextCigarCodec.decode("10H20S30I40M5D15M50I60S70H");
-        alignmentRegion = new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 160), cigar,
-                true, 60, 0, 61, 115);
-        generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        Assert.assertEquals(generatedARList.size(), 2);
-
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 101, 140), TextCigarCodec.decode("10H50S40M125S70H"),
-                true, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 61, 100));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 146, 160), TextCigarCodec.decode("10H90S15M110S70H"),
-                true, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 101, 115));
-    }
-
-    @Test
-    public void testGappedAlignmentBreaker_NegativeStrand() {
-        // read data with AlignmentRegion.toString():
-        // 19149	contig-8	chrUn_JTFH01000557v1_decoy	21	1459	-	10S1044M122I395M75I	60	11	1646	200
-        final Cigar cigar = TextCigarCodec.decode("10S1044M122I395M75I");
-        final AlignmentRegion alignmentRegion = new AlignmentRegion("19149", "contig-8",
-                new SimpleInterval("chrUn_JTFH01000557v1_decoy", 21, 1459), cigar,
-                false, 60, 200, 11, 1646);
-        final List<AlignmentRegion> generatedARList = Utils.stream(AssemblyAlignmentParser.breakGappedAlignment(alignmentRegion, 1)).collect(Collectors.toList());
-        Assert.assertEquals(generatedARList.get(0), new AlignmentRegion("19149", "contig-8",
-                new SimpleInterval("chrUn_JTFH01000557v1_decoy", 416, 1459), TextCigarCodec.decode("10S1044M592S"),
-                false, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 11, 1054));
-        Assert.assertEquals(generatedARList.get(1), new AlignmentRegion("19149", "contig-8",
-                new SimpleInterval("chrUn_JTFH01000557v1_decoy", 21, 415), TextCigarCodec.decode("1176S395M75S"),
-                false, 60,
-                SVConstants.DiscoveryStepConstants.MISSING_NM, 1177, 1571));
-    }
-
-    @Test
-    public void testGappedAlignmentBreaker_ExpectException() {
-        int exceptionCount = 0;
-
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10H10D10M"));} catch (final Exception ex) {++exceptionCount;}
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10S10D10M"));} catch (final Exception ex) {++exceptionCount;}
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10M10D10S"));} catch (final Exception ex) {++exceptionCount;}
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10M10D10H"));} catch (final Exception ex) {++exceptionCount;}
-
-        try{willThrowOnInvalidCigar(TextCigarCodec.decode("10H10I10S"));} catch (final Exception ex) {++exceptionCount;}
-        try{willThrowOnInvalidCigar(TextCigarCodec.decode("10H10D10S"));} catch (final Exception ex) {++exceptionCount;}
-
-        try{willThrowOnInvalidCigar(TextCigarCodec.decode("10H10I10M10D10S"));} catch (final Exception ex) {++exceptionCount;}
-        try{willThrowOnInvalidCigar(TextCigarCodec.decode("10H10D10M10I10S"));} catch (final Exception ex) {++exceptionCount;}
-
-        // these 4 are fine now
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10H10I10M"));} catch (final Exception ex) {++exceptionCount;}
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10S10I10M"));} catch (final Exception ex) {++exceptionCount;}
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10M10I10S"));} catch (final Exception ex) {++exceptionCount;}
-        try {willThrowOnInvalidCigar(TextCigarCodec.decode("10M10I10H"));} catch (final Exception ex) {++exceptionCount;}
-
-        // last two are valid
-        try{willThrowOnInvalidCigar(TextCigarCodec.decode("10H10M10I10M10S"));} catch (final Exception ex) {++exceptionCount;}
-        try{willThrowOnInvalidCigar(TextCigarCodec.decode("10H10M10D10M10S"));} catch (final Exception ex) {++exceptionCount;}
-
-        Assert.assertEquals(exceptionCount, 8);
-    }
-
-    private static Iterable<AlignmentRegion> willThrowOnInvalidCigar(final Cigar cigar) throws GATKException {
-        final AlignmentRegion detailsDoesnotMatter = new AlignmentRegion("1", "contig-1",
-                new SimpleInterval("1", 1, 110),
-                cigar,
-                true, 60, 0, 21, 30);
-        return AssemblyAlignmentParser.breakGappedAlignment(detailsDoesnotMatter, 1);
-    }
-
-    @Test
-    public void testCompactifyNeighboringSoftClippings() {
-        Assert.assertEquals(new Cigar(AssemblyAlignmentParser.compactifyNeighboringSoftClippings(TextCigarCodec.decode("1H2S3S4M5D6M7I8M9S10S11H").getCigarElements())),
-                TextCigarCodec.decode("1H5S4M5D6M7I8M19S11H"));
+    @Test(dataProvider = "ValidSimpleIntervalStrings")
+    public void testEnCodeAndDecodeSimpleIntervalAsString_valid(final SimpleInterval interval) {
+        Assert.assertEquals(AlignAssembledContigsSpark.decodeStringAsSimpleInterval(AlignAssembledContigsSpark.encodeSimpleIntervalAsString(interval)), interval);
     }
 }
