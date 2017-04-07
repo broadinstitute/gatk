@@ -18,7 +18,7 @@ PROJECT_OUTPUT_DIR="${MASTER_NODE}$3"
 REF_FASTA="${MASTER_NODE}$4"
 REF_TWOBIT=$(echo "${REF_FASTA}" | sed 's/.fasta$/.2bit/')
 
-"${GATK_DIR}/gatk-launch" CallVariantsFromAlignedContigsSAMSpark \
+"${GATK_DIR}/gatk-launch" DiscoverStructuralVariantsFromAlignedContigsSAMSpark \
     -I "${PROJECT_OUTPUT_DIR}/assemblies.sam" \
     --outputPath "${PROJECT_OUTPUT_DIR}/variants" \
     -R "${REF_TWOBIT}" \

@@ -23,7 +23,7 @@ fi
 
 cd "$GATK_DIR" 
 
-./gatk-launch CallVariantsFromAlignedContigsSpark \
+./gatk-launch DiscoverStructuralVariantsFromAlignedContigsSpark \
     --inputAlignments "$PROJECT_OUTPUT_DIR"/aligned_assemblies \
     --inputAssemblies "$PROJECT_OUTPUT_DIR"/assembly_0 \
     --outputPath "$PROJECT_OUTPUT_DIR"/variants \

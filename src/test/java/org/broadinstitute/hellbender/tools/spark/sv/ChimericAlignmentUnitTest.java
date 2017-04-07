@@ -14,8 +14,8 @@ public class ChimericAlignmentUnitTest extends BaseTest {
         final byte[] contigSequence = SVCallerTestDataProvider.LONG_CONTIG1.getBytes();
         final AlignmentRegion region1 = new AlignmentRegion("702700", "702700", new SimpleInterval(SVCallerTestDataProvider.chrForLongContig1, 20138007, 20142231), TextCigarCodec.decode("1986S236M2D1572M1I798M5D730M1I347M4I535M"), false, 60, 36, 1, contigSequence.length - 1986);
         final AlignmentRegion region2 = new AlignmentRegion("702700", "702700", new SimpleInterval(SVCallerTestDataProvider.chrForLongContig1, 20152030, 20154634), TextCigarCodec.decode("3603H24M1I611M1I1970M"), true, 60, 36, 3604, contigSequence.length);
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, SVConstants.CallingStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
-        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, SVConstants.CallingStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
+        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
+        Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH) );
 
         Assert.assertFalse( ChimericAlignment.firstAlignmentIsTooShort(region1, region2, 3000) );
         Assert.assertTrue( ChimericAlignment.firstAlignmentIsTooShort(region2, region1, 3000) );

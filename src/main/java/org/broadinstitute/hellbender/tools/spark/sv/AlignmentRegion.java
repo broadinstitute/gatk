@@ -99,7 +99,7 @@ class AlignmentRegion {
         this.forwardStrand = ! read.isReverseStrand();
         this.cigarAlong5to3DirectionOfContig = forwardStrand ? read.getCigar() : CigarUtils.invertCigar(read.getCigar());
         this.mapQual = read.getMappingQuality();
-        this.mismatches = read.hasAttribute("NM") ? read.getAttributeAsInteger("NM") : SVConstants.CallingStepConstants.MISSING_NM;
+        this.mismatches = read.hasAttribute("NM") ? read.getAttributeAsInteger("NM") : SVConstants.DiscoveryStepConstants.MISSING_NM;
         this.assembledContigLength = cigarAlong5to3DirectionOfContig.getReadLength() + SVVariantCallerUtils.getTotalHardClipping(cigarAlong5to3DirectionOfContig);
         this.startInAssembledContig = startOfAlignmentInContig();
         this.endInAssembledContig = endOfAlignmentInContig();

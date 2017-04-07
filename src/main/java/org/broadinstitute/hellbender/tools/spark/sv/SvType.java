@@ -54,7 +54,7 @@ abstract class SvType {
 
         Inversion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.CallingStepConstants.VCF_ALT_ALLELE_STRING_INV),
+                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV),
                     novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd(),
                     Collections.singletonMap((novelAdjacencyReferenceLocations.endConnectionType == FIVE_TO_FIVE) ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33, ""));
         }
@@ -65,8 +65,8 @@ abstract class SvType {
             final int end = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
             final NovelAdjacencyReferenceLocations.EndConnectionType endConnectionType = novelAdjacencyReferenceLocations.endConnectionType;
 
-            return (endConnectionType == FIVE_TO_FIVE ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33) + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR +
-                    contig + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR + start + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR + end;
+            return (endConnectionType == FIVE_TO_FIVE ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33) + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR +
+                    contig + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR + start + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR + end;
         }
     }
 
@@ -80,17 +80,17 @@ abstract class SvType {
         @SuppressWarnings("unchecked")
         Deletion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.CallingStepConstants.VCF_ALT_ALLELE_STRING_DEL),
+                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DEL),
                     -(novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd()),
-                    novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep.isEmpty() ? Collections.EMPTY_MAP : Collections.singletonMap(SVConstants.CallingStepConstants.TANDUP_CONTRACTION_STRING, ""));
+                    novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation() ? Collections.singletonMap(SVConstants.DiscoveryStepConstants.TANDUP_CONTRACTION_STRING, "") : Collections.EMPTY_MAP);
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
-            return  ((novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep.isEmpty()) ? TYPES.DEL.name() : TANDEMUPLICATION_CONTRACTION_ID_START_STRING)
-                    + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
+            return  ((novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation()) ? TANDEMUPLICATION_CONTRACTION_ID_START_STRING :  TYPES.DEL.name())
+                    + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
     }
@@ -105,16 +105,16 @@ abstract class SvType {
         @SuppressWarnings("unchecked")
         Insertion(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.CallingStepConstants.VCF_ALT_ALLELE_STRING_INS),
-                    novelAdjacencyReferenceLocations.complication.insertedSequenceForwardStrandRep.length(),
+                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INS),
+                    novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().length(),
                     Collections.EMPTY_MAP);
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
-            return TYPES.INS.name() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
+            return TYPES.INS.name() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
     }
@@ -128,17 +128,17 @@ abstract class SvType {
 
         DuplicationTandem(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
             super(getIDString(novelAdjacencyReferenceLocations),
-                    Allele.create(SVConstants.CallingStepConstants.VCF_ALT_ALLELE_STRING_DUP),
-                    novelAdjacencyReferenceLocations.complication.insertedSequenceForwardStrandRep.length()
-                            + (novelAdjacencyReferenceLocations.complication.dupSeqRepeatNumOnCtg - novelAdjacencyReferenceLocations.complication.dupSeqRepeatNumOnRef)*novelAdjacencyReferenceLocations.complication.dupSeqForwardStrandRep.length(),
-                    Collections.singletonMap(SVConstants.CallingStepConstants.TANDUP_EXPANSION_STRING, ""));
+                    Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_DUP),
+                    novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().length()
+                            + (novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnCtg() - novelAdjacencyReferenceLocations.complication.getDupSeqRepeatNumOnRef())*novelAdjacencyReferenceLocations.complication.getDupSeqRepeatUnitRefSpan().size(),
+                    Collections.singletonMap(SVConstants.DiscoveryStepConstants.TANDUP_EXPANSION_STRING, ""));
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
 
-            return TANDEMUPLICATION_EXPANSION_ID_START_STRING + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
-                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.CallingStepConstants.VARIANT_ID_FIELD_SEPARATOR
+            return TANDEMUPLICATION_EXPANSION_ID_START_STRING + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getContig() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
+                    + novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd() + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR
                     + novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
         }
     }

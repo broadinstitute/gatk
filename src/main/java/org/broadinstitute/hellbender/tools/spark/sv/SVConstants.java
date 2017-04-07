@@ -15,9 +15,8 @@ public final class SVConstants {
     // (could have made them live closer to their use places but choose to make it easier to identify room for improvements)
     // -----------------------------------------------------------------------------------------------
 
-    static final class CallingStepConstants {
+    static final class DiscoveryStepConstants {
 
-        static final String INVERSIONS_OUTPUT_VCF = "inversions.vcf";
         static final String CURRENTLY_CAPABLE_VARIANTS_VCF = "inv_del_ins.vcf";
         static final String VCF_ALT_ALLELE_STRING_INV = "<INV>";
         static final String VCF_ALT_ALLELE_STRING_INS = "<INS>";
