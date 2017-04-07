@@ -115,7 +115,7 @@ public final class ReadFilterLibraryUnitTest {
         final GATKRead read = simpleGoodRead(header);
 
         Assert.assertTrue(MAPPED.test(read), "MAPPED " + read.toString());
-        Assert.assertTrue(PRIMARY_ALIGNMENT.test(read), "PRIMARY_ALIGNMENT " + read.toString());
+        Assert.assertTrue(NOT_SECONDARY_ALIGNMENT.test(read), "NOT_SECONDARY_ALIGNMENT " + read.toString());
         Assert.assertTrue(NOT_DUPLICATE.test(read), "NOT_DUPLICATE " + read.toString());
         Assert.assertTrue(PASSES_VENDOR_QUALITY_CHECK.test(read), "PASSES_VENDOR_QUALITY_CHECK " + read.toString());
         Assert.assertTrue(MAPPING_QUALITY_AVAILABLE.test(read), "MAPPING_QUALITY_AVAILABLE " + read.toString());

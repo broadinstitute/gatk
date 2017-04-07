@@ -165,7 +165,7 @@ public final class BaseRecalibrator extends ReadWalker {
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPED);
-        filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
+        filters.add(ReadFilterLibrary.NOT_SECONDARY_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         return filters;
