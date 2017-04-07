@@ -110,7 +110,7 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
     private void checkDiscordantPair( final GATKRead read, final List<BreakpointEvidence> evidenceList ) {
         if ( read.mateIsUnmapped() ) {
             evidenceList.add(new BreakpointEvidence.MateUnmapped(read, readMetadata));
-        } else if ( !read.getContig().equals(read.getMateContig()) ) {
+        } else if ( isInterContig(read.getContig(),read.getMateContig()) ) {
             evidenceList.add(new BreakpointEvidence.InterContigPair(read, readMetadata));
         } else if ( read.isReverseStrand() == read.mateIsReverseStrand() ) {
             evidenceList.add(new BreakpointEvidence.SameStrandPair(read, readMetadata));
@@ -128,5 +128,13 @@ public class ReadClassifier implements Function<GATKRead, Iterator<BreakpointEvi
             // (With current fragment sizes and read lengths there aren't enough bases to have a >=50bp insertion
             // between the mates.)
         }
+    }
+
+    private boolean isInterContig( final String contigName1, final String contigName2 ) {
+        final int contigID1 = readMetadata.getContigID(contigName1);
+        final int contigID2 = readMetadata.getContigID(contigName2);
+        return !(contigID1 == contigID2 ||
+                    readMetadata.ignoreCrossContigID(contigID1) ||
+                    readMetadata.ignoreCrossContigID(contigID2));
     }
 }

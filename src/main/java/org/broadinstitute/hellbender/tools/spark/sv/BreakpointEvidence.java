@@ -92,7 +92,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         this.contigIndex = input.readInt();
         this.eventWidth = input.readInt();
         this.eventStartPosition = input.readInt();
-        this.templateName = kryo.readObject(input, String.class);
+        this.templateName = input.readString();
         this.templateEnd = TemplateEnd.values()[input.readByte()];
     }
 
@@ -112,7 +112,7 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         output.writeInt(contigIndex);
         output.writeInt(eventWidth);
         output.writeInt(eventStartPosition);
-        kryo.writeObject(output, templateName);
+        output.writeString(templateName);
         output.writeByte(templateEnd.ordinal());
     }
 
@@ -192,15 +192,15 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
 
         private SplitRead( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            cigar = kryo.readObject(input, String.class);
-            tagSA = kryo.readObjectOrNull(input, String.class);
+            cigar = input.readString();
+            tagSA = input.readString();
         }
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            kryo.writeObject(output, cigar);
-            kryo.writeObjectOrNull(output, tagSA, String.class);
+            output.writeString(cigar);
+            output.writeString(tagSA);
         }
 
         @Override
@@ -251,13 +251,13 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
 
         private LargeIndel( final Kryo kryo, final Input input ) {
             super(kryo, input);
-            cigar = kryo.readObject(input, String.class);
+            cigar = input.readString();
         }
 
         @Override
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
-            kryo.writeObject(output, cigar);
+            output.writeString(cigar);
         }
 
         @Override

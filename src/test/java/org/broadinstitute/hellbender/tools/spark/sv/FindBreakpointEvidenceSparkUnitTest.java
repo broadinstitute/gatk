@@ -35,7 +35,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final SAMFileHeader header = readsSource.getHeader(readsFile, null);
     private final JavaRDD<GATKRead> reads = readsSource.getParallelReads(readsFile, null, null, 0L);
     private final JavaRDD<GATKRead> mappedReads = reads.filter(read -> !read.isUnmapped());
-    private final ReadMetadata readMetadataExpected = new ReadMetadata(header, reads);
+    private final ReadMetadata readMetadataExpected = new ReadMetadata(Collections.emptySet(), header, reads);
     private final Broadcast<ReadMetadata> broadcastMetadata = ctx.broadcast(readMetadataExpected);
     private final FindBreakpointEvidenceSpark.Locations locations =
         new FindBreakpointEvidenceSpark.Locations(null, null, null, null, null, null, null, null);
@@ -130,7 +130,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
         public AlignedAssemblyOrExcuse
                     apply( final Tuple2<Integer,List<SVFastqUtils.FastqRead>> intervalAndFastqBytes ) {
             final List<SVFastqUtils.FastqRead> fastqList = intervalAndFastqBytes._2();
-            fastqList.sort( (read1, read2) -> read1.getName().compareTo(read2.getName()) );
+            fastqList.sort(Comparator.comparing(SVFastqUtils.FastqRead::getName));
             final ByteArrayOutputStream os = new ByteArrayOutputStream();
             try { SVFastqUtils.writeFastqStream(os, fastqList.iterator()); }
             catch ( final IOException ioe ) { throw new GATKException("can't stream fastqs into memory", ioe); }
