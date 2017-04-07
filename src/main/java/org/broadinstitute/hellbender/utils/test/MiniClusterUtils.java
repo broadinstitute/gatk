@@ -65,7 +65,7 @@ public final class MiniClusterUtils {
 
     /**
      * Create a new isolated {@link MiniDFSCluster}, run a {@link MiniClusterTest} on it and then shut it down.
-     * @param test a function to run on the cluster, this should indicate success or failure by usine {@link Assert}
+     * @param test a function to run on the cluster, this should indicate success or failure by using {@link Assert}
      * @throws Exception
      */
     public static void runOnIsolatedMiniCluster(MiniClusterTest test) throws Exception {

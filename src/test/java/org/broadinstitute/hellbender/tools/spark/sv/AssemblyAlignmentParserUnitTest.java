@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.common.collect.Iterators;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import org.apache.commons.collections4.IterableUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -13,15 +16,17 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 import scala.Tuple2;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.testng.Assert.assertEquals;
 
 
 public class AssemblyAlignmentParserUnitTest extends BaseTest{
+    private static final String dummyRefName = "1";
+    private static final int dummyRefId = Integer.valueOf(dummyRefName) - 1;
+    private static final List<String> refNames = Collections.singletonList(dummyRefName);
+
 
     @Test
     public void testConvertGATKReadToAlignmentRegions() throws Exception {
@@ -105,7 +110,51 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
         final AlignmentRegion alignmentRegion5 = alignmentRegions2.get(1);
         assertEquals(alignmentRegion5.startInAssembledContig, 3604);
         assertEquals(alignmentRegion5.endInAssembledContig, read4Seq.length());
+    }
 
+    @Test
+    public void testConvertAlignedAssemblyOrExcuseToAlignmentRegions() {
+
+        // test "failed" assembly doesn't produce anything
+        final AlignedAssemblyOrExcuse excuse = new AlignedAssemblyOrExcuse(1, "justATest");
+        Assert.assertTrue(AssemblyAlignmentParser.formatToAlignmentRegions(Collections.singletonList(excuse), refNames).isEmpty());
+
+        final byte[] dummyContigSequence = SVCallerTestDataProvider.makeDummySequence(1000, (byte)'T');
+        final byte[] dummyContigSequenceQuals = SVCallerTestDataProvider.makeDummySequence(1000, (byte)'A');
+
+        final FermiLiteAssembly.Contig unmappedContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100); // totally random 100 supporting reads
+        final BwaMemAlignment unmappedContigAlignment = new BwaMemAlignment(4, -1, -1, -1, -1, -1, -1, -1, 0, 0, "", "", "", -1, -1, 0);
+
+        final FermiLiteAssembly.Contig contigWithAmbiguousMapping = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final BwaMemAlignment firstAmbiguousMapping = new BwaMemAlignment(256, dummyRefId, 1000000, 1001000, 0, 1000, 0, 20, 100, 100, "800M50I100M50D50M", "", "", -1, -1, 0); // technically not correct but doesn't matter for this case
+        final BwaMemAlignment secondAmbiguousMapping = new BwaMemAlignment(272, dummyRefId, 2000000, 2001000, 0, 1000, 0, 50, 100, 100, "700M50I200M50D50M", "", "", -1, -1, 0);
+
+        final FermiLiteAssembly.Contig cleanContig = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final BwaMemAlignment cleanAlignment = new BwaMemAlignment(0, dummyRefId, 1000000, 1001000, 0, 1000, 60, 0, 100, 0, "1000M", "", "", -1, -1, 0);
+
+        final FermiLiteAssembly.Contig contigWithGapInAlignment = new FermiLiteAssembly.Contig(dummyContigSequence, dummyContigSequenceQuals, 100);
+        final BwaMemAlignment gappedAlignment = new BwaMemAlignment(0, dummyRefId,1000000, 1001000, 0, 1000, 60, 0, 100, 0, "700M50I200M50D50M", "", "", -1, -1, 0);
+
+        final List<List<BwaMemAlignment>> allAlignments = Arrays.asList(Collections.singletonList(unmappedContigAlignment), Arrays.asList(firstAmbiguousMapping, secondAmbiguousMapping), Collections.singletonList(cleanAlignment), Collections.singletonList(gappedAlignment));
+        final FermiLiteAssembly assembly = new FermiLiteAssembly(Arrays.asList(unmappedContig, contigWithAmbiguousMapping, cleanContig, contigWithGapInAlignment));
+
+        final AlignedAssemblyOrExcuse collection = new AlignedAssemblyOrExcuse(1, assembly, allAlignments);
+
+        final Iterable<Tuple2<Iterable<AlignmentRegion>, byte[]>> result = AssemblyAlignmentParser.forEachAssemblyNotExcuse(collection, refNames);
+        final Iterator<Tuple2<Iterable<AlignmentRegion>, byte[]>> it = result.iterator();
+
+        Assert.assertTrue(it.hasNext());
+        Assert.assertFalse(it.next()._1().iterator().hasNext());
+        Assert.assertFalse(it.next()._1().iterator().hasNext());
+
+        final Iterator<AlignmentRegion> arOfCleanContigIt = it.next()._1().iterator();
+        Assert.assertEquals(arOfCleanContigIt.next(),
+                new AlignmentRegion("asm000001", "tig00002", new SimpleInterval(dummyRefName, 1000001, 1001000), TextCigarCodec.decode("1000M"), true, 60, 0, 1, 1000));
+        Assert.assertFalse(arOfCleanContigIt.hasNext());
+
+        Assert.assertEquals(Iterators.size(it.next()._1().iterator()), 3);
+
+        Assert.assertEquals(AssemblyAlignmentParser.formatToAlignmentRegions(Collections.singleton(collection), refNames).size(), 2);
     }
 
     @Test
@@ -149,7 +198,7 @@ public class AssemblyAlignmentParserUnitTest extends BaseTest{
     }
 
     @Test
-    public void testGappedAlignmentBreaker_Sensitivity() {
+    public void testGappedAlignmentBreaker_GapSizeSensitivity() {
 
         final Cigar cigar = TextCigarCodec.decode("10M10D10M60I10M10I10M50D10M");
         final AlignmentRegion alignmentRegion = new AlignmentRegion("1", "contig-1", new SimpleInterval("1", 100, 209), cigar, true, 60, 0, 1, 120);

@@ -29,7 +29,7 @@ public final class FindBreakpointEvidenceSparkUnitTest extends BaseTest {
     private final String asmQNamesFile = toolDir+"SVBreakpointsTest.assembly.qnames";
     private final String fastqFile = toolDir+"SVBreakpointsTest.assembly.";
 
-    private final FindBreakpointEvidenceSpark.Params params = FindBreakpointEvidenceSpark.defaultParams;
+    private final FindBreakpointEvidenceSpark.Params params = StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection.defaultParams;
     private final JavaSparkContext ctx = SparkContextFactory.getTestSparkContext();
     private final ReadsSparkSource readsSource = new ReadsSparkSource(ctx);
     private final SAMFileHeader header = readsSource.getHeader(readsFile, null);

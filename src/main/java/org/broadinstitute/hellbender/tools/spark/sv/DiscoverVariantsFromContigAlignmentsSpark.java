@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,7 +9,9 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.SparkProgramGroup;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -27,21 +30,18 @@ import scala.Tuple2;
 @CommandLineProgramProperties(summary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
         oneLineSummary="Parse a SAM file containing contigs or long reads aligned to the reference, and call SVs",
         programGroup = SparkProgramGroup.class)
-public final class DiscoverStructuralVariantsFromAlignedContigsSAMSpark extends GATKSparkTool {
+public final class DiscoverVariantsFromContigAlignmentsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
-    private static final Logger log = LogManager.getLogger(DiscoverStructuralVariantsFromAlignedContigsSAMSpark.class);
+    private final Logger localLogger = LogManager.getLogger(DiscoverVariantsFromContigAlignmentsSpark.class);
 
-    @Argument(doc = "URL of the output path", shortName = "outputPath",
-            fullName = "outputPath", optional = false)
-    private String outputPath;
 
-    @Argument(doc = "FASTA formatted reference", shortName = "fastaReference",
-            fullName = "fastaReference", optional = false)
-    private String fastaReference;
+    @ArgumentCollection
+    private StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection discoverStageArgs
+            = new StructuralVariationDiscoveryArgumentCollection.DiscoverVariantsFromContigsAlignmentsSparkArgumentCollection();
 
-    @Argument(doc = "Minimum flanking alignment length", shortName = "minAlignLength",
-            fullName = "minAlignLength", optional = true)
-    private Integer minAlignLength = SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH;
+    @Argument(doc = "sam file for aligned contigs", shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME)
+    private String vcfOutputFileName;
 
     @Override
     public boolean requiresReference() {
@@ -64,13 +64,19 @@ public final class DiscoverStructuralVariantsFromAlignedContigsSAMSpark extends 
         final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable
                 = getReads().groupBy(GATKRead::getName).map(Tuple2::_2).mapToPair(AssemblyAlignmentParser::convertToAlignmentRegions);
 
-        final Broadcast<ReferenceMultiSource> broadcastReference = ctx.broadcast(getReference());
-
-        final JavaRDD<VariantContext> variants
-                = SVVariantConsensusDiscovery.discoverNovelAdjacencyFromChimericAlignments(alignmentRegionsIterable, log)
-                .map(tuple2 -> SVVariantConsensusDiscovery.discoverVariantsFromConsensus(tuple2, broadcastReference));
-
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputPath, SVConstants.DiscoveryStepConstants.CURRENTLY_CAPABLE_VARIANTS_VCF, fastaReference, variants, log);
+        makeSenseAndWrite(alignmentRegionsIterable, discoverStageArgs.fastaReference, ctx.broadcast(getReference()), getAuthenticatedGCSOptions(),
+                vcfOutputFileName, localLogger);
     }
 
+    static void makeSenseAndWrite(final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsIterable,
+                                  final String fastaReference, final Broadcast<ReferenceMultiSource> broadcastReference,
+                                  final PipelineOptions pipelineOptions, String vcfFileName,
+                                  final Logger toolLogger) {
+
+        final JavaRDD<VariantContext> variants
+                = SVVariantConsensusDiscovery.discoverNovelAdjacencyFromChimericAlignments(alignmentRegionsIterable, toolLogger)
+                .map(tuple2 -> SVVariantConsensusDiscovery.discoverVariantsFromConsensus(tuple2, broadcastReference));
+
+        SVVCFWriter.writeVCF(pipelineOptions, vcfFileName, fastaReference, variants, toolLogger);
+    }
 }

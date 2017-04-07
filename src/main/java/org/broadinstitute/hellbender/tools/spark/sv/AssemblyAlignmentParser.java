@@ -1,39 +1,35 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Iterables;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMFlag;
 import htsjdk.samtools.util.SequenceUtil;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
+import org.broadinstitute.hellbender.utils.fermi.FermiLiteAssembly;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static org.broadinstitute.hellbender.tools.spark.sv.ContigsCollection.loadContigsCollectionKeyedByAssemblyId;
+import java.util.stream.IntStream;
 
 /**
- * Implements a parser for parsing alignments of locally assembled contigs, and
- * generating {@link ChimericAlignment}'s from the alignments, if possible.
+ * Implements a parser for parsing alignments of locally assembled contigs.
  */
 class AssemblyAlignmentParser implements Serializable {
     private static final long serialVersionUID = 1L;
-    private static final Logger log = LogManager.getLogger(AssemblyAlignmentParser.class);
-    private static final boolean DEBUG_STATS = false;
 
     /**
-     * Converts a {@link GATKRead}, particularly the alignment and sequence information in it to the custom {@link AlignmentRegion} format.
+     * Converts an iterable of a {@link GATKRead}'s of a contig, particularly the alignment and sequence information in it
+     * to the custom {@link AlignmentRegion} format.
      */
     @VisibleForTesting
     static Tuple2<Iterable<AlignmentRegion>, byte[]> convertToAlignmentRegions(final Iterable<GATKRead> reads) {
@@ -59,51 +55,57 @@ class AssemblyAlignmentParser implements Serializable {
     }
 
     /**
-     * Loads the alignment regions and sequence of all locally-assembled contigs by SGA from the text file they are in;
-     * one record for each contig.
-     * @param ctx                       spark context for IO operations
-     * @param pathToInputAlignments     path string to alignments of the contigs; format assumed to be consistent/parsable by {@link AlignmentRegion#toString()}
-     * @return                          an PairRDD for all assembled contigs with their alignment regions and sequence
+     * Filter out "failed" assemblies and turn the alignments of contigs into custom {@link AlignmentRegion} format.
      */
-    static JavaPairRDD<Iterable<AlignmentRegion>, byte[]> prepAlignmentRegionsForCalling(final JavaSparkContext ctx,
-                                                                                         final String pathToInputAlignments,
-                                                                                         final String pathToInputAssemblies) {
+    @VisibleForTesting
+    static List<Tuple2<Iterable<AlignmentRegion>, byte[]>> formatToAlignmentRegions(final Iterable<AlignedAssemblyOrExcuse> alignedAssemblyOrExcuseIterable,
+                                                                                    final List<String> refNames) {
 
-        final JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> alignmentRegionsKeyedByAssemblyAndContigId
-                = parseAlignments(ctx, pathToInputAlignments);
-        if (DEBUG_STATS) {
-            AssemblyAlignmentParser.debugStats(alignmentRegionsKeyedByAssemblyAndContigId, pathToInputAlignments);
-        }
-
-        final JavaPairRDD<Tuple2<String, String>, byte[]> contigSequences
-                = loadContigSequence(ctx, pathToInputAssemblies);
-
-        return alignmentRegionsKeyedByAssemblyAndContigId
-                .join(contigSequences)
-                .mapToPair(Tuple2::_2);
+        return Utils.stream(alignedAssemblyOrExcuseIterable)
+                .filter(alignedAssemblyOrExcuse -> alignedAssemblyOrExcuse.getErrorMessage() == null)
+                .map(alignedAssembly -> forEachAssemblyNotExcuse(alignedAssembly, refNames))
+                .flatMap(Utils::stream)                         // size == total # of contigs' from all successful assemblies
+                .filter(pair -> pair._1.iterator().hasNext())   // filter out unmapped and contigs without primary alignments
+                .collect(Collectors.toList());
     }
 
-    // TODO: 11/23/16 test
-    static JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> parseAlignments(final JavaSparkContext ctx,
-                                                                                          final String pathToInputAlignments) {
+    /**
+     * Work on "successful" assembly and turn its contigs' alignments to custom {@link AlignmentRegion} format.
+     */
+    @VisibleForTesting
+    static Iterable<Tuple2<Iterable<AlignmentRegion>, byte[]>> forEachAssemblyNotExcuse(final AlignedAssemblyOrExcuse alignedAssembly,
+                                                                                        final List<String> refNames) {
 
-        return ctx.textFile(pathToInputAlignments).map(textLine -> AlignmentRegion.fromString(textLine.split(AlignmentRegion.STRING_REP_SEPARATOR,-1)))
-                .flatMap(oneRegion -> breakGappedAlignment(oneRegion, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY).iterator())
-                .mapToPair(alignmentRegion -> new Tuple2<>(new Tuple2<>(alignmentRegion.assemblyId, alignmentRegion.contigId), alignmentRegion))
-                .groupByKey();
+        final FermiLiteAssembly assembly = alignedAssembly.getAssembly();
+
+        final String assemblyIdString = AlignedAssemblyOrExcuse.formatAssemblyID(alignedAssembly.getAssemblyId());
+
+        final List<List<BwaMemAlignment>> allAlignments = alignedAssembly.getContigAlignments();
+
+        final List<Tuple2<Iterable<AlignmentRegion>, byte[]>> result = new ArrayList<>(allAlignments.size());
+
+        IntStream.range(0, assembly.getNContigs())
+                .forEach( contigIdx -> {
+                    final byte[] contigSequence = assembly.getContig(contigIdx).getSequence();
+                    final Iterable<AlignmentRegion> arOfAContig = convertToAlignmentRegions(assemblyIdString, AlignedAssemblyOrExcuse.formatContigID(contigIdx), refNames, allAlignments.get(contigIdx), contigSequence.length);
+                    result.add(new Tuple2<>(arOfAContig, contigSequence));
+                } );
+
+        return result;
     }
 
-    // TODO: 12/15/16 test
-    static JavaPairRDD<Tuple2<String, String>, byte[]> loadContigSequence(final JavaSparkContext ctx,
-                                                                          final String pathToInputAssemblies) {
-        return loadContigsCollectionKeyedByAssemblyId(ctx, pathToInputAssemblies)
-                .flatMapToPair(assemblyIdAndContigsCollection -> {
-                    final String assemblyId = assemblyIdAndContigsCollection._1;
-                    final ContigsCollection contigsCollection = assemblyIdAndContigsCollection._2;
-                    return contigsCollection.getContents().stream()
-                            .map(pair -> new Tuple2<>(new Tuple2<>(assemblyId, pair._1.toString()), pair._2.toString().getBytes()))
-                            .collect(Collectors.toList()).iterator();
-                });
+    /**
+     * Converts alignment records of the contig pointed to by {@code contigIdx} in a {@link FermiLiteAssembly} to custom {@link AlignmentRegion} format.
+     */
+    @VisibleForTesting
+    static Iterable<AlignmentRegion> convertToAlignmentRegions(final String assemblyIdString, final String contigIdString, final List<String> refNames,
+                                                               final List<BwaMemAlignment> contigAlignments, final int unClippedContigLength) {
+
+        return contigAlignments.stream()
+                .filter( bwaMemAlignment ->  bwaMemAlignment.getRefId() >= 0 && SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(bwaMemAlignment.getSamFlag())) // mapped and not XA (i.e. not secondary)
+                .map(bwaMemAlignment -> new AlignmentRegion(assemblyIdString, contigIdString, unClippedContigLength, bwaMemAlignment, refNames))
+                .map(ar -> breakGappedAlignment(ar, SVConstants.DiscoveryStepConstants.GAPPED_ALIGNMENT_BREAK_DEFAULT_SENSITIVITY))
+                .flatMap(Utils::stream).collect(Collectors.toList());
     }
 
     // TODO: 1/18/17 handle mapping quality and mismatches of the new alignment better rather than artificial ones. this would ultimately require a re-alignment done right.
@@ -316,29 +318,6 @@ class AssemblyAlignmentParser implements Serializable {
             }
         }
         return result;
-    }
-
-    private static void debugStats(final JavaPairRDD<Tuple2<String, String>, Iterable<AlignmentRegion>> alignmentRegionsWithContigSequences, final String outPrefix) {
-        log.info(alignmentRegionsWithContigSequences.count() + " contigs");
-        final long noARs = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())==0).count();
-        log.info(noARs + " contigs have no alignments");
-        final long oneARs = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())==1).count();
-        log.info(oneARs + " contigs have only one alignments");
-
-        final JavaPairRDD<String, List<Tuple2<Integer, Integer>>> x = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())==2).mapToPair(tuple2 -> {
-            final Iterator<AlignmentRegion> it = tuple2._2().iterator();
-            final AlignmentRegion region1 = it.next(), region2 = it.next();
-            return new Tuple2<>(region1.assemblyId+":"+region1.contigId, Arrays.asList(new Tuple2<>(region1.mapQual, region1.referenceInterval.size()), new Tuple2<>(region2.mapQual, region2.referenceInterval.size())));
-        });
-        x.coalesce(1).saveAsTextFile(outPrefix+"_withTwoAlignments");
-        log.info(x.count() + " contigs have two alignments");
-
-        final JavaPairRDD<String, List<Tuple2<Integer, Integer>>> y = alignmentRegionsWithContigSequences.filter(tuple2 -> Iterables.size(tuple2._2())>2).mapToPair(tuple2 -> {
-            final AlignmentRegion region1 = tuple2._2().iterator().next();
-            return new Tuple2<>(region1.assemblyId+":"+region1.contigId, StreamSupport.stream(tuple2._2().spliterator(), false).map(ar -> new Tuple2<>(ar.mapQual, ar.referenceInterval.size())).collect(Collectors.toList()));
-        });
-        y.coalesce(1).saveAsTextFile(outPrefix+"_withMoreThanTwoAlignments");
-        log.info(y.count() + " contigs have more than two alignments");
     }
 
 }
