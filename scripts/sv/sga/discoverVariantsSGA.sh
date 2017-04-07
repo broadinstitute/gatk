@@ -21,14 +21,13 @@ if [[ -z ${GATK_DIR+x} || -z ${CLUSTER_NAME+x} || -z ${PROJECT_OUTPUT_DIR+x} || 
     REF_2BIT=$(echo $REF_FASTA | sed 's/.fasta$/.2bit/')
 fi
 
-cd "$GATK_DIR" 
-
-./gatk-launch DiscoverStructuralVariantsFromAlignedContigsSpark \
+"${GATK_DIR}/gatk-launch" DiscoverVariantsFromContigAlignmentsSGASpark \
     --inputAlignments "$PROJECT_OUTPUT_DIR"/aligned_assemblies \
     --inputAssemblies "$PROJECT_OUTPUT_DIR"/assembly_0 \
-    --outputPath "$PROJECT_OUTPUT_DIR"/variants \
+    -O "$PROJECT_OUTPUT_DIR"/variants/inv_del_ins.vcf \
     -R "$REF_2BIT" \
     -fastaReference "$REF_FASTA" \
+    --logContigAlignmentSimpleStats \
     -- \
     --sparkRunner GCS \
     --cluster "$CLUSTER_NAME" \

@@ -39,8 +39,10 @@ export REF_FASTA
 export REF_2BIT
 export REF_INDEX_IMG
 
-baseDir=$(dirname -- "$0")
-${baseDir}/scanBam.sh "$@"
-${baseDir}/assemblySGA.sh
-${baseDir}/alignAssembly.sh
-${baseDir}/discoverVariantsSGA.sh
+scriptDir=$(dirname -- "$0")
+absPath=$(realpath $scriptDir)
+parentDir="$(dirname "$absPath")"
+#${parentDir}/fermiLite/scanBam.sh "$@"
+${scriptDir}/assemblySGA.sh
+${scriptDir}/alignAssembly.sh
+${scriptDir}/discoverVariantsSGA.sh

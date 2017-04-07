@@ -27,8 +27,8 @@ public final class SVUtils {
      * Read a file of kmers.
      * Each line must be exactly SVConstants.KMER_SIZE characters long, and must match [ACGT]*.
      */
-    public static Set<SVKmer> readKmersFile( final int kSize, final String kmersFile, final PipelineOptions popts,
-                                             final SVKmer kmer ) {
+    public static Set<SVKmer> readKmersFile(final int kSize, final String kmersFile, final PipelineOptions popts,
+                                            final SVKmer kmer ) {
         final Set<SVKmer> kmers;
 
         try ( final BufferedReader rdr =
@@ -73,8 +73,8 @@ public final class SVUtils {
     }
 
     /** Read intervals from file. */
-    public static List<SVInterval> readIntervalsFile( final String intervalsFile, final PipelineOptions popts,
-                                                      final Map<String, Integer> contigNameMap ) {
+    public static List<SVInterval> readIntervalsFile(final String intervalsFile, final PipelineOptions popts,
+                                                     final Map<String, Integer> contigNameMap ) {
         final List<SVInterval> intervals;
         try ( final BufferedReader rdr =
                       new BufferedReader(new InputStreamReader(BucketUtils.openFile(intervalsFile, popts))) ) {

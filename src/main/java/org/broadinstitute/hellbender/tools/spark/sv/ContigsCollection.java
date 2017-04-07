@@ -26,7 +26,7 @@ final class ContigsCollection implements Serializable {
         private static final long serialVersionUID = 1L;
 
         private final String sequence;
-        public ContigSequence(final String sequence){ this.sequence = sequence; }
+        ContigSequence(final String sequence){ this.sequence = sequence; }
 
         @Override
         public String toString(){
@@ -62,7 +62,7 @@ final class ContigsCollection implements Serializable {
 
     private final List<Tuple2<ContigID, ContigSequence>> contents;
 
-    public List<Tuple2<ContigID, ContigSequence>> getContents(){
+    List<Tuple2<ContigID, ContigSequence>> getContents(){
         return contents;
     }
 
@@ -76,7 +76,7 @@ final class ContigsCollection implements Serializable {
      * Spark tools to parse without worrying about partitioning. If the ContigCollection
      * is empty this returns null.
      */
-    public String toPackedFasta(){
+    String toPackedFasta(){
         return StringUtils.join(toListOfStrings(),"|");
     }
 
@@ -85,7 +85,7 @@ final class ContigsCollection implements Serializable {
      * @param packedFastaLine
      */
     @VisibleForTesting
-    protected static ContigsCollection fromPackedFasta(final String packedFastaLine) {
+    static ContigsCollection fromPackedFasta(final String packedFastaLine) {
         final List<String> fileContents = Arrays.asList(packedFastaLine.split("\\|"));
         if (fileContents.size() % 2 != 0) {
             throw new GATKException("Odd number of lines in breakpoint fasta" + packedFastaLine);
@@ -93,7 +93,7 @@ final class ContigsCollection implements Serializable {
         return new ContigsCollection(fileContents);
     }
 
-    public List<String> toListOfStrings(){
+    List<String> toListOfStrings(){
         if(null==contents){
             return null;
         }
@@ -105,7 +105,7 @@ final class ContigsCollection implements Serializable {
         return res;
     }
 
-    public ContigsCollection(final List<String> fileContents){
+    ContigsCollection(final List<String> fileContents){
 
         if(null==fileContents){
             contents = null;
@@ -121,6 +121,7 @@ final class ContigsCollection implements Serializable {
      * Loads an RDD of {@link ContigsCollection} objects keyed by assembly ID from disk. The input file
      * should be the output of as RunSGAViaProcessBuilderOnSpark.
      */
+    @VisibleForTesting
     static JavaPairRDD<String, ContigsCollection> loadContigsCollectionKeyedByAssemblyId(final JavaSparkContext ctx, final String inputPath) {
         final JavaRDD<String> inputAssemblies = ctx.textFile(inputPath).cache();
 
@@ -136,6 +137,7 @@ final class ContigsCollection implements Serializable {
      * @param assemblyLine An input line with a breakpoint ID and packed FASTA line
      * @return A tuple with the breakpoint ID and packed FASTA line, or an empty iterator if the line did not have two tab-separated values
      */
+    @VisibleForTesting
     static Iterator<Tuple2<String, String>> splitAssemblyLine(final String assemblyLine) {
 
         final String[] split = assemblyLine.split("\t");
