@@ -5,8 +5,6 @@ import htsjdk.variant.variantcontext.Allele;
 import java.util.Collections;
 import java.util.Map;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_FIVE;
-
 /**
  * Various types of structural variations
  */
@@ -56,7 +54,7 @@ abstract class SvType {
             super(getIDString(novelAdjacencyReferenceLocations),
                     Allele.create(SVConstants.DiscoveryStepConstants.VCF_ALT_ALLELE_STRING_INV),
                     novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart() - novelAdjacencyReferenceLocations.leftJustifiedLeftRefLoc.getEnd(),
-                    Collections.singletonMap((novelAdjacencyReferenceLocations.endConnectionType == FIVE_TO_FIVE) ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33, ""));
+                    Collections.singletonMap((novelAdjacencyReferenceLocations.endConnectionType == NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_FIVE) ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33, ""));
         }
 
         private static String getIDString(final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations) {
@@ -65,7 +63,7 @@ abstract class SvType {
             final int end = novelAdjacencyReferenceLocations.leftJustifiedRightRefLoc.getStart();
             final NovelAdjacencyReferenceLocations.EndConnectionType endConnectionType = novelAdjacencyReferenceLocations.endConnectionType;
 
-            return (endConnectionType == FIVE_TO_FIVE ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33) + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR +
+            return (endConnectionType == NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_FIVE ? GATKSVVCFHeaderLines.INV55 : GATKSVVCFHeaderLines.INV33) + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR +
                     contig + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR + start + SVConstants.DiscoveryStepConstants.VARIANT_ID_FIELD_SEPARATOR + end;
         }
     }

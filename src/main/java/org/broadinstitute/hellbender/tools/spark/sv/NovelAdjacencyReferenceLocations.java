@@ -9,8 +9,9 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
-import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.broadinstitute.hellbender.tools.spark.sv.NovelAdjacencyReferenceLocations.EndConnectionType.*;
 
@@ -21,7 +22,7 @@ import static org.broadinstitute.hellbender.tools.spark.sv.NovelAdjacencyReferen
  * and complications in pinning down the locations to exact base pair resolution.
  */
 @DefaultSerializer(NovelAdjacencyReferenceLocations.Serializer.class)
-class NovelAdjacencyReferenceLocations {
+public class NovelAdjacencyReferenceLocations {
 
     final SimpleInterval leftJustifiedLeftRefLoc;
     final SimpleInterval leftJustifiedRightRefLoc;
@@ -29,6 +30,14 @@ class NovelAdjacencyReferenceLocations {
     final EndConnectionType endConnectionType;
     final BreakpointComplications complication;
 
+    /**
+     * @return Intended for use in debugging and exception message only.
+     */
+    @Override
+    public String toString() {
+        return String.format("%s\t%s\t%s\t%s", leftJustifiedLeftRefLoc.toString(), leftJustifiedRightRefLoc.toString(),
+                endConnectionType.name(), complication.toString());
+    }
 
     /**
      * Represents the strand of evidence that was used in computing this breakpoint pair.
@@ -37,13 +46,18 @@ class NovelAdjacencyReferenceLocations {
         FIVE_TO_THREE, THREE_TO_THREE, FIVE_TO_FIVE
     }
 
-    NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment)
-            throws IOException {
+    static List<Tuple2<NovelAdjacencyReferenceLocations, ChimericAlignment>> fromContigAlignments(final AlignedContig alignedContig) {
+        final byte[] contigSequence = alignedContig.contigSequence;
+        return ChimericAlignment.fromSplitAlignments(alignedContig, SVConstants.DiscoveryStepConstants.DEFAULT_MIN_ALIGNMENT_LENGTH).stream()
+                .map(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca, contigSequence), ca)).collect(Collectors.toList());
+    }
+
+    NovelAdjacencyReferenceLocations(final ChimericAlignment chimericAlignment, final byte[] contigSequence){
 
         // first get endConnectionType, then get complications, finally use complications to justify breakpoints
         endConnectionType = determineEndConnectionType(chimericAlignment);
 
-        complication = new BreakpointComplications(chimericAlignment);
+        complication = new BreakpointComplications(chimericAlignment, contigSequence);
 
         final Tuple2<SimpleInterval, SimpleInterval> leftJustifiedBreakpoints = leftJustifyBreakpoints(chimericAlignment, complication);
         leftJustifiedLeftRefLoc = leftJustifiedBreakpoints._1();
@@ -114,7 +128,7 @@ class NovelAdjacencyReferenceLocations {
 
         Utils.validate(leftBreakpointCoord <= rightBreakpointCoord,
                 "Inferred novel adjacency reference locations have left location after right location : " + leftBreakpointCoord + "\t" + rightBreakpointCoord
-                        + ca.toString() + "\n" + complication.toString());
+                        + ca.onErrStringRep() + "\n" + complication.toString());
 
         final SimpleInterval leftBreakpoint = new SimpleInterval(leftBreakpointRefContig, leftBreakpointCoord, leftBreakpointCoord);
         final SimpleInterval rightBreakpoint = new SimpleInterval(rightBreakpointRefContig, rightBreakpointCoord, rightBreakpointCoord);
@@ -134,12 +148,6 @@ class NovelAdjacencyReferenceLocations {
 
         this.endConnectionType = EndConnectionType.values()[input.readInt()];
         this.complication = kryo.readObject(input, BreakpointComplications.class);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s\t%s\t%s\t%s", leftJustifiedLeftRefLoc.toString(), leftJustifiedRightRefLoc.toString(),
-                                               endConnectionType.name(), complication.toString());
     }
 
     @VisibleForTesting

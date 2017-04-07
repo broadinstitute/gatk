@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Iterables;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -9,6 +8,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -22,34 +22,24 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static org.broadinstitute.hellbender.tools.spark.sv.NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_THREE;
-
 /**
  * Given identified pair of breakpoints for a simple SV and its supportive evidence, i.e. chimeric alignments,
  * produce an VariantContext.
  */
-class SVVariantConsensusDiscovery implements Serializable {
+public class SVVariantConsensusDiscovery implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * This method processes an RDD containing alignment regions, scanning for chimeric alignments which match a set of filtering
-     * criteria, and emitting novel adjacency not present on the reference used for aligning the contigs.
-     *
-     * The input RDD is of the form:
-     * Tuple2 of:
-     *     {@code Iterable<AlignmentRegion>} AlignmentRegion objects representing all alignments for one contig
-     *     A byte array with the sequence content of the contig
-     * @param alignmentRegionsWithContigSequence A data structure as described above, where a list of AlignmentRegions and the sequence of the contig are keyed by a tuple of Assembly ID and Contig ID
-     * @param logger                             for logging information and accredit to the calling tool
+     * Given contig alignments, scan for chimeric alignments which match a set of filtering criteria, and
+     * emit novel adjacency not present on the reference used for aligning the contigs.
      */
     static JavaPairRDD<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> discoverNovelAdjacencyFromChimericAlignments(
-            final JavaPairRDD<Iterable<AlignmentRegion>, byte[]> alignmentRegionsWithContigSequence,
+            final JavaRDD<AlignedContig> alignedContigs,
             final Logger logger)
     {
-        return alignmentRegionsWithContigSequence.filter(pair -> Iterables.size(pair._1())>1) // filter out any contigs that has less than two alignment records
-                .flatMap( input -> ChimericAlignment.fromSplitAlignments(input).iterator())              // 1. AR -> {CA}
-                .mapToPair(ca -> new Tuple2<>(new NovelAdjacencyReferenceLocations(ca), ca))             // 2. CA -> NovelAdjacency
-                .groupByKey();                                                                           // 3. {consensus NovelAdjacency}
+        return alignedContigs.filter(alignedContig -> alignedContig.alignmentIntervals.size()>1) // filter out any contigs that has less than two alignment records
+                .flatMapToPair(alignedContig -> NovelAdjacencyReferenceLocations.fromContigAlignments(alignedContig).iterator())
+                .groupByKey();
     }
 
     // TODO: 12/12/16 does not handle translocation yet
@@ -60,8 +50,8 @@ class SVVariantConsensusDiscovery implements Serializable {
      * @param broadcastReference                broadcasted reference
      * @throws IOException                      due to read operations on the reference
      */
-    static VariantContext discoverVariantsFromConsensus(final Tuple2<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> breakpointPairAndItsEvidence,
-                                                        final Broadcast<ReferenceMultiSource> broadcastReference)
+    public static VariantContext discoverVariantsFromConsensus(final Tuple2<NovelAdjacencyReferenceLocations, Iterable<ChimericAlignment>> breakpointPairAndItsEvidence,
+                                                               final Broadcast<ReferenceMultiSource> broadcastReference)
             throws IOException {
 
         final NovelAdjacencyReferenceLocations novelAdjacencyReferenceLocations = breakpointPairAndItsEvidence._1;
@@ -114,7 +104,7 @@ class SVVariantConsensusDiscovery implements Serializable {
         final NovelAdjacencyReferenceLocations.EndConnectionType endConnectionType = novelAdjacencyReferenceLocations.endConnectionType;
 
         final SvType type;
-        if (endConnectionType == FIVE_TO_THREE) { // no strand switch happening, so no inversion
+        if (endConnectionType == NovelAdjacencyReferenceLocations.EndConnectionType.FIVE_TO_THREE) { // no strand switch happening, so no inversion
             if (start==end) { // something is inserted
                 final boolean hasNoDupSeq = !novelAdjacencyReferenceLocations.complication.hasDuplicationAnnotation();
                 final boolean hasNoInsertedSeq = novelAdjacencyReferenceLocations.complication.getInsertedSequenceForwardStrandRep().isEmpty();
@@ -195,21 +185,19 @@ class SVVariantConsensusDiscovery implements Serializable {
      * Utility structs for extraction information from the consensus NovelAdjacencyReferenceLocations out of multiple ChimericAlignments,
      * to be later added to annotations of the VariantContext extracted.
      */
-    static final class BreakpointEvidenceAnnotations implements Serializable {
+    static final class NovelAdjacencyEvidenceAnnotations implements Serializable {
         private static final long serialVersionUID = 1L;
 
         final Integer minMQ;
         final Integer minAL;
-        final String asmID;
-        final String contigID;
+        final String sourceContigName;
         final List<String> insSeqMappings;
 
-        BreakpointEvidenceAnnotations(final ChimericAlignment chimericAlignment){
+        NovelAdjacencyEvidenceAnnotations(final ChimericAlignment chimericAlignment){
             minMQ = Math.min(chimericAlignment.regionWithLowerCoordOnContig.mapQual, chimericAlignment.regionWithHigherCoordOnContig.mapQual);
             minAL = Math.min(chimericAlignment.regionWithLowerCoordOnContig.referenceInterval.size(), chimericAlignment.regionWithHigherCoordOnContig.referenceInterval.size())
-                    - SVVariantCallerUtils.overlapOnContig(chimericAlignment.regionWithLowerCoordOnContig, chimericAlignment.regionWithHigherCoordOnContig);
-            asmID = chimericAlignment.regionWithLowerCoordOnContig.assemblyId;
-            contigID = chimericAlignment.regionWithLowerCoordOnContig.contigId;
+                    - SVVariantDiscoveryUtils.overlapOnContig(chimericAlignment.regionWithLowerCoordOnContig, chimericAlignment.regionWithHigherCoordOnContig);
+            sourceContigName = chimericAlignment.sourceContigName;
             insSeqMappings = chimericAlignment.insertionMappings;
         }
     }
@@ -217,12 +205,9 @@ class SVVariantConsensusDiscovery implements Serializable {
     @VisibleForTesting
     static Map<String, Object> getEvidenceRelatedAnnotations(final Iterable<ChimericAlignment> splitAlignmentEvidence) {
 
-        final List<BreakpointEvidenceAnnotations> annotations = StreamSupport.stream(splitAlignmentEvidence.spliterator(), false)
-                .sorted((final ChimericAlignment o1, final ChimericAlignment o2) -> { // sort by assembly id, then sort by contig id
-                    if (o1.regionWithLowerCoordOnContig.assemblyId.equals(o2.regionWithLowerCoordOnContig.assemblyId)) return o1.regionWithLowerCoordOnContig.contigId.compareTo(o2.regionWithLowerCoordOnContig.contigId);
-                    else return o1.regionWithLowerCoordOnContig.assemblyId.compareTo(o2.regionWithLowerCoordOnContig.assemblyId);
-                })
-                .map(BreakpointEvidenceAnnotations::new).collect(Collectors.toList());
+        final List<NovelAdjacencyEvidenceAnnotations> annotations = StreamSupport.stream(splitAlignmentEvidence.spliterator(), false)
+                .sorted(Comparator.comparing(ca -> ca.sourceContigName))
+                .map(NovelAdjacencyEvidenceAnnotations::new).collect(Collectors.toList());
 
         final Map<String, Object> attributeMap = new HashMap<>();
         attributeMap.put(GATKSVVCFHeaderLines.TOTAL_MAPPINGS, annotations.size());
@@ -230,8 +215,7 @@ class SVVariantConsensusDiscovery implements Serializable {
         attributeMap.put(GATKSVVCFHeaderLines.MAPPING_QUALITIES, annotations.stream().map(annotation -> String.valueOf(annotation.minMQ)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFHeaderLines.ALIGN_LENGTHS, annotations.stream().map(annotation -> String.valueOf(annotation.minAL)).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
         attributeMap.put(GATKSVVCFHeaderLines.MAX_ALIGN_LENGTH, annotations.stream().map(annotation -> annotation.minAL).max(Comparator.naturalOrder()).orElse(0));
-        attributeMap.put(GATKSVVCFHeaderLines.ASSEMBLY_IDS, annotations.stream().map(annotation -> annotation.asmID).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
-        attributeMap.put(GATKSVVCFHeaderLines.CONTIG_IDS, annotations.stream().map(annotation -> annotation.contigID).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
+        attributeMap.put(GATKSVVCFHeaderLines.CONTIG_NAMES, annotations.stream().map(annotation -> annotation.sourceContigName).collect(Collectors.joining(VCFConstants.INFO_FIELD_ARRAY_SEPARATOR)));
 
         final List<String> insertionMappings = annotations.stream().map(annotation -> annotation.insSeqMappings).flatMap(List::stream).sorted().collect(Collectors.toList());
 

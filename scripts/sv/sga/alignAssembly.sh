@@ -21,11 +21,9 @@ if [[ -z ${GATK_DIR+x} || -z ${CLUSTER_NAME+x} || -z ${PROJECT_OUTPUT_DIR+x} || 
     PROJECT_OUTPUT_DIR="$MASTER_NODE"/"$OUTPUT_DIR"
 fi
 
-cd "$GATK_DIR" 
-
-./gatk-launch AlignAssembledContigsSpark \
+"${GATK_DIR}/gatk-launch" AlignAssembledContigsSpark \
     --bwamemIndexImage "$REF_INDEX_IMG" \
-    --inputFile "$PROJECT_OUTPUT_DIR"/assembly_0 \
+    --inputAssemblyDir "$PROJECT_OUTPUT_DIR"/assembly_0 \
     -O "$PROJECT_OUTPUT_DIR"/aligned_assemblies \
     -- \
     --sparkRunner GCS \

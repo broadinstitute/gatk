@@ -18,7 +18,7 @@ public final class SVInterval implements Comparable<SVInterval> {
     private final int start;
     private final int end;
 
-    SVInterval( final int contig, final int start, final int end ) {
+    public SVInterval( final int contig, final int start, final int end ) {
         this.contig = contig;
         this.start = start;
         this.end = end;
