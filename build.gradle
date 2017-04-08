@@ -106,7 +106,8 @@ dependencies {
 
     compile 'org.broadinstitute:barclay:1.0.0-24-g87c3fa2-SNAPSHOT'
     compile ('com.intel:genomicsdb:0.3.0') {
-      exclude module: 'htsjdk'
+        exclude module: 'htsjdk'
+        exclude module: 'protobuf-java'
     }
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
