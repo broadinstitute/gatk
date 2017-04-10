@@ -1,10 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
-import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -12,11 +12,9 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.*;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.VariantProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.VariantWalker;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc.GeneralPloidyFailOverAFCalculatorProvider;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -70,11 +68,11 @@ import java.util.*;
 public final class GenotypeGVCFs extends VariantWalker {
 
     public static final String PHASED_HOM_VAR_STRING = "1|1";
+    private static final String GVCF_BLOCK = "GVCFBlock";
+
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc="File to which variants should be written", optional=false)
     private File outputFile;
-
-    private static String GVCF_BLOCK = "GVCFBlock";
 
     //@Argument(fullName="includeNonVariantSites", shortName="allSites", doc="Include loci found to be non-variant after genotyping", optional=true)
     //TODO This option is currently not supported.
@@ -87,8 +85,23 @@ public final class GenotypeGVCFs extends VariantWalker {
      * Which annotations to recompute for the combined output VCF file.
      */
     @Advanced
-    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute.  The single value 'none' removes the default annotations", optional=true)
-    private List<String> annotationsToUse = new ArrayList<>(Arrays.asList(new String[]{"InbreedingCoeff", "FisherStrand", "QualByDepth", "ChromosomeCounts", "StrandOddsRatio"}));
+    @Argument(fullName="annotation", shortName="A", doc="One or more specific annotations to recompute.", optional=true)
+    private List<String> annotationsToUse = new ArrayList<>();
+
+
+    @Advanced
+    @Argument(fullName="annotationsToExclude", shortName="AX", doc="One or more specific annotations to exclude from recomputation.", optional=true)
+    private List<String> annotationsToExclude = new ArrayList<>();
+
+    /**
+     * Which groups of annotations to add to the output VCF file.
+     * Note that this usage is not recommended because
+     * it obscures the specific requirements of individual annotations. Any requirements that are not met (e.g. failing
+     * to provide a pedigree file for a pedigree-based annotation) may cause the run to fail.
+     */
+    @Advanced
+    @Argument(fullName="group", shortName="G", doc="One or more classes/groups of annotations to apply to variant calls", optional=true)
+    private List<String> annotationGroupsToUse = new ArrayList<>(Arrays.asList(new String[]{StandardAnnotation.class.getSimpleName()}));
 
     /**
      * The rsIDs from this file are used to populate the ID column of the output.  Also, the DB INFO flag will be set when appropriate. Note that dbSNP is not used in any way for the calculations themselves.
@@ -105,6 +118,11 @@ public final class GenotypeGVCFs extends VariantWalker {
 
     private VariantContextWriter vcfWriter;
 
+    //todo: remove this when the reducible annotation framework is in place
+    //this is ok because RMS_MAPPING is stateless, but it needs to be instantiated in order to call its
+    //overridden instance methods
+    private static final RMSMappingQuality RMS_MAPPING_QUALITY = new RMSMappingQuality();
+
     @Override
     public boolean requiresReference() {
         return true;
@@ -116,26 +134,28 @@ public final class GenotypeGVCFs extends VariantWalker {
         final SampleList samples = new IndexedSampleList(inputVCFHeader.getGenotypeSamples()); //todo should this be getSampleNamesInOrder?
 
         genotypingEngine = new MinimalGenotypingEngine(createUAC(), samples, new GeneralPloidyFailOverAFCalculatorProvider(genotypeArgs));
-        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(Collections.emptyList(), annotationsToUse, Collections.<String>emptyList(), dbsnp.dbsnp, Collections.emptyList());
+
+        annotationEngine = VariantAnnotatorEngine.ofSelectedMinusExcluded(annotationGroupsToUse, annotationsToUse, annotationsToExclude, dbsnp.dbsnp, Collections.emptyList());
+
         merger = new ReferenceConfidenceVariantContextMerger();
 
         setupVCFWriter(inputVCFHeader, samples);
+    }
+
+    private static boolean annotationShouldBeSkippedForHomRefSites(VariantAnnotation annotation) {
+        return annotation instanceof RankSumTest || annotation instanceof RMSMappingQuality || annotation instanceof AS_RMSMappingQuality;
     }
 
     private void setupVCFWriter(VCFHeader inputVCFHeader, SampleList samples) {
         final Set<VCFHeaderLine> headerLines = new LinkedHashSet<>(inputVCFHeader.getMetaDataInInputOrder());
 
         // Remove GCVFBlocks
-        for ( final Iterator<VCFHeaderLine> iter = headerLines.iterator(); iter.hasNext(); ) {
-            if ( iter.next().getKey().contains(GVCF_BLOCK) ) {
-                iter.remove();
-            }
-        }
+        headerLines.removeIf(vcfHeaderLine -> vcfHeaderLine.getKey().startsWith(GVCF_BLOCK));
+
         headerLines.addAll(annotationEngine.getVCFAnnotationDescriptions());
         headerLines.addAll(genotypingEngine.getAppropriateVCFInfoHeaders());
 
         // add headers for annotations added by this tool
-        headerLines.add(new VCFSimpleHeaderLine(GATKVCFConstants.SYMBOLIC_ALLELE_DEFINITION_HEADER_TAG, GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_NAME_DEPRECATED, "Represents any possible spanning deletion allele at this location"));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
@@ -147,14 +167,14 @@ public final class GenotypeGVCFs extends VariantWalker {
         vcfWriter = GATKVariantContextUtils.createVCFWriter(outputFile, getReferenceDictionary(), false);
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
-        final VCFHeader vcfHeader = new VCFHeader(headerLines, sampleNameSet);
+        final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
         vcfWriter.writeHeader(vcfHeader);
     }
 
     @Override
-    public void apply(VariantContext vc, ReadsContext reads, ReferenceContext ref, FeatureContext features ) {
-        ref.setWindow(10,10);
-        final VariantContext mergedVC = merger.merge(Collections.singletonList(vc), vc, includeNonVariants ? ref.getBase() : null, true, false);
+    public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+        ref.setWindow(10, 10); //TODO this matches the gatk3 behavior but may be unnecessary
+        final VariantContext mergedVC = merger.merge(Collections.singletonList(variant), variant, includeNonVariants ? ref.getBase() : null, true, false);
         final VariantContext regenotypedVC = regenotypeVC(mergedVC, ref, features, includeNonVariants);
         if (regenotypedVC != null) {
             vcfWriter.add(regenotypedVC);
@@ -169,36 +189,78 @@ public final class GenotypeGVCFs extends VariantWalker {
     private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
         Utils.nonNull(originalVC);
 
-        VariantContext result = originalVC;
-        if ( result.isVariant() ) {
+        final VariantContext result;
+        if ( originalVC.isVariant()  && originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 ) {
             // only re-genotype polymorphic sites
-            VariantContext regenotypedVC = genotypingEngine.calculateGenotypes(result, GenotypeLikelihoodsCalculationModel.SNP, null);
-            if (regenotypedVC == null || regenotypedVC.isSymbolic()) {
-                if (!includeNonVariants) {
-                    return null;
-                }
+            final VariantContext regenotypedVC = calculateGenotypes(originalVC);
+            if (isProperlyPolymorphic(regenotypedVC)) {
+                final VariantContext allelesTrimmed = GATKVariantContextUtils.reverseTrimAlleles(regenotypedVC);
+                final VariantContext withAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), allelesTrimmed);
+                //TODO: remove this when proper support for reducible annotations is added
+                result = RMS_MAPPING_QUALITY.finalizeRawMQ(withAnnotations);
+            } else if (includeNonVariants) {
+                result = originalVC;
             } else {
-                regenotypedVC = GATKVariantContextUtils.reverseTrimAlleles(regenotypedVC);
-                result = addGenotypingAnnotations(originalVC.getAttributes(), regenotypedVC);
+                return null;
             }
+        } else {
+            result = originalVC;
         }
+
 
         // if it turned monomorphic then we either need to ignore or fix such sites
         // Note that the order of these actions matters and is different for polymorphic and monomorphic sites.
-        if ( result.isMonomorphicInSamples() ) {
-            if ( !includeNonVariants) {
-                return null;
-            } else {
-                // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
-                final VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
-                return annotationEngine.annotateContext(reannotated, features, ref, null, a -> true);
-            }
-        } else {
+        // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
+        // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
+        // We could theoretically make 2 passes to re-create the genotypes, but that gets extremely expensive with large sample sizes.
+        if (result.isPolymorphicInSamples()) {
             // For polymorphic sites we need to make sure e.g. the SB tag is sent to the annotation engine and then removed later.
             final VariantContext reannotated = annotationEngine.annotateContext(result, features, ref, null, a -> true);
             return new VariantContextBuilder(reannotated).genotypes(cleanupGenotypeAnnotations(reannotated, false)).make();
+        } else if (includeNonVariants) {
+            // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
+            final VariantContext reannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true)).make();
+            return annotationEngine.annotateContext(reannotated, features, ref, null, GenotypeGVCFs::annotationShouldBeSkippedForHomRefSites);
+        } else {
+            return null;
         }
+    }
 
+    private VariantContext calculateGenotypes(VariantContext vc){
+        /*
+         * Query the VariantContext for the appropriate model.  If type == MIXED, one would want to use model = BOTH.
+         * However GenotypingEngine.getAlleleFrequencyPriors throws an exception if you give it anything but a SNP or INDEL model.
+         */
+        final GenotypeLikelihoodsCalculationModel model = vc.getType() == VariantContext.Type.INDEL
+                ? GenotypeLikelihoodsCalculationModel.INDEL
+                : GenotypeLikelihoodsCalculationModel.SNP;
+        return genotypingEngine.calculateGenotypes(vc, model, null);
+    }
+
+    /**
+     * Determines whether the provided VariantContext has real alternate alleles.
+     *
+     * There is a bit of a hack to handle the <NON-REF> case because it is not defined in htsjdk.Allele
+     * We check for this as a biallelic symbolic allele.
+     *
+     * @param vc  the VariantContext to evaluate
+     * @return true if it has proper alternate alleles, false otherwise
+     */
+    @VisibleForTesting
+    static boolean isProperlyPolymorphic(final VariantContext vc) {
+        //obvious cases
+        if (vc == null || vc.getAlternateAlleles().isEmpty()) {
+            return false;
+        } else if (vc.isBiallelic()) {
+            return !(isSpanningDeletion(vc.getAlternateAllele(0)) || vc.isSymbolic());
+        } else {
+            return true;
+        }
+    }
+
+    @VisibleForTesting
+    static boolean isSpanningDeletion(final Allele allele){
+        return allele.equals(Allele.SPAN_DEL) || allele.equals(GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED);
     }
 
     /**
@@ -270,10 +332,9 @@ public final class GenotypeGVCFs extends VariantWalker {
                     attrs.put(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, oldGT.getGQ());
                 }
 
-                //keep 0 depth samples as no-call
-                if (depth > 0) {
-                    final int ploidy = oldGT.getPloidy();
-                    final List<Allele> refAlleles = Collections.nCopies(ploidy,vc.getReference());
+                //keep 0 depth samples and 0 GQ samples as no-call
+                if (depth > 0 && oldGT.hasGQ() && oldGT.getGQ() > 0) {
+                    final List<Allele> refAlleles = Collections.nCopies(oldGT.getPloidy(), vc.getReference());
                     builder.alleles(refAlleles);
                 }
 

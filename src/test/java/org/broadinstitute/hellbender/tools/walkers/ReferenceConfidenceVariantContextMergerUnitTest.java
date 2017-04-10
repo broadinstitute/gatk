@@ -14,6 +14,7 @@ import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -26,7 +27,7 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends BaseTest {
     private final Allele C = Allele.create("C");
     private final Allele G = Allele.create("G");
     private final Allele ATC = Allele.create("ATC");
-    private final Allele del = GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED;
+    private final Allele del = Allele.SPAN_DEL;
     private final Allele ATCref = Allele.create("ATC", true);
 
     @Test(dataProvider = "referenceConfidenceMergeData")
@@ -260,5 +261,41 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends BaseTest {
     public void testBadAlleleRemap(){
         VariantContext vc = new VariantContextBuilder().loc("1",1,1).alleles(Arrays.asList(ATCref, C)).make();
         ReferenceConfidenceVariantContextMerger.remapAlleles(vc, Aref);
+    }
+
+    @DataProvider
+    public Object[][] getSpanningDeletionCases(){
+        final VariantContext mixedVC = new VariantContextBuilder().loc("1", 2, 4)
+                .alleles(Arrays.asList(ATCref, C, G, GATKVCFConstants.NON_REF_SYMBOLIC_ALLELE))
+                .make();
+
+        final VariantContext spanningDelAllele = new VariantContextBuilder().loc("1", 2, 2)
+                .alleles(Arrays.asList(Aref, Allele.SPAN_DEL))
+                .make();
+
+        final VariantContext deprecatedSpanningDel = new VariantContextBuilder().loc("1", 2, 2)
+                .alleles(Arrays.asList(Aref, GATKVCFConstants.SPANNING_DELETION_SYMBOLIC_ALLELE_DEPRECATED))
+                .make();
+
+        final VariantContext notSpanning = new VariantContextBuilder().loc("1", 2,2).alleles(Arrays.asList(Aref, C)).make();
+
+        final List<Allele> irrelevant = Collections.emptyList();
+
+        return new Object[][] {
+                { new ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(mixedVC, irrelevant, true), true },
+                { new ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(mixedVC, irrelevant, false), false},
+                { new ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(notSpanning, irrelevant, true), false},
+                { new ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(notSpanning, irrelevant, false), false},
+                { new  ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(spanningDelAllele, irrelevant, false), true},
+                { new ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(deprecatedSpanningDel, irrelevant, false), true},
+                { new  ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(spanningDelAllele, irrelevant, true), true},
+                { new ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(deprecatedSpanningDel, irrelevant, true), true},
+                { new  ReferenceConfidenceVariantContextMerger.VCWithNewAlleles(spanningDelAllele, irrelevant, false), true},
+        };
+    }
+
+    @Test(dataProvider = "getSpanningDeletionCases")
+    public void testVCWithNewAllelesIsSpanningDeletion(ReferenceConfidenceVariantContextMerger.VCWithNewAlleles vcWithNewAlleles, boolean expected){
+        Assert.assertEquals(vcWithNewAlleles.isSpanningDeletion(), expected);
     }
 }
