@@ -4,6 +4,9 @@
 /scripts/docker/mutect2.wdl
 /test_m2_wdl_multi_mod.json
 /mutect2.wdl
+/cnv_somatic_tasks.wdl
+/cnv_somatic_copy_ratio_bam_workflow.wdl
+/cnv_somatic_allele_fraction_pair_workflow.wdl
 /scripts/docker/clone_repo.sh
 /scripts/docker/checkout_tag.sh
 /scripts/docker/GITHUB_TAG
