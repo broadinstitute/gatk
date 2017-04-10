@@ -8,6 +8,7 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -26,11 +27,13 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceMultiSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.engine.spark.SparkReadShard;
+import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSink;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerEngine;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -40,10 +43,7 @@ import scala.Tuple2;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -116,7 +116,18 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
     protected void runTool(final JavaSparkContext ctx) {
         final List<SimpleInterval> intervals = hasIntervals() ? getIntervals() : IntervalUtils.getAllIntervalsForReference(getHeaderForReads().getSequenceDictionary());
         final JavaRDD<VariantContext> variants = callVariantsWithHaplotypeCaller(getAuthHolder(), ctx, getReads(), getHeaderForReads(), getReference(), intervals, hcArgs, shardingArgs);
-        writeVariants(variants);
+        if (hcArgs.emitReferenceConfidence == ReferenceConfidenceMode.GVCF) {
+            // VariantsSparkSink/Hadoop-BAM VCFOutputFormat do not support writing GVCF, see https://github.com/broadinstitute/gatk/issues/2738
+            writeVariants(variants);
+        } else {
+            final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
+            variants.cache(); // without caching, computations are run twice as a side effect of finding partition boundaries for sorting
+            try {
+                VariantsSparkSink.writeVariants(ctx, output, variants, hcEngine.makeVCFHeader(getHeaderForReads().getSequenceDictionary(), new HashSet<>()));
+            } catch (IOException e) {
+                throw new UserException.CouldNotCreateOutputFile(output, "writing failed", e);
+            }
+        }
     }
 
     @Override
@@ -210,12 +221,12 @@ public final class HaplotypeCallerSpark extends GATKSparkTool {
         final SAMSequenceDictionary referenceDictionary = getReferenceSequenceDictionary();
 
         final List<VariantContext> sortedVariants = collectedVariants.stream()
-                .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, referenceDictionary))
-                .collect(Collectors.toList());
+            .sorted((o1, o2) -> IntervalUtils.compareLocatables(o1, o2, referenceDictionary))
+            .collect(Collectors.toList());
 
         final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgs, getHeaderForReads(), new ReferenceMultiSourceAdapter(getReference(), getAuthHolder()));
         try(final VariantContextWriter writer = hcEngine.makeVCFWriter(output, getBestAvailableSequenceDictionary())) {
-            hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary(), Collections.emptySet());
+            hcEngine.writeHeader(writer, getHeaderForReads().getSequenceDictionary(), new HashSet<>());
             sortedVariants.forEach(writer::add);
         }
     }

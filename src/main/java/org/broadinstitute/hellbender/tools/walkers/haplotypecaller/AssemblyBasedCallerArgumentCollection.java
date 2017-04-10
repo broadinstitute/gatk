@@ -63,7 +63,7 @@ public abstract class AssemblyBasedCallerArgumentCollection extends StandardCall
      */
     @Advanced
     @Argument(fullName="emitRefConfidence", shortName="ERC", doc="Mode for emitting reference confidence scores", optional = true)
-    protected ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
+    public ReferenceConfidenceMode emitReferenceConfidence = ReferenceConfidenceMode.NONE;
 
     /**
      * The assembled haplotypes and locally realigned reads will be written as BAM to this file if requested.  Really

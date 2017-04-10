@@ -323,14 +323,12 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
     }
 
     /**
-     * Writes an appropriate VCF header, given our arguments, to the provided writer
+     * Create a VCF header.
      *
-     * @param vcfWriter writer to which the header should be written
+     * @param sequenceDictionary sequence dictionary for the reads
+     * @return a VCF header
      */
-    public void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
-                             final Set<VCFHeaderLine>  defaultToolHeaderLines) {
-        Utils.nonNull(vcfWriter);
-
+    public VCFHeader makeVCFHeader( final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine>  defaultToolHeaderLines ) {
         final Set<VCFHeaderLine> headerInfo = new HashSet<>();
         headerInfo.addAll(defaultToolHeaderLines);
 
@@ -363,7 +361,18 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         final VCFHeader vcfHeader = new VCFHeader(headerInfo, sampleSet);
         vcfHeader.setSequenceDictionary(sequenceDictionary);
-        vcfWriter.writeHeader(vcfHeader);
+        return vcfHeader;
+    }
+
+    /**
+     * Writes an appropriate VCF header, given our arguments, to the provided writer
+     *
+     * @param vcfWriter writer to which the header should be written
+     */
+    public void writeHeader( final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary,
+                             final Set<VCFHeaderLine>  defaultToolHeaderLines) {
+        Utils.nonNull(vcfWriter);
+        vcfWriter.writeHeader(makeVCFHeader(sequenceDictionary, defaultToolHeaderLines));
     }
 
 
