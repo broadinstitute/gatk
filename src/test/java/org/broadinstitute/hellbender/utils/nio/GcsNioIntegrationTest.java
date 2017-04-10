@@ -1,10 +1,6 @@
 package org.broadinstitute.hellbender.utils.nio;
 
-import com.google.cloud.RetryParams;
 import com.google.cloud.storage.StorageException;
-import com.google.cloud.storage.StorageOptions;
-import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
-import com.google.cloud.storage.contrib.nio.CloudStorageFileSystem;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.annotations.Test;
@@ -13,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.*;
-import java.util.Arrays;
 
 /**
  * Test GCS access via the NIO APIs.
@@ -88,7 +83,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
      * That means that you must NOT set $GOOGLE_APPLICATION_CREDENTIALS
      * Yet you must set getGoogleServiceAccountKeyPath() (you may have to switch it to a different
      * environment variable).
-     *
+     **/
     @Test(enabled = false, groups = {"cloud"}, expectedExceptions = {StorageException.class})
     public void explicitCredentialsAreNotKept() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
@@ -110,7 +105,7 @@ public final class GcsNioIntegrationTest extends BaseTest {
         byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
         return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
     }
-*/
+
 
     private void helpDebugAuthError() {
         final String key = "GOOGLE_APPLICATION_CREDENTIALS";
