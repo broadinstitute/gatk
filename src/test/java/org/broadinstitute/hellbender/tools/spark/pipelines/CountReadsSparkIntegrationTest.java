@@ -101,4 +101,13 @@ public final class CountReadsSparkIntegrationTest extends CommandLineProgramTest
         args.addInput(new File(getTestDataDir(), "count_reads.bam"));
         this.runCommandLine(args.getArgsArray());
     }
+
+    @Test(groups = "spark")
+    public void testNonExistentInputBam(){
+        final File outputTxt = createTempFile("count_reads", ".txt");
+        ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addInput(new File(getTestDataDir(), "nonexistent.bam"));
+        args.addOutput(outputTxt);
+        this.runCommandLine(args.getArgsArray());
+    }
 }
