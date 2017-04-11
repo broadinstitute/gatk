@@ -24,6 +24,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.GATKReadToBDGAlignmentRecordConverter;
 import org.broadinstitute.hellbender.utils.read.HeaderlessSAMRecordCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.seqdoop.hadoop_bam.*;
 import org.seqdoop.hadoop_bam.util.SAMFileMerger;
 import scala.Tuple2;
@@ -224,40 +225,10 @@ public final class ReadsSparkSink {
             final JavaSparkContext ctx, final String outputFile, final String referenceFile, final SAMFormat samOutputFormat, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header, final int numReducers) throws IOException {
 
-        final JavaRDD<SAMRecord> sortedReads = sortReads(reads, header, numReducers);
+        final JavaRDD<SAMRecord> sortedReads = SparkUtils.sortReads(reads, header, numReducers);
         final String outputPartsDirectory = outputFile + ".parts";
         saveAsShardedHadoopFiles(ctx, outputPartsDirectory, referenceFile, samOutputFormat, sortedReads,  header, false);
         SAMFileMerger.mergeParts(outputPartsDirectory, outputFile, samOutputFormat, header);
-    }
-
-    private static JavaRDD<SAMRecord> sortReads(final JavaRDD<SAMRecord> reads, final SAMFileHeader header, final int numReducers) {
-        // Turn into key-value pairs so we can sort (by key). Values are null so there is no overhead in the amount
-        // of data going through the shuffle.
-        final JavaPairRDD<SAMRecord, Void> rddReadPairs = reads.mapToPair(read -> new Tuple2<>(read, (Void) null));
-
-        // do a total sort so that all the reads in partition i are less than those in partition i+1
-        final Comparator<SAMRecord> comparator = getSAMRecordComparator(header);
-        final JavaPairRDD<SAMRecord, Void> readVoidPairs;
-        if (comparator == null){
-            readVoidPairs = rddReadPairs; //no sort
-        } else if (numReducers > 0) {
-            readVoidPairs = rddReadPairs.sortByKey(comparator, true, numReducers);
-        } else {
-            readVoidPairs = rddReadPairs.sortByKey(comparator);
-        }
-
-        return readVoidPairs.map(Tuple2::_1);
-    }
-
-    //Returns the comparator to use or null if no sorting is required.
-    private static Comparator<SAMRecord> getSAMRecordComparator(final SAMFileHeader header) {
-        switch (header.getSortOrder()){
-            case coordinate: return new HeaderlessSAMRecordCoordinateComparator(header);
-            case duplicate:
-            case queryname:
-            case unsorted:   return header.getSortOrder().getComparatorInstance();
-            default:         return null; //NOTE: javac warns if you have this (useless) default BUT it errors out if you remove this default.
-        }
     }
 
     private static Class<? extends OutputFormat<NullWritable, SAMRecordWritable>> getOutputFormat(final SAMFormat samFormat, final boolean writeHeader) {

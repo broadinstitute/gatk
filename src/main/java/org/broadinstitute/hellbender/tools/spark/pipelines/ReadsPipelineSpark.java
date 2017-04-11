@@ -32,6 +32,7 @@ import org.broadinstitute.hellbender.utils.read.markduplicates.OpticalDuplicateF
 import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationReport;
+import org.broadinstitute.hellbender.utils.spark.SparkUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 import scala.Tuple2;
 
@@ -120,11 +121,7 @@ public class ReadsPipelineSpark extends GATKSparkTool {
             // the overlaps partitioner requires that reads are coordinate-sorted
             final SAMFileHeader readsHeader = getHeaderForReads().clone();
             readsHeader.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-            ReadCoordinateComparator comparator = new ReadCoordinateComparator(readsHeader);
-            markedFilteredReadsForBQSR = markedFilteredReadsForBQSR
-                    .mapToPair(read -> new Tuple2<>(read, null))
-                    .sortByKey(comparator, true, numReducers)
-                    .keys();
+            markedFilteredReadsForBQSR = SparkUtils.coordinateSortReads(markedFilteredReadsForBQSR, readsHeader, numReducers);
         }
 
         VariantsSparkSource variantsSparkSource = new VariantsSparkSource(ctx);
