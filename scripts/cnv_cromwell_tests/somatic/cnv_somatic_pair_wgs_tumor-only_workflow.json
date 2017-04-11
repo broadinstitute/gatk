@@ -1,0 +1,10 @@
+{
+  "CNVSomaticPairWorkflow.cnv_panel_of_normals": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/wgs_test.pon",
+  "CNVSomaticPairWorkflow.common_sites":  "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/common_snps_sample-chr20.interval_list",
+  "CNVSomaticPairWorkflow.gatk_jar": "/home/travis/build/broadinstitute/gatk-protected/build/libs/gatk-protected.jar",
+  "CNVSomaticPairWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.dict",
+  "CNVSomaticPairWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta.fai",
+  "CNVSomaticPairWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta",
+  "CNVSomaticPairWorkflow.tumor_bam_idx": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143-t1-chr20-downsampled.deduplicated.bam.bai",
+  "CNVSomaticPairWorkflow.tumor_bam": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/HCC1143-t1-chr20-downsampled.deduplicated.bam"
+}

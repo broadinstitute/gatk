@@ -1,0 +1,9 @@
+{
+  "CNVSomaticPanelWorkflow.gatk_jar": "/home/travis/build/broadinstitute/gatk-protected/build/libs/gatk-protected.jar",
+  "CNVSomaticPanelWorkflow.normal_bams_list": "/home/travis/build/broadinstitute/gatk-protected/scripts/cnv_cromwell_tests/somatic/cnv_somatic_panel_wgs_input.tsv",
+  "CNVSomaticPanelWorkflow.pon_entity_id": "test",
+  "CNVSomaticPanelWorkflow.ref_fasta_dict": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.dict",
+  "CNVSomaticPanelWorkflow.ref_fasta_fai": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta.fai",
+  "CNVSomaticPanelWorkflow.ref_fasta": "/home/travis/build/broadinstitute/gatk-protected/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta",
+  "CNVSomaticPanelWorkflow.CreatePanelOfNormals.no_qc": "true"
+}

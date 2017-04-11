@@ -1,19 +1,21 @@
 language: java
 sudo: required
 dist: trusty
+
 jdk:
 - oraclejdk8
+
 env:
   matrix:
-  - RUN_ACNV_WDL=true TEST_DOCKER=false RUN_M2_WDL=false
-  - RUN_ACNV_WDL=false TEST_DOCKER=false RUN_M2_WDL=false
-  - RUN_ACNV_WDL=false TEST_DOCKER=true RUN_M2_WDL=false
-  - RUN_ACNV_WDL=false TEST_DOCKER=false RUN_M2_WDL=true
+  - RUN_CNV_SOMATIC_WDL=true TEST_DOCKER=false RUN_M2_WDL=false
+  - RUN_CNV_SOMATIC_WDL=false TEST_DOCKER=false RUN_M2_WDL=false
+  - RUN_CNV_SOMATIC_WDL=false TEST_DOCKER=true RUN_M2_WDL=false
+  - RUN_CNV_SOMATIC_WDL=false TEST_DOCKER=false RUN_M2_WDL=true
   global:
   #limit gradle jvm memory usage
   - GRADLE_OPTS=-Xmx512m
-
   - secure: Da9Brv5WKCE3z0bp5u52X1Rqul5C/r7idGj/yLhHnlEvHXPDQHaGXEQw4fNhRkB586lx6xilO8sra2FHoLDMKsqwE0h2+NKsrHQepTSFOR/fp/otoA/kiBue23ZfhsAEFn/uliVU36xLkt+LsyVqSKa+9JKDA5z1hXSemXGGVGw=
+
 before_install:
 # Added from hellbender public
 - sudo mkdir -p /usr/local/lib/R/
@@ -27,17 +29,17 @@ before_install:
 - sudo Rscript scripts/install_R_packages.R
 # Install git-lfs, and fetch the large test files
 - sudo bash scripts/install_git_lfs.sh
-# Download cromwell jar 
-- if [[ $RUN_ACNV_WDL == true ]]; then
-    wget -O ~/cromwell-0.19.3.jar https://github.com/broadinstitute/cromwell/releases/download/0.19.3/cromwell-0.19.3.jar;
-  fi
-- if [[ $RUN_M2_WDL == true ]]; then
+# Download Cromwell jar
+- if [[ $RUN_CNV_SOMATIC_WDL == true ]] || [[ $RUN_M2_WDL == true ]]; then
     wget -O ~/cromwell-0.25.jar https://github.com/broadinstitute/cromwell/releases/download/25/cromwell-25.jar;
+  fi
+# Download Picard jar
+- if [[ $RUN_M2_WDL == true ]]; then
     wget -O ~/picard.jar https://github.com/broadinstitute/picard/releases/download/2.9.0/picard.jar;
   fi
 
 install:
-- if [[ $RUN_ACNV_WDL == true ]]; then 
+- if [[ $RUN_CNV_SOMATIC_WDL == true ]]; then 
     ./gradlew shadowJar;
   elif [[$RUN_M2_WDL == true ]]; then
     ./gradlew shaowJar;
@@ -49,9 +51,9 @@ script:
 - echo "Branch  ${TRAVIS_BRANCH}"
 - echo `git rev-parse ${TRAVIS_BRANCH}`
 
-- if [[ $RUN_ACNV_WDL == true ]]; then
-    echo "Running ACNV pipeline";
-    bash scripts/acnv_cromwell_tests/run_acnv_pipelines.sh;
+- if [[ $RUN_CNV_SOMATIC_WDL == true ]]; then
+    echo "Running CNV somatic workflows";
+    bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
   elif [[ $RUN_M2_WDL == true ]]; then
     sudo bash scripts/m2_cromwell_tests/run_m2_wdl.sh;
   elif [[ $TEST_DOCKER == true ]]; then
@@ -65,7 +67,7 @@ script:
   fi
 
 after_success:
-- if [[ $RUN_ACNV_WDL == false ]] && [[ $TEST_DOCKER == false ]] && [[ $RUN_M2_WDL == false ]]; then
+- if [[ $RUN_CNV_SOMATIC_WDL == false ]] && [[ $TEST_DOCKER == false ]] && [[ $RUN_M2_WDL == false ]]; then
     ./gradlew jacocoTestReport coveralls;
   fi
 

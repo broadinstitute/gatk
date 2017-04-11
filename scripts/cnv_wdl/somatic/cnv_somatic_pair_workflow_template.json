@@ -1,0 +1,13 @@
+{
+  "CNVSomaticPairWorkflow.cnv_panel_of_normals": "$__cnv_panel_of_normals__",
+  "CNVSomaticPairWorkflow.common_sites":  "$__common_sites__",
+  "CNVSomaticPairWorkflow.gatk_jar": "$__gatk_jar__",
+  "CNVSomaticPairWorkflow.normal_bam_idx": "$__normal_bam_idx__",
+  "CNVSomaticPairWorkflow.normal_bam": "$__normal_bam__",
+  "CNVSomaticPairWorkflow.ref_fasta_dict": "$__ref_fasta_dict__",
+  "CNVSomaticPairWorkflow.ref_fasta_fai": "$__ref_fasta_fai__",
+  "CNVSomaticPairWorkflow.ref_fasta": "$__ref_fasta__",
+  "CNVSomaticPairWorkflow.targets": "$__targets__",
+  "CNVSomaticPairWorkflow.tumor_bam_idx": "$__tumor_bam_idx__",
+  "CNVSomaticPairWorkflow.tumor_bam": "$__tumor_bam__"
+}
