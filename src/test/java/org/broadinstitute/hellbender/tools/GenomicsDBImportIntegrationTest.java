@@ -69,22 +69,23 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     runCommandLine(args);
 
-    GenomicsDBFeatureReader<VariantContext, LineIterator> featureReader =
-      new GenomicsDBFeatureReader<VariantContext, LineIterator>(
+    GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+      new GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream>(
         TEST_VIDMAP_JSON_FILE.getAbsolutePath(),
         TEST_CALLSETMAP_JSON_FILE.getAbsolutePath(),
         GENOMICSDB_WORKSPACE.getAbsolutePath(),
         GENOMICSDB_ARRAYNAME,
-        TEST_REFERENCE_GENOME.getAbsolutePath(), null, new VCFCodec());
+        TEST_REFERENCE_GENOME.getAbsolutePath(), null, new BCF2Codec());
 
-    CloseableTribbleIterator<VariantContext> expectedVcs = featureReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+    CloseableTribbleIterator<VariantContext> actualVcs = genomicsDBFeatureReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
 
-    AbstractFeatureReader<VariantContext, LineIterator> reader = AbstractFeatureReader.getFeatureReader(combined, new VCFCodec(), false);
-    CloseableTribbleIterator<VariantContext> actualVcs = reader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+    AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader = AbstractFeatureReader.getFeatureReader(combined, new VCFCodec(), false);
+    CloseableTribbleIterator<VariantContext> expectedVcs = combinedVCFReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
 
     assertCondition(actualVcs, expectedVcs, (a,e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
 
     actualVcs.close();
+    expectedVcs.close();
     IOUtils.deleteRecursivelyOnExit(GENOMICSDB_WORKSPACE);
     FileUtils.deleteQuietly(TEST_CALLSETMAP_JSON_FILE);
     FileUtils.deleteQuietly(TEST_VIDMAP_JSON_FILE);
@@ -103,5 +104,4 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
       Assert.fail("actual is shorter than expected, missing at least one element: " + iterExpected.next());
     }
   }
-
 }
