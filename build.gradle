@@ -52,16 +52,12 @@ repositories {
     }
 
     mavenLocal()
-
-    flatDir {
-        dirs '/home/kdatta1/GenomicsDB/GenomicsDB/build/target'
-    }
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.9.1')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','0.4.0')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','0.5.0-proto-3.0.0-beta-1')
 
 
 configurations.all {
@@ -114,6 +110,7 @@ dependencies {
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
+    compile 'com.googlecode.protobuf-java-format:protobuf-java-format:1.2'
     compile 'com.googlecode.json-simple:json-simple:1.1.1'
     compile group: 'com.googlecode.protobuf-java-format', name: 'protobuf-java-format', version: '1.2'
     compile 'com.opencsv:opencsv:3.4'

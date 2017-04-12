@@ -13,8 +13,11 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFUtils;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.RequiredVariantInputArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.VariantInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.GenomicsDBProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -59,7 +62,6 @@ public final class GenomicsDBImport extends GATKTool {
   doc = "TileDB array name used by GenomicsDB",
   optional = true)
   private String arrayName = DEFAULT_ARRAY_NAME_PREFIX;
-  
 
   @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_SEGMENT_SIZE_LONG_NAME,
     shortName = StandardArgumentDefinitions.GENOMICSDB_SEGMENT_SIZE_SHORT_NAME,
@@ -69,9 +71,10 @@ public final class GenomicsDBImport extends GATKTool {
   private
   long segmentSize = DEFAULT_SEGMENT_SIZE;
 
-  @Argument(fullName="variants", shortName="V",doc="variant files")
-  private
-  List<FeatureInput<VariantContext>> variantContexts;
+  @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME,
+  shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
+  doc = "GVCF files to be imported to GenomicsDB")
+  private List<String> variantFileNames;
 
   @Argument(fullName = StandardArgumentDefinitions.SIZE_PER_COLUMN_PARTITION_PER_SAMPLE_LONG_NAME,
   shortName = StandardArgumentDefinitions.SIZE_PER_COLUMN_PARTITION_PER_SAMPLE_SHORT_NAME,
@@ -83,12 +86,12 @@ public final class GenomicsDBImport extends GATKTool {
   @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_VID_MAP_FILE_LONG_NAME,
   shortName = StandardArgumentDefinitions.GENOMICSDB_VID_MAP_FILE_SHORT_NAME,
   doc = "JSON file including INFO/FORMAT/FILTER fields from headers and contig maps")
-  private String vidMapJSONFile;
+  private String vidMapJSONFile = "";
 
   @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_CALLSET_MAP_FILE_LONG_NAME,
     shortName = StandardArgumentDefinitions.GENOMICSDB_CALLSET_MAP_FILE_SHORT_NAME,
     doc = "JSON file including callset to GenomicsDB row maps")
-  private String callsetMapJSONFile;
+  private String callsetMapJSONFile = "";
 
   @Argument(fullName = StandardArgumentDefinitions.GENOMICSDB_CREATE_WORKSPACE_LONG_NAME,
   shortName = StandardArgumentDefinitions.GENOMICSDB_CREATE_WORKSPACE_SHORT_NAME,
@@ -100,7 +103,7 @@ public final class GenomicsDBImport extends GATKTool {
   public boolean requiresIntervals() { return true; }
 
   @Override
-    public boolean requiresReads() { return false; }
+  public boolean requiresReads() { return false; }
 
   @Override
   public boolean requiresReference() {
@@ -169,12 +172,14 @@ public final class GenomicsDBImport extends GATKTool {
           throw new IOException("Directory " + workspaceDir + " already exists");
         } catch (IOException e) {
           e.printStackTrace();
+          return;
         }
       } else if (ret < 0) {
         try {
           throw new IOException("Error creating GenomicsDB workspace");
         } catch (IOException e) {
           e.printStackTrace();
+          return;
         }
       }
     }
@@ -182,28 +187,29 @@ public final class GenomicsDBImport extends GATKTool {
     initializeIntervals();
 
     List<VCFHeader> headers = new ArrayList<>();
-    FeatureCodec<VariantContext,LineIterator> codec = new VCFCodec();
 
-    Map<String, FeatureReader<VariantContext>> sampleToVCMap = new HashMap<>();
-    for (FeatureInput<VariantContext> variant : variantContexts) {
+    Map<String, FeatureReader<VariantContext>> sampleToVCFMap = new HashMap<>();
+    for (String variantFile : variantFileNames) {
+      String variantFileAbsPath = new File(variantFile).getAbsolutePath();
       AbstractFeatureReader<VariantContext, LineIterator> reader =
-        AbstractFeatureReader.getFeatureReader(String.valueOf(variant), codec, false);
+        AbstractFeatureReader.getFeatureReader(variantFileAbsPath, new VCFCodec(), true);
       headers.add((VCFHeader)reader.getHeader());
 
       // We assume only one sample per file
       String sampleName = ((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0);
-      sampleToVCMap.put(sampleName, reader);
+      sampleToVCFMap.put(sampleName, reader);
     }
 
     Set<VCFHeaderLine> mergedHeader = VCFUtils.smartMergeHeaders(headers, true);
-    sizePerColumnPartitionPerSample *= sampleToVCMap.size();
+    sizePerColumnPartitionPerSample *= sampleToVCFMap.size();
 
     logger.info("Writing data to array - " + workspace + "/" + arrayName);
 
     try {
-      importer = new GenomicsDBImporter(sampleToVCMap, mergedHeader,
+      importer = new GenomicsDBImporter(sampleToVCFMap, mergedHeader,
         intervals.get(0), workspace, arrayName,
-        sizePerColumnPartitionPerSample, segmentSize);
+        sizePerColumnPartitionPerSample, segmentSize,
+        vidMapJSONFile, callsetMapJSONFile);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -257,7 +263,7 @@ public final class GenomicsDBImport extends GATKTool {
   @Override
   public void closeTool() {
     assert importer.isDone();
-    logger.info("Successfully imported " + variantContexts.size() + " callsets");
+    logger.info("Successfully imported " + variantFileNames.size() + " callsets");
   }
 }
 

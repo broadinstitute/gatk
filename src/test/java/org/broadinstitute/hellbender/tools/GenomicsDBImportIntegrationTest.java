@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools;
 
-import com.google.api.services.genomics.Genomics;
-import com.intel.genomicsdb.GenomicsDBExportConfiguration;
 import com.intel.genomicsdb.GenomicsDBFeatureReader;
 import htsjdk.tribble.AbstractFeatureReader;
 import htsjdk.tribble.CloseableTribbleIterator;
@@ -16,7 +14,6 @@ import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -25,11 +22,13 @@ import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.*;
-import java.util.*;
+import javax.ws.rs.core.Variant;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.function.BiConsumer;
-
-import static com.googlecode.protobuf.format.JsonFormat.printToString;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
 
@@ -70,18 +69,18 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     runCommandLine(args);
 
-    GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> featureReader =
-      new GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream>(
+    GenomicsDBFeatureReader<VariantContext, LineIterator> featureReader =
+      new GenomicsDBFeatureReader<VariantContext, LineIterator>(
         TEST_VIDMAP_JSON_FILE.getAbsolutePath(),
         TEST_CALLSETMAP_JSON_FILE.getAbsolutePath(),
         GENOMICSDB_WORKSPACE.getAbsolutePath(),
         GENOMICSDB_ARRAYNAME,
-        TEST_REFERENCE_GENOME.getAbsolutePath(), null, new BCF2Codec());
+        TEST_REFERENCE_GENOME.getAbsolutePath(), null, new VCFCodec());
 
-    CloseableTribbleIterator<VariantContext> actualVcs = featureReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+    CloseableTribbleIterator<VariantContext> expectedVcs = featureReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
 
     AbstractFeatureReader<VariantContext, LineIterator> reader = AbstractFeatureReader.getFeatureReader(combined, new VCFCodec(), false);
-    CloseableTribbleIterator<VariantContext> expectedVcs = reader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+    CloseableTribbleIterator<VariantContext> actualVcs = reader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
 
     assertCondition(actualVcs, expectedVcs, (a,e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
 
