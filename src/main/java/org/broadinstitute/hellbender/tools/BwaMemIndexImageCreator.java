@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools;
 
-import org.apache.commons.io.FilenameUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
@@ -22,8 +21,7 @@ public final class BwaMemIndexImageCreator extends CommandLineProgram {
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME,
               shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
-              doc = "Input reference fasta file. The five bwa index files are assumed living in the same directory with the same prefix.",
-              optional = false)
+              doc = "Input reference fasta file. The five bwa index files are assumed living in the same directory with the same prefix.")
     private String referenceFastaLoc = null;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -36,7 +34,7 @@ public final class BwaMemIndexImageCreator extends CommandLineProgram {
     protected final Object doWork() {
 
         if (referenceIndexImageOutputLoc == null) {
-            referenceIndexImageOutputLoc = FilenameUtils.getFullPath(referenceFastaLoc).replace(".fasta", ".img");
+            referenceIndexImageOutputLoc = referenceFastaLoc+".img";
         }
 
         BwaMemIndex.createIndexImage(referenceFastaLoc, referenceIndexImageOutputLoc);
