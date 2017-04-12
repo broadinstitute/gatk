@@ -123,33 +123,6 @@ public abstract class ReadWalker extends GATKTool {
     }
 
     /**
-     * Returns the pre-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link ReadTransformer#identity()}.
-     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
-     * the transformer object to avoid object allocation.
-     *
-     * Subclasses can extend to provide own transformers (ie override and call super).
-     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
-     */
-    public ReadTransformer makePreReadFilterTransformer() {
-        return ReadTransformer.identity();
-    }
-
-    /**
-     * Returns the post-filter read transformer (simple or composite) that will be applied to the reads before calling {@link #apply}.
-     * The default implementation uses the {@link ReadTransformer#identity()}.
-     * Default implementation of {@link #traverse()} calls this method once before iterating over the reads and reuses
-     * the transformer object to avoid object allocation.
-     *
-     * Subclasses can extend to provide own transformers (ie override and call super).
-     * Multiple transformers can be composed by using {@link ReadTransformer} composition methods.
-     */
-    public ReadTransformer makePostReadFilterTransformer(){
-        return ReadTransformer.identity();
-    }
-
-
-    /**
      * Process an individual read (with optional contextual information). Must be implemented by tool authors.
      * In general, tool authors should simply stream their output from apply(), and maintain as little internal state
      * as possible.

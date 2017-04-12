@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
@@ -24,6 +26,7 @@ public class ReadWalkerUnitTest extends CommandLineProgramTest {
         public int preTransformed = 0;
         public int postTransformed = 0;
         public int totalReads = 0;
+
         @Override
         public ReadTransformer makePreReadFilterTransformer() {
 
@@ -32,6 +35,11 @@ public class ReadWalkerUnitTest extends CommandLineProgramTest {
                 private static final long serialVersionUID = 1L;
                 @Override
                 public GATKRead apply(GATKRead gatkRead) {
+                    // test that the attribute is not set
+                    Assert.assertFalse(gatkRead.hasAttribute("tr"));
+                    // and set as pre-transformed
+                    gatkRead.setAttribute("tr", "PRE");
+
                     if (gatkRead.isReverseStrand()) {
                         preTransformed++;
                     }
@@ -39,6 +47,23 @@ public class ReadWalkerUnitTest extends CommandLineProgramTest {
                 }
             };
         }
+
+        @Override
+        public CountingReadFilter makeReadFilter() {
+            return new CountingReadFilter(new ReadFilter() {
+                @Override
+                public boolean test(GATKRead read) {
+                    // test that the attribute is pre-transformed
+                    Assert.assertEquals(read.getAttributeAsString("tr"), "PRE");
+                    // test that the attribute is not set
+                    Assert.assertFalse(read.hasAttribute("ft"));
+                    // and set as filtered
+                    read.setAttribute("ft", "yes");
+                    return true;
+                }
+            });
+        }
+
         @Override
         public ReadTransformer makePostReadFilterTransformer() {
 
@@ -47,6 +72,13 @@ public class ReadWalkerUnitTest extends CommandLineProgramTest {
                 private static final long serialVersionUID = 1L;
                 @Override
                 public GATKRead apply(GATKRead gatkRead) {
+                    // test that the attribute is filtered
+                    Assert.assertEquals(gatkRead.getAttributeAsString("ft"), "yes");
+                    // test that the attribute is pre-transformed
+                    Assert.assertEquals(gatkRead.getAttributeAsString("tr"), "PRE");
+                    // and set as post-transformed
+                    gatkRead.setAttribute("tr", "POST");
+
                     if (gatkRead.mateIsUnmapped()) {
                         postTransformed++;
                     }
@@ -54,8 +86,11 @@ public class ReadWalkerUnitTest extends CommandLineProgramTest {
                 }
             };
         }
+
+
         @Override
         public void apply(GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext) {
+            Assert.assertEquals(read.getAttributeAsString("tr"), "POST");
             totalReads++;
         }
     }
