@@ -13,6 +13,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.FlatMapFunction2;
 import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.rdd.PartitionCoalescer;
 import org.apache.spark.rdd.RDD;
@@ -104,6 +105,24 @@ public class SparkSharder {
                 return new ShardBoundaryShard<>(value._1(), value._2());
             }
         });
+    }
+
+    public static <L extends Locatable, R extends Locatable> JavaRDD<Shard<L>> repartition(JavaSparkContext ctx, JavaRDD<Shard<L>> shards, JavaRDD<R> locatables, SAMSequenceDictionary sequenceDictionary, int maxLocatableLength) {
+
+        // TODO: don't recompute this
+        List<PartitionLocatable<SimpleInterval>> partitionReadExtents = computePartitionReadExtents(locatables, sequenceDictionary, maxLocatableLength);
+        OverlapDetector<PartitionLocatable<SimpleInterval>> overlapDetector = OverlapDetector.create(partitionReadExtents);
+        Broadcast<OverlapDetector<PartitionLocatable<SimpleInterval>>> overlapDetectorBroadcast = ctx.broadcast(overlapDetector);
+        return shards.flatMapToPair((PairFlatMapFunction<Shard<L>, Integer, Shard<L>>) shard -> {
+            int[] partitionIndexes = overlapDetectorBroadcast.getValue().getOverlaps(shard.getInterval()).stream()
+                    .mapToInt(PartitionLocatable::getPartitionIndex).toArray();
+            if (partitionIndexes.length == 0) {
+                // interval does not overlap any partition - skip it
+                return Collections.emptyIterator();
+            }
+            Arrays.sort(partitionIndexes);
+            return Iterators.singletonIterator(new Tuple2<>(partitionIndexes[0], shard));
+        }).partitionBy(new KeyPartitioner(locatables.getNumPartitions())).values();
     }
 
     /**
