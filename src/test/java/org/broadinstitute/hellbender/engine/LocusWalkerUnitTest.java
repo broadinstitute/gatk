@@ -29,8 +29,6 @@ public class LocusWalkerUnitTest extends CommandLineProgramTest {
 
         @Override
         public ReadTransformer makePreReadFilterTransformer() {
-
-            // transforming name of unmapped mates
             return new ReadTransformer() {
                 private static final long serialVersionUID = 1L;
                 @Override
@@ -50,6 +48,7 @@ public class LocusWalkerUnitTest extends CommandLineProgramTest {
         @Override
         public CountingReadFilter makeReadFilter() {
             return new CountingReadFilter(new ReadFilter() {
+                private static final long serialVersionUID = 1L;
                 @Override
                 public boolean test(GATKRead read) {
                     // test that the attribute is pre-transformed
@@ -65,8 +64,6 @@ public class LocusWalkerUnitTest extends CommandLineProgramTest {
 
         @Override
         public ReadTransformer makePostReadFilterTransformer() {
-
-            // transforming name of unmapped mates
             return new ReadTransformer() {
                 private static final long serialVersionUID = 1L;
                 @Override
