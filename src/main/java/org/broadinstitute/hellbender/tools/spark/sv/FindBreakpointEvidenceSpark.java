@@ -31,11 +31,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Tool to describe reads that support a hypothesis of a genomic breakpoint.
+ * Tool to discover reads that support a hypothesis of a genomic breakpoint.
+ * Reads sharing kmers with reads aligned near putative breakpoints are pulled out
+ *  for local assemblies of these breakpoint regions.
  */
-@CommandLineProgramProperties(summary="Find reads that evidence breakpoints.",
-        oneLineSummary="Dump FASTQs for local assembly of putative genomic breakpoints.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+@CommandLineProgramProperties(summary="Find reads that evidence breakpoints."+
+        "  Pull reads for local assemblies in breakpoint regions using shared kmers.",
+        oneLineSummary="Prepare local assemblies of putative genomic breakpoints.",
+        programGroup=StructuralVariationSparkProgramGroup.class)
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
