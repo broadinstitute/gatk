@@ -23,11 +23,23 @@ import java.util.Map;
  */
 public final class VectorLoglessPairHMM extends LoglessPairHMM {
 
+    /**
+     * Type for implementation of VectorLoglessPairHMM
+     */
+    public enum Implementation {
+        /**
+         * AVX-accelerated version of PairHMM
+         */
+        AVX,
+        /**
+         * OpenMP multi-threaded AVX-accelerated version of PairHMM
+         */
+        OMP
+    }
+
     private static final Logger logger = LogManager.getLogger(VectorLoglessPairHMM.class);
     private long threadLocalSetupTimeDiff = 0;
     private long pairHMMSetupTime = 0;
-
-    public enum Implementation {AVX, OMP}
 
     private final PairHMMNativeBinding pairHmm;
 
@@ -36,6 +48,12 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     private final Map<Haplotype, Integer> haplotypeToHaplotypeListIdxMap = new LinkedHashMap<>();
     private HaplotypeDataHolder[] mHaplotypeDataArray;
 
+    /**
+     * Create a VectorLoglessPairHMM
+     *
+     * @param implementation    which implementation to use (AVX or OMP)
+     * @param args              arguments to the native GKL implementation
+     */
     public VectorLoglessPairHMM(Implementation implementation, PairHMMNativeArguments args) throws UserException.HardwareFeatureException {
         final boolean isSupported;
 
