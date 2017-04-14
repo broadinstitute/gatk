@@ -13,8 +13,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.function.BiConsumer;
 
 
 public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
@@ -82,7 +80,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
         final Iterable<VariantContext> actualVcs = new FeatureDataSource<>(output);
         final Iterable<VariantContext> expectedVcs = new FeatureDataSource<>(expected);
 
-        assertCondition(actualVcs, expectedVcs, (a,e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
+        GenomicsDBTestUtils.assertCondition(actualVcs, expectedVcs, (a,e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
     }
 
     @Test
@@ -90,20 +88,5 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
         testExpectedVariantsFromGenomicsDB(new File(TINY_GVCF), new ArgumentsBuilder()
                     .addArgument("V", TINY_GVCF)
                     .addArgument("concordance", GENOMICS_DB_JSONS));
-    }
-
-    private static <T> void assertCondition(Iterable<T> actual, Iterable<T> expected, BiConsumer<T,T> assertion){
-        final Iterator<T> iterActual = actual.iterator();
-        final Iterator<T> iterExpected = expected.iterator();
-        while(iterActual.hasNext() && iterExpected.hasNext()){
-            assertion.accept(iterActual.next(), iterExpected.next());
-        }
-        if (iterActual.hasNext()){
-            Assert.fail("actual is longer than expected with at least one additional element: " + iterActual.next());
-        }
-        if (iterExpected.hasNext()){
-            Assert.fail("actual is shorter than expected, missing at least one element: " + iterExpected.next());
-        }
-
     }
 }

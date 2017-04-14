@@ -3,9 +3,12 @@ package org.broadinstitute.hellbender.utils.test;
 import com.intel.genomicsdb.GenomicsDBImporter;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.testng.Assert;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.function.BiConsumer;
 
 
 /**
@@ -39,5 +42,20 @@ public final class GenomicsDBTestUtils {
     public interface GenomicsDBTestAction {
 
         void run() throws IOException;
+    }
+
+    public static <T> void assertCondition(Iterable<T> actual, Iterable<T> expected, BiConsumer<T,T> assertion){
+        final Iterator<T> iterActual = actual.iterator();
+        final Iterator<T> iterExpected = expected.iterator();
+        while(iterActual.hasNext() && iterExpected.hasNext()){
+            assertion.accept(iterActual.next(), iterExpected.next());
+        }
+        if (iterActual.hasNext()){
+            Assert.fail("actual is longer than expected with at least one additional element: " + iterActual.next());
+        }
+        if (iterExpected.hasNext()){
+            Assert.fail("actual is shorter than expected, missing at least one element: " + iterExpected.next());
+        }
+
     }
 }

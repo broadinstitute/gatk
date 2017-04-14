@@ -7,28 +7,20 @@ import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.writer.Options;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.variantcontext.writer.VariantContextWriterBuilder;
 import htsjdk.variant.vcf.VCFCodec;
-import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.test.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import javax.ws.rs.core.Variant;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Iterator;
-import java.util.function.BiConsumer;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
 
@@ -79,29 +71,15 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     CloseableTribbleIterator<VariantContext> actualVcs = genomicsDBFeatureReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
 
-    AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader = AbstractFeatureReader.getFeatureReader(combined, new VCFCodec(), false);
+    AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader = AbstractFeatureReader.getFeatureReader(combined, new VCFCodec(), true);
     CloseableTribbleIterator<VariantContext> expectedVcs = combinedVCFReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
 
-    assertCondition(actualVcs, expectedVcs, (a,e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
+    GenomicsDBTestUtils.assertCondition(actualVcs, expectedVcs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
 
     actualVcs.close();
     expectedVcs.close();
     IOUtils.deleteRecursivelyOnExit(GENOMICSDB_WORKSPACE);
     FileUtils.deleteQuietly(TEST_CALLSETMAP_JSON_FILE);
     FileUtils.deleteQuietly(TEST_VIDMAP_JSON_FILE);
-  }
-
-  private static <T> void assertCondition(Iterable<T> actual, Iterable<T> expected, BiConsumer<T,T> assertion){
-    final Iterator<T> iterActual = actual.iterator();
-    final Iterator<T> iterExpected = expected.iterator();
-    while(iterActual.hasNext() && iterExpected.hasNext()){
-      assertion.accept(iterActual.next(), iterExpected.next());
-    }
-    if (iterActual.hasNext()){
-      Assert.fail("actual is longer than expected with at least one additional element: " + iterActual.next());
-    }
-    if (iterExpected.hasNext()){
-      Assert.fail("actual is shorter than expected, missing at least one element: " + iterExpected.next());
-    }
   }
 }
