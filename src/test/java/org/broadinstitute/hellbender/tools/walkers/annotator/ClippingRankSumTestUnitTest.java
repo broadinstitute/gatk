@@ -55,13 +55,13 @@ public final class ClippingRankSumTestUnitTest {
         final ReferenceContext ref= null;
         final VariantContext vc= makeVC(REF, ALT);
         final InfoFieldAnnotation ann = new ClippingRankSumTest();
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
 
         final Map<String, Object> annotate = ann.annotate(ref, vc, likelihoods);
 
-        final double val= MannWhitneyU.runOneSidedTest(false, Arrays.asList(altHardClips[0], altHardClips[1]),
-                                                              Arrays.asList(refHardClips[0], refHardClips[1])).getLeft();
-        final String valStr= String.format("%.3f", val);
-        Assert.assertEquals(annotate.get(GATKVCFConstants.CLIPPING_RANK_SUM_KEY), valStr);
+        final double zScore = mannWhitneyU.test(new double[]{altHardClips[0], altHardClips[1]}, new double[]{refHardClips[0], refHardClips[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
+        final String zScoreStr = String.format("%.3f", zScore);
+        Assert.assertEquals(annotate.get(GATKVCFConstants.CLIPPING_RANK_SUM_KEY), zScoreStr);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);
         Assert.assertEquals(ann.getDescriptions().get(0).getID(), GATKVCFConstants.CLIPPING_RANK_SUM_KEY);

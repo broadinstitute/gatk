@@ -520,6 +520,19 @@ public final class MathUtils {
     }
 
     /**
+     * Calculates the binomial coefficient. Designed to prevent
+     * overflows even with very large numbers.
+     *
+     * @param n total number of trials
+     * @param k number of successes
+     * @return the binomial coefficient
+     */
+    public static double binomialCoefficient(final int n, final int k) {
+        return Math.pow(10, log10BinomialCoefficient(n, k));
+    }
+
+    /**
+     * @see #binomialCoefficient(int, int) with log10 applied to result
      */
     public static double log10BinomialCoefficient(final int n, final int k) {
         Utils.validateArg(n >= 0, "Must have non-negative number of trials");
