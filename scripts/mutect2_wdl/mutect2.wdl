@@ -22,12 +22,160 @@
 #   independent of what is in the docker file.  See the README.md for more info.
 #
 
+
+workflow Mutect2 {
+  # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
+  String gatk4_jar
+  File intervals
+  File ref_fasta
+  File ref_fasta_index
+  File ref_dict
+  File tumor_bam
+  File tumor_bam_index
+  String tumor_sample_name
+  File? normal_bam
+  File? normal_bam_index
+  String? normal_sample_name
+  File? pon
+  File? pon_index
+  Int scatter_count
+  File? dbsnp
+  File? dbsnp_index
+  File? cosmic
+  File? cosmic_index
+  File? variants_for_contamination
+  File? variants_for_contamination_index
+  Boolean is_run_orientation_bias_filter
+  Boolean is_run_oncotator
+  String m2_docker
+  String oncotator_docker
+  File? gatk4_jar_override
+  Int preemptible_attempts
+  File? onco_ds_tar_gz
+  String? onco_ds_local_db_dir
+  Array[String] artifact_modes
+  File picard_jar
+
+  call ProcessOptionalArguments {
+    input:
+      tumor_sample_name = tumor_sample_name,
+      normal_bam = normal_bam,
+      normal_sample_name = normal_sample_name,
+      preemptible_attempts = preemptible_attempts,
+      m2_docker=m2_docker
+  }
+
+
+  call SplitIntervals {
+    input:
+      gatk4_jar = gatk4_jar,
+      scatter_count = scatter_count,
+      intervals = intervals,
+      gatk4_jar_override = gatk4_jar_override,
+      preemptible_attempts = preemptible_attempts,
+      m2_docker = m2_docker
+
+  }
+
+  scatter (subintervals in SplitIntervals.interval_files ) {
+    call M2 {
+      input: 
+        gatk4_jar = gatk4_jar,
+        intervals = subintervals,
+        ref_fasta = ref_fasta,
+        ref_fasta_index = ref_fasta_index,
+        ref_dict = ref_dict,
+        tumor_bam = tumor_bam,
+        tumor_bam_index = tumor_bam_index,
+        tumor_sample_name = tumor_sample_name,
+        normal_bam = normal_bam,
+        normal_bam_index = normal_bam_index,
+        normal_sample_name = normal_sample_name,
+        pon = pon,
+        pon_index = pon_index,
+        dbsnp = dbsnp,
+        dbsnp_index = dbsnp_index,
+        cosmic = cosmic,
+        cosmic_index = cosmic_index,
+        output_vcf_name = ProcessOptionalArguments.output_name,
+        gatk4_jar_override = gatk4_jar_override,
+        preemptible_attempts = preemptible_attempts,
+        m2_docker = m2_docker
+    }
+  }
+
+  call MergeVCFs {
+    input:
+      gatk4_jar = gatk4_jar,
+      input_vcfs = M2.output_vcf,
+      output_vcf_name = ProcessOptionalArguments.output_name,
+      gatk4_jar_override = gatk4_jar_override,
+      preemptible_attempts = preemptible_attempts,
+      m2_docker = m2_docker
+  }
+
+  if (is_run_orientation_bias_filter) {
+      call CollectSequencingArtifactMetrics {
+        input:
+            preemptible_attempts = preemptible_attempts,
+            m2_docker = m2_docker,
+            tumor_bam = tumor_bam,
+            tumor_bam_index = tumor_bam_index,
+            ref_fasta = ref_fasta,
+            ref_fasta_index = ref_fasta_index,
+            picard_jar = picard_jar
+      }
+  }
+
+  call Filter {
+    input:
+      gatk4_jar = gatk4_jar,
+      gatk4_jar_override = gatk4_jar_override,
+      unfiltered_vcf = MergeVCFs.output_vcf,
+      output_vcf_name = ProcessOptionalArguments.output_name,
+      intervals = intervals,
+      m2_docker = m2_docker,
+      preemptible_attempts = preemptible_attempts,
+      pre_adapter_metrics = CollectSequencingArtifactMetrics.pre_adapter_metrics,
+      tumor_bam = tumor_bam,
+      tumor_bam_index = tumor_bam_index,
+      ref_fasta = ref_fasta,
+      ref_fasta_index = reF_fasta_index,
+      artifact_modes = artifact_modes,
+      variants_for_contamination = variants_for_contamination,
+      variants_for_contamination_index = variants_for_contamination_index
+  }
+
+
+  if (is_run_oncotator) {
+        call oncotate_m2 {
+            input:
+                m2_vcf = Filter.filtered_vcf,
+                entity_id = tumor_sample_name,
+                preemptible_attempts = preemptible_attempts,
+                oncotator_docker = oncotator_docker,
+                onco_ds_tar_gz = onco_ds_tar_gz,
+                onco_ds_local_db_dir = onco_ds_local_db_dir
+        }
+  }
+
+  output {
+        File unfiltered_vcf = MergeVCFs.output_vcf
+        File unfiltered_vcf_index = MergeVCFs.output_vcf_index
+        File filtered_vcf = Filter.filtered_vcf
+        File filtered_vcf_index = Filter.filtered_vcf_index
+
+        # select_first() fails if nothing resulve to non-null, so putting in "/dev/null" for now.
+        File? oncotated_m2_vcf = select_first([oncotate_m2.oncotated_m2_vcf, "null"])
+  }
+}
+
 task M2 {
   String gatk4_jar
   File intervals
-  File ref_fasta 
-  File ref_fasta_index 
-  File ref_dict 
+  File ref_fasta
+  File ref_fasta_index
+  File ref_dict
   File tumor_bam
   File tumor_bam_index
   String tumor_sample_name
@@ -80,40 +228,6 @@ task M2 {
   }
 }
 
-task CalculateContamination {
-  String gatk4_jar
-  File intervals
-  File tumor_bam
-  File tumor_bam_index
-  File? variants
-  File? variants_index
-  String m2_docker
-  File? gatk4_jar_override
-  Int preemptible_attempts
-
-  command {
-  # Use GATK Jar override if specified
-      GATK_JAR=${gatk4_jar}
-      if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
-      fi
-
-    java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} -L ${intervals} -V ${variants} -O pileups.table
-    java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
-  }
-
-  runtime {
-      docker: "${m2_docker}"
-      memory: "5 GB"
-      disks: "local-disk " + 500 + " HDD"
-      preemptible: "${preemptible_attempts}"
-  }
-
-  output {
-    File contamination_table = "contamination.table"
-  }
-}
-
 # HACK: cromwell can't handle the optional normal sample name in output or input --
 # string interpolation of optionals only works inside a command block
 # thus we use this hack
@@ -121,7 +235,6 @@ task ProcessOptionalArguments {
   String tumor_sample_name
   String? normal_bam
   String? normal_sample_name
-  String? variants_for_contamination
   Int preemptible_attempts
   String m2_docker
 
@@ -130,12 +243,6 @@ task ProcessOptionalArguments {
         echo "${tumor_sample_name}-vs-${normal_sample_name}" > name.tmp
       else
         echo "${tumor_sample_name}-tumor-only" > name.tmp
-      fi
-
-      if [[ "${variants_for_contamination}" == *.vcf ]]; then
-         echo true > has_variants_for_contamination.tmp
-      else
-         echo false > has_variants_for_contamination.tmp
       fi
   }
 
@@ -148,7 +255,6 @@ task ProcessOptionalArguments {
 
   output {
       String output_name = read_string("name.tmp")
-      Boolean has_variants_for_contamination = read_boolean("has_variants_for_contamination.tmp")
   }
 }
 
@@ -185,24 +291,21 @@ task MergeVCFs {
   }
 }
 
-task Filter {
-  String gatk4_jar
-  File unfiltered_calls
-  File? contamination_table
-  String output_prepend
-  File? gatk4_jar_override
+task CollectSequencingArtifactMetrics {
   Int preemptible_attempts
   String m2_docker
+  File tumor_bam
+  File tumor_bam_index
+  File ref_fasta
+  File ref_fasta_index
+  File picard_jar
 
   command {
-    # Use GATK Jar override if specified
-    GATK_JAR=${gatk4_jar}
-    if [[ "${gatk4_jar_override}" == *.jar ]]; then
-        GATK_JAR=${gatk4_jar_override}
-    fi
+        java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics I=${tumor_bam} O="metrics" R=${ref_fasta}
 
-  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V ${unfiltered_calls} -O ${output_prepend}-filtered.vcf \
-       ${"-contaminationTable " + contamination_table}
+        # Convert to GATK format
+        sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
+            "metrics.pre_adapter_detail_metrics" > "gatk.pre_adapter_detail_metrics"
   }
 
   runtime {
@@ -213,8 +316,60 @@ task Filter {
   }
 
   output {
-    File m2_filtered_vcf = "${output_prepend}-filtered.vcf"
-    File m2_filtered_vcf_index = "${output_prepend}-filtered.vcf.idx"
+    File pre_adapter_metrics = "gatk.pre_adapter_detail_metrics"
+  }
+}
+
+task Filter {
+  String gatk4_jar
+  File? gatk4_jar_override
+  File unfiltered_vcf
+  String output_vcf_name
+  File intervals
+  Int preemptible_attempts
+  String m2_docker
+  File? pre_adapter_metrics
+  File? tumor_bam
+  File? tumor_bam_index
+  File? ref_fasta
+  File? ref_fasta_index
+  Array[String]? artifact_modes
+  File? variants_for_contamination
+  File? variants_for_contamination_index
+
+  command {
+    # Use GATK Jar override if specified
+    GATK_JAR=${gatk4_jar}
+    if [[ "${gatk4_jar_override}" == *.jar ]]; then
+        GATK_JAR=${gatk4_jar_override}
+    fi
+
+    if [[ "${variants_for_contamination}" == *.vcf ]]; then
+        java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} -L ${intervals} -V ${variants_for_contamination} -O pileups.table
+        java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
+        contamination_cmd="-contaminationTable contamination.table"
+    fi
+
+    penultimate_variants=${unfiltered_vcf}
+    if [[ ! -z "${pre_adapter_metrics}" ]]; then
+        java -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
+            -V ${unfiltered_vcf} -P ${pre_adapter_metrics} --output ob_filtered.vcf
+        penultimate_variants=ob_filtered.vcf
+    fi
+
+  	java -Xmx4g -jar $GATK_JAR FilterMutectCalls -V $penultimate_variants -O "${output_vcf_name}-filtered.vcf" $contamination_cmd
+  }
+
+  runtime {
+    docker: "${m2_docker}"
+    memory: "5 GB"
+    disks: "local-disk " + 500 + " HDD"
+    preemptible: "${preemptible_attempts}"
+  }
+
+  output {
+    File filtered_vcf = "${output_vcf_name}-filtered.vcf"
+    File filtered_vcf_index = "${output_vcf_name}-filtered.vcf.idx"
   }
 }
 
@@ -262,75 +417,7 @@ task SplitIntervals {
   }
 }
 
-task CollectSequencingArtifactMetrics {
-    String gatk4_jar
-    File bam_file
-    String output_prepend
-    File ref_fasta
-    File? gatk4_jar_override
-    Int preemptible_attempts
-    String m2_docker
 
-    command {
-      # Use GATK Jar override if specified
-      GATK_JAR=${gatk4_jar}
-      if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
-      fi
-
-            java -jar $GATK_JAR CollectSequencingArtifactMetrics \
-                -I ${bam_file} -O ${output_prepend}  -R ${ref_fasta} --VALIDATION_STRINGENCY SILENT
-    }
-    
-    runtime {
-      docker: "${m2_docker}"
-      memory: "5 GB"
-      disks: "local-disk " + 500 + " HDD"
-      preemptible: "${preemptible_attempts}"
-    }
-    
-    output {
-        File pre_adapter_detail_metrics = "${output_prepend}.pre_adapter_detail_metrics"
-        File pre_adapter_summary_metrics = "${output_prepend}.pre_adapter_summary_metrics"
-        File bait_bias_detail_metrics = "${output_prepend}.bait_bias_detail_metrics"
-        File bait_bias_summary_metrics = "${output_prepend}.bait_bias_summary_metrics"
-    }
-}
-
-task FilterByOrientationBias {
-    String gatk4_jar
-    String output_prepend
-    File m2_vcf
-    File pre_adapter_detail_metrics
-    File? gatk4_jar_override
-    Int preemptible_attempts
-    String m2_docker
-    Array[String] artifact_modes
-
-    command {
-      # Use GATK Jar override if specified
-      GATK_JAR=${gatk4_jar}
-      if [[ "${gatk4_jar_override}" == *.jar ]]; then
-          GATK_JAR=${gatk4_jar_override}
-      fi
-
-            java -jar $GATK_JAR FilterByOrientationBias -A ${sep=" -A " artifact_modes} \
-                -V ${m2_vcf} -P ${pre_adapter_detail_metrics} --output ${output_prepend}.ob_filtered.vcf
-    }
-
-    runtime {
-      docker: "${m2_docker}"
-      memory: "5 GB"
-      disks: "local-disk " + 500 + " HDD"
-      preemptible: "${preemptible_attempts}"
-    }
-
-    output {
-        File orientation_bias_vcf = "${output_prepend}.ob_filtered.vcf"
-        File orientation_bias_vcf_index = "${output_prepend}.ob_filtered.vcf.idx"
-        File orientation_bias_vcf_summary = "${output_prepend}.ob_filtered.vcf.summary"
-    }
-}
 
 task oncotate_m2 {
     File m2_vcf
@@ -375,239 +462,4 @@ task oncotate_m2 {
     output {
         File oncotated_m2_vcf="${entity_id}.oncotated.vcf"
     }
-}
-
-##########
-# Due to a bug in the GATK4 implementation of CollectSequencingArtifactMetrics and the eventual inclusion of picard in GATK4
-#   we need to include picard in this WDL
-# For Broad internal ref_fasta is /seq/references/Homo_sapiens_assembly19/v1/Homo_sapiens_assembly19.fasta
-task CollectSequencingArtifactMetricsPicard {
-    String entity_id
-    File bam_file
-    String output_location_prepend
-    File picard_jar
-    File ref_fasta
-    File ref_fai
-    Int preemptible_attempts
-
-    command {
-        # TODO: Do not hardcode memory requirements
-      java -Xmx4G -jar ${picard_jar} CollectSequencingArtifactMetrics \
-       I=${bam_file} \
-       O=${output_location_prepend} \
-       R=${ref_fasta}
-
-      # Convert to GATK format
-      sed -r "s/picard\.analysis\.artifacts\.SequencingArtifactMetrics\\\$PreAdapterDetailMetrics/org\.broadinstitute\.hellbender\.tools\.picard\.analysis\.artifacts\.SequencingArtifactMetrics\$PreAdapterDetailMetrics/g" \
-        "${output_location_prepend}.pre_adapter_detail_metrics" > ${entity_id}.gatk.pre_adapter_detail_metrics
-
-    }
-    runtime {
-        docker: "broadinstitute/genomes-in-the-cloud:2.2.4-1469632282"
-        memory: "5 GB"
-        preemptible: "${preemptible_attempts}"
-        disks: "local-disk " + 500 + " HDD"
-    }
-    output {
-        File pre_adapter_detail_metrics = "${output_location_prepend}.pre_adapter_detail_metrics"
-        File pre_adapter_summary_metrics = "${output_location_prepend}.pre_adapter_summary_metrics"
-        File bait_bias_detail_metrics = "${output_location_prepend}.bait_bias_detail_metrics"
-        File bait_bias_summary_metrics = "${output_location_prepend}.bait_bias_summary_metrics"
-        File gatk_pre_adapter_detail_metrics = "${entity_id}.gatk.pre_adapter_detail_metrics"
-    }
-}
-
-##############
-
-workflow Mutect2 {
-  # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
-  String gatk4_jar
-  File intervals
-  File ref_fasta
-  File ref_fasta_index
-  File ref_dict
-  File tumor_bam
-  File tumor_bam_index
-  String tumor_sample_name
-  File? normal_bam
-  File? normal_bam_index
-  String? normal_sample_name
-  File? pon
-  File? pon_index
-  Int scatter_count
-  File? dbsnp
-  File? dbsnp_index
-  File? cosmic
-  File? cosmic_index
-  File? variants_for_contamination
-  File? variants_for_contamination_index
-  Boolean is_run_orientation_bias_filter
-  Boolean is_run_oncotator
-  String m2_docker
-  String oncotator_docker
-  File? gatk4_jar_override
-  Int preemptible_attempts
-  File? onco_ds_tar_gz
-  String? onco_ds_local_db_dir
-  Array[String] artifact_modes
-  File picard_jar
-
-  call ProcessOptionalArguments {
-    input:
-      tumor_sample_name = tumor_sample_name,
-      normal_bam = normal_bam,
-      normal_sample_name = normal_sample_name,
-      variants_for_contamination = variants_for_contamination,
-      preemptible_attempts = preemptible_attempts,
-      m2_docker=m2_docker
-  }
-
-  if (ProcessOptionalArguments.has_variants_for_contamination) {
-      call CalculateContamination {
-          input:
-            gatk4_jar = gatk4_jar,
-            intervals = intervals,
-            tumor_bam = tumor_bam,
-            tumor_bam_index = tumor_bam_index,
-            variants = variants_for_contamination,
-            variants_index = variants_for_contamination_index,
-            gatk4_jar_override = gatk4_jar_override,
-            preemptible_attempts = preemptible_attempts,
-            m2_docker = m2_docker
-      }
-  }
-
-  call SplitIntervals {
-    input:
-      gatk4_jar = gatk4_jar,
-      scatter_count = scatter_count,
-      intervals = intervals,
-      gatk4_jar_override = gatk4_jar_override,
-      preemptible_attempts = preemptible_attempts,
-      m2_docker = m2_docker
-
-  }
-
-  scatter (subintervals in SplitIntervals.interval_files ) {
-    call M2 {
-      input: 
-        gatk4_jar = gatk4_jar,
-        intervals = subintervals,
-        ref_fasta = ref_fasta,
-        ref_fasta_index = ref_fasta_index,
-        ref_dict = ref_dict,
-        tumor_bam = tumor_bam,
-        tumor_bam_index = tumor_bam_index,
-        tumor_sample_name = tumor_sample_name,
-        normal_bam = normal_bam,
-        normal_bam_index = normal_bam_index,
-        normal_sample_name = normal_sample_name,
-        pon = pon,
-        pon_index = pon_index,
-        dbsnp = dbsnp,
-        dbsnp_index = dbsnp_index,
-        cosmic = cosmic,
-        cosmic_index = cosmic_index,
-        output_vcf_name = ProcessOptionalArguments.output_name,
-        gatk4_jar_override = gatk4_jar_override,
-        preemptible_attempts = preemptible_attempts,
-        m2_docker = m2_docker
-    }
-  }
-
-  call MergeVCFs {
-    input:
-      gatk4_jar = gatk4_jar,
-      input_vcfs = M2.output_vcf,
-      output_vcf_name = ProcessOptionalArguments.output_name,
-      gatk4_jar_override = gatk4_jar_override,
-      preemptible_attempts = preemptible_attempts,
-      m2_docker = m2_docker
-  }
-
-  call Filter {
-    input:
-      gatk4_jar = gatk4_jar,
-      unfiltered_calls = MergeVCFs.output_vcf,
-      contamination_table = CalculateContamination.contamination_table,
-      output_prepend = ProcessOptionalArguments.output_name,
-      gatk4_jar_override = gatk4_jar_override,
-      preemptible_attempts = preemptible_attempts,
-      m2_docker = m2_docker
-  }
-
-  if(is_run_orientation_bias_filter) {
-      #call CollectSequencingArtifactMetrics {
-      #  input:
-      #    gatk4_jar = gatk4_jar,
-      #    bam_file = tumor_bam,
-      #    ref_fasta = ref_fasta,
-      #    output_prepend = ProcessOptionalArguments.output_name,
-      #    gatk4_jar_override = gatk4_jar_override,
-      #    preemptible_attempts = preemptible_attempts,
-      #    m2_docker = m2_docker
-      #}
-
-      call CollectSequencingArtifactMetricsPicard {
-        input:
-            entity_id=tumor_sample_name,
-            bam_file=tumor_bam,
-            output_location_prepend=ProcessOptionalArguments.output_name,
-            picard_jar=picard_jar,
-            ref_fasta=ref_fasta,
-            ref_fai=ref_fasta_index,
-            preemptible_attempts=preemptible_attempts
-      }
-
-      call FilterByOrientationBias {
-        input:
-           gatk4_jar = gatk4_jar,
-           output_prepend = ProcessOptionalArguments.output_name,
-           m2_vcf = Filter.m2_filtered_vcf,
-           pre_adapter_detail_metrics = CollectSequencingArtifactMetricsPicard.gatk_pre_adapter_detail_metrics,
-           gatk4_jar_override = gatk4_jar_override,
-           preemptible_attempts = preemptible_attempts,
-           m2_docker = m2_docker,
-           artifact_modes = artifact_modes
-      }
-  }
-
-  if (is_run_oncotator) {
-      if (is_run_orientation_bias_filter) {
-        call oncotate_m2 as oncotate_m2_ob {
-            input:
-                m2_vcf=FilterByOrientationBias.orientation_bias_vcf,
-                entity_id=tumor_sample_name,
-                preemptible_attempts = preemptible_attempts,
-                oncotator_docker = oncotator_docker,
-                onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir
-        }
-      }
-
-      if (!is_run_orientation_bias_filter) {
-        call oncotate_m2 as oncotate_m2_no_ob {
-            input:
-                m2_vcf=Filter.m2_filtered_vcf,
-                entity_id=tumor_sample_name,
-                preemptible_attempts = preemptible_attempts,
-                oncotator_docker = oncotator_docker,
-                onco_ds_tar_gz = onco_ds_tar_gz,
-                onco_ds_local_db_dir = onco_ds_local_db_dir
-        }
-      }
-  }
-
-  output {
-        File unfiltered_vcf = MergeVCFs.output_vcf
-        File unfiltered_vcf_index = MergeVCFs.output_vcf_index
-        File filtered_vcf = Filter.m2_filtered_vcf
-        File filtered_vcf_index = Filter.m2_filtered_vcf_index
-        File? ob_filtered_vcf = FilterByOrientationBias.orientation_bias_vcf
-        File? ob_filtered_vcf_index = FilterByOrientationBias.orientation_bias_vcf_index
-        File? contamination_table = CalculateContamination.contamination_table
-
-        # select_first() fails if nothing resulve to non-null, so putting in "/dev/null" for now.
-        File? oncotated_m2_vcf = select_first([oncotate_m2_ob.oncotated_m2_vcf, oncotate_m2_no_ob.oncotated_m2_vcf, "null"])
-  }
 }

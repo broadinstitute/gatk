@@ -15,40 +15,25 @@
 
 # Here we implement steps 3 and 4.
 
-import "mutect2.wdl" as m2
+#Inputs are identical to mutect2_multi_sample_concordance.wdl except for the addition of a python script for generating plots
 
-task Concordance {
-  File gatk_jar
-  File? intervals
-  File truth_vcf
-  File truth_vcf_idx
-  File eval_vcf
-  File eval_vcf_idx
+import "mutect2_multi_sample_concordance.wdl" as concordance
 
-  command {
-      java -jar ${gatk_jar} Concordance ${"-L " + intervals} \
-        -truth ${truth_vcf} -eval ${eval_vcf} -tpfn "true_positives_and_false_negatives.vcf" \
-        -summary summary.tsv
-  }
-
-    runtime {
-        memory: "5 GB"
-    }
-
-  output {
-        File output_vcf = "true_positives_and_false_negatives.vcf"
-        File output_vcf_idx = "true_positives_and_false_negatives.vcf.idx"
-        File summary = "summary.tsv"
-  }
-}
 
 task ConvertToTable {
-  File gatk_jar
+  String gatk4_jar
+  File? gatk4_jar_override
   File input_vcf
   File input_vcf_idx
 
   command {
-        java -jar ${gatk_jar} VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
+  # Use GATK Jar override if specified
+            GATK_JAR=${gatk4_jar}
+            if [[ "${gatk4_jar_override}" == *.jar ]]; then
+                GATK_JAR=${gatk4_jar_override}
+            fi
+
+        java -jar $GATK_JAR VariantsToTable -V ${input_vcf} -F STATUS -F BAM_DEPTH -F AF_EXP -F TYPE -O "result.table"
   }
 
   runtime {
@@ -75,86 +60,77 @@ task AnalyzeSensitivity {
     output {
         File snp_table = "SNP_sensitivity.tsv"
         File snp_plot = "SNP_sensitivity.png"
-        File indel_table = "INDEL_sensitivity.tsv"
-        File indel_plot = "INDEL_sensitivity.png"
+        File indel_table = "Indel_sensitivity.tsv"
+        File indel_plot = "Indel_sensitivity.png"
     }
 }
 
 
 workflow HapmapSensitivity {
-  #general
-  File gatk_jar
-  File intervals
+   # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
+  	String gatk4_jar
+  	Int scatter_count
+  	File pair_list
+  	File intervals
+  	File ref_fasta
+  	File ref_fasta_index
+  	File ref_dict
+  	File? pon
+  	File? pon_index
+  	Boolean is_run_orientation_bias_filter
+    String m2_docker
+    File? gatk4_jar_override
+    Int preemptible_attempts
+    Array[String] artifact_modes
+    File picard_jar
+    File truth_list
 
-  #for running Mutect
-  File ref_fasta
-  File ref_fasta_index
-  File ref_dict
-  File? pon
-  File? pon_index
-  Int scatter_count
-  Boolean is_run_orientation_bias_filter
-  Array[String] artifact_modes
+    File python_sensitivity_script
 
-  #hapmap
-  #the output of hapmap_sensitivity_truth.wdl
-  File hapmap_truth_vcf
-  File hapmap_truth_vcf_idx
-  File pooled_bam
-  File pooled_bam_index
-  String pooled_sample_name
-
-  File python_sensitivity_script
-
-  call m2.Mutect2 {
+  call concordance.Mutect2_Multi_Concordance {
     input:
-      gatk4_jar = "DUMMY",
-      intervals = intervals,
-      ref_fasta = ref_fasta,
-      ref_fasta_index = ref_fasta_index,
-      ref_dict = ref_dict,
-      tumor_bam = pooled_bam,
-      tumor_bam_index = pooled_bam_index,
-      tumor_sample_name = pooled_sample_name,
-      pon = pon,
-      pon_index = pon_index,
-      scatter_count = scatter_count,
-      is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-      is_run_oncotator = false,
-      m2_docker = "broadinstitute/gatk-protected:1.0.0.0-alpha1.2.4",
-      oncotator_docker = "DUMMY",
-      gatk4_jar_override = gatk_jar,
-      preemptible_attempts = 2,
-      artifact_modes = artifact_modes
+     # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
+    	gatk4_jar = gatk4_jar,
+    	scatter_count = scatter_count,
+    	pair_list = pair_list,
+    	intervals = intervals,
+    	ref_fasta = ref_fasta,
+    	ref_fasta_index = ref_fasta_index,
+    	ref_dict = ref_dict,
+    	pon = pon,
+    	pon_index = pon_index,
+    	is_run_orientation_bias_filter = is_run_orientation_bias_filter,
+        m2_docker = m2_docker,
+        gatk4_jar_override = gatk4_jar_override,
+        preemptible_attempts = preemptible_attempts,
+        artifact_modes = artifact_modes,
+        picard_jar = picard_jar,
+        truth_list = truth_list
   }
 
-  call Concordance {
-    input:
-        gatk_jar = gatk_jar,
-        intervals = intervals,
-        truth_vcf = hapmap_truth_vcf,
-        truth_vcf_idx = hapmap_truth_vcf_idx,
-        eval_vcf = Mutect2.filtered_vcf,
-        eval_vcf_idx = Mutect2.filtered_vcf_index
-  }
+  scatter(n in range(length(read_tsv(pair_list)))) {
+    call ConvertToTable {
+        input:
+              gatk4_jar = gatk4_jar,
+              gatk4_jar_override = gatk4_jar_override,
+              input_vcf = Mutect2_Multi_Concordance.tpfn[n],
+              input_vcf_idx = Mutect2_Multi_Concordance.tpfn_idx[n]
+      }
 
-  call ConvertToTable {
-    input:
-          gatk_jar = gatk_jar,
-          input_vcf = Concordance.output_vcf,
-          input_vcf_idx = Concordance.output_vcf_idx
-  }
-
-  call AnalyzeSensitivity {
-       input:
-        input_table = ConvertToTable.table,
-        python_sensitivity_script = python_sensitivity_script
+      call AnalyzeSensitivity {
+           input:
+            input_table = ConvertToTable.table,
+            python_sensitivity_script = python_sensitivity_script
+      }
   }
 
   output {
-    File snp_table = AnalyzeSensitivity.snp_table
-    File snp_plot = AnalyzeSensitivity.snp_plot
-    File indel_table = AnalyzeSensitivity.indel_table
-    File indel_plot = AnalyzeSensitivity.indel_plot
+    Array[File] snp_table = AnalyzeSensitivity.snp_table
+    Array[File] snp_plot = AnalyzeSensitivity.snp_plot
+    Array[File] indel_table = AnalyzeSensitivity.indel_table
+    Array[File] indel_plot = AnalyzeSensitivity.indel_plot
+    Array[File] summary = Mutect2_Multi_Concordance.summary
+    Array[File] tpfn = Mutect2_Multi_Concordance.tpfn
+    Array[File] tpfn_idx = Mutect2_Multi_Concordance.tpfn_idx
   }
 }
