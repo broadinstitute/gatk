@@ -25,6 +25,7 @@ import java.util.*;
  */
 @DefaultSerializer(ReadMetadata.Serializer.class)
 public class ReadMetadata {
+    private final Set<Integer> crossContigIgnoreSet;
     private final Map<String, Integer> contigNameToID;
     private final long nReads;
     private final long maxReadsInPartition;
@@ -33,8 +34,10 @@ public class ReadMetadata {
     private final Map<String, ReadGroupFragmentStatistics> readGroupToFragmentStatistics;
     private final static String NO_GROUP = "NoGroup";
 
-    public ReadMetadata( final SAMFileHeader header,
+    public ReadMetadata( final Set<Integer> crossContigIgnoreSet,
+                         final SAMFileHeader header,
                          final JavaRDD<GATKRead> reads ) {
+        this.crossContigIgnoreSet = crossContigIgnoreSet;
         contigNameToID = buildContigNameToIDMap(header);
 
         final int nReadGroups = header.getReadGroups().size();
@@ -61,8 +64,10 @@ public class ReadMetadata {
     }
 
     @VisibleForTesting
-    ReadMetadata( final SAMFileHeader header, final ReadGroupFragmentStatistics stats,
+    ReadMetadata( final Set<Integer> crossContigIgnoreSet, final SAMFileHeader header,
+                  final ReadGroupFragmentStatistics stats,
                   final int nPartitions, final long nReads, final long maxReadsInPartition, final int coverage ) {
+        this.crossContigIgnoreSet = crossContigIgnoreSet;
         contigNameToID = buildContigNameToIDMap(header);
         this.nPartitions = nPartitions;
         this.nReads = nReads;
@@ -76,6 +81,11 @@ public class ReadMetadata {
     }
 
     private ReadMetadata( final Kryo kryo, final Input input ) {
+        int crossContigIgnoreSetSize = input.readInt();
+        this.crossContigIgnoreSet = new HashSet<>(SVUtils.hashMapCapacity(crossContigIgnoreSetSize));
+        while ( crossContigIgnoreSetSize-- > 0 ) {
+            crossContigIgnoreSet.add(input.readInt());
+        }
         int contigMapSize = input.readInt();
         contigNameToID = new HashMap<>(SVUtils.hashMapCapacity(contigMapSize));
         while ( contigMapSize-- > 0 ) {
@@ -99,6 +109,10 @@ public class ReadMetadata {
     }
 
     private void serialize( final Kryo kryo, final Output output ) {
+        output.writeInt(crossContigIgnoreSet.size());
+        for ( final Integer tigId : crossContigIgnoreSet ) {
+            output.writeInt(tigId);
+        }
         output.writeInt(contigNameToID.size());
         for ( final Map.Entry<String, Integer> entry : contigNameToID.entrySet() ) {
             kryo.writeObject(output, entry.getKey());
@@ -116,6 +130,8 @@ public class ReadMetadata {
             kryo.writeObject(output, entry.getValue());
         }
     }
+
+    public boolean ignoreCrossContigID( final int contigID ) { return crossContigIgnoreSet.contains(contigID); }
 
     public Map<String, Integer> getContigNameMap() {
         return Collections.unmodifiableMap(contigNameToID);
@@ -164,13 +180,17 @@ public class ReadMetadata {
     public boolean equals( final Object obj ) {
         if ( !(obj instanceof ReadMetadata) ) return false;
         final ReadMetadata that = (ReadMetadata) obj;
-        return this.contigNameToID.equals(that.contigNameToID) &&
+        return this.crossContigIgnoreSet.equals(that.crossContigIgnoreSet) &&
+                this.contigNameToID.equals(that.contigNameToID) &&
                 this.readGroupToFragmentStatistics.equals(that.readGroupToFragmentStatistics);
     }
 
     @Override
     public int hashCode() {
-        return 47 * (47 * contigNameToID.hashCode() + readGroupToFragmentStatistics.hashCode());
+        int val = crossContigIgnoreSet.hashCode();
+        val = 47 * val + contigNameToID.hashCode();
+        val = 47 * val + readGroupToFragmentStatistics.hashCode();
+        return 47 * val;
     }
 
     private static Map<String, long[]> combineMaps( final Map<String, long[]> accumulator,

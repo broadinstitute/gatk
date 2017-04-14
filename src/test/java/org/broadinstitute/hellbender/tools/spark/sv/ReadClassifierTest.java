@@ -7,19 +7,19 @@ import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class ReadClassifierTest extends BaseTest {
     @Test(groups = "spark")
     void restOfFragmentSizeTest() {
-        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(2, 1, 10000000, 1);
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeaderWithGroups(3, 1, 10000000, 1);
         final String groupName = header.getReadGroups().get(0).getReadGroupId();
         final int readSize = 151;
         final int fragmentLen = 400;
         final ReadMetadata.ReadGroupFragmentStatistics groupStats = new ReadMetadata.ReadGroupFragmentStatistics(fragmentLen, 175, 20);
-        final ReadMetadata readMetadata = new ReadMetadata(header, groupStats, 1, 2L, 2L, 1);
+        final Set<Integer> crossContigIgnoreSet = new HashSet<>(3);
+        crossContigIgnoreSet.add(2);
+        final ReadMetadata readMetadata = new ReadMetadata(crossContigIgnoreSet, header, groupStats, 1, 2L, 2L, 1);
         final String templateName = "xyzzy";
         final int leftStart = 1010101;
         final int rightStart = leftStart + fragmentLen - readSize;
@@ -60,6 +60,9 @@ public class ReadClassifierTest extends BaseTest {
 
         read.setMatePosition(header.getSequenceDictionary().getSequence(1).getSequenceName(), rightStart);
         checkClassification(classifier, read, Collections.singletonList(new BreakpointEvidence.InterContigPair(read, readMetadata)));
+
+        read.setMatePosition(header.getSequenceDictionary().getSequence(2).getSequenceName(), rightStart);
+        checkClassification(classifier, read, Collections.emptyList());
     }
 
     private void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {

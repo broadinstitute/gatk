@@ -22,6 +22,7 @@ REF_FASTA="${MASTER_NODE}$5"
 REF_INDEX_IMAGE="$6"
 INTERVAL_KILL_LIST=$(echo "${REF_FASTA}" | sed 's/.fasta$/.kill.intervals/')
 KMER_KILL_LIST=$(echo "${REF_FASTA}" | sed 's/.fasta$/.kill.kmers/')
+ALTS_KILL_LIST=$(echo "${REF_FASTA}" | sed 's/.fasta$/.kill.alts/')
 
 "${GATK_DIR}/gatk-launch" FindBreakpointEvidenceSpark \
     -I "${INPUT_BAM}" \
@@ -29,6 +30,7 @@ KMER_KILL_LIST=$(echo "${REF_FASTA}" | sed 's/.fasta$/.kill.kmers/')
     --alignerIndexImage "${REF_INDEX_IMAGE}" \
     --exclusionIntervals "${INTERVAL_KILL_LIST}" \
     --kmersToIgnore "${KMER_KILL_LIST}" \
+    --crossContigsToIgnore "${ALTS_KILL_LIST}" \
     --breakpointIntervals "${PROJECT_OUTPUT_DIR}/intervals" \
     --fastqDir "${PROJECT_OUTPUT_DIR}/fastq" \
     -- \

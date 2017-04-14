@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariationSparkProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.SVFastqUtils.FastqRead;
 import org.broadinstitute.hellbender.tools.spark.utils.*;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
@@ -31,11 +32,17 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Tool to describe reads that support a hypothesis of a genomic breakpoint.
+ * Tool to discover reads that support a hypothesis of a genomic breakpoint.
+ * Reads sharing kmers with reads aligned near putative breakpoints are pulled out
+ *  for local assemblies of these breakpoint regions.
+ * The local assemblies are done with FermiLite, and the assembled contigs are aligned to reference.
+ * Final output is a SAM file of aligned contigs to be called for structural variants.
  */
-@CommandLineProgramProperties(summary="Find reads that evidence breakpoints.",
-        oneLineSummary="Dump FASTQs for local assembly of putative genomic breakpoints.",
-        programGroup = StructuralVariationSparkProgramGroup.class)
+@CommandLineProgramProperties(summary="Find reads that evidence breakpoints."+
+        "  Pull reads for local assemblies in breakpoint regions using shared kmers."+
+        "  Assemble breakpoint regions with FermiLite, and align assembled contigs to reference.",
+        oneLineSummary="Prepare local assemblies of putative genomic breakpoints for structural variant discovery.",
+        programGroup=StructuralVariationSparkProgramGroup.class)
 public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
@@ -155,6 +162,13 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             fullName = "kmersToIgnore")
     private String kmersToIgnoreFile;
 
+    /**
+     * This is a path to a text file of contig names (one per line) that will be ignored when looking for inter-contig pairs.
+     */
+    @Argument(doc = "file containing alt contig names that will be ignored when looking for inter-contig pairs",
+            fullName = "crossContigsToIgnore", optional = true)
+    private String crossContigsToIgnoreFile;
+
     @Override
     public boolean requiresReads()
     {
@@ -235,10 +249,15 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final Locations locations,
             final PipelineOptions pipelineOptions )
     {
+        final Set<Integer> crossContigsToIgnoreSet;
+        if ( crossContigsToIgnoreFile == null ) crossContigsToIgnoreSet = Collections.emptySet();
+        else crossContigsToIgnoreSet = readCrossContigsToIgnoreFile(crossContigsToIgnoreFile,
+                                                                    pipelineOptions,
+                                                                    header.getSequenceDictionary());
         final JavaRDD<GATKRead> mappedReads =
                 unfilteredReads.filter(read ->
                         !read.isDuplicate() && !read.failsVendorQualityCheck() && !read.isUnmapped());
-        final ReadMetadata readMetadata = new ReadMetadata(header, mappedReads);
+        final ReadMetadata readMetadata = new ReadMetadata(crossContigsToIgnoreSet, header, mappedReads);
         if ( locations.metadataFile != null ) {
             ReadMetadata.writeMetadata(readMetadata, locations.metadataFile, pipelineOptions);
         }
@@ -268,6 +287,29 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
         log("Discovered " + qNamesMultiMap.size() + " mapped template names.");
 
         return new Tuple2<>(intervals, qNamesMultiMap);
+    }
+
+    /** Read a file of contig names that will be ignored when checking for inter-contig pairs. */
+    private static Set<Integer> readCrossContigsToIgnoreFile( final String crossContigsToIgnoreFile,
+                                                              final PipelineOptions pipelineOptions,
+                                                              final SAMSequenceDictionary dictionary ) {
+        final Set<Integer> ignoreSet = new HashSet<>();
+        try ( final BufferedReader rdr =
+                      new BufferedReader(
+                              new InputStreamReader(BucketUtils.openFile(crossContigsToIgnoreFile,pipelineOptions))) ) {
+            String line;
+            while ( (line = rdr.readLine()) != null ) {
+                final int tigId = dictionary.getSequenceIndex(line);
+                if ( tigId == -1 ) {
+                    throw new UserException("crossContigToIgnoreFile contains an unrecognized contig name: "+line);
+                }
+                ignoreSet.add(tigId);
+            }
+        }
+        catch ( final IOException ioe ) {
+            throw new UserException("Can't read crossContigToIgnore file "+crossContigsToIgnoreFile, ioe);
+        }
+        return ignoreSet;
     }
 
     /**
