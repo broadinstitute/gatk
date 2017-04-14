@@ -31,7 +31,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testGenomicsDBInClassPath(){
-        final String path = "/genomicsdb/"+System.mapLibraryName("tiledbgenomicsdb");
+        final String path = "/"+System.mapLibraryName("tiledbgenomicsdb");
         Assert.assertNotNull(GenomicsDBUtils.class.getResource(path), "Could not find the genomicsdb binary at " + path);
     }
 
