@@ -49,18 +49,23 @@ public final class ApplyBQSR extends ReadWalker{
     
     private SAMFileGATKReadWriter outputWriter;
 
-    private ReadTransformer transform;
+    /**
+     * Returns the BQSR post-transformer.
+     */
+    @Override
+    public ReadTransformer makePostReadFilterTransformer(){
+        return new BQSRReadTransformer(getHeaderForReads(), BQSR_RECAL_FILE, bqsrArgs);
+    }
 
     @Override
     public void onTraversalStart() {
         outputWriter = createSAMWriter(OUTPUT, true);
-        transform = new BQSRReadTransformer(getHeaderForReads(), BQSR_RECAL_FILE, bqsrArgs);
         Utils.warnOnNonIlluminaReadGroups(getHeaderForReads(), logger);
     }
 
     @Override
     public void apply( GATKRead read, ReferenceContext referenceContext, FeatureContext featureContext ) {
-        outputWriter.addRead(transform.apply(read));
+        outputWriter.addRead(read);
     }
 
     @Override
