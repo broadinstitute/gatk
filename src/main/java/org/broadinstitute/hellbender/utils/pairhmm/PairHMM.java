@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -16,7 +17,7 @@ import java.io.Closeable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * Class for performing the pair HMM for local alignment. Figure 4.3 in Durbin 1998 book.
@@ -33,36 +34,54 @@ public abstract class PairHMM implements Closeable{
 
     public enum Implementation {
         /* Very slow implementation which uses very accurate log10 sum functions. Only meant to be used as a reference test implementation */
-        EXACT(() -> {
+        EXACT(args -> {
             final Log10PairHMM hmm = new Log10PairHMM(true);
             logger.info("Using the non-hardware accelerated Java EXACT PairHMM implementation");
             return hmm;
         }),
         /* PairHMM as implemented for the UnifiedGenotyper. Uses log10 sum functions accurate to only 1E-4 */
-        ORIGINAL(() -> {
+        ORIGINAL(args -> {
             final Log10PairHMM hmm = new Log10PairHMM(false);
             logger.info("Using the non-hardware-accelerated Java ORIGINAL PairHMM implementation");
             return hmm;
         }),
         /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
-        LOGLESS_CACHING(() -> {
+        LOGLESS_CACHING(args -> {
             final LoglessPairHMM hmm = new LoglessPairHMM();
             logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PairHMM implementation");
             return hmm;
         }),
         /* Optimized AVX implementation of LOGLESS_CACHING called through JNI. Throws if AVX is not available */
-        AVX_LOGLESS_CACHING(() -> {
+        AVX_LOGLESS_CACHING(args -> {
             // Constructor will throw a UserException if AVX is not available
-            // TODO: connect PairHMMNativeArguments
-            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(null);
+            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.AVX, args);
             logger.info("Using the AVX-accelerated native PairHMM implementation");
             return hmm;
         }),
-        /* Uses the fastest available PairHMM implementation (AVX if AVX is available, otherwise LOGLESS_CACHING */
-        FASTEST_AVAILABLE(() -> {
+        /* OpenMP Multi-threaded AVX implementation of LOGLESS_CACHING called through JNI. Throws if OpenMP AVX is not available */
+        AVX_LOGLESS_CACHING_OMP(args -> {
+            // Constructor will throw a UserException if OpenMP AVX is not available
+            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.OMP, args);
+            logger.info("Using the OpenMP multi-threaded AVX-accelerated native PairHMM implementation");
+            return hmm;
+        }),
+        /* Uses the fastest available PairHMM implementation supported on the platform.
+           Order of precedence:
+            1. AVX_LOGLESS_CACHING_OMP
+            2. AVX_LOGLESS_CACHING
+            3. LOGLESS_CACHING
+         */
+        FASTEST_AVAILABLE(args -> {
             try {
-                // TODO: connect PairHMMNativeArguments
-                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(null);
+                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.OMP, args);
+                logger.info("Using the OpenMP multi-threaded AVX-accelerated native PairHMM implementation");
+                return hmm;
+            }
+            catch ( UserException.HardwareFeatureException e ) {
+                logger.info("OpenMP multi-threaded AVX-accelerated native PairHMM implementation is not supported");
+            }
+            try {
+                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.AVX, args);
                 logger.info("Using the AVX-accelerated native PairHMM implementation");
                 return hmm;
             }
@@ -73,14 +92,14 @@ public abstract class PairHMM implements Closeable{
             }
         });
 
-        private final Supplier<PairHMM> makeHmm;
+        private final Function<PairHMMNativeArguments, PairHMM> makeHmm;
 
-        private Implementation(final Supplier<PairHMM> makeHmm){
+        private Implementation(final Function<PairHMMNativeArguments, PairHMM> makeHmm){
             this.makeHmm = makeHmm;
         }
 
-        public PairHMM makeNewHMM() {
-            return makeHmm.get();
+        public PairHMM makeNewHMM(PairHMMNativeArguments args) {
+            return makeHmm.apply(args);
         }
     }
 

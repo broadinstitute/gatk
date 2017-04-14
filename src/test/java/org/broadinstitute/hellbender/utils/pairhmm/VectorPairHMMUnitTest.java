@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -13,6 +14,8 @@ import org.testng.SkipException;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,22 +26,29 @@ public final class VectorPairHMMUnitTest extends BaseTest {
 
     private static final String pairHMMTestData = publicTestDir + "pairhmm-testdata.txt";
 
-   @BeforeClass
-    public void initialize() {
-       try {
-           new VectorLoglessPairHMM(null);
-       } catch (final Exception e) {
-           throw new SkipException("AVX PairHMM is not supported on this system or the library is not available");
-       }
-    }
-
-    private List<N2MemoryPairHMM> getHMMs() {
-        final PairHMMNativeArguments args = new PairHMMNativeArguments();
+    // Return a list of supported VectorLoglessPairHMM implementations, skip the test if none are supported
+    private List<Pair<PairHMM, Boolean> > getHMMs() {
+        List<Pair<PairHMM, Boolean> > list = new ArrayList<>();
+        PairHMMNativeArguments args = new PairHMMNativeArguments();
         args.useDoublePrecision = false;
         args.maxNumberOfThreads = 1;
-        final N2MemoryPairHMM avxPairHMM = new VectorLoglessPairHMM(args);
-        avxPairHMM.doNotUseTristateCorrection();
-        return Collections.singletonList(avxPairHMM);
+
+        for (VectorLoglessPairHMM.Implementation imp : VectorLoglessPairHMM.Implementation.values()) {
+            boolean loaded = true;
+            PairHMM avxPairHMM = null;
+            try {
+                avxPairHMM = new VectorLoglessPairHMM(imp, args);
+                //avxPairHMM.doNotUseTristateCorrection();
+            }
+            catch (UserException.HardwareFeatureException e ) {
+                loaded = false;
+            }
+
+            final Pair<PairHMM, Boolean> hmm_load = new ImmutablePair<PairHMM, Boolean>(avxPairHMM, new Boolean(loaded));
+            list.add(hmm_load);
+        }
+
+        return list;
     }
 
     // --------------------------------------------------------------------------------
@@ -51,15 +61,20 @@ public final class VectorPairHMMUnitTest extends BaseTest {
     public Object[][] makeJustHMMProvider() {
         List<Object[]> tests = new ArrayList<>();
 
-        for ( final PairHMM hmm : getHMMs() ) {
-            tests.add(new Object[]{hmm});
+        for ( final Pair<PairHMM, Boolean> hmm_load : getHMMs() ) {
+            tests.add(new Object[]{hmm_load.getLeft(), hmm_load.getRight()});
         }
 
         return tests.toArray(new Object[][]{});
     }
 
     @Test(dataProvider = "JustHMMProvider")
-    public void testLikelihoodsFromHaplotypes(final PairHMM hmm){
+    public void testLikelihoodsFromHaplotypes(final PairHMM hmm, Boolean loaded){
+
+        // skip if not loaded
+        if(!loaded.booleanValue()) {
+            throw new SkipException("AVX PairHMM is not supported on this system or the library is not available");
+        }
 
         BasicInputParser parser = null;
         try {
