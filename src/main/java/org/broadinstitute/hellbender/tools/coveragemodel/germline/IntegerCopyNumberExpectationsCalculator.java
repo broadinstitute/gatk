@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.germline;
 
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.coveragemodel.*;
 import org.broadinstitute.hellbender.tools.coveragemodel.interfaces.CopyRatioExpectationsCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
@@ -47,11 +46,17 @@ public final class IntegerCopyNumberExpectationsCalculator implements
     private final static boolean CHECK_FOR_NANS = false;
 
     /**
-     * If true, CN = 0 state will be excluded in calculating the posteriors. The copy ratio posterior
-     * probabilities will be renormalized to unity.
+     * Calculate the log prior probability in {@link #getCopyRatioPriorExpectations(CopyRatioCallingMetadata, List)}
+     *
+     * TODO github/gatk-protected issue #853 -- currently, the calculation is done on the master node and is slow.
+     *      Also, it is unnecessary in practice since it only affects the reported log likelihood in the first
+     *      iteration. In the future, we may either remove this feature altogether or sparkify it.
      */
-    private final static boolean NEGLECT_ZERO_COPY_NUMBER_STATE = true;
+    private final static boolean CALCULATE_PRIOR_LOG_PROBABILITY = false;
 
+    /**
+     * Set of sex genotypes
+     */
     private final Set<String> sexGenotypesSet;
 
     /**
@@ -71,9 +76,9 @@ public final class IntegerCopyNumberExpectationsCalculator implements
                 " collection must be non-null");
         /* create an integer copy number HMM for each sex genotype in the collection */
         sexGenotypesSet = cache.getSexGenotypes();
-        hmm = new HashMap<>();
         final CoverageModelCopyRatioEmissionProbabilityCalculator emissionProbabilityCalculator =
                 new CoverageModelCopyRatioEmissionProbabilityCalculator(readCountThresholdPoissonSwitch);
+        hmm = new HashMap<>();
         sexGenotypesSet.forEach(sexGenotype -> hmm.put(sexGenotype,
                 new IntegerCopyNumberHiddenMarkovModel<>(emissionProbabilityCalculator, cache, sexGenotype)));
     }
@@ -98,32 +103,24 @@ public final class IntegerCopyNumberExpectationsCalculator implements
 
         /* indices of hidden states to include in calculating posterior expectations */
         final List<IntegerCopyNumberState> hiddenStates = genotypeSpecificHMM.hiddenStates();
-        final int[] includedHiddenStatesIndices;
-        if (NEGLECT_ZERO_COPY_NUMBER_STATE) {
-            includedHiddenStatesIndices = IntStream.range(0, hiddenStates.size())
-                    .filter(idx -> hiddenStates.get(idx).getCopyNumber() != 0)
-                    .toArray();
-        } else {
-            includedHiddenStatesIndices = IntStream.range(0, hiddenStates.size()).toArray();
-        }
-
-        if (includedHiddenStatesIndices.length == 0) {
-            throw new GATKException.ShouldNeverReachHereException("All hidden states have been excluded." +
-                    " This can occur if the HMM has a single CN = 0 hidden state and NEGLECT_ZERO_COPY_NUMBER_STATE" +
-                    " is enabled");
-        }
-
-        /* calculate E[log(c)] and E[log(c)^2] */
-        final double[] hiddenStatesLogCopyRatios = hiddenStates.stream()
-                .mapToDouble(IntegerCopyNumberState::getLogCopyNumber).toArray();
-        final double[] hiddenStatesLogCopyRatiosSquared = hiddenStates.stream()
-                .mapToDouble(IntegerCopyNumberState::getLogCopyNumberSquared).toArray();
 
         /* exponentiate log copy number posteriors on all targets */
         final List<double[]> hiddenStateProbabilities = IntStream.range(0, targetList.size())
-                .mapToObj(ti -> genotypeSpecificHMM.hiddenStates().stream()
+                .mapToObj(ti -> hiddenStates.stream()
                         .mapToDouble(s -> FastMath.exp(result.logProbability(ti, s)))
                         .toArray())
+                .collect(Collectors.toList());
+
+        /* copy ratio corrected for mapping error */
+        final List<double[]> logCopyRatiosWithMappingError = IntStream.range(0, targetList.size())
+                .mapToObj(ti -> {
+                    final CoverageModelCopyRatioEmissionData currentEmissionData = emissionData.get(ti);
+                    final double err = currentEmissionData.getMappingErrorProbability();
+                    return hiddenStates.stream()
+                            .mapToDouble(s -> FastMath.log((1 - err) * s.getCopyNumber() +
+                                    err * FastMath.exp(-currentEmissionData.getMu())))
+                            .toArray();
+                })
                 .collect(Collectors.toList());
 
         if (CHECK_FOR_NANS) {
@@ -137,14 +134,17 @@ public final class IntegerCopyNumberExpectationsCalculator implements
         }
 
         /* calculate copy ratio posterior mean and variance */
-        final double[] logCopyRatioPosteriorMeans = hiddenStateProbabilities.stream()
-                .mapToDouble(pdf -> calculateMeanDiscreteStates(includedHiddenStatesIndices, pdf,
-                        hiddenStatesLogCopyRatios))
+        final int[] includedHiddenStatesIndices = IntStream.range(0, hiddenStates.size()).toArray();
+        final double[] logCopyRatioPosteriorMeans = IntStream.range(0, targetList.size())
+                .mapToDouble(ti -> calculateMeanDiscreteStates(
+                        includedHiddenStatesIndices, hiddenStateProbabilities.get(ti),
+                        logCopyRatiosWithMappingError.get(ti)))
                 .toArray();
         final double[] logCopyRatioPosteriorVariances = IntStream.range(0, targetList.size())
-                .mapToDouble(ti -> calculateMeanDiscreteStates(includedHiddenStatesIndices,
-                        hiddenStateProbabilities.get(ti), hiddenStatesLogCopyRatiosSquared)
-                            - FastMath.pow(logCopyRatioPosteriorMeans[ti], 2))
+                .mapToDouble(ti -> calculateMeanDiscreteStates(
+                        includedHiddenStatesIndices, hiddenStateProbabilities.get(ti),
+                        Arrays.stream(logCopyRatiosWithMappingError.get(ti)).map(x -> x * x).toArray()) -
+                            FastMath.pow(logCopyRatioPosteriorMeans[ti], 2))
                 .toArray();
 
         if (CHECK_FOR_NANS) {
@@ -158,14 +158,18 @@ public final class IntegerCopyNumberExpectationsCalculator implements
             }
         }
 
-        return new CopyRatioExpectations(logCopyRatioPosteriorMeans, logCopyRatioPosteriorVariances);
+        /* calculate chain posterior log probability */
+        final double logChainPosteriorProbability = result.logChainPosteriorProbability();
+
+        return new CopyRatioExpectations(logCopyRatioPosteriorMeans, logCopyRatioPosteriorVariances,
+                logChainPosteriorProbability);
     }
 
     @Override
     public CopyRatioExpectations getCopyRatioPriorExpectations(
             @Nonnull final CopyRatioCallingMetadata copyRatioCallingMetadata,
-            @Nonnull final List<Target> targetsList) {
-        verifyArgsForPriorExpectations(copyRatioCallingMetadata, targetsList);
+            @Nonnull final List<Target> targetList) {
+        verifyArgsForPriorExpectations(copyRatioCallingMetadata, targetList);
 
         /* choose the HMM */
         final IntegerCopyNumberHiddenMarkovModel<CoverageModelCopyRatioEmissionData> genotypeSpecificHMM =
@@ -173,36 +177,24 @@ public final class IntegerCopyNumberExpectationsCalculator implements
 
         /* indices of hidden states to include in calculating posterior expectations */
         final List<IntegerCopyNumberState> hiddenStates = genotypeSpecificHMM.hiddenStates();
-        final int[] includedHiddenStatesIndices;
-        if (NEGLECT_ZERO_COPY_NUMBER_STATE) {
-            includedHiddenStatesIndices = IntStream.range(0, hiddenStates.size())
-                    .filter(idx -> hiddenStates.get(idx).getCopyNumber() != 0)
-                    .toArray();
-        } else {
-            includedHiddenStatesIndices = IntStream.range(0, hiddenStates.size()).toArray();
-        }
-
-        if (includedHiddenStatesIndices.length == 0) {
-            throw new GATKException.ShouldNeverReachHereException("All hidden states have been excluded." +
-                    " This can occur if the HMM has a single CN = 0 hidden state and NEGLECT_ZERO_COPY_NUMBER_STATE" +
-                    " is enabled");
-        }
-
-        /* calculate E[log(c)] and E[log(c)^2] */
-        final double[] hiddenStatesLogCopyRatios = hiddenStates.stream()
-                .mapToDouble(IntegerCopyNumberState::getLogCopyNumber).toArray();
-        final double[] hiddenStatesLogCopyRatiosSquared = hiddenStates.stream()
-                .mapToDouble(IntegerCopyNumberState::getLogCopyNumberSquared).toArray();
 
         /* exponentiate log copy number priors on all targets */
-        final List<double[]> hiddenStatePriorProbabilities = targetsList.stream()
+        final List<double[]> hiddenStatePriorProbabilities = targetList.stream()
                 .map(target -> hiddenStates.stream()
                         .mapToDouble(state -> FastMath.exp(genotypeSpecificHMM.logPriorProbability(state, target)))
                         .toArray())
                 .collect(Collectors.toList());
 
+        /* copy ratio corrected for mapping error */
+        final double err = copyRatioCallingMetadata.getSampleAverageMappingErrorProbability();
+        final List<double[]> logCopyRatiosWithMappingError = IntStream.range(0, targetList.size())
+                .mapToObj(ti -> hiddenStates.stream()
+                            .mapToDouble(s -> FastMath.log((1 - err) * s.getCopyNumber() + err))
+                            .toArray())
+                .collect(Collectors.toList());
+
         if (CHECK_FOR_NANS) {
-            final int[] badTargets = IntStream.range(0, targetsList.size())
+            final int[] badTargets = IntStream.range(0, targetList.size())
                     .filter(ti -> Arrays.stream(hiddenStatePriorProbabilities.get(ti))
                             .anyMatch(p -> Double.isNaN(p) || Double.isInfinite(p))).toArray();
             if (badTargets.length > 0) {
@@ -212,18 +204,21 @@ public final class IntegerCopyNumberExpectationsCalculator implements
         }
 
         /* calculate copy ratio posterior mean and variance */
-        final double[] logCopyRatioPriorMeans = hiddenStatePriorProbabilities.stream()
-                .mapToDouble(pdf -> calculateMeanDiscreteStates(includedHiddenStatesIndices, pdf,
-                        hiddenStatesLogCopyRatios))
+        final int[] includedHiddenStatesIndices = IntStream.range(0, hiddenStates.size()).toArray();
+        final double[] logCopyRatioPriorMeans = IntStream.range(0, targetList.size())
+                .mapToDouble(ti -> calculateMeanDiscreteStates(
+                        includedHiddenStatesIndices, hiddenStatePriorProbabilities.get(ti),
+                        logCopyRatiosWithMappingError.get(ti)))
                 .toArray();
-        final double[] logCopyRatioPriorVariances = IntStream.range(0, targetsList.size())
-                .mapToDouble(ti -> calculateMeanDiscreteStates(includedHiddenStatesIndices,
-                        hiddenStatePriorProbabilities.get(ti), hiddenStatesLogCopyRatiosSquared)
-                        - FastMath.pow(logCopyRatioPriorMeans[ti], 2))
+        final double[] logCopyRatioPriorVariances = IntStream.range(0, targetList.size())
+                .mapToDouble(ti -> calculateMeanDiscreteStates(
+                        includedHiddenStatesIndices, hiddenStatePriorProbabilities.get(ti),
+                        Arrays.stream(logCopyRatiosWithMappingError.get(ti)).map(x -> x * x).toArray()) -
+                        FastMath.pow(logCopyRatioPriorMeans[ti], 2))
                 .toArray();
 
         if (CHECK_FOR_NANS) {
-            final int[] badTargets = IntStream.range(0, targetsList.size())
+            final int[] badTargets = IntStream.range(0, targetList.size())
                     .filter(ti -> Double.isNaN(logCopyRatioPriorMeans[ti]) ||
                             Double.isNaN(logCopyRatioPriorVariances[ti])).toArray();
             if (badTargets.length > 0) {
@@ -232,7 +227,12 @@ public final class IntegerCopyNumberExpectationsCalculator implements
             }
         }
 
-        return new CopyRatioExpectations(logCopyRatioPriorMeans, logCopyRatioPriorVariances);
+        /* calculate chain posterior log probability */
+        final double logChainPriorProbability = CALCULATE_PRIOR_LOG_PROBABILITY
+                ? genotypeSpecificHMM.calculateLogChainPriorProbability(targetList)
+                : 0.0;
+
+        return new CopyRatioExpectations(logCopyRatioPriorMeans, logCopyRatioPriorVariances, logChainPriorProbability);
     }
 
     @Override
@@ -257,7 +257,10 @@ public final class IntegerCopyNumberExpectationsCalculator implements
         final List<IntegerCopyNumberState> viterbiResult = ViterbiAlgorithm.apply(emissionData, activeTargets,
                 genotypeSpecificHMM);
 
-        return new CopyRatioHiddenMarkovModelResults<>(fbResult, viterbiResult);
+        /* clear caches */
+        genotypeSpecificHMM.clearCaches();
+
+        return new CopyRatioHiddenMarkovModelResults<>(copyRatioCallingMetadata, fbResult, viterbiResult);
     }
 
     @Override
@@ -271,6 +274,11 @@ public final class IntegerCopyNumberExpectationsCalculator implements
                                     IntegerCopyNumberHiddenMarkovModel.DEFAULT_DISTANCE_BETWEEN_TARGETS),
                             sexGenotype, allTargets.get(firstTargetIndex).getContig()));
         }
+    }
+
+    @Override
+    public void clearCaches() {
+        cache.clearCaches();
     }
 
     /**

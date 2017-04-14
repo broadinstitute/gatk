@@ -49,7 +49,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      * Maximum reportable output quality score; higher quality scores will
      * capped to this value.
      */
-    public static final double MAX_QUAL_SCORE = 199.99999999999;
+    public static final double MAX_QUAL_SCORE = 9999.99999999999;
 
     /**
      * Precision of Phred-scale scores
@@ -171,7 +171,6 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
                 .sorted(IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR)
                 .collect(Collectors.toList()));
 
-        logger.info("Composing segments...");
         allSegmentsBySampleName = calculateBestPathSegments();
     }
 
@@ -191,6 +190,17 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
         writeSegments(allSegmentRecordsSortedByCoordinates, writer);
     }
 
+    /**
+     * Return segments as a list of {@link HiddenStateSegmentRecord}
+     *
+     * @return a list of
+     */
+    public List<HiddenStateSegmentRecord<S, T>> getSegmentsAsList() {
+        final List<HiddenStateSegmentRecord<S, T>> segmentList = new ArrayList<>();
+        composeTargetSortedSegmentRecordIterator(masterTargetCollection, allSegmentsBySampleName)
+                .forEachRemaining(segmentList::add);
+        return segmentList;
+    }
 
     /********************************
      * segmentation-related methods *

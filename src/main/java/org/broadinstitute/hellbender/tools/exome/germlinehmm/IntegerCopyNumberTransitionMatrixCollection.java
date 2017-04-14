@@ -154,7 +154,7 @@ public final class IntegerCopyNumberTransitionMatrixCollection {
             final int highestCopyNumber = sexGenotypeAndContigToTransitionMatrixMap.values().stream()
                     .mapToInt(IntegerCopyNumberTransitionMatrixData::getMaxCopyNumber)
                     .max().getAsInt();
-            sexGenotypeAndContigToTransitionMatrixMap.keySet().stream()
+            sexGenotypeAndContigToTransitionMatrixMap.keySet()
                     .forEach(key -> {
                         final IntegerCopyNumberTransitionMatrixData dat = sexGenotypeAndContigToTransitionMatrixMap.get(key);
                         newCollection.add(key.getSexGenotype(), key.getContig(),

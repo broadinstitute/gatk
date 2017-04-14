@@ -43,6 +43,7 @@ public final class CopyRatioCallingMetadata implements Serializable {
     private SexGenotypeData sampleSexGenotypeData = null;
     private Double sampleCoverageDepth = null;
     private EmissionCalculationStrategy emissionCalculationStrategy = null;
+    private Double sampleAverageMappingErrorProbability = null;
 
     private CopyRatioCallingMetadata() {
     }
@@ -70,6 +71,12 @@ public final class CopyRatioCallingMetadata implements Serializable {
                 "Emission calculation model must be non-null");
     }
 
+    private void setSampleAverageMappingErrorProbability(@Nonnull final Double sampleAverageMappingErrorProbability) {
+        this.sampleAverageMappingErrorProbability = ParamUtils.isPositiveOrZero(
+                Utils.nonNull(sampleAverageMappingErrorProbability, "Sample average mapping error probability must be non-null"),
+                "Sample average mapping error probability must be non-negative");
+    }
+
     public String getSampleName() {
         return Utils.nonNull(sampleName, "Sample name is queried but is not set");
     }
@@ -84,6 +91,11 @@ public final class CopyRatioCallingMetadata implements Serializable {
 
     public Double getSampleCoverageDepth() {
         return Utils.nonNull(sampleCoverageDepth, "Sample coverage depth is queried but is not set");
+    }
+
+    public Double getSampleAverageMappingErrorProbability() {
+        return Utils.nonNull(sampleAverageMappingErrorProbability, "Sample average mapping error probability is" +
+                " queried but is not set");
     }
 
     public EmissionCalculationStrategy getEmissionCalculationStrategy() {
@@ -146,6 +158,11 @@ public final class CopyRatioCallingMetadata implements Serializable {
             return this;
         }
 
+        public SampleMetadataBuilder setSampleAverageMappingErrorProbability(@Nonnull final Double sampleAverageMappingErrorProbability) {
+            metadata.setSampleAverageMappingErrorProbability(sampleAverageMappingErrorProbability);
+            return this;
+        }
+
         public SampleMetadataBuilder setEmissionCalculationStrategy(@Nonnull final EmissionCalculationStrategy emissionCalculationStrategy) {
             metadata.setEmissionCalculationStrategy(emissionCalculationStrategy);
             return this;
@@ -164,6 +181,7 @@ public final class CopyRatioCallingMetadata implements Serializable {
                 ", sampleSexGenotypeData=" + sampleSexGenotypeData +
                 ", sampleCoverageDepth=" + sampleCoverageDepth +
                 ", emissionCalculationStrategy=" + emissionCalculationStrategy +
+                ", sampleAverageMappingErrorProbability=" + sampleAverageMappingErrorProbability +
                 '}';
     }
 }

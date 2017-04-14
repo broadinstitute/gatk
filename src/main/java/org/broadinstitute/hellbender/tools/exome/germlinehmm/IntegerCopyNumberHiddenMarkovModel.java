@@ -102,4 +102,8 @@ public final class IntegerCopyNumberHiddenMarkovModel<D>
     public IntegerCopyNumberTransitionProbabilityCacheCollection getTransitionProbabilityCacheCollection() {
         return transitionProbabilityCacheCollection;
     }
+
+    public void clearCaches() {
+        transitionProbabilityCacheCollection.clearCaches();
+    }
 }

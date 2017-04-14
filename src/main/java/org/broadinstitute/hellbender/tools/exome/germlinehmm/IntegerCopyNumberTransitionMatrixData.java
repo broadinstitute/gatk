@@ -10,12 +10,10 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jApacheAdapterUtils;
 import org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jIOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
-import org.nd4j.linalg.api.ndarray.INDArray;
 
 import javax.annotation.Nonnull;
 import java.io.File;
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * This class represents the per-base transition prior probability from one integer copy number
@@ -69,7 +67,7 @@ public final class IntegerCopyNumberTransitionMatrixData {
 
     /**
      * Reads a single integer copy number transition matrix from a tab-separated table written in the style of
-     * {@link org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jIOUtils#writeNDArrayToTextFile(INDArray, File, List, List)}
+     * {@link org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jIOUtils#writeNDArrayMatrixToTextFile}
      *
      * @param inputFile the input tab-separated file
      * @throws UserException.CouldNotReadInputFile if the input file could not be read
@@ -78,7 +76,7 @@ public final class IntegerCopyNumberTransitionMatrixData {
      */
     public static IntegerCopyNumberTransitionMatrixData read(@Nonnull final File inputFile, final int padding) {
         final RealMatrix transitionMatrix = Nd4jApacheAdapterUtils.convertINDArrayToApacheMatrix(
-                Nd4jIOUtils.readNDArrayFromTextFile(inputFile));
+                Nd4jIOUtils.readNDArrayMatrixFromTextFile(inputFile));
         return new IntegerCopyNumberTransitionMatrixData(transitionMatrix, padding);
     }
 

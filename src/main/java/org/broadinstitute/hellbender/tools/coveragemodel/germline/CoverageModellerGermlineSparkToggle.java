@@ -12,10 +12,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelEMAlgorithm;
-import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelEMParams;
-import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelParameters;
-import org.broadinstitute.hellbender.tools.coveragemodel.PosteriorVerbosityLevel;
+import org.broadinstitute.hellbender.tools.coveragemodel.*;
 import org.broadinstitute.hellbender.tools.exome.*;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.IntegerCopyNumberState;
 import org.broadinstitute.hellbender.tools.exome.germlinehmm.IntegerCopyNumberTransitionProbabilityCacheCollection;
@@ -28,6 +25,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Map;
 
 /**
@@ -271,7 +269,7 @@ public final class CoverageModellerGermlineSparkToggle extends SparkToggleComman
         try (final Reader ploidyAnnotationsReader = getReaderFromURI(contigPloidyAnnotationsURI)) {
             ploidyAnnotatedTargetCollection = new GermlinePloidyAnnotatedTargetCollection(ContigGermlinePloidyAnnotationTableReader
                     .readContigGermlinePloidyAnnotationsFromReader(contigPloidyAnnotationsURI, ploidyAnnotationsReader),
-                    readCounts.targets());
+                    new ArrayList<>(readCounts.targets()));
         } catch (final IOException ex) {
             ex.printStackTrace();
             throw new UserException.CouldNotReadInputFile("Could not parse the germline contig ploidy annotations table");
@@ -300,9 +298,12 @@ public final class CoverageModellerGermlineSparkToggle extends SparkToggleComman
         }
 
         logger.info("Initializing the EM algorithm workspace...");
-        final CoverageModelEMWorkspaceGermline workspace = new CoverageModelEMWorkspaceGermline(
+        final IntegerCopyNumberReferenceStateFactory referenceStateFactory =
+                new IntegerCopyNumberReferenceStateFactory(ploidyAnnotatedTargetCollection);
+
+        final CoverageModelEMWorkspace<IntegerCopyNumberState> workspace = new CoverageModelEMWorkspace<>(
                 readCounts, ploidyAnnotatedTargetCollection, sexGenotypeDataCollection,
-                integerCopyNumberExpectationsCalculator, params, model, ctx);
+                integerCopyNumberExpectationsCalculator, params, model, referenceStateFactory, ctx);
         final CoverageModelEMAlgorithm<IntegerCopyNumberState> algo = new CoverageModelEMAlgorithm<>(params,
                 workspace);
 

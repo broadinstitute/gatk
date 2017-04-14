@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 /**
  * This class stores the data required for calculating the emission probability according to the
- * GATK Bayesian coverage model:
+ * GATK4 coverage model:
  *
  * <p>
  *     Mean log multiplicative bias:
@@ -16,7 +16,7 @@ import java.io.Serializable;
  * </p>
  *
  * <p>
- *     Sum of target- and sample-specific unexplained variances about the mean:
+ *     Sum of target- and sample-specific unexplained variances about the mean log multiplicative bias:
  *     {@link #psi} = \Psi_t + \gamma_s
  * </p>
  *
@@ -26,8 +26,8 @@ import java.io.Serializable;
  * </p>
  *
  * <p>
- *     Additive noise in the Poisson parameter:
- *     {@link #poissonAdditiveNoise} = [read depth]_s x [mapping error rate]_{st}
+ *     Mapping error probability:
+ *     {@link #mappingErrorProbability} = \varepsilon_{st}
  * </p>
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
@@ -52,9 +52,9 @@ public final class CoverageModelCopyRatioEmissionData implements Serializable {
     private final int readCount;
 
     /**
-     * Additive noise in the Poisson parameter
+     * Mapping error probability
      */
-    private final double poissonAdditiveNoise;
+    private final double mappingErrorProbability;
 
     /**
      * Sample metadata (sex genotype, depth of coverage, ...)
@@ -71,19 +71,19 @@ public final class CoverageModelCopyRatioEmissionData implements Serializable {
      * @param mu Mean log multiplicative bias
      * @param psi Total unexplained variance
      * @param readCount Raw read count
-     * @param poissonAdditiveNoise Additive noise in the Poisson parameter
+     * @param mappingErrorProbability Mapping error probability
      */
     public CoverageModelCopyRatioEmissionData(final double mu,
                                               final double psi,
                                               final int readCount,
-                                              final double poissonAdditiveNoise) {
+                                              final double mappingErrorProbability) {
         this.mu = ParamUtils.isFinite(mu, "Log multiplicative bias must be finite. Bad value: " + mu);
         this.psi = ParamUtils.isPositiveOrZero(psi, "Unexplained variance must be a non-negative real number." +
                 " Bad value: " + psi);
         this.readCount = ParamUtils.isPositiveOrZero(readCount, "Read count must be a non-negative real number." +
                 " Bad value: " + readCount);
-        this.poissonAdditiveNoise = ParamUtils.isPositiveOrZero(poissonAdditiveNoise, "Additive noise in the Poisson" +
-                " parameter must be non-negative. Bad value: " + poissonAdditiveNoise);
+        this.mappingErrorProbability = ParamUtils.isPositiveOrZero(mappingErrorProbability, "Mapping error probability " +
+                " must be non-negative. Bad value: " + mappingErrorProbability);
     }
 
     public double getMu() {
@@ -98,8 +98,8 @@ public final class CoverageModelCopyRatioEmissionData implements Serializable {
         return readCount;
     }
 
-    public double getPoissonAdditiveNoise() {
-        return poissonAdditiveNoise;
+    public double getMappingErrorProbability() {
+        return mappingErrorProbability;
     }
 
     public CopyRatioCallingMetadata getCopyRatioCallingMetadata() {
@@ -123,7 +123,7 @@ public final class CoverageModelCopyRatioEmissionData implements Serializable {
                 "mu=" + mu +
                 ", psi=" + psi +
                 ", readCount=" + readCount +
-                ", poissonAdditiveNoise=" + poissonAdditiveNoise +
+                ", mappingErrorProbability=" + mappingErrorProbability +
                 ", copyRatioCallingMetadata=" + copyRatioCallingMetadata +
                 '}';
     }

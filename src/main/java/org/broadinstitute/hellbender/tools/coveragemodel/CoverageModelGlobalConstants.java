@@ -48,14 +48,26 @@ public final class CoverageModelGlobalConstants implements Serializable {
     public static final int DEFAULT_MIN_TARGET_BLOCK_SIZE = 5;
 
     /**
-     * Initial value of the target-specific unexplained variance ($Psi$)
+     * Uniform random maximum for target-specific unexplained variance
      */
-    public static final double INITIAL_TARGET_UNEXPLAINED_VARIANCE = 0.0;
+    public static final double RANDOM_UNEXPLAINED_VARIANCE_MAX = 0.0;
 
     /**
-     * Initial value of the diagonal components of the principal latent to target map
+     * TODO -- either estimate this from data for expose to user
+     *
+     * Gaussian random standard deviation for bias covariates
      */
-    public static final double INITIAL_BIAS_COVARIATES_SCALAR = 1.0;
+    public static final double RANDOM_BIAS_COVARIATES_STD = 0.1;
+
+    /**
+     * Gaussian random standard deviation for mean log bias
+     */
+    public static final double RANDOM_MEAN_LOG_BIAS_STD = 0.0;
+
+    /**
+     * Random generator seed for initial model parameters
+     */
+    public static final long RANDOM_MODEL_SEED = 1984;
 
     /**
      * Copy ratio max likelihood estimates output file name
@@ -115,12 +127,27 @@ public final class CoverageModelGlobalConstants implements Serializable {
     /**
      * Bias covariates (= W_{t\mu} = "log bias principal components") output file name
      */
-    public static final String BIAS_COVARIATES_OUTPUT_FILE = "bias_covariates_matrix.tsv";
+    public static final String MEAN_BIAS_COVARIATES_OUTPUT_FILE = "mean_bias_covariates_matrix.tsv";
 
     /**
      * Norm_2 of bias covariates (= \sum_t |W_{t\mu}|^2) output file name
      */
-    public static final String BIAS_COVARIATES_NORM2_OUTPUT_FILE = "bias_covariates_norm2.tsv";
+    public static final String MEAN_BIAS_COVARIATES_NORM2_OUTPUT_FILE = "mean_bias_covariates_norm2.tsv";
+
+    /**
+     * ARD coefficients of bias covariates output file
+     */
+    public static final String BIAS_COVARIATES_ARD_COEFFICIENTS_OUTPUT_FILE = "bias_covariates_ARD_coefficients.tsv";
+
+    /**
+     * History of ARD coefficients of bias covariates output file
+     */
+    public static final String BIAS_COVARIATES_ARD_COEFFICIENTS_HISTORY_OUTPUT_FILE = "bias_covariates_ARD_coefficients_history.tsv";
+
+    /**
+     * Log likelihood history output file
+     */
+    public static final String LOG_LIKELIHOODS_HISTORY_FILENAME = "log_likelihood_history.tsv";
 
     /**
      * Processed targets output file name (order may be different than original, and some may have been dropped)
@@ -128,14 +155,9 @@ public final class CoverageModelGlobalConstants implements Serializable {
     public static final String TARGET_LIST_OUTPUT_FILE = "targets.tsv";
 
     /**
-     * Copy ratio segments output file name
+     * Copy ratio segments subdirectory
      */
-    public static final String COPY_RATIO_SEGMENTS_FILENAME = "copy_ratio_segments.seg";
-
-    /**
-     * Copy ratio variant contexts output file name
-     */
-    public static final String COPY_RATIO_GENOTYPES_FILENAME = "copy_ratio_genotypes.vcf";
+    public static final String COPY_RATIO_SEGMENTS_SUBDIR = "segments";
 
     /**
      * Prefix for posteriors checkpointing output directories

@@ -84,6 +84,13 @@ public class CopyNumberTriStateTransitionProbabilityCache implements Serializabl
     }
 
     /**
+     * Clear the cache
+     */
+    public void emptyCache() {
+        cache.clear();
+    }
+
+    /**
      * Get the log transition probability between different states
      *
      * @param distance distance between targets

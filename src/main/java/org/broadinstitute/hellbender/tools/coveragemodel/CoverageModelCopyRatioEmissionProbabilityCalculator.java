@@ -128,12 +128,8 @@ public final class CoverageModelCopyRatioEmissionProbabilityCalculator implement
                 break;
 
             case HYBRID_POISSON_GAUSSIAN:
-                if (emissionData.getReadCount() >= readCountThresholdPoissonSwitch) {
-                    if (copyRatio > 0) {
-                        logLikelihood = logLikelihoodLaplaceApproximation(emissionData, copyRatio);
-                    } else {
-                        logLikelihood = Double.NEGATIVE_INFINITY;
-                    }
+                if (emissionData.getReadCount() >= readCountThresholdPoissonSwitch && copyRatio > 0) {
+                    logLikelihood = logLikelihoodLaplaceApproximation(emissionData, copyRatio);
                 } else {
                     logLikelihood = logLikelihoodPoisson(emissionData, copyRatio);
                 }
@@ -162,14 +158,17 @@ public final class CoverageModelCopyRatioEmissionProbabilityCalculator implement
      */
     private double logLikelihoodLaplaceApproximation(@Nonnull CoverageModelCopyRatioEmissionData emissionData,
                                                      double copyRatio) {
-        final double depth = emissionData.getCopyRatioCallingMetadata().getSampleCoverageDepth();
-        final double mu = emissionData.getMu() + FastMath.log(copyRatio * depth);
+        final double readDepth = emissionData.getCopyRatioCallingMetadata().getSampleCoverageDepth();
+        final double err = emissionData.getMappingErrorProbability();
+        final double copyRatioCorrection = err * FastMath.exp(-emissionData.getMu());
+        final double mu = emissionData.getMu() + FastMath.log((1 - err) * readDepth * copyRatio +
+                readDepth * copyRatioCorrection);
         final double psi = emissionData.getPsi();
         if (applyPoissonToGaussianContinuityCorrection) {
             return getUnnormalizedLogProbabilityLaplaceApproximation((double)emissionData.getReadCount() + 0.5, mu, psi)
                     - getLogProbabilityLaplaceApproximationMass(mu, psi);
         } else {
-            return getUnnormalizedLogProbabilityLaplaceApproximation(emissionData.getReadCount(), mu, psi)
+            return getUnnormalizedLogProbabilityLaplaceApproximation((double)emissionData.getReadCount(), mu, psi)
                     - getLogProbabilityLaplaceApproximationMass(mu, psi);
         }
     }
@@ -194,7 +193,8 @@ public final class CoverageModelCopyRatioEmissionProbabilityCalculator implement
                                         double copyRatio) {
         final double multBias = FastMath.exp(emissionData.getMu());
         final double readDepth = emissionData.getCopyRatioCallingMetadata().getSampleCoverageDepth();
-        final double poissonMean = readDepth * copyRatio * multBias + emissionData.getPoissonAdditiveNoise();
+        final double err = emissionData.getMappingErrorProbability();
+        final double poissonMean = readDepth * ((1 - err) * copyRatio * multBias + err);
         return new PoissonDistribution(null, poissonMean, PoissonDistribution.DEFAULT_EPSILON,
                 PoissonDistribution.DEFAULT_MAX_ITERATIONS).logProbability(emissionData.getReadCount());
     }

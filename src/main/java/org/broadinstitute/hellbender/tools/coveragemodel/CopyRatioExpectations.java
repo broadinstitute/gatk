@@ -19,6 +19,7 @@ public final class CopyRatioExpectations implements Serializable {
 
     private final double[] logCopyRatioMeans;
     private final double[] logCopyRatioVariances;
+    private final double logChainPosteriorProbability;
     private final int numTargets;
 
     /**
@@ -28,11 +29,24 @@ public final class CopyRatioExpectations implements Serializable {
      * @param logCopyRatioVariances an array of log copy ratio (or copy number) variances on a range of targets
      */
     public CopyRatioExpectations(@Nonnull final double[] logCopyRatioMeans,
-                                 @Nonnull final double[] logCopyRatioVariances) {
+                                 @Nonnull final double[] logCopyRatioVariances,
+                                 final double logChainPosteriorProbability) {
+        Utils.validateArg(logCopyRatioMeans.length == logCopyRatioVariances.length, "The length of log copy ratio means and variances arrays must be equal");
         this.logCopyRatioMeans = Utils.nonNull(logCopyRatioMeans, "Log copy ratio means array must be non-null");
         this.logCopyRatioVariances = Utils.nonNull(logCopyRatioVariances, "Log copy ratio variances array must be non-null");
-        Utils.validateArg(logCopyRatioMeans.length == logCopyRatioVariances.length, "The length of log copy ratio means and variances arrays must be equal");
+        this.logChainPosteriorProbability = logChainPosteriorProbability;
         numTargets = logCopyRatioMeans.length;
+    }
+
+    /**
+     * Return the log posterior probability of the HMM chain (excluding emission probabilities):
+     *
+     *    \log \pi_c E[c_{0}] + \sum_{t=1}^{T-1} \log T_{t,t+1}^{c_t,c_{t+1}} E[c_{t} c_{t+1}]
+     *
+     * @return a double value
+     */
+    public double getLogChainPosteriorProbability() {
+        return logChainPosteriorProbability;
     }
 
     /**

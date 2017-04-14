@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.germline;
 
 import htsjdk.samtools.util.Log;
-import junit.framework.Assert;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.stat.descriptive.AbstractUnivariateStatistic;
+import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelEMParams;
@@ -19,6 +21,8 @@ import org.broadinstitute.hellbender.tools.exome.sexgenotyper.GermlinePloidyAnno
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeDataCollection;
 import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
@@ -26,6 +30,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -36,7 +41,9 @@ import java.util.stream.IntStream;
  *
  * TODO github/gatk-protected issue #803 test case-sample calling on rearranged targets
  * TODO github/gatk-protected issue #803 test concordance on parameter estimation
- * TODO github/gatk-protected issue #803 test Spark results match local results (of course they do, but is good to test anyway...)
+ * TODO github/gatk-protected issue #803 test Spark results match local results
+ * TODO github/gatk-protected issue #803 report statistics on max likelihood copy ratio as well
+ * TODO github/gatk-protected issue #803 report statistics on local copy ratio posteriors as well
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
@@ -65,20 +72,26 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
     private static final File TEST_TARGETS_FILE = new File(TEST_TRUTH_SIM_MODEL, "targets.tsv");
 
     private static final double MAPPING_ERROR_RATE = 5e-4; /* reflects the simulated data */
-    private static final int NUM_LATENTS = 5; /* simulated data uses 3 */
-    private static final int MAX_COPY_NUMBER = 3; /* reflects the simulated data */
+    private static final int NUM_TRUTH_LATENTS = 5;
 
-    private static final int MIN_LEARNING_READ_COUNT = 10;
-    private static final int MAX_LEARNING_EM_ITERATIONS = 10;
+    private static final int NUM_LEARNING_LATENTS = 16;
+    private static final boolean ENABLE_LEARNING_GAMMA = false;
+    private static final boolean ENABLE_CALLING_GAMMA = false;
+    private static final boolean ENABLE_LEARNING_ARD = true;
+    private static final CoverageModelEMParams.PsiUpdateMode PSI_UPDATE_MODE =
+            CoverageModelEMParams.PsiUpdateMode.PSI_ISOTROPIC;
+    private static final CoverageModelEMParams.ModelInitializationStrategy MODEL_INITIALIZATION_STRATEGY =
+            CoverageModelEMParams.ModelInitializationStrategy.PCA;
+    private static final boolean ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING = false;
+
+    private static final int MIN_LEARNING_READ_COUNT = 1;
+    private static final int MAX_LEARNING_EM_ITERATIONS = 20;
     private static final int MAX_CALLING_EM_ITERATIONS = 10;
 
-    private static final double MIN_PASS_REF_CONCORDANCE = 0.95;
-    private static final double MIN_PASS_ALT_CONCORDANCE = 0.30;
-    private static final double MIN_PASS_HOM_DEL_CONCORDANCE = 0.95;
-    private static final double MIN_PASS_ABS_CONCORDANCE = 0.30;
-
+    private static final File CHECKPOINTING_PATH = createTempDir("coverage_modeller_germline_checkpointing");
     private static final File LEARNING_OUTPUT_PATH = createTempDir("coverage_modeller_germline_learning_output");
     private static final File CALLING_OUTPUT_PATH = createTempDir("coverage_modeller_germline_calling_output");
+
     private static final File LEARNING_MODEL_OUTPUT_PATH = new File(LEARNING_OUTPUT_PATH,
             CoverageModellerGermlineSparkToggle.FINAL_MODEL_SUBDIR);
     private static final File LEARNING_POSTERIORS_OUTPUT_PATH = new File(LEARNING_OUTPUT_PATH,
@@ -109,14 +122,10 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
 
     private String[] getBaseArgs(final String... extraArgs) {
         return ArrayUtils.addAll(new String[] {
-                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
-                    String.valueOf(NUM_LATENTS),
                 "--" + CoverageModelEMParams.MAPPING_ERROR_RATE_LONG_NAME,
                     String.valueOf(MAPPING_ERROR_RATE),
-                "--" + CoverageModelEMParams.MIN_LEARNING_READ_COUNT_LONG_NAME,
-                    String.valueOf(MIN_LEARNING_READ_COUNT),
                 "--" + CoverageModelEMParams.RUN_CHECKPOINTING_PATH_LONG_NAME,
-                    "false",
+                    CHECKPOINTING_PATH.getAbsolutePath(),
                 "--" + CoverageModelEMParams.NUMBER_OF_TARGET_SPACE_PARTITIONS_LONG_NAME,
                     String.valueOf(SPARK_NUMBER_OF_PARTITIONS),
                 "--" + CoverageModellerGermlineSparkToggle.COPY_NUMBER_TRANSITION_PRIOR_TABLE_LONG_NAME,
@@ -125,7 +134,10 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
                     TEST_CONTIG_PLOIDY_ANNOTATIONS_FILE.getAbsolutePath(),
                 "--" + CoverageModelEMParams.RDD_CHECKPOINTING_PATH_LONG_NAME,
                     SPARK_CHECKPOINTING_PATH.getAbsolutePath(),
-                "--verbosity", "INFO"
+                "--" + CoverageModelEMParams.EXTENDED_POSTERIOR_OUTPUT_ENABLED_LONG_NAME,
+                    "true",
+                "--verbosity",
+                    "INFO"
         }, extraArgs);
     }
 
@@ -140,11 +152,27 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
                 "--" + CoverageModellerGermlineSparkToggle.OUTPUT_PATH_LONG_NAME,
                     LEARNING_OUTPUT_PATH.getAbsolutePath(),
                 "--" + CoverageModelEMParams.MAX_EM_ITERATIONS_LONG_NAME,
-                    String.valueOf(MAX_LEARNING_EM_ITERATIONS)
+                    String.valueOf(MAX_LEARNING_EM_ITERATIONS),
+                "--" + CoverageModelEMParams.MIN_LEARNING_READ_COUNT_LONG_NAME,
+                    String.valueOf(MIN_LEARNING_READ_COUNT),
+                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
+                    "false",
+                "--" + CoverageModelEMParams.GAMMA_UPDATE_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_LEARNING_GAMMA),
+                "--" + CoverageModelEMParams.ARD_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_LEARNING_ARD),
+                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
+                    String.valueOf(NUM_LEARNING_LATENTS),
+                "--" + CoverageModelEMParams.ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING),
+                "--" + CoverageModelEMParams.PSI_SOLVER_MODE_LONG_NAME,
+                    PSI_UPDATE_MODE.name(),
+                "--" + CoverageModelEMParams.MODEL_INITIALIZATION_STRATEGY_LONG_NAME,
+                    MODEL_INITIALIZATION_STRATEGY.name()
         }, getBaseArgs(extraArgs));
     }
 
-    private String[] getCallingArgs(final String... extraArgs) {
+    private String[] getCallingOnLearnedModelArgs(final String... extraArgs) {
         return ArrayUtils.addAll(new String[] {
                 "--" + CoverageModellerGermlineSparkToggle.JOB_TYPE_LONG_NAME,
                     CoverageModellerGermlineSparkToggle.JobType.CALL_ONLY.name(),
@@ -155,7 +183,46 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
                 "--" + CoverageModellerGermlineSparkToggle.OUTPUT_PATH_LONG_NAME,
                     CALLING_OUTPUT_PATH.getAbsolutePath(),
                 "--" + CoverageModelEMParams.MAX_EM_ITERATIONS_LONG_NAME,
-                    String.valueOf(MAX_CALLING_EM_ITERATIONS)
+                    String.valueOf(MAX_CALLING_EM_ITERATIONS),
+                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
+                    "false",
+                "--" + CoverageModelEMParams.GAMMA_UPDATE_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_CALLING_GAMMA),
+                "--" + CoverageModelEMParams.ARD_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_LEARNING_ARD),
+                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
+                    String.valueOf(NUM_LEARNING_LATENTS),
+                "--" + CoverageModelEMParams.ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING),
+                "--" + CoverageModelEMParams.PSI_SOLVER_MODE_LONG_NAME,
+                    PSI_UPDATE_MODE.name()
+        }, getBaseArgs(extraArgs));
+    }
+
+    private String[] getCallingOnExactModelArgs(final String... extraArgs) {
+        return ArrayUtils.addAll(new String[] {
+                "--" + CoverageModellerGermlineSparkToggle.JOB_TYPE_LONG_NAME,
+                    CoverageModellerGermlineSparkToggle.JobType.CALL_ONLY.name(),
+                "--" + CoverageModellerGermlineSparkToggle.INPUT_READ_COUNTS_TABLE_LONG_NAME,
+                    TEST_CALLING_COMBINED_RAW_READ_COUNTS_FILE.getAbsolutePath(),
+                "--" + CoverageModellerGermlineSparkToggle.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
+                    TEST_CALLING_SAMPLE_SEX_GENOTYPES_FILE.getAbsolutePath(),
+                "--" + CoverageModellerGermlineSparkToggle.OUTPUT_PATH_LONG_NAME,
+                    CALLING_OUTPUT_PATH.getAbsolutePath(),
+                "--" + CoverageModelEMParams.MAX_EM_ITERATIONS_LONG_NAME,
+                   String.valueOf(MAX_CALLING_EM_ITERATIONS),
+                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
+                    "false",
+                "--" + CoverageModelEMParams.GAMMA_UPDATE_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_CALLING_GAMMA),
+                "--" + CoverageModelEMParams.ARD_ENABLED_LONG_NAME,
+                    "false",
+                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
+                   String.valueOf(NUM_TRUTH_LATENTS),
+                "--" + CoverageModelEMParams.ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING),
+                "--" + CoverageModelEMParams.PSI_SOLVER_MODE_LONG_NAME,
+                    PSI_UPDATE_MODE.name()
         }, getBaseArgs(extraArgs));
     }
 
@@ -164,31 +231,31 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
         final List<Target> modelledTargets = TargetTableReader.readTargetFile(new File(LEARNING_MODEL_OUTPUT_PATH,
                 CoverageModelGlobalConstants.TARGET_LIST_OUTPUT_FILE));
 
-        assertInferredCopyNumberConcordance(LEARNING_POSTERIORS_OUTPUT_PATH, TEST_LEARNING_COMBINED_COPY_NUMBER_FILE,
+        reportCopyNumberSummaryStatistics(LEARNING_POSTERIORS_OUTPUT_PATH, TEST_LEARNING_COMBINED_COPY_NUMBER_FILE,
                 modelledTargets, LEARNING_SEX_GENOTYPES_DATA);
         logger.info("Copy number concordance test passed for simultaneous learning and calling");
     }
 
     private void runCaseSampleCallingTestOnExactModelParams(final String... extraArgs) {
-        runCommandLine(getCallingArgs(ArrayUtils.addAll(new String[] {
+        runCommandLine(getCallingOnExactModelArgs(ArrayUtils.addAll(new String[] {
                 "--" + CoverageModellerGermlineSparkToggle.INPUT_MODEL_PATH_LONG_NAME,
                 TEST_TRUTH_SIM_MODEL.getAbsolutePath() }, extraArgs)));
 
         final List<Target> callingTargets = TargetTableReader.readTargetFile(new File(CALLING_POSTERIORS_OUTPUT_PATH,
                 CoverageModelGlobalConstants.TARGET_LIST_OUTPUT_FILE));
-        assertInferredCopyNumberConcordance(CALLING_POSTERIORS_OUTPUT_PATH, TEST_CALLING_COMBINED_COPY_NUMBER_FILE,
+        reportCopyNumberSummaryStatistics(CALLING_POSTERIORS_OUTPUT_PATH, TEST_CALLING_COMBINED_COPY_NUMBER_FILE,
                 callingTargets, CALLING_SEX_GENOTYPES_DATA);
         logger.info("Copy number concordance test passed for case sample calling");
     }
 
     private void runCaseSampleCallingTestOnLearnedModelParams(final String... extraArgs) {
-        runCommandLine(getCallingArgs(ArrayUtils.addAll(new String[] {
+        runCommandLine(getCallingOnLearnedModelArgs(ArrayUtils.addAll(new String[] {
                 "--" + CoverageModellerGermlineSparkToggle.INPUT_MODEL_PATH_LONG_NAME,
                 LEARNING_MODEL_OUTPUT_PATH.getAbsolutePath()}, extraArgs)));
 
         final List<Target> callingTargets = TargetTableReader.readTargetFile(new File(CALLING_POSTERIORS_OUTPUT_PATH,
                 CoverageModelGlobalConstants.TARGET_LIST_OUTPUT_FILE));
-        assertInferredCopyNumberConcordance(CALLING_POSTERIORS_OUTPUT_PATH, TEST_CALLING_COMBINED_COPY_NUMBER_FILE,
+        reportCopyNumberSummaryStatistics(CALLING_POSTERIORS_OUTPUT_PATH, TEST_CALLING_COMBINED_COPY_NUMBER_FILE,
                 callingTargets, CALLING_SEX_GENOTYPES_DATA);
         logger.info("Copy number concordance test passed for case sample calling");
     }
@@ -224,130 +291,64 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
     }
 
     /* Shame on me for using {@link ReadCountCollection} to store copy numbers! */
-    private void assertInferredCopyNumberConcordance(@Nonnull final File posteriorsOutputPath,
-                                                     @Nonnull final File truthCopyNumberFile,
-                                                     @Nonnull final List<Target> targets,
-                                                     @Nonnull final SexGenotypeDataCollection sexGenotypeDataCollection) {
+    private void reportCopyNumberSummaryStatistics(@Nonnull final File posteriorsOutputPath,
+                                                   @Nonnull final File truthCopyNumberFile,
+                                                   @Nonnull final List<Target> targets,
+                                                   @Nonnull final SexGenotypeDataCollection sexGenotypeDataCollection) {
         final ReadCountCollection truthCopyNumberCollection = loadTruthCopyNumberTable(truthCopyNumberFile,
                 targets);
 
-        final RealMatrix inferredCopyNumberMatrix = Nd4jApacheAdapterUtils.convertINDArrayToApacheMatrix(
-                Nd4jIOUtils.readNDArrayFromTextFile(new File(posteriorsOutputPath,
-                        CoverageModelGlobalConstants.COPY_RATIO_VITERBI_FILENAME)).transpose());
-        final ReadCountCollection inferredCopyNumberCollection = new ReadCountCollection(targets,
-                truthCopyNumberCollection.columnNames(), inferredCopyNumberMatrix);
+        final RealMatrix calledCopyNumberMatrix = Nd4jApacheAdapterUtils.convertINDArrayToApacheMatrix(
+                Nd4jIOUtils.readNDArrayMatrixFromTextFile(new File(posteriorsOutputPath,
+                        CoverageModelGlobalConstants.COPY_RATIO_VITERBI_FILENAME)));
+        final ReadCountCollection calledCopyNumberCollection = new ReadCountCollection(targets,
+                truthCopyNumberCollection.columnNames(), calledCopyNumberMatrix);
 
-        final int numSamples = inferredCopyNumberCollection.columnNames().size();
+        final int numSamples = calledCopyNumberCollection.columnNames().size();
         final List<String> sampleSexGenotypes = truthCopyNumberCollection.columnNames().stream()
                 .map(sampleName -> sexGenotypeDataCollection.getSampleSexGenotypeData(sampleName).getSexGenotype())
                 .collect(Collectors.toList());
 
-        final List<SampleCopyNumberConcordanceSummary> sampleConcordanceSummaryList = IntStream.range(0, numSamples)
+        final List<SampleCopyNumberSummaryStatistics> sampleSummaryStatisticsList = IntStream.range(0, numSamples)
                 .mapToObj(si -> calculateSampleCopyNumberConcordance(truthCopyNumberCollection,
-                        inferredCopyNumberCollection, si, sampleSexGenotypes.get(si)))
+                        calledCopyNumberCollection, si, sampleSexGenotypes.get(si)))
                 .collect(Collectors.toList());
 
-        /* calculate average concordances */
-        final double averageRefConcordance = IntStream.range(0, numSamples)
-                .mapToDouble(si -> sampleConcordanceSummaryList.get(si).refConcordance)
-                .sum() / numSamples;
-        final double averageAltConcordance = IntStream.range(0, numSamples)
-                .mapToDouble(si -> sampleConcordanceSummaryList.get(si).altConcordance)
-                .sum() / numSamples;
-        final double[] averageAbsConcordance = IntStream.range(0, numSamples)
-                .mapToObj(si -> sampleConcordanceSummaryList.get(si).absConcordance)
-                .reduce(new double[MAX_COPY_NUMBER + 1], (a, b) -> {
-                    final double[] res = new double[MAX_COPY_NUMBER + 1];
-                    for (int i = 0; i <= MAX_COPY_NUMBER; i++) {
-                        res[i] = a[i] + b[i];
-                    }
-                    return res;
-                });
-        for (int i = 0; i <= MAX_COPY_NUMBER; i++) {
-            averageAbsConcordance[i] /= numSamples;
-        }
-        final double averageOverallAbsConcordance =
-                Arrays.stream(averageAbsConcordance).sum() / (MAX_COPY_NUMBER + 1);
+        /* calculation various summary statistics */
+        final AbstractUnivariateStatistic calculator = new Mean();
+        final ConfusionRates homDelMedianRates = ConfusionMatrix.getConfusionRates(sampleSummaryStatisticsList.stream()
+                .map(ss -> ss.homozygousDeletionConfusionMatrix).collect(Collectors.toList()), calculator);
+        final ConfusionRates hetDelMedianRates = ConfusionMatrix.getConfusionRates(sampleSummaryStatisticsList.stream()
+                .map(ss -> ss.heterozygousDeletionConfusionMatrix).collect(Collectors.toList()), calculator);
+        final ConfusionRates dupMedianRates = ConfusionMatrix.getConfusionRates(sampleSummaryStatisticsList.stream()
+                .map(ss -> ss.duplicationConfusionMatrix).collect(Collectors.toList()), calculator);
+        final double absoluteConcordance = Concordance.getCollectionConcordance(sampleSummaryStatisticsList.stream()
+                .map(ss -> ss.absoluteCopyNumberConcordance)
+                .collect(Collectors.toList()), calculator);
 
-        logger.info(String.format("The ref copy number concordance is %f and passes the expected threshold %f",
-                averageRefConcordance, MIN_PASS_REF_CONCORDANCE));
-        logger.info(String.format("The alt copy number concordance is %f and passes the expected threshold %f",
-                averageAltConcordance, MIN_PASS_ALT_CONCORDANCE));
-        logger.info(String.format("The homozygous deletion calling concordance is %f and passes the expected threshold %f",
-                averageAbsConcordance[0], MIN_PASS_HOM_DEL_CONCORDANCE));
-        logger.info(String.format("The average absolute copy number calling concordance %f and passes the expected threshold %f",
-                averageOverallAbsConcordance, MIN_PASS_ABS_CONCORDANCE));
-
-        Assert.assertTrue(String.format("The ref copy number concordance %f is lower than expected threshold %f",
-                averageRefConcordance, MIN_PASS_REF_CONCORDANCE), averageRefConcordance > MIN_PASS_REF_CONCORDANCE);
-
-        Assert.assertTrue(String.format("The alt copy number concordance %f is lower than expected threshold %f",
-                averageAltConcordance, MIN_PASS_ALT_CONCORDANCE), averageAltConcordance > MIN_PASS_ALT_CONCORDANCE);
-
-        Assert.assertTrue(String.format("The homozygous deletion calling concordance %f is lower than expected threshold %f",
-                averageAbsConcordance[0], MIN_PASS_HOM_DEL_CONCORDANCE), averageAbsConcordance[0] > MIN_PASS_HOM_DEL_CONCORDANCE);
-
-        Assert.assertTrue(String.format("The average absolute copy number calling concordance %f is lower than expected threshold %f",
-                averageOverallAbsConcordance, MIN_PASS_ABS_CONCORDANCE), averageOverallAbsConcordance > MIN_PASS_ABS_CONCORDANCE);
+        /* log */
+        logger.info("Homozygous deletion statistics: " + homDelMedianRates.toString());
+        logger.info("Heterozygous deletion statistics: " + hetDelMedianRates.toString());
+        logger.info("Duplication statistics: " + dupMedianRates.toString());
+        logger.info(String.format("Absolute copy number calling concordance: %f", absoluteConcordance));
     }
 
-    private SampleCopyNumberConcordanceSummary calculateSampleCopyNumberConcordance(final ReadCountCollection truth,
-                                                                                                                             final ReadCountCollection inferred,
-                                                                                                                             final int sampleIndex,
-                                                                                                                             final String sampleSexGenotype) {
+    private SampleCopyNumberSummaryStatistics calculateSampleCopyNumberConcordance(final ReadCountCollection truth,
+                                                                                   final ReadCountCollection called,
+                                                                                   final int sampleIndex,
+                                                                                   final String sampleSexGenotype) {
         final List<Target> targets = truth.targets();
-        int targetIndex = 0;
-
         final int[] truthCopyNumberCallsPerSample = Arrays.stream(truth.getColumn(sampleIndex))
                 .mapToInt(d -> (int)d).toArray();
-        final int[] inferredCopyNumberCallsPerSample = Arrays.stream(inferred.getColumn(sampleIndex))
+        final int[] calledCopyNumberCallsPerSample = Arrays.stream(called.getColumn(sampleIndex))
                 .mapToInt(d -> (int)d).toArray();
+        final int[] refCopyNumberCallsPerSample = targets.stream()
+                .mapToInt(target -> GERMLINE_PLOIDY_ANNOTATIONS.getTargetGermlinePloidyByGenotype(target,
+                        sampleSexGenotype))
+                .toArray();
 
-        final int[] correctCopyNumberCallCounts = new int[MAX_COPY_NUMBER + 1];
-        final int[] truthCopyNumberCallCounts = new int[MAX_COPY_NUMBER + 1];
-        int truthRefCallCounts = 0, truthAltCallCounts = 0;
-        int correctRefCallCounts = 0, correctAltCallCounts = 0;
-        for (final Target target : targets) {
-            final int refCopyNumber = GERMLINE_PLOIDY_ANNOTATIONS.getTargetGermlinePloidyByGenotype(target,
-                    sampleSexGenotype);
-            final int truthCopyNumber = truthCopyNumberCallsPerSample[targetIndex];
-            final int inferredCopyNumber = inferredCopyNumberCallsPerSample[targetIndex];
-
-            /* ref/alt-blind concordance */
-            truthCopyNumberCallCounts[truthCopyNumber]++;
-            if (inferredCopyNumber == truthCopyNumber) {
-                correctCopyNumberCallCounts[truthCopyNumber]++;
-            }
-
-            /* ref/alt-resolved concordance */
-            if (truthCopyNumber == refCopyNumber) { /* ref truth */
-                truthRefCallCounts++;
-                if (inferredCopyNumber == truthCopyNumber) {
-                    correctRefCallCounts++;
-                }
-            } else { /* alt truth */
-                truthAltCallCounts++;
-                if (inferredCopyNumber == truthCopyNumber) {
-                    correctAltCallCounts++;
-                }
-            }
-            targetIndex++;
-        }
-
-        final double[] absConcordance = new double[MAX_COPY_NUMBER + 1];
-        for (int cn = 0; cn <= MAX_COPY_NUMBER; cn++) {
-            if (truthCopyNumberCallCounts[cn] > 0) {
-                absConcordance[cn] = ((double) correctCopyNumberCallCounts[cn]) / truthCopyNumberCallCounts[cn];
-            } else {
-                absConcordance[cn] = 1.0; /* truth has to be 0 too */
-            }
-        }
-        final double refConcordance = truthRefCallCounts > 0 ?
-                ((double)correctRefCallCounts) / truthRefCallCounts : 1.0;
-        final double altConcordance = truthAltCallCounts > 0 ?
-                ((double)correctAltCallCounts) / truthAltCallCounts : 1.0;
-
-        return new SampleCopyNumberConcordanceSummary(refConcordance, altConcordance, absConcordance);
+        return new SampleCopyNumberSummaryStatistics(refCopyNumberCallsPerSample, truthCopyNumberCallsPerSample,
+                calledCopyNumberCallsPerSample);
     }
 
     private ReadCountCollection loadTruthCopyNumberTable(@Nonnull final File truthCopyNumberFile,
@@ -362,37 +363,289 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
                 .arrangeTargets(modelledTargets);
     }
 
-    private final class SampleCopyNumberConcordanceSummary {
-        /**
-         * Fraction of correct ref calls
-         */
-        final double refConcordance;
+    /**
+     * Confusion rates for a binary classification problem
+     */
+    private static final class ConfusionRates {
+        final double TPR, TNR, FPR, FNR;
 
-        /**
-         * Fraction of correct alt calls
-         */
-        final double altConcordance;
-
-        /**
-         * Fraction of correct calls by copy number
-         */
-        final double[] absConcordance;
-
-        public SampleCopyNumberConcordanceSummary(final double refConcordance,
-                                                  final double altConcordance,
-                                                  final double[] absConcordance) {
-            this.refConcordance = refConcordance;
-            this.altConcordance = altConcordance;
-            this.absConcordance = absConcordance;
+        ConfusionRates(final double TPR, final double TNR, final double FPR, final double FNR) {
+            this.TPR = TPR;
+            this.TNR = TNR;
+            this.FPR = FPR;
+            this.FNR = FNR;
         }
 
         @Override
         public String toString() {
-            return "SampleCopyNumberConcordanceSummary{" +
-                    "refConcordance=" + refConcordance +
-                    ", altConcordance=" + altConcordance +
-                    ", absConcordance=" + Arrays.toString(absConcordance) +
+            return String.format("TPR = %f, FPR = %f, TNR = %f, FNR = %f", TPR, FPR, TNR, FNR);
+        }
+    }
+
+    /**
+     * Confusion matrix of a binary classification problem
+     */
+    private static final class ConfusionMatrix {
+        final int TP, TN, FP, FN;
+
+        /* condition positive = TP + FN */
+        final int CP;
+
+        /* condition negative = FP + TN */
+        final int CN;
+
+        public static final double DEFAULT_UNDEFINED = -1.0;
+
+        public ConfusionMatrix(final int TP, final int FP, final int TN, final int FN) {
+            this.TP = ParamUtils.isPositiveOrZero(TP, "true positive count must be non-negative");
+            this.FP = ParamUtils.isPositiveOrZero(FP, "false positive count must be non-negative");
+            this.TN = ParamUtils.isPositiveOrZero(TN, "true negative count must be non-negative");
+            this.FN = ParamUtils.isPositiveOrZero(FN, "false negative count must be non-negative");
+            CP = TP + FN;
+            CN = FP + TN;
+        }
+
+        public double getTruePositiveRate() {
+            return CP > 0 ? ((double) TP) / CP : DEFAULT_UNDEFINED;
+        }
+
+        public double getTrueNegativeRate() {
+            return CN > 0 ? ((double) TN) / CN : DEFAULT_UNDEFINED;
+        }
+
+        public double getFalsePositiveRate() {
+            return CN > 0 ? ((double) FP) / CN : DEFAULT_UNDEFINED;
+        }
+
+        public double getFalseNegativeRate() {
+            return CP > 0 ? ((double) FN) / CP : DEFAULT_UNDEFINED;
+        }
+
+        public static double getCollectionTruePositiveRate(@Nonnull final Collection<ConfusionMatrix> col,
+                                                           @Nonnull final AbstractUnivariateStatistic calculator) {
+            try {
+                return calculator.evaluate(col.stream()
+                        .mapToDouble(ConfusionMatrix::getTruePositiveRate)
+                        .filter(val -> val != ConfusionMatrix.DEFAULT_UNDEFINED)
+                        .toArray());
+            } catch (final MathIllegalArgumentException ex) {
+                return DEFAULT_UNDEFINED;
+            }
+        }
+
+        public static double getCollectionTrueNegativeRate(@Nonnull final Collection<ConfusionMatrix> col,
+                                                           @Nonnull final AbstractUnivariateStatistic calculator) {
+            try {
+                return calculator.evaluate(col.stream()
+                        .mapToDouble(ConfusionMatrix::getTrueNegativeRate)
+                        .filter(val -> val != ConfusionMatrix.DEFAULT_UNDEFINED)
+                        .toArray());
+            } catch (final MathIllegalArgumentException ex) {
+                return DEFAULT_UNDEFINED;
+            }
+        }
+
+        public static double getCollectionFalsePositiveRate(@Nonnull final Collection<ConfusionMatrix> col,
+                                                            @Nonnull final AbstractUnivariateStatistic calculator) {
+            try {
+                return calculator.evaluate(col.stream()
+                        .mapToDouble(ConfusionMatrix::getFalsePositiveRate)
+                        .filter(val -> val != ConfusionMatrix.DEFAULT_UNDEFINED)
+                        .toArray());
+            } catch (final MathIllegalArgumentException ex) {
+                return DEFAULT_UNDEFINED;
+            }
+        }
+
+        public static double getCollectionFalseNegativeRate(@Nonnull final Collection<ConfusionMatrix> col,
+                                                            @Nonnull final AbstractUnivariateStatistic calculator) {
+            try {
+                return calculator.evaluate(col.stream()
+                        .mapToDouble(ConfusionMatrix::getFalseNegativeRate)
+                        .filter(val -> val != ConfusionMatrix.DEFAULT_UNDEFINED)
+                        .toArray());
+            } catch (final MathIllegalArgumentException ex) {
+                return DEFAULT_UNDEFINED;
+            }
+        }
+
+        public static ConfusionRates getConfusionRates(@Nonnull final Collection<ConfusionMatrix> col,
+                                                       @Nonnull final AbstractUnivariateStatistic calculator) {
+            return new ConfusionRates(getCollectionTruePositiveRate(col, calculator),
+                    getCollectionTrueNegativeRate(col, calculator),
+                    getCollectionFalsePositiveRate(col, calculator),
+                    getCollectionFalseNegativeRate(col, calculator));
+        }
+
+        @Override
+        public String toString() {
+            return "ConfusionMatrix{" +
+                    "TP=" + TP +
+                    ", TN=" + TN +
+                    ", FP=" + FP +
+                    ", FN=" + FN +
                     '}';
         }
     }
+
+    /**
+     * Concordance statistics
+     */
+    private static final class Concordance {
+        final int right, wrong;
+
+        public static final double DEFAULT_UNDEFINED = -1.0;
+
+        public Concordance(final int right, final int wrong) {
+            this.right = ParamUtils.isPositiveOrZero(right, "Right count must be non-negative");
+            this.wrong = ParamUtils.isPositiveOrZero(wrong, "Wrong count must be non-negative");
+        }
+
+        public double getConcordance() {
+            return (right + wrong > 0) ? (double) right / (right + wrong) : DEFAULT_UNDEFINED;
+        }
+
+        public double getDiscordance() {
+            return (right + wrong > 0) ? (double) wrong / (right + wrong) : DEFAULT_UNDEFINED;
+        }
+
+        public static double getCollectionConcordance(@Nonnull final Collection<Concordance> col,
+                                                      @Nonnull final AbstractUnivariateStatistic calculator) {
+            try {
+                return calculator.evaluate(col.stream()
+                        .mapToDouble(Concordance::getConcordance)
+                        .filter(val -> val != DEFAULT_UNDEFINED)
+                        .toArray());
+            } catch (final MathIllegalArgumentException ex) {
+                return DEFAULT_UNDEFINED;
+            }
+        }
+
+        public static double getCollectionDiscordance(@Nonnull final Collection<Concordance> col,
+                                                      @Nonnull final AbstractUnivariateStatistic calculator) {
+            try {
+                return calculator.evaluate(col.stream()
+                        .mapToDouble(Concordance::getDiscordance)
+                        .filter(val -> val != DEFAULT_UNDEFINED)
+                        .toArray());
+            } catch (final MathIllegalArgumentException ex) {
+                return DEFAULT_UNDEFINED;
+            }
+        }
+    }
+
+    private final class SampleCopyNumberSummaryStatistics {
+
+        final int length;
+        final ConfusionMatrix homozygousDeletionConfusionMatrix;
+        final ConfusionMatrix heterozygousDeletionConfusionMatrix;
+        final ConfusionMatrix duplicationConfusionMatrix;
+        final Concordance absoluteCopyNumberConcordance;
+
+        /**
+         *
+         * @param refCopyNumberArray array of reference copy numbers
+         * @param truthCopyNumberArray array of truth copy numbers
+         * @param calledCopyNumberArray array of called copy numbers
+         */
+        SampleCopyNumberSummaryStatistics(final int[] refCopyNumberArray,
+                                          final int[] truthCopyNumberArray,
+                                          final int[] calledCopyNumberArray) {
+            Utils.validateArg(refCopyNumberArray.length == truthCopyNumberArray.length &&
+                refCopyNumberArray.length == calledCopyNumberArray.length, "The reference, truth, and called copy number" +
+                    " arrays must have the same length");
+            length = refCopyNumberArray.length;
+            homozygousDeletionConfusionMatrix = calculateHomozygousDeletionStatistics(refCopyNumberArray,
+                    truthCopyNumberArray, calledCopyNumberArray);
+            heterozygousDeletionConfusionMatrix = calculateHeterozygousDeletionStatistics(refCopyNumberArray,
+                    truthCopyNumberArray, calledCopyNumberArray);
+            duplicationConfusionMatrix = calculateDuplicationStatistics(refCopyNumberArray,
+                    truthCopyNumberArray, calledCopyNumberArray);
+            absoluteCopyNumberConcordance = calculateAbsoluteCopyNumberStatistics(truthCopyNumberArray,
+                    calledCopyNumberArray);
+        }
+
+        private ConfusionMatrix calculateHomozygousDeletionStatistics(final int[] refCopyNumberArray,
+                                                                      final int[] truthCopyNumberArray,
+                                                                      final int[] calledCopyNumberArray) {
+            int TP = 0, FP = 0, TN = 0, FN = 0;
+            for (int i = 0; i < length; i++) {
+                if (refCopyNumberArray[i] > 0 && truthCopyNumberArray[i] == 0 && calledCopyNumberArray[i] == 0) {
+                    TP++;
+                }
+                if (refCopyNumberArray[i] > 0 && truthCopyNumberArray[i] > 0 && calledCopyNumberArray[i] == 0) {
+                    FP++;
+                }
+                if (truthCopyNumberArray[i] > 0 && calledCopyNumberArray[i] > 0) {
+                    TN++;
+                }
+                if (refCopyNumberArray[i] > 0 && truthCopyNumberArray[i] == 0 && calledCopyNumberArray[i] > 0) {
+                    FN++;
+                }
+            }
+            return new ConfusionMatrix(TP, FP, TN, FN);
+        }
+
+        private ConfusionMatrix calculateHeterozygousDeletionStatistics(final int[] refCopyNumberArray,
+                                                                        final int[] truthCopyNumberArray,
+                                                                        final int[] calledCopyNumberArray) {
+            int TP = 0, FP = 0, TN = 0, FN = 0;
+            for (int i = 0; i < length; i++) {
+                if (refCopyNumberArray[i] != 2) {
+                    continue;
+                }
+                if (truthCopyNumberArray[i] == 1 && calledCopyNumberArray[i] == 1) {
+                    TP++;
+                }
+                if (truthCopyNumberArray[i] != 1 && calledCopyNumberArray[i] == 1) {
+                    FP++;
+                }
+                if (truthCopyNumberArray[i] != 1 && calledCopyNumberArray[i] != 1) {
+                    TN++;
+                }
+                if (truthCopyNumberArray[i] == 1 && calledCopyNumberArray[i] != 1) {
+                    FN++;
+                }
+            }
+            return new ConfusionMatrix(TP, FP, TN, FN);
+        }
+
+        private ConfusionMatrix calculateDuplicationStatistics(final int[] refCopyNumberArray,
+                                                               final int[] truthCopyNumberArray,
+                                                               final int[] calledCopyNumberArray) {
+            int TP = 0, FP = 0, TN = 0, FN = 0;
+            for (int i = 0; i < length; i++) {
+                if (refCopyNumberArray[i] == 0) {
+                    continue;
+                }
+                if (truthCopyNumberArray[i] > refCopyNumberArray[i] && calledCopyNumberArray[i] > refCopyNumberArray[i]) {
+                    TP++;
+                }
+                if (truthCopyNumberArray[i] <= refCopyNumberArray[i] && calledCopyNumberArray[i] > refCopyNumberArray[i]) {
+                    FP++;
+                }
+                if (truthCopyNumberArray[i] <= refCopyNumberArray[i] && calledCopyNumberArray[i] <= refCopyNumberArray[i]) {
+                    TN++;
+                }
+                if (truthCopyNumberArray[i] > refCopyNumberArray[i] && calledCopyNumberArray[i] <= refCopyNumberArray[i]) {
+                    FN++;
+                }
+            }
+            return new ConfusionMatrix(TP, FP, TN, FN);
+        }
+
+        private Concordance calculateAbsoluteCopyNumberStatistics(final int[] truthCopyNumberArray,
+                                                                  final int[] calledCopyNumberArray) {
+            int right = 0, wrong = 0;
+            for (int i = 0; i < length; i++) {
+                if (truthCopyNumberArray[i] == calledCopyNumberArray[i]) {
+                    right++;
+                } else {
+                    wrong++;
+                }
+            }
+            return new Concordance(right, wrong);
+        }
+    }
+
 }

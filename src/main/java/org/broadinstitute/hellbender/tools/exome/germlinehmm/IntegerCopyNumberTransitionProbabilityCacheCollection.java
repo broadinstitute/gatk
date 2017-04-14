@@ -143,6 +143,11 @@ public final class IntegerCopyNumberTransitionProbabilityCacheCollection impleme
                 .cacheLogTransitionMatrix(distance);
     }
 
+    public void clearCaches() {
+        sexGenotypeAndContigToTransitionMatrixCacheMap.values()
+                .forEach(IntegerCopyNumberTransitionProbabilityCache::clearCache);
+    }
+
     public int getMaxCopyNumber(final String sexGenotype, final String contig) {
         return sexGenotypeAndContigToTransitionMatrixCacheMap.get(checkKey(sexGenotype, contig))
                 .getMaxCopyNumber();

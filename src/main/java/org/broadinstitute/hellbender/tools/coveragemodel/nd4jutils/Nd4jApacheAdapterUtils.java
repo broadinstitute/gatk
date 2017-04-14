@@ -27,8 +27,8 @@ public final class Nd4jApacheAdapterUtils {
         }
         final int[] shape = matrix.shape();
         final BlockRealMatrix out = new BlockRealMatrix(shape[0], shape[1]);
-        for (int i=0; i<shape[0]; i++) {
-            for (int j=0; j<shape[1]; j++) {
+        for (int i = 0; i < shape[0]; i++) {
+            for (int j = 0; j < shape[1]; j++) {
                 out.setEntry(i, j, matrix.getDouble(i, j));
             }
         }
@@ -64,11 +64,11 @@ public final class Nd4jApacheAdapterUtils {
      * @return rank-2 INDArray
      */
     public static INDArray convertApacheMatrixToINDArray(@Nonnull final RealMatrix matrix) {
-        final int[] shape = new int[]{matrix.getRowDimension(), matrix.getColumnDimension()};
+        final int[] shape = new int[] {matrix.getRowDimension(), matrix.getColumnDimension()};
         final INDArray out = Nd4j.create(shape);
-        for (int i=0; i<shape[0]; i++) {
-            for (int j=0; j<shape[1]; j++) {
-                out.putScalar(new int[]{i,j}, matrix.getEntry(i,j));
+        for (int i = 0; i < shape[0]; i++) {
+            for (int j = 0; j < shape[1]; j++) {
+                out.putScalar(new int[] {i, j}, matrix.getEntry(i, j));
             }
         }
         return out;

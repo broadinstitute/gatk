@@ -139,7 +139,7 @@ public class IntegerCopyNumberTransitionProbabilityCacheCollectionUnitTest exten
         } else if (power == 0) {
             return MatrixUtils.createRealIdentityMatrix(mat.getColumnDimension());
         } else {
-            return mat.multiply(getDirectMatrixPower(mat, power - 1));
+            return mat.power(power);
         }
     }
 

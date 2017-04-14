@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -13,7 +14,9 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class ComputableGraphStructure {
+public final class ComputableGraphStructure implements Serializable {
+
+    private static final long serialVersionUID = -3124293279477371159L;
 
     private final Set<String> nodeKeysSet;
     private final Set<String> nodeTagsSet;

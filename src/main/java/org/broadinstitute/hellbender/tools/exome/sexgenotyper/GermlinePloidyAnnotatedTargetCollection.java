@@ -9,7 +9,11 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -17,9 +21,14 @@ import java.util.stream.Collectors;
  * A collection of {@link Target} instances along with helper methods for generating their genotype ploidy
  * annotations on-the-fly using provided contig ploidy annotations.
  *
+ * @implNote had to remove unmodifiable status on various collections. Kryo still has serialization issues
+ *           with unmodifiable collections even with custom serializers from de.javakaffee:kryo-serializers
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class GermlinePloidyAnnotatedTargetCollection implements TargetCollection<Target> {
+public final class GermlinePloidyAnnotatedTargetCollection implements TargetCollection<Target>, Serializable {
+
+    private static final long serialVersionUID = 4942518403271978055L;
 
     /**
      * Map from targets to their germline ploidy annotations (based on target contigs)
@@ -57,24 +66,24 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
                                                    @Nonnull final List<Target> targetList) {
         performValidityChecks(targetList, contigAnnotsList);
 
-        fullTargetList = Collections.unmodifiableList(targetList);
-        fullTargetSet = Collections.unmodifiableSet(new HashSet<>(fullTargetList));
+        fullTargetList = targetList;
+        fullTargetSet = new HashSet<>(fullTargetList);
 
         /* map targets to ploidy annotations */
         final Map<String, ContigGermlinePloidyAnnotation> contigNameToContigPloidyAnnotationMap = contigAnnotsList.stream()
                 .collect(Collectors.toMap(ContigGermlinePloidyAnnotation::getContigName, Function.identity()));
-        targetToContigPloidyAnnotationMap = Collections.unmodifiableMap(
+        targetToContigPloidyAnnotationMap =
                 fullTargetList.stream().collect(Collectors.toMap(Function.identity(),
-                        target -> contigNameToContigPloidyAnnotationMap.get(target.getContig()))));
+                        target -> contigNameToContigPloidyAnnotationMap.get(target.getContig())));
 
         /* autosomal and allosomal target lists */
-        autosomalTargetList = Collections.unmodifiableList(fullTargetList.stream()
+        autosomalTargetList = fullTargetList.stream()
                 .filter(target -> targetToContigPloidyAnnotationMap.get(target).getContigClass() == ContigClass.AUTOSOMAL)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
 
-        allosomalTargetList = Collections.unmodifiableList(fullTargetList.stream()
+        allosomalTargetList = fullTargetList.stream()
                 .filter(target -> targetToContigPloidyAnnotationMap.get(target).getContigClass() == ContigClass.ALLOSOMAL)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList());
     }
 
     /**
@@ -82,7 +91,7 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
      * @return unmodifiable list of contained autosomal targets
      */
     public List<Target> getAutosomalTargetList() {
-        return Collections.unmodifiableList(autosomalTargetList);
+        return autosomalTargetList;
     }
 
     /**
@@ -90,7 +99,7 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
      * @return unmodifiable list of contained allosomal targets
      */
     public List<Target> getAllosomalTargetList() {
-        return Collections.unmodifiableList(allosomalTargetList);
+        return allosomalTargetList;
     }
 
     /**
@@ -98,7 +107,7 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
      * @return
      */
     public Set<Target> getFullTargetSet() {
-        return Collections.unmodifiableSet(fullTargetSet);
+        return fullTargetSet;
     }
 
     /**
@@ -200,7 +209,7 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
 
     @Override
     public List<Target> targets() {
-        return Collections.unmodifiableList(fullTargetList);
+        return fullTargetList;
     }
 
 

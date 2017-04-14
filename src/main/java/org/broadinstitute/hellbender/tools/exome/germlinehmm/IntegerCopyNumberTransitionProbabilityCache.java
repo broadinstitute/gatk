@@ -51,6 +51,7 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
 
         /* calculate the stationary probabilities */
         logStationaryProbabilities = calculateLogStationaryProbabilities(transitionMatrixData);
+        // Arrays.stream(logStationaryProbabilities).mapToObj(Double::toString).forEach(System.out::println);
     }
 
     /**
@@ -87,7 +88,10 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
         } else {
             paddedStationaryDistribution = unpaddedStationaryDistribution;
         }
-        return Arrays.stream(paddedStationaryDistribution.toArray()).map(FastMath::log).toArray();
+        return Arrays.stream(paddedStationaryDistribution.toArray())
+                .map(FastMath::abs) /* some negative values may result from round-off errors */
+                .map(FastMath::log)
+                .toArray();
     }
 
     /**
@@ -112,6 +116,10 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
         if (!cache.containsKey(distance)) {
             calculateMatrix(distance);
         }
+    }
+
+    public void clearCache() {
+        cache.clear();
     }
 
     /**

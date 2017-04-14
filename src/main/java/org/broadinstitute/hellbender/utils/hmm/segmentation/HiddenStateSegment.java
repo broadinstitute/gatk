@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.tools.exome.Segment;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -12,7 +13,9 @@ import java.util.List;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class HiddenStateSegment<S, T extends Target> extends Segment<S> {
+public class HiddenStateSegment<S, T extends Target> extends Segment<S> implements Serializable {
+
+    private static final long serialVersionUID = 1135086084964809775L;
 
     private final double exactQuality;
 

@@ -2,9 +2,11 @@ package org.broadinstitute.hellbender.utils.hmm;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
@@ -129,4 +131,53 @@ public interface HiddenMarkovModel<D, T, S> {
                     s -> Math.exp(logTransitionProbability(result.get(n-1), positions.get(n - 1), s, positions.get(n))), rg)));
         return result;
     }
+
+    /**
+     * Calculates the expected log probability of the HMM chain with respect to prior state probabilities:
+     *
+     *     \log(\pi_i) \pi_i + \sum_{t=1}^{T-1} \log(T_{t, t+1}^{i, j}) \pi_i \pi_j
+     *
+     * where \pi_i is the prior probability of state i, and T_{t, t+1}^{i, j} is the transition matrix from
+     * position and state (t, i) to (t+1, j).
+     *
+     * @param positions a list of positions on the chain
+     * @return prior expectation of the log probability
+     */
+    default double calculateLogChainPriorProbability(final List<T> positions) {
+        final List<S> states = hiddenStates();
+        if (positions.isEmpty() || states.isEmpty()) {
+            return 0;
+        }
+        final int numStates = states.size();
+        final int numPositions = positions.size();
+        final double[] logPriorProbabilities = states.stream()
+                .mapToDouble(state -> logPriorProbability(state, positions.get(0)))
+                .toArray();
+        final double[] priorProbabilities = Arrays.stream(logPriorProbabilities)
+                .map(FastMath::exp)
+                .toArray();
+
+        /* contribution of the first state */
+        double result = IntStream.range(0, numStates)
+                .mapToDouble(stateIndex -> logPriorProbabilities[stateIndex] * priorProbabilities[stateIndex])
+                .sum();
+
+        /* contribution of the rest of the chain */
+        if (numPositions > 1) {
+            for (int positionIndex = 0; positionIndex < numPositions - 1; positionIndex++) {
+                for (int i = 0; i < numStates; i++) { /* departure state */
+                    for (int j = 0; j < numStates; j++) { /* destination state */
+                        final double logTransitionProbability = logTransitionProbability(
+                                states.get(i), positions.get(positionIndex),
+                                states.get(j), positions.get(positionIndex + 1));
+                        if (logTransitionProbability != Double.NEGATIVE_INFINITY) { /* NEGATIVE_INFINITY * 0 = 0 here */
+                            result += logTransitionProbability * priorProbabilities[i] * priorProbabilities[j];
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
 }

@@ -20,7 +20,7 @@ import java.util.List;
 public final class CopyRatioHiddenMarkovModelResults<D, S> implements Serializable {
 
     private static final long serialVersionUID = 1891158919985229044L;
-
+    private final CopyRatioCallingMetadata metaData;
     private final ForwardBackwardAlgorithm.Result<D, Target, S> fbResult;
     private final List<S> viterbiResult;
 
@@ -30,8 +30,10 @@ public final class CopyRatioHiddenMarkovModelResults<D, S> implements Serializab
      * @param fbResult the result of forward-backward algorithm
      * @param viterbiResult the result of Viterbi algorithm
      */
-    public CopyRatioHiddenMarkovModelResults(@Nonnull final ForwardBackwardAlgorithm.Result<D, Target, S> fbResult,
+    public CopyRatioHiddenMarkovModelResults(@Nonnull final CopyRatioCallingMetadata metaData,
+                                             @Nonnull final ForwardBackwardAlgorithm.Result<D, Target, S> fbResult,
                                              @Nonnull final List<S> viterbiResult) {
+        this.metaData = Utils.nonNull(metaData, "Copy ratio calling metadata must be non-null");
         this.fbResult = Utils.nonNull(fbResult, "The forward-backward result must be non-null");
         this.viterbiResult = Utils.nonNull(viterbiResult, "The viterbi result must be non-null");
         Utils.validateArg(viterbiResult.size() == fbResult.positions().size(), "The target list used in the" +
@@ -45,5 +47,9 @@ public final class CopyRatioHiddenMarkovModelResults<D, S> implements Serializab
 
     public List<S> getViterbiResult() {
         return viterbiResult;
+    }
+
+    public CopyRatioCallingMetadata getMetaData() {
+        return metaData;
     }
 }

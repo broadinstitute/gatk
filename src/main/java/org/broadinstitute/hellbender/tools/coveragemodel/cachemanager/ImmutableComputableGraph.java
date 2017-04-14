@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 
+import avro.shaded.com.google.common.collect.ImmutableMap;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
@@ -245,9 +246,23 @@ public class ImmutableComputableGraph implements Serializable {
     }
 
     /**
+     * Nullifies the cached value of a node (both computable and primitive)
+     *
+     * @param nodeKey key of the node to be nullified
+     * @return a new instance of {@link ImmutableComputableGraph}
+     * @throws IllegalArgumentException if the node does not exist
+     */
+    public ImmutableComputableGraph nullifyNode(@Nonnull final String nodeKey)
+            throws IllegalArgumentException {
+        assertNodeExists(Utils.nonNull(nodeKey, "The key of the node can not be null."));
+        CacheNode oldNode = nodesMap.get(nodeKey);
+        return duplicateWithUpdatedNodes(ImmutableMap.of(nodeKey, oldNode.duplicateWithUpdatedValue(null)));
+    }
+
+    /**
      * Make a key -> node map containing new instances of the nodes which become out of date as a matter of
      * updating node {@code key}
-     * @param key key of the updated note
+     * @param key key of the updated node
      * @param updatedNodesMap a key -> node map
      */
     private Map<String, CacheNode> addDuplicateOfOutdatedDescendents(@Nonnull final String key,

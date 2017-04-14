@@ -52,4 +52,6 @@ public interface CopyRatioExpectationsCalculator<D, S> {
                                                                                  @Nonnull final List<D> emissionData);
 
     void initializeCaches(@Nonnull final List<Target> allTargets);
+
+    void clearCaches();
 }
