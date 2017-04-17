@@ -24,7 +24,7 @@ import java.util.Collections;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
 
-  private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools/genomicsdb";
+  private static final String TEST_OUTPUT_DIRECTORY = publicTestDir + "org/broadinstitute/hellbender/tools";
   private static final File GENOMICSDB_WORKSPACE = new File(TEST_OUTPUT_DIRECTORY + "/tiledb-ws");
   private static final String GENOMICSDB_ARRAYNAME = "gatk4-genomicsdb-test-0";
   private static final File TEST_CALLSETMAP_JSON_FILE = new File(TEST_OUTPUT_DIRECTORY + "/callset.json");
