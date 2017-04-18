@@ -38,7 +38,7 @@ public final class PCATangentNormalizationUtils {
      * </p>
      */
     public static final double EPSILON = 1E-9;
-    private static final double INV_LN2 = GATKProtectedMathUtils.INV_LN2;
+    private static final double INV_LN2 = GATKProtectedMathUtils.INV_LOG_2;
     private static final double LOG_2_EPSILON = Math.log(EPSILON) * INV_LN2;
 
     private static final int TN_NUM_SLICES_SPARK = 50;

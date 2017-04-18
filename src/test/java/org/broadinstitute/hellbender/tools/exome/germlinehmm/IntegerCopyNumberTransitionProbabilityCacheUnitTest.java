@@ -46,7 +46,7 @@ public class IntegerCopyNumberTransitionProbabilityCacheUnitTest extends BaseTes
     public void testBasicSoundness() {
         for (final RealMatrix transitionMatrix : TRANSITION_MATRICES) {
             final IntegerCopyNumberTransitionProbabilityCache cache = new IntegerCopyNumberTransitionProbabilityCache(
-                    new IntegerCopyNumberTransitionMatrixData(transitionMatrix, 0));
+                    new IntegerCopyNumberTransitionMatrix(transitionMatrix, 0));
             for (final int dist : DISTANCES) {
                 final RealMatrix transitionMatrixExponentiated = cache.getTransitionProbabilityMatrix(dist);
 
@@ -85,7 +85,7 @@ public class IntegerCopyNumberTransitionProbabilityCacheUnitTest extends BaseTes
         for (final int padding : PADDINGS) {
             for (final RealMatrix transitionMatrix : TRANSITION_MATRICES) {
                 final IntegerCopyNumberTransitionProbabilityCache cache = new IntegerCopyNumberTransitionProbabilityCache(
-                        new IntegerCopyNumberTransitionMatrixData(transitionMatrix, padding));
+                        new IntegerCopyNumberTransitionMatrix(transitionMatrix, padding));
                 final double[] stationary = cache.getStationaryProbabilityVector().toArray();
                 final double[] stationaryFromMultiplication = cache.getTransitionProbabilityMatrix(Integer.MAX_VALUE)
                         .getColumn(0);
@@ -93,11 +93,9 @@ public class IntegerCopyNumberTransitionProbabilityCacheUnitTest extends BaseTes
                 Assert.assertEquals(Arrays.stream(stationary).sum(), 1.0, EPSILON);
             }
         }
-
     }
 
     private static void assertEqualMatrices(final RealMatrix mat1, final RealMatrix mat2) {
         Assert.assertEquals(mat1.subtract(mat2).getNorm(), 0, EPSILON);
     }
-
 }

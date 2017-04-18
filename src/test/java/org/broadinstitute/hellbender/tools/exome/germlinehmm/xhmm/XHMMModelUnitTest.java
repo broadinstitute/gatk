@@ -89,7 +89,7 @@ public final class XHMMModelUnitTest {
         }
     }
 
-    @Test(dataProvider = "testData", dependsOnMethods = "testInstantiation")
+    @Test(dataProvider = "testData", dependsOnMethods = "testInstantiation", expectedExceptions = IllegalArgumentException.class)
     public void testLogTransitionProbabilityWithNoDistance(final double eventStartProbability, final double meanEventSize,
                                                            final double deletionMean, final double duplicationMean) {
         final XHMMModel model = new XHMMModel(eventStartProbability,

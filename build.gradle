@@ -256,7 +256,7 @@ test {
         beforeTest { descriptor ->
             count++
             if( count % 100 == 0) {
-                logger.lifecycle("Finished "+ Integer.toString(count++) + " tests")
+                logger.lifecycle("Finished " + Integer.toString(count++) + " tests")
             }
         }
     } else {

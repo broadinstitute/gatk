@@ -16,7 +16,7 @@ import java.util.stream.Stream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer, TestHMModel.State> {
+final class TestHMM implements HMM<TestHMM.Datum, Integer, TestHMM.State> {
 
     private final double[] priors;
 
@@ -27,7 +27,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
 
     private static final double LN_OF_10 = Math.log(10);
 
-    static TestHMModel fromPhredProbabilities(final double ... phred) {
+    static TestHMM fromPhredProbabilities(final double ... phred) {
 
         final double[] priors = Arrays.copyOfRange(phred, 0, State.values().length);
         final double[][] transition = reshape(
@@ -50,7 +50,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
                             final double sum = GATKProtectedMathUtils.logSumExp(result);
                             return DoubleStream.of(result).map(d -> d - sum).toArray(); })
                 .toArray(double[][]::new);
-        return new TestHMModel(logPriors, logEmissionProbs, logTransitionProbs);
+        return new TestHMM(logPriors, logEmissionProbs, logTransitionProbs);
 
     }
 
@@ -72,7 +72,7 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
      * @param emission the data emission.
      * @param transition transition probabilities
      */
-    private TestHMModel(final double[] priors, final double[][] emission, final double[][] transition) {
+    private TestHMM(final double[] priors, final double[][] emission, final double[][] transition) {
         this.priors = priors;
         emissionProbabilities = emission;
         transitionProbabilities = transition;
@@ -136,8 +136,8 @@ final class TestHMModel implements HiddenMarkovModel<TestHMModel.Datum, Integer,
         return "library(HMM)";
     }
 
-    static String toHMMModelDeclarationRString(final List<TestHMModel> models) {
-        return String.format("list(\n\t%s\n)", models.stream().map(TestHMModel::toRExpressionString)
+    static String toHMMModelDeclarationRString(final List<TestHMM> models) {
+        return String.format("list(\n\t%s\n)", models.stream().map(TestHMM::toRExpressionString)
               .collect(Collectors.joining(",\n\t")));
     };
 

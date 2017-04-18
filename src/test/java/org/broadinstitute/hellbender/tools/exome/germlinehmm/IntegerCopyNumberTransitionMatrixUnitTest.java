@@ -3,10 +3,10 @@ package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.MathObjectAsserts;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import org.testng.internal.junit.ArrayAsserts;
 
 import java.io.File;
 import java.util.Arrays;
@@ -14,7 +14,7 @@ import java.util.Arrays;
 /**
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
+public class IntegerCopyNumberTransitionMatrixUnitTest extends BaseTest {
 
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/germlinehmm";
     private static final File HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TABLE_FILE = new File(TEST_SUB_DIR,
@@ -23,9 +23,9 @@ public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
             "TCGA_T_matrix_autosomal_bad.tsv");
 
     /**
-     * These are copied directly from the file
+     * Copied directly from the corresponding tsv file
      */
-    public static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TRUTH =
+    protected static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TRUTH =
             new Array2DRowRealMatrix(new double[][]{
                     {0.9997389770672177, 7.032645704368021e-07, 0.00026031966821188487, 0.0, 0.0, 0.0, 0.0, 0.0,
                             0.0, 0.0, 0.0},
@@ -48,7 +48,10 @@ public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
                     {0.0, 0.0, 8.8396952830754563e-05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999116030471692, 0.0},
                     {0.0, 0.0, 8.9130531663621367e-05, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99991086946833641}}).transpose();
 
-    public static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XX_X_TRUTH =
+    /**
+     * Copied directly from the corresponding tsv file
+     */
+    protected static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XX_X_TRUTH =
             new Array2DRowRealMatrix(new double[][] {
                     {0.99966751443861601, 0.0, 0.00033248556138398773, 0.0, 0.0},
                     {0.0, 0.9997899779920747, 0.00021002200792527603, 0.0, 0.0},
@@ -56,10 +59,16 @@ public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
                     {0.0, 0.0, 4.541929579905158e-05, 0.99995458070420096, 0.0},
                     {0.0, 0.0, 7.8833267638943636e-05, 0.0, 0.99992116673236109}}).transpose();
 
-    public static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XX_Y_TRUTH =
+    /**
+     * Copied directly from the corresponding tsv file
+     */
+    protected static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XX_Y_TRUTH =
             new Array2DRowRealMatrix(new double[][] {{1.0}});
 
-    public static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XY_X_TRUTH =
+    /**
+     * Copied directly from the corresponding tsv file
+     */
+    protected static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XY_X_TRUTH =
             new Array2DRowRealMatrix(new double[][] {
                     {0.99971173098797461, 0.00028826901202540391, 0.0, 0.0},
                     {1.0067714836234777e-07, 0.99999989259309574, 6.5615120089096975e-09, 1.6824389766435122e-10},
@@ -67,7 +76,10 @@ public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
                     {0.0, 4.0420371867421184e-05, 8.0840743734842364e-06, 0.99995149555375906}
             }).transpose();
 
-    public static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XY_Y_TRUTH =
+    /**
+     * Copied directly from the corresponding tsv file
+     */
+    protected static final RealMatrix HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XY_Y_TRUTH =
             new Array2DRowRealMatrix(new double[][] {
                     {0.99966851990709416, 0.00033148009290586881, 0.0, 0.0, 0.0},
                     {5.9399783434370542e-08, 0.99999937404917871, 5.2251326738303193e-07, 3.4001255345191416e-08, 1.0036515132014333e-08},
@@ -78,27 +90,22 @@ public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
 
     @Test
     public void testReadCopyNumberTransitionMatrixTable() {
-        final IntegerCopyNumberTransitionMatrixData loadedTransitionMatrix =
-                IntegerCopyNumberTransitionMatrixData.read(
+        final IntegerCopyNumberTransitionMatrix loadedTransitionMatrix =
+                IntegerCopyNumberTransitionMatrix.read(
                         HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TABLE_FILE, 0);
-        assertRealMatrixEquals(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TRUTH,
-                loadedTransitionMatrix.getTransitionMatrix(), 1e-16);
+        MathObjectAsserts.assertRealMatrixEquals(loadedTransitionMatrix.getTransitionMatrix(),
+                HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TRUTH);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testReadCopyNumberTransitionMatrixTableBadInput() {
-        IntegerCopyNumberTransitionMatrixData.read(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_BAD_AUTOSOMAL_TABLE_FILE, 0);
-    }
-
-    public static void assertRealMatrixEquals(final RealMatrix expected, final RealMatrix actual, final double tol) {
-        ArrayAsserts.assertArrayEquals(Arrays.stream(expected.getData()).flatMapToDouble(Arrays::stream).toArray(),
-                Arrays.stream(actual.getData()).flatMapToDouble(Arrays::stream).toArray(), tol);
+        IntegerCopyNumberTransitionMatrix.read(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_BAD_AUTOSOMAL_TABLE_FILE, 0);
     }
 
     @Test
     public void testUnnormalizedProbability() {
         /* it should normalize unnormalized transition matrices and give a warning */
-        final IntegerCopyNumberTransitionMatrixData transitionMatrix = new IntegerCopyNumberTransitionMatrixData(
+        final IntegerCopyNumberTransitionMatrix transitionMatrix = new IntegerCopyNumberTransitionMatrix(
                 new Array2DRowRealMatrix(new double[][]{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}}), 0);
         for (int i=0; i<3; i++) {
             final double[] col = transitionMatrix.getTransitionMatrix().getColumn(i);
@@ -108,13 +115,13 @@ public class IntegerCopyNumberTransitionMatrixDataUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UserException.BadInput.class)
     public void testNegativeProbability() {
-        new IntegerCopyNumberTransitionMatrixData(
+        new IntegerCopyNumberTransitionMatrix(
                 new Array2DRowRealMatrix(new double[][]{{1, 2, 3}, {4, 5, 6}, {7, 8, -9}}), 0);
     }
 
     @Test
     public void testPadding() {
-        final IntegerCopyNumberTransitionMatrixData data = new IntegerCopyNumberTransitionMatrixData(
+        final IntegerCopyNumberTransitionMatrix data = new IntegerCopyNumberTransitionMatrix(
                 new Array2DRowRealMatrix(new double[][] {
                         {1, 2, 3},
                         {4, 5, 6},

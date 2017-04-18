@@ -31,34 +31,32 @@ import java.util.stream.IntStream;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class CoverageModelParameters implements Serializable {
-
     private static final long serialVersionUID = -4350342293001054849L;
 
+    private static final String MEAN_LOG_BIAS_MATRIX_NAME = "MEAN_LOG_BIAS_MATRIX_NAME";
+    private static final String TARGET_UNEXPLAINED_VARIANCE_MATRIX_NAME = "TARGET_UNEXPLAINED_VARIANCE_MATRIX_NAME";
+    private static final String MEAN_BIAS_COVARIATES_MATRIX_NAME = "MEAN_BIAS_COVARIATES_MATRIX_NAME";
+    private static final String MEAN_BIAS_COVARIATES_NORM_2_MATRIX_NAME = "MEAN_BIAS_COVARIATES_NORM_2_MATRIX_NAME";
+    private static final String BIAS_COVARIATES_ARD_COEFFICIENTS_MATRIX_NAME = "BIAS_COVARIATES_ARD_COEFFICIENTS_MATRIX_NAME";
+    private static final String BIAS_COVARIATE_COLUMN_NAME_FORMAT = "BC_%d";
+
     private final List<Target> targetList;
+    private final INDArray targetMeanLogBias; /* shape = 1 x numTargets */
+    private final INDArray targetUnexplainedVariance; /* shape = 1 x numTargets */
+    private final INDArray meanBiasCovariates; /* shape = numTargets x numLatents */
+    private final INDArray biasCovariateARDCoefficients; /* shape = 1 x numLatents */
 
-    /* 1 x T */
-    private final INDArray targetMeanLogBias;
-
-    /* 1 x T */
-    private final INDArray targetUnexplainedVariance;
-
-    /* T x L */
-    private final INDArray meanBiasCovariates;
-
-    /* 1 x L */
-    private final INDArray biasCovariateARDCoefficients;
-
-    private final int numTargets, numLatents;
-
-    private final boolean ardEnabled, biasCovariatesEnabled;
+    private final int numTargets;
+    private final int numLatents;
+    private final boolean ardEnabled;
+    private final boolean biasCovariatesEnabled;
 
     /**
      * Public constructor.
      *
      * Note:
      *
-     * - If {@code meanBiasCovariates} and {@code varBiasCovariates} are both null, it is assumed that
-     *   bias covariates are disabled.
+     * - If {@code meanBiasCovariates} is null, it is assumed that bias covariate correction is disabled.
      *
      * - If {@code biasCovariateARDCoefficients} is null, it is assumed that ARD for bias covariates is
      *   disabled.
@@ -77,6 +75,8 @@ public final class CoverageModelParameters implements Serializable {
         this.targetMeanLogBias = Utils.nonNull(targetMeanLogBias, "Target-specific mean log bias must be non-null");
         this.targetUnexplainedVariance = Utils.nonNull(targetUnexplainedVariance, "Target-specific unexplained variance" +
                 " must be non-null");
+        Utils.validateArg(meanBiasCovariates != null || biasCovariateARDCoefficients == null, "If ARD coefficients" +
+                " are non-null, bias covariates matrix must be non-null as well");
         biasCovariatesEnabled = meanBiasCovariates != null;
         ardEnabled = biasCovariateARDCoefficients != null;
         this.meanBiasCovariates = meanBiasCovariates;
@@ -124,22 +124,22 @@ public final class CoverageModelParameters implements Serializable {
 
     public INDArray getBiasCovariateARDCoefficients() { return biasCovariateARDCoefficients; }
 
-    public INDArray getTargetMeanBiasOnTargetBlock(@Nonnull final LinearSpaceBlock tb) {
+    public INDArray getTargetMeanBiasOnTargetBlock(@Nonnull final LinearlySpacedIndexBlock tb) {
         checkTargetBlock(tb);
         return targetMeanLogBias.get(NDArrayIndex.all(), NDArrayIndex.interval(tb.getBegIndex(), tb.getEndIndex()));
     }
 
-    private void checkTargetBlock(@Nonnull LinearSpaceBlock tb) {
+    private void checkTargetBlock(@Nonnull LinearlySpacedIndexBlock tb) {
         ParamUtils.inRange(tb.getBegIndex(), 0, numTargets, "The begin index of target block is out of range");
-        ParamUtils.inRange(tb.getEndIndex(), 0, numTargets, "The begin index of target block is out of range");
+        ParamUtils.inRange(tb.getEndIndex(), 0, numTargets, "The end index of target block is out of range");
     }
 
-    public INDArray getTargetUnexplainedVarianceOnTargetBlock(@Nonnull final LinearSpaceBlock tb) {
+    public INDArray getTargetUnexplainedVarianceOnTargetBlock(@Nonnull final LinearlySpacedIndexBlock tb) {
         checkTargetBlock(tb);
         return targetUnexplainedVariance.get(NDArrayIndex.all(), NDArrayIndex.interval(tb.getBegIndex(), tb.getEndIndex()));
     }
 
-    public INDArray getMeanBiasCovariatesOnTargetBlock(@Nonnull final LinearSpaceBlock tb) {
+    public INDArray getMeanBiasCovariatesOnTargetBlock(@Nonnull final LinearlySpacedIndexBlock tb) {
         checkTargetBlock(tb);
         Utils.validateArg(biasCovariatesEnabled, "Bias covariates are disabled");
         return meanBiasCovariates.get(NDArrayIndex.interval(tb.getBegIndex(), tb.getEndIndex()),
@@ -255,10 +255,10 @@ public final class CoverageModelParameters implements Serializable {
 
         /* all models must provide mean log bias and target-specific unexplained variance */
         final File targetMeanLogBiasFile = new File(modelPath, CoverageModelGlobalConstants.TARGET_MEAN_LOG_BIAS_OUTPUT_FILE);
-        final INDArray targetMeanLogBias = Nd4jIOUtils.readNDArrayMatrixFromTextFile(targetMeanLogBiasFile);
+        final INDArray targetMeanLogBias = Nd4jIOUtils.readNDArrayMatrixFromTextFile(targetMeanLogBiasFile).transpose();
 
         final File targetUnexplainedVarianceFile = new File(modelPath, CoverageModelGlobalConstants.TARGET_UNEXPLAINED_VARIANCE_OUTPUT_FILE);
-        final INDArray targetUnexplainedVariance = Nd4jIOUtils.readNDArrayMatrixFromTextFile(targetUnexplainedVarianceFile);
+        final INDArray targetUnexplainedVariance = Nd4jIOUtils.readNDArrayMatrixFromTextFile(targetUnexplainedVarianceFile).transpose();
 
         /* if the bias covariates file is found, then the model has bias covariates enabled */
         final File meanBiasCovariatesFile = new File(modelPath, CoverageModelGlobalConstants.MEAN_BIAS_COVARIATES_OUTPUT_FILE);
@@ -299,38 +299,42 @@ public final class CoverageModelParameters implements Serializable {
                 .map(Target::getName).collect(Collectors.toList());
 
         /* write target mean bias to file */
-        final File targetMeanBiasFile = new File(outputPath, CoverageModelGlobalConstants.TARGET_MEAN_LOG_BIAS_OUTPUT_FILE);
-        Nd4jIOUtils.writeNDArrayMatrixToTextFile(model.getTargetMeanLogBias(), targetMeanBiasFile, "MEAN_LOG_BIAS",
-                null, targetNames);
+        final File targetMeanBiasFile = new File(outputPath,CoverageModelGlobalConstants.TARGET_MEAN_LOG_BIAS_OUTPUT_FILE);
+        Nd4jIOUtils.writeNDArrayMatrixToTextFile(model.getTargetMeanLogBias().transpose(),
+                targetMeanBiasFile, MEAN_LOG_BIAS_MATRIX_NAME, targetNames, null);
 
         /* write target unexplained variance to file */
-        final File targetUnexplainedVarianceFile = new File(outputPath, CoverageModelGlobalConstants.TARGET_UNEXPLAINED_VARIANCE_OUTPUT_FILE);
-        Nd4jIOUtils.writeNDArrayMatrixToTextFile(model.getTargetUnexplainedVariance(), targetUnexplainedVarianceFile,
-                "TARGET_UNEXPLAINED_VARIANCE", null, targetNames);
+        final File targetUnexplainedVarianceFile = new File(outputPath,
+                CoverageModelGlobalConstants.TARGET_UNEXPLAINED_VARIANCE_OUTPUT_FILE);
+        Nd4jIOUtils.writeNDArrayMatrixToTextFile(model.getTargetUnexplainedVariance().transpose(),
+                targetUnexplainedVarianceFile, TARGET_UNEXPLAINED_VARIANCE_MATRIX_NAME, targetNames, null);
 
         if (model.isBiasCovariatesEnabled()) {
             /* write mean bias covariates to file */
             final List<String> meanBiasCovariatesNames = IntStream.range(0, model.getNumLatents())
-                    .mapToObj(li -> String.format("BC_%d", li)).collect(Collectors.toList());
-            final File meanBiasCovariatesFile = new File(outputPath, CoverageModelGlobalConstants.MEAN_BIAS_COVARIATES_OUTPUT_FILE);
+                    .mapToObj(li -> String.format(BIAS_COVARIATE_COLUMN_NAME_FORMAT, li))
+                    .collect(Collectors.toList());
+            final File meanBiasCovariatesFile = new File(outputPath,
+                    CoverageModelGlobalConstants.MEAN_BIAS_COVARIATES_OUTPUT_FILE);
             Nd4jIOUtils.writeNDArrayMatrixToTextFile(model.getMeanBiasCovariates(), meanBiasCovariatesFile,
-                    "MEAN_BIAS_COVARIATES", targetNames, meanBiasCovariatesNames);
+                    MEAN_BIAS_COVARIATES_MATRIX_NAME, targetNames, meanBiasCovariatesNames);
 
             /* write norm_2 of mean bias covariates to file */
-            final double[] biasCovariatesNorm2 = new double[model.numLatents];
             final INDArray WTW = model.getMeanBiasCovariates().transpose().mmul(model.getMeanBiasCovariates());
-            for (int li = 0; li < model.getNumLatents(); li++) {
-                biasCovariatesNorm2[li] = WTW.getDouble(li, li);
-            }
-            final File biasCovariatesNorm2File = new File(outputPath, CoverageModelGlobalConstants.MEAN_BIAS_COVARIATES_NORM2_OUTPUT_FILE);
-            Nd4jIOUtils.writeNDArrayMatrixToTextFile(Nd4j.create(biasCovariatesNorm2, new int[]{1, model.getNumLatents()}),
-                    biasCovariatesNorm2File, "MEAN_BIAS_COVARIATES_NORM_2", null, meanBiasCovariatesNames);
+            final double[] biasCovariatesNorm2 = IntStream.range(0, model.getNumLatents())
+                    .mapToDouble(li -> WTW.getDouble(li, li))
+                    .toArray();
+            final File biasCovariatesNorm2File = new File(outputPath,
+                    CoverageModelGlobalConstants.MEAN_BIAS_COVARIATES_NORM2_OUTPUT_FILE);
+            Nd4jIOUtils.writeNDArrayMatrixToTextFile(Nd4j.create(biasCovariatesNorm2, new int[] {1, model.getNumLatents()}),
+                    biasCovariatesNorm2File, MEAN_BIAS_COVARIATES_NORM_2_MATRIX_NAME, null, meanBiasCovariatesNames);
 
             /* if ARD is enabled, write the ARD coefficients and covariance of W as well */
             if (model.isARDEnabled()) {
-                final File biasCovariatesARDCoefficientsFile = new File(outputPath, CoverageModelGlobalConstants.BIAS_COVARIATES_ARD_COEFFICIENTS_OUTPUT_FILE);
+                final File biasCovariatesARDCoefficientsFile = new File(outputPath,
+                        CoverageModelGlobalConstants.BIAS_COVARIATES_ARD_COEFFICIENTS_OUTPUT_FILE);
                 Nd4jIOUtils.writeNDArrayMatrixToTextFile(model.getBiasCovariateARDCoefficients(),
-                        biasCovariatesARDCoefficientsFile, "BIAS_COVARIATES_ARD_COEFFICIENTS", null, meanBiasCovariatesNames);
+                        biasCovariatesARDCoefficientsFile, BIAS_COVARIATES_ARD_COEFFICIENTS_MATRIX_NAME, null, meanBiasCovariatesNames);
             }
         }
     }
@@ -342,7 +346,7 @@ public final class CoverageModelParameters implements Serializable {
      *     - removes targets that are in the read count collection from the model
      *     - rearranges model targets in the same order as read count collection targets
      *
-     * The modifications are not done in-plane and the original input parameters remain intact.
+     * The modifications are not done in-place and the original input parameters remain intact.
      *
      * @param model a model
      * @param readCounts a read count collection
@@ -358,30 +362,29 @@ public final class CoverageModelParameters implements Serializable {
 
         final List<Target> modelTargetList = model.getTargetList();
         final List<Target> readCountsTargetList = readCounts.targets();
-        final Set<Target> mutualTargetList = Sets.intersection(new HashSet<>(modelTargetList),
+        final Set<Target> mutualTargetSet = Sets.intersection(new HashSet<>(modelTargetList),
                 new HashSet<>(readCountsTargetList));
-        final List<Target> finalTargetList = readCountsTargetList.stream()
-                .filter(mutualTargetList::contains)
+        final List<Target> mutualTargetList = readCountsTargetList.stream()
+                .filter(mutualTargetSet::contains)
                 .collect(Collectors.toList());
-        final Set<Target> finalTargetsSet = new LinkedHashSet<>(finalTargetList);
 
-        logger.info("Number of mutual targets: " + finalTargetList.size());
-        Utils.validateArg(finalTargetList.size() > 0, "The intersection between model targets and targets from read count" +
+        logger.info("Number of mutual targets: " + mutualTargetList.size());
+        Utils.validateArg(mutualTargetList.size() > 0, "The intersection between model targets and targets from read count" +
                     " collection is empty. Please check there the model is compatible with the given read count" +
                     " collection.");
 
-        if (modelTargetList.size() > finalTargetList.size()) {
+        if (modelTargetList.size() > mutualTargetList.size()) {
             logger.info("The following targets dropped from the model: " + Sets.difference(new HashSet<>(modelTargetList),
-                    finalTargetsSet).stream().map(Target::getName).collect(Collectors.joining(", ", "[", "]")));
+                    mutualTargetSet).stream().map(Target::getName).collect(Collectors.joining(", ", "[", "]")));
         }
 
-        if (readCountsTargetList.size() > finalTargetList.size()) {
+        if (readCountsTargetList.size() > mutualTargetList.size()) {
             logger.info("The following targets dropped from read counts: " + Sets.difference(new HashSet<>(readCountsTargetList),
-                    finalTargetsSet).stream().map(Target::getName).collect(Collectors.joining(", ", "[", "]")));
+                    mutualTargetSet).stream().map(Target::getName).collect(Collectors.joining(", ", "[", "]")));
         }
 
         /* the targets in {@code subsetReadCounts} follow the original order of targets in {@code readCounts} */
-        final ReadCountCollection subsetReadCounts = readCounts.subsetTargets(finalTargetsSet);
+        final ReadCountCollection subsetReadCounts = readCounts.subsetTargets(mutualTargetSet);
 
         /* fetch original model parameters */
         final INDArray originalModelTargetMeanBias = model.getTargetMeanLogBias();
@@ -392,12 +395,12 @@ public final class CoverageModelParameters implements Serializable {
         final Map<Target, Integer> modelTargetsToIndexMap = IntStream.range(0, modelTargetList.size())
                 .mapToObj(ti -> ImmutablePair.of(modelTargetList.get(ti), ti))
                 .collect(Collectors.toMap(Pair<Target, Integer>::getLeft, Pair<Target, Integer>::getRight));
-        final int[] newTargetIndicesInOriginalModel = finalTargetList.stream()
+        final int[] newTargetIndicesInOriginalModel = mutualTargetList.stream()
                 .mapToInt(modelTargetsToIndexMap::get)
                 .toArray();
-        final INDArray newModelTargetMeanBias = Nd4j.create(new int[] {1, finalTargetList.size()});
-        final INDArray newModelTargetUnexplainedVariance = Nd4j.create(new int[] {1, finalTargetList.size()});
-        IntStream.range(0, finalTargetList.size())
+        final INDArray newModelTargetMeanBias = Nd4j.create(new int[] {1, mutualTargetList.size()});
+        final INDArray newModelTargetUnexplainedVariance = Nd4j.create(new int[] {1, mutualTargetList.size()});
+        IntStream.range(0, mutualTargetList.size())
                 .forEach(ti -> {
                     newModelTargetMeanBias.put(0, ti,
                             originalModelTargetMeanBias.getDouble(0, newTargetIndicesInOriginalModel[ti]));
@@ -406,11 +409,11 @@ public final class CoverageModelParameters implements Serializable {
                 });
 
         /* if model has bias covariates and/or ARD, re-arrange mean/var of bias covariates as well */
-        final INDArray newModelMeanBiasCovariates, newModelVarBiasCovariates;
+        final INDArray newModelMeanBiasCovariates;
 
         if (model.isBiasCovariatesEnabled()) {
-            newModelMeanBiasCovariates = Nd4j.create(new int[]{finalTargetList.size(), model.getNumLatents()});
-            IntStream.range(0, finalTargetList.size())
+            newModelMeanBiasCovariates = Nd4j.create(new int[]{mutualTargetList.size(), model.getNumLatents()});
+            IntStream.range(0, mutualTargetList.size())
                     .forEach(ti -> {
                         newModelMeanBiasCovariates.get(NDArrayIndex.point(ti), NDArrayIndex.all())
                                 .assign(originalModelMeanBiasCovariates.get(NDArrayIndex.point(newTargetIndicesInOriginalModel[ti]),
@@ -420,7 +423,7 @@ public final class CoverageModelParameters implements Serializable {
             newModelMeanBiasCovariates = null;
         }
 
-        return ImmutablePair.of(new CoverageModelParameters(finalTargetList, newModelTargetMeanBias,
+        return ImmutablePair.of(new CoverageModelParameters(mutualTargetList, newModelTargetMeanBias,
                 newModelTargetUnexplainedVariance, newModelMeanBiasCovariates,
                 model.getBiasCovariateARDCoefficients()), subsetReadCounts);
     }

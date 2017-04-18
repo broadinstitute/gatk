@@ -73,24 +73,6 @@ public class CopyNumberTriStateTransitionProbabilityCache implements Serializabl
     }
 
     /**
-     * Caches an instance of log transition matrix for a given distance
-     *
-     * @param distance distance between targets
-     */
-    public void cacheLogTransitionMatrix(final int distance) {
-        if (!cache.containsKey(distance)) {
-            calculateMatrix(distance);
-        }
-    }
-
-    /**
-     * Clear the cache
-     */
-    public void emptyCache() {
-        cache.clear();
-    }
-
-    /**
      * Get the log transition probability between different states
      *
      * @param distance distance between targets
@@ -157,7 +139,7 @@ public class CopyNumberTriStateTransitionProbabilityCache implements Serializabl
 
         private static final long serialVersionUID = -9072224697693405187L;
 
-        final static int size = CopyNumberTriState.values().length;
+        private static final int size = CopyNumberTriState.values().length;
         private final RealMatrix matrix;
 
         public LogTransitionProbabilityMatrix() {

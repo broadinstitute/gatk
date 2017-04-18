@@ -7,15 +7,14 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.exome.HashedListTargetCollection;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.tools.exome.TargetCollection;
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeData;
+import org.broadinstitute.hellbender.utils.GATKProtectedMathUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.hmm.ForwardBackwardAlgorithm;
 import org.broadinstitute.hellbender.utils.hmm.interfaces.CallStringProducer;
@@ -29,14 +28,14 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * TODO github/gatk-protected issue #855 -- this is a last-minute fork of {@link HiddenMarkovModelPostProcessor}.
+ * TODO github/gatk-protected issue #855 -- this is a last-minute fork of {@link HMMPostProcessor}.
  * It just does segmentation (no VCF creation)
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer & ScalarProducer, T extends Target> {
+public class HMMSegmentProcessor<DATA, STATE extends CallStringProducer & ScalarProducer, TARGET extends Target> {
 
-    private final Logger logger = LogManager.getLogger(HiddenMarkovModelSegmentProcessor.class);
+    private final Logger logger = LogManager.getLogger(HMMSegmentProcessor.class);
 
     /**
      * Maximum tolerated log probability value. Values between this constant and 0.0 as considered as a 0.0.
@@ -62,35 +61,19 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      */
     public static final double INDEPENDENT_TARGETS_SEPARATION_THRESHOLD = 0;
 
-    /**
-     * Threshold used to determine best way to calculate log(1- exp(a))
-     * based on https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
-     */
-    private static final double LN_1_M_EXP_THRESHOLD = - Math.log(2);
-
-    /**
-     * Cached value of ln(10)^-1
-     */
-    private static final double INV_LN_10 = 1.0 / Math.log(10);
-
     private final List<String> sampleNames;
     private final List<SexGenotypeData> sampleSexGenotypes;
-    private final BiFunction<SexGenotypeData, Target, S> referenceStateFactory;
+    private final BiFunction<SexGenotypeData, TARGET, STATE> referenceStateFactory;
     private final int numSamples;
-    private final List<TargetCollection<T>> sampleTargets;
-    private final List<ForwardBackwardAlgorithm.Result<D, T, S>> sampleForwardBackwardResults;
-    private final List<List<S>> sampleBestPaths;
-
-    /**
-     * An intermediate result of segment calling -- will be used for VCF creation if an external
-     * segments file is not given
-     */
-    private Map<String, List<HiddenStateSegment<S, T>>> allSegmentsBySampleName = null;
+    private final List<TargetCollection<TARGET>> sampleTargets;
+    private final List<ForwardBackwardAlgorithm.Result<DATA, TARGET, STATE>> sampleForwardBackwardResults;
+    private final List<List<STATE>> sampleBestPaths;
+    private final Map<String, List<HiddenStateSegment<STATE, TARGET>>> allSegmentsBySampleName;
 
     /**
      * This "master" target collection is the lexicographically sorted union of all targets from all samples
      */
-    private final TargetCollection<T> masterTargetCollection;
+    private final TargetCollection<TARGET> masterTargetCollection;
 
     /**
      * Public constructor.
@@ -100,21 +83,21 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      * @param sampleTargets list of target collection for each sample
      * @param sampleForwardBackwardResults list of forward-backward result for each sample
      * @param sampleBestPaths list of best hidden state sequence call for each sample
-     * @param referenceStateFactory a bi-function from (sex genotype data,
+     * @param referenceStateFactory a bi-function from (sex genotype data, target) to the "reference" state.
      */
-    public HiddenMarkovModelSegmentProcessor(
+    public HMMSegmentProcessor(
             @Nonnull final List<String> sampleNames,
             @Nonnull final List<SexGenotypeData> sampleSexGenotypes,
-            @Nonnull final BiFunction<SexGenotypeData, Target, S> referenceStateFactory,
-            @Nonnull final List<TargetCollection<T>> sampleTargets,
-            @Nonnull final List<ForwardBackwardAlgorithm.Result<D, T, S>> sampleForwardBackwardResults,
-            @Nonnull final List<List<S>> sampleBestPaths) {
+            @Nonnull final BiFunction<SexGenotypeData, TARGET, STATE> referenceStateFactory,
+            @Nonnull final List<TargetCollection<TARGET>> sampleTargets,
+            @Nonnull final List<ForwardBackwardAlgorithm.Result<DATA, TARGET, STATE>> sampleForwardBackwardResults,
+            @Nonnull final List<List<STATE>> sampleBestPaths) {
 
         /* basic consistency checks on the input data */
         numSamples = sampleNames.size();
         Utils.nonNull(sampleNames, "The list of sample names must be non-null");
         Utils.nonNull(sampleSexGenotypes, "The list of sample sex genotypes must be non-null");
-        Utils.nonNull(referenceStateFactory, "The reference state factor must be non-null");
+        Utils.nonNull(referenceStateFactory, "The reference state factory must be non-null");
         Utils.nonNull(sampleTargets, "The list of sample target list must be non-null");
         Utils.nonNull(sampleForwardBackwardResults, "The list of forward-backward results must be non-null");
         Utils.nonNull(sampleBestPaths, "The list of sample best paths must be non-null");
@@ -136,7 +119,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
                 "Some of the sample names in the sex genotype data do not correspond to the list of sample names");
 
         /* get the hidden states from the first sample and ensure all samples have the same hidden states */
-        final Set<S> pooledStates = sampleForwardBackwardResults.stream()
+        final Set<STATE> pooledStates = sampleForwardBackwardResults.stream()
                 .map(fb -> fb.model().hiddenStates())
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
@@ -148,7 +131,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
         /* assert that the target collection of each sample is lexicographically sorted */
         IntStream.range(0, numSamples)
                 .forEach(si -> {
-                    final List<T> sampleTargetList = sampleTargets.get(si).targets();
+                    final List<TARGET> sampleTargetList = sampleTargets.get(si).targets();
                     Utils.validateArg(IntStream.range(0, sampleTargetList.size() - 1)
                                     .allMatch(ti -> IntervalUtils.LEXICOGRAPHICAL_ORDER_COMPARATOR
                                             .compare(sampleTargetList.get(ti + 1), sampleTargetList.get(ti)) > 0),
@@ -174,17 +157,13 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
         allSegmentsBySampleName = calculateBestPathSegments();
     }
 
-    /***********************
-     * main public methods *
-     ***********************/
-
     /**
      * Write segments to a table writer
      *
      * @param writer an instance of {@link HiddenStateSegmentRecordWriter}
      */
-    public void writeSegmentsToTableWriter(@Nonnull final HiddenStateSegmentRecordWriter<S, T> writer) {
-        final Iterator<HiddenStateSegmentRecord<S, T>> allSegmentRecordsSortedByCoordinates =
+    public void writeSegmentsToTableWriter(@Nonnull final HiddenStateSegmentRecordWriter<STATE, TARGET> writer) {
+        final Iterator<HiddenStateSegmentRecord<STATE, TARGET>> allSegmentRecordsSortedByCoordinates =
                 composeTargetSortedSegmentRecordIterator(masterTargetCollection, allSegmentsBySampleName);
         logger.info("Writing segments to file...");
         writeSegments(allSegmentRecordsSortedByCoordinates, writer);
@@ -195,16 +174,14 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      *
      * @return a list of
      */
-    public List<HiddenStateSegmentRecord<S, T>> getSegmentsAsList() {
-        final List<HiddenStateSegmentRecord<S, T>> segmentList = new ArrayList<>();
+    public List<HiddenStateSegmentRecord<STATE, TARGET>> getSegmentsAsList() {
+        final List<HiddenStateSegmentRecord<STATE, TARGET>> segmentList = new ArrayList<>();
         composeTargetSortedSegmentRecordIterator(masterTargetCollection, allSegmentsBySampleName)
                 .forEachRemaining(segmentList::add);
         return segmentList;
     }
 
-    /********************************
-     * segmentation-related methods *
-     ********************************/
+    /* segmentation-related methods */
 
     /**
      * Takes the provided forward-backward result and the best hidden state chain for each sample and
@@ -212,18 +189,18 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      *
      * @return a map from sample names to a list of segments
      */
-    private Map<String, List<HiddenStateSegment<S, T>>> calculateBestPathSegments() {
-        final Map<String, List<HiddenStateSegment<S, T>>> allSegments = new LinkedHashMap<>(sampleNames.size());
+    private Map<String, List<HiddenStateSegment<STATE, TARGET>>> calculateBestPathSegments() {
+        final Map<String, List<HiddenStateSegment<STATE, TARGET>>> allSegments = new LinkedHashMap<>(sampleNames.size());
         IntStream.range(0, numSamples).parallel()
                 .forEach(sampleIndex -> {
                     logger.info("Current sample: " + sampleNames.get(sampleIndex) + "...");
                     final String sampleName = sampleNames.get(sampleIndex);
-                    final TargetCollection<T> targets = sampleTargets.get(sampleIndex);
-                    final List<S> bestPath = sampleBestPaths.get(sampleIndex);
-                    final ForwardBackwardAlgorithm.Result<D, T, S> fbResult = sampleForwardBackwardResults.get(sampleIndex);
-                    final List<Pair<IndexRange, S>> bestPathTargetIndexRanges =
+                    final TargetCollection<TARGET> targets = sampleTargets.get(sampleIndex);
+                    final List<STATE> bestPath = sampleBestPaths.get(sampleIndex);
+                    final ForwardBackwardAlgorithm.Result<DATA, TARGET, STATE> fbResult = sampleForwardBackwardResults.get(sampleIndex);
+                    final List<Pair<IndexRange, STATE>> bestPathTargetIndexRanges =
                             condenseBestPathIntoTargetIndexAndStatePairs(bestPath, targets);
-                    final List<HiddenStateSegment<S, T>> bestPathSegmentList =
+                    final List<HiddenStateSegment<STATE, TARGET>> bestPathSegmentList =
                             composeSegments(sampleIndex, fbResult, bestPathTargetIndexRanges);
                     allSegments.put(sampleName, bestPathSegmentList);
                 });
@@ -240,8 +217,8 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      *                expand across contigs.
      * @return never {@code null}.
      */
-    private List<Pair<IndexRange, S>> condenseBestPathIntoTargetIndexAndStatePairs(final List<S> bestPath,
-                                                                                   final TargetCollection<T> targets) {
+    private List<Pair<IndexRange, STATE>> condenseBestPathIntoTargetIndexAndStatePairs(final List<STATE> bestPath,
+                                                                                       final TargetCollection<TARGET> targets) {
         if (bestPath.isEmpty()) {
             return Collections.emptyList();
         }
@@ -250,15 +227,15 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
         final long numChangePoints = IntStream.range(0, bestPath.size() - 1)
                 .filter(i -> !bestPath.get(i).equals(bestPath.get(i + 1)))
                 .count();
-        final List<Pair<IndexRange, S>> result = new ArrayList<>((int) numChangePoints);
+        final List<Pair<IndexRange, STATE>> result = new ArrayList<>((int) numChangePoints);
 
         int currentStartIndex = 0; // contains the start index of the segment being traversed.
-        final ListIterator<S> pathIterator = bestPath.listIterator();
-        final ListIterator<T> targetIterator = targets.targets().listIterator();
+        final ListIterator<STATE> pathIterator = bestPath.listIterator();
+        final ListIterator<TARGET> targetIterator = targets.targets().listIterator();
         String currentContig = targetIterator.next().getContig();
-        S currentState = pathIterator.next();
+        STATE currentState = pathIterator.next();
         while (pathIterator.hasNext()) {
-            final S nextState = pathIterator.next();
+            final STATE nextState = pathIterator.next();
             final String nextContig = targetIterator.next().getContig();
             final boolean contigChanged = !currentContig.equals(nextContig);
             final boolean stateChanged = !nextState.equals(currentState);
@@ -282,10 +259,10 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      * @param bestPathSegments the best hidden-state path along the int targets and count sequence.
      * @return never {@code null}.
      */
-    private List<HiddenStateSegment<S, T>> composeSegments(
+    private List<HiddenStateSegment<STATE, TARGET>> composeSegments(
             final int sampleIndex,
-            final ForwardBackwardAlgorithm.Result<D, T, S> fbResult,
-            final List<Pair<IndexRange, S>> bestPathSegments) {
+            final ForwardBackwardAlgorithm.Result<DATA, TARGET, STATE> fbResult,
+            final List<Pair<IndexRange, STATE>> bestPathSegments) {
         return bestPathSegments.stream()
                 .map(ir -> composeHiddenStateSegmentFromTargetIndexRange(sampleIndex, fbResult, ir.getLeft(),
                         ir.getRight()))
@@ -301,17 +278,17 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      * @param call the call for the segment.
      * @return never {@code null}
      */
-    private HiddenStateSegment<S, T> composeHiddenStateSegmentFromTargetIndexRange(
+    private HiddenStateSegment<STATE, TARGET> composeHiddenStateSegmentFromTargetIndexRange(
             final int sampleIndex,
-            final ForwardBackwardAlgorithm.Result<D, T, S> fbResult,
+            final ForwardBackwardAlgorithm.Result<DATA, TARGET, STATE> fbResult,
             final IndexRange targetIndexRange,
-            final S call) {
+            final STATE call) {
 
         final int segmentLength = targetIndexRange.size();
         final double mean = calculateSegmentMean(targetIndexRange.from, segmentLength, fbResult);
         final double stdDev = FastMath.sqrt(calculateSegmentVariance(targetIndexRange.from, segmentLength, fbResult));
 
-        final List<T> targets = fbResult.positions().subList(targetIndexRange.from, targetIndexRange.to);
+        final List<TARGET> targets = fbResult.positions().subList(targetIndexRange.from, targetIndexRange.to);
         final double logExactProbability = fbResult.logProbability(targetIndexRange.from, targetIndexRange.to, call);
         final double logSomeProbability = logSomeProbability(targetIndexRange.from, segmentLength, call, fbResult);
         final double logStartProbability = logStartProbability(targetIndexRange.from, call, fbResult);
@@ -320,7 +297,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
         if (contigsSet.size() > 1) {
             throw new IllegalArgumentException("The target index range for the segment encompasses multiple contigs");
         }
-        final S referenceState = referenceStateFactory.apply(sampleSexGenotypes.get(sampleIndex), targets.get(0));
+        final STATE referenceState = referenceStateFactory.apply(sampleSexGenotypes.get(sampleIndex), targets.get(0));
         final double logReferenceProbability = fbResult.logProbability(targetIndexRange.from,
                 Collections.nCopies(segmentLength, referenceState));
 
@@ -347,19 +324,19 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      * @param allSegments map with all segment lists coming from different samples.
      * @return never null.
      */
-    private Iterator<HiddenStateSegmentRecord<S, T>> composeTargetSortedSegmentRecordIterator(
-            final TargetCollection<T> masterTargetCollection,
-            final Map<String, List<HiddenStateSegment<S, T>>> allSegments) {
-        final List<Iterator<HiddenStateSegmentRecord<S, T>>> allSegmentRecordIterators =
+    private Iterator<HiddenStateSegmentRecord<STATE, TARGET>> composeTargetSortedSegmentRecordIterator(
+            final TargetCollection<TARGET> masterTargetCollection,
+            final Map<String, List<HiddenStateSegment<STATE, TARGET>>> allSegments) {
+        final List<Iterator<HiddenStateSegmentRecord<STATE, TARGET>>> allSegmentRecordIterators =
                 allSegments.entrySet().stream()
                         .map(e -> e.getValue().stream()
                                 .map(s -> new HiddenStateSegmentRecord<>(e.getKey(), s))
                                 .iterator())
                         .collect(Collectors.toList());
 
-        final Comparator<HiddenStateSegmentRecord<S, T>> recordComparator = (o1, o2) -> {
-            final HiddenStateSegment<S, T> s1 = o1.getSegment();
-            final HiddenStateSegment<S, T> s2 = o2.getSegment();
+        final Comparator<HiddenStateSegmentRecord<STATE, TARGET>> recordComparator = (o1, o2) -> {
+            final HiddenStateSegment<STATE, TARGET> s1 = o1.getSegment();
+            final HiddenStateSegment<STATE, TARGET> s2 = o2.getSegment();
             // Using the index-range.from we make sure we sort first by the contig over
             // the start position in the same order as contigs are present in
             // the input data or target collection.
@@ -390,13 +367,13 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
      * @throws org.broadinstitute.hellbender.exceptions.UserException.CouldNotCreateOutputFile if there is any
      * issue creating or writing into the output file provided by the user.
      */
-    private void writeSegments(final Iterator<HiddenStateSegmentRecord<S, T>> allSegmentsSorted,
-                               final HiddenStateSegmentRecordWriter<S, T> writer) {
+    private void writeSegments(final Iterator<HiddenStateSegmentRecord<STATE, TARGET>> allSegmentsSorted,
+                               final HiddenStateSegmentRecordWriter<STATE, TARGET> writer) {
         try {
             long count = 0;
             final Set<String> samples = new HashSet<>();
             while (allSegmentsSorted.hasNext()) {
-                final HiddenStateSegmentRecord<S, T> record = allSegmentsSorted.next();
+                final HiddenStateSegmentRecord<STATE, TARGET> record = allSegmentsSorted.next();
                 samples.add(record.getSampleName());
                 writer.writeRecord(record);
                 count++;
@@ -408,9 +385,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
         }
     }
 
-    /****************************************************************************************
-     * methods related to calculating various quality scores, probabilities, and statistics *
-     ****************************************************************************************/
+    /* methods related to calculating various quality scores, probabilities, and statistics */
 
     /**
      * Calculates the probability that some of the targets in the range [firstTargetIndex, firstTargetIndex + segmentLength)
@@ -437,7 +412,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
             otherStates.remove(call);
             final List<Set<STATE>> otherStatesConstraints = Collections.nCopies(segmentLength, otherStates);
             final double logOtherStates = fbResult.logConstrainedProbability(firstTargetIndex, otherStatesConstraints);
-            return logProbComplement(logOtherStates);
+            return GATKProtectedMathUtils.logProbComplement(logOtherStates);
         }
     }
 
@@ -525,9 +500,9 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
     /**
      * Calculates the posterior expectation of the variance of hidden state values on a segment:
      *
-     *      E[\sigma^2] = (1/T) \sum_{t} E[S_t^2] - (1/T^2) \sum_{t1,t2} E[S_t1 S_t2]
+     *      E[\sigma^2] = (1/TARGET) \sum_{t} E[S_t^2] - (1/TARGET^2) \sum_{t1,t2} E[S_t1 S_t2]
      *
-     * Here, T = {@code segmentLength}
+     * Here, TARGET = {@code segmentLength}
      *
      * @param firstTargetIndex first target index of the segment
      * @param segmentLength length of the segment
@@ -571,7 +546,7 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
             for (int ti0 = firstTargetIndex; ti0 < firstTargetIndex + segmentLength; ti0++) {
                 for (int ti1 = ti0 + 1; ti1 < firstTargetIndex + segmentLength; ti1++) {
                     final double distance = Target.calculateDistance(fbResult.positions().get(ti0),
-                            fbResult.positions().get(ti1), Double.POSITIVE_INFINITY);
+                            fbResult.positions().get(ti1));
                     if (distance > INDEPENDENT_TARGETS_SEPARATION_THRESHOLD) {
                         /* independent state approximation */
                         crossCorrSum += 2 * means[ti0 - firstTargetIndex] * means[ti1 - firstTargetIndex];
@@ -597,66 +572,10 @@ public class HiddenMarkovModelSegmentProcessor<D, S extends CallStringProducer &
     }
 
     /**
-     * Calculates the complement of a log probability.
-     *
-     * <p>
-     *     With complement of {@code x} we mean: {@code log(1-log(x))}.
-     * </p>
-     * @param x the input log probability.
-     * @return {@code log(1-log(x))}
+     * See {@link org.broadinstitute.hellbender.utils.GATKProtectedMathUtils#logProbToPhredScore(double, boolean, double, double, double)}
      */
-    public static double logProbComplement(final double x) {
-        return x >= LN_1_M_EXP_THRESHOLD
-                ? Math.log(-Math.expm1(x))
-                : Math.log1p(-Math.exp(x));
-    }
-
-    /**
-     * Transform a log scaled probability (x) into the Phred scaled
-     * equivalent or its complement (1-x) Phred scaled equivalent.
-     * <p>
-     *     This method tolerates probabilities slightly larger than 1.0
-     *     (> 0.0 in log scale) which may occur occasionally due to
-     *     float point calculation rounding.
-     * </p>
-     * <p>
-     *     The value returned is a phred score capped by {@link #MAX_QUAL_SCORE}.
-     * </p>
-     *
-     * @param rawLogProb the probability.
-     * @param complement whether to return the direct Phred transformation ({@code false})
-     *                    or its complement ({@code true)}.
-     * @return a values between 0 and {@link #MAX_QUAL_SCORE}.
-     * @throws GATKException if {@code rawLogProb} is larger than {@link #MAX_LOG_PROB}.
-     */
-    public static double logProbToPhredScore(final double rawLogProb, final boolean complement) {
-        if (rawLogProb > MAX_LOG_PROB) {
-            throw new GATKException(String.format("numerical instability problem: the log-probability is too" +
-                    " large: %g > 0.0 (with maximum tolerance %g)", rawLogProb, MAX_LOG_PROB));
-        }
-        // make sure that the probability is less than 1 in linear scale. there are cases where
-        // log probability exceeds 0.0 due to floating point errors.
-        final double logProbEqOrLessThan0 = Math.min(0.0, rawLogProb);
-
-        // Accurate way to calculate log(1-exp(a))
-        // based on https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
-        final double finalLogProb = complement
-                ? logProbComplement(logProbEqOrLessThan0)
-                : logProbEqOrLessThan0;
-
-        final double absoluteQualScore = QualityUtils.phredScaleLog10ErrorRate(finalLogProb * INV_LN_10);
-        final double exactValue = Math.min(MAX_QUAL_SCORE, absoluteQualScore);
-        // We round the value to the required precession.
-        return roundPhred(exactValue);
-    }
-
-    /**
-     * Round a Phred scaled score to precision {@link #PHRED_SCORE_PRECISION}
-     *
-     * @param value Phred score
-     * @return rounded Phred score
-     */
-    public static double roundPhred(final double value) {
-        return Math.round(value / PHRED_SCORE_PRECISION) * PHRED_SCORE_PRECISION;
+    private static double logProbToPhredScore(final double rawLogProb, final boolean complement) {
+        return GATKProtectedMathUtils.logProbToPhredScore(rawLogProb, complement, MAX_QUAL_SCORE, MAX_LOG_PROB,
+                PHRED_SCORE_PRECISION);
     }
 }

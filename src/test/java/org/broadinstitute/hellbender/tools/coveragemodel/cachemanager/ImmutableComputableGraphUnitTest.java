@@ -29,52 +29,62 @@ public class ImmutableComputableGraphUnitTest extends BaseTest {
         return new DuplicableNDArray(xProdY.add(y));
     };
 
-    @Test
+    @Test(enabled = false)
+    public void testMissingParents() {
+        throw new AssertionFailedError("Test is not implemented yet");
+    }
+
+    @Test(enabled = false)
+    public void testDuplicateNodeKeys() {
+        throw new AssertionFailedError("Test is not implemented yet");
+    }
+
+    @Test(enabled = false)
     public void testCyclicGraph() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testOutdatedCaches() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testUpToDateCaches() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testComputeOnDemandNodes() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testPrimitiveUpdating() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testExternallyComputableUpdating() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCacheByTag() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCacheByNode() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCacheAutoUpdate() {
         throw new AssertionFailedError("Test is not implemented yet");
     }
 
-    @Test
+    @Test(enabled = false)
     public void testUnchangedNodesSameReferenceAfterUpdate() {
         throw new AssertionFailedError("Test is not implemented yet");
     }

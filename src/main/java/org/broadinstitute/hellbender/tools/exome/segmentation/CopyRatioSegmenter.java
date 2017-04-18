@@ -66,7 +66,7 @@ public final class CopyRatioSegmenter extends ScalarHMMSegmenter<Double> {
 
     @Override
     protected ClusteringGenomicHMM<Double, Double> makeModel() {
-        return new CopyRatioHiddenMarkovModel(getStates(), getWeights(), getMemoryLength(), logCoverageCauchyWidth);
+        return new CopyRatioHMM(getStates(), getWeights(), getMemoryLength(), logCoverageCauchyWidth);
     }
 
     @Override
@@ -78,7 +78,7 @@ public final class CopyRatioSegmenter extends ScalarHMMSegmenter<Double> {
                 for (int state = 0; state < numStates(); state++) {
                     final double eStepPosterior = eStep.pStateAtPosition(state, position);
                     logLikelihood += eStepPosterior < NEGLIGIBLE_POSTERIOR_FOR_M_STEP ? 0 : eStepPosterior
-                            * CopyRatioHiddenMarkovModel.logEmissionProbability(data.get(position), getState(state), width);
+                            * CopyRatioHMM.logEmissionProbability(data.get(position), getState(state), width);
                 }
             }
             return logLikelihood;

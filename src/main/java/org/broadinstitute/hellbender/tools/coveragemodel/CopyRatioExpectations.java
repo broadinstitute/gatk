@@ -63,7 +63,7 @@ public final class CopyRatioExpectations implements Serializable {
      *
      * @return a double array
      */
-    public double[] getLogCopyRatioMeans(@Nonnull final LinearSpaceBlock block) {
+    public double[] getLogCopyRatioMeans(@Nonnull final LinearlySpacedIndexBlock block) {
         validateBlockIndexRange(block);
         return Arrays.copyOfRange(logCopyRatioMeans, block.getBegIndex(), block.getEndIndex());
     }
@@ -82,15 +82,14 @@ public final class CopyRatioExpectations implements Serializable {
      *
      * @return a double array
      */
-    public double[] getLogCopyRatioVariances(final LinearSpaceBlock block) {
+    public double[] getLogCopyRatioVariances(final LinearlySpacedIndexBlock block) {
         validateBlockIndexRange(block);
         return Arrays.copyOfRange(logCopyRatioVariances, block.getBegIndex(), block.getEndIndex());
     }
 
-    private void validateBlockIndexRange(final LinearSpaceBlock block) {
+    private void validateBlockIndexRange(final LinearlySpacedIndexBlock block) {
         Utils.nonNull(block, "The target-space block must be non-null");
         ParamUtils.inRange(block.getBegIndex(), 0, numTargets, "Begin index out of range");
         ParamUtils.inRange(block.getEndIndex(), 0, numTargets, "End index out of range");
     }
-
 }

@@ -26,9 +26,9 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class CoverageModelWLinearOperatorLocal extends GeneralLinearOperator<INDArray> {
+public final class CoverageModelWLinearOperatorLocal implements GeneralLinearOperator<INDArray> {
 
-    private final Logger logger = LogManager.getLogger(CoverageModelWLinearOperatorLocal.class);
+    private static final Logger logger = LogManager.getLogger(CoverageModelWLinearOperatorLocal.class);
 
     private final int numLatents, numTargets;
     private final INDArray Q_tll, Z_ll;

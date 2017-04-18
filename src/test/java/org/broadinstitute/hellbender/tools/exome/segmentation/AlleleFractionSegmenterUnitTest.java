@@ -34,7 +34,7 @@ public final class AlleleFractionSegmenterUnitTest {
 
         final AlleleFractionGlobalParameters trueParams = new AlleleFractionGlobalParameters(1.0, 0.01, 0.01);
 
-        final AlleleFractionHiddenMarkovModel trueModel = new AlleleFractionHiddenMarkovModel(trueMinorAlleleFractions, trueWeights,
+        final AlleleFractionHMM trueModel = new AlleleFractionHMM(trueMinorAlleleFractions, trueWeights,
                 trueMemoryLength, AllelicPanelOfNormals.EMPTY_PON, trueParams);
 
         // randomly set positions

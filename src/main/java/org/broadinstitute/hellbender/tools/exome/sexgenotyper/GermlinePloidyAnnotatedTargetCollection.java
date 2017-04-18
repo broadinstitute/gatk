@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
  * A collection of {@link Target} instances along with helper methods for generating their genotype ploidy
  * annotations on-the-fly using provided contig ploidy annotations.
  *
- * @implNote had to remove unmodifiable status on various collections. Kryo still has serialization issues
- *           with unmodifiable collections even with custom serializers from de.javakaffee:kryo-serializers
+ * @implNote had to remove unmodifiable status on all collections. Kryo still has serialization issues
+ *           with unmodifiable collections even using custom serializers from de.javakaffee:kryo-serializers
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
@@ -87,24 +87,24 @@ public final class GermlinePloidyAnnotatedTargetCollection implements TargetColl
     }
 
     /**
-     * Returns an unmodifiable list of autosomal targets contained in the collection
-     * @return unmodifiable list of contained autosomal targets
+     * Returns the list of autosomal targets contained in the collection
+     * @return list of contained autosomal targets
      */
     public List<Target> getAutosomalTargetList() {
         return autosomalTargetList;
     }
 
     /**
-     * Returns an unmodifiable list of allosomal targets contained in the collection
-     * @return unmodifiable list of contained allosomal targets
+     * Returns the list of allosomal targets contained in the collection
+     * @return list of contained allosomal targets
      */
     public List<Target> getAllosomalTargetList() {
         return allosomalTargetList;
     }
 
     /**
-     * Returns an unmodifiable set of all targets contained in the collection
-     * @return
+     * Returns the set of all targets contained in the collection
+     * @return the set of targets
      */
     public Set<Target> getFullTargetSet() {
         return fullTargetSet;

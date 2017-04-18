@@ -7,23 +7,25 @@ import javax.annotation.Nonnull;
 /**
  * An abstract linear operator
  *
+ * @param <VECTOR> a vector type
+
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public abstract class GeneralLinearOperator<V> {
+public interface GeneralLinearOperator<VECTOR> {
 
     /**
      * Returns the dimension of the codomain of this operator.
      *
      * @return the number of rows of the underlying matrix
      */
-    public abstract int getRowDimension();
+    int getRowDimension();
 
     /**
      * Returns the dimension of the domain of this operator.
      *
      * @return the number of columns of the underlying matrix
      */
-    public abstract int getColumnDimension();
+    int getColumnDimension();
 
     /**
      * Returns the result of multiplying {@code this} by the vector {@code x}.
@@ -33,7 +35,7 @@ public abstract class GeneralLinearOperator<V> {
      * @throws DimensionMismatchException if the column dimension does not match
      * the size of {@code x}
      */
-    public abstract V operate(@Nonnull final V x)
+    VECTOR operate(@Nonnull final VECTOR x)
             throws DimensionMismatchException;
 
     /**
@@ -45,26 +47,26 @@ public abstract class GeneralLinearOperator<V> {
      * @param x the vector to operate on
      * @return the product of the transpose of {@code this} instance with
      * {@code x}
-     * @throws org.apache.commons.math3.exception.DimensionMismatchException
+     * @throws DimensionMismatchException
      * if the row dimension does not match the size of {@code x}
      * @throws UnsupportedOperationException if this operation is not supported
      * by {@code this} operator
      */
-    public V operateTranspose(@Nonnull final V x)
+    default VECTOR operateTranspose(@Nonnull final VECTOR x)
             throws DimensionMismatchException, UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
     /**
      * Returns {@code true} if this operator supports
-     * {@link #operateTranspose(V)}. If {@code true} is returned,
-     * {@link #operateTranspose(V)} should not throw
+     * {@link #operateTranspose(VECTOR)}. If {@code true} is returned,
+     * {@link #operateTranspose(VECTOR)} should not throw
      * {@code UnsupportedOperationException}. The default implementation returns
      * {@code false}.
      *
      * @return {@code false}
      */
-    public boolean isTransposable() {
+    default boolean isTransposable() {
         return false;
     }
 
@@ -75,7 +77,7 @@ public abstract class GeneralLinearOperator<V> {
      * @throws DimensionMismatchException
      * @throws UnsupportedOperationException
      */
-    public void updateRow(final int rowIndex, @Nonnull final V row)
+    default void updateRow(final int rowIndex, @Nonnull final VECTOR row)
             throws DimensionMismatchException, UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
@@ -87,11 +89,14 @@ public abstract class GeneralLinearOperator<V> {
      * @throws DimensionMismatchException
      * @throws UnsupportedOperationException
      */
-    public void updateColumn(final int colIndex, @Nonnull final V col)
+    default void updateColumn(final int colIndex, @Nonnull final VECTOR col)
             throws DimensionMismatchException, UnsupportedOperationException {
         throw new UnsupportedOperationException();
     }
 
-    public void cleanupAfter() {}
-
+    /**
+     * Performs clean up after a call to {@link #operate(Object)} such as null-referencing
+     * unnecessary members, unpersisting RDD caches, etc)
+     */
+    default void cleanupAfter() {}
 }

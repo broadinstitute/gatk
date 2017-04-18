@@ -3,13 +3,11 @@ package org.broadinstitute.hellbender.tools.coveragemodel;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.commons.math3.analysis.UnivariateFunction;
 import org.apache.commons.math3.exception.NoBracketingException;
 import org.apache.commons.math3.exception.TooManyEvaluationsException;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.Duplicable;
-import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.DuplicableNDArray;
-import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.DuplicableNumber;
-import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.ImmutableComputableGraph;
+import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.*;
 import org.broadinstitute.hellbender.tools.coveragemodel.math.RobustBrentSolver;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -27,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -37,7 +34,7 @@ import java.util.stream.IntStream;
  *
  * TODO github/gatk-protected issue #853 -- logging in spark mode (log4j is not serializable)
  * TODO github/gatk-protected issue #853 -- use instrumentation to measure memory consumption
-
+ *
  * @implNote Methods that manipulate INDArrays must make sure to leave queried values from
  * {@link CoverageModelEMComputeBlock#icg} unchanged. For example, to calculate the A.B.C + D,
  * the correct template is first fetch the data from ICG as follows:
@@ -89,11 +86,14 @@ public final class CoverageModelEMComputeBlock {
     /**
      * The index range of targets included in this compute block
      */
-    private final LinearSpaceBlock targetBlock;
+    private final LinearlySpacedIndexBlock targetBlock;
 
-    private final int numSamples, numLatents, numTargets;
+    private final int numSamples;
+    private final int numLatents;
+    private final int numTargets;
 
-    private final boolean ardEnabled, biasCovariatesEnabled;
+    private final boolean ardEnabled;
+    private final boolean biasCovariatesEnabled;
 
     /**
      * The latest signal from calling an M-step subroutine
@@ -166,6 +166,12 @@ public final class CoverageModelEMComputeBlock {
     }
 
     /**
+     * Annotation for methods that query the ICG
+     */
+    private @interface QueriesICG {
+    }
+
+    /**
      * This method creates an empty instance of {@link ImmutableComputableGraph} for worker-side
      * calculations.
      *
@@ -184,38 +190,26 @@ public final class CoverageModelEMComputeBlock {
          */
         cgbuilder
                 /* raw read counts */
-                .addPrimitiveNode(CoverageModelICGCacheNode.n_st.name(),
-                        new String[]{},
-                        new DuplicableNDArray())
+                .addNDArrayPrimitiveNode(CoverageModelICGCacheNode.n_st.name())
                 /* mask */
-                .addPrimitiveNode(CoverageModelICGCacheNode.M_st.name(),
-                        new String[]{},
-                        new DuplicableNDArray())
+                .addNDArrayPrimitiveNode(CoverageModelICGCacheNode.M_st.name())
                 /* mapping error probability */
-                .addPrimitiveNode(CoverageModelICGCacheNode.err_st.name(),
-                        new String[]{},
-                        new DuplicableNDArray());
+                .addNDArrayPrimitiveNode(CoverageModelICGCacheNode.err_st.name());
 
         /*
          * Model parameters
          */
         cgbuilder
                 /* mean log bias */
-                .addPrimitiveNode(CoverageModelICGCacheNode.m_t.name(),
-                        new String[]{},
-                        new DuplicableNDArray())
+                .addNDArrayPrimitiveNode(CoverageModelICGCacheNode.m_t.name())
                 /* unexplained variance */
-                .addPrimitiveNode(CoverageModelICGCacheNode.Psi_t.name(),
-                        new String[]{},
-                        new DuplicableNDArray());
+                .addNDArrayPrimitiveNode(CoverageModelICGCacheNode.Psi_t.name());
 
         /* if ARD is enabled, add a node for ARD coefficients */
         if (ardEnabled) {
             cgbuilder
                     /* precision of bias covariates */
-                    .addPrimitiveNode(CoverageModelICGCacheNode.alpha_l.name(),
-                            new String[]{},
-                            new DuplicableNDArray());
+                    .addNDArrayPrimitiveNode(CoverageModelICGCacheNode.alpha_l.name());
         }
 
         /*
@@ -223,48 +217,24 @@ public final class CoverageModelEMComputeBlock {
          */
         cgbuilder
                 /* E[log(c_{st})] */
-                .addComputableNode(CoverageModelICGCacheNode.log_c_st.name(),
-                        new String[]{},
-                        new String[]{},
-                        null, true)
+                .addExternallyComputableNode(CoverageModelICGCacheNode.log_c_st.name())
                 /* var[log(c_{st})] */
-                .addComputableNode(CoverageModelICGCacheNode.var_log_c_st.name(),
-                        new String[]{},
-                        new String[]{},
-                        null, true)
+                .addExternallyComputableNode(CoverageModelICGCacheNode.var_log_c_st.name())
                 /* E[log(d_s)] */
-                .addComputableNode(CoverageModelICGCacheNode.log_d_s.name(),
-                        new String[]{},
-                        new String[]{},
-                        null, true)
+                .addExternallyComputableNode(CoverageModelICGCacheNode.log_d_s.name())
                 /* var[log(d_s)] */
-                .addComputableNode(CoverageModelICGCacheNode.var_log_d_s.name(),
-                        new String[]{},
-                        new String[]{},
-                        null, true)
+                .addExternallyComputableNode(CoverageModelICGCacheNode.var_log_d_s.name())
                 /* E[\gamma_s] */
-                .addComputableNode(CoverageModelICGCacheNode.gamma_s.name(),
-                        new String[]{},
-                        new String[]{},
-                        null, true);
+                .addExternallyComputableNode(CoverageModelICGCacheNode.gamma_s.name());
 
         if (biasCovariatesEnabled) {
             cgbuilder
                     /* mean of bias covariates */
-                    .addComputableNode(CoverageModelICGCacheNode.W_tl.name(),
-                            new String[]{},
-                            new String[]{},
-                            null, true)
+                    .addExternallyComputableNode(CoverageModelICGCacheNode.W_tl.name())
                     /* E[z_{sm}] */
-                    .addComputableNode(CoverageModelICGCacheNode.z_sl.name(),
-                            new String[]{},
-                            new String[]{},
-                            null, true)
+                    .addExternallyComputableNode(CoverageModelICGCacheNode.z_sl.name())
                     /* E[z_{sm} z_{sn}] */
-                    .addComputableNode(CoverageModelICGCacheNode.zz_sll.name(),
-                            new String[]{},
-                            new String[]{},
-                            null, true);
+                    .addExternallyComputableNode(CoverageModelICGCacheNode.zz_sll.name());
         }
 
         /*
@@ -458,7 +428,7 @@ public final class CoverageModelEMComputeBlock {
      * @param ardEnabled enable/disable ARD for bias covariates
      * @param icg an instance of {@link ImmutableComputableGraph}
      */
-    private CoverageModelEMComputeBlock(@Nonnull final LinearSpaceBlock targetBlock,
+    private CoverageModelEMComputeBlock(@Nonnull final LinearlySpacedIndexBlock targetBlock,
                                         final int numSamples, final int numLatents,
                                         final boolean ardEnabled,
                                         @Nonnull final ImmutableComputableGraph icg,
@@ -470,7 +440,7 @@ public final class CoverageModelEMComputeBlock {
         this.ardEnabled = ardEnabled;
         this.biasCovariatesEnabled = numLatents > 0;
         this.latestMStepSignal = latestMStepSignal;
-        this.numTargets = targetBlock.getNumTargets();
+        this.numTargets = targetBlock.getNumElements();
     }
 
     /**
@@ -481,15 +451,15 @@ public final class CoverageModelEMComputeBlock {
      * @param numLatents dimension of the bias latent space
      * @param ardEnabled enable/disable ARD for bias covariates
      */
-    public CoverageModelEMComputeBlock(@Nonnull final LinearSpaceBlock targetBlock,
+    public CoverageModelEMComputeBlock(@Nonnull final LinearlySpacedIndexBlock targetBlock,
                                        final int numSamples, final int numLatents,
                                        final boolean ardEnabled) {
         this(targetBlock, numSamples, numLatents, ardEnabled,
                 createEmptyCacheGraph(numLatents > 0, ardEnabled),
-                SubroutineSignal.builder().build());
+                SubroutineSignal.EMPTY_SIGNAL);
     }
 
-    public LinearSpaceBlock getTargetSpaceBlock() {
+    public LinearlySpacedIndexBlock getTargetSpaceBlock() {
         return targetBlock;
     }
 
@@ -503,6 +473,7 @@ public final class CoverageModelEMComputeBlock {
      * @param key key of the cache node
      * @return an INDArray
      */
+    @QueriesICG
     public INDArray getINDArrayFromCache(final CoverageModelICGCacheNode key) {
         return ((DuplicableNDArray)icg.getValueWithRequiredEvaluations(key.name())).value();
     }
@@ -515,6 +486,7 @@ public final class CoverageModelEMComputeBlock {
      * @param key key of the cache
      * @return a double value
      */
+    @QueriesICG
     public double getDoubleFromCache(final CoverageModelICGCacheNode key) {
         return ((DuplicableNumber) icg.getValueWithRequiredEvaluations(key.name())).value().doubleValue();
     }
@@ -542,6 +514,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return an {@link ImmutablePair} of contribGMatrix (left) and contribZ (right)
      */
+    @QueriesICG
     public ImmutablePair<INDArray, INDArray> getBiasLatentPosteriorDataUnregularized() {
         assertBiasCovariatesEnabled();
         /* fetch data from cache */
@@ -579,6 +552,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return an {@link ImmutableTriple} of contribGMatrix (left), contribZ (middle), contribFilter (right)
      */
+    @QueriesICG
     public ImmutableTriple<INDArray, INDArray, INDArray> getBiasLatentPosteriorDataRegularized() {
         assertBiasCovariatesEnabled();
         final ImmutablePair<INDArray, INDArray> unreg = getBiasLatentPosteriorDataUnregularized();
@@ -598,6 +572,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return an {@link ImmutablePair} of (A_s, B_s)
      */
+    @QueriesICG
     public ImmutablePair<INDArray, INDArray> getReadDepthLatentPosteriorData(final boolean neglectBiasCovariates) {
         /* fetch data from cache */
         final INDArray log_n_st = getINDArrayFromCache(CoverageModelICGCacheNode.log_n_st);
@@ -628,8 +603,9 @@ public final class CoverageModelEMComputeBlock {
      * @param gamma_s the trial unexplained variance for the samples in question
      * @return the objective function as an {@link INDArray} with shape [sampleIndices.length, 1]
      */
-    public INDArray calculateGammaObjectiveFunctionMultiSample(final int[] sampleIndices,
-                                                               final INDArray gamma_s) {
+    @QueriesICG
+    public INDArray calculateSampleSpecificVarianceObjectiveFunctionMultiSample(final int[] sampleIndices,
+                                                                                final INDArray gamma_s) {
         final int numQueries = sampleIndices.length;
         Utils.validateArg(numQueries > 0, "The objective function for at least one sample must be queried");
         Utils.validateArg(gamma_s.length() == numQueries, "The INDArray of trial values for gamma must have" +
@@ -661,6 +637,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return a double-list of emission data (first for samples, second for targets)
      */
+    @QueriesICG
     public List<List<CoverageModelCopyRatioEmissionData>> getSampleCopyRatioLatentPosteriorData() {
         /* fetch data from cache */
         final INDArray n_st = getINDArrayFromCache(CoverageModelICGCacheNode.n_st);
@@ -686,7 +663,7 @@ public final class CoverageModelEMComputeBlock {
                     final double[] currentSampleReadCountArray = n_st.getRow(si).dup().data().asDouble();
                     final double[] currentSampleMuArray = mu_st.getRow(si).dup().data().asDouble();
                     final double[] currentSampleMappingErrorArray = err_st.getRow(si).dup().data().asDouble();
-                    return IntStream.range(0, targetBlock.getNumTargets())
+                    return IntStream.range(0, targetBlock.getNumElements())
                             .mapToObj(ti -> new CoverageModelCopyRatioEmissionData(
                                     currentSampleMuArray[ti], /* log bias */
                                     psiArray[ti] + gammaArray[si], /* total unexplained variance */
@@ -706,6 +683,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return an {@link INDArray}
      */
+    @QueriesICG
     public INDArray getBiasCovariatesSecondMomentPosteriorsPartialTargetSum() {
         assertBiasCovariatesEnabled();
         assertARDEnabled();
@@ -713,12 +691,18 @@ public final class CoverageModelEMComputeBlock {
         return Transforms.pow(W_tl, 2, true).sum(0);
     }
 
-    private double calculatePsiSolverObjectiveFunction(final int targetIndex,
-                                              final double psi,
-                                              @Nonnull final INDArray M_st,
-                                              @Nonnull final INDArray Sigma_st,
-                                              @Nonnull final INDArray gamma_s,
-                                              @Nonnull final INDArray B_st) {
+    /**
+     * @param M_st to be treated as immutable
+     * @param Sigma_st to be treated as immutable
+     * @param gamma_s to be treated as immutable
+     * @param B_st to be treated as immutable
+     */
+    private double calculateTargetSpecificVarianceSolverObjectiveFunction(final int targetIndex,
+                                                                          final double psi,
+                                                                          @Nonnull final INDArray M_st,
+                                                                          @Nonnull final INDArray Sigma_st,
+                                                                          @Nonnull final INDArray gamma_s,
+                                                                          @Nonnull final INDArray B_st) {
         final INDArray M_s = M_st.get(NDArrayIndex.all(), NDArrayIndex.point(targetIndex));
         final INDArray Sigma_s = Sigma_st.get(NDArrayIndex.all(), NDArrayIndex.point(targetIndex));
         final INDArray B_s = B_st.get(NDArrayIndex.all(), NDArrayIndex.point(targetIndex));
@@ -729,12 +713,19 @@ public final class CoverageModelEMComputeBlock {
         return totalMaskedPsiInverse.subi(totalMaskedPsiInverseSqrMulB_s).sumNumber().doubleValue();
     }
 
-    private double calculatePsiSolverMeritFunction(final int targetIndex,
-                                                   final double psi,
-                                                   @Nonnull final INDArray M_st,
-                                                   @Nonnull final INDArray Sigma_st,
-                                                   @Nonnull final INDArray gamma_s,
-                                                   @Nonnull final INDArray B_st) {
+    /**
+     *
+     * @param M_st to be treated as immutable
+     * @param Sigma_st to be treated as immutable
+     * @param gamma_s to be treated as immutable
+     * @param B_st to be treated as immutable
+     */
+    private double calculateTargetSpecificVarianceSolverMeritFunction(final int targetIndex,
+                                                                      final double psi,
+                                                                      @Nonnull final INDArray M_st,
+                                                                      @Nonnull final INDArray Sigma_st,
+                                                                      @Nonnull final INDArray gamma_s,
+                                                                      @Nonnull final INDArray B_st) {
         final INDArray M_s = M_st.get(NDArrayIndex.all(), NDArrayIndex.point(targetIndex));
         final INDArray Sigma_s = Sigma_st.get(NDArrayIndex.all(), NDArrayIndex.point(targetIndex));
         final INDArray B_s = B_st.get(NDArrayIndex.all(), NDArrayIndex.point(targetIndex));
@@ -752,7 +743,8 @@ public final class CoverageModelEMComputeBlock {
      * @param psi trial value of isotropic unexplained variance
      * @return a double
      */
-    public double calculateSampleTargetSummedPsiObjectiveFunction(final double psi) {
+    @QueriesICG
+    public double calculateSampleTargetSummedTargetSpecificVarianceObjectiveFunction(final double psi) {
         final INDArray M_st = getINDArrayFromCache(CoverageModelICGCacheNode.M_st);
         final INDArray Sigma_st = getINDArrayFromCache(CoverageModelICGCacheNode.Sigma_st);
         final INDArray B_st = getINDArrayFromCache(CoverageModelICGCacheNode.B_st);
@@ -769,7 +761,8 @@ public final class CoverageModelEMComputeBlock {
      * @param psi trial value of isotropic unexplained variance
      * @return a double
      */
-    public double calculateSampleTargetSummedPsiMeritFunction(final double psi) {
+    @QueriesICG
+    public double calculateSampleTargetSummedTargetSpecificVarianceMeritFunction(final double psi) {
         final INDArray M_st = getINDArrayFromCache(CoverageModelICGCacheNode.M_st);
         final INDArray Sigma_st = getINDArrayFromCache(CoverageModelICGCacheNode.Sigma_st);
         final INDArray B_st = getINDArrayFromCache(CoverageModelICGCacheNode.B_st);
@@ -788,6 +781,7 @@ public final class CoverageModelEMComputeBlock {
      * @param alpha_l ARD coefficients (as a 1 x D row vector)
      * @return
      */
+    @QueriesICG
     public double calculateBiasCovariatesLogEvidencePartialTargetSum(final INDArray alpha_l) {
         assertARDEnabled();
         /* fetch the required caches */
@@ -830,6 +824,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return an {@link INDArray}
      */
+    @QueriesICG
     public INDArray calculateTargetCovarianceMatrixForPCAInitialization() {
         assertBiasCovariatesEnabled();
         final INDArray Delta_PCA_st = getINDArrayFromCache(CoverageModelICGCacheNode.Delta_PCA_st);
@@ -849,7 +844,7 @@ public final class CoverageModelEMComputeBlock {
      * @return a copy of {@code arr} with replaced values
      */
     @VisibleForTesting
-    public static INDArray replaceMaskedEntries(final INDArray arr, final INDArray mask, final double value) {
+    static INDArray replaceMaskedEntries(final INDArray arr, final INDArray mask, final double value) {
         Utils.validateArg(Arrays.equals(arr.shape(), mask.shape()), "The value and mask arrays have different shapes");
         Utils.validateArg(mask.rank() <= 2, "The mask array must be at most rank 2");
         final int rowDim = mask.shape()[0];
@@ -873,21 +868,9 @@ public final class CoverageModelEMComputeBlock {
      */
     public CoverageModelEMComputeBlock cloneWithInitializedData(@Nonnull final InitialDataBlock initialDataBlock) {
         Utils.nonNull(initialDataBlock, "The initial data block must be non-null");
-        initialDataBlock.assertDataBlockSize(targetBlock.getNumTargets(), numSamples);
-
-        /* create NDArrays from the data blocks */
-        final INDArray readCounts = Nd4j.create(
-                Arrays.stream(initialDataBlock.readCountBlock).mapToDouble(n -> (double)n).toArray(),
-                new int[] {numSamples, numTargets}, 'f');
-        final INDArray mask = Nd4j.create(
-                Arrays.stream(initialDataBlock.maskBlock).mapToDouble(n -> (double)n).toArray(),
-                new int[] {numSamples, numTargets}, 'f');
-        final INDArray mappingErrorRate = Nd4j.create(initialDataBlock.mappingErrorRateBlock,
-                new int[] {numSamples, numTargets}, 'f');
-
-        return cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.n_st, readCounts)
-                .cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.M_st, mask)
-                .cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.err_st, mappingErrorRate);
+        return cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.n_st,initialDataBlock.getReadCountsNDArray(numTargets, numSamples))
+                .cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.M_st, initialDataBlock.getMaskNDArray(numTargets, numSamples))
+                .cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.err_st, initialDataBlock.getMappingErrorRateNDArray(numTargets, numSamples));
     }
 
     /**
@@ -898,6 +881,7 @@ public final class CoverageModelEMComputeBlock {
      * @param admixingRatio the admixing ratio of old and new posterior expectations
      * @return the new instance of compute block
      */
+    @QueriesICG
     public CoverageModelEMComputeBlock cloneWithUpdatedCopyRatioPosteriors(@Nonnull final INDArray log_c_st,
                                                                            @Nonnull final INDArray var_log_c_st,
                                                                            final double admixingRatio) {
@@ -928,7 +912,9 @@ public final class CoverageModelEMComputeBlock {
                 old_log_c_st.sub(admixed_log_c_st));
         return cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.log_c_st, admixed_log_c_st)
                 .cloneWithUpdatedPrimitive(CoverageModelICGCacheNode.var_log_c_st, admixed_var_log_c_st)
-                .cloneWithUpdatedSignal(SubroutineSignal.builder().put("error_norm", errNormInfinity).build());
+                .cloneWithUpdatedSignal(SubroutineSignal.builder()
+                        .put(StandardSubroutineSignals.RESIDUAL_ERROR_NORM, errNormInfinity)
+                        .build());
     }
 
     /**
@@ -938,6 +924,7 @@ public final class CoverageModelEMComputeBlock {
      * @param var_log_c_st prior variance of log copy ratio
      * @return an instance of {@link CoverageModelEMComputeBlock}
      */
+    @QueriesICG
     public CoverageModelEMComputeBlock cloneWithUpdateCopyRatioPriors(@Nonnull final INDArray log_c_st,
                                                                       @Nonnull final INDArray var_log_c_st) {
         Utils.nonNull(log_c_st, "Log copy ratio posterior means must be non-null");
@@ -969,6 +956,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return a new instance of {@link CoverageModelEMComputeBlock}
      */
+    @QueriesICG
     public CoverageModelEMComputeBlock cloneWithUpdatedTargetUnexplainedVarianceTargetResolved(final int maxIters,
                                                                                                final double psiUpperLimit,
                                                                                                final double absTol,
@@ -998,14 +986,16 @@ public final class CoverageModelEMComputeBlock {
                 return IntStream.range(0, numTargets)
                         .parallel()
                         .mapToObj(ti -> {
+                            final UnivariateFunction objFunc = psi ->
+                                    calculateTargetSpecificVarianceSolverObjectiveFunction(ti, psi, M_st, Sigma_st, gamma_s, B_st);
+                            final UnivariateFunction meritFunc = psi ->
+                                    calculateTargetSpecificVarianceSolverMeritFunction(ti, psi, M_st, Sigma_st, gamma_s, B_st);
                             final RobustBrentSolver solver = new RobustBrentSolver(relTol, absTol,
-                                    CoverageModelGlobalConstants.DEFAULT_FUNCTION_EVALUATION_ACCURACY);
+                                    CoverageModelGlobalConstants.DEFAULT_FUNCTION_EVALUATION_ACCURACY,
+                                    meritFunc, numBisections, refinementDepth);
                             double newPsi;
                             try {
-                                newPsi = solver.solve(maxIters,
-                                        psi -> calculatePsiSolverObjectiveFunction(ti, psi, M_st, Sigma_st, gamma_s, B_st),
-                                        psi -> calculatePsiSolverMeritFunction(ti, psi, M_st, Sigma_st, gamma_s, B_st),
-                                        null, 0, psiUpperLimit, numBisections, refinementDepth);
+                                newPsi = solver.solve(maxIters, objFunc, 0, psiUpperLimit);
                             } catch (NoBracketingException | TooManyEvaluationsException e) {
                             /* if a solution can not be found, set Psi to its old value */
                                 newPsi = Psi_t.getDouble(ti);
@@ -1021,8 +1011,11 @@ public final class CoverageModelEMComputeBlock {
         final INDArray newPsi_t = Nd4j.create(res.stream().mapToDouble(p -> p.left).toArray(), Psi_t.shape());
         final int maxIterations = Collections.max(res.stream().mapToInt(p -> p.right).boxed().collect(Collectors.toList()));
         final double errNormInfinity = CoverageModelEMWorkspaceMathUtils.getINDArrayNormInfinity(newPsi_t.sub(Psi_t));
-        return cloneWithUpdatedPrimitiveAndSignal(CoverageModelICGCacheNode.Psi_t, newPsi_t, SubroutineSignal.builder()
-                .put("error_norm", errNormInfinity).put("iterations", maxIterations).build());
+        return cloneWithUpdatedPrimitiveAndSignal(CoverageModelICGCacheNode.Psi_t, newPsi_t,
+                SubroutineSignal.builder()
+                        .put(StandardSubroutineSignals.RESIDUAL_ERROR_NORM, errNormInfinity)
+                        .put(StandardSubroutineSignals.ITERATIONS, maxIterations)
+                        .build());
     }
 
     /**
@@ -1030,6 +1023,7 @@ public final class CoverageModelEMComputeBlock {
      *
      * @return a new instance of {@link CoverageModelEMComputeBlock}
      */
+    @QueriesICG
     public CoverageModelEMComputeBlock cloneWithUpdatedBiasCovariatesUnregularized(final double admixingRatio) {
         assertBiasCovariatesEnabled();
         /* fetch the required caches */
@@ -1065,7 +1059,9 @@ public final class CoverageModelEMComputeBlock {
         /* calculate error norm only based on the change in E[W_{tl}] */
         final double errNormInfinity = CoverageModelEMWorkspaceMathUtils
                 .getINDArrayNormInfinity(new_W_tl.sub(getINDArrayFromCache(CoverageModelICGCacheNode.W_tl)));
-        final SubroutineSignal sig = SubroutineSignal.builder().put("error_norm", errNormInfinity).build();
+        final SubroutineSignal sig = SubroutineSignal.builder()
+                .put(StandardSubroutineSignals.RESIDUAL_ERROR_NORM, errNormInfinity)
+                .build();
 
         return cloneWithUpdatedPrimitiveAndSignal(CoverageModelICGCacheNode.W_tl, new_W_tl_admixed, sig);
     }
@@ -1076,6 +1072,7 @@ public final class CoverageModelEMComputeBlock {
      * @param neglectBiasCovariates if true, the contribution of bias covariates will be neglected
      * @return a new instance of {@link CoverageModelEMComputeBlock}
      */
+    @QueriesICG
     public CoverageModelEMComputeBlock cloneWithUpdatedMeanLogBias(final boolean neglectBiasCovariates) {
         /* fetch the required caches */
         final INDArray log_n_st = getINDArrayFromCache(CoverageModelICGCacheNode.log_n_st);
@@ -1097,7 +1094,9 @@ public final class CoverageModelEMComputeBlock {
                 getINDArrayFromCache(CoverageModelICGCacheNode.m_t).sub(newTargetMeanBias));
 
         return cloneWithUpdatedPrimitiveAndSignal(CoverageModelICGCacheNode.m_t, newTargetMeanBias,
-                SubroutineSignal.builder().put("error_norm", errNormInfinity).build());
+                SubroutineSignal.builder()
+                        .put(StandardSubroutineSignals.RESIDUAL_ERROR_NORM, errNormInfinity)
+                        .build());
     }
 
     /**
@@ -1109,6 +1108,7 @@ public final class CoverageModelEMComputeBlock {
      *           See {{@link #cloneWithRemovedPCAInitializationData()}}.
      * @return an updated instance of {@link CoverageModelEMComputeBlock}
      */
+    @QueriesICG
     public CoverageModelEMComputeBlock cloneWithPCAInitializationData(final int minIncludedReadCount,
                                                                       final int maxIncludedReadCount) {
         /* fetch the required INDArrays */
@@ -1231,284 +1231,237 @@ public final class CoverageModelEMComputeBlock {
         System.gc();
     }
 
-    /**
-     * Retrieves the value of a cache node from a map and casts it to an {@link INDArray}
-     *
-     * Note: up-casting and non-null conditions are not checked
-     *
-     * @param key the key for the cache node
-     * @param map a map from keys to values
-     * @return an {@link INDArray} instance
-     */
-    @SuppressWarnings("unchecked")
-    private static INDArray getINDArrayFromMap(@Nonnull final CoverageModelICGCacheNode key,
-                                               @Nonnull Map<String, ? extends Duplicable> map) {
-        return ((DuplicableNDArray)map.get(key.name())).value();
-    }
-
-    /**
-     * Retrieves the value of a cache node from a map and casts it to a primitive double
-     *
-     * Note: up-casting and non-null conditions are not checked
-     *
-     * @param key the key for the cache node
-     * @param map a map from keys to values
-     * @return a double value
-     */
-    @SuppressWarnings("unchecked")
-    private static double getDoubleFromMap(@Nonnull final CoverageModelICGCacheNode key,
-                                           @Nonnull Map<String, ? extends Duplicable> map) {
-        return ((DuplicableNumber<Double>)map.get(key.name())).value();
-    }
-
     /* graphical computation functions */
 
     /* dependents: [M_st] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_sum_M_t =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    return new DuplicableNDArray(getINDArrayFromMap(CoverageModelICGCacheNode.M_st, dat).sum(0));
-                }
-            };
+    private static final ComputableNodeFunction calculate_sum_M_t = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            return new DuplicableNDArray(fetchINDArray(CoverageModelICGCacheNode.M_st.name(), parents).sum(0));
+        }
+    };
 
     /* dependents: [M_st] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_sum_M_s =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    return new DuplicableNDArray(getINDArrayFromMap(CoverageModelICGCacheNode.M_st, dat).sum(1));
-                }
-            };
+    private static final ComputableNodeFunction calculate_sum_M_s = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            return new DuplicableNDArray(fetchINDArray(CoverageModelICGCacheNode.M_st.name(), parents).sum(1));
+        }
+    };
 
     /* dependents: [n_st, M_st] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_Sigma_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray n_st = getINDArrayFromMap(CoverageModelICGCacheNode.n_st, dat);
-                    final INDArray M_st = getINDArrayFromMap(CoverageModelICGCacheNode.M_st, dat);
-                    final INDArray Sigma_st = replaceMaskedEntries(
-                            Nd4j.ones(n_st.shape()).divi(n_st),
-                            M_st,
-                            CoverageModelGlobalConstants.POISSON_STATISTICAL_VARIANCE_ON_MASKED_TARGETS);
-                    return new DuplicableNDArray(Sigma_st);
-                }
-            };
+    private static final ComputableNodeFunction calculate_Sigma_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray n_st = fetchINDArray(CoverageModelICGCacheNode.n_st.name(), parents);
+            final INDArray M_st = fetchINDArray(CoverageModelICGCacheNode.M_st.name(), parents);
+            final INDArray Sigma_st = replaceMaskedEntries(
+                    Nd4j.ones(n_st.shape()).divi(n_st),
+                    M_st,
+                    CoverageModelGlobalConstants.POISSON_STATISTICAL_VARIANCE_ON_MASKED_TARGETS);
+            return new DuplicableNDArray(Sigma_st);
+        }
+    };
 
     /* dependents: [n_st, M_st] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_log_n_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray n_st = getINDArrayFromMap(CoverageModelICGCacheNode.n_st, dat);
-                    final INDArray M_st = getINDArrayFromMap(CoverageModelICGCacheNode.M_st, dat);
-                    final INDArray log_n_st = replaceMaskedEntries(
-                            Transforms.log(n_st, true),
-                            M_st,
-                            CoverageModelGlobalConstants.LOG_READ_COUNT_ON_MASKED_TARGETS);
-                    return new DuplicableNDArray(log_n_st);
-                }
-            };
+    private static final ComputableNodeFunction calculate_log_n_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray n_st = fetchINDArray(CoverageModelICGCacheNode.n_st.name(), parents);
+            final INDArray M_st = fetchINDArray(CoverageModelICGCacheNode.M_st.name(), parents);
+            final INDArray log_n_st = replaceMaskedEntries(
+                    Transforms.log(n_st, true),
+                    M_st,
+                    CoverageModelGlobalConstants.LOG_READ_COUNT_ON_MASKED_TARGETS);
+            return new DuplicableNDArray(log_n_st);
+        }
+    };
 
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_Delta_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray log_n_st = getINDArrayFromMap(CoverageModelICGCacheNode.log_n_st, dat);
-                    final INDArray log_c_st = getINDArrayFromMap(CoverageModelICGCacheNode.log_c_st, dat);
-                    final INDArray log_d_s = getINDArrayFromMap(CoverageModelICGCacheNode.log_d_s, dat);
-                    final INDArray m_t = getINDArrayFromMap(CoverageModelICGCacheNode.m_t, dat);
-                    return new DuplicableNDArray(log_n_st.sub(log_c_st).subiColumnVector(log_d_s).subiRowVector(m_t));
-                }
-            };
+    private static final ComputableNodeFunction calculate_Delta_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray log_n_st = fetchINDArray(CoverageModelICGCacheNode.log_n_st.name(), parents);
+            final INDArray log_c_st = fetchINDArray(CoverageModelICGCacheNode.log_c_st.name(), parents);
+            final INDArray log_d_s = fetchINDArray(CoverageModelICGCacheNode.log_d_s.name(), parents);
+            final INDArray m_t = fetchINDArray(CoverageModelICGCacheNode.m_t.name(), parents);
+            return new DuplicableNDArray(log_n_st.sub(log_c_st).subiColumnVector(log_d_s).subiRowVector(m_t));
+        }
+    };
 
     /* dependents: [W_tl, z_sl] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_Wz_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray W_tl = getINDArrayFromMap(CoverageModelICGCacheNode.W_tl, dat);
-                    final INDArray z_sl = getINDArrayFromMap(CoverageModelICGCacheNode.z_sl, dat);
-                    return new DuplicableNDArray(W_tl.mmul(z_sl.transpose()).transpose());
-                }
-            };
+    private static final ComputableNodeFunction calculate_Wz_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray W_tl = fetchINDArray(CoverageModelICGCacheNode.W_tl.name(), parents);
+            final INDArray z_sl = fetchINDArray(CoverageModelICGCacheNode.z_sl.name(), parents);
+            return new DuplicableNDArray(W_tl.mmul(z_sl.transpose()).transpose());
+        }
+    };
 
     /* dependents: [W_tl, zz_sll] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_WzzWT_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray W_tl = getINDArrayFromMap(CoverageModelICGCacheNode.W_tl, dat);
-                    final INDArray zz_sll = getINDArrayFromMap(CoverageModelICGCacheNode.zz_sll, dat);
-                    final int numSamples = zz_sll.shape()[0];
-                    final int numTargets = W_tl.shape()[0];
-                    final INDArray WzzWT_st = Nd4j.create(numSamples, numTargets);
-                    for (int si = 0; si < numSamples; si++) {
-                        final INDArray zz_ll = zz_sll.get(NDArrayIndex.point(si), NDArrayIndex.all(), NDArrayIndex.all());
-                        /* mean_W_contrib_t = \sum_{m,n} E[W_{tm}] E[W_{tn}] E[z_{sm} z_{sn}] */
-                        final INDArray mean_W_contrib_t = W_tl.mmul(zz_ll).muli(W_tl).sum(1).transpose();
-                        WzzWT_st.get(NDArrayIndex.point(si), NDArrayIndex.all()).assign(mean_W_contrib_t);
-                    }
-                    return new DuplicableNDArray(WzzWT_st);
-                }
-            };
+    private static final ComputableNodeFunction calculate_WzzWT_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray W_tl = fetchINDArray(CoverageModelICGCacheNode.W_tl.name(), parents);
+            final INDArray zz_sll = fetchINDArray(CoverageModelICGCacheNode.zz_sll.name(), parents);
+            final int numSamples = zz_sll.shape()[0];
+            final int numTargets = W_tl.shape()[0];
+            final INDArray WzzWT_st = Nd4j.create(numSamples, numTargets);
+            for (int si = 0; si < numSamples; si++) {
+                final INDArray zz_ll = zz_sll.get(NDArrayIndex.point(si), NDArrayIndex.all(), NDArrayIndex.all());
+                /* mean_W_contrib_t = \sum_{m,n} E[W_{tm}] E[W_{tn}] E[z_{sm} z_{sn}] */
+                final INDArray mean_W_contrib_t = W_tl.mmul(zz_ll).muli(W_tl).sum(1).transpose();
+                WzzWT_st.get(NDArrayIndex.point(si), NDArrayIndex.all()).assign(mean_W_contrib_t);
+            }
+            return new DuplicableNDArray(WzzWT_st);
+        }
+    };
 
     /* dependents: ["Sigma_st", "Psi_t"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_tot_Psi_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray Sigma_st = getINDArrayFromMap(CoverageModelICGCacheNode.Sigma_st, dat);
-                    final INDArray Psi_t = getINDArrayFromMap(CoverageModelICGCacheNode.Psi_t, dat);
-                    final INDArray gamma_s = getINDArrayFromMap(CoverageModelICGCacheNode.gamma_s, dat);
-                    return new DuplicableNDArray(Sigma_st.addRowVector(Psi_t).addiColumnVector(gamma_s));
-                }
-            };
+    private static final ComputableNodeFunction calculate_tot_Psi_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray Sigma_st = fetchINDArray(CoverageModelICGCacheNode.Sigma_st.name(), parents);
+            final INDArray Psi_t = fetchINDArray(CoverageModelICGCacheNode.Psi_t.name(), parents);
+            final INDArray gamma_s = fetchINDArray(CoverageModelICGCacheNode.gamma_s.name(), parents);
+            return new DuplicableNDArray(Sigma_st.addRowVector(Psi_t).addiColumnVector(gamma_s));
+        }
+    };
 
     /* dependents: ["M_st", "tot_Psi_st", "log_n_st"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_loglike_normalization_s =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray M_st = getINDArrayFromMap(CoverageModelICGCacheNode.M_st, dat);
-                    final INDArray tot_Psi_st = getINDArrayFromMap(CoverageModelICGCacheNode.tot_Psi_st, dat);
-                    final INDArray log_n_st = getINDArrayFromMap(CoverageModelICGCacheNode.log_n_st, dat);
-                    final INDArray loglike_normalization_s = Transforms.log(tot_Psi_st, true)
-                            .addi(FastMath.log(2 * FastMath.PI))
-                            .muli(-0.5)
-                            .subi(log_n_st)
-                            .muli(M_st)
-                            .sum(1);
-                    return new DuplicableNDArray(loglike_normalization_s);
-                }
-            };
+    private static final ComputableNodeFunction calculate_loglike_normalization_s = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray M_st = fetchINDArray(CoverageModelICGCacheNode.M_st.name(), parents);
+            final INDArray tot_Psi_st = fetchINDArray(CoverageModelICGCacheNode.tot_Psi_st.name(), parents);
+            final INDArray log_n_st = fetchINDArray(CoverageModelICGCacheNode.log_n_st.name(), parents);
+            final INDArray loglike_normalization_s = Transforms.log(tot_Psi_st, true)
+                    .addi(FastMath.log(2 * FastMath.PI))
+                    .muli(-0.5)
+                    .subi(log_n_st)
+                    .muli(M_st)
+                    .sum(1);
+            return new DuplicableNDArray(loglike_normalization_s);
+        }
+    };
 
     /* dependents: ["M_st", "tot_Psi_st"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_M_Psi_inv_st =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    return new DuplicableNDArray(getINDArrayFromMap(CoverageModelICGCacheNode.M_st, dat).div(
-                            getINDArrayFromMap(CoverageModelICGCacheNode.tot_Psi_st, dat)));
-                }
-            };
+    private static final ComputableNodeFunction calculate_M_Psi_inv_st = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            return new DuplicableNDArray(fetchINDArray(CoverageModelICGCacheNode.M_st.name(), parents).div(
+                    fetchINDArray(CoverageModelICGCacheNode.tot_Psi_st.name(), parents)));
+        }
+    };
 
     /* dependents: ["M_Psi_inv_st", "Delta_st", "z_sl"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_v_tl =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray M_Psi_inv_st = getINDArrayFromMap(CoverageModelICGCacheNode.M_Psi_inv_st, dat);
-                    final INDArray Delta_st = getINDArrayFromMap(CoverageModelICGCacheNode.Delta_st, dat);
-                    final INDArray z_sl = getINDArrayFromMap(CoverageModelICGCacheNode.z_sl, dat);
-                    return new DuplicableNDArray(M_Psi_inv_st.mul(Delta_st).transpose().mmul(z_sl));
-                }
-            };
+    private static final ComputableNodeFunction calculate_v_tl = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray M_Psi_inv_st = fetchINDArray(CoverageModelICGCacheNode.M_Psi_inv_st.name(), parents);
+            final INDArray Delta_st = fetchINDArray(CoverageModelICGCacheNode.Delta_st.name(), parents);
+            final INDArray z_sl = fetchINDArray(CoverageModelICGCacheNode.z_sl.name(), parents);
+            return new DuplicableNDArray(M_Psi_inv_st.mul(Delta_st).transpose().mmul(z_sl));
+        }
+    };
 
     /* dependents: ["M_Psi_inv_st", "zz_sll"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_Q_tll =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray M_Psi_inv_st_trans = getINDArrayFromMap(CoverageModelICGCacheNode.M_Psi_inv_st, dat).transpose();
-                    final INDArray zz_sll = getINDArrayFromMap(CoverageModelICGCacheNode.zz_sll, dat);
-                    final int numTargets = M_Psi_inv_st_trans.shape()[0];
-                    final int numLatents = zz_sll.shape()[1];
-                    final INDArray res = Nd4j.create(numTargets, numLatents, numLatents);
-                    for (int li = 0; li < numLatents; li++) {
-                        res.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(li)).assign(
-                                    M_Psi_inv_st_trans.mmul(zz_sll.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(li))));
-                    }
-                    return new DuplicableNDArray(res);
-                }
-            };
+    private static final ComputableNodeFunction calculate_Q_tll = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray M_Psi_inv_st_trans = fetchINDArray(CoverageModelICGCacheNode.M_Psi_inv_st.name(), parents).transpose();
+            final INDArray zz_sll = fetchINDArray(CoverageModelICGCacheNode.zz_sll.name(), parents);
+            final int numTargets = M_Psi_inv_st_trans.shape()[0];
+            final int numLatents = zz_sll.shape()[1];
+            final INDArray res = Nd4j.create(numTargets, numLatents, numLatents);
+            for (int li = 0; li < numLatents; li++) {
+                res.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(li)).assign(
+                        M_Psi_inv_st_trans.mmul(zz_sll.get(NDArrayIndex.all(), NDArrayIndex.all(), NDArrayIndex.point(li))));
+            }
+            return new DuplicableNDArray(res);
+        }
+    };
 
     /* dependents: ["Q_tll"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_sum_Q_ll =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    return new DuplicableNDArray(getINDArrayFromMap(CoverageModelICGCacheNode.Q_tll, dat).sum(0));
-                }
-            };
+    private static final ComputableNodeFunction calculate_sum_Q_ll = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            return new DuplicableNDArray(fetchINDArray(CoverageModelICGCacheNode.Q_tll.name(), parents).sum(0));
+        }
+    };
 
     /* dependents: ["Delta_st", "var_log_c_st", "var_log_d_s", "WzzWT_st", "Wz_st"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_B_st_with_bias_covariates =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray Delta_st = getINDArrayFromMap(CoverageModelICGCacheNode.Delta_st, dat);
-                    final INDArray var_log_c_st = getINDArrayFromMap(CoverageModelICGCacheNode.var_log_c_st, dat);
-                    final INDArray var_log_d_s = getINDArrayFromMap(CoverageModelICGCacheNode.var_log_d_s, dat);
-                    final INDArray WzzWT_st = getINDArrayFromMap(CoverageModelICGCacheNode.WzzWT_st, dat);
-                    final INDArray Wz_st = getINDArrayFromMap(CoverageModelICGCacheNode.Wz_st, dat);
-                    return new DuplicableNDArray(
-                            Delta_st.mul(Delta_st)
-                                    .addi(var_log_c_st)
-                                    .addiColumnVector(var_log_d_s)
-                                    .addi(WzzWT_st)
-                                    .subi(Delta_st.mul(Wz_st.mul(2))));
-                }
-            };
+    private static final ComputableNodeFunction calculate_B_st_with_bias_covariates = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray Delta_st = fetchINDArray(CoverageModelICGCacheNode.Delta_st.name(), parents);
+            final INDArray var_log_c_st = fetchINDArray(CoverageModelICGCacheNode.var_log_c_st.name(), parents);
+            final INDArray var_log_d_s = fetchINDArray(CoverageModelICGCacheNode.var_log_d_s.name(), parents);
+            final INDArray WzzWT_st = fetchINDArray(CoverageModelICGCacheNode.WzzWT_st.name(), parents);
+            final INDArray Wz_st = fetchINDArray(CoverageModelICGCacheNode.Wz_st.name(), parents);
+            return new DuplicableNDArray(
+                    Delta_st.mul(Delta_st)
+                            .addi(var_log_c_st)
+                            .addiColumnVector(var_log_d_s)
+                            .addi(WzzWT_st)
+                            .subi(Delta_st.mul(Wz_st.mul(2))));
+        }
+    };
 
     /* dependents: ["Delta_st", "var_log_c_st", "var_log_d_s"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_B_st_without_bias_covariates =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray Delta_st = getINDArrayFromMap(CoverageModelICGCacheNode.Delta_st, dat);
-                    final INDArray var_log_c_st = getINDArrayFromMap(CoverageModelICGCacheNode.var_log_c_st, dat);
-                    final INDArray var_log_d_s = getINDArrayFromMap(CoverageModelICGCacheNode.var_log_d_s, dat);
-                    return new DuplicableNDArray(Delta_st.mul(Delta_st).addi(var_log_c_st).addiColumnVector(var_log_d_s));
-                }
-            };
+    private static final ComputableNodeFunction calculate_B_st_without_bias_covariates = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray Delta_st = fetchINDArray(CoverageModelICGCacheNode.Delta_st.name(), parents);
+            final INDArray var_log_c_st = fetchINDArray(CoverageModelICGCacheNode.var_log_c_st.name(), parents);
+            final INDArray var_log_d_s = fetchINDArray(CoverageModelICGCacheNode.var_log_d_s.name(), parents);
+            return new DuplicableNDArray(Delta_st.mul(Delta_st).addi(var_log_c_st).addiColumnVector(var_log_d_s));
+        }
+    };
 
     /************************
      * log likelihood nodes *
      ************************/
 
     /* dependents: ["B_st", "M_Psi_inv_st", "loglike_normalization_s"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_loglike_unreg =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
+    private static final ComputableNodeFunction calculate_loglike_unreg = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
                     /* fetch */
-                    final INDArray B_st = getINDArrayFromMap(CoverageModelICGCacheNode.B_st, dat);
-                    final INDArray M_Psi_inv_st = getINDArrayFromMap(CoverageModelICGCacheNode.M_Psi_inv_st, dat);
-                    final INDArray loglike_normalization_s = getINDArrayFromMap(CoverageModelICGCacheNode.loglike_normalization_s, dat);
+            final INDArray B_st = fetchINDArray(CoverageModelICGCacheNode.B_st.name(), parents);
+            final INDArray M_Psi_inv_st = fetchINDArray(CoverageModelICGCacheNode.M_Psi_inv_st.name(), parents);
+            final INDArray loglike_normalization_s = fetchINDArray(CoverageModelICGCacheNode.loglike_normalization_s.name(), parents);
 
-                    return new DuplicableNDArray(B_st.mul(M_Psi_inv_st).sum(1)
-                            .muli(-0.5)
-                            .addi(loglike_normalization_s));
-                }
-            };
+            return new DuplicableNDArray(B_st.mul(M_Psi_inv_st).sum(1)
+                    .muli(-0.5)
+                    .addi(loglike_normalization_s));
+        }
+    };
 
     /* TODO github/gatk-protected issue #853 -- the filter contribution part could be cached */
     /* dependents: ["B_st", "M_Psi_inv_st", "loglike_normalization_s", "W_tl", "F_W_tl", "zz_sll"] */
-    private static final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> calculate_loglike_reg =
-            new Function<Map<String, ? extends Duplicable>, Duplicable>() {
-                @Override
-                public Duplicable apply(Map<String, ? extends Duplicable> dat) {
-                    final INDArray B_st = getINDArrayFromMap(CoverageModelICGCacheNode.B_st, dat);
-                    final INDArray M_Psi_inv_st = getINDArrayFromMap(CoverageModelICGCacheNode.M_Psi_inv_st, dat);
-                    final INDArray loglike_normalization_s = getINDArrayFromMap(CoverageModelICGCacheNode.loglike_normalization_s, dat);
-                    final INDArray regularPart = B_st.mul(M_Psi_inv_st).sum(1)
-                            .muli(-0.5)
-                            .addi(loglike_normalization_s);
+    private static final ComputableNodeFunction calculate_loglike_reg = new ComputableNodeFunction() {
+        @Override
+        public Duplicable apply(final Map<String, Duplicable> parents) {
+            final INDArray B_st = fetchINDArray(CoverageModelICGCacheNode.B_st.name(), parents);
+            final INDArray M_Psi_inv_st = fetchINDArray(CoverageModelICGCacheNode.M_Psi_inv_st.name(), parents);
+            final INDArray loglike_normalization_s = fetchINDArray(CoverageModelICGCacheNode.loglike_normalization_s.name(), parents);
+            final INDArray regularPart = B_st.mul(M_Psi_inv_st).sum(1)
+                    .muli(-0.5)
+                    .addi(loglike_normalization_s);
 
-                    final INDArray W_tl = getINDArrayFromMap(CoverageModelICGCacheNode.W_tl, dat);
-                    final INDArray F_W_tl = getINDArrayFromMap(CoverageModelICGCacheNode.F_W_tl, dat);
-                    final INDArray zz_sll = getINDArrayFromMap(CoverageModelICGCacheNode.zz_sll, dat);
-                    final INDArray WFW_ll = W_tl.transpose().mmul(F_W_tl).muli(-0.5);
-                    final int numSamples = B_st.shape()[0];
-                    final INDArray filterPart = Nd4j.create(new int[]{numSamples, 1},
-                            IntStream.range(0, numSamples).mapToDouble(si ->
-                                    zz_sll.get(NDArrayIndex.point(si)).mul(WFW_ll).sumNumber().doubleValue()).toArray());
+            final INDArray W_tl = fetchINDArray(CoverageModelICGCacheNode.W_tl.name(), parents);
+            final INDArray F_W_tl = fetchINDArray(CoverageModelICGCacheNode.F_W_tl.name(), parents);
+            final INDArray zz_sll = fetchINDArray(CoverageModelICGCacheNode.zz_sll.name(), parents);
+            final INDArray WFW_ll = W_tl.transpose().mmul(F_W_tl).muli(-0.5);
+            final int numSamples = B_st.shape()[0];
+            final INDArray filterPart = Nd4j.create(new int[]{numSamples, 1},
+                    IntStream.range(0, numSamples).mapToDouble(si ->
+                            zz_sll.get(NDArrayIndex.point(si)).mul(WFW_ll).sumNumber().doubleValue()).toArray());
 
-                    return new DuplicableNDArray(regularPart.addi(filterPart));
-                }
-            };
+            return new DuplicableNDArray(regularPart.addi(filterPart));
+        }
+    };
 
     /**
      * This class represents the initial data passed to a compute block
@@ -1543,6 +1496,67 @@ public final class CoverageModelEMComputeBlock {
             Utils.validateArg(maskBlock.length == size, "The learning mask data block has the wrong length");
             Utils.validateArg(mappingErrorRateBlock.length == size, "The mapping error rate data block has the" +
                     " wrong length");
+        }
+
+        private static void validateBlockSize(final int numTargets, final int numSamples, double[] block, final String message) {
+            validateBlockSize(numTargets, numSamples, block.length, message);
+        }
+
+        private static void validateBlockSize(final int numTargets, final int numSamples, int[] block, final String message) {
+            validateBlockSize(numTargets, numSamples, block.length, message);
+        }
+
+        private static void validateBlockSize(final int numTargets, final int numSamples, int length, final String message) {
+            ParamUtils.isPositive(numTargets, "Number of targets must be positive");
+            ParamUtils.isPositive(numSamples, "Number of samples must be positive");
+            Utils.validateArg(length == numTargets * numSamples, message);
+        }
+
+        private INDArray validateReadCounts(final INDArray readCounts) {
+            Utils.validateArg(Arrays.stream(readCounts.data().asDouble()).allMatch(n -> n >= 0),
+                    "One or more entries in the read counts data block is negative");
+            return readCounts;
+        }
+
+        private INDArray validateMask(final INDArray mask) {
+            Utils.validateArg(Arrays.stream(mask.data().asInt()).allMatch(n -> n == 0 || n == 1),
+                    "One or more entries in the mask data block is other than 0 and 1");
+            final INDArray M_t = mask.sum(0);
+            final List<Integer> totallyMaskedTargets = IntStream.range(0, M_t.length())
+                    .filter(ti -> (int)M_t.getDouble(ti) == 0)
+                    .boxed()
+                    .collect(Collectors.toList());
+            Utils.validateArg(totallyMaskedTargets.isEmpty(),
+                    () -> "Some targets are totally masked: " +
+                            totallyMaskedTargets.stream().map(String::valueOf).collect(Collectors.joining(", ")));
+            return mask;
+        }
+
+        private INDArray validateMappingErrorRate(final INDArray mappingErrorRate) {
+            Utils.validateArg(Arrays.stream(mappingErrorRate.data().asDouble()).allMatch(e -> e >= 0 && e <= 1),
+                    "One or more entries in the mapping error rate block is outside of the [0, 1] interval");
+            return mappingErrorRate;
+        }
+
+        INDArray getReadCountsNDArray(final int numTargets, final int numSamples) {
+            validateBlockSize(numTargets, numSamples, readCountBlock, "The read count data block has the wrong length");
+            final INDArray readCounts = Nd4j.create(Arrays.stream(readCountBlock).mapToDouble(n -> (double)n).toArray(),
+                    new int[] {numSamples, numTargets}, 'f');
+            return validateReadCounts(readCounts);
+        }
+
+        INDArray getMaskNDArray(final int numTargets, final int numSamples) {
+            validateBlockSize(numTargets, numSamples, maskBlock, "The mask data block has the wrong length");
+            final INDArray mask = Nd4j.create(Arrays.stream(maskBlock).mapToDouble(n -> (double)n).toArray(),
+                    new int[] {numSamples, numTargets}, 'f');
+            return validateMask(mask);
+        }
+
+        INDArray getMappingErrorRateNDArray(final int numTargets, final int numSamples) {
+            validateBlockSize(numTargets, numSamples, mappingErrorRateBlock, "The mapping error rate data block has the" +
+                    " wrong length");
+            final INDArray mappingErrorRate = Nd4j.create(mappingErrorRateBlock, new int[] {numSamples, numTargets}, 'f');
+            return validateMappingErrorRate(mappingErrorRate);
         }
     }
 }

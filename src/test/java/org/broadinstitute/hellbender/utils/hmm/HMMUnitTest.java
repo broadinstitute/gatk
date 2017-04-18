@@ -30,8 +30,8 @@ public final class HMMUnitTest extends BaseTest {
 
     private static final Random RANDOM = new Random(1313);
 
-    private static List<TestHMModel> TEST_MODELS = new ArrayList<>(Arrays.asList(
-            TestHMModel.fromPhredProbabilities(
+    private static List<TestHMM> TEST_MODELS = new ArrayList<>(Arrays.asList(
+            TestHMM.fromPhredProbabilities(
                     20, 0, 20, // priors
                     0, 20, 20, // transition
                     20, 0, 20,
@@ -39,7 +39,7 @@ public final class HMMUnitTest extends BaseTest {
                     0, 20, 20, // emission
                     20, 0, 20,
                     20, 20, 0),
-            TestHMModel.fromPhredProbabilities(
+            TestHMM.fromPhredProbabilities(
                     0, 0, 0, // priors
                     0, .2, .2, // transition
                     .2, 0, .2,
@@ -47,7 +47,7 @@ public final class HMMUnitTest extends BaseTest {
                     0, .2, .2, // emission
                     .2, 0, .2,
                     .2, .2, 0),
-            TestHMModel.fromPhredProbabilities(
+            TestHMM.fromPhredProbabilities(
                     0, 0, 0, // priors
                     0, 0, 0, // transition
                     0, 0, 0,
@@ -55,7 +55,7 @@ public final class HMMUnitTest extends BaseTest {
                     0, 0, 0, // emission
                     0, 0, 0,
                     0, 0, 0),
-            TestHMModel.fromPhredProbabilities(
+            TestHMM.fromPhredProbabilities(
                     30.1, 0.6, 10.2, // priors
                     0.7, 30.3, 10.4, // transition
                     10.5, 0.4, 30.6,
@@ -67,7 +67,7 @@ public final class HMMUnitTest extends BaseTest {
 
     private static final int TEST_PATH_LENGTH = 200;
 
-    private static List<Pair<List<TestHMModel.State>, List<TestHMModel.Datum>>> TEST_SEQUENCES;
+    private static List<Pair<List<TestHMM.State>, List<TestHMM.Datum>>> TEST_SEQUENCES;
 
     private static File TEST_SEQUENCE_FILE;
 
@@ -139,7 +139,7 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     private ExpectedResult composeExpectedResult(final List<RResultRecord> rResultRecords, final int modelIndex, final int sequenceIndex) {
-        final List<TestHMModel.State> bestPath = rResultRecords.stream()
+        final List<TestHMM.State> bestPath = rResultRecords.stream()
                 .sorted(Comparator.comparing(r -> r.dataIndex))
                 .map(r -> r.bestPathState)
                 .collect(Collectors.toList());
@@ -163,12 +163,12 @@ public final class HMMUnitTest extends BaseTest {
     private File composeRScriptFile() throws IOException {
         final File script = createTempFile("r-script", ".R");
         try (final PrintWriter scriptWriter = new PrintWriter(new FileWriter(script))) {
-            scriptWriter.println(TestHMModel.toHMMInstallRString());
+            scriptWriter.println(TestHMM.toHMMInstallRString());
             scriptWriter.println("outfile = \"" + TEST_R_RESULTS_FILE.getAbsolutePath() + '"');
             scriptWriter.println("sequences = strsplit(readLines(\"" + TEST_SEQUENCE_FILE.getPath() + "\"), ',')");
             scriptWriter.println("sequences.n = length(sequences)");
             scriptWriter.println();
-            scriptWriter.println("models = " + TestHMModel.toHMMModelDeclarationRString(TEST_MODELS));
+            scriptWriter.println("models = " + TestHMM.toHMMModelDeclarationRString(TEST_MODELS));
             scriptWriter.println("models.n = length(models)");
             scriptWriter.println("write(x = paste('SEQUENCE', 'MODEL', 'POSITION', 'BEST_PATH'," +
                     " 'FW_A', 'FW_B', 'FW_C'," +
@@ -202,14 +202,14 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "testViterbiData")
-    public void testViterbi(final TestHMModel model, final List<TestHMModel.Datum> sequence, final List<TestHMModel.State> expected) {
+    public void testViterbi(final TestHMM model, final List<TestHMM.Datum> sequence, final List<TestHMM.State> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
-        final List<TestHMModel.State> observed = ViterbiAlgorithm.apply(sequence, positions, model);
+        final List<TestHMM.State> observed = ViterbiAlgorithm.apply(sequence, positions, model);
         try {
             Assert.assertEquals(observed, expected);
         } catch (final AssertionError ex) {
             // If not the same sequence of states, we need to show that they have the same probability.
-            final ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State>
+            final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State>
                     fb = ForwardBackwardAlgorithm.apply(sequence, positions, model);
             final double observedProb = fb.logProbability(observed);
             final double expectedProb = fb.logProbability(expected);
@@ -221,9 +221,9 @@ public final class HMMUnitTest extends BaseTest {
      * Test {@link ForwardBackwardAlgorithm.Result} methods not covered by other tests.
      */
     @Test(dataProvider = "testFBResultData")
-    public void testFBResult(final TestHMModel model, final List<TestHMModel.Datum> sequence) {
+    public void testFBResult(final TestHMM model, final List<TestHMM.Datum> sequence) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
-        final ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> forwardBackwardResult
+        final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
                 = ForwardBackwardAlgorithm.apply(sequence, positions, model);
         Assert.assertNotNull(forwardBackwardResult);
         Assert.assertEquals(forwardBackwardResult.data(), sequence);
@@ -232,13 +232,13 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "testForwardData")
-    public void testForward(final TestHMModel model, final List<TestHMModel.Datum> sequence, final List<double[]> expected) {
+    public void testForward(final TestHMM model, final List<TestHMM.Datum> sequence, final List<double[]> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
-        final ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> forwardBackwardResult
+        final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
                 = ForwardBackwardAlgorithm.apply(sequence, positions, model);
         Assert.assertNotNull(forwardBackwardResult);
         for (final Integer position : positions) {
-            for (final TestHMModel.State state : TestHMModel.State.values()) {
+            for (final TestHMM.State state : TestHMM.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
                 final double observedValue = forwardBackwardResult.logForwardProbability(position, state);
                 final double observedValueUsingIndex = forwardBackwardResult.logForwardProbability(position.intValue(), state);
@@ -251,13 +251,13 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "testBackwardData")
-    public void testBackward(final TestHMModel model, final List<TestHMModel.Datum> sequence, final List<double[]> expected) {
+    public void testBackward(final TestHMM model, final List<TestHMM.Datum> sequence, final List<double[]> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
-        final ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> forwardBackwardResult
+        final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
                 = ForwardBackwardAlgorithm.apply(sequence, positions, model);
         Assert.assertNotNull(forwardBackwardResult);
         for (int position = positions.size() - 1; position >= 0; position--) {
-            for (final TestHMModel.State state : TestHMModel.State.values()) {
+            for (final TestHMM.State state : TestHMM.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
                 final double observedValue = forwardBackwardResult.logBackwardProbability(new Integer(position), state);
                 final double observedValueUsingIndex = forwardBackwardResult.logBackwardProbability(position, state);
@@ -270,13 +270,13 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "testPosteriorData")
-    public void testPosterior(final TestHMModel model, final List<TestHMModel.Datum> sequence, final List<double[]> expected) {
+    public void testPosterior(final TestHMM model, final List<TestHMM.Datum> sequence, final List<double[]> expected) {
         final List<Integer> positions = IntStream.range(0, sequence.size()).boxed().collect(Collectors.toList());
-        final ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> forwardBackwardResult
+        final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> forwardBackwardResult
                 = ForwardBackwardAlgorithm.apply(sequence, positions, model);
         Assert.assertNotNull(forwardBackwardResult);
         for (final Integer position : positions) {
-            for (final TestHMModel.State state : TestHMModel.State.values()) {
+            for (final TestHMM.State state : TestHMM.State.values()) {
                 final double expectedValue = expected.get(position)[state.ordinal()];
                 final double observedValue = forwardBackwardResult.logProbability(position, state);
                 final double observedValueUsingIndex = forwardBackwardResult.logProbability(position.intValue(), state);
@@ -296,15 +296,15 @@ public final class HMMUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "testModelData")
-    public void testViterbiOnEmptyData(final TestHMModel model) {
-        final List<TestHMModel.State> bestPath = ViterbiAlgorithm.apply(new ArrayList<>(), new ArrayList<>(), model);
+    public void testViterbiOnEmptyData(final TestHMM model) {
+        final List<TestHMM.State> bestPath = ViterbiAlgorithm.apply(new ArrayList<>(), new ArrayList<>(), model);
         Assert.assertNotNull(bestPath);
         Assert.assertEquals(bestPath, new ArrayList<>());
     }
 
     @Test(dataProvider = "testModelData")
-    public void testForwardBackwardOnEmptyData(final TestHMModel model) {
-        final ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> fbResult = ForwardBackwardAlgorithm.apply(new ArrayList<>(), new ArrayList<>(), model);
+    public void testForwardBackwardOnEmptyData(final TestHMM model) {
+        final ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> fbResult = ForwardBackwardAlgorithm.apply(new ArrayList<>(), new ArrayList<>(), model);
         Assert.assertNotNull(fbResult);
         Assert.assertEquals(fbResult.data(), new ArrayList<>());
         Assert.assertEquals(fbResult.positions(), new ArrayList<>());
@@ -319,7 +319,7 @@ public final class HMMUnitTest extends BaseTest {
     public void testAllPathEqualProbabilityProperty() {
        final int numStates = 3;
        final int length = 5; // dont make this too big as the number of paths to test is numStates ^ length.
-       final HiddenMarkovModel<Integer, Integer, Integer> model = new UninformativeTestHMModel(numStates);
+       final HMM<Integer, Integer, Integer> model = new UninformativeTestHMM(numStates);
        final List<Integer> positions = IntStream.range(0, length).boxed().collect(Collectors.toList());
        final List<Integer> data = Collections.nCopies(length, -1); // data is irrelevant for this model.
        final ForwardBackwardAlgorithm.Result<Integer, Integer, Integer> fbResult =
@@ -350,7 +350,7 @@ public final class HMMUnitTest extends BaseTest {
         final int heavyState = numStates >> 1; // the (low) median is the heavy state.
         final double heavyStateWeight = (1.0 / numStates) + 0.0001; // just slightly heavier.
         final int length = 5; // dont make this too big as the number of paths to test is numStates ^ length.
-        final HiddenMarkovModel<Integer, Integer, Integer> model = new HeavyStateTestHMModel(numStates, heavyState, heavyStateWeight);
+        final HMM<Integer, Integer, Integer> model = new HeavyStateTestHMM(numStates, heavyState, heavyStateWeight);
         final List<Integer> positions = IntStream.range(0, length).boxed().collect(Collectors.toList());
         final List<Integer> data = Collections.nCopies(length, -1); // data is irrelevant for this model.
         final List<Integer> states = model.hiddenStates();
@@ -386,7 +386,7 @@ public final class HMMUnitTest extends BaseTest {
         final Random rdn = new Random(313123);
         final RealVector priors = randomPriors(rdn, numStates);
         final RealMatrix transitions = randomTransitions(rdn, numStates);
-        final FlatRealTestHMModel model = new FlatRealTestHMModel(priors, transitions);
+        final FlatRealTestHMM model = new FlatRealTestHMM(priors, transitions);
         final List<Integer> positions = IntStream.range(0, length).boxed().collect(Collectors.toList());
         final List<Integer> data = Collections.nCopies(length, -1); // data is irrelevant for this model.
 
@@ -452,62 +452,62 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testForwardBackwardWithMismatchedDataPositionsLength() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Y)),
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Y)),
                 new ArrayList<>(Collections.singletonList(1)), model);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testViterbiWithMismatchedDataPositionsLength() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ViterbiAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Y)),
+        final TestHMM model = TEST_MODELS.get(0);
+        ViterbiAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Y)),
                 new ArrayList<>(Collections.singletonList(1)), model);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testForwardBackwardWithNullDataPoints() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, null, TestHMModel.Datum.Y)),
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, null, TestHMM.Datum.Y)),
                 new ArrayList<>(Arrays.asList(1, 2, 3)), model);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNullState() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(2, (TestHMModel.State)null);
+        result.logProbability(2, (TestHMM.State)null);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNullStateUsingPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(2), (TestHMModel.State)null);
+        result.logProbability(new Integer(2), (TestHMM.State)null);
     }
 
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogDataLikelihoodWithWrongTarget() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -518,10 +518,10 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogDataLikelihoodWithWrongTargetUsingPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -532,10 +532,10 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBackProbabilityWithNullState() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -547,10 +547,10 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBackProbabilityWithNullStateUsingPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -562,10 +562,10 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNullState() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -577,10 +577,10 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNullStateUsingPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -592,190 +592,190 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNullPosition() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(null, TestHMModel.State.A);
+        result.logProbability(null, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNegativePositionIndex() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(-13, TestHMModel.State.A);
+        result.logProbability(-13, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithMadeUpPosition() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(14, TestHMModel.State.A);
+        result.logProbability(14, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithMadeUpPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(14), TestHMModel.State.A);
+        result.logProbability(new Integer(14), TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithASequenceThatIsTwoLong() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(2, Arrays.asList(TestHMModel.State.A, TestHMModel.State.A, TestHMModel.State.B));
+        result.logProbability(2, Arrays.asList(TestHMM.State.A, TestHMM.State.A, TestHMM.State.B));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithASequenceThatIsTwoLongUsingPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(2), Arrays.asList(TestHMModel.State.A, TestHMModel.State.A, TestHMModel.State.B));
+        result.logProbability(new Integer(2), Arrays.asList(TestHMM.State.A, TestHMM.State.A, TestHMM.State.B));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBackwardProbabilityWithNullPosition() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logBackwardProbability(null, TestHMModel.State.A);
+        result.logBackwardProbability(null, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogBackwardProbabilityWithNegativePositionIndex() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logBackwardProbability(-13, TestHMModel.State.A);
+        result.logBackwardProbability(-13, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNullPosition() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logForwardProbability(null, TestHMModel.State.A);
+        result.logForwardProbability(null, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogForwardProbabilityWithNegativePositionIndex() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logForwardProbability(-13, TestHMModel.State.A);
+        result.logForwardProbability(-13, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNonExistentPosition() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(4, TestHMModel.State.A);
+        result.logProbability(4, TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithNonExistentPositionObject() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(new Integer(4), TestHMModel.State.A);
+        result.logProbability(new Integer(4), TestHMM.State.A);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithANull() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
@@ -787,30 +787,30 @@ public final class HMMUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testLogProbabilityWithSequenceWrongLength() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ForwardBackwardAlgorithm.Result<TestHMModel.Datum, Integer, TestHMModel.State> result = null;
+        final TestHMM model = TEST_MODELS.get(0);
+        ForwardBackwardAlgorithm.Result<TestHMM.Datum, Integer, TestHMM.State> result = null;
         try {
-            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, TestHMModel.Datum.Z, TestHMModel.Datum.Y)),
+            result = ForwardBackwardAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, TestHMM.Datum.Z, TestHMM.Datum.Y)),
                     new ArrayList<>(Arrays.asList(1, 2, 3)), model);
         } catch (final Exception ex) {
             Assert.fail("this part of the test must not fail");
 
         }
         Assert.assertNotNull(result);
-        result.logProbability(Arrays.asList(TestHMModel.State.A, TestHMModel.State.A));
+        result.logProbability(Arrays.asList(TestHMM.State.A, TestHMM.State.A));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testViterbiWithNullDataPoints() {
-        final TestHMModel model = TEST_MODELS.get(0);
-        ViterbiAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMModel.Datum.X, null, TestHMModel.Datum.Y)),
+        final TestHMM model = TEST_MODELS.get(0);
+        ViterbiAlgorithm.apply(new ArrayList<>(Arrays.asList(TestHMM.Datum.X, null, TestHMM.Datum.Y)),
                 new ArrayList<>(Arrays.asList(1, 2, 3)), model);
     }
 
     @Test
     public void testGenerateHiddenStateChainOnUninformativeHMM() {
         final int numStates = 3;
-        final UninformativeTestHMModel model = new UninformativeTestHMModel(numStates);
+        final UninformativeTestHMM model = new UninformativeTestHMM(numStates);
         final int chainLength = 100000;
 
         final List<Integer> positions = IntStream.range(0, chainLength).boxed().collect(Collectors.toList());
@@ -831,7 +831,7 @@ public final class HMMUnitTest extends BaseTest {
         final int numStates = 3;
         final int heavyState = 1;
         final double heavyStateWeight = 0.9;
-        final HeavyStateTestHMModel model = new HeavyStateTestHMModel(numStates, heavyState, heavyStateWeight);
+        final HeavyStateTestHMM model = new HeavyStateTestHMM(numStates, heavyState, heavyStateWeight);
         final int chainLength = 100000;
 
         final List<Integer> positions = IntStream.range(0, chainLength).boxed().collect(Collectors.toList());
@@ -913,14 +913,14 @@ public final class HMMUnitTest extends BaseTest {
      */
     public static class ExpectedResult {
 
-        public final TestHMModel model;
-        public final List<TestHMModel.Datum> data;
-        public final List<TestHMModel.State> bestPath;
+        public final TestHMM model;
+        public final List<TestHMM.Datum> data;
+        public final List<TestHMM.State> bestPath;
         public final List<double[]> logBackwardProbs;
         public final List<double[]> logForwardProbs;
         public final List<double[]> logProbabilities;
 
-        public ExpectedResult(final TestHMModel model, final List<TestHMModel.Datum> data, final List<TestHMModel.State> bestPath,
+        public ExpectedResult(final TestHMM model, final List<TestHMM.Datum> data, final List<TestHMM.State> bestPath,
                               final List<double[]> logForwardProbs, final List<double[]> logBackwardProbs,
                               final List<double[]> logProbabilities) {
             this.model = model;
@@ -947,7 +947,7 @@ public final class HMMUnitTest extends BaseTest {
         private final int modelIndex;
         private final int sequenceIndex;
         private final int dataIndex;
-        private final TestHMModel.State bestPathState;
+        private final TestHMM.State bestPathState;
         private final double[] logForwardProbs;
         private final double[] logBackwardProbs;
         private final double[] logProbability;
@@ -956,7 +956,7 @@ public final class HMMUnitTest extends BaseTest {
             modelIndex = dataLine.getInt("MODEL");
             sequenceIndex = dataLine.getInt("SEQUENCE");
             dataIndex = dataLine.getInt("POSITION");
-            bestPathState = TestHMModel.State.valueOf(dataLine.get("BEST_PATH"));
+            bestPathState = TestHMM.State.valueOf(dataLine.get("BEST_PATH"));
             logForwardProbs = extractLogForwardProbs(dataLine);
             logBackwardProbs = extractLogBackwardProbs(dataLine);
             logProbability = extractLogPosteriorProbability(dataLine);
@@ -975,8 +975,8 @@ public final class HMMUnitTest extends BaseTest {
         }
 
         private double[] extractLogProbs(final DataLine dataLine, final String prefix) {
-            final double[] result = new double[TestHMModel.State.values().length];
-            for (final TestHMModel.State state : TestHMModel.State.values()) {
+            final double[] result = new double[TestHMM.State.values().length];
+            for (final TestHMM.State state : TestHMM.State.values()) {
                 result[state.ordinal()] = dataLine.getDouble(prefix + state.name());
             }
             return result;

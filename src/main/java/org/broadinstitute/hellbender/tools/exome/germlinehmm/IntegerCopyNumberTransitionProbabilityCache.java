@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
 /**
- * This class takes an instance of {@link IntegerCopyNumberTransitionMatrixData}, the integer copy number
+ * This class takes an instance of {@link IntegerCopyNumberTransitionMatrix}, the integer copy number
  * transition matrix on a one-base basis, and computes/caches the log of the integral powers of this matrix
  * to obtain the transition probability over longer intervals (and on the same contig).
  *
@@ -34,11 +34,7 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
 
     private final double[] logStationaryProbabilities;
 
-    /**
-     * Public constructor.
-     *
-     */
-    public IntegerCopyNumberTransitionProbabilityCache(@Nonnull final IntegerCopyNumberTransitionMatrixData transitionMatrixData) {
+    public IntegerCopyNumberTransitionProbabilityCache(@Nonnull final IntegerCopyNumberTransitionMatrix transitionMatrixData) {
         Utils.nonNull(transitionMatrixData, "The integer copy number transition matrix data must be non-null");
         maxCopyNumber = transitionMatrixData.getMaxCopyNumber();
         final LogTransitionProbabilityMatrix T = new LogTransitionProbabilityMatrix(transitionMatrixData.getTransitionMatrix());
@@ -60,10 +56,10 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
      * This is done by unpadding the transition matrix if necessary and finding the stationary distribution via
      * LU decomposition
      *
-     * @param transitionMatrixData an instance of {@link IntegerCopyNumberTransitionMatrixData}
+     * @param transitionMatrixData an instance of {@link IntegerCopyNumberTransitionMatrix}
      * @return an array of doubles
      */
-    private double[] calculateLogStationaryProbabilities(@Nonnull final IntegerCopyNumberTransitionMatrixData transitionMatrixData) {
+    private double[] calculateLogStationaryProbabilities(@Nonnull final IntegerCopyNumberTransitionMatrix transitionMatrixData) {
         final RealMatrix paddedTransitionMatrix = transitionMatrixData.getTransitionMatrix();
         final RealMatrix unpaddedTransitionMatrix;
         if (transitionMatrixData.getPadding() > 0) {
@@ -142,7 +138,7 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
         return logStationaryProbabilities[state.getCopyNumber()];
     }
 
-    public RealMatrix getTransitionProbabilityMatrix(final int distance) {
+    protected RealMatrix getTransitionProbabilityMatrix(final int distance) {
         final RealMatrix result = get(distance).getMatrix().copy();
         result.walkInOptimizedOrder(new DefaultRealMatrixChangingVisitor() {
             @Override
@@ -209,10 +205,6 @@ public final class IntegerCopyNumberTransitionProbabilityCache implements Serial
             }
             ParamUtils.isPositive(matrix.getColumnDimension(), "The row/col dimension of the transition matrix must be positive");
             this.matrix = matrix;
-        }
-
-        public void set(final IntegerCopyNumberState to, final IntegerCopyNumberState from, final double value) {
-            matrix.setEntry(to.getCopyNumber(), from.getCopyNumber(), value);
         }
 
         /**

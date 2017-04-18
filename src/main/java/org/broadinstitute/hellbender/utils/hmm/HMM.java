@@ -39,7 +39,7 @@ import java.util.stream.IntStream;
  * @param <S> is the state component.
  * @param <T> represent the observation position type.
  */
-public interface HiddenMarkovModel<D, T, S> {
+public interface HMM<D, T, S> {
 
     int RANDOM_SEED_FOR_CHAIN_GENERATION = 13;
 

@@ -43,12 +43,12 @@ public class GermlinePloidyAnnotatedTargetCollectionUnitTest extends BaseTest {
         Assert.assertEquals(ploidyAnnotsCollection.getTargetGermlinePloidyByGenotype(testAutosomalTarget, "SEX_XX"), 2);
 
         /* on X contig */
-        final Target testXTarget = new Target("UNNAMED_TARGET_182568");
+        final Target testXTarget = new Target("UNNAMED_TARGET_10");
         Assert.assertEquals(ploidyAnnotsCollection.getTargetGermlinePloidyByGenotype(testXTarget, "SEX_XX"), 2);
         Assert.assertEquals(ploidyAnnotsCollection.getTargetGermlinePloidyByGenotype(testXTarget, "SEX_XY"), 1);
 
         /* on Y contig */
-        final Target testYTarget = new Target("UNNAMED_TARGET_189476");
+        final Target testYTarget = new Target("UNNAMED_TARGET_19");
         Assert.assertEquals(ploidyAnnotsCollection.getTargetGermlinePloidyByGenotype(testYTarget, "SEX_XX"), 0);
         Assert.assertEquals(ploidyAnnotsCollection.getTargetGermlinePloidyByGenotype(testYTarget, "SEX_XY"), 1);
     }
@@ -69,9 +69,9 @@ public class GermlinePloidyAnnotatedTargetCollectionUnitTest extends BaseTest {
                 .stream().map(Target::getName).collect(Collectors.toSet());
         final Set<String> autosomalTargetNamesExpected = Arrays.stream(new String[] {
                 "UNNAMED_TARGET_0", "UNNAMED_TARGET_1", "UNNAMED_TARGET_2",
-                "UNNAMED_TARGET_3", "UNNAMED_TARGET_4", "UNNAMED_TARGET_19393",
-                "UNNAMED_TARGET_19394", "UNNAMED_TARGET_19395", "UNNAMED_TARGET_19396",
-                "UNNAMED_TARGET_19397"
+                "UNNAMED_TARGET_3", "UNNAMED_TARGET_4", "UNNAMED_TARGET_5",
+                "UNNAMED_TARGET_6", "UNNAMED_TARGET_7", "UNNAMED_TARGET_8",
+                "UNNAMED_TARGET_9"
         }).collect(Collectors.toSet());
         Assert.assertTrue(autosomalTargetNamesResult.equals(autosomalTargetNamesExpected));
     }
@@ -81,16 +81,16 @@ public class GermlinePloidyAnnotatedTargetCollectionUnitTest extends BaseTest {
         final Set<String> allosomalTargetNamesResult = ploidyAnnotsCollection.getAllosomalTargetList()
                 .stream().map(Target::getName).collect(Collectors.toSet());
         final Set<String> allosomalTargetNamesExpected = Arrays.stream(new String[] {
-                "UNNAMED_TARGET_182568", "UNNAMED_TARGET_182569", "UNNAMED_TARGET_182570",
-                "UNNAMED_TARGET_182571", "UNNAMED_TARGET_182572", "UNNAMED_TARGET_189368",
-                "UNNAMED_TARGET_189369", "UNNAMED_TARGET_189474", "UNNAMED_TARGET_189475",
-                "UNNAMED_TARGET_189476", "UNNAMED_TARGET_189477", "UNNAMED_TARGET_189478"
+                "UNNAMED_TARGET_10", "UNNAMED_TARGET_11", "UNNAMED_TARGET_12",
+                "UNNAMED_TARGET_13", "UNNAMED_TARGET_14", "UNNAMED_TARGET_15",
+                "UNNAMED_TARGET_16", "UNNAMED_TARGET_17", "UNNAMED_TARGET_18",
+                "UNNAMED_TARGET_19", "UNNAMED_TARGET_20", "UNNAMED_TARGET_21"
         }).collect(Collectors.toSet());
         Assert.assertTrue(allosomalTargetNamesResult.equals(allosomalTargetNamesExpected));
     }
 
     /* check if targets have unique names */
-    @Test(expectedExceptions = UserException.BadInput.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testNonUniqueTargetNames() {
         final List<Target> badTargetList = Arrays.stream(new Target[] {
                 new Target("NON_UNIQUE_NAME", new SimpleInterval("1", 1, 10)),
@@ -108,7 +108,7 @@ public class GermlinePloidyAnnotatedTargetCollectionUnitTest extends BaseTest {
         new GermlinePloidyAnnotatedTargetCollection(badContigAnnotsList, targetList);
     }
     /* check if annotated contigs are unique */
-    @Test(expectedExceptions = UserException.BadInput.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testMultiplyAnnotatedContigs() {
         final Map<String, Integer> ploidyMap = ImmutableMap.<String, Integer>builder()
                 .put("SEX_XX", 2).put("SEX_XY", 2).build();
@@ -120,7 +120,7 @@ public class GermlinePloidyAnnotatedTargetCollectionUnitTest extends BaseTest {
     }
 
     /* check if all contigs are annotated */
-    @Test(expectedExceptions = UserException.BadInput.class)
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testMissingAnnotations() {
         final Map<String, Integer> ploidyMap = ImmutableMap.<String, Integer>builder()
                 .put("SEX_XX", 2).put("SEX_XY", 2).build();

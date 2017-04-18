@@ -21,10 +21,19 @@ public final class IntegerCopyNumberState implements AlleleMetadataProducer, Cal
 
     private static final long serialVersionUID = -3641032600858976498L;
 
+    /**
+     * Integer value of the represented copy number state
+     */
     private final int copyNumber;
 
+    /**
+     * A string representation of this copy number state (used for creating human-readable copy number call lists)
+     */
     private final String callString;
 
+    /**
+     * An allele representation of this copy number state (used for VCF creation)
+     */
     private final Allele allele;
 
     public IntegerCopyNumberState(final int copyNumber) {
@@ -39,9 +48,13 @@ public final class IntegerCopyNumberState implements AlleleMetadataProducer, Cal
         return allele;
     }
 
+    /**
+     * TODO github/gatk-protected issue #855 -- this is required for VCF creation
+     * @param header an instance of {@link VCFHeader}
+     */
     @Override
     public void addHeaderLineTo(@Nonnull VCFHeader header) {
-
+        throw new UnsupportedOperationException("github/gatk-protected issue #855");
     }
 
     @Override
@@ -56,30 +69,19 @@ public final class IntegerCopyNumberState implements AlleleMetadataProducer, Cal
 
     public int getCopyNumber() { return copyNumber; }
 
-    public static String toCallString(final int copyNumberState) {
+    private static String toCallString(final int copyNumberState) {
         return String.valueOf(copyNumberState);
     }
 
-    public static String toAlleleString(final int copyNumberState) {
+    private static String toAlleleString(final int copyNumberState) {
         return "<" + String.valueOf(copyNumberState) + ">";
     }
 
-    /**
-     * The equality comparison is only made based on the integer copy number; the boolean reference status of the
-     * state is ignored
-     *
-     * @param o another object
-     * @return boolean
-     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-
-        IntegerCopyNumberState that = (IntegerCopyNumberState) o;
-
-        return copyNumber == that.copyNumber;
-
+        return copyNumber == ((IntegerCopyNumberState) o).copyNumber;
     }
 
     @Override

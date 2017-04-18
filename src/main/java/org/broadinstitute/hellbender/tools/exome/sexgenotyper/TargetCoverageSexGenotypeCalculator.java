@@ -178,25 +178,6 @@ public final class TargetCoverageSexGenotypeCalculator {
                 .mapToDouble(i -> readCounts[i] / (double)autosomalTargetPloidies[i])
                 .toArray();
         return new Median().evaluate(readCountsNormalizedByPloidy);
-
-        /*
-         * @implNote Old code:
-         *
-         * (assume copy ratios and multiplicative biases are 1.0 at this stage)
-         *
-         * final int[] mask = IntStream.range(0, readCounts.length).map(i -> 1).toArray();
-         * final double[] copyRatio = IntStream.range(0, readCounts.length).mapToDouble(i -> 1.0).toArray();
-         * final double[] multBias = IntStream.range(0, readCounts.length).mapToDouble(i -> 1.0).toArray();
-         *
-         * return CoverageModelUtils.estimateReadDepthFromPoissonModel(readCounts, multBias, autosomalTargetPloidies,
-         *      copyRatio, mask);
-         *
-         * @implNote This is prone to over-estimation because the Gaussian approximation of the Poisson distribution,
-         * which is currently used in CoverageModelUtils.estimateReadDepthFromPoissonModel breaks down
-         * for outlier read counts (if n >> depth). For the time being, we use medians which is a robust
-         * statistic. In the future, we must find a better approximation for the Poisson distribution which
-         * is both analytically tractable and robust.
-         */
     }
 
     /**

@@ -67,7 +67,7 @@ public class XHMMSegmentCallerIntegrationTest extends XHMMSegmentCallerBaseInteg
     //TODO: test here.  Until then, we do not have an integration test but we do have our ongoing evaluations, which
     //TODO: show the superiority of our modifications versus the original XHMM model.
     @Test(dataProvider = "simulatedChainData")
-    public File testRunCommandLine(final HiddenMarkovModelChain chain) {
+    public File testRunCommandLine(final XHMMData chain) {
         final File inputFile = writeChainInTempFile(chain);
         final File outputFile = createTempFile("output", ".tab");
         runCommandLine(chain, inputFile, outputFile);
@@ -87,7 +87,7 @@ public class XHMMSegmentCallerIntegrationTest extends XHMMSegmentCallerBaseInteg
         return outputFile;
     }
 
-    public void runCommandLine(final HiddenMarkovModelChain chain, final File inputFile, final File outputFile) {
+    public void runCommandLine(final XHMMData chain, final File inputFile, final File outputFile) {
         // The model arguments:
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
@@ -121,7 +121,7 @@ public class XHMMSegmentCallerIntegrationTest extends XHMMSegmentCallerBaseInteg
         }
     }
 
-    private void assertSampleNames(final Set<String> samples, final HiddenMarkovModelChain chain) {
+    private void assertSampleNames(final Set<String> samples, final XHMMData chain) {
         final int numberOfSamples = chain.data.size();
         final List<String> sampleNames = IntStream.range(0, chain.data.size()).mapToObj(a -> "SAMPLE_" + a).collect(Collectors.toList());
         Assert.assertEquals(samples.size(), numberOfSamples);

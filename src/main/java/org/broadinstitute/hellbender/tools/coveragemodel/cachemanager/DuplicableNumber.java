@@ -1,32 +1,33 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.cachemanager;
 
 /**
- * A Duplicable wrapper around Numbers.
+ * A {@link Duplicable} wrapper around a {@link Number}.
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class DuplicableNumber<N extends Number> implements Duplicable {
+public class DuplicableNumber<NUMBER extends Number> implements Duplicable {
 
-    final private N value;
+    private final NUMBER value;
 
     public DuplicableNumber() {
         value = null;
     }
 
-    public DuplicableNumber(final N value) {
+    public DuplicableNumber(final NUMBER value) {
         this.value = value;
     }
 
     @Override
-    public DuplicableNumber<N> deepCopy() {
+    public DuplicableNumber<NUMBER> duplicate() {
         return this;
     }
 
     @Override
-    public boolean isNull() {
+    public boolean hasValue() {
         return value == null;
     }
-    public N value() {
+
+    public NUMBER value() {
         return value;
     }
 
@@ -34,17 +35,12 @@ public class DuplicableNumber<N extends Number> implements Duplicable {
         if (obj instanceof DuplicableNumber) {
             return ((DuplicableNumber)obj).value().doubleValue();
         } else {
-            throw new ClassCastException("Can not cast " + obj + " to an INDArray.");
+            throw new ClassCastException("Can not cast " + obj + " to a number.");
         }
     }
 
     @Override
     public String toString() {
-        if (value == null) {
-            return "null";
-        } else {
-            return value.toString();
-        }
+        return value == null ? "null" : value.toString();
     }
-
 }

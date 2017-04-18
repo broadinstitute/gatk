@@ -4,8 +4,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nonnull;
-import java.io.File;
-import java.io.Reader;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,90 +23,50 @@ public final class IntegerCopyNumberTransitionProbabilityCacheCollection impleme
     private final Map<SexGenotypeContigPairKey, IntegerCopyNumberTransitionProbabilityCache>
             sexGenotypeAndContigToTransitionMatrixCacheMap;
 
+    /**
+     * This is an arbitrary integer and is used as a placeholder for {@link #maxCopyNumber} if the transition
+     * matrix collection is not padded; see {@link #getMaxCopyNumber()}.
+     */
+    private static final int UNDEFINED_MAX_COPY_NUMBER = -1;
+
     private final boolean padded;
     private final int maxCopyNumber;
     private final Set<String> sexGenotypesSet;
-    private final Set<String> contigsSet;
+    private final Set<String> contigSet;
 
     /**
      * Public constructor from a {@link IntegerCopyNumberTransitionMatrixCollection}
      *
      * @param transitionMatrixCollection collection of transition matrices
+     * @param padStates whether or not pad all transition matrices to the maximum copy number in the collection
      */
     public IntegerCopyNumberTransitionProbabilityCacheCollection(
             @Nonnull final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection,
             final boolean padStates) {
-        sexGenotypeAndContigToTransitionMatrixCacheMap = new HashMap<>();
-        constructCacheMapFromMatrixCollection(padStates ? transitionMatrixCollection.cloneWithPaddedStates()
+        Utils.nonNull(transitionMatrixCollection, "The transition matrix cache collection must be non-null");
+        sexGenotypeAndContigToTransitionMatrixCacheMap = constructCacheMapFromMatrixCollection(padStates
+                ? transitionMatrixCollection.cloneWithPaddedStates()
                 : transitionMatrixCollection);
         padded = padStates;
-        if (padded) {
-            maxCopyNumber = transitionMatrixCollection.getMaxCopyNumberInCollection();
-        } else {
-            maxCopyNumber = 0;
-        }
+        maxCopyNumber = padded
+                ? transitionMatrixCollection.getMaxCopyNumberInCollection()
+                : UNDEFINED_MAX_COPY_NUMBER;
         sexGenotypesSet = Collections.unmodifiableSet(transitionMatrixCollection.getSexGenotypes());
-        contigsSet = Collections.unmodifiableSet(transitionMatrixCollection.getContigs());
+        contigSet = Collections.unmodifiableSet(transitionMatrixCollection.getContigs());
     }
 
-    /**
-     * Public constructor from a transition matrix collection reader
-     *
-     * @param reader
-     * @param parentPath
-     * @param padStates
-     */
-    public IntegerCopyNumberTransitionProbabilityCacheCollection(@Nonnull final Reader reader,
-                                                                 @Nonnull final String parentPath,
-                                                                 final boolean padStates) {
-        final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection =
-                IntegerCopyNumberTransitionMatrixCollection.read(reader, parentPath);
-        sexGenotypeAndContigToTransitionMatrixCacheMap = new HashMap<>();
-        constructCacheMapFromMatrixCollection(padStates ? transitionMatrixCollection.cloneWithPaddedStates()
-                : transitionMatrixCollection);
-        padded = padStates;
-        if (padded) {
-            maxCopyNumber = transitionMatrixCollection.getMaxCopyNumberInCollection();
-        } else {
-            maxCopyNumber = 0;
-        }
-        sexGenotypesSet = Collections.unmodifiableSet(transitionMatrixCollection.getSexGenotypes());
-        contigsSet = Collections.unmodifiableSet(transitionMatrixCollection.getContigs());
-    }
-
-    /**
-     * Public constructor from a transition matrix collection file
-     *
-     * @param inputFile
-     * @param padStates
-     */
-    public IntegerCopyNumberTransitionProbabilityCacheCollection(@Nonnull final File inputFile,
-                                                                 final boolean padStates) {
-        final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection =
-                IntegerCopyNumberTransitionMatrixCollection.read(inputFile);
-        sexGenotypeAndContigToTransitionMatrixCacheMap = new HashMap<>();
-        constructCacheMapFromMatrixCollection(padStates ? transitionMatrixCollection.cloneWithPaddedStates()
-                : transitionMatrixCollection);
-        padded = padStates;
-        if (padded) {
-            maxCopyNumber = transitionMatrixCollection.getMaxCopyNumberInCollection();
-        } else {
-            maxCopyNumber = 0;
-        }
-        sexGenotypesSet = Collections.unmodifiableSet(transitionMatrixCollection.getSexGenotypes());
-        contigsSet = Collections.unmodifiableSet(transitionMatrixCollection.getContigs());
-    }
-
-    private void constructCacheMapFromMatrixCollection(
+    private static Map<SexGenotypeContigPairKey, IntegerCopyNumberTransitionProbabilityCache> constructCacheMapFromMatrixCollection(
             @Nonnull final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection) {
         /* assert that the transition matrix collection is complete */
         transitionMatrixCollection.assertCompleteness();
+        final Map<SexGenotypeContigPairKey, IntegerCopyNumberTransitionProbabilityCache> cacheMap = new HashMap<>();
         for (final String sexGenotype : transitionMatrixCollection.getSexGenotypes()) {
             for (final String contig : transitionMatrixCollection.getContigs()) {
-                sexGenotypeAndContigToTransitionMatrixCacheMap.put(SexGenotypeContigPairKey.of(sexGenotype, contig),
+                cacheMap.put(SexGenotypeContigPairKey.of(sexGenotype, contig),
                         new IntegerCopyNumberTransitionProbabilityCache(transitionMatrixCollection.get(sexGenotype, contig)));
             }
         }
+        return cacheMap;
     }
 
     /**
@@ -135,12 +93,6 @@ public final class IntegerCopyNumberTransitionProbabilityCacheCollection impleme
                                            final IntegerCopyNumberState state) {
         return sexGenotypeAndContigToTransitionMatrixCacheMap.get(checkKey(sexGenotype, contig))
                 .logStationaryProbability(state);
-    }
-
-    public void cacheTransitionMatrix(final int distance, final String sexGenotype, final String contig) {
-        ParamUtils.isPositive(distance, "The distance between two two targets must be positive");
-        sexGenotypeAndContigToTransitionMatrixCacheMap.get(checkKey(sexGenotype, contig))
-                .cacheLogTransitionMatrix(distance);
     }
 
     public void clearCaches() {
@@ -171,7 +123,7 @@ public final class IntegerCopyNumberTransitionProbabilityCacheCollection impleme
     }
 
     public Set<String> getContigs() {
-        return contigsSet;
+        return contigSet;
     }
 
     private SexGenotypeContigPairKey checkKey(final String sexGenotype, final String contig) {

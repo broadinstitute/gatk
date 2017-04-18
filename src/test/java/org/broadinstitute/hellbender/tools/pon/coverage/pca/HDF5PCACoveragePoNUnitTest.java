@@ -5,6 +5,7 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hdf5.HDF5Library;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.MathObjectAsserts;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
@@ -117,7 +118,7 @@ public final class HDF5PCACoveragePoNUnitTest extends BaseTest {
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertEquals(actual.getColumnDimension(), samples.size());
         final RealMatrix expected = readDoubleMatrix(TEST_PON_NORMALIZED_PCOV);
-        assertEqualMatrix(actual, expected);
+        MathObjectAsserts.assertRealMatrixEquals(actual, expected);
     }
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalizedSampleNameReading"})
@@ -131,7 +132,7 @@ public final class HDF5PCACoveragePoNUnitTest extends BaseTest {
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertEquals(actual.getColumnDimension(), samples.size());
         final RealMatrix expected = readDoubleMatrix(TEST_PON_LOG_NORMALS);
-        assertEqualMatrix(actual, expected);
+        MathObjectAsserts.assertRealMatrixEquals(actual, expected);
     }
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalizedSampleNameReading"})
@@ -145,7 +146,7 @@ public final class HDF5PCACoveragePoNUnitTest extends BaseTest {
         Assert.assertEquals(actual.getRowDimension(), samples.size());
         Assert.assertEquals(actual.getColumnDimension(), targets.size());
         final RealMatrix expected = readDoubleMatrix(TEST_PON_LOG_NORMALS_PINV);
-        assertEqualMatrix(actual, expected);
+        MathObjectAsserts.assertRealMatrixEquals(actual, expected);
     }
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalizedSampleNameReading"})
@@ -159,7 +160,7 @@ public final class HDF5PCACoveragePoNUnitTest extends BaseTest {
         Assert.assertEquals(actual.getRowDimension(), targets.size());
         Assert.assertTrue(actual.getColumnDimension() <= samples.size());
         final RealMatrix expected = readDoubleMatrix(TEST_PON_REDUCED_PON);
-        assertEqualMatrix(actual, expected);
+        MathObjectAsserts.assertRealMatrixEquals(actual, expected);
     }
 
     @Test(dependsOnMethods = {"testTargetNameReading","testLogNormalizedSampleNameReading"})
@@ -173,20 +174,7 @@ public final class HDF5PCACoveragePoNUnitTest extends BaseTest {
         Assert.assertTrue(actual.getRowDimension() <= samples.size());
         Assert.assertEquals(actual.getColumnDimension(), targets.size());
         final RealMatrix expected = readDoubleMatrix(TEST_PON_REDUCED_PON_PINV);
-        assertEqualMatrix(actual, expected);
-    }
-
-    private void assertEqualMatrix(RealMatrix actual, RealMatrix expected) {
-        Assert.assertEquals(actual.getRowDimension(), expected.getRowDimension());
-        Assert.assertEquals(actual.getColumnDimension(), expected.getColumnDimension());
-        for (int row = 0; row < expected.getRowDimension(); row++) {
-            for (int column = 0; column < expected.getColumnDimension(); column++) {
-                final double actualValue = actual.getEntry(row,column);
-                final double expectedValue = expected.getEntry(row,column);
-                final double epsilon = Math.min(Math.abs(actualValue),Math.abs(expectedValue)) * 0.0001;
-                Assert.assertEquals(actualValue,expectedValue,epsilon);
-            }
-        }
+        MathObjectAsserts.assertRealMatrixEquals(actual, expected);
     }
 
     /**

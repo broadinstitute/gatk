@@ -4,19 +4,19 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
- * This class represents an automatically computable cache node
+ * This class represents an automatically computable cache node.
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class ComputableCacheNode extends CacheNode {
 
     private final boolean cacheEvals;
-    private final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> func;
+    private final ComputableNodeFunction func;
     private Duplicable cachedValue = null;
     private boolean isCacheCurrent;
 
@@ -31,7 +31,7 @@ public final class ComputableCacheNode extends CacheNode {
     public ComputableCacheNode(@Nonnull final String key,
                                @Nonnull final Collection<String> tags,
                                @Nonnull final Collection<String> parents,
-                               @Nullable final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> func,
+                               @Nullable final ComputableNodeFunction func,
                                final boolean cacheEvals) {
         super(key, tags, parents);
         this.func = func;
@@ -44,8 +44,9 @@ public final class ComputableCacheNode extends CacheNode {
     private ComputableCacheNode(@Nonnull final String key,
                                 @Nonnull final Collection<String> tags,
                                 @Nonnull final Collection<String> parents,
-                                @Nullable final Function<Map<String, ? extends Duplicable>, ? extends Duplicable> func,
-                                final boolean cacheEvals, final Duplicable cachedValue,
+                                @Nullable final ComputableNodeFunction func,
+                                final boolean cacheEvals,
+                                final Duplicable cachedValue,
                                 final boolean isCacheCurrent) {
         super(key, tags, parents);
         this.func = func;
@@ -58,11 +59,11 @@ public final class ComputableCacheNode extends CacheNode {
     public boolean isPrimitive() { return false; }
 
     @Override
-    public boolean isExternallyMutable() { return func == null; }
+    public boolean isExternallyComputable() { return func == null; }
 
     public boolean isCacheCurrent() { return isCacheCurrent; }
 
-    public boolean cacheEvals() { return cacheEvals; }
+    public boolean doesCacheEvaluations() { return cacheEvals; }
 
     /**
      * Available means (1) the node caches its value, and (2) a value is already cached (though may
@@ -72,7 +73,7 @@ public final class ComputableCacheNode extends CacheNode {
      */
     @Override
     public boolean isStoredValueAvailable() {
-        return cacheEvals && cachedValue != null && !cachedValue.isNull();
+        return cacheEvals && cachedValue != null && !cachedValue.hasValue();
     }
 
     /**
@@ -85,13 +86,13 @@ public final class ComputableCacheNode extends CacheNode {
     }
 
     @Override
-    public void setValue(@Nullable final Duplicable val) {
-        if (!isExternallyMutable()) {
-            throw new UnsupportedOperationException("Can not explicitly set the value of a computable cache node with" +
-                    " non-null function.");
-        } else {
+    public void set(@Nullable final Duplicable val) {
+        if (isExternallyComputable()) {
             cachedValue = val;
             isCacheCurrent = true;
+        } else {
+            throw new UnsupportedOperationException("Can not explicitly set the value of a computable cache node with" +
+                    " non-null function.");
         }
     }
 
@@ -100,30 +101,26 @@ public final class ComputableCacheNode extends CacheNode {
      *
      * @param parentsValues a lookup map for parents values
      * @return value
-     * @throws IllegalStateException if the node can cache but the cache is not up to date
+     * @throws ExternallyComputableNodeValueUnavailableException if the node is externally mutable but its value
+     *   is out of date
+     * @throws ComputableNodeFunction.ParentValueNotFoundException if a required parent value is not given
      */
     @Override
-    public Duplicable getValue(@Nonnull final Map<String, ? extends Duplicable> parentsValues) throws IllegalStateException {
-        if (cacheEvals) {
-            if (isCacheCurrent) {
-                return cachedValue;
-            } else {
-                throw new IllegalStateException("The stored value of the caching computable node " + getKey() + " is not current.");
-            }
-        } else {
-            try {
-                return func.apply(parentsValues);
-            } catch (NullPointerException e) {
-                throw new IllegalStateException("Encountered null pointer in computing node (" + getKey() + "). At least " +
-                        "one parent node is not property initialized.");
-            }
+    public Duplicable get(@Nonnull final Map<String, Duplicable> parentsValues)
+            throws ComputableNodeFunction.ParentValueNotFoundException, ExternallyComputableNodeValueUnavailableException {
+        if (isStoredValueAvailableAndCurrent()) {
+            return cachedValue;
+        } else if (!isExternallyComputable()) {
+            return func.apply(parentsValues); /* may throw {@link ComputableNodeFunction.ParentValueNotFoundException} */
+        } else { /* externally computable node */
+            throw new ExternallyComputableNodeValueUnavailableException(getKey());
         }
     }
 
     @Override
     public ComputableCacheNode duplicate() {
-        if (cacheEvals && cachedValue != null && !cachedValue.isNull()) {
-            return new ComputableCacheNode(getKey(), getTags(), getParents(), func, true, cachedValue.deepCopy(), isCacheCurrent);
+        if (isStoredValueAvailable()) {
+            return new ComputableCacheNode(getKey(), getTags(), getParents(), func, true, cachedValue.duplicate(), isCacheCurrent);
         } else {
             return new ComputableCacheNode(getKey(), getTags(), getParents(), func, cacheEvals, null, isCacheCurrent);
         }
@@ -136,7 +133,7 @@ public final class ComputableCacheNode extends CacheNode {
      * @return a new instance of {@link ComputableCacheNode}
      */
     public ComputableCacheNode duplicateWithUpdatedValue(final Duplicable newValue) {
-        if (cacheEvals && newValue != null && !newValue.isNull()) {
+        if (cacheEvals && newValue != null && !newValue.hasValue()) {
             return new ComputableCacheNode(getKey(), getTags(), getParents(), func, true, newValue, true);
         } else {
             return new ComputableCacheNode(getKey(), getTags(), getParents(), func, cacheEvals, null, false);
@@ -148,18 +145,30 @@ public final class ComputableCacheNode extends CacheNode {
      *
      * @return a function
      */
-    public Function<Map<String, ? extends Duplicable>, ? extends Duplicable> getFunction() {
+    public ComputableNodeFunction getFunction() {
         return func;
     }
 
     /**
-     * Duplicates the cache node with a different status for the stored value
+     * Duplicates the cache node with outdated cache status. Since we do not ever need to access an
+     * outdated cached value, we nullify the cache reference.
      *
-     * @param newCacheUpToDateStatus a boolean
      * @return a new instance of {@link ComputableCacheNode}
      */
-    public ComputableCacheNode duplicateWithUpdatedCacheStatus(final boolean newCacheUpToDateStatus) {
-        return new ComputableCacheNode(getKey(), getTags(), getParents(), func, cacheEvals,
-                cachedValue, newCacheUpToDateStatus);
+    public ComputableCacheNode duplicateWithOutdatedCacheStatus() {
+        return new ComputableCacheNode(getKey(), getTags(), getParents(), func, cacheEvals, null, false);
+    }
+
+    /**
+     * This exception will be thrown if a computable function can not be computed
+     */
+    static final class ExternallyComputableNodeValueUnavailableException extends RuntimeException
+            implements Serializable {
+        private static final long serialVersionUID = 9056196660803073912L;
+
+        private ExternallyComputableNodeValueUnavailableException(final String nodeKey) {
+            super(String.format("Either the externally mutable node \"%s\" is not initialized or is outdated",
+                    nodeKey));
+        }
     }
 }

@@ -319,4 +319,22 @@ public final class ReadCountCollection implements Serializable {
         return new IllegalArgumentException("some column names in the column keep set that are not part of this read count collection: e.g. "
                 + targetsToKeep.stream().filter(name -> !targets.contains(name)).map(Target::getName).limit(5).collect(Collectors.joining(", ")));
     }
+
+    /**
+     * Helper class for referring to an entry in the read count collection
+     */
+    public static class EntryIndex {
+        public final int targetIndex;
+        public final int sampleIndex;
+
+        public EntryIndex(final int targetIndex, final int sampleIndex) {
+            this.targetIndex = ParamUtils.isPositiveOrZero(targetIndex, "Target index must be >= 0");
+            this.sampleIndex = ParamUtils.isPositiveOrZero(sampleIndex, "Sample index must be >= 0");
+        }
+
+        public void assertInRange(final ReadCountCollection readCountCollection) {
+            Utils.validateArg(targetIndex < readCountCollection.targets().size(), "Target index is out of range");
+            Utils.validateArg(sampleIndex < readCountCollection.columnNames().size(), "Sample index is out of range");
+        }
+    }
 }

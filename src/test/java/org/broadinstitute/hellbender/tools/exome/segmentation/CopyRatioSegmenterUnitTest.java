@@ -1,10 +1,11 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
-import org.broadinstitute.hellbender.tools.exome.*;
+import org.broadinstitute.hellbender.tools.exome.ModeledSegment;
+import org.broadinstitute.hellbender.tools.exome.ReadCountCollection;
+import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -26,7 +27,7 @@ public final class CopyRatioSegmenterUnitTest {
         final double trueMemoryLength = 1e5;
         final double trueStandardDeviation = 0.2;
 
-        final CopyRatioHiddenMarkovModel trueModel = new CopyRatioHiddenMarkovModel(trueLog2CopyRatios, trueWeights,
+        final CopyRatioHMM trueModel = new CopyRatioHMM(trueLog2CopyRatios, trueWeights,
                 trueMemoryLength, trueStandardDeviation);
 
         final int chainLength = 10000;

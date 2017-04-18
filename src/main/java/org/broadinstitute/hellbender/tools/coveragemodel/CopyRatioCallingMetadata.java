@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
-import org.broadinstitute.hdf5.Utils;
+import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelCopyRatioEmissionProbabilityCalculator.EmissionCalculationStrategy;
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeData;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nonnull;
@@ -21,28 +22,28 @@ public final class CopyRatioCallingMetadata implements Serializable {
     private static final long serialVersionUID = -2933334495362553231L;
 
     /**
-     * Various emission probability calculation models
+     * String identifier of the sample
      */
-    public enum EmissionCalculationStrategy {
-        /**
-         * Fully Poisson; this mode is experimental since this model is incompatible with the EM
-         * algorithm
-         */
-        POISSON,
-
-        /**
-         * Hybrid Poisson and Laplace+Poisson; this must be used for final posterior calling
-         * (i.e. after learning). The Poisson approximation is used on low coverage targets
-         * and Laplace approximation on Poisson is used on high coverage targets
-         */
-        HYBRID_POISSON_GAUSSIAN
-    }
-
     private String sampleName = null;
-    private Integer sampleIndex = null;
+
+    /**
+     * Sex genotype data of the sample
+     */
     private SexGenotypeData sampleSexGenotypeData = null;
+
+    /**
+     * Depth of coverage of the sample
+     */
     private Double sampleCoverageDepth = null;
+
+    /**
+     * Copy ratio emission probability calculation strategy; see {@link CoverageModelCopyRatioEmissionProbabilityCalculator}
+     */
     private EmissionCalculationStrategy emissionCalculationStrategy = null;
+
+    /**
+     * Average mapping error probability of the sample
+     */
     private Double sampleAverageMappingErrorProbability = null;
 
     private CopyRatioCallingMetadata() {
@@ -50,10 +51,6 @@ public final class CopyRatioCallingMetadata implements Serializable {
 
     private void setSampleName(@Nonnull final String sampleName) {
         this.sampleName = Utils.nonNull(sampleName, "Sample name must be non-null");
-    }
-
-    private void setSampleIndex(@Nonnull final Integer sampleIndex) {
-        this.sampleIndex = Utils.nonNull(sampleIndex, "Sample index must be non-null");
     }
 
     private void setSampleSexGenotypeData(@Nonnull final SexGenotypeData sexGenotypeData) {
@@ -81,10 +78,6 @@ public final class CopyRatioCallingMetadata implements Serializable {
         return Utils.nonNull(sampleName, "Sample name is queried but is not set");
     }
 
-    public Integer getSampleIndex() {
-        return Utils.nonNull(sampleIndex, "Sample index is queried but is not set");
-    }
-
     public SexGenotypeData getSampleSexGenotypeData() {
         return Utils.nonNull(sampleSexGenotypeData, "Sample sex genotype data is queried but is not set");
     }
@@ -100,15 +93,6 @@ public final class CopyRatioCallingMetadata implements Serializable {
 
     public EmissionCalculationStrategy getEmissionCalculationStrategy() {
         return Utils.nonNull(emissionCalculationStrategy, "Emission calculation strategy is queried but is not set");
-    }
-
-
-    public boolean hasSampleName() {
-        return sampleName != null;
-    }
-
-    public boolean hasSampleIndex() {
-        return sampleIndex != null;
     }
 
     public boolean hasSampleSexGenotypeData() {
@@ -127,8 +111,7 @@ public final class CopyRatioCallingMetadata implements Serializable {
         return new SampleMetadataBuilder();
     }
 
-
-    public static class SampleMetadataBuilder implements Serializable {
+    static class SampleMetadataBuilder implements Serializable {
 
         private static final long serialVersionUID = 4431390529312114201L;
 
@@ -138,32 +121,27 @@ public final class CopyRatioCallingMetadata implements Serializable {
             this.metadata = new CopyRatioCallingMetadata();
         }
 
-        public SampleMetadataBuilder setSampleName(@Nonnull final String sampleName) {
+        public SampleMetadataBuilder sampleName(@Nonnull final String sampleName) {
             metadata.setSampleName(sampleName);
             return this;
         }
 
-        public SampleMetadataBuilder setSampleIndex(@Nonnull final Integer sampleIndex) {
-            metadata.setSampleIndex(sampleIndex);
-            return this;
-        }
-
-        public SampleMetadataBuilder setSampleSexGenotypeData(@Nonnull final SexGenotypeData sexGenotypeData) {
+        public SampleMetadataBuilder sampleSexGenotypeData(@Nonnull final SexGenotypeData sexGenotypeData) {
             metadata.setSampleSexGenotypeData(sexGenotypeData);
             return this;
         }
 
-        public SampleMetadataBuilder setSampleCoverageDepth(@Nonnull final Double sampleCoverageDepth) {
+        public SampleMetadataBuilder sampleCoverageDepth(@Nonnull final Double sampleCoverageDepth) {
             metadata.setSampleCoverageDepth(sampleCoverageDepth);
             return this;
         }
 
-        public SampleMetadataBuilder setSampleAverageMappingErrorProbability(@Nonnull final Double sampleAverageMappingErrorProbability) {
+        public SampleMetadataBuilder sampleAverageMappingErrorProbability(@Nonnull final Double sampleAverageMappingErrorProbability) {
             metadata.setSampleAverageMappingErrorProbability(sampleAverageMappingErrorProbability);
             return this;
         }
 
-        public SampleMetadataBuilder setEmissionCalculationStrategy(@Nonnull final EmissionCalculationStrategy emissionCalculationStrategy) {
+        public SampleMetadataBuilder emissionCalculationStrategy(@Nonnull final EmissionCalculationStrategy emissionCalculationStrategy) {
             metadata.setEmissionCalculationStrategy(emissionCalculationStrategy);
             return this;
         }
@@ -177,7 +155,6 @@ public final class CopyRatioCallingMetadata implements Serializable {
     public String toString() {
         return "CopyRatioCallingMetadata{" +
                 "sampleName='" + sampleName + '\'' +
-                ", sampleIndex=" + sampleIndex +
                 ", sampleSexGenotypeData=" + sampleSexGenotypeData +
                 ", sampleCoverageDepth=" + sampleCoverageDepth +
                 ", emissionCalculationStrategy=" + emissionCalculationStrategy +

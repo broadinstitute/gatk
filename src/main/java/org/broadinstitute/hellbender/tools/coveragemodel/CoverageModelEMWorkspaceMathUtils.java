@@ -88,14 +88,14 @@ public final class CoverageModelEMWorkspaceMathUtils {
         return minv(mat, DEFAULT_LU_DECOMPOSITION_SINGULARITY_THRESHOLD);
     }
 
-        /**
-         * Solves a linear system using Apache commons methods [mat].[x] = [vec]
-         *
-         * @param mat the coefficients matrix (must be square and full-rank)
-         * @param vec the right hand side vector
-         * @param singularityThreshold a threshold for detecting singularity
-         * @return solution of the linear system
-         */
+    /**
+     * Solves a linear system using Apache commons methods [mat].[x] = [vec]
+     *
+     * @param mat the coefficients matrix (must be square and full-rank)
+     * @param vec the right hand side vector
+     * @param singularityThreshold a threshold for detecting singularity
+     * @return solution of the linear system
+     */
     public static INDArray linsolve(@Nonnull final INDArray mat, @Nonnull final INDArray vec,
                                     final double singularityThreshold) {
         if (mat.isScalar()) {
@@ -145,14 +145,10 @@ public final class CoverageModelEMWorkspaceMathUtils {
             throw new IllegalArgumentException("The input matrix must be square");
         }
         final RealMatrix finalMatrix;
-        if (symmetrize) {
-            final double symTol = 10 * matrix.getRowDimension() * matrix.getColumnDimension() * Precision.EPSILON;
-            if (!MatrixUtils.isSymmetric(matrix, symTol)) {
-                logger.info("The input matrix is not symmetric -- enforcing symmetrization");
-                finalMatrix = matrix.add(matrix.transpose()).scalarMultiply(0.5);
-            } else {
-                finalMatrix = matrix;
-            }
+        final double symTol = 10 * matrix.getRowDimension() * matrix.getColumnDimension() * Precision.EPSILON;
+        if (symmetrize && !MatrixUtils.isSymmetric(matrix, symTol)) {
+            logger.info("The input matrix is not symmetric -- enforcing symmetrization");
+            finalMatrix = matrix.add(matrix.transpose()).scalarMultiply(0.5);
         } else {
             finalMatrix = matrix;
         }

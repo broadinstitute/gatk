@@ -23,9 +23,9 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class CoverageModelWPreconditionerLocal extends GeneralLinearOperator<INDArray> {
+public final class CoverageModelWPreconditionerLocal implements GeneralLinearOperator<INDArray> {
 
-    private final Logger logger = LogManager.getLogger(CoverageModelWLinearOperatorLocal.class);
+    private static final Logger logger = LogManager.getLogger(CoverageModelWLinearOperatorLocal.class);
 
     private final int numLatents, numTargets, fftSize;
     private final INDArray Q_ll, Z_ll;

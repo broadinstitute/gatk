@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.distribution.AbstractRealDistribution;
 import org.apache.commons.math3.distribution.CauchyDistribution;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -27,7 +26,7 @@ import java.util.stream.Collectors;
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class CopyRatioHiddenMarkovModel extends ClusteringGenomicHMM<Double, Double> {
+public final class CopyRatioHMM extends ClusteringGenomicHMM<Double, Double> {
     private final double logCoverageCauchyWidth;
     private final List<AbstractRealDistribution> emissionDistributions;
 
@@ -39,8 +38,8 @@ public final class CopyRatioHiddenMarkovModel extends ClusteringGenomicHMM<Doubl
      * @param memoryLength when consecutive SNPs are a distance d bases apart, the prior probability
      *                     for memory of the CNV state to be kept is exp(-d/memoryLength)
      */
-    public CopyRatioHiddenMarkovModel(final List<Double> log2CopyRatios, final List<Double> weights,
-                                      final double memoryLength, final double logCoverageCauchyWidth) {
+    public CopyRatioHMM(final List<Double> log2CopyRatios, final List<Double> weights,
+                        final double memoryLength, final double logCoverageCauchyWidth) {
         super(log2CopyRatios, weights, memoryLength);
         this.logCoverageCauchyWidth = logCoverageCauchyWidth;
         emissionDistributions = hiddenStates().stream()

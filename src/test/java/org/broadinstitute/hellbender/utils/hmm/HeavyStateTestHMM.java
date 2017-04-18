@@ -13,14 +13,14 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class HeavyStateTestHMModel implements HiddenMarkovModel<Integer, Integer, Integer> {
+public final class HeavyStateTestHMM implements HMM<Integer, Integer, Integer> {
 
     private final int numStates;
     private final int heavyState;
     private final double heavyStateWeight;
     private final double lightStateProbs;
 
-    public HeavyStateTestHMModel(final int numStates, final int heavyState, final double heavyStateWeight) {
+    public HeavyStateTestHMM(final int numStates, final int heavyState, final double heavyStateWeight) {
         Utils.validateArg(numStates > 1, "bad number of states");
         Utils.validIndex(heavyState, numStates);
         ParamUtils.inRange(heavyStateWeight, (1.0 / numStates), 1.0, "bad heavy state weight");

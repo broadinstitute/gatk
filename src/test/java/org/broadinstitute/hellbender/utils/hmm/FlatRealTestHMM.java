@@ -15,13 +15,13 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class FlatRealTestHMModel implements HiddenMarkovModel<Integer,Integer,Integer> {
+public final class FlatRealTestHMM implements HMM<Integer,Integer,Integer> {
 
     private final RealVector priors;
     private final RealMatrix transitions;
     private final int numStates;
 
-    public FlatRealTestHMModel(final RealVector priors, final RealMatrix transitions) {
+    public FlatRealTestHMM(final RealVector priors, final RealMatrix transitions) {
         this.priors = priors;
         this.transitions = transitions;
         Utils.validateArg(priors.getDimension() == this.transitions.getColumnDimension(), "bad dimensions");

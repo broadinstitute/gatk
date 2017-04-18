@@ -163,10 +163,6 @@ public class Target implements Locatable, Feature, Serializable {
     /**
      * Calculate the distance between two targets.
      * <p>
-     * If any of the targets provided does not contain intervals, the distance is set to {@code defaultDistance}
-     * in order to revert to a non-distance dependent model
-     * </p>
-     * <p>
      * If both targets map to different chromosomes then we return {@link Double#POSITIVE_INFINITY}.
      * </p>
      * <p>
@@ -177,14 +173,15 @@ public class Target implements Locatable, Feature, Serializable {
      * @param toTarget the next target.
      * @return any values between 0 and {@link Double#POSITIVE_INFINITY}.
      * @throws NullPointerException if any of the targets is {@code null}.
+     * @throws IllegalArgumentException if the {@link SimpleInterval} in any of the targets is {@code null}
      */
-    public static double calculateDistance(final Target fromTarget, final Target toTarget,
-                                           final double defaultDistance) {
+    public static double calculateDistance(final Target fromTarget, final Target toTarget) {
         final SimpleInterval fromInterval = fromTarget.getInterval();
         final SimpleInterval toInterval = toTarget.getInterval();
-        if (fromInterval == null || toInterval == null) {
-            return defaultDistance;
-        } else if (!fromInterval.getContig().equals(toInterval.getContig())) {
+        Utils.validateArg(fromInterval != null && toInterval != null, () -> String.format("Either the departure target" +
+                        " (%s) or the destination target (%s) has missing interval annotation and the distance" +
+                        " between can not be calculated", fromTarget.toString(), toTarget.toString()));
+        if (!fromInterval.getContig().equals(toInterval.getContig())) {
             return Double.POSITIVE_INFINITY;
         } else {
             final double toMidpoint = (toInterval.getStart() + toInterval.getEnd())/2;

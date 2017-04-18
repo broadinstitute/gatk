@@ -17,12 +17,12 @@ import javax.annotation.Nullable;
  * normalized by average depth, log-coverage, or denoised "tangent-normalized" coverage obtained by
  * subtracting noise principal components.
  *
- * @param <D> type of data required for calculating the likelihood
+ * @param <DATA> type of data required for calculating the likelihood
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 @FunctionalInterface
-public interface TargetLikelihoodCalculator<D> {
-    double logLikelihood(@Nonnull final D datum, final double copyRatio, @Nullable final Target target);
+public interface TargetLikelihoodCalculator<DATA> {
+    double logLikelihood(@Nonnull final DATA datum, final double copyRatio, @Nullable final Target target);
 }

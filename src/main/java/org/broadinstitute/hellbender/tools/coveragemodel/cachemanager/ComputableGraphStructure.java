@@ -9,8 +9,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * This class computes a number of useful structural properties for DAG specified by the
- * immediate parents and immediate children of each node.
+ * This class pre-computes a number of useful auxiliary properties for the DAG specified by
+ * a set of {@link CacheNode}s. These include:
+ *
+ * - topological order for evaluating a computable node,
+ * - topological order for mutating a primitive/externally-computed node, and
+ * - topological order for evaluating all nodes associated to a tag (see {@link ImmutableComputableGraph}).
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
@@ -28,33 +32,44 @@ public final class ComputableGraphStructure implements Serializable {
     private final Map<String, Integer> depthsMap;
     private final Map<Integer, Set<String>> nodesByDepthMap;
     private final Map<String, Set<String>> nodesByTagMap;
-    private final Map<String, List<String>> evalStrategyForNodeEvaluation;
-    private final Map<String, List<String>> evalStrategyForNodeMutation;
-    private final Map<String, List<String>> evalStrategyForTagEvaluation;
-    private final List<String> evalStrategyForAllNodes;
+    private final Map<String, List<String>> topologicalOrderForNodeEvaluation;
+    private final Map<String, List<String>> topologicalOrderForNodeMutation;
+    private final Map<String, List<String>> topologicalOrderForTagEvaluation;
+    private final List<String> topologicalOrderForCompleteEvaluation;
 
-    public ComputableGraphStructure(@Nonnull final Set<String> nodeKeysSet,
-                                    @Nonnull final Map<String, Set<String>> initialTagsMap,
-                                    @Nonnull final Map<String, Set<String>> immediateParentsMap,
-                                    @Nonnull final Map<String, Set<String>> immediateDescendentsMap) {
-        Utils.nonNull(nodeKeysSet, "The node key collection can not be null");
-        Utils.nonNull(immediateParentsMap, "The immediate parents map can not be null");
-        Utils.nonNull(initialTagsMap, "The initial tags map can not be null");
-        Utils.nonNull(immediateDescendentsMap, "The immediate descendents map can not be null");
+    /**
+     * Package-private constructor from a set of {@link CacheNode}s. The graph is specified by the immediate
+     * parents and descendents of each node. A {@link CyclicGraphException} is thrown of the graph has a cycle.
+     *
+     * @param nodeSet a set of {@link CacheNode}s
+     */
+    ComputableGraphStructure(@Nonnull final Set<CacheNode> nodeSet) {
+        /* create maps for descendents, parents, and tags */
+        nodeKeysSet = nodeSet.stream().map(CacheNode::getKey).collect(Collectors.toSet());
+        immediateDescendentsMap = new HashMap<>();
+        immediateParentsMap = new HashMap<>();
+        final Map<String, Set<String>> initialTagsMap = new HashMap<>();
+        nodeKeysSet.forEach(key -> {
+            immediateDescendentsMap.put(key, new HashSet<>());
+            immediateParentsMap.put(key, new HashSet<>());
+            initialTagsMap.put(key, new HashSet<>());
+        });
+
+        /* immediate parents, descendents and tags */
+        nodeSet.forEach(node -> {
+            final String nodeKey = node.getKey();
+            node.getParents().forEach(parent -> immediateDescendentsMap.get(parent).add(nodeKey));
+            immediateParentsMap.get(nodeKey).addAll(node.getParents());
+            initialTagsMap.get(nodeKey).addAll(node.getTags());
+        });
+
         /* check the descendents and parents */
         for (final String node : nodeKeysSet) {
-            Utils.validateArg(immediateDescendentsMap.get(node) != null, "The immediate descendents node map" +
-                    " has null values");
             Utils.validateArg(nodeKeysSet.containsAll(immediateDescendentsMap.get(node)), "The immediate descendents" +
                     " node map refers to unknown nodes.");
-            Utils.validateArg(immediateParentsMap.get(node) != null, "The immediate parents node map has null values");
             Utils.validateArg(nodeKeysSet.containsAll(immediateParentsMap.get(node)), "The immediate parents node map" +
                     " refers to unknown nodes.");
         }
-
-        this.nodeKeysSet = nodeKeysSet;
-        this.immediateParentsMap = immediateParentsMap;
-        this.immediateDescendentsMap = immediateDescendentsMap;
 
         /* create maps for descendents, parents, and depthsMap */
         allDescendentsMap = new HashMap<>();
@@ -126,39 +141,39 @@ public final class ComputableGraphStructure implements Serializable {
                 allTagsMap.get(node).forEach(tag ->
                         nodesByTagMap.get(tag).add(node)));
 
-        /* evaluation strategy for a single node */
-        evalStrategyForNodeEvaluation = new HashMap<>();
+        /* topological order for evaluating a single node */
+        topologicalOrderForNodeEvaluation = new HashMap<>();
         for (final String node : nodeKeysSet) {
             final List<String> allParentsIncludingTheNode = new ArrayList<>();
             allParentsIncludingTheNode.addAll(allParentsMap.get(node));
             allParentsIncludingTheNode.add(node);
             /* sort by depth */
             allParentsIncludingTheNode.sort(Comparator.comparingInt(depthsMap::get));
-            evalStrategyForNodeEvaluation.put(node, allParentsIncludingTheNode);
+            topologicalOrderForNodeEvaluation.put(node, allParentsIncludingTheNode);
         }
 
-        /* evaluation strategy for all nodes associated to a tag */
-        evalStrategyForTagEvaluation = new HashMap<>();
+        /* topological order for evaluating all nodes associated to a tag */
+        topologicalOrderForTagEvaluation = new HashMap<>();
         for (final String tag : nodeTagsSet) {
             final Set<String> allParentsIncludingTheNodesSet = new HashSet<>();
             for (final String node : nodesByTagMap.get(tag)) {
-                    allParentsIncludingTheNodesSet.addAll(allParentsMap.get(node));
-                    allParentsIncludingTheNodesSet.add(node);
+                allParentsIncludingTheNodesSet.addAll(allParentsMap.get(node));
+                allParentsIncludingTheNodesSet.add(node);
             }
             final List<String> allParentsIncludingTheNodesList = new ArrayList<>();
             allParentsIncludingTheNodesList.addAll(allParentsIncludingTheNodesSet);
             /* sort by depth */
             allParentsIncludingTheNodesList.sort(Comparator.comparingInt(depthsMap::get));
-            evalStrategyForTagEvaluation.put(tag, allParentsIncludingTheNodesList);
+            topologicalOrderForTagEvaluation.put(tag, allParentsIncludingTheNodesList);
         }
 
-        /* evaluation strategy for all nodes */
-        evalStrategyForAllNodes = new ArrayList<>();
-        evalStrategyForAllNodes.addAll(nodeKeysSet);
-        evalStrategyForAllNodes.sort(Comparator.comparingInt(depthsMap::get));
+        /* topological order for evaluating all nodes */
+        topologicalOrderForCompleteEvaluation = new ArrayList<>();
+        topologicalOrderForCompleteEvaluation.addAll(nodeKeysSet);
+        topologicalOrderForCompleteEvaluation.sort(Comparator.comparingInt(depthsMap::get));
 
-        /* evaluation strategy for updating the descendents of a mutated node */
-        evalStrategyForNodeMutation = new HashMap<>();
+        /* topological order for updating the descendents of a mutated node */
+        topologicalOrderForNodeMutation = new HashMap<>();
         for (final String mutNode : nodeKeysSet) {
             final Set<String> allInvolvedSet = new HashSet<>();
             allInvolvedSet.add(mutNode);
@@ -170,7 +185,7 @@ public final class ComputableGraphStructure implements Serializable {
             allInvolvedList.addAll(allInvolvedSet);
             /* sort by depth */
             allInvolvedList.sort(Comparator.comparingInt(depthsMap::get));
-            evalStrategyForNodeMutation.put(mutNode, allInvolvedList);
+            topologicalOrderForNodeMutation.put(mutNode, allInvolvedList);
         }
     }
 
@@ -195,39 +210,28 @@ public final class ComputableGraphStructure implements Serializable {
 
     public Set<String> getNodeTagsSet() { return nodeTagsSet; }
 
-    public Map<String, Set<String>> getAllTagsMap() { return allTagsMap; }
-
-    public Map<String, Set<String>> getImmediateDescendentsMap() { return immediateDescendentsMap; }
-
-    public Map<String, Set<String>> getImmediateParentsMap() { return immediateParentsMap; }
-
-    public Map<String, Set<String>> getAllDescendentsMap() { return allDescendentsMap; }
-
-    public Map<String, Set<String>> getAllParentsMap() { return allParentsMap; }
-
-    public Map<String, Integer> getDepthsMap() { return depthsMap; }
-
-    public Map<Integer, Set<String>> getNodesByDepthMap() { return nodesByDepthMap; }
-
-    public Map<String, Set<String>> getNodesByTagMap() { return  nodesByTagMap; }
-
-    public List<String> getEvalStrategyByEvaluatedNode(final String nodeKey) {
-        return evalStrategyForNodeEvaluation.get(nodeKey);
+    public Set<String> getAllDescendents(@Nonnull final String nodeKey) {
+        return allDescendentsMap.get(nodeKey);
     }
 
-    public List<String> getEvalStrategyByMutatedNode(final String nodeKey) {
-        return evalStrategyForNodeMutation.get(nodeKey);
+    public List<String> getTopologicalOrderForNodeEvaluation(final String nodeKey) {
+        return topologicalOrderForNodeEvaluation.get(nodeKey);
     }
 
-    public List<String> getEvalStrategyByTag(final String tagKey) {
-        return evalStrategyForTagEvaluation.get(tagKey);
+    public List<String> getTopologicalOrderForNodeMutation(final String nodeKey) {
+        return topologicalOrderForNodeMutation.get(nodeKey);
     }
 
-    public List<String> getEvalStrategyForAllNodes() {
-        return evalStrategyForAllNodes;
+    public List<String> getTopologicalOrderForTagEvaluation(final String tagKey) {
+        return topologicalOrderForTagEvaluation.get(tagKey);
     }
 
-    public String statusToString() {
+    public List<String> getTopologicalOrderForCompleteEvaluation() {
+        return topologicalOrderForCompleteEvaluation;
+    }
+
+    @Override
+    public String toString() {
         String status = "";
         for (final String nodeKey : nodeKeysSet) {
             status += "node: " + nodeKey + "\n" +
@@ -252,24 +256,24 @@ public final class ComputableGraphStructure implements Serializable {
 
         status += "\n";
         for (final String tag : nodeTagsSet) {
-            status += "eval strategy per tag: " + tag + ", nodes in depth order: " +
-                    evalStrategyForTagEvaluation.get(tag).stream().
+            status += "topological order for evaluating tag: " + tag + ", nodes:" +
+                    topologicalOrderForTagEvaluation.get(tag).stream().
                             map(nodeKey -> nodeKey + "(" + depthsMap.get(nodeKey) + ")").
                             collect(Collectors.joining(", ", "[", "]\n"));
         }
 
         status += "\n";
         for (final String node : nodeKeysSet) {
-            status += "eval strategy for node evaluation: " + node + ", nodes in depth order: " +
-                    evalStrategyForNodeEvaluation.get(node).stream().
+            status += "topological order evaluating node: " + node + ", nodes: " +
+                    topologicalOrderForNodeEvaluation.get(node).stream().
                             map(nodeKey -> nodeKey + "(" + depthsMap.get(nodeKey) + ")").
                             collect(Collectors.joining(", ", "[", "]\n"));
         }
 
         status += "\n";
         for (final String node : nodesByDepthMap.get(0)) {
-            status += "eval strategy for node mutation: " + node + ", nodes in depth order: " +
-                    evalStrategyForNodeMutation.get(node).stream().
+            status += "topological order for node mutation: " + node + ", nodes: " +
+                    topologicalOrderForNodeMutation.get(node).stream().
                             map(nodeKey -> nodeKey + "(" + depthsMap.get(nodeKey) + ")").
                             collect(Collectors.joining(", ", "[", "]\n"));
         }

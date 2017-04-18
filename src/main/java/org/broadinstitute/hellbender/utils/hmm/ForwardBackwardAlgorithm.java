@@ -14,7 +14,7 @@ import java.util.stream.IntStream;
 
 /**
  * Performs the Forward-backward algorithm for
- * {@link HiddenMarkovModel}
+ * {@link HMM}
  * on a sequence of data points and positions.
  *
  * <p>This done by calling {@link #apply} that returns an
@@ -51,7 +51,7 @@ public final class ForwardBackwardAlgorithm {
          * Returns the model passed to the forward-backward algorithm.
          * @return never {@code null}.
          */
-        HiddenMarkovModel<D, T, S> model();
+        HMM<D, T, S> model();
 
 
         /**
@@ -299,7 +299,7 @@ public final class ForwardBackwardAlgorithm {
      *   positions.
      */
     public static <D, T, S> Result<D, T, S> apply(final List<D> data, final List<T> positions,
-                                 final HiddenMarkovModel<D, T, S> model) {
+                                 final HMM<D, T, S> model) {
         Utils.nonNull(data, "the input data sequence cannot be null.");
         Utils.nonNull(positions, "the input position sequence cannot be null.");
         Utils.nonNull(model, "the input model cannot be null");
@@ -332,7 +332,7 @@ public final class ForwardBackwardAlgorithm {
      *   or {@code positions}.
      */
     private static <D, T, S> double[][] calculateLogForwardProbabilities(
-            final HiddenMarkovModel<D, T, S> model,
+            final HMM<D, T, S> model,
             final List<D> data,
             final List<T> positions) {
 
@@ -393,7 +393,7 @@ public final class ForwardBackwardAlgorithm {
      * @throws IllegalArgumentException if the {@code model} does not recognize any of the values in {@code dataList}
      *   or {@code positionList}.
      */
-    private static <D, T, S> double[][] calculateLogBackwardProbabilities(final HiddenMarkovModel<D, T, S> model,
+    private static <D, T, S> double[][] calculateLogBackwardProbabilities(final HMM<D, T, S> model,
                                                                         final List<D> dataList,
                                                                         final List<T> positionList) {
 
@@ -451,7 +451,7 @@ public final class ForwardBackwardAlgorithm {
         private final List<T> positions;
         private final IntRange positionIndexRange;
 
-        private final HiddenMarkovModel<D, T, S> model;
+        private final HMM<D, T, S> model;
 
         private final Object2IntMap<T> positionIndex;
         private final Object2IntMap<S> stateIndex;
@@ -462,7 +462,7 @@ public final class ForwardBackwardAlgorithm {
         private final double[] logDataLikelihood;
 
         private ArrayResult(final List<D> data, final List<T> positions,
-                            final HiddenMarkovModel<D, T, S> model,
+                            final HMM<D, T, S> model,
                             final double[][] logForwardProbabilities,
                             final double[][] logBackwardProbabilities) {
             this.data = Collections.unmodifiableList(new ArrayList<>(data));
@@ -528,7 +528,7 @@ public final class ForwardBackwardAlgorithm {
         }
 
         @Override
-        public HiddenMarkovModel<D, T, S> model() {
+        public HMM<D, T, S> model() {
             return model;
         }
 

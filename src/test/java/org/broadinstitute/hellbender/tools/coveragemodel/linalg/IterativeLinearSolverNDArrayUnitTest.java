@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.linalg;
 
+import org.broadinstitute.hellbender.tools.coveragemodel.StandardSubroutineSignals;
 import org.broadinstitute.hellbender.tools.coveragemodel.SubroutineSignal;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.junit.Assert;
@@ -8,6 +9,8 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.testng.annotations.Test;
 
 /**
+ * Unit tests for {@link IterativeLinearSolverNDArray}.
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class IterativeLinearSolverNDArrayUnitTest extends BaseTest {
@@ -16,6 +19,11 @@ public class IterativeLinearSolverNDArrayUnitTest extends BaseTest {
     private static final double DEFAULT_REL_TOL = 1e-6;
     private static final double DEFAULT_ABS_TOL = 1e-6;
 
+    /**
+     * A test for the preconditioned conjugate gradients solver on a small 2x2 system w/ and w/o preconditioning.
+     * The preconditioner is set to M = diag(A)^{-1}. In both cases, we require the solver to find the exact
+     * solution.
+     */
     @Test
     public void testCGSmallSystem() {
         final INDArray A = Nd4j.create(new double[][]{{4, 1}, {1, 3}});
@@ -32,17 +40,21 @@ public class IterativeLinearSolverNDArrayUnitTest extends BaseTest {
         /* without preconditioning */
         solver = new IterativeLinearSolverNDArray(linop, b, null, DEFAULT_ABS_TOL, DEFAULT_REL_TOL, DEFAULT_MAX_ITERS,
                 x -> x.normmaxNumber().doubleValue(), (x, y) -> x.mul(y).sumNumber().doubleValue(), true);
-        sig = solver.cg(x0);
-        Assert.assertTrue(sig.getObject("status") == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_ABS_TOL ||
-                sig.getObject("status") == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_REL_TOL);
-        Assert.assertArrayEquals(sig.getINDArray("x").data().asDouble(), xExpected.data().asDouble(), DEFAULT_ABS_TOL);
+        sig = solver.solveUsingPreconditionedConjugateGradient(x0);
+        Assert.assertTrue(
+                sig.get(StandardSubroutineSignals.EXIT_STATUS) == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_ABS_TOL ||
+                sig.get(StandardSubroutineSignals.EXIT_STATUS) == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_REL_TOL);
+        Assert.assertArrayEquals(sig.<INDArray>get(StandardSubroutineSignals.SOLUTION).data().asDouble(),
+                xExpected.data().asDouble(), DEFAULT_ABS_TOL);
 
         /* with preconditioning */
         solver = new IterativeLinearSolverNDArray(linop, b, precond, DEFAULT_ABS_TOL, DEFAULT_REL_TOL, DEFAULT_MAX_ITERS,
                 x -> x.normmaxNumber().doubleValue(), (x, y) -> x.mul(y).sumNumber().doubleValue(), true);
-        sig = solver.cg(x0);
-        Assert.assertTrue(sig.getObject("status") == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_ABS_TOL ||
-                sig.getObject("status") == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_REL_TOL);
-        Assert.assertArrayEquals(sig.getINDArray("x").data().asDouble(), xExpected.data().asDouble(), DEFAULT_ABS_TOL);
+        sig = solver.solveUsingPreconditionedConjugateGradient(x0);
+        Assert.assertTrue(
+                sig.get(StandardSubroutineSignals.EXIT_STATUS) == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_ABS_TOL ||
+                sig.get(StandardSubroutineSignals.EXIT_STATUS) == IterativeLinearSolverNDArray.ExitStatus.SUCCESS_REL_TOL);
+        Assert.assertArrayEquals(sig.<INDArray>get(StandardSubroutineSignals.SOLUTION).data().asDouble(),
+                xExpected.data().asDouble(), DEFAULT_ABS_TOL);
     }
 }

@@ -22,14 +22,17 @@ public class DuplicableNDArray implements Duplicable {
     }
 
     @Override
-    public DuplicableNDArray deepCopy() {
-        return new DuplicableNDArray(value.dup());
+    public DuplicableNDArray duplicate() {
+        return value == null
+                ? new DuplicableNDArray()
+                : new DuplicableNDArray(value.dup());
     }
 
     @Override
-    public boolean isNull() {
+    public boolean hasValue() {
         return value == null;
     }
+
     public INDArray value() {
         return value;
     }
@@ -47,11 +50,6 @@ public class DuplicableNDArray implements Duplicable {
 
     @Override
     public String toString() {
-        if (value == null) {
-            return "null";
-        } else {
-            return value.toString();
-        }
+        return value == null ? "null" : value.toString();
     }
-
 }

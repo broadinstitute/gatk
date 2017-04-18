@@ -33,9 +33,9 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class CoverageModelWLinearOperatorSpark extends GeneralLinearOperator<INDArray> {
+public final class CoverageModelWLinearOperatorSpark implements GeneralLinearOperator<INDArray> {
 
-    private final Logger logger = LogManager.getLogger(CoverageModelWLinearOperatorSpark.class);
+    private static final Logger logger = LogManager.getLogger(CoverageModelWLinearOperatorSpark.class);
 
     private final int numLatents, numTargets;
     private final INDArray Z_ll;
@@ -43,15 +43,15 @@ public final class CoverageModelWLinearOperatorSpark extends GeneralLinearOperat
 
     /* sparky stuff */
     private final JavaSparkContext ctx;
-    private final List<LinearSpaceBlock> targetSpaceBlocks;
-    private final JavaPairRDD<LinearSpaceBlock, CoverageModelEMComputeBlock> computeRDD;
+    private final List<LinearlySpacedIndexBlock> targetSpaceBlocks;
+    private final JavaPairRDD<LinearlySpacedIndexBlock, CoverageModelEMComputeBlock> computeRDD;
 
     public CoverageModelWLinearOperatorSpark(@Nonnull final INDArray Z_ll,
                                              @Nonnull final FourierLinearOperatorNDArray F_tt,
                                              final int numTargets,
                                              @Nonnull final JavaSparkContext ctx,
-                                             @Nonnull final JavaPairRDD<LinearSpaceBlock, CoverageModelEMComputeBlock> computeRDD,
-                                             @Nonnull final List<LinearSpaceBlock> targetSpaceBlocks) {
+                                             @Nonnull final JavaPairRDD<LinearlySpacedIndexBlock, CoverageModelEMComputeBlock> computeRDD,
+                                             @Nonnull final List<LinearlySpacedIndexBlock> targetSpaceBlocks) {
         this.numTargets = numTargets;
         numLatents = Z_ll.shape()[0];
         if (Z_ll.shape()[0] != numLatents || Z_ll.shape()[1] != numLatents)
@@ -93,27 +93,27 @@ public final class CoverageModelWLinearOperatorSpark extends GeneralLinearOperat
 
         /* perform a broadcast hash join */
         final long startTimeQW = System.nanoTime();
-        final Map<LinearSpaceBlock, INDArray> W_tl_map = CoverageModelSparkUtils.partitionINDArrayToAMap(targetSpaceBlocks, W_tl);
-        final Broadcast<Map<LinearSpaceBlock, INDArray>> W_tl_bc = ctx.broadcast(W_tl_map);
+        final Map<LinearlySpacedIndexBlock, INDArray> W_tl_map = CoverageModelSparkUtils.partitionINDArrayToMap(targetSpaceBlocks, W_tl);
+        final Broadcast<Map<LinearlySpacedIndexBlock, INDArray>> W_tl_bc = ctx.broadcast(W_tl_map);
         final INDArray Q_W_tl = CoverageModelSparkUtils.assembleINDArrayBlocksFromRDD(
                 computeRDD.mapValues(cb -> {
                     final INDArray W_tl_chunk = W_tl_bc.value().get(cb.getTargetSpaceBlock());
                     final INDArray Q_tll_chunk = cb.getINDArrayFromCache(CoverageModelEMComputeBlock.CoverageModelICGCacheNode.Q_tll);
-                    final Collection<INDArray> W_Q_chunk = IntStream.range(0, cb.getTargetSpaceBlock().getNumTargets()).parallel()
+                    final Collection<INDArray> W_Q_chunk = IntStream.range(0, cb.getTargetSpaceBlock().getNumElements()).parallel()
                             .mapToObj(ti -> Q_tll_chunk.get(NDArrayIndex.point(ti))
                                     .mmul(W_tl_chunk.get(NDArrayIndex.point(ti)).transpose()))
                             .collect(Collectors.toList());
                     return Nd4j.vstack(W_Q_chunk);
                 }), 0);
         W_tl_bc.destroy();
-//        final JavaPairRDD<LinearSpaceBlock, INDArray> W_tl_RDD = CoverageModelSparkUtils.rddFromINDArray(W_tl,
+//        final JavaPairRDD<LinearlySpacedIndexBlock, INDArray> W_tl_RDD = CoverageModelSparkUtils.rddFromINDArray(W_tl,
 //                targetSpaceBlocks, ctx, true);
 //        final INDArray Q_W_tl = CoverageModelSparkUtils.assembleINDArrayBlocks(
 //                computeRDD.join(W_tl_RDD).mapValues(p -> {
 //                    final CoverageModelEMComputeBlock cb = p._1;
 //                    final INDArray W_tl_chunk = p._2;
 //                    final INDArray Q_tll_chunk = cb.getINDArrayFromCache("Q_tll");
-//                    return Nd4j.vstack(IntStream.range(0, cb.getTargetSpaceBlock().getNumTargets()).parallel()
+//                    return Nd4j.vstack(IntStream.range(0, cb.getTargetSpaceBlock().getNumElements()).parallel()
 //                            .mapToObj(ti -> Q_tll_chunk.get(NDArrayIndex.point(ti)).mmul(W_tl_chunk.get(NDArrayIndex.point(ti)).transpose()))
 //                            .collect(Collectors.toList()));
 //                }), false);

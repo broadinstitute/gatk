@@ -18,11 +18,27 @@ import java.util.stream.Collectors;
 /**
  * Reads contig germline ploidy annotations from tab-separated files and readers.
  *
+ * For example, a basic annotation file for homo sapiens is as follows:
+ *
+ *     <pre>
+ *         CONTIG    CLASS           SEX_XX    SEX_XY
+ *         1         AUTOSOMAL       2          2
+ *         2         AUTOSOMAL       2          2
+ *         ...       ...             ...        ...
+ *         X         ALLOSOMAL       2          0
+ *         Y         ALLOSOMAL       1          1
+ *     </pre>
+ *
+ * CLASS is either AUTOSOMAL or ALLOSOMAL. "SEX_XX" and "SEX_YY" are arbitrary sex genotype string identifiers
+ * along with their ploidies (= number of homologs) for each CONTIG. AUTOSOMAL contigs must have the same ploidy
+ * for all sexes. One may include additional sex genotypes (along with contig ploidies) for species having more
+ * than two sexes or for detecting aneuploidy by adding additional columns.
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public final class ContigGermlinePloidyAnnotationTableReader extends TableReader<ContigGermlinePloidyAnnotation> {
 
-    public static final Logger logger = LogManager.getLogger(ContigGermlinePloidyAnnotationTableReader.class);
+    private static final Logger logger = LogManager.getLogger(ContigGermlinePloidyAnnotationTableReader.class);
 
     /**
      * The set of ploidy tags (= sex genotype identifier strings)
@@ -67,10 +83,10 @@ public final class ContigGermlinePloidyAnnotationTableReader extends TableReader
      */
     @Override
     protected ContigGermlinePloidyAnnotation createRecord(@Nonnull final DataLine dataLine) {
-        final String contigName = dataLine.get(ContigGermlinePloidyAnnotationTableColumn.CONTIG_NAME);
+        final String contigName = dataLine.get(ContigGermlinePloidyAnnotationTableColumn.CONTIG);
 
         final ContigClass contigClass;
-        final String contigClassString = dataLine.get(ContigGermlinePloidyAnnotationTableColumn.CONTIG_CLASS);
+        final String contigClassString = dataLine.get(ContigGermlinePloidyAnnotationTableColumn.CLASS);
         if (!ContigClass.CONTIG_CLASS_NAMES_SET.contains(contigClassString)) {
             throw new UserException.BadInput("Bad contig class: provided value: " + contigClassString + ", acceptable values: " +
                     ContigClass.CONTIG_CLASS_NAMES_SET.stream().collect(Collectors.joining(", ", "[", "]")));

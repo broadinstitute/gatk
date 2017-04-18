@@ -9,18 +9,23 @@ import org.testng.annotations.Test;
 /**
  * Unit tests for {@link FourierLinearOperatorNDArray}
  *
+ * TODO github/gatk-protected issue #843 -- create a unit test by generating sinusoidal test data and making sure
+ * the filter works as intended
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 
 public class FourierLinearOperatorNDArrayUnitTest extends BaseTest {
 
+    private static final double EPS = 1e-8;
+
     @DataProvider(name = "testDataWithoutZeroPadding")
     public Object[][] getTestDataWithoutZeroPadding() {
         return new Object[][] {
-            {4,
-                new double[] {1.0, 1.0, 1.0},
-                new double[] {1.0, 2.0, 3.0, 4.0},
-                new double[] {1.0, 2.0, 3.0, 4.0}},
+            {4, /* dimension */
+                new double[] {1.0, 1.0, 1.0}, /* Fourier factors */
+                new double[] {1.0, 2.0, 3.0, 4.0}, /* input vector */
+                new double[] {1.0, 2.0, 3.0, 4.0}}, /* transformed */
             {4,
                 new double[] {0.0, 1.0, 1.0},
                 new double[] {1.0, 2.0, 3.0, 4.0},
@@ -47,10 +52,10 @@ public class FourierLinearOperatorNDArrayUnitTest extends BaseTest {
     @DataProvider(name = "testDataWithZeroPadding")
     public Object[][] getTestDataWithZeroPadding() {
         return new Object[][] {
-                {4,
-                        new double[] {1.0, 1.0, 1.0},
-                        new double[] {1.0, 2.0, 3.0, 4.0},
-                        new double[] {1.0, 2.0, 3.0, 4.0}},
+                {4, /* dimension */
+                        new double[] {1.0, 1.0, 1.0}, /* Fourier factors */
+                        new double[] {1.0, 2.0, 3.0, 4.0}, /* input vector */
+                        new double[] {1.0, 2.0, 3.0, 4.0}}, /* transformed */
                 {4,
                         new double[] {0.0, 1.0, 1.0},
                         new double[] {1.0, 2.0, 3.0, 4.0},
@@ -80,49 +85,49 @@ public class FourierLinearOperatorNDArrayUnitTest extends BaseTest {
 
     /**
      * The main test routine
+     *
      * @param dim dimension of the operator
-     * @param fourierFacts Fourier factors
+     * @param fourierFactors Fourier factors
      * @param x input data
      * @param y expected output data
      */
     @Test(dataProvider = "testDataWithoutZeroPadding")
-    public void performTestWithoutZeroPadding(final int dim, final double[] fourierFacts, final double[] x, final double[] y) {
-        FourierLinearOperatorNDArray linOp = new FourierLinearOperatorNDArray(dim, fourierFacts, false);
+    public void performTestWithoutZeroPadding(final int dim, final double[] fourierFactors, final double[] x, final double[] y) {
+        FourierLinearOperatorNDArray linOp = new FourierLinearOperatorNDArray(dim, fourierFactors, false);
         final double[] yCalc = linOp.operate(Nd4j.create(x)).data().asDouble();
-        Assert.assertArrayEquals("", y, yCalc, 1e-8);
+        Assert.assertArrayEquals(y, yCalc, EPS);
     }
 
     /**
      * The main test routine
+     *
      * @param dim dimension of the operator
-     * @param fourierFacts Fourier factors
+     * @param fourierFactors Fourier factors
      * @param x input data
      * @param y expected output data
      */
     @Test(dataProvider = "testDataWithZeroPadding")
-    public void performTestWithZeroPadding(final int dim, final double[] fourierFacts, final double[] x, final double[] y) {
-        FourierLinearOperatorNDArray linOp = new FourierLinearOperatorNDArray(dim, fourierFacts, true);
+    public void performTestWithZeroPadding(final int dim, final double[] fourierFactors, final double[] x, final double[] y) {
+        FourierLinearOperatorNDArray linOp = new FourierLinearOperatorNDArray(dim, fourierFactors, true);
         final double[] yCalc = linOp.operate(Nd4j.create(x)).data().asDouble();
-        Assert.assertArrayEquals("", y, yCalc, 1e-8);
+        Assert.assertArrayEquals(y, yCalc, EPS);
     }
-
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadDimension_0() {
         /* negative dimensions not allowed */
-        FourierLinearOperatorNDArray linop = new FourierLinearOperatorNDArray(-1, new double[5], false);
+        new FourierLinearOperatorNDArray(-1, new double[5], false);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadDimension_1() {
         /* dimension >= 2 */
-        FourierLinearOperatorNDArray linop = new FourierLinearOperatorNDArray(1, new double[5], false);
+        new FourierLinearOperatorNDArray(1, new double[5], false);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testBadDimension_2() {
         /* fourierFactors.length = floor(dimension/2) + 1 */
-        FourierLinearOperatorNDArray linop = new FourierLinearOperatorNDArray(15, new double[3], false);
+        new FourierLinearOperatorNDArray(15, new double[3], false);
     }
-
 }

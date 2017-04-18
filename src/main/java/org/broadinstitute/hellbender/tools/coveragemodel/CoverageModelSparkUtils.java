@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.coveragemodel;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -20,33 +21,38 @@ import java.util.stream.Collectors;
  */
 public final class CoverageModelSparkUtils {
 
+    private CoverageModelSparkUtils() {}
+
     /**
      * Creates a uniform partitioning of an index space. If {@param minBlockSize} is larger than
      * {@param length}/{@param numBlocks}, fewer partitions will be created.
      *
+     * Note: the partition number is used as the hash code.
+     *
      * @param length the length of the index space
      * @param numBlocks number of partitions (= blocks)
      * @param minBlockSize minimum number of indices in each partition
-     * @return a list of {@link LinearSpaceBlock}
+     * @return a list of {@link LinearlySpacedIndexBlock}
      */
-    public static List<LinearSpaceBlock> createLinearSpaceBlocks(final int length, final int numBlocks,
-                                                                 final int minBlockSize) {
+    public static List<LinearlySpacedIndexBlock> createLinearlySpacedIndexBlocks(final int length, final int numBlocks,
+                                                                                 final int minBlockSize) {
         ParamUtils.isPositive(length, "The length of the linear space to be partitioned must be positive");
         ParamUtils.isPositive(numBlocks, "The number of blocks must be positive");
         ParamUtils.isPositive(minBlockSize, "Minimum block size must be positive");
 
-        final int blockSize = FastMath.max(length/numBlocks, minBlockSize);
-        final List<LinearSpaceBlock> blocks = new ArrayList<>();
+        final int blockSize = FastMath.max(length / numBlocks, minBlockSize);
+        final List<LinearlySpacedIndexBlock> blocks = new ArrayList<>();
         for (int begIndex = 0; begIndex < length; begIndex += blockSize) {
-            blocks.add(new LinearSpaceBlock(begIndex, FastMath.min(begIndex + blockSize, length)));
+            blocks.add(new LinearlySpacedIndexBlock(begIndex, FastMath.min(begIndex + blockSize, length),
+                    blocks.size()));
         }
         /* the last block might be smaller than minBlockSize; we merge them */
-        while (blocks.size() > numBlocks && blocks.size() > 1) {
+        while (blocks.size() > 1 && blocks.get(blocks.size() - 1).getNumElements() < minBlockSize) {
             final int newBegIndex = blocks.get(blocks.size() - 2).getBegIndex();
             final int newEndIndex = blocks.get(blocks.size() - 1).getEndIndex();
             blocks.remove(blocks.size() - 1);
             blocks.remove(blocks.size() - 1);
-            blocks.add(new LinearSpaceBlock(newBegIndex, newEndIndex));
+            blocks.add(new LinearlySpacedIndexBlock(newBegIndex, newEndIndex, blocks.size()));
         }
         return blocks;
     }
@@ -59,8 +65,8 @@ public final class CoverageModelSparkUtils {
      * @param arr an array
      * @return list of partitioned arrays
      */
-    public static List<Tuple2<LinearSpaceBlock, INDArray>> partitionINDArrayToAList(@Nonnull final List<LinearSpaceBlock> blocks,
-                                                                                    @Nonnull final INDArray arr) {
+    public static List<Tuple2<LinearlySpacedIndexBlock, INDArray>> partitionINDArrayToList(@Nonnull final List<LinearlySpacedIndexBlock> blocks,
+                                                                                           @Nonnull final INDArray arr) {
         return blocks.stream().map(block ->
                 new Tuple2<>(block, arr.get(NDArrayIndex.interval(block.getBegIndex(), block.getEndIndex()))))
                 .collect(Collectors.toList());
@@ -74,23 +80,23 @@ public final class CoverageModelSparkUtils {
      * @param arr an array
      * @return map of partitions to partitioned arrays
      */
-    public static Map<LinearSpaceBlock, INDArray> partitionINDArrayToAMap(@Nonnull final List<LinearSpaceBlock> blocks,
-                                                                          @Nonnull final INDArray arr) {
+    public static Map<LinearlySpacedIndexBlock, INDArray> partitionINDArrayToMap(@Nonnull final List<LinearlySpacedIndexBlock> blocks,
+                                                                                 @Nonnull final INDArray arr) {
         return blocks.stream().map(block ->
                 new Tuple2<>(block, arr.get(NDArrayIndex.interval(block.getBegIndex(), block.getEndIndex()))))
                 .collect(Collectors.toMap(p -> p._1, p -> p._2));
     }
 
     /**
-     * Assembles INDArray blocks in a {@code JavaPairRDD<LinearSpaceBlock, INDArray>} by collecting
-     * them to a local list, sorting them based on their keys ({@link LinearSpaceBlock}), and
+     * Assembles INDArray blocks in a {@code JavaPairRDD<LinearlySpacedIndexBlock, INDArray>} by collecting
+     * them to a local list, sorting them based on their keys ({@link LinearlySpacedIndexBlock}), and
      * concatenating them along a given axis.
      *
-     * @param blocksPairRDD an instance of {@code JavaPairRDD<LinearSpaceBlock, INDArray>}
+     * @param blocksPairRDD an instance of {@code JavaPairRDD<LinearlySpacedIndexBlock, INDArray>}
      * @param axis axis to concat along
      * @return an instance of {@link INDArray}
      */
-    public static INDArray assembleINDArrayBlocksFromRDD(@Nonnull JavaPairRDD<LinearSpaceBlock, INDArray> blocksPairRDD,
+    public static INDArray assembleINDArrayBlocksFromRDD(@Nonnull JavaPairRDD<LinearlySpacedIndexBlock, INDArray> blocksPairRDD,
                                                          final int axis) {
         final List<INDArray> sortedBlocks = blocksPairRDD.collect().stream()
                 /* sort according to begin index of each target-space partition */
@@ -104,21 +110,26 @@ public final class CoverageModelSparkUtils {
     }
 
     /**
-     * Assemble INDArray blocks in a {@code Collection<? extends Pair<LinearSpaceBlock, INDArray>}
-     * by sorting them based on their keys ({@link LinearSpaceBlock}), and concatenating them along
+     * Assemble INDArray blocks in a {@code Collection<? extends Pair<LinearlySpacedIndexBlock, INDArray>>}
+     * by sorting them based on their keys ({@link LinearlySpacedIndexBlock}), and concatenating them along
      * a given axis.
      *
-     * @param blocksCollection an instance of {@code Collection<? extends Pair<LinearSpaceBlock, INDArray>}
+     * @param blocksCollection an instance of {@code Collection<? extends Pair<LinearlySpacedIndexBlock, INDArray>}
      * @param axis axis to concat along
      * @return an instance of {@link INDArray}
      */
-    public static INDArray assembleINDArrayBlocksFromCollection(@Nonnull Collection<? extends Pair<LinearSpaceBlock, INDArray>> blocksCollection,
+    public static INDArray assembleINDArrayBlocksFromCollection(@Nonnull Collection<? extends Pair<LinearlySpacedIndexBlock, INDArray>> blocksCollection,
                                                                 final int axis) {
+        Utils.nonNull(blocksCollection, "The collection of blocks must be non-null");
+        Utils.validateArg(LinearlySpacedIndexBlock.isNonOverlappingFullyCovering(blocksCollection.stream()
+                .map(Pair<LinearlySpacedIndexBlock, INDArray>::getKey)
+                .collect(Collectors.toList())), "Either the collection of linearly-spaced blocks is not fully covering" +
+                " or contains overlapping elements");
         final List<INDArray> sortedBlocks = blocksCollection.stream()
                 /* sort according to begin index of each target-space partition */
                 .sorted(Comparator.comparingInt(p -> p.getKey().getBegIndex()))
                 /* remove the keys */
-                .map(Pair<LinearSpaceBlock, INDArray>::getValue)
+                .map(Pair<LinearlySpacedIndexBlock, INDArray>::getValue)
                 /* collect to a list */
                 .collect(Collectors.toList());
         /* concatenate */
@@ -126,25 +137,28 @@ public final class CoverageModelSparkUtils {
     }
 
     /**
-     * Takes a collection of pairs of linear space blocks and partially ordered lists, sorts the collection with
-     * respect to the begin index of the blocks and concatenates the partial lists.
+     * Takes a collection of pairs of linearly-space blocks and partially-ordered lists, sorts the collection with
+     * respect to the begin index of the blocks and concatenates the partially-ordered lists to create a fully-ordered
+     * list.
      *
-     * Note: the linear space blocks are assumed to be unique, non-overlapping, and fully covering
+     * Note: the blocks are assumed to be unique, non-overlapping, and fully covering
      *
-     * @param blockifiedCollection a collection of pairs of {@link LinearSpaceBlock} and a list of type {@code T}
+     * @param blockifiedCollection a collection of pairs of {@link LinearlySpacedIndexBlock} and a list of type {@code T}
      * @param <T> type of the list
      * @return the fully ordered concatenated list
      */
-    public static <T> List<T> assembleBlockifiedCollection(@Nonnull final Collection<? extends Pair<LinearSpaceBlock,
+    public static <T> List<T> assembleBlockifiedCollection(@Nonnull final Collection<? extends Pair<LinearlySpacedIndexBlock,
             List<T>>> blockifiedCollection) {
-        LinearSpaceBlock.assertNonOverlappingFullyCovering(blockifiedCollection.stream()
-                .map(Pair<LinearSpaceBlock, List<T>>::getKey)
-                .collect(Collectors.toList()));
+        Utils.nonNull(blockifiedCollection, "The collection of blocks must be non-null");
+        Utils.validateArg(LinearlySpacedIndexBlock.isNonOverlappingFullyCovering(blockifiedCollection.stream()
+                .map(Pair<LinearlySpacedIndexBlock, List<T>>::getKey)
+                .collect(Collectors.toList())), "Either the collection of linearly-spaced blocks is not fully covering" +
+                " or contains overlapping elements");
         return blockifiedCollection.stream()
                 /* sort by block begin index */
                 .sorted(Comparator.comparingInt(p -> p.getKey().getBegIndex()))
                 /* get rid of keys */
-                .map(Pair<LinearSpaceBlock, List<T>>::getValue)
+                .map(Pair<LinearlySpacedIndexBlock, List<T>>::getValue)
                 /* flat map each list and collect to a single list */
                 .flatMap(List::stream).collect(Collectors.toList());
     }

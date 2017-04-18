@@ -179,7 +179,7 @@ public class JointAFCRSegmenter extends ClusteringGenomicHMMSegmenter<JointSegme
 
     @Override
     protected ClusteringGenomicHMM<JointSegmentationDatum, AFCRHiddenState> makeModel() {
-        return new JointAFCRHiddenMarkovModel(getStates(), getWeights(), getMemoryLength(), parameters, allelicPoN, log2CoverageCauchyWidth);
+        return new JointAFCRHMM(getStates(), getWeights(), getMemoryLength(), parameters, allelicPoN, log2CoverageCauchyWidth);
     }
 
     // store an interval, a target/het datum, and the index of that datum within either the targets or hets,

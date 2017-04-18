@@ -42,7 +42,7 @@ public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLinePr
         new XHMMModel(1e-4, 70_000, -3, 3)
     };
 
-    public static File writeChainInTempFile(final XHMMSegmentCallerIntegrationTest.HiddenMarkovModelChain chain) {
+    public static File writeChainInTempFile(final XHMMData chain) {
         final File result = createTempFile("chain-",".tab");
         //final File result = new File("/tmp/input");
         final List<String> sampleNames = IntStream.range(0, chain.data.size()).mapToObj(a -> "SAMPLE_" + a).collect(Collectors.toList());
@@ -83,7 +83,7 @@ public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLinePr
                 .collect(Collectors.toList());
     }
 
-    private static HiddenMarkovModelChain simulateChain(final XHMMModel model, final TargetCollection<Target> targetCollection, final int sampleCount, final Random rdn) {
+    private static XHMMData simulateChain(final XHMMModel model, final TargetCollection<Target> targetCollection, final int sampleCount, final Random rdn) {
         final List<Target> targets = targetCollection.targets();
         final List<CopyNumberTriState> truth = new ArrayList<>(targets.size());
         final List<List<Double>> data = new ArrayList<>(sampleCount);
@@ -91,7 +91,7 @@ public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLinePr
             final List<Double> sampleData = randomSampleData(model, rdn, targets, truth);
             data.add(sampleData);
         }
-        return new HiddenMarkovModelChain(model, targets, truth, data);
+        return new XHMMData(model, targets, truth, data);
     }
 
     private static List<Double> randomSampleData(XHMMModel model, Random rdn, List<Target> targets, List<CopyNumberTriState> truth) {
@@ -108,7 +108,7 @@ public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLinePr
         simulateChainData(rdn);
     }
 
-    protected void loadModelArguments(HiddenMarkovModelChain chain, List<String> arguments) {
+    protected void loadModelArguments(XHMMData chain, List<String> arguments) {
         arguments.add("-" + XHMMArgumentCollection.MEAN_DELETION_COVERAGE_SHIFT_SHORT_NAME);
         arguments.add(String.valueOf(chain.model.getDeletionMean()));
         arguments.add("-" + XHMMArgumentCollection.MEAN_DUPLICATION_COVERAGE_SHIFT_SHORT_NAME);
@@ -120,14 +120,14 @@ public abstract class XHMMSegmentCallerBaseIntegrationTest extends CommandLinePr
         arguments.add("-" + XHMMSegmentCaller.ZSCORE_DIMENSION_SHORT_NAME);
     }
 
-    public static class HiddenMarkovModelChain {
+    public static class XHMMData {
 
         public final List<Target> targets;
         public final List<CopyNumberTriState> truth;
         public final List<List<Double>> data;
         public final XHMMModel model;
 
-        protected HiddenMarkovModelChain(final XHMMModel model, final List<Target> targets, final List<CopyNumberTriState> truth, final List<List<Double>> data) {
+        protected XHMMData(final XHMMModel model, final List<Target> targets, final List<CopyNumberTriState> truth, final List<List<Double>> data) {
             this.targets = targets;
             this.truth = truth;
             this.data = data;

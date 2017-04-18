@@ -13,10 +13,10 @@ import java.util.stream.IntStream;
  *
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  */
-public final class UninformativeTestHMModel implements HiddenMarkovModel<Integer, Integer, Integer> {
+public final class UninformativeTestHMM implements HMM<Integer, Integer, Integer> {
 
     private final int numStates;
-    public UninformativeTestHMModel(final int numStates) {
+    public UninformativeTestHMM(final int numStates) {
         ParamUtils.isPositive(numStates, "bad number of states");
         this.numStates = numStates;
     }

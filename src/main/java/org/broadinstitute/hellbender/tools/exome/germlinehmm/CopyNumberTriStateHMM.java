@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 import org.broadinstitute.hellbender.tools.coveragemodel.interfaces.TargetLikelihoodCalculator;
 import org.broadinstitute.hellbender.tools.exome.Target;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.hmm.HiddenMarkovModel;
+import org.broadinstitute.hellbender.utils.hmm.HMM;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import javax.annotation.Nonnull;
@@ -40,8 +40,8 @@ import java.util.List;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CopyNumberTriStateHiddenMarkovModel<D>
-        implements HiddenMarkovModel<D, Target, CopyNumberTriState>, Serializable {
+public class CopyNumberTriStateHMM<D>
+        implements HMM<D, Target, CopyNumberTriState>, Serializable {
 
     private static final long serialVersionUID = -3367028114020534823L;
 
@@ -72,9 +72,9 @@ public class CopyNumberTriStateHiddenMarkovModel<D>
      * @param meanEventSize the expectation of the distance between consecutive targets in an event
      * @throws IllegalArgumentException if any of the model parameters has an invalid value.
      */
-    public CopyNumberTriStateHiddenMarkovModel(@Nonnull final TargetLikelihoodCalculator<D> emissionProbabilityCalculator,
-                                               final double eventStartProbability,
-                                               final double meanEventSize) {
+    public CopyNumberTriStateHMM(@Nonnull final TargetLikelihoodCalculator<D> emissionProbabilityCalculator,
+                                 final double eventStartProbability,
+                                 final double meanEventSize) {
         ParamUtils.inRange(eventStartProbability, 0, 1, "Event probability must be between 0 and 1.");
         ParamUtils.isPositive(meanEventSize, "Mean event size must be positive.");
         this.eventStartProbability = eventStartProbability;
@@ -117,14 +117,14 @@ public class CopyNumberTriStateHiddenMarkovModel<D>
     }
 
     /**
-     * See {@link Target#calculateDistance(Target, Target, double)}
+     * See {@link Target#calculateDistance(Target, Target)}
      *
      * @param fromTarget first target
      * @param toTarget second target
      * @return distance
      */
     public static double calculateDistance(final Target fromTarget, final Target toTarget) {
-        return Target.calculateDistance(fromTarget, toTarget, DEFAULT_DISTANCE_BETWEEN_TARGETS);
+        return Target.calculateDistance(fromTarget, toTarget);
     }
 
     @Override
@@ -137,8 +137,4 @@ public class CopyNumberTriStateHiddenMarkovModel<D>
     public double getEventStartProbability() { return eventStartProbability; }
 
     public double getMeanEventSize() { return meanEventSize; }
-
-    public CopyNumberTriStateTransitionProbabilityCache getLogTransitionProbabilityCache() {
-        return logTransitionProbabilityCache;
-    }
 }

@@ -19,13 +19,12 @@ public interface Duplicable {
      *
      * @return a new instance of the object
      */
-    Duplicable deepCopy();
+    Duplicable duplicate();
 
     /**
      * Whether or not the wrapped object is null
      *
      * @return boolean
      */
-    boolean isNull();
-
+    boolean hasValue();
 }

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.exome.segmentation;
 
-import com.google.common.primitives.Doubles;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionGlobalParameters;
 import org.broadinstitute.hellbender.tools.exome.allelefraction.AlleleFractionLikelihoods;
 import org.broadinstitute.hellbender.tools.exome.alleliccount.AllelicCount;
@@ -9,7 +8,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -36,7 +34,7 @@ import java.util.List;
  *
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<AllelicCount, Double> {
+public final class AlleleFractionHMM extends ClusteringGenomicHMM<AllelicCount, Double> {
     private final AlleleFractionGlobalParameters parameters;
     private final AllelicPanelOfNormals allelicPoN;
 
@@ -51,9 +49,9 @@ public final class AlleleFractionHiddenMarkovModel extends ClusteringGenomicHMM<
      * @param parameters the global parameters of the allelic bias model: mean bias, bias variance, and
      *                   outlier probability
      */
-    public AlleleFractionHiddenMarkovModel(final List<Double> minorAlleleFractions, final List<Double> weights,
-                                           final double memoryLength, final AllelicPanelOfNormals allelicPoN,
-                                           final AlleleFractionGlobalParameters parameters) {
+    public AlleleFractionHMM(final List<Double> minorAlleleFractions, final List<Double> weights,
+                             final double memoryLength, final AllelicPanelOfNormals allelicPoN,
+                             final AlleleFractionGlobalParameters parameters) {
         super(minorAlleleFractions, weights, memoryLength);
         minorAlleleFractions.forEach(f -> ParamUtils.inRange(f, 0, 0.5, "minor fractions must be between 0 and 1/2, found " + f));
         this.allelicPoN = Utils.nonNull(allelicPoN);

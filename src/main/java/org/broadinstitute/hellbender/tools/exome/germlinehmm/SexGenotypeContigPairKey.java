@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.exome.germlinehmm;
 
-import org.broadinstitute.hdf5.Utils;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import javax.annotation.Nonnull;
 import java.io.Serializable;
@@ -14,7 +14,8 @@ public final class SexGenotypeContigPairKey implements Serializable {
 
     private static final long serialVersionUID = -1710038102655907133L;
 
-    private final String sexGenotype, contig;
+    private final String sexGenotype;
+    private final String contig;
 
     public SexGenotypeContigPairKey(@Nonnull final String sexGenotype, @Nonnull final String contig) {
         this.sexGenotype = Utils.nonNull(sexGenotype, "The sex genotype string identifier must be non-null");
@@ -40,15 +41,15 @@ public final class SexGenotypeContigPairKey implements Serializable {
 
         SexGenotypeContigPairKey that = (SexGenotypeContigPairKey) o;
 
-        if (sexGenotype != null ? !sexGenotype.equals(that.sexGenotype) : that.sexGenotype != null) return false;
-        return contig != null ? contig.equals(that.contig) : that.contig == null;
-
+        if (sexGenotype.equals(that.sexGenotype) && contig.equals(that.contig)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
     public int hashCode() {
-        int result = sexGenotype != null ? sexGenotype.hashCode() : 0;
-        result = 31 * result + (contig != null ? contig.hashCode() : 0);
-        return result;
+        return 31 * sexGenotype.hashCode() + contig.hashCode();
     }
 }

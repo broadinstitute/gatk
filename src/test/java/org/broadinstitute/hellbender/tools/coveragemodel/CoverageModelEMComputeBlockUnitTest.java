@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.coveragemodel;
 
+import org.broadinstitute.hellbender.tools.coveragemodel.cachemanager.ComputableNodeFunction;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -8,6 +9,12 @@ import org.testng.annotations.Test;
 import org.testng.internal.junit.ArrayAsserts;
 
 /**
+ * Unit tests for {@link CoverageModelEMComputeBlock}
+ *
+ * TODO github/gatk-protected issue #843 -- unit tests to ensure that all {@link ComputableNodeFunction}
+ * and all functions annotated with {@link org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelEMComputeBlock.QueriesICG}
+ * treat ICG node values
+ *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
 public class CoverageModelEMComputeBlockUnitTest extends BaseTest {

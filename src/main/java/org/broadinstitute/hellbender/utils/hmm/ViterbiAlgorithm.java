@@ -26,7 +26,7 @@ public final class ViterbiAlgorithm {
      * @param <T> time data type.
      * @param <S> hidden state data-type.
      * @return never {@code null}, with only valid states as returned by <code>model.
-     * {@link HiddenMarkovModel#hiddenStates() hiddenStates()}</code>.
+     * {@link HMM#hiddenStates() hiddenStates()}</code>.
      *         its length will be the sames as the length of the input {@code data}.
      * @throws IllegalArgumentException if any of the following is true:
      * <ul>
@@ -37,7 +37,7 @@ public final class ViterbiAlgorithm {
      * </ul>
      */
     public static <D, T, S> List<S> apply(final List<D> data, final List<T> positions,
-                                                          final HiddenMarkovModel<D, T, S> model) {
+                                                          final HMM<D, T, S> model) {
         checkApplyArguments(data, positions, model);
 
         if (data.isEmpty()) {
@@ -115,7 +115,7 @@ public final class ViterbiAlgorithm {
     private static <D, T, S> Path<S>[] initializeBestPaths(
             final List<D> data,
             final List<T> positions,
-            final HiddenMarkovModel<D, T, S> model, S[] states) {
+            final HMM<D, T, S> model, S[] states) {
         final D data0 = data.get(0);
         final T position0 = positions.get(0);
 
@@ -127,7 +127,7 @@ public final class ViterbiAlgorithm {
                 .toArray(Path[]::new);
     }
 
-    private static <D, T, S> void checkApplyArguments(List<D> data, List<T> times, HiddenMarkovModel<D, T, S> model) {
+    private static <D, T, S> void checkApplyArguments(List<D> data, List<T> times, HMM<D, T, S> model) {
         Utils.nonNull(data);
         Utils.nonNull(times);
         Utils.nonNull(model);

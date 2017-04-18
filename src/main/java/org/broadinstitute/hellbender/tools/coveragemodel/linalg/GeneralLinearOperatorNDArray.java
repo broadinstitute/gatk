@@ -11,7 +11,7 @@ import javax.annotation.Nonnull;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class GeneralLinearOperatorNDArray extends GeneralLinearOperator<INDArray> {
+public class GeneralLinearOperatorNDArray implements GeneralLinearOperator<INDArray> {
 
     private final INDArray mat;
 

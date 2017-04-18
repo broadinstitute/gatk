@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.coveragemodel.germline;
 
-import htsjdk.samtools.util.Log;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.exception.MathIllegalArgumentException;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -8,7 +7,7 @@ import org.apache.commons.math3.stat.descriptive.AbstractUnivariateStatistic;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelEMParams;
+import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelArgumentCollection;
 import org.broadinstitute.hellbender.tools.coveragemodel.CoverageModelGlobalConstants;
 import org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jApacheAdapterUtils;
 import org.broadinstitute.hellbender.tools.coveragemodel.nd4jutils.Nd4jIOUtils;
@@ -19,7 +18,6 @@ import org.broadinstitute.hellbender.tools.exome.TargetTableReader;
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.ContigGermlinePloidyAnnotationTableReader;
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.GermlinePloidyAnnotatedTargetCollection;
 import org.broadinstitute.hellbender.tools.exome.sexgenotyper.SexGenotypeDataCollection;
-import org.broadinstitute.hellbender.utils.LoggingUtils;
 import org.broadinstitute.hellbender.utils.SparkToggleCommandLineProgram;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
@@ -37,7 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
- * Integration tests for {@link CoverageModellerGermlineSparkToggle}
+ * Integration tests for {@link GermlineCNVCaller}
  *
  * TODO github/gatk-protected issue #803 test case-sample calling on rearranged targets
  * TODO github/gatk-protected issue #803 test concordance on parameter estimation
@@ -47,7 +45,7 @@ import java.util.stream.IntStream;
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandLineProgramTest {
+public class GermlineCNVCallerIntegrationTest extends CommandLineProgramTest {
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/coveragemodel";
     private static final File TEST_CONTIG_PLOIDY_ANNOTATIONS_FILE = new File(TEST_SUB_DIR,
             "sim_contig_anots.tsv");
@@ -75,17 +73,17 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
     private static final int NUM_TRUTH_LATENTS = 5;
 
     private static final int NUM_LEARNING_LATENTS = 16;
-    private static final boolean ENABLE_LEARNING_GAMMA = false;
-    private static final boolean ENABLE_CALLING_GAMMA = false;
+    private static final boolean ENABLE_LEARNING_SAMPLE_SPECIFIC_VARIANCE = false;
+    private static final boolean ENABLE_CALLING_SAMPLE_SPECIFIC_VARIANCE = false;
     private static final boolean ENABLE_LEARNING_ARD = true;
-    private static final CoverageModelEMParams.PsiUpdateMode PSI_UPDATE_MODE =
-            CoverageModelEMParams.PsiUpdateMode.PSI_ISOTROPIC;
-    private static final CoverageModelEMParams.ModelInitializationStrategy MODEL_INITIALIZATION_STRATEGY =
-            CoverageModelEMParams.ModelInitializationStrategy.PCA;
-    private static final boolean ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING = false;
+    private static final CoverageModelArgumentCollection.TargetSpecificVarianceUpdateMode TARGET_SPECIFIC_VARIANCE_UPDATE_MODE =
+            CoverageModelArgumentCollection.TargetSpecificVarianceUpdateMode.TARGET_RESOLVED;
+    private static final CoverageModelArgumentCollection.ModelInitializationStrategy MODEL_INITIALIZATION_STRATEGY =
+            CoverageModelArgumentCollection.ModelInitializationStrategy.PCA;
+    private static final boolean ENABLE_ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_SWITCHING = true;
 
     private static final int MIN_LEARNING_READ_COUNT = 1;
-    private static final int MAX_LEARNING_EM_ITERATIONS = 20;
+    private static final int MAX_LEARNING_EM_ITERATIONS = 10;
     private static final int MAX_CALLING_EM_ITERATIONS = 10;
 
     private static final File CHECKPOINTING_PATH = createTempDir("coverage_modeller_germline_checkpointing");
@@ -93,23 +91,19 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
     private static final File CALLING_OUTPUT_PATH = createTempDir("coverage_modeller_germline_calling_output");
 
     private static final File LEARNING_MODEL_OUTPUT_PATH = new File(LEARNING_OUTPUT_PATH,
-            CoverageModellerGermlineSparkToggle.FINAL_MODEL_SUBDIR);
+            GermlineCNVCaller.FINAL_MODEL_SUBDIR);
     private static final File LEARNING_POSTERIORS_OUTPUT_PATH = new File(LEARNING_OUTPUT_PATH,
-            CoverageModellerGermlineSparkToggle.FINAL_POSTERIORS_SUBDIR);
+            GermlineCNVCaller.FINAL_POSTERIORS_SUBDIR);
     private static final File CALLING_POSTERIORS_OUTPUT_PATH = new File(CALLING_OUTPUT_PATH,
-            CoverageModellerGermlineSparkToggle.FINAL_POSTERIORS_SUBDIR);
+            GermlineCNVCaller.FINAL_POSTERIORS_SUBDIR);
 
     /* for Spark tests */
     private static final int SPARK_NUMBER_OF_PARTITIONS = 7;
     private static final File SPARK_CHECKPOINTING_PATH = createTempDir("coverage_model_spark_checkpoint");
 
     private static GermlinePloidyAnnotatedTargetCollection GERMLINE_PLOIDY_ANNOTATIONS;
-    private static SexGenotypeDataCollection LEARNING_SEX_GENOTYPES_DATA, CALLING_SEX_GENOTYPES_DATA;
-
-    @BeforeSuite @Override
-    public void setTestVerbosity(){
-        LoggingUtils.setLoggingLevel(Log.LogLevel.INFO);
-    }
+    private static SexGenotypeDataCollection LEARNING_SEX_GENOTYPES_DATA;
+    private static SexGenotypeDataCollection CALLING_SEX_GENOTYPES_DATA;
 
     @BeforeSuite
     public void init() throws IOException {
@@ -122,19 +116,19 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
 
     private String[] getBaseArgs(final String... extraArgs) {
         return ArrayUtils.addAll(new String[] {
-                "--" + CoverageModelEMParams.MAPPING_ERROR_RATE_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.MAPPING_ERROR_RATE_LONG_NAME,
                     String.valueOf(MAPPING_ERROR_RATE),
-                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_PATH_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.RUN_CHECKPOINTING_PATH_LONG_NAME,
                     CHECKPOINTING_PATH.getAbsolutePath(),
-                "--" + CoverageModelEMParams.NUMBER_OF_TARGET_SPACE_PARTITIONS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.NUMBER_OF_TARGET_SPACE_PARTITIONS_LONG_NAME,
                     String.valueOf(SPARK_NUMBER_OF_PARTITIONS),
-                "--" + CoverageModellerGermlineSparkToggle.COPY_NUMBER_TRANSITION_PRIOR_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.COPY_NUMBER_TRANSITION_PRIOR_TABLE_LONG_NAME,
                     TEST_HMM_PRIORS_TABLE_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.CONTIG_PLOIDY_ANNOTATIONS_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.CONTIG_PLOIDY_ANNOTATIONS_TABLE_LONG_NAME,
                     TEST_CONTIG_PLOIDY_ANNOTATIONS_FILE.getAbsolutePath(),
-                "--" + CoverageModelEMParams.RDD_CHECKPOINTING_PATH_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.RDD_CHECKPOINTING_PATH_LONG_NAME,
                     SPARK_CHECKPOINTING_PATH.getAbsolutePath(),
-                "--" + CoverageModelEMParams.EXTENDED_POSTERIOR_OUTPUT_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.EXTENDED_POSTERIOR_OUTPUT_ENABLED_LONG_NAME,
                     "true",
                 "--verbosity",
                     "INFO"
@@ -143,86 +137,86 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
 
     private String[] getLearningArgs(final String... extraArgs) {
         return ArrayUtils.addAll(new String[] {
-                "--" + CoverageModellerGermlineSparkToggle.JOB_TYPE_LONG_NAME,
-                    CoverageModellerGermlineSparkToggle.JobType.LEARN_AND_CALL.name(),
-                "--" + CoverageModellerGermlineSparkToggle.INPUT_READ_COUNTS_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.JOB_TYPE_LONG_NAME,
+                    GermlineCNVCaller.JobType.LEARN_AND_CALL.name(),
+                "--" + GermlineCNVCaller.INPUT_READ_COUNTS_TABLE_LONG_NAME,
                     TEST_LEARNING_COMBINED_RAW_READ_COUNTS_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
                     TEST_LEARNING_SAMPLE_SEX_GENOTYPES_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.OUTPUT_PATH_LONG_NAME,
+                "--" + GermlineCNVCaller.OUTPUT_PATH_LONG_NAME,
                     LEARNING_OUTPUT_PATH.getAbsolutePath(),
-                "--" + CoverageModelEMParams.MAX_EM_ITERATIONS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.MAX_EM_ITERATIONS_LONG_NAME,
                     String.valueOf(MAX_LEARNING_EM_ITERATIONS),
-                "--" + CoverageModelEMParams.MIN_LEARNING_READ_COUNT_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.MIN_LEARNING_READ_COUNT_LONG_NAME,
                     String.valueOf(MIN_LEARNING_READ_COUNT),
-                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
                     "false",
-                "--" + CoverageModelEMParams.GAMMA_UPDATE_ENABLED_LONG_NAME,
-                    String.valueOf(ENABLE_LEARNING_GAMMA),
-                "--" + CoverageModelEMParams.ARD_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_LEARNING_SAMPLE_SPECIFIC_VARIANCE),
+                "--" + CoverageModelArgumentCollection.ARD_ENABLED_LONG_NAME,
                     String.valueOf(ENABLE_LEARNING_ARD),
-                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.NUM_LATENTS_LONG_NAME,
                     String.valueOf(NUM_LEARNING_LATENTS),
-                "--" + CoverageModelEMParams.ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
-                    String.valueOf(ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING),
-                "--" + CoverageModelEMParams.PSI_SOLVER_MODE_LONG_NAME,
-                    PSI_UPDATE_MODE.name(),
-                "--" + CoverageModelEMParams.MODEL_INITIALIZATION_STRATEGY_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_SWITCHING),
+                "--" + CoverageModelArgumentCollection.TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_LONG_NAME,
+                    TARGET_SPECIFIC_VARIANCE_UPDATE_MODE.name(),
+                "--" + CoverageModelArgumentCollection.MODEL_INITIALIZATION_STRATEGY_LONG_NAME,
                     MODEL_INITIALIZATION_STRATEGY.name()
         }, getBaseArgs(extraArgs));
     }
 
     private String[] getCallingOnLearnedModelArgs(final String... extraArgs) {
         return ArrayUtils.addAll(new String[] {
-                "--" + CoverageModellerGermlineSparkToggle.JOB_TYPE_LONG_NAME,
-                    CoverageModellerGermlineSparkToggle.JobType.CALL_ONLY.name(),
-                "--" + CoverageModellerGermlineSparkToggle.INPUT_READ_COUNTS_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.JOB_TYPE_LONG_NAME,
+                    GermlineCNVCaller.JobType.CALL_ONLY.name(),
+                "--" + GermlineCNVCaller.INPUT_READ_COUNTS_TABLE_LONG_NAME,
                     TEST_CALLING_COMBINED_RAW_READ_COUNTS_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
                     TEST_CALLING_SAMPLE_SEX_GENOTYPES_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.OUTPUT_PATH_LONG_NAME,
+                "--" + GermlineCNVCaller.OUTPUT_PATH_LONG_NAME,
                     CALLING_OUTPUT_PATH.getAbsolutePath(),
-                "--" + CoverageModelEMParams.MAX_EM_ITERATIONS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.MAX_EM_ITERATIONS_LONG_NAME,
                     String.valueOf(MAX_CALLING_EM_ITERATIONS),
-                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
                     "false",
-                "--" + CoverageModelEMParams.GAMMA_UPDATE_ENABLED_LONG_NAME,
-                    String.valueOf(ENABLE_CALLING_GAMMA),
-                "--" + CoverageModelEMParams.ARD_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_CALLING_SAMPLE_SPECIFIC_VARIANCE),
+                "--" + CoverageModelArgumentCollection.ARD_ENABLED_LONG_NAME,
                     String.valueOf(ENABLE_LEARNING_ARD),
-                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.NUM_LATENTS_LONG_NAME,
                     String.valueOf(NUM_LEARNING_LATENTS),
-                "--" + CoverageModelEMParams.ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
-                    String.valueOf(ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING),
-                "--" + CoverageModelEMParams.PSI_SOLVER_MODE_LONG_NAME,
-                    PSI_UPDATE_MODE.name()
+                "--" + CoverageModelArgumentCollection.ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_SWITCHING),
+                "--" + CoverageModelArgumentCollection.TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_LONG_NAME,
+                    TARGET_SPECIFIC_VARIANCE_UPDATE_MODE.name()
         }, getBaseArgs(extraArgs));
     }
 
     private String[] getCallingOnExactModelArgs(final String... extraArgs) {
         return ArrayUtils.addAll(new String[] {
-                "--" + CoverageModellerGermlineSparkToggle.JOB_TYPE_LONG_NAME,
-                    CoverageModellerGermlineSparkToggle.JobType.CALL_ONLY.name(),
-                "--" + CoverageModellerGermlineSparkToggle.INPUT_READ_COUNTS_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.JOB_TYPE_LONG_NAME,
+                    GermlineCNVCaller.JobType.CALL_ONLY.name(),
+                "--" + GermlineCNVCaller.INPUT_READ_COUNTS_TABLE_LONG_NAME,
                     TEST_CALLING_COMBINED_RAW_READ_COUNTS_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
+                "--" + GermlineCNVCaller.SAMPLE_SEX_GENOTYPE_TABLE_LONG_NAME,
                     TEST_CALLING_SAMPLE_SEX_GENOTYPES_FILE.getAbsolutePath(),
-                "--" + CoverageModellerGermlineSparkToggle.OUTPUT_PATH_LONG_NAME,
+                "--" + GermlineCNVCaller.OUTPUT_PATH_LONG_NAME,
                     CALLING_OUTPUT_PATH.getAbsolutePath(),
-                "--" + CoverageModelEMParams.MAX_EM_ITERATIONS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.MAX_EM_ITERATIONS_LONG_NAME,
                    String.valueOf(MAX_CALLING_EM_ITERATIONS),
-                "--" + CoverageModelEMParams.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.RUN_CHECKPOINTING_ENABLED_LONG_NAME,
                     "false",
-                "--" + CoverageModelEMParams.GAMMA_UPDATE_ENABLED_LONG_NAME,
-                    String.valueOf(ENABLE_CALLING_GAMMA),
-                "--" + CoverageModelEMParams.ARD_ENABLED_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_CALLING_SAMPLE_SPECIFIC_VARIANCE),
+                "--" + CoverageModelArgumentCollection.ARD_ENABLED_LONG_NAME,
                     "false",
-                "--" + CoverageModelEMParams.NUM_LATENTS_LONG_NAME,
+                "--" + CoverageModelArgumentCollection.NUM_LATENTS_LONG_NAME,
                    String.valueOf(NUM_TRUTH_LATENTS),
-                "--" + CoverageModelEMParams.ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
-                    String.valueOf(ENABLE_ADAPTIVE_PSI_UPDATE_SWITCHING),
-                "--" + CoverageModelEMParams.PSI_SOLVER_MODE_LONG_NAME,
-                    PSI_UPDATE_MODE.name()
+                "--" + CoverageModelArgumentCollection.ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_LONG_NAME,
+                    String.valueOf(ENABLE_ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_SWITCHING),
+                "--" + CoverageModelArgumentCollection.TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_LONG_NAME,
+                    TARGET_SPECIFIC_VARIANCE_UPDATE_MODE.name()
         }, getBaseArgs(extraArgs));
     }
 
@@ -238,7 +232,7 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
 
     private void runCaseSampleCallingTestOnExactModelParams(final String... extraArgs) {
         runCommandLine(getCallingOnExactModelArgs(ArrayUtils.addAll(new String[] {
-                "--" + CoverageModellerGermlineSparkToggle.INPUT_MODEL_PATH_LONG_NAME,
+                "--" + GermlineCNVCaller.INPUT_MODEL_PATH_LONG_NAME,
                 TEST_TRUTH_SIM_MODEL.getAbsolutePath() }, extraArgs)));
 
         final List<Target> callingTargets = TargetTableReader.readTargetFile(new File(CALLING_POSTERIORS_OUTPUT_PATH,
@@ -250,7 +244,7 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
 
     private void runCaseSampleCallingTestOnLearnedModelParams(final String... extraArgs) {
         runCommandLine(getCallingOnLearnedModelArgs(ArrayUtils.addAll(new String[] {
-                "--" + CoverageModellerGermlineSparkToggle.INPUT_MODEL_PATH_LONG_NAME,
+                "--" + GermlineCNVCaller.INPUT_MODEL_PATH_LONG_NAME,
                 LEARNING_MODEL_OUTPUT_PATH.getAbsolutePath()}, extraArgs)));
 
         final List<Target> callingTargets = TargetTableReader.readTargetFile(new File(CALLING_POSTERIORS_OUTPUT_PATH,
@@ -275,17 +269,17 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
         runCaseSampleCallingTestOnExactModelParams("--" + SparkToggleCommandLineProgram.DISABLE_SPARK_FULL_NAME, "true");
     }
 
-    @Test
+    @Test(enabled = false)
     public void runLearningAndCallingTestSpark() {
         runLearningAndCallingTest();
     }
 
-    @Test(dependsOnMethods = "runLearningAndCallingTestSpark")
+    @Test(enabled = false, dependsOnMethods = "runLearningAndCallingTestSpark")
     public void runCaseSampleCallingTestOnLearnedModelParamsSpark() {
         runCaseSampleCallingTestOnLearnedModelParams();
     }
 
-    @Test
+    @Test(enabled = false)
     public void runCaseSampleCallingTestOnExactModelParamsSpark() {
         runCaseSampleCallingTestOnExactModelParams();
     }
@@ -367,7 +361,10 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
      * Confusion rates for a binary classification problem
      */
     private static final class ConfusionRates {
-        final double TPR, TNR, FPR, FNR;
+        final double TPR;
+        final double TNR;
+        final double FPR;
+        final double FNR;
 
         ConfusionRates(final double TPR, final double TNR, final double FPR, final double FNR) {
             this.TPR = TPR;
@@ -386,7 +383,10 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
      * Confusion matrix of a binary classification problem
      */
     private static final class ConfusionMatrix {
-        final int TP, TN, FP, FN;
+        final int TP;
+        final int TN;
+        final int FP;
+        final int FN;
 
         /* condition positive = TP + FN */
         final int CP;
@@ -505,27 +505,11 @@ public class CoverageModellerGermlineSparkToggleIntegrationTest extends CommandL
             return (right + wrong > 0) ? (double) right / (right + wrong) : DEFAULT_UNDEFINED;
         }
 
-        public double getDiscordance() {
-            return (right + wrong > 0) ? (double) wrong / (right + wrong) : DEFAULT_UNDEFINED;
-        }
-
         public static double getCollectionConcordance(@Nonnull final Collection<Concordance> col,
                                                       @Nonnull final AbstractUnivariateStatistic calculator) {
             try {
                 return calculator.evaluate(col.stream()
                         .mapToDouble(Concordance::getConcordance)
-                        .filter(val -> val != DEFAULT_UNDEFINED)
-                        .toArray());
-            } catch (final MathIllegalArgumentException ex) {
-                return DEFAULT_UNDEFINED;
-            }
-        }
-
-        public static double getCollectionDiscordance(@Nonnull final Collection<Concordance> col,
-                                                      @Nonnull final AbstractUnivariateStatistic calculator) {
-            try {
-                return calculator.evaluate(col.stream()
-                        .mapToDouble(Concordance::getDiscordance)
                         .filter(val -> val != DEFAULT_UNDEFINED)
                         .toArray());
             } catch (final MathIllegalArgumentException ex) {

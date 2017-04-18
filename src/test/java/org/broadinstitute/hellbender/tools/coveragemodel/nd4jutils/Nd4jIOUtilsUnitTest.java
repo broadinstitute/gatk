@@ -48,7 +48,6 @@ public class Nd4jIOUtilsUnitTest extends BaseTest {
         assertIntArrayStringRepr(new int[] {1, -5, 2});
         assertIntArrayStringRepr(new int[] {4, 3});
         assertIntArrayStringRepr(new int[] {1, 2, 3, 4, 5, 6});
-
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

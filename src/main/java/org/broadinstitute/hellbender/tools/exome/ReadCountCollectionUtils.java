@@ -17,13 +17,16 @@ import org.broadinstitute.hellbender.tools.exome.samplenamefinder.SampleNameFind
 import org.broadinstitute.hellbender.utils.MatrixSummaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
+import javax.annotation.Nonnull;
 import java.io.*;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -564,11 +567,12 @@ public final class ReadCountCollectionUtils {
     }
 
     /**
-     * Remove columns with NaNs and infinities
+     * Remove columns with NaNs, infinities, and negative values.
      *
-     * @param readCounts
-     * @param logger
-     * @return
+     * @param readCounts the input read counts.
+     * @param logger instance of logger.
+     * @return never {@code null}. It might be a reference to the input read-counts if there is
+     *   is no target to be dropped.
      */
     public static ReadCountCollection removeColumnsWithBadValues(final ReadCountCollection readCounts,
                                                                  final Logger logger) {
@@ -578,9 +582,7 @@ public final class ReadCountCollectionUtils {
         final Set<String> columnsToKeep = new LinkedHashSet<>(readCounts.columnNames().size());
         final Set<String> columnsToDrop = new HashSet<>();
         for (int i = 0; i < columnNames.size(); i++) {
-            if (Arrays.stream(readCounts.getColumn(i))
-                    .filter(d -> Double.isNaN(d) || Double.isInfinite(d))
-                    .count() == 0) {
+            if (Arrays.stream(readCounts.getColumn(i)).noneMatch(d -> Double.isNaN(d) || Double.isInfinite(d) || d < 0)) {
                 columnsToKeep.add(columnNames.get(i));
             } else {
                 columnsToDrop.add(columnNames.get(i));
@@ -665,43 +667,54 @@ public final class ReadCountCollectionUtils {
     }
 
     /**
-     * Remove targets that have read counts strictly lower than {@code minReadCount} for all
-     * samples.
-     * <p>
-     *     It will return a copy of the input read-count collection with such targets dropped.
-     * </p>
+     * Removes targets that are flagged for more than {@code toleratedFlagsPerSample} times per sample according to
+     * a provided {@code flagger} predicate.
      *
-     * TODO github/gatk-protected issue #843 -- write unit test
+     * If some targets are dropped, the order of the remaining targets will be the same as the original read
+     * count collection.
      *
-     * @param readCounts the input read counts.
-     * @param minCoverage minimum read count
+     * If no target is dropped, the original read count collection will be returned by reference.
+     *
+     * @param readCounts the input read counts
+     * @param entryFlagger a predicate for flagging an arbitrary {@link ReadCountCollection.EntryIndex} in the read count collection
+     * @param toleratedFlagsPerSample maximum tolerated flags per sample before dropping a target
+     * @param reasonForFlagging a description of the reason for flagging (used for logging)
+     * @param logger an instance of {@link Logger}
      * @return never {@code null}. It might be a reference to the input read-counts if there is
      *   is no target to be dropped.
      */
-    public static ReadCountCollection removeTargetsWithUniformlyLowCoverage(final ReadCountCollection readCounts,
-                                                                            final int minCoverage,
-                                                                            final Logger logger) {
-        /* filter targets to keep, put them in an ordered set */
-        final RealMatrix counts = readCounts.counts();
+    public static ReadCountCollection removeTargetsWithTooManyFlags(@Nonnull final ReadCountCollection readCounts,
+                                                                    @Nonnull final Predicate<ReadCountCollection.EntryIndex> entryFlagger,
+                                                                    final int toleratedFlagsPerSample,
+                                                                    @Nonnull final String reasonForFlagging,
+                                                                    @Nonnull final Logger logger) {
+        Utils.nonNull(readCounts, "The input read counts must be non-null");
+        Utils.nonNull(entryFlagger, "The predicate must be non-null");
+        Utils.nonNull(reasonForFlagging, "The reason for flagging must be non-null");
+        Utils.nonNull(logger, "The logger must be non-null");
+        ParamUtils.isPositiveOrZero(toleratedFlagsPerSample, "Tolerated flags per sample must be >= 0");
+        final int numTargets = readCounts.counts().getRowDimension();
+        final int numColumns = readCounts.counts().getColumnDimension();
         final List<Target> originalTargets = readCounts.targets();
-        final Set<Target> targetsToKeep = IntStream.range(0, counts.getRowDimension())
-                .filter(ti -> Arrays.stream(counts.getRow(ti))
-                        .anyMatch(coverage -> coverage >= minCoverage))
+        final Set<Target> targetsToKeep = IntStream.range(0, numTargets)
+                .filter(targetIndex -> IntStream.range(0, numColumns)
+                        .filter(columnIndex -> entryFlagger.test(new ReadCountCollection.EntryIndex(targetIndex, columnIndex)))
+                        .count() <= toleratedFlagsPerSample)
                 .mapToObj(originalTargets::get)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-
         final int targetsToDropCount = originalTargets.size() - targetsToKeep.size();
         if (targetsToDropCount == 0) {
-            logger.info(String.format("There are no targets with coverage uniformly lower than %d. Keeping all" +
-                    " %d targets.", minCoverage, originalTargets.size()));
+            logger.info(String.format("There are no targets flagged more than %d times across all %d samples as being %s. Keeping all" +
+                    " %d targets.", toleratedFlagsPerSample, numColumns, reasonForFlagging, numTargets));
             return readCounts;
-        } else if (targetsToDropCount == readCounts.targets().size()) {
-            throw new UserException.BadInput(String.format("The coverage on all targets and samples lower than %d," +
-                    " resulting in all targets being dropped", minCoverage));
+        } else if (targetsToDropCount == originalTargets.size()) {
+            throw new UserException.BadInput(String.format("All targets are flagged more than %d times across all %d samples as being %s" +
+                    " resulting in all targets being dropped", toleratedFlagsPerSample, numColumns, reasonForFlagging));
         } else {
             final double droppedPercentage = ((double)(targetsToDropCount) / originalTargets.size()) * 100;
-            logger.info(String.format("Some targets dropped (%d out of %d, %.2f%%) as their coverage were uniformly" +
-                    " lower than %d.", targetsToDropCount, originalTargets.size(), droppedPercentage, minCoverage));
+            logger.info(String.format("Some targets dropped (%d out of %d, %.2f%%) as they were flagged more than %d" +
+                    " times across %d samples as being %s.", targetsToDropCount, numTargets, droppedPercentage, toleratedFlagsPerSample,
+                    numColumns, reasonForFlagging));
             return readCounts.subsetTargets(targetsToKeep);
         }
     }

@@ -19,10 +19,37 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
- * Reads sex genotype data from tab-separated files and abstract readers.
+ * Reads sex genotype data from tab-separated files and abstract readers. For example, a basic sex genotype
+ * table for homo sapiens must be formatted as follows:
  *
- * Extended genotyping inference data will be loaded if the input tab-separated source contains
- * such optional columns.
+ *     <pre>
+ *         SAMPLE_NAME          SEX_GENOTYPE
+ *         arbitrary_name_0     SEX_XX
+ *         arbitrary_name_1     SEX_XY
+ *         arbitrary_name_2     SEX_XY
+ *         arbitrary_name_3     SEX_XX
+ *         ...                  ...
+ *     </pre>
+ *
+ * Here, SEX_XX and SEX_XY are arbitrary string identifiers for XX and XY genotypes. The string identifier
+ * the user uses in this table must match the identifiers used in the tab-separated contig ploidy
+ * annotation table. See {@link ContigGermlinePloidyAnnotation}.
+ *
+ * Extended genotyping inference data will be loaded if the input tab-separated source contains such optional
+ * columns. Example:
+ *
+ *     <pre>
+ *         SAMPLE_NAME          SEX_GENOTYPE      SEX_XX                                SEX_XY
+ *         arbitrary_name_0     SEX_XX            arbitrary_sex_xx_log_likelihood_0     arbitrary_sex_xy_log_likelihood_0
+ *         arbitrary_name_1     SEX_XY            arbitrary_sex_xx_log_likelihood_1     arbitrary_sex_xy_log_likelihood_1
+ *         arbitrary_name_2     SEX_XY            arbitrary_sex_xx_log_likelihood_2     arbitrary_sex_xy_log_likelihood_2
+ *         arbitrary_name_3     SEX_XX            arbitrary_sex_xx_log_likelihood_3     arbitrary_sex_xy_log_likelihood_3
+ *         ...                  ...               ...                               ...
+ *     </pre>
+ *
+ * For each sex genotyping appearing in the set of all SEX_GENOTYPE entries, the extended table must include
+ * a column with the same name that lists the genotyping log likelihood values (SEX_XX and SEX_XY in the above
+ * example).
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */

@@ -5,51 +5,51 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import javax.annotation.Nonnull;
-
 /**
- * This class represents the hyper-parameters and parameters for {@link CoverageModelEMAlgorithm}
+ * This class is an argument collection for the coverage model. It is used for instantiating
+ * {@link CoverageModelEMAlgorithm} and {@link CoverageModelEMAlgorithm}.
  *
- * Works both as an argument collection as well as a getter/setter.
+ * TODO github/gatk-protected issue #842 -- Carefully document the exposed parameters of gCNV, mark the tricky
+ * ones as advanced and document use case.
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  */
-public final class CoverageModelEMParams {
+public final class CoverageModelArgumentCollection {
 
-    public enum PsiUpdateMode {
+    public enum TargetSpecificVarianceUpdateMode {
         /**
          * Target-resolved unexplained variance
          */
-        PSI_TARGET_RESOLVED,
+        TARGET_RESOLVED,
 
         /**
          * Isotropic unexplained variance (i.e. one value for all targets)
          */
-        PSI_ISOTROPIC
+        ISOTROPIC
     }
 
-    public enum WSolverStrategy {
+    public enum BiasCovariateSolverStrategy {
         /**
          * Perform the M-step update of bias covariates locally
          */
-        W_SOLVER_LOCAL,
+        LOCAL,
 
         /**
          * Perform the M-step update of bias covariates using Spark
          */
-        W_SOLVER_SPARK
+        SPARK
     }
 
     public enum CopyRatioHMMType {
         /**
          * Update the copy ratio (or copy number) locally
          */
-        COPY_RATIO_HMM_LOCAL,
+        LOCAL,
 
         /**
          * Update the copy ratio (or copy number) using Spark
          */
-        COPY_RATIO_HMM_SPARK
+        SPARK
     }
 
     public enum ComputeNodeCommunicationPolicy {
@@ -112,9 +112,9 @@ public final class CoverageModelEMParams {
     public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_CR_CALLING_SHORT_NAME = "LLTTCRC";
     public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_CR_CALLING_LONG_NAME = "logLikelihoodTolThresholdCopyRatioCalling";
 
-    public static final double DEFAULT_LOG_LIKELIHOOD_TOL_THRESHOLD_PSI_SWITCHING = 1e-2;
-    public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_PSI_SWITCHING_SHORT_NAME = "LLTTPS";
-    public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_PSI_SWITCHING_LONG_NAME = "logLikelihoodTolThresholdPsiSwitching";
+    public static final double DEFAULT_LOG_LIKELIHOOD_TOL_THRESHOLD_TARGET_SPECIFIC_VARIANCE_SWITCHING = 1e-2;
+    public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_TARGET_SPECIFIC_VARIANCE_SWITCHING_SHORT_NAME = "LLTTTSVS";
+    public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_TARGET_SPECIFIC_VARIANCE_SWITCHING_LONG_NAME = "logLikelihoodTolThresholdTargetSpecificVarianceSwitching";
 
     public static final double DEFAULT_LOG_LIKELIHOOD_TOL_THRESHOLD_ARD_UPDATE = 1e-2;
     public static final String LOG_LIKELIHOOD_TOL_THRESHOLD_ARD_UPDATE_SHORT_NAME = "LLTTARDU";
@@ -158,100 +158,100 @@ public final class CoverageModelEMParams {
     public static final String INCLUDE_ARD_IN_LOG_LIKELIHOOD_SHORT_NAME = "IARDILL";
     public static final String INCLUDE_ARD_IN_LOG_LIKELIHOOD_LONG_NAME = "includeARDInLogLikelihood";
 
-    /* Psi related */
+    /* Target-specific variance related */
 
-    public static final boolean DEFAULT_PSI_UPDATE_ENABLED = true;
-    public static final String PSI_UPDATE_ENABLED_SHORT_NAME = "PU";
-    public static final String PSI_UPDATE_ENABLED_LONG_NAME = "psiUpdate";
+    public static final boolean DEFAULT_TARGET_SPECIFIC_VARIANCE_UPDATE_ENABLED = true;
+    public static final String TARGET_SPECIFIC_VARIANCE_UPDATE_ENABLED_SHORT_NAME = "TSVU";
+    public static final String TARGET_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME = "targetSpecificVarianceUpdate";
 
-    public static final PsiUpdateMode DEFAULT_PSI_SOLVER_MODE = PsiUpdateMode.PSI_TARGET_RESOLVED;
-    public static final String PSI_SOLVER_MODE_SHORT_NAME = "PSM";
-    public static final String PSI_SOLVER_MODE_LONG_NAME = "psiUpdateMode";
+    public static final TargetSpecificVarianceUpdateMode DEFAULT_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE = TargetSpecificVarianceUpdateMode.TARGET_RESOLVED;
+    public static final String TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SHORT_NAME = "TSVUM";
+    public static final String TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_LONG_NAME = "targetSpecificVarianceUpdateMode";
 
-    public static final boolean DEFAULT_ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED = false;
-    public static final String ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_SHORT_NAME = "APSMS";
-    public static final String ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME = "adaptivePsiSolverModeSwitching";
+    public static final boolean DEFAULT_ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED = false;
+    public static final String ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_SHORT_NAME = "ATSVUMS";
+    public static final String ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_LONG_NAME = "adaptiveTargetSpecificVarianceUpdateModeSwitching";
 
-    public static final double DEFAULT_PSI_UPPER_LIMIT = 5.0;
-    public static final String PSI_UPPER_LIMIT_SHORT_NAME = "PUL";
-    public static final String PSI_UPPER_LIMIT_LONG_NAME = "psiUpperLimit";
+    public static final double DEFAULT_TARGET_SPECIFIC_VARIANCE_UPPER_LIMIT = 5.0;
+    public static final String TARGET_SPECIFIC_VARIANCE_UPPER_LIMIT_SHORT_NAME = "TSVUL";
+    public static final String TARGET_SPECIFIC_VARIANCE_UPPER_LIMIT_LONG_NAME = "targetSpecificVarianceUpperLimit";
 
-    public static final int DEFAULT_MAX_PSI_ITERATIONS = 200;
-    public static final String MAX_PSI_ITERATIONS_SHORT_NAME = "MPI";
-    public static final String MAX_PSI_ITERATIONS_LONG_NAME = "maxPsiIterations";
+    public static final int DEFAULT_MAX_TARGET_SPECIFIC_VARIANCE_ITERATIONS = 200;
+    public static final String MAX_TARGET_SPECIFIC_VARIANCE_ITERATIONS_SHORT_NAME = "MTSVI";
+    public static final String MAX_TARGET_SPECIFIC_VARIANCE_ITERATIONS_LONG_NAME = "maxTargetSpecificVarianceIterations";
 
-    public static final double DEFAULT_PSI_ABS_TOL = 1e-8;
-    public static final String PSI_ABS_TOL_SHORT_NAME = "PAT";
-    public static final String PSI_ABS_TOL_LONG_NAME = "psiAbsoluteTolerance";
+    public static final double DEFAULT_TARGET_SPECIFIC_VARIANCE_ABS_TOL = 1e-8;
+    public static final String TARGET_SPECIFIC_VARIANCE_ABS_TOL_SHORT_NAME = "TSVAT";
+    public static final String TARGET_SPECIFIC_VARIANCE_ABS_TOL_LONG_NAME = "targetSpecificVarianceAbsoluteTolerance";
 
-    public static final double DEFAULT_PSI_REL_TOL = 1e-6;
-    public static final String PSI_REL_TOL_SHORT_NAME = "PRT";
-    public static final String PSI_REL_TOL_LONG_NAME = "psiRelativeTolerance";
+    public static final double DEFAULT_TARGET_SPECIFIC_VARIANCE_REL_TOL = 1e-6;
+    public static final String TARGET_SPECIFIC_VARIANCE_REL_TOL_SHORT_NAME = "TSVRT";
+    public static final String TARGET_SPECIFIC_VARIANCE_REL_TOL_LONG_NAME = "targetSpecificVarianceRelativeTolerance";
 
-    public static final int DEFAULT_PSI_SOLVER_NUM_BISECTIONS = 10;
-    public static final String PSI_SOLVER_NUM_BISECTIONS_SHORT_NAME = "PSNB";
-    public static final String PSI_SOLVER_NUM_BISECTIONS_LONG_NAME = "psiSolverNumBisections";
+    public static final int DEFAULT_TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS = 10;
+    public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_SHORT_NAME = "TSVSNB";
+    public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_LONG_NAME = "targetSpecificVarianceSolverNumBisections";
 
-    public static final int DEFAULT_PSI_SOLVER_REFINEMENT_DEPTH = 3;
-    public static final String PSI_SOLVER_REFINEMENT_DEPTH_SHORT_NAME = "SSRD";
-    public static final String PSI_SOLVER_REFINEMENT_DEPTH_LONG_NAME = "psiSolverRefinementDepth";
+    public static final int DEFAULT_TARGET_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH = 3;
+    public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_SHORT_NAME = "TSVSRD";
+    public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_LONG_NAME = "targetSpecificVarianceSolverRefinementDepth";
 
-    public static final int DEFAULT_PSI_SOLVER_NUM_THREADS = 1;
-    public static final String PSI_SOLVER_NUM_THREADS_SHORT_NAME = "PSNT";
-    public static final String PSI_SOLVER_NUM_THREADS_LONG_NAME = "psiSolverNumThreads";
+    public static final int DEFAULT_TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS = 1;
+    public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS_SHORT_NAME = "TSVSNT";
+    public static final String TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS_LONG_NAME = "targetSpecificVarianceSolverNumThreads";
 
 
-    /* W related */
+    /* bias covariates related */
 
-    public static final WSolverStrategy DEFAULT_W_SOLVER_TYPE = WSolverStrategy.W_SOLVER_SPARK;
-    public static final String W_SOLVER_TYPE_SHORT_NAME = "WST";
-    public static final String W_SOLVER_TYPE_LONG_NAME = "wSolverStrategy";
+    public static final BiasCovariateSolverStrategy DEFAULT_BIAS_COVARIATES_SOLVER_TYPE = BiasCovariateSolverStrategy.SPARK;
+    public static final String BIAS_COVARIATES_SOLVER_TYPE_SHORT_NAME = "BCST";
+    public static final String BIAS_COVARIATES_SOLVER_TYPE_LONG_NAME = "biasCovariateSolverType";
 
-    public static final ComputeNodeCommunicationPolicy DEFAULT_W_COMMUNICATION_POLICY = ComputeNodeCommunicationPolicy.RDD_JOIN;
-    public static final String W_COMMUNICATION_POLICY_SHORT_NAME = "WCP";
-    public static final String W_COMMUNICATION_POLICY_LONG_NAME = "wCommunicationPolicy";
+    public static final ComputeNodeCommunicationPolicy DEFAULT_BIAS_COVARIATES_COMMUNICATION_POLICY = ComputeNodeCommunicationPolicy.RDD_JOIN;
+    public static final String BIAS_COVARIATES_COMMUNICATION_POLICY_SHORT_NAME = "BCCP";
+    public static final String BIAS_COVARIATES_COMMUNICATION_POLICY_LONG_NAME = "biasCovariatesCommunicationPolicy";
 
-    public static final int DEFAULT_MAX_W_ITERATIONS = 200;
-    public static final String MAX_W_ITERATIONS_SHORT_NAME = "MWI";
-    public static final String MAX_W_ITERATIONS_LONG_NAME = "maxWInterations";
+    public static final int DEFAULT_MAX_BIAS_COVARIATES_ITERATIONS = 200;
+    public static final String MAX_BIAS_COVARIATES_ITERATIONS_SHORT_NAME = "MBCI";
+    public static final String MAX_BIAS_COVARIATES_ITERATIONS_LONG_NAME = "maxBiasCovariatesIterations";
 
-    public static final double DEFAULT_W_ABS_TOL = 1e-8;
-    public static final String W_ABS_TOL_SHORT_NAME = "WAT";
-    public static final String W_ABS_TOL_LONG_NAME = "wAbsoluteTolerance";
+    public static final double DEFAULT_BIAS_COVARIATES_ABS_TOL = 1e-8;
+    public static final String BIAS_COVARIATES_ABS_TOL_SHORT_NAME = "BCAT";
+    public static final String BIAS_COVARIATES_ABS_TOL_LONG_NAME = "biasCovariatesAbsoluteTolerance";
 
-    public static final double DEFAULT_W_REL_TOL = 1e-6;
-    public static final String W_REL_TOL_SHORT_NAME = "WRT";
-    public static final String W_REL_TOL_LONG_NAME = "wRelativeTolerance";
+    public static final double DEFAULT_BIAS_COVARIATES_REL_TOL = 1e-6;
+    public static final String BIAS_COVARIATES_REL_TOL_SHORT_NAME = "BCRT";
+    public static final String BIAS_COVARIATES_REL_TOL_LONG_NAME = "biasCovariatesRelativeTolerance";
 
-    /* gamma related */
+    /* sample-specific variance related */
 
-    public static final boolean DEFAULT_GAMMA_UPDATE_ENABLED = true;
-    public static final String GAMMA_UPDATE_ENABLED_SHORT_NAME = "GU";
-    public static final String GAMMA_UPDATE_ENABLED_LONG_NAME = "gammaUpdate";
+    public static final boolean DEFAULT_SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED = true;
+    public static final String SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_SHORT_NAME = "SSVU";
+    public static final String SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME = "sampleSpecificVarianceUpdate";
 
-    public static final double DEFAULT_GAMMA_UPPER_LIMIT = 1.0;
-    public static final String GAMMA_UPPER_LIMIT_SHORT_NAME = "GUL";
-    public static final String GAMMA_UPPER_LIMIT_LONG_NAME = "gammaUpperLimit";
+    public static final double DEFAULT_SAMPLE_SPECIFIC_VARIANCE_UPPER_LIMIT = 1.0;
+    public static final String SAMPLE_SPECIFIC_VARIANCE_UPPER_LIMIT_SHORT_NAME = "SSVUL";
+    public static final String SAMPLE_SPECIFIC_VARIANCE_UPPER_LIMIT_LONG_NAME = "sampleSpecificVarianceUpperLimit";
 
-    public static final int DEFAULT_MAX_GAMMA_ITERATIONS = 200;
-    public static final String MAX_GAMMA_ITERATIONS_SHORT_NAME = "MGI";
-    public static final String MAX_GAMMA_ITERATIONS_LONG_NAME = "maxGammaIterations";
+    public static final int DEFAULT_MAX_SAMPLE_SPECIFIC_VARIANCE_ITERATIONS = 200;
+    public static final String MAX_SAMPLE_SPECIFIC_VARIANCE_ITERATIONS_SHORT_NAME = "MSSVI";
+    public static final String MAX_SAMPLE_SPECIFIC_VARIANCE_ITERATIONS_LONG_NAME = "maxSampleSpecificVarianceIterations";
 
-    public static final double DEFAULT_GAMMA_ABS_TOL = 1e-8;
-    public static final String GAMMA_ABS_TOL_SHORT_NAME = "GAT";
-    public static final String GAMMA_ABS_TOL_LONG_NAME = "gammaAbsoluteTolerance";
+    public static final double DEFAULT_SAMPLE_SPECIFIC_VARIANCE_ABS_TOL = 1e-8;
+    public static final String SAMPLE_SPECIFIC_VARIANCE_ABS_TOL_SHORT_NAME = "SSVAT";
+    public static final String SAMPLE_SPECIFIC_VARIANCE_ABS_TOL_LONG_NAME = "sampleSpecificVarianceAbsoluteTolerance";
 
-    public static final double DEFAULT_GAMMA_REL_TOL = 1e-6;
-    public static final String GAMMA_REL_TOL_SHORT_NAME = "GRT";
-    public static final String GAMMA_REL_TOL_LONG_NAME = "gammaRelativeTolerance";
+    public static final double DEFAULT_SAMPLE_SPECIFIC_VARIANCE_REL_TOL = 1e-6;
+    public static final String SAMPLE_SPECIFIC_VARIANCE_REL_TOL_SHORT_NAME = "SSVRT";
+    public static final String SAMPLE_SPECIFIC_VARIANCE_REL_TOL_LONG_NAME = "sampleSpecificVarianceRelativeTolerance";
 
-    public static final int DEFAULT_GAMMA_SOLVER_NUM_BISECTIONS = 10;
-    public static final String GAMMA_SOLVER_NUM_BISECTIONS_SHORT_NAME = "GSNB";
-    public static final String GAMMA_SOLVER_NUM_BISECTIONS_LONG_NAME = "gammaSolverNumBisections";
+    public static final int DEFAULT_SAMPLE_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS = 10;
+    public static final String SAMPLE_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_SHORT_NAME = "SSVSNB";
+    public static final String SAMPLE_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_LONG_NAME = "sampleSpecificVarianceSolverNumBisections";
 
-    public static final int DEFAULT_GAMMA_SOLVER_REFINEMENT_DEPTH = 3;
-    public static final String GAMMA_SOLVER_REFINEMENT_DEPTH_SHORT_NAME = "GSRD";
-    public static final String GAMMA_SOLVER_REFINEMENT_DEPTH_LONG_NAME = "gammaSolverRefinementDepth";
+    public static final int DEFAULT_SAMPLE_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH = 3;
+    public static final String SAMPLE_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_SHORT_NAME = "SSVSRD";
+    public static final String SAMPLE_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_LONG_NAME = "sampleSpecificVarianceSolverRefinementDepth";
 
     /* CNV-avoiding penalty related */
 
@@ -280,7 +280,7 @@ public final class CoverageModelEMParams {
     public static final String CR_UPDATE_ENABLED_SHORT_NAME = "CRU";
     public static final String CR_UPDATE_ENABLED_LONG_NAME = "copyRatioUpdate";
 
-    public static final CopyRatioHMMType DEFAULT_CR_HMM_TYPE = CopyRatioHMMType.COPY_RATIO_HMM_SPARK;
+    public static final CopyRatioHMMType DEFAULT_CR_HMM_TYPE = CopyRatioHMMType.SPARK;
     public static final String CR_HMM_TYPE_SHORT_NAME = "CRHMM";
     public static final String CR_HMM_TYPE_LONG_NAME = "copyRatioHMMType";
 
@@ -320,57 +320,57 @@ public final class CoverageModelEMParams {
 
     @Advanced
     @Argument(
-            doc = "Psi upper limit",
-            shortName = PSI_UPPER_LIMIT_SHORT_NAME,
-            fullName = PSI_UPPER_LIMIT_LONG_NAME,
+            doc = "Target-specific variance upper limit",
+            shortName = TARGET_SPECIFIC_VARIANCE_UPPER_LIMIT_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_UPPER_LIMIT_LONG_NAME,
             optional = true
     )
-    protected double psiUpperLimit = DEFAULT_PSI_UPPER_LIMIT;
+    protected double targetSpecificVarianceUpperLimit = DEFAULT_TARGET_SPECIFIC_VARIANCE_UPPER_LIMIT;
 
     @Advanced
     @Argument(
-            doc = "Gamma upper limit",
-            shortName = GAMMA_UPPER_LIMIT_SHORT_NAME,
-            fullName = GAMMA_UPPER_LIMIT_LONG_NAME,
+            doc = "Sample-specific variance upper limit",
+            shortName = SAMPLE_SPECIFIC_VARIANCE_UPPER_LIMIT_SHORT_NAME,
+            fullName = SAMPLE_SPECIFIC_VARIANCE_UPPER_LIMIT_LONG_NAME,
             optional = true
     )
-    protected double gammaUpperLimit = DEFAULT_GAMMA_UPPER_LIMIT;
+    protected double sampleSpecificVarianceUpperLimit = DEFAULT_SAMPLE_SPECIFIC_VARIANCE_UPPER_LIMIT;
 
     @Advanced
     @Argument(
-            doc = "Gamma solver number of bisections",
-            shortName = GAMMA_SOLVER_NUM_BISECTIONS_SHORT_NAME,
-            fullName = GAMMA_SOLVER_NUM_BISECTIONS_LONG_NAME,
+            doc = "Sample-specific variance solver number of bisections",
+            shortName = SAMPLE_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_SHORT_NAME,
+            fullName = SAMPLE_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_LONG_NAME,
             optional = true
     )
-    protected int gammaSolverNumBisections = DEFAULT_GAMMA_SOLVER_NUM_BISECTIONS;
+    protected int sampleSpecificVarianceSolverNumBisections = DEFAULT_SAMPLE_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS;
 
     @Advanced
     @Argument(
-            doc = "Psi solver number of bisections",
-            shortName = PSI_SOLVER_NUM_BISECTIONS_SHORT_NAME,
-            fullName = PSI_SOLVER_NUM_BISECTIONS_LONG_NAME,
+            doc = "Target-specific variance solver number of bisections",
+            shortName = TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS_LONG_NAME,
             optional = true
     )
-    protected int psiSolverNumBisections = DEFAULT_PSI_SOLVER_NUM_BISECTIONS;
+    protected int targetSpecificVarianceSolverNumBisections = DEFAULT_TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_BISECTIONS;
 
     @Advanced
     @Argument(
-            doc = "Gamma solver grid refinement depth",
-            shortName = GAMMA_SOLVER_REFINEMENT_DEPTH_SHORT_NAME,
-            fullName = GAMMA_SOLVER_REFINEMENT_DEPTH_LONG_NAME,
+            doc = "Sample-specific variance solver grid refinement depth",
+            shortName = SAMPLE_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_SHORT_NAME,
+            fullName = SAMPLE_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_LONG_NAME,
             optional = true
     )
-    protected int gammaSolverRefinementDepth = DEFAULT_GAMMA_SOLVER_REFINEMENT_DEPTH;
+    protected int sampleSpecificVarianceSolverRefinementDepth = DEFAULT_SAMPLE_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH;
 
     @Advanced
     @Argument(
-            doc = "Psi solver grid refinement depth",
-            shortName = PSI_SOLVER_REFINEMENT_DEPTH_SHORT_NAME,
-            fullName = PSI_SOLVER_REFINEMENT_DEPTH_LONG_NAME,
+            doc = "Target-specific variance solver grid refinement depth",
+            shortName = TARGET_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH_LONG_NAME,
             optional = true
     )
-    protected int psiSolverRefinementDepth = DEFAULT_PSI_SOLVER_REFINEMENT_DEPTH;
+    protected int targetSpecificVarianceSolverRefinementDepth = DEFAULT_TARGET_SPECIFIC_VARIANCE_SOLVER_REFINEMENT_DEPTH;
 
 
     @Argument(
@@ -441,11 +441,11 @@ public final class CoverageModelEMParams {
     @Advanced
     @Argument(
             doc = "Log likelihood absolute change tolerance before switching to target-resolved unexplained variance updates",
-            shortName = LOG_LIKELIHOOD_TOL_THRESHOLD_PSI_SWITCHING_SHORT_NAME,
-            fullName = LOG_LIKELIHOOD_TOL_THRESHOLD_PSI_SWITCHING_LONG_NAME,
+            shortName = LOG_LIKELIHOOD_TOL_THRESHOLD_TARGET_SPECIFIC_VARIANCE_SWITCHING_SHORT_NAME,
+            fullName = LOG_LIKELIHOOD_TOL_THRESHOLD_TARGET_SPECIFIC_VARIANCE_SWITCHING_LONG_NAME,
             optional = true
     )
-    protected double logLikelihoodTolThresholdPsiSwitching = DEFAULT_LOG_LIKELIHOOD_TOL_THRESHOLD_PSI_SWITCHING;
+    protected double logLikelihoodTolThresholdTargetSpecificVarianceSwitching = DEFAULT_LOG_LIKELIHOOD_TOL_THRESHOLD_TARGET_SPECIFIC_VARIANCE_SWITCHING;
 
     @Advanced
     @Argument(
@@ -526,20 +526,20 @@ public final class CoverageModelEMParams {
 
     @Advanced
     @Argument(
-            doc = "Psi solver mode",
-            shortName = PSI_SOLVER_MODE_SHORT_NAME,
-            fullName = PSI_SOLVER_MODE_LONG_NAME,
+            doc = "Target-specific variance solver mode",
+            shortName = TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_LONG_NAME,
             optional = true
     )
-    protected PsiUpdateMode psiUpdateMode = DEFAULT_PSI_SOLVER_MODE;
+    protected TargetSpecificVarianceUpdateMode targetSpecificVarianceUpdateMode = DEFAULT_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE;
 
     @Argument(
             doc = "W solver type (local vs. spark)",
-            shortName = W_SOLVER_TYPE_SHORT_NAME,
-            fullName = W_SOLVER_TYPE_LONG_NAME,
+            shortName = BIAS_COVARIATES_SOLVER_TYPE_SHORT_NAME,
+            fullName = BIAS_COVARIATES_SOLVER_TYPE_LONG_NAME,
             optional = true
     )
-    protected WSolverStrategy wSolverStrategy = DEFAULT_W_SOLVER_TYPE;
+    protected BiasCovariateSolverStrategy biasCovariateSolverStrategy = DEFAULT_BIAS_COVARIATES_SOLVER_TYPE;
 
     @Argument(
             doc = "Copy ratio HMM type (local vs. spark)",
@@ -550,76 +550,76 @@ public final class CoverageModelEMParams {
     protected CopyRatioHMMType copyRatioHMMType = DEFAULT_CR_HMM_TYPE;
 
     @Argument(
-            doc = "Maximum Psi solver iterations",
-            shortName = MAX_PSI_ITERATIONS_SHORT_NAME,
-            fullName = MAX_PSI_ITERATIONS_LONG_NAME,
+            doc = "Maximum target-specific variance solver iterations",
+            shortName = MAX_TARGET_SPECIFIC_VARIANCE_ITERATIONS_SHORT_NAME,
+            fullName = MAX_TARGET_SPECIFIC_VARIANCE_ITERATIONS_LONG_NAME,
             optional = true
     )
-    protected int psiMaxIterations = DEFAULT_MAX_PSI_ITERATIONS;
+    protected int targetSpecificVarianceMaxIterations = DEFAULT_MAX_TARGET_SPECIFIC_VARIANCE_ITERATIONS;
 
     @Argument(
-            doc = "Maximum W solver iterations (if regularization is enabled)",
-            shortName = MAX_W_ITERATIONS_SHORT_NAME,
-            fullName = MAX_W_ITERATIONS_LONG_NAME,
+            doc = "Maximum bias covariates solver iterations (if regularization is enabled)",
+            shortName = MAX_BIAS_COVARIATES_ITERATIONS_SHORT_NAME,
+            fullName = MAX_BIAS_COVARIATES_ITERATIONS_LONG_NAME,
             optional = true
     )
-    protected int wMaxIterations = DEFAULT_MAX_W_ITERATIONS;
+    protected int biasCovariatesMaxIterations = DEFAULT_MAX_BIAS_COVARIATES_ITERATIONS;
 
     @Argument(
-            doc = "Maximum gamma solver iterations",
-            shortName = MAX_GAMMA_ITERATIONS_SHORT_NAME,
-            fullName = MAX_GAMMA_ITERATIONS_LONG_NAME,
+            doc = "Maximum sampleSpecificVariance solver iterations",
+            shortName = MAX_SAMPLE_SPECIFIC_VARIANCE_ITERATIONS_SHORT_NAME,
+            fullName = MAX_SAMPLE_SPECIFIC_VARIANCE_ITERATIONS_LONG_NAME,
             optional = true
     )
-    protected int gammaMaxIterations = DEFAULT_MAX_GAMMA_ITERATIONS;
+    protected int sampleSpecificVarianceMaxIterations = DEFAULT_MAX_SAMPLE_SPECIFIC_VARIANCE_ITERATIONS;
 
     @Argument(
-            doc = "W solver absolute error tolerance termination criterion (if regularization is enabled)",
-            shortName = W_ABS_TOL_SHORT_NAME,
-            fullName = W_ABS_TOL_LONG_NAME,
+            doc = "Bias covariates solver absolute error tolerance termination criterion (if regularization is enabled)",
+            shortName = BIAS_COVARIATES_ABS_TOL_SHORT_NAME,
+            fullName = BIAS_COVARIATES_ABS_TOL_LONG_NAME,
             optional = true
     )
-    protected double wAbsTol = DEFAULT_W_ABS_TOL;
+    protected double biasCovariatesAbsTol = DEFAULT_BIAS_COVARIATES_ABS_TOL;
 
     @Argument(
-            doc = "W solver relative error tolerance termination criterion (if regularization is enabled)",
-            shortName = W_REL_TOL_SHORT_NAME,
-            fullName = W_REL_TOL_LONG_NAME,
+            doc = "Bias covariates solver relative error tolerance termination criterion (if regularization is enabled)",
+            shortName = BIAS_COVARIATES_REL_TOL_SHORT_NAME,
+            fullName = BIAS_COVARIATES_REL_TOL_LONG_NAME,
             optional = true
     )
-    protected double wRelTol = DEFAULT_W_REL_TOL;
+    protected double biasCovariatesRelTol = DEFAULT_BIAS_COVARIATES_REL_TOL;
 
     @Argument(
-            doc = "Psi solver absolute error tolerance termination criterion",
-            shortName = PSI_ABS_TOL_SHORT_NAME,
-            fullName = PSI_ABS_TOL_LONG_NAME,
+            doc = "Target-specific variance solver absolute error tolerance termination criterion",
+            shortName = TARGET_SPECIFIC_VARIANCE_ABS_TOL_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_ABS_TOL_LONG_NAME,
             optional = true
     )
-    protected double psiAbsTol = DEFAULT_PSI_ABS_TOL;
+    protected double targetSpecificVarianceAbsTol = DEFAULT_TARGET_SPECIFIC_VARIANCE_ABS_TOL;
 
     @Argument(
-            doc = "Psi solver relative error tolerance termination criterion",
-            shortName = PSI_REL_TOL_SHORT_NAME,
-            fullName = PSI_REL_TOL_LONG_NAME,
+            doc = "Target-specific variance solver relative error tolerance termination criterion",
+            shortName = TARGET_SPECIFIC_VARIANCE_REL_TOL_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_REL_TOL_LONG_NAME,
             optional = true
     )
-    protected double psiRelTol = DEFAULT_PSI_REL_TOL;
+    protected double targetSpecificVarianceRelTol = DEFAULT_TARGET_SPECIFIC_VARIANCE_REL_TOL;
 
     @Argument(
-            doc = "Gamma solver absolute error tolerance termination criterion",
-            shortName = GAMMA_ABS_TOL_SHORT_NAME,
-            fullName = GAMMA_ABS_TOL_LONG_NAME,
+            doc = "Sample-specific variance solver absolute error tolerance termination criterion",
+            shortName = SAMPLE_SPECIFIC_VARIANCE_ABS_TOL_SHORT_NAME,
+            fullName = SAMPLE_SPECIFIC_VARIANCE_ABS_TOL_LONG_NAME,
             optional = true
     )
-    protected double gammaAbsTol = DEFAULT_GAMMA_ABS_TOL;
+    protected double sampleSpecificVarianceAbsTol = DEFAULT_SAMPLE_SPECIFIC_VARIANCE_ABS_TOL;
 
     @Argument(
-            doc = "Gamma solver relative error tolerance termination criterion",
-            shortName = GAMMA_REL_TOL_SHORT_NAME,
-            fullName = GAMMA_REL_TOL_LONG_NAME,
+            doc = "Sample-specific variance solver relative error tolerance termination criterion",
+            shortName = SAMPLE_SPECIFIC_VARIANCE_REL_TOL_SHORT_NAME,
+            fullName = SAMPLE_SPECIFIC_VARIANCE_REL_TOL_LONG_NAME,
             optional = true
     )
-    protected double gammaRelTol = DEFAULT_GAMMA_REL_TOL;
+    protected double sampleSpecificVarianceRelTol = DEFAULT_SAMPLE_SPECIFIC_VARIANCE_REL_TOL;
 
     @Argument(
             doc = "RDD checkpointing interval (in spark mode)",
@@ -639,12 +639,12 @@ public final class CoverageModelEMParams {
 
     @Advanced
     @Argument(
-            doc = "W communication policy (in spark mode)",
-            shortName = W_COMMUNICATION_POLICY_SHORT_NAME,
-            fullName = W_COMMUNICATION_POLICY_LONG_NAME,
+            doc = "Bias covariates communication policy (in spark mode)",
+            shortName = BIAS_COVARIATES_COMMUNICATION_POLICY_SHORT_NAME,
+            fullName = BIAS_COVARIATES_COMMUNICATION_POLICY_LONG_NAME,
             optional = true
     )
-    protected ComputeNodeCommunicationPolicy principalMapComputeNodeCommunicationPolicy = DEFAULT_W_COMMUNICATION_POLICY;
+    protected ComputeNodeCommunicationPolicy biasCovariatesComputeNodeCommunicationPolicy = DEFAULT_BIAS_COVARIATES_COMMUNICATION_POLICY;
 
 
     @Advanced
@@ -673,29 +673,29 @@ public final class CoverageModelEMParams {
     protected boolean runCheckpointingEnabled = DEFAULT_RUN_CHECKPOINTING_ENABLED;
 
     @Argument(
-            doc = "Enable gamma updates",
-            shortName = GAMMA_UPDATE_ENABLED_SHORT_NAME,
-            fullName = GAMMA_UPDATE_ENABLED_LONG_NAME,
+            doc = "Enable sampleSpecificVariance updates",
+            shortName = SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_SHORT_NAME,
+            fullName = SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME,
             optional = true
     )
-    protected boolean gammaUpdateEnabled = DEFAULT_GAMMA_UPDATE_ENABLED;
+    protected boolean sampleSpecificVarianceUpdateEnabled = DEFAULT_SAMPLE_SPECIFIC_VARIANCE_UPDATE_ENABLED;
 
     @Argument(
-            doc = "Enable psi updates",
-            shortName = PSI_UPDATE_ENABLED_SHORT_NAME,
-            fullName = PSI_UPDATE_ENABLED_LONG_NAME,
+            doc = "Enable targetSpecificVariance updates",
+            shortName = TARGET_SPECIFIC_VARIANCE_UPDATE_ENABLED_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_UPDATE_ENABLED_LONG_NAME,
             optional = true
     )
-    protected boolean psiUpdateEnabled = DEFAULT_PSI_UPDATE_ENABLED;
+    protected boolean targetSpecificVarianceUpdateEnabled = DEFAULT_TARGET_SPECIFIC_VARIANCE_UPDATE_ENABLED;
 
     @Advanced
     @Argument(
-            doc = "Enable adaptive switiching of Psi solver modes (isotropic to target-resolved)",
-            shortName = ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_SHORT_NAME,
-            fullName = ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED_LONG_NAME,
+            doc = "Enable adaptive switching of target-specific variance solver modes (isotropic to target-resolved)",
+            shortName = ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_SHORT_NAME,
+            fullName = ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED_LONG_NAME,
             optional = true
     )
-    protected boolean adaptivePsiSolverModeSwitchingEnabled = DEFAULT_ADAPTIVE_PSI_SOLVER_MODE_SWITCHING_ENABLED;
+    protected boolean adaptiveTargetSpecificVarianceSolverModeSwitchingEnabled = DEFAULT_ADAPTIVE_TARGET_SPECIFIC_VARIANCE_UPDATE_MODE_SWITCHING_ENABLED;
 
     @Argument(
             doc = "Enable copy ratio updates",
@@ -776,12 +776,12 @@ public final class CoverageModelEMParams {
 
     @Advanced
     @Argument(
-            doc = "Number of threads for concurrent target-resolved unexpalained variance solver",
-            shortName = PSI_SOLVER_NUM_THREADS_SHORT_NAME,
-            fullName = PSI_SOLVER_NUM_THREADS_LONG_NAME,
+            doc = "Number of threads for concurrent target-resolved unexplained variance solver",
+            shortName = TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS_SHORT_NAME,
+            fullName = TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS_LONG_NAME,
             optional = true
     )
-    protected int psiSolverNumThreads = DEFAULT_PSI_SOLVER_NUM_THREADS;
+    protected int targetSpecificVarianceSolverNumThreads = DEFAULT_TARGET_SPECIFIC_VARIANCE_SOLVER_NUM_THREADS;
 
     @Argument(
             doc = "Model initialization strategy (only used in learning tasks)",
@@ -799,10 +799,6 @@ public final class CoverageModelEMParams {
     )
     protected boolean includeARDInLogLikelihood = DEFAULT_INCLUDE_ARD_IN_LOG_LIKELIHOOD;
 
-    /*
-     * setters and getters
-     */
-
     public int getMaxEMIterations() { return maxEMIterations; }
 
     public int getNumLatents() { return numLatents; }
@@ -815,17 +811,17 @@ public final class CoverageModelEMParams {
 
     public double getFourierRegularizationStrength() { return fourierRegularizationStrength; }
 
-    public double getPsiAbsoluteTolerance() { return psiAbsTol; }
+    public double getTargetSpecificVarianceAbsoluteTolerance() { return targetSpecificVarianceAbsTol; }
 
-    public double getPsiRelativeTolerance() { return psiRelTol; }
+    public double getTargetSpecificVarianceRelativeTolerance() { return targetSpecificVarianceRelTol; }
 
-    public int getPsiMaxIterations() { return psiMaxIterations; }
+    public int getTargetSpecificVarianceMaxIterations() { return targetSpecificVarianceMaxIterations; }
 
-    public double getWAbsoluteTolerance() { return this.wAbsTol; }
+    public double getWAbsoluteTolerance() { return this.biasCovariatesAbsTol; }
 
-    public double getWRelativeTolerance() { return this.wRelTol; }
+    public double getWRelativeTolerance() { return this.biasCovariatesRelTol; }
 
-    public int getWMaxIterations() { return wMaxIterations; }
+    public int getWMaxIterations() { return biasCovariatesMaxIterations; }
 
     public boolean zeroPadFFT() {
         return zeroPadFFT;
@@ -833,17 +829,12 @@ public final class CoverageModelEMParams {
 
     public double getParameterEstimationAbsoluteTolerance() { return this.paramAbsTol; }
 
-    public PsiUpdateMode getPsiUpdateMode() {
-        return psiUpdateMode;
+    public TargetSpecificVarianceUpdateMode getTargetSpecificVarianceUpdateMode() {
+        return targetSpecificVarianceUpdateMode;
     }
 
-    public CoverageModelEMParams setPsiUpdateMode(@Nonnull final PsiUpdateMode psiUpdateMode) {
-        this.psiUpdateMode = Utils.nonNull(psiUpdateMode, "Psi solver mode must be non-null");
-        return this;
-    }
-
-    public WSolverStrategy getWSolverType() {
-        return wSolverStrategy;
+    public BiasCovariateSolverStrategy getWSolverType() {
+        return biasCovariateSolverStrategy;
     }
 
     public int getMinimumCNVLength() { return minCNVLength; }
@@ -866,8 +857,8 @@ public final class CoverageModelEMParams {
         return logLikelihoodTolThresholdCRCalling;
     }
 
-    public double getLogLikelihoodTolThresholdPsiSwitching() {
-        return logLikelihoodTolThresholdPsiSwitching;
+    public double getLogLikelihoodTolThresholdTargetSpecificVarianceSwitching() {
+        return logLikelihoodTolThresholdTargetSpecificVarianceSwitching;
     }
 
     public double getLogLikelihoodTolThresholdARDUpdate() {
@@ -883,7 +874,7 @@ public final class CoverageModelEMParams {
     }
 
     public ComputeNodeCommunicationPolicy getBiasCovariatesComputeNodeCommunicationPolicy() {
-        return principalMapComputeNodeCommunicationPolicy;
+        return biasCovariatesComputeNodeCommunicationPolicy;
     }
 
     public double getMeanFieldAdmixingRatio() {
@@ -894,40 +885,40 @@ public final class CoverageModelEMParams {
         return runCheckpointingInterval;
     }
 
-    public double getGammaAbsoluteTolerance() {
-        return gammaAbsTol;
+    public double getSampleSpecificVarianceAbsoluteTolerance() {
+        return sampleSpecificVarianceAbsTol;
     }
 
-    public double getGammaRelativeTolerance() {
-        return gammaRelTol;
+    public double getSampleSpecificVarianceRelativeTolerance() {
+        return sampleSpecificVarianceRelTol;
     }
 
-    public int getGammaMaximumIterations() {
-        return gammaMaxIterations;
+    public int getSampleSpecificVarianceMaximumIterations() {
+        return sampleSpecificVarianceMaxIterations;
     }
 
-    public boolean gammaUpdateEnabled() {
-        return gammaUpdateEnabled;
+    public boolean sampleSpecificVarianceUpdateEnabled() {
+        return sampleSpecificVarianceUpdateEnabled;
     }
 
-    public boolean psiUpdateEnabled() {
-        return psiUpdateEnabled;
+    public boolean targetSpecificVarianceUpdateEnabled() {
+        return targetSpecificVarianceUpdateEnabled;
     }
 
     public boolean copyRatioUpdateEnabled() {
         return copyRatioUpdateEnabled;
     }
 
-    public boolean adaptivePsiSolverModeSwitchingEnabled() {
-        return adaptivePsiSolverModeSwitchingEnabled;
+    public boolean adaptiveTargetSpecificVarianceSolverModeSwitchingEnabled() {
+        return adaptiveTargetSpecificVarianceSolverModeSwitchingEnabled;
     }
 
-    public double getPsiUpperLimit() {
-        return psiUpperLimit;
+    public double getTargetSpecificVarianceUpperLimit() {
+        return targetSpecificVarianceUpperLimit;
     }
 
-    public double getGammaUpperLimit() {
-        return gammaUpperLimit;
+    public double getSampleSpecificVarianceUpperLimit() {
+        return sampleSpecificVarianceUpperLimit;
     }
 
     public boolean isRunCheckpointingEnabled() {
@@ -950,20 +941,20 @@ public final class CoverageModelEMParams {
         return numTargetSpacePartitions;
     }
 
-    public int getGammaSolverRefinementDepth() {
-        return gammaSolverRefinementDepth;
+    public int getSampleSpecificVarianceSolverRefinementDepth() {
+        return sampleSpecificVarianceSolverRefinementDepth;
     }
 
-    public int getGammaSolverNumBisections() {
-        return gammaSolverNumBisections;
+    public int getSampleSpecificVarianceSolverNumBisections() {
+        return sampleSpecificVarianceSolverNumBisections;
     }
 
-    public int getPsiSolverRefinementDepth() {
-        return psiSolverRefinementDepth;
+    public int getTargetSpecificVarianceSolverRefinementDepth() {
+        return targetSpecificVarianceSolverRefinementDepth;
     }
 
-    public int getPsiSolverNumBisections() {
-        return psiSolverNumBisections;
+    public int getTargetSpecificVarianceSolverNumBisections() {
+        return targetSpecificVarianceSolverNumBisections;
     }
 
     public int getMinLearningReadCount() {
@@ -994,7 +985,7 @@ public final class CoverageModelEMParams {
         return maxARDPrecision;
     }
 
-    public int getPsiSolverNumThreads() { return psiSolverNumThreads; }
+    public int getTargetSpecificVarianceSolverNumThreads() { return targetSpecificVarianceSolverNumThreads; }
 
     public ModelInitializationStrategy getModelInitializationStrategy() {
         return modelInitializationStrategy;
@@ -1019,12 +1010,12 @@ public final class CoverageModelEMParams {
         ParamUtils.isPositive(logLikelihoodTol, "Convergence tolerance on log likelihood must be positive");
         ParamUtils.isPositive(maxMStepCycles, "The number of sequential partial maximization steps must be positive");
         ParamUtils.isPositive(fourierRegularizationStrength, "The Fourier regularization strength must be positive");
-        ParamUtils.isPositive(psiAbsTol, "The absolute tolerance for maximization of Psi must be positive");
-        ParamUtils.isPositive(psiRelTol, "The relative tolerance for maximization of Psi must be positive");
-        ParamUtils.isPositive(psiMaxIterations, "The maximum number of iterations for M-step of Psi must be positive");
-        ParamUtils.isPositive(wAbsTol, "The absolute tolerance for maximization of Psi must be positive");
-        ParamUtils.isPositive(wRelTol, "The relative tolerance for maximization of Psi must be positive");
-        ParamUtils.isPositive(wMaxIterations, "The maximum number of iterations for M-step of W must be positive.");
+        ParamUtils.isPositive(targetSpecificVarianceAbsTol, "The absolute tolerance for maximization of target-specific variance must be positive");
+        ParamUtils.isPositive(targetSpecificVarianceRelTol, "The relative tolerance for maximization of target-specific variance must be positive");
+        ParamUtils.isPositive(targetSpecificVarianceMaxIterations, "The maximum number of iterations for M-step of target-specific variance must be positive");
+        ParamUtils.isPositive(biasCovariatesAbsTol, "The absolute tolerance for maximization of bias covariates must be positive");
+        ParamUtils.isPositive(biasCovariatesRelTol, "The relative tolerance for maximization of bias covariates must be positive");
+        ParamUtils.isPositive(biasCovariatesMaxIterations, "The maximum number of iterations for M-step of W must be positive.");
         ParamUtils.isPositive(paramAbsTol, "The required tolerance on parameter change must be positive.");
         ParamUtils.isPositive(minCNVLength, "Minimum CNV length must be positive");
         ParamUtils.inRange(maxCNVLength, minCNVLength, Integer.MAX_VALUE, "Maximum CNV length must be greater than the minimum");
@@ -1032,20 +1023,20 @@ public final class CoverageModelEMParams {
         Utils.nonNull(copyRatioHMMType, "Copy ratio HMM type must be non-null");
         ParamUtils.isPositive(logLikelihoodTolThresholdCRCalling, "Log likelihood change threshold before updating" +
                 " copy ratio posteriors must be positive");
-        ParamUtils.isPositive(logLikelihoodTolThresholdPsiSwitching, "Log likelihood change threshold before switching" +
+        ParamUtils.isPositive(logLikelihoodTolThresholdTargetSpecificVarianceSwitching, "Log likelihood change threshold before switching" +
                 " to target-resolved unexplained variance updates must be positive");
         ParamUtils.isPositive(logLikelihoodTolThresholdARDUpdate, "Log likelihood change threshold before updating" +
                 " ARD coefficients must be positive");
         ParamUtils.isPositive(posteriorAbsTol, "Posterior absolute error tolerance must be positive");
         ParamUtils.inRange(maxEStepCycles, 1, Integer.MAX_VALUE, "Maximum number of E-step cycles  must be positive");
-        Utils.nonNull(principalMapComputeNodeCommunicationPolicy);
+        Utils.nonNull(biasCovariatesComputeNodeCommunicationPolicy);
         ParamUtils.inRange(meanFieldAdmixingRatio, 0, 1, "The mean-field admixing ratio must be between 0 and 1");
         ParamUtils.inRange(runCheckpointingInterval, 1, Integer.MAX_VALUE, "Model checkpointing intervals must be >= 1");
-        ParamUtils.isPositive(gammaAbsTol, "Gamma absolute error tolerance must be positive");
-        ParamUtils.isPositive(gammaRelTol, "Gamma relative error tolerance must be positive");
-        ParamUtils.isPositive(gammaMaxIterations, "Gamma solver maximum iterations must be positive");
-        ParamUtils.isPositive(psiUpperLimit, "Psi upper limit must be positive");
-        ParamUtils.isPositive(gammaUpperLimit, "Gamma upper limit must be positive");
+        ParamUtils.isPositive(sampleSpecificVarianceAbsTol, "Sample-specific variance absolute error tolerance must be positive");
+        ParamUtils.isPositive(sampleSpecificVarianceRelTol, "Sample-specific variance relative error tolerance must be positive");
+        ParamUtils.isPositive(sampleSpecificVarianceMaxIterations, "Sample-specific variance solver maximum iterations must be positive");
+        ParamUtils.isPositive(targetSpecificVarianceUpperLimit, "Target-specific variance upper limit must be positive");
+        ParamUtils.isPositive(sampleSpecificVarianceUpperLimit, "Sample-specific variance upper limit must be positive");
         Utils.nonNull(runCheckpointingPath, "Run checkpointing path must be non-null");
         Utils.nonNull(rddCheckpointingPath, "RDD checkpointing path must be non-null");
         ParamUtils.isPositive(numTargetSpacePartitions, "Number of target space partitions must be positive");
@@ -1055,14 +1046,15 @@ public final class CoverageModelEMParams {
         ParamUtils.isPositive(initialARDPrecisionAbsolute, "The absolute initial ARD precision must be positive");
         ParamUtils.isPositive(initialARDPrecisionRelativeToNoise, "The relative initial ARD precision must be positive");
         ParamUtils.isPositive(maxARDPrecision, "The maximum ARD precision must be positive");
-        ParamUtils.isPositive(psiSolverNumThreads, "Number of psi solver threads must be positive");
+        ParamUtils.isPositive(targetSpecificVarianceSolverNumThreads, "Number of targetSpecificVariance solver threads must be positive");
 
         Utils.validateArg(!isRunCheckpointingEnabled() || !runCheckpointingPath.equals("/dev/null"),
                 "Run checkpointing is enabled but checkpointing path is not set properly");
+        Utils.validateArg(!isRDDCheckpointingEnabled() || !rddCheckpointingPath.equals("/dev/null"),
+                "RDD checkpointing is enabled but checkpointing path is not set properly");
         Utils.validateArg(!fourierRegularizationEnabled(), "Fourier regularization is not properly" +
                 " implemented yet");
         Utils.validateArg(numLatents > 0 || !ardEnabled, "ARD must be disabled if the dimension of the" +
                 " bias latent space is zero");
-
     }
 }

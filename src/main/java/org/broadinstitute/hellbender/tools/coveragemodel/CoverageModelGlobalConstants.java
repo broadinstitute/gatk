@@ -39,7 +39,7 @@ public final class CoverageModelGlobalConstants implements Serializable {
     /**
      * Read counts on zero ploidy targets (such as targets on Y contig on XX samples) will be replaced by the
      * following value, regardless of the value provided by the user
-     * */
+     */
     public static final int READ_COUNT_ON_ZERO_PLOIDY_TARGETS = 0;
 
     /**

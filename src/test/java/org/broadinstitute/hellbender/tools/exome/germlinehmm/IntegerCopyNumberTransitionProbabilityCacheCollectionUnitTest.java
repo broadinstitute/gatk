@@ -22,12 +22,12 @@ public class IntegerCopyNumberTransitionProbabilityCacheCollectionUnitTest exten
     private static final String TEST_SUB_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/exome/germlinehmm";
     private static final File HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE = new File(TEST_SUB_DIR,
             "homo_sapiens_germline_HMM_priors.tsv");
-    private final Set<String> HOMO_SAPIENS_SEX_GENOTYPES = Arrays.stream(new String[] {"SEX_XX", "SEX_XY"})
+    public static final Set<String> HOMO_SAPIENS_SEX_GENOTYPES = Arrays.stream(new String[] {"SEX_XX", "SEX_XY"})
             .collect(Collectors.toSet());
-    private final Set<String> HOMO_SAPIENS_ALL_CONTIGS = Arrays.stream(new String[] {"1", "2", "3", "4", "5", "6",
+    public static final Set<String> HOMO_SAPIENS_ALL_CONTIGS = Arrays.stream(new String[] {"1", "2", "3", "4", "5", "6",
             "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y"})
             .collect(Collectors.toSet());
-    private final Set<String> HOMO_SAPIENS_AUTOSOMAL_CONTIGS = Arrays.stream(new String[] {"1", "2", "3", "4", "5", "6",
+    public static final Set<String> HOMO_SAPIENS_AUTOSOMAL_CONTIGS = Arrays.stream(new String[] {"1", "2", "3", "4", "5", "6",
             "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22"})
             .collect(Collectors.toSet());
 
@@ -42,33 +42,37 @@ public class IntegerCopyNumberTransitionProbabilityCacheCollectionUnitTest exten
 
     @Test
     public void performCompleteTestNoPadding() {
+        final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection =
+                IntegerCopyNumberTransitionMatrixCollection.read(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE);
         final IntegerCopyNumberTransitionProbabilityCacheCollection cache =
-                new IntegerCopyNumberTransitionProbabilityCacheCollection(
-                        HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE, false);
+                new IntegerCopyNumberTransitionProbabilityCacheCollection(transitionMatrixCollection, false);
         performCompleteTest(cache, false);
     }
 
     @Test
     public void performCompleteTestWithPadding() {
+        final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection =
+                IntegerCopyNumberTransitionMatrixCollection.read(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE);
         final IntegerCopyNumberTransitionProbabilityCacheCollection cache =
-                new IntegerCopyNumberTransitionProbabilityCacheCollection(
-                        HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE, true);
+                new IntegerCopyNumberTransitionProbabilityCacheCollection(transitionMatrixCollection, true);
         performCompleteTest(cache, true);
     }
 
     @Test(expectedExceptions = IllegalStateException.class)
     public void testMaxCopyNumberNoPadding() {
+        final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection =
+                IntegerCopyNumberTransitionMatrixCollection.read(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE);
         final IntegerCopyNumberTransitionProbabilityCacheCollection cache =
-                new IntegerCopyNumberTransitionProbabilityCacheCollection(
-                        HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE, false);
+                new IntegerCopyNumberTransitionProbabilityCacheCollection(transitionMatrixCollection, false);
         cache.getMaxCopyNumber();
     }
 
     @Test
     public void testMaxCopyNumberWithPadding() {
+        final IntegerCopyNumberTransitionMatrixCollection transitionMatrixCollection =
+                IntegerCopyNumberTransitionMatrixCollection.read(HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE);
         final IntegerCopyNumberTransitionProbabilityCacheCollection cache =
-                new IntegerCopyNumberTransitionProbabilityCacheCollection(
-                        HOMO_SAPIENS_COPY_NUMBER_TRANSITION_PRIOR_TABLE_FILE, true);
+                new IntegerCopyNumberTransitionProbabilityCacheCollection(transitionMatrixCollection, true);
         Assert.assertEquals(cache.getMaxCopyNumber(), MAX_COPY_NUMBER);
     }
 
@@ -82,22 +86,22 @@ public class IntegerCopyNumberTransitionProbabilityCacheCollectionUnitTest exten
                     /* set the per-base transition matrix according to contig and sex genotype */
                     final RealMatrix perBaseTransitionMatrix;
                     if (HOMO_SAPIENS_AUTOSOMAL_CONTIGS.contains(contig)) {
-                        perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixDataUnitTest
+                        perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixUnitTest
                                 .HOMO_SAPIENS_COPY_NUMBER_TRANSITION_AUTOSOMAL_TRUTH;
                     } else if (contig.equals("X")) {
                         if (sexGenotype.equals("SEX_XX")) {
-                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixDataUnitTest
+                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixUnitTest
                                     .HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XX_X_TRUTH;
                         } else { /* SEX_XY */
-                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixDataUnitTest
+                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixUnitTest
                                     .HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XY_X_TRUTH;
                         }
                     } else { /* contig = Y */
                         if (sexGenotype.equals("SEX_XX")) {
-                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixDataUnitTest
+                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixUnitTest
                                     .HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XX_Y_TRUTH;
                         } else { /* SEX_XY */
-                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixDataUnitTest
+                            perBaseTransitionMatrix = IntegerCopyNumberTransitionMatrixUnitTest
                                     .HOMO_SAPIENS_COPY_NUMBER_TRANSITION_XY_Y_TRUTH;
                         }
                     }

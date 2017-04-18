@@ -4,6 +4,7 @@ import avro.shaded.com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.*;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -53,13 +54,33 @@ public final class Nd4jIOUtils {
     }
 
     /**
-     * Writes NDArray to a tab-separated file.
+     * Writes NDArray to a tab-separated file. The shape of {@code arr} is written as a comment line. If
+     * {@code arr} is a reshaped tensor (originally rank-3 and above), the user must pass the original shape
+     * ({@code originalShape}) so that the correct tensor shape can be reconstructed upon loading.
      *
-     * @param arr an instance of {@link INDArray}
+     * Notes:
+     *
+     * - if {@code originalShape} is null, the {@code arr.shape()} will be used instead
+     * - if {@code rowNames} is null, the rows will be named as "ROW_0", "ROW_1", ... by default
+     * - if {@code columnNames} is null, the columns will be named as "COL_0", "COL_1", ... by default
+     * - the identifier string {@code identifier} will be written on the top-left corner of the tab-separated output
+     *
+     * Example-- for an input INDArray:
+     *   arr = {{1, 2, 3},
+     *          {4, 5, 6}}
+     * and {@code identifier = "MATRIX_NAME"}, the tab-separated output will be:
+     *
+     *   #[2_3]
+     *   MATRIX_NAME    COL_0   COL_1   COL_2
+     *   ROW_0          1.0     2.0     3.0
+     *   ROW_1          4.0     5.0     6.0
+     *
+     * @param arr an instance of {@link INDArray}; must be rank-1 or rank-2
      * @param outputFile the output file
      * @param identifier the identifier string (just a name)
-     * @param columnNames column names
-     * @param rowNames row names
+     * @param rowNames nullable row names
+     * @param columnNames nullable column names
+     * @param originalShape nullable original shape
      */
     public static void writeNDArrayMatrixToTextFile(@Nonnull final INDArray arr,
                                                     @Nonnull final File outputFile,
@@ -70,7 +91,7 @@ public final class Nd4jIOUtils {
         Utils.nonNull(arr, "The NDArray to be written to file must be non-null");
         Utils.nonNull(outputFile, "The output file must be non-null");
         Utils.nonNull(identifier, "The identifier must be non-null");
-        Utils.validateArg(arr.rank() <= 2, "only rank-1 and rank-2 NDArray objects can be saved");
+        Utils.validateArg(arr.rank() <= 2, "Only rank-1 and rank-2 NDArray objects can be saved");
         final int[] shape;
         if (originalShape != null) {
             Utils.validateArg(Arrays.stream(originalShape).reduce(1, (a, b) -> a*b) ==
@@ -93,7 +114,7 @@ public final class Nd4jIOUtils {
                     .forEach(columnNameList::add);
             columnNameCollection = new TableColumnCollection(columnNameList);
         } else {
-            Utils.validateArg(columnNames.size() == colDimension, "The length of column name list does not match" +
+            Utils.validateArg(columnNames.size() == colDimension, "The length of the column name list does not match" +
                     " the column dimension of the provided NDArray");
             columnNameList.add(identifier);
             columnNameList.addAll(columnNames);
@@ -136,7 +157,8 @@ public final class Nd4jIOUtils {
     }
 
     /**
-     * Reads NDArray from a tab-separated file and returns a triple of the array, row names, and column names
+     * Reads NDArray from a tab-separated file and returns a triple of the array, row names, and column names.
+     * The input file must be formatted according to the output of {@link #writeNDArrayMatrixToTextFile(INDArray, File, String, List, List, int[])}
      *
      * @param inputFile the input tab-separated file
      * @return a triple of ({@link INDArray}, row names, column names)
@@ -174,6 +196,7 @@ public final class Nd4jIOUtils {
 
     /**
      * Reads NDArray from a tab-separated file and returns an instance of {@link INDArray}.
+     * The input file must be formatted according to the output of {@link #writeNDArrayMatrixToTextFile(INDArray, File, String, List, List, int[])}
      *
      * @param inputFile the input tab-separated file
      * @return an {@link INDArray}
@@ -185,8 +208,10 @@ public final class Nd4jIOUtils {
     /**
      * Writes a tensor NDArray (rank >= 2) to a tab-separated file.
      *
-     * For a tensor of dim D, it is flattened along the last D - 1 dimensions (in c order) and is written as a
-     * matrix. The shape of the tensor is written as a comment line for proper reshaping upon loading.
+     * A rank-D tensor is flattened along the last D - 1 dimensions (in 'c' order) and is written as a
+     * matrix. The shape of the tensor is written as the first comment line for proper reshaping upon loading.
+     *
+     * The columns are named arbitrarily as "COL_0", "COL_1", ... "COL_L" where L = total tensor elements / first dimension.
      *
      * @param arr an arbitrary NDArray
      * @param outputFile output file
@@ -202,11 +227,7 @@ public final class Nd4jIOUtils {
         Utils.validateArg(arr.rank() >= 2, "The array must be at least rank-2");
 
         final int[] shape = arr.shape();
-        int extraDims = 1;
-        for (int i = 1; i < arr.rank(); i++) {
-            extraDims *= shape[i];
-        }
-        final INDArray tensorToMatrix = arr.reshape('c', new int[] {shape[0], extraDims});
+        final INDArray tensorToMatrix = arr.reshape('c', new int[] {shape[0], arr.length() / shape[0]});
         writeNDArrayMatrixToTextFile(tensorToMatrix, outputFile, identifier, rowNames, null, arr.shape());
     }
 
@@ -217,7 +238,7 @@ public final class Nd4jIOUtils {
      * @return an instance of {@link INDArray}
      */
     public static INDArray readNDArrayTensorFromTextFile(@Nonnull final File inputFile) {
-        Utils.regularReadableUserFile(inputFile);
+        IOUtils.canReadFile(inputFile);
 
         /* read the first line, make sure it is a header line, and get the dimension of the tensor */
         final String commentLine;

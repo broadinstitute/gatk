@@ -19,7 +19,7 @@ import java.util.Random;
 /**
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
-public final class AlleleFractionHiddenMarkovModelUnitTest {
+public final class AlleleFractionHMMUnitTest {
     private static final AlleleFractionGlobalParameters NO_BIAS_OR_OUTLIERS_PARAMS = new AlleleFractionGlobalParameters(1.0, 1e-10, 1e-10);
 
     @Test
@@ -28,7 +28,7 @@ public final class AlleleFractionHiddenMarkovModelUnitTest {
         final List<Double> minorAlleleFractions = Arrays.asList(0.1, 0.5, 0.23);
         final List<Double> weights = Arrays.asList(0.2, 0.2, 0.6);
         final AlleleFractionGlobalParameters params = new AlleleFractionGlobalParameters(0.1, 0.01, 0.03);
-        final AlleleFractionHiddenMarkovModel model = new AlleleFractionHiddenMarkovModel(minorAlleleFractions, weights,
+        final AlleleFractionHMM model = new AlleleFractionHMM(minorAlleleFractions, weights,
                 memoryLength, AllelicPanelOfNormals.EMPTY_PON, params);
 
         Assert.assertEquals(memoryLength, model.getMemoryLength());
@@ -49,7 +49,7 @@ public final class AlleleFractionHiddenMarkovModelUnitTest {
         final List<Double> minorAlleleFractions = Arrays.asList(0.3, 0.3, 0.3);
         final double memoryLength = 1e3;
         final AlleleFractionGlobalParameters params = new AlleleFractionGlobalParameters(0.1, 0.01, 0.03);
-        final AlleleFractionHiddenMarkovModel model = new AlleleFractionHiddenMarkovModel(minorAlleleFractions, weights,
+        final AlleleFractionHMM model = new AlleleFractionHMM(minorAlleleFractions, weights,
                 memoryLength, AllelicPanelOfNormals.EMPTY_PON, params);
 
         final Random random = new Random(13);
@@ -82,7 +82,7 @@ public final class AlleleFractionHiddenMarkovModelUnitTest {
         final List<Double> weights = Arrays.asList(0.5, 0.5);    // only the second state
         final List<Double> minorAlleleFractions = Arrays.asList(0.1, 0.5);
         final double memoryLength = 1e3;
-        final AlleleFractionHiddenMarkovModel model = new AlleleFractionHiddenMarkovModel(minorAlleleFractions, weights,
+        final AlleleFractionHMM model = new AlleleFractionHMM(minorAlleleFractions, weights,
                 memoryLength, AllelicPanelOfNormals.EMPTY_PON, NO_BIAS_OR_OUTLIERS_PARAMS);
 
         final Random random = new Random(13);
@@ -128,7 +128,7 @@ public final class AlleleFractionHiddenMarkovModelUnitTest {
         final List<Double> weights = Doubles.asList(MathUtils.normalizeFromRealSpace(new double[] {0.2, 0.2, 0.6, 0.1, 0.9, 0.1}));
         final List<Double> minorAlleleFractions = Arrays.asList(0.1, 0.2, 0.3, 0.4, 0.23, 0.11);
         final double memoryLength = 5e6;
-        final AlleleFractionHiddenMarkovModel model = new AlleleFractionHiddenMarkovModel(minorAlleleFractions, weights,
+        final AlleleFractionHMM model = new AlleleFractionHMM(minorAlleleFractions, weights,
                 memoryLength, AllelicPanelOfNormals.EMPTY_PON, NO_BIAS_OR_OUTLIERS_PARAMS);
 
         final int pos1 = 100;
@@ -161,7 +161,7 @@ public final class AlleleFractionHiddenMarkovModelUnitTest {
         final List<Double> weights = Doubles.asList(MathUtils.normalizeFromRealSpace(new double[] {0.2, 0.2, 0.6, 0.1, 0.9, 0.1}));
         final List<Double> minorAlleleFractions = Arrays.asList(0.1, 0.2, 0.3, 0.4, 0.5, 0.33);
         final double memoryLength = 5e6;
-        final AlleleFractionHiddenMarkovModel model = new AlleleFractionHiddenMarkovModel(minorAlleleFractions, weights,
+        final AlleleFractionHMM model = new AlleleFractionHMM(minorAlleleFractions, weights,
                 memoryLength, AllelicPanelOfNormals.EMPTY_PON, NO_BIAS_OR_OUTLIERS_PARAMS);
 
         final SimpleInterval position1 = new SimpleInterval("chr1", 100, 100);
