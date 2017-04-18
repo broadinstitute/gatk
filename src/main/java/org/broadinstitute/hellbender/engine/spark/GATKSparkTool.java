@@ -84,7 +84,13 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
     @Argument(doc = "For tools that write an output, write the output in multiple pieces (shards)", shortName = "shardedOutput", fullName = "shardedOutput", optional = true)
     protected boolean shardedOutput = false;
 
-    @Argument(doc="For tools that shuffle data or write an output, sets the number of reducers. Defaults to 0, which gives one partition per 10MB of input.",
+    /**
+     * Input size per reducer.
+     * Analysis by Intel in May 2016 showed that 10MB resulted in stragglers on the reads pipeline and 64MB eliminated them. Runtime improved by 10%.
+     */
+    private static final int REDUCER_CHUNK_MB=64;
+
+    @Argument(doc="For tools that shuffle data or write an output, sets the number of reducers. Defaults to 0, which gives one partition per " +REDUCER_CHUNK_MB+ "MB of input.",
             shortName = "numReducers", fullName = "numReducers", optional = true)
     protected int numReducers = 0;
 
@@ -276,11 +282,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * for running a processing pipeline. The larger the number of reducers used, the smaller the amount of memory
      * each one needs.
      *
-     * Defaults to 10MB, but subclasses can override to change the value. Memory intensive pipelines should decrease
+     * Defaults to {@link #REDUCER_CHUNK_MB}MB, but subclasses can override to change the value. Memory intensive pipelines should decrease
      * the partition size, while pipelines with lighter memory requirements may increase the partition size.
      */
     public int getTargetPartitionSize() {
-        return 10 * 1024 * 1024; // 10MB
+        return REDUCER_CHUNK_MB * 1024 * 1024;//Megabytes
     }
 
     /**
