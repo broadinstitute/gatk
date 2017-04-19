@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 /**
  * Simple data structure to pass and read/write a List of {@link AllelicCount} objects.
+ * All {@link AllelicCount} fields (including ref/alt nucleotide) must be specified if reading/writing from/to file.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
@@ -25,8 +26,10 @@ public class AllelicCountCollection {
     }
 
     /**
-     * Constructor from from file. Checks whether the input file has just the basic columns, or full columns.
+     * Constructor from file. All {@link AllelicCount} fields must be specified (including ref/alt nucleotide).
      * @param inputFile file to read from
+     * @throws UserException.BadInput if not all {@link AllelicCount} fields are specified
+     * @throws UserException.CouldNotReadInputFile if input file cannot be read
      */
     public AllelicCountCollection(final File inputFile) {
         Utils.nonNull(inputFile);
@@ -46,14 +49,18 @@ public class AllelicCountCollection {
         counts.add(Utils.nonNull(allelicCount));
     }
 
-    /** Returns an unmodifiable view of the list of AllelicCounts.   */
+    /**
+     * Returns an unmodifiable view of the list of {@link AllelicCount}s.
+     */
     public List<AllelicCount> getCounts() {
         return Collections.unmodifiableList(counts);
     }
 
     /**
-     * Writes counts to specified file.
+     * Writes counts to specified file.  All {@link AllelicCount} fields must be specified (including ref/alt nucleotide).
      * @param outputFile    file to write to (if it exists, it will be overwritten)
+     * @throws IllegalArgumentException if not all {@link AllelicCount} fields are specified
+     * @throws UserException.CouldNotCreateOutputFile if output file cannot be created
      */
     public void write(final File outputFile) {
         try (final AllelicCountWriter writer = new AllelicCountWriter(outputFile)) {

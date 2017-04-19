@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.copynumber.allelic.alleliccount;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 
 /**
- * Table columns of an allelic count tab-separated file.
+ * Table columns of an allelic count tab-separated file.  All columns are mandatory.
  *
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;

@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 /**
- * Reference and alternate allele counts at a SNP site specified by an interval.
+ * Reference and alternate allele counts at a site specified by an interval.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  * @author Mehrtash Babadi &lt;mehrtash@broadinstitute.org&gt;
@@ -67,6 +67,10 @@ public class AllelicCount implements Locatable {
         return Utils.nonNull(altNucleotide, "The alt nucleotide is not set.");
     }
 
+    /**
+     * If all fields are specified for both counts, they are all used to check for equality.
+     * Otherwise, only the interval and counts are used.
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -79,8 +83,8 @@ public class AllelicCount implements Locatable {
         final AllelicCount count = (AllelicCount) o;
         return interval.equals(count.interval)
                 && refReadCount == count.refReadCount && altReadCount == count.altReadCount
-                && (!((refNucleotide != null) && (count.refNucleotide != null)) || (refNucleotide == count.refNucleotide))
-                && (!((altNucleotide != null) && (count.altNucleotide != null)) || (altNucleotide == count.altNucleotide));
+                && (((refNucleotide == null) || (count.refNucleotide == null)) || (refNucleotide == count.refNucleotide))
+                && (((altNucleotide == null) || (count.altNucleotide == null)) || (altNucleotide == count.altNucleotide));
     }
 
     @Override

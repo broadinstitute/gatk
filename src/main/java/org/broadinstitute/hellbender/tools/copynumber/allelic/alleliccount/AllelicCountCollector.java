@@ -22,7 +22,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Collects reference/alternate allele counts at sites.
+ * Collects reference/alternate allele counts at sites.  The alt count is defined as the total count minus the ref count,
+ * and the alt nucleotide is defined as the non-ref base with the highest count, with ties broken by the order of the
+ * bases in {@link AllelicCountCollector#BASES}.
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
