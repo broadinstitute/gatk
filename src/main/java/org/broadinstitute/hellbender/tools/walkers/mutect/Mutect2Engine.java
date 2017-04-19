@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
-import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
@@ -29,7 +27,6 @@ import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -37,10 +34,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static java.lang.Math.pow;
 
 /**
  * Created by davidben on 9/15/16.
@@ -78,7 +72,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
     private AssemblyRegionTrimmer trimmer = new AssemblyRegionTrimmer();
 
-    private final Predicate<GATKRead> useReadForGenotyping;
+    private static ReadFilter GOOD_READ_LENGTH_FILTER = new ReadFilter() {
+        private static final long serialVersionUID = 985763L;
+        @Override
+        public boolean test(final GATKRead read) {
+            return read.getLength() >= MIN_READ_LENGTH;
+        }
+    };
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -93,14 +93,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         this.header = Utils.nonNull(header);
         Utils.nonNull(reference);
         referenceReader = AssemblyBasedCallerUtils.createReferenceReader(reference);
-
-        final Predicate<GATKRead> goodReadLengthForGenotyping = read -> read.getLength() >= MIN_READ_LENGTH;
-        final Predicate<GATKRead> goodMappingQuality = read -> read.getMappingQuality() >= MTAC.MIN_MAPPING_QUALITY_SCORE;
-        final Predicate<GATKRead> isInReadGroupsToKeep = read ->  MTAC.keepRG == null || read.getReadGroup().equals(MTAC.keepRG);
-        useReadForGenotyping = goodReadLengthForGenotyping.and(goodMappingQuality).
-                and(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE).
-                and(isInReadGroupsToKeep);
-
         initialize();
     }
 
@@ -143,16 +135,22 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
         List<ReadFilter> filters = new ArrayList<>();
         filters.add(new MappingQualityReadFilter(READ_QUALITY_FILTER_THRESHOLD));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
+        filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);
         filters.add(ReadFilterLibrary.PRIMARY_ALIGNMENT);
         filters.add(ReadFilterLibrary.NOT_DUPLICATE);
         filters.add(ReadFilterLibrary.PASSES_VENDOR_QUALITY_CHECK);
         filters.add(ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT);
+        filters.add(GOOD_READ_LENGTH_FILTER);
+        filters.add(ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE);
         filters.add(ReadFilterLibrary.GOOD_CIGAR);
         filters.add(new WellformedReadFilter());
 
         return filters;
     }
+
+
+    final Predicate<GATKRead> isInReadGroupsToKeep = read ->  MTAC.keepRG == null || read.getReadGroup().equals(MTAC.keepRG);
 
 
     public void writeHeader(final VariantContextWriter vcfWriter, final SAMSequenceDictionary sequenceDictionary) {
@@ -214,7 +212,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
             return NO_CALLS;
         }
 
-        final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, MTAC.MIN_MAPPING_QUALITY_SCORE, header);
+        final AssemblyRegion assemblyActiveRegion = AssemblyBasedCallerUtils.assemblyRegionWithWellMappedReads(originalAssemblyRegion, READ_QUALITY_FILTER_THRESHOLD, header);
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyActiveRegion, Collections.emptyList(), MTAC, header, samplesList, logger, referenceReader, assemblyEngine);
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents();
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion,allVariationEvents);
@@ -232,21 +230,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
 
-        // filter out reads from genotyping which fail mapping quality based criteria
-        //TODO - why don't do this before any assembly is done? Why not just once at the beginning of this method
-        //TODO - on the originalAssemblyRegion?
-        final Collection<GATKRead> readsToRemove = regionForGenotyping.getReads().stream().filter(useReadForGenotyping.negate()).collect(Collectors.toList());
-        regionForGenotyping.removeAll(readsToRemove);
-
-        // we might have no reads left after filtering
-        if (regionForGenotyping.getReads().isEmpty()){
-            return NO_CALLS;
-        }
-
-        // TODO: this quantity and all downstream uses of it seems like it can be obtained from
-        // TODO: ReadLikelihoods<Allele>::sampleReads
-        final Map<String, List<GATKRead>> perSampleFilteredReadList = splitReadsBySample(readsToRemove);
-
         final Map<String,List<GATKRead>> reads = splitReadsBySample( regionForGenotyping.getReads() );
 
         final ReadLikelihoods<Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
@@ -255,7 +238,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator {
 
         final HaplotypeCallerGenotypingEngine.CalledHaplotypes calledHaplotypes = genotypingEngine.callMutations(
                 readLikelihoods,
-                perSampleFilteredReadList,
                 assemblyResult,
                 referenceContext,
                 regionForGenotyping.getSpan(),
