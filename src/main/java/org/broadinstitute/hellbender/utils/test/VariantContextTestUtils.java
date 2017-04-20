@@ -20,9 +20,33 @@ public final class VariantContextTestUtils {
         if (notationCorrectedExpected instanceof Double && notationCorrectedActual instanceof Double) {
             // must be very tolerant because doubles are being rounded to 2 sig figs
             BaseTest.assertEqualsDoubleSmart((Double) notationCorrectedActual, (Double) notationCorrectedExpected, 1e-2, "Attribute " + key);
+        } else if (actual instanceof Integer || expected instanceof Integer) {
+            Object actualNormalized = normalizeToInteger(actual);
+            Object expectedNormalized = normalizeToInteger(expected);
+            Assert.assertEquals(actualNormalized, expectedNormalized, "Attribute " + key);
         } else {
             Assert.assertEquals(notationCorrectedActual, notationCorrectedExpected, "Attribute " + key);
         }
+    }
+
+    /**
+     * Attempt to convert a String containing a signed integer (no separators) to an integer. If the attribute is not
+     * a String, or does not contain an integer, the original object is returned.
+     *
+     * @param attribute
+     * @return An Integer representing the value in the attribute if it contains a parseable integer, otherwise the
+     * original attribute.
+     */
+    @VisibleForTesting
+    static Object normalizeToInteger(final Object attribute) {
+        if (attribute instanceof String) {
+            try {
+                return Integer.parseInt((String) attribute);
+            } catch ( final NumberFormatException e) {
+                return attribute;
+            }
+         }
+        return attribute;
     }
 
     /**
@@ -84,14 +108,25 @@ public final class VariantContextTestUtils {
             final Object actualValue = act.getValue();
             if ( expected.containsKey(act.getKey()) && expected.get(act.getKey()) != null ) {
                 final Object expectedValue = expected.get(act.getKey());
-                if ( expectedValue instanceof List) {
-                    final List<Object> expectedList = (List<Object>)expectedValue;
-                    Assert.assertTrue(actualValue instanceof List, act.getKey() + " should be a list but isn't");
-                    final List<Object> actualList = (List<Object>)actualValue;
-                    Assert.assertEquals(actualList.size(), expectedList.size(), act.getKey() + " size");
-                    for ( int i = 0; i < expectedList.size(); i++ ) {
+                if (expectedValue instanceof List && actualValue instanceof List) {
+                    // both values are lists, compare element b element
+                    List<Object> expectedList = (List<Object>) expectedValue;
+                    List<Object> actualList = (List<Object>) actualValue;
+                    Assert.assertEquals(actualList.size(), expectedList.size());
+                    for (int i = 0; i < expectedList.size(); i++) {
                         assertAttributeEquals(act.getKey(), actualList.get(i), expectedList.get(i));
                     }
+                } else if (expectedValue instanceof List) {
+                    // expected is a List but actual is not; normalize to String and compare
+                    Assert.assertTrue(actualValue instanceof String, "Attempt to compare list to a non-string value");
+                    final String expectedString = ((List<Object>) expectedValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
+                    assertAttributeEquals(act.getKey(), actualValue, expectedString);
+                }
+                else if (actualValue instanceof List) {
+                    // actual is a List but expected is not; normalize to String and compare
+                    Assert.assertTrue(expectedValue instanceof String, "Attempt to compare list to a non-string value");
+                    final String actualString = ((List<Object>) actualValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
+                    assertAttributeEquals(act.getKey(), actualString, expectedValue);
                 } else {
                     assertAttributeEquals(act.getKey(), actualValue, expectedValue);
                 }
