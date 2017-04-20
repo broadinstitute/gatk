@@ -8,6 +8,7 @@ import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.bcf2.BCF2Codec;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -91,11 +92,13 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
       BaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> {
         // TODO: Temporary hacks to make this test pass. Must be removed later
         if ( // allele order
-             e.getStart() != 17967343 && e.getStart() != 17966384 &&
+//             e.getStart() != 17967343 && e.getStart() != 17966384 &&
              // split block
              e.getEnd() != 17981447
           ) {
-          VariantContextTestUtils.assertVariantContextsAreEqual(a, e, Collections.emptyList());
+          final VariantContext sortedA = VariantContextTestUtils.sortAlleles(a, (VCFHeader) genomicsDBFeatureReader.getHeader());
+          final VariantContext sortedE = VariantContextTestUtils.sortAlleles(e, (VCFHeader)combinedVCFReader.getHeader());
+          VariantContextTestUtils.assertVariantContextsAreEqual(sortedA, sortedE, Collections.emptyList());
         }
       });
     }
