@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.ShardBoundary;
 import org.broadinstitute.hellbender.engine.ShardBoundaryShard;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import scala.Option;
 import scala.Tuple2;
 import scala.reflect.ClassTag;
@@ -283,11 +284,13 @@ public class SparkSharder {
             int partitionIndex = splitPoint.getPartitionIndex();
             Locatable current = splitPoint.getLocatable();
             int intervalContigIndex = sequenceDictionary.getSequenceIndex(current.getContig());
+            Utils.validate(intervalContigIndex != -1, "Contig not found in sequence dictionary: " + current.getContig());
             final Locatable next;
             final int nextContigIndex;
             if (i < splitPoints.size() - 1) {
                 next = splitPoints.get(i + 1);
                 nextContigIndex = sequenceDictionary.getSequenceIndex(next.getContig());
+                Utils.validate(nextContigIndex != -1, "Contig not found in sequence dictionary: " + next.getContig());
             } else {
                 next = null;
                 nextContigIndex = sequenceDictionary.getSequences().size();
@@ -296,11 +299,14 @@ public class SparkSharder {
                 addPartitionReadExtent(extents, partitionIndex, current.getContig(), current.getStart(), next.getStart() + maxLocatableLength);
             } else {
                 // complete current contig
-                int contigEnd = sequenceDictionary.getSequence(current.getContig()).getSequenceLength();
+                SAMSequenceRecord seq = sequenceDictionary.getSequence(current.getContig());
+                Utils.validate(seq != null, "Contig not found in sequence dictionary: " + current.getContig());
+                int contigEnd = seq.getSequenceLength();
                 addPartitionReadExtent(extents, partitionIndex, current.getContig(), current.getStart(), contigEnd);
                 // add any whole contigs up to next (exclusive)
                 for (int contigIndex = intervalContigIndex + 1; contigIndex < nextContigIndex; contigIndex++) {
                     SAMSequenceRecord sequence = sequenceDictionary.getSequence(contigIndex);
+                    Utils.validate(sequence != null, "Contig index not found in sequence dictionary: " + contigIndex);
                     addPartitionReadExtent(extents, partitionIndex, sequence.getSequenceName(), 1, sequence.getSequenceLength());
                 }
                 // add start of next contig
