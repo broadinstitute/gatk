@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.utils.test;
 
-import genomicsdb.VCF2TileDB;
+import com.intel.genomicsdb.GenomicsDBImporter;
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.testng.Assert;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.function.BiConsumer;
 
 
 /**
@@ -27,8 +30,8 @@ public final class GenomicsDBTestUtils {
         FileUtils.deleteQuietly(workspace);
 
         IOUtils.deleteRecursivelyOnExit(workspace);
-        final VCF2TileDB vcf2TileDB = new VCF2TileDB(loader.getAbsolutePath());
-        vcf2TileDB.write();
+        final GenomicsDBImporter importer = new GenomicsDBImporter(loader.getAbsolutePath());
+        importer.write();
         test.run();
     }
 

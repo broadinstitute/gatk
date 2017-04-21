@@ -19,7 +19,7 @@ plugins {
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
 }
-
+    
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
 import javax.tools.ToolProvider;
@@ -52,12 +52,12 @@ repositories {
     }
 
     mavenLocal()
-
 }
 
 final htsjdkVersion = System.getProperty('htsjdk.version','2.9.1')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','0.5.0-proto-3.0.0-beta-1')
 
 
 configurations.all {
@@ -105,10 +105,13 @@ dependencies {
     testCompile(javadocJDKFiles)
 
     compile 'org.broadinstitute:barclay:1.0.0-24-g87c3fa2-SNAPSHOT'
-    compile ('com.intel:genomicsdb:0.3.0') {
+    compile ('com.intel:genomicsdb:' + genomicsdbVersion)  {
+        exclude module: 'spark-core_2.10'
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
+    compile 'com.googlecode.protobuf-java-format:protobuf-java-format:1.2'
+    compile 'com.googlecode.json-simple:json-simple:1.1.1'
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
