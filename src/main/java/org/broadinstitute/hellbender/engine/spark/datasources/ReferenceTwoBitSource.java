@@ -4,6 +4,8 @@ import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import com.google.common.io.ByteStreams;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import org.bdgenomics.adam.models.ReferenceRegion;
 import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
@@ -12,6 +14,7 @@ import org.broadinstitute.hellbender.engine.datasources.ReferenceSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.collection.JavaConversions;
 
@@ -62,10 +65,10 @@ public class ReferenceTwoBitSource implements ReferenceSource, Serializable {
 
     @Override
     public SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
-        List<SAMSequenceRecord> records = twoBitSeqEntries.entrySet().stream()
-                .map(pair -> new SAMSequenceRecord(pair.getKey(), pair.getValue().dnaSize()))
-                .collect(Collectors.toList());
-        return new SAMSequenceDictionary(records);
+        // use the fasta dict file for the sequence dictionary, rather than reading from the .2bit itself, since the
+        // latter scrambles the contig ordering (a bug in ADAM due to not using a ListMap, see https://github.com/bigdatagenomics/adam/issues/1502)
+        String fastaPath = referenceURL.replace(TWO_BIT_EXTENSION, ".fasta");
+        return ReferenceSequenceFileFactory.getReferenceSequenceFile(IOUtils.getPath(fastaPath)).getSequenceDictionary();
     }
 
     public static boolean isTwoBit(String file) {
