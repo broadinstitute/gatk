@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -18,7 +16,8 @@ import static org.testng.Assert.*;
  * Created by davidben on 3/24/17.
  */
 public class BaseQualityUnitTest {
-
+    final static private String SAMPLE = "SAMPLE";
+    final static private Genotype DUMMY_GENOTYPE = new GenotypeBuilder(SAMPLE).make();
 
     @Test
     public void test() {
@@ -61,9 +60,15 @@ public class BaseQualityUnitTest {
         matrix.set(1, 5, 10);
         matrix.set(1, 6, 10);
 
-        final Map<String, Object> annotations = new BaseQuality().annotate(null, vc, likelihoods);
+        final BaseQuality bq = new BaseQuality();
+        final GenotypeBuilder gb = new GenotypeBuilder(DUMMY_GENOTYPE);
 
-        Assert.assertEquals((int) annotations.get(BaseQuality.REFERENCE_MEDIAN_QUALITY_KEY), 30);
-        Assert.assertEquals((int) annotations.get(BaseQuality.ALT_MEDIAN_QUALITY_KEY), 25);
+        bq.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
+        final Genotype g = gb.make();
+
+        final int[] medianRefAndAltQuals = (int[]) g.getExtendedAttribute(BaseQuality.KEY);
+
+        Assert.assertEquals( medianRefAndAltQuals[0], 30);
+        Assert.assertEquals(medianRefAndAltQuals[1], 25);
     }
 }

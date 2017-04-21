@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -18,6 +16,9 @@ import java.util.*;
  * Created by davidben on 3/23/17.
  */
 public class ReadPositionUnitTest extends BaseTest {
+    final static private String SAMPLE = "SAMPLE";
+    final static private Genotype DUMMY_GENOTYPE = new GenotypeBuilder(SAMPLE).make();
+
     @Test
     public void test() {
         final SAMFileHeader SAM_HEADER = ArtificialReadUtils.createArtificialSamHeader(10, 0, 1000);
@@ -61,10 +62,16 @@ public class ReadPositionUnitTest extends BaseTest {
         matrix.set(1,5, 10);
         matrix.set(1,6, 10);
 
-        final Map<String, Object> annotations = new ReadPosition().annotate(null, vc, likelihoods);
+        final ReadPosition rp = new ReadPosition();
+        final GenotypeBuilder gb = new GenotypeBuilder(DUMMY_GENOTYPE);
 
-        Assert.assertEquals((int) annotations.get(ReadPosition.REFERENCE_MEDIAN_POSITION_KEY), 2);
-        Assert.assertEquals((int) annotations.get(ReadPosition.ALT_MEDIAN_POSITION_KEY), 1);
+        rp.annotate(null, vc, DUMMY_GENOTYPE, gb, likelihoods);
+        final Genotype g = gb.make();
+
+        final int[] medianRefAndAltPositions = (int[]) g.getExtendedAttribute(ReadPosition.KEY);
+
+        Assert.assertEquals( medianRefAndAltPositions[0], 2);
+        Assert.assertEquals(medianRefAndAltPositions[1], 1);
     }
 
 }

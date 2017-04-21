@@ -44,6 +44,11 @@ public final class FilterMutectCalls extends VariantWalker {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(inputHeader.getMetaDataInSortedOrder());
         Mutect2FilteringEngine.M_2_FILTER_NAMES.stream().map(GATKVCFHeaderLines::getFilterLine).forEach(headerLines::add);
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.ARTIFACT_IN_NORMAL_FILTER_NAME, "artifact_in_normal"));
+        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_BASE_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median base quality"));
+        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_MAPPING_QUALITY_DIFFERENCE_FILTER_NAME, "ref - alt median mapping quality"));
+        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_CLIPPING_DIFFERENCE_FILTER_NAME, "ref - alt median clipping"));
+        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.MEDIAN_FRAGMENT_LENGTH_DIFFERENCE_FILTER_NAME, "abs(ref - alt) median fragment length"));
+        headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.READ_POSITION_FILTER_NAME, "median distance of alt variants from end of reads"));
         headerLines.add(new VCFFilterHeaderLine(Mutect2FilteringEngine.CONTAMINATION_FILTER_NAME, "contamination"));
 
         final VCFHeader vcfHeader = new VCFHeader(headerLines, inputHeader.getGenotypeSamples());

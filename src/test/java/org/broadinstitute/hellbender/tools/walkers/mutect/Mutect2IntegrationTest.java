@@ -218,6 +218,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(vc -> !outputKeys.contains(keyForVariant(vc)))
                 .collect(Collectors.toList());
 
+        final List<VariantContext> filteredFalseNegatives = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
+                .filter(vc -> !vc.getFilters().isEmpty())
+                .filter(vc -> ! vc.isSymbolicOrSV())
+                .filter(vc -> truthKeys.contains(keyForVariant(vc)))
+                .collect(Collectors.toList());
+
         final List<VariantContext> falsePositivesList = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
                 .filter(vc -> vc.getFilters().isEmpty())
                 .filter(vc -> !truthKeys.contains(keyForVariant(vc)))
