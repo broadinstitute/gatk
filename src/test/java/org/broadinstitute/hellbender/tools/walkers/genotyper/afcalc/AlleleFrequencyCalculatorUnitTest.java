@@ -98,7 +98,7 @@ public class AlleleFrequencyCalculatorUnitTest extends BaseTest {
             final VariantContext vc = pair.getLeft();
             final int[] expected = pair.getRight();
             final int[] actual = afCalc.getLog10PNonRef(vc).getAlleleCountsOfMLE();
-            Assert.assertEquals(Arrays.asList(expected), Arrays.asList(actual));
+            Assert.assertEquals(actual, expected);
         }
     }
 
