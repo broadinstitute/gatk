@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
 import org.broadinstitute.hellbender.utils.test.VariantContextTestUtils;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -37,33 +36,34 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     return GenomicsDBImport.class.getSimpleName();
   }
 
-  @DataProvider(name = "GenomicsDBImporterTestData")
-  public Object[][] genomicsDBImporterTestData() {
-
+  @Test
+  public void testGenomicsDBImportFileInputs() throws IOException {
     final String hg00096 = largeFileTestDir + "gvcfs/HG00096.g.vcf.gz";
     final String hg00268 = largeFileTestDir + "gvcfs/HG00268.g.vcf.gz";
     final String na19625 = largeFileTestDir + "gvcfs/NA19625.g.vcf.gz";
     final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
 
+    testGenomicsDBImporter(Arrays.asList(hg00096, hg00268, na19625), interval, combined);
+  }
+
+  @Test(groups = {"bucket"})
+  public void testGenomicsDBImportGCSInputs() throws IOException {
     final String hg00096_cloud = getGCPTestInputPath() + "large/gvcfs/HG00096.g.vcf.gz";
     final String hg00268_cloud = getGCPTestInputPath() + "large/gvcfs/HG00268.g.vcf.gz";
     final String na19625_cloud = getGCPTestInputPath() + "large/gvcfs/NA19625.g.vcf.gz";
+    final String combined = largeFileTestDir + "gvcfs/combined.gatk3.7.g.vcf.gz";
+    final SimpleInterval interval = new SimpleInterval("chr20", 17960187, 17981445);
 
-    return new Object[][] {
-      { Arrays.asList(hg00096, hg00268, na19625), combined },
-      { Arrays.asList(hg00096_cloud, hg00268_cloud, na19625_cloud), combined }
-    };
+    testGenomicsDBImporter(Arrays.asList(hg00096_cloud, hg00268_cloud, na19625_cloud), interval, combined);
   }
 
-  @Test(dataProvider="GenomicsDBImporterTestData")
-  public void testGenomicsDBImporter(final List<String> vcfInputs, final String expectedCombinedVCF) throws IOException {
-
+  private void testGenomicsDBImporter(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args.add("--genomicsDBWorkspace"); args.add(GENOMICSDB_WORKSPACE);
     args.add("--genomicsDBArray"); args.add(GENOMICSDB_ARRAYNAME);
 
-    SimpleInterval simpleInterval = new SimpleInterval("chr20", 17960187, 17981445);
-    args.add("-L"); args.add(simpleInterval);
+    args.add("-L"); args.add(interval);
 
     for (String vcfInput : vcfInputs) {
       args.add("-V"); args.add(vcfInput);
@@ -72,7 +72,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     runCommandLine(args);
 
     GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
-      new GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream>(
+      new GenomicsDBFeatureReader<>(
         new File(TEST_VIDMAP_JSON_FILE).getAbsolutePath(),
         new File(TEST_CALLSETMAP_JSON_FILE).getAbsolutePath(),
         GENOMICSDB_WORKSPACE,
@@ -83,10 +83,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
       AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
 
     try (CloseableTribbleIterator<VariantContext> actualVcs =
-           genomicsDBFeatureReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());
+           genomicsDBFeatureReader.query(interval.getContig(), interval.getStart(), interval.getEnd());
 
          CloseableTribbleIterator<VariantContext> expectedVcs =
-           combinedVCFReader.query(simpleInterval.getContig(), simpleInterval.getStart(), simpleInterval.getEnd());) {
+           combinedVCFReader.query(interval.getContig(), interval.getStart(), interval.getEnd());) {
 
       BaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> {
         // TODO: Temporary hacks to make this test pass. Must be removed later
