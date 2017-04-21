@@ -32,8 +32,4 @@ tiledb_bin filter=lfs diff=lfs merge=lfs -text
 VQSR/** filter=lfs diff=lfs merge=lfs -text
 human_g1k_v37.20.21.fasta.img filter=lfs diff=lfs merge=lfs -text
 Homo_sapiens_assembly38.20.21.fasta filter=lfs diff=lfs merge=lfs -text
-gvcfs/HG00096.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
-gvcfs/HG00268.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
-gvcfs/NA19625.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
-gvcfs/combined.gatk3.7.g.vcf.gz filter=lfs diff=lfs merge=lfs -text
-gvcfs/*.tbi filter=lfs diff=lfs merge=lfs -text
+gvcfs/** filter=lfs diff=lfs merge=lfs -text
