@@ -4,6 +4,7 @@ import com.google.common.base.Strings;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
+import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -118,7 +119,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends BaseTest {
     @Test(dataProvider = "PcrErrorModelTestProvider", enabled = true)
     public void createPcrErrorModelTest(final String repeat, final int repeatLength) {
 
-        final PairHMMLikelihoodCalculationEngine engine = new PairHMMLikelihoodCalculationEngine((byte)0,
+        final PairHMMLikelihoodCalculationEngine engine = new PairHMMLikelihoodCalculationEngine((byte)0, new PairHMMNativeArguments(),
                 PairHMM.Implementation.ORIGINAL, 0.0,
                 PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE);
 
@@ -165,7 +166,7 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends BaseTest {
 
         PairHMMLikelihoodCalculationEngine.writeLikelihoodsToFile = true;
 
-        final ReadLikelihoodCalculationEngine lce = new PairHMMLikelihoodCalculationEngine((byte) SAMUtils.MAX_PHRED_SCORE,
+        final ReadLikelihoodCalculationEngine lce = new PairHMMLikelihoodCalculationEngine((byte) SAMUtils.MAX_PHRED_SCORE, new PairHMMNativeArguments(),
                 PairHMM.Implementation.LOGLESS_CACHING, MathUtils.logToLog10(QualityUtils.qualToErrorProbLog10(LEAC.phredScaledGlobalReadMismappingRate)),
                 PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE);
 
