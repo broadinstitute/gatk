@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 
@@ -65,7 +66,8 @@ public abstract class ReadWalker extends GATKTool {
     @Override
     void initializeFeatures() {
         //We override this method to change lookahead of the cache
-        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                                      referenceArguments.getReferencePath());
         if ( features.isEmpty() ) {  // No available sources of Features discovered for this tool
             features = null;
         }

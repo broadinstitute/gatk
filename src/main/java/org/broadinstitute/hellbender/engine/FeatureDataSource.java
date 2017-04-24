@@ -11,6 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -197,7 +198,25 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
-                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
+        this(featureInput, queryLookaheadBases, targetFeatureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+             null);
+    }
+
+    /**
+     * Creates a FeatureDataSource backed by the provided FeatureInput. We will look ahead the specified number of bases
+     * during queries that produce cache misses.
+     *
+     * @param featureInput a FeatureInput specifying a source of Features
+     * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
+     * @param targetFeatureType When searching for a {@link FeatureCodec} for this data source, restrict the search to codecs
+     *                          that produce this type of Feature. May be null, which results in an unrestricted search.
+     * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param reference Path to a reference. May be null. Needed only for reading from GenomicsDB.
+     */
+    public FeatureDataSource(final FeatureInput<T> featureInput, final int queryLookaheadBases, final Class<? extends Feature> targetFeatureType,
+                             final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
         Utils.validateArg( queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         this.featureInput = Utils.nonNull(featureInput, "featureInput must not be null");
 
@@ -206,7 +225,7 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
         // Create a feature reader without requiring an index.  We will require one ourselves as soon as
         // a query by interval is attempted.
-        this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper);
+        this.featureReader = getFeatureReader(featureInput, targetFeatureType, cloudWrapper, cloudIndexWrapper, reference);
 
         if (isGenomicsDBPath(featureInput.getFeaturePath())) {
             //genomics db uri's have no associated index file to read from, but they do support random access
@@ -235,11 +254,20 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
 
     @SuppressWarnings("unchecked")
     private static <T extends Feature> FeatureReader<T> getFeatureReader(final FeatureInput<T> featureInput, final Class<? extends Feature> targetFeatureType,
-                                                                         Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
-                                                                         Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper) {
+                                                                         final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper,
+                                                                         final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper,
+                                                                         final Path reference) {
         if (isGenomicsDBPath(featureInput.getFeaturePath())) {
             try {
-                return (FeatureReader<T>)getGenomicsDBFeatureReader(featureInput.getFeaturePath());
+                if (reference == null) {
+                    throw new UserException.MissingReference("You must provide a reference if you want to load from GenomicsDB");
+                }
+                try {
+                    final File referenceAsFile = reference.toFile();
+                    return (FeatureReader<T>)getGenomicsDBFeatureReader(featureInput.getFeaturePath(), referenceAsFile);
+                } catch (final UnsupportedOperationException e){
+                    throw new UserException.BadInput("GenomicsDB requires that the reference be a local file.", e);
+                }
             } catch (final ClassCastException e) {
                 throw new UserException("GenomicsDB inputs can only be used to provide VariantContexts.", e);
             }
@@ -272,25 +300,39 @@ public final class FeatureDataSource<T extends Feature> implements GATKDataSourc
         }
     }
 
-    private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path) {
+    private static FeatureReader<VariantContext> getGenomicsDBFeatureReader(final String path, final File reference) {
         if( !isGenomicsDBPath(path) ) {
             throw new IllegalArgumentException("Trying to create a GenomicsDBReader from a non-GenomicsDB input");
         }
 
         final String noheader = path.replace(GENOMIC_DB_URI_SCHEME, "");
-        final File loaderJson = new File(noheader, "loader.json");
-        final File queryJson = new File(noheader, "query.json");
+        final File workspace = new File(noheader);
+        final File callsetJson = new File(noheader, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME);
+        final File vidmapJson = new File(noheader, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME);
+
+        if ( ! workspace.exists() || ! workspace.canRead() || ! workspace.isDirectory() ) {
+            throw new UserException("GenomicsDB workspace " + workspace.getAbsolutePath() + " does not exist, " +
+                    " is not readable, or is not a directory");
+        }
 
         try {
-            IOUtils.assertFileIsReadable(loaderJson);
-            IOUtils.assertFileIsReadable(queryJson);
+            IOUtils.assertFileIsReadable(callsetJson);
+            IOUtils.assertFileIsReadable(vidmapJson);
         }
         catch ( UserException.CouldNotReadInputFile e ) {
-            throw new UserException("Couldn't connect to GenomicsDB because the loader and/or query JSON files were not readable", e);
+            throw new UserException("Couldn't connect to GenomicsDB because the vidmap and/or callset JSON files (" +
+                    GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME + " and " + GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME +
+                    ") could not be read from GenomicsDB workspace " + workspace.getAbsolutePath(), e);
         }
 
         try {
-            return new GenomicsDBFeatureReader<>(loaderJson.getAbsolutePath(), queryJson.getAbsolutePath(), new BCF2Codec());
+            return new GenomicsDBFeatureReader<>(vidmapJson.getAbsolutePath(),
+                                                 callsetJson.getAbsolutePath(),
+                                                 workspace.getAbsolutePath(),
+                                                 GenomicsDBConstants.DEFAULT_ARRAY_NAME,
+                                                 reference.getAbsolutePath(),
+                                                 null,
+                                                 new BCF2Codec());
         } catch (final IOException e) {
             throw new UserException("Couldn't create GenomicsDBFeatureReader", e);
         }

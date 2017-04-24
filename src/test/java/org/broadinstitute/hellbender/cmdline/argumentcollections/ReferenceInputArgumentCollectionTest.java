@@ -6,7 +6,10 @@ import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineParser;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.io.File;
 
 public final class ReferenceInputArgumentCollectionTest {
     private static class WithOptionalReferenceCollection {
@@ -33,5 +36,27 @@ public final class ReferenceInputArgumentCollectionTest {
         WithRequiredReferenceCollection required = new WithRequiredReferenceCollection();
         CommandLineParser clp = new CommandLineArgumentParser(required);
         clp.parseArguments(System.out, args);
+    }
+
+    @Test
+    public void testGetReferencePath(){
+       final ReferenceInputArgumentCollection nonNullPath = new ReferenceInputArgumentCollection(){
+            private static final long serialVersionUID = 0L;
+            @Override public File getReferenceFile() { return new File("someFilePath"); }
+            @Override public String getReferenceFileName() { return "someFilePath";}
+        };
+
+        Assert.assertEquals(nonNullPath.getReferencePath().toFile(), nonNullPath.getReferenceFile());
+    }
+
+    @Test
+    public void testGetNullPath(){
+        final ReferenceInputArgumentCollection nullPath = new ReferenceInputArgumentCollection(){
+            private static final long serialVersionUID = 0L;
+            @Override public File getReferenceFile() { return null; }
+            @Override public String getReferenceFileName() { return null;}
+        };
+
+        Assert.assertNull(nullPath.getReferencePath());
     }
 }

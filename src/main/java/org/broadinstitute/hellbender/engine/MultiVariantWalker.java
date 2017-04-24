@@ -6,6 +6,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Spliterator;
@@ -61,7 +62,8 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
 
                     //Add the driving datasource to the feature manager too so that it can be queried. Setting lookahead to 0 to avoid caching.
                     //Note: we are disabling lookahead here because of windowed queries that need to "look behind" as well.
-                    features.addToFeatureSources(0, featureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+                    features.addToFeatureSources(0, featureInput, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                                                 referenceArguments.getReferencePath());
                 }
         );
         drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);

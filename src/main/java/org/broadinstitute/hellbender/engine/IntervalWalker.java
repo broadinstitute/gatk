@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.nio.file.Path;
+
 /**
  * An IntervalWalker is a tool that processes a single interval at a time, with the ability to query
  * optional overlapping sources of reads, reference data, and/or variants/features.
@@ -32,7 +34,8 @@ public abstract class IntervalWalker extends GATKTool {
         // when our query intervals are overlapping and gradually increasing in position (as they are
         // with ReadWalkers, typically), but with IntervalWalkers our query intervals are guaranteed
         // to be non-overlapping, since our interval parsing code always merges overlapping intervals.
-        features = new FeatureManager(this, 0, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+        features = new FeatureManager(this, 0, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                                      referenceArguments.getReferencePath());
         if ( features.isEmpty() ) {  // No available sources of Features for this tool
             features = null;
         }

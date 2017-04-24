@@ -1,6 +1,0 @@
-in tiny_jsons folder
-     bcftools norm -m +any -O z -o tiny.gvcf.gz tiny.gvcf
-     bcftools index -f tiny.gvcf.gz
-
- from gatk folder:
- ~/Workspace/GenomicsDB/bin/vcf2tiledb src/test/resources/org/broadinstitute/hellbender/engine/GenomicsDBIntegration/tiny_jsons/loader.json

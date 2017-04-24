@@ -168,10 +168,10 @@ public final class SimpleInterval implements Locatable, Serializable {
 
     @Override
     public String toString() {
-        return String.format("%s:%s-%s", contig, start, end);
+        return IntervalUtils.locatableToString(this);
     }
 
-    /**
+     /**
      * @return name of the contig this is mapped to
      */
     @Override
