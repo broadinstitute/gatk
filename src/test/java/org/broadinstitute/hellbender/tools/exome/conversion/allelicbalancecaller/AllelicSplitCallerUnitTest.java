@@ -13,6 +13,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 
 
@@ -143,7 +144,7 @@ public class AllelicSplitCallerUnitTest extends BaseTest {
 
     @Test(dataProvider = "3dArray")
     public void testSumOnlyFirstDimension(double[][][] array3d, double[][] gt) {
-        Assert.assertEquals(CNLOHCaller.sumOverFirstDimension(array3d), gt);
+        Assert.assertTrue(Arrays.deepEquals(CNLOHCaller.sumOverFirstDimension(array3d), gt));
     }
 
     @DataProvider(name="3dArray")

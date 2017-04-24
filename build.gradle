@@ -76,11 +76,33 @@ compileTestJava {
 build.dependsOn installDist
 check.dependsOn installDist
 
+// NOTE: When changing the GATK version, these versions should be changed to specify the same version as used by GATK
+final gatkVersion = '4.alpha.2-226-gfade3c6-20170420.222947-1'
+final htsjdkVersion = '2.9.1'
+final testNGVersion = '6.11'
+
 dependencies {
-    compile 'org.broadinstitute:gatk:4.alpha.2-226-gfade3c6-20170420.222947-1'
+    compile 'org.broadinstitute:gatk:' + gatkVersion
     compile 'org.broadinstitute:hdf5-java-bindings:1.1.0-hdf5_2.11.0'
 
-    testCompile 'org.testng:testng:6.8.8'
+    testCompile 'org.testng:testng:' + testNGVersion
+}
+
+// These need to be kept in sync with, and should specify the same versions as the version of GATK public we're using
+configurations.all {
+    resolutionStrategy {
+        force 'com.google.http-client:google-http-client:1.21.0'
+        // the snapshot folder contains a dev version of guava, we don't want to use that.
+        force 'com.google.guava:guava:18.0'
+        // force the htsjdk version so we don't get a different one transitively
+        force 'com.github.samtools:htsjdk:' + htsjdkVersion
+        // later versions explode Hadoop
+        force 'com.google.protobuf:protobuf-java:3.0.0-beta-1'
+        // force testng dependency so we don't pick up a different version via GenomicsDB
+        force 'org.testng:testng:' + testNGVersion
+    }
+    all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
+    all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
 }
 
 // Dependency change for including MLLib

@@ -18,6 +18,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Unit tests that cover {@link HDF5Library} and {@link HDF5File}.
@@ -188,7 +189,7 @@ public final class HDF5LibraryUnitTest {
         file = new HDF5File(testFile, HDF5File.OpenMode.READ_ONLY);
 
         final double[][] theDoubles = file.readDoubleMatrix("test-group/double-group/my-double");
-        Assert.assertEquals(theDoubles, testValues.clone());
+        Assert.assertTrue(Arrays.deepEquals(theDoubles, testValues.clone()));
         file.close();
     }
 

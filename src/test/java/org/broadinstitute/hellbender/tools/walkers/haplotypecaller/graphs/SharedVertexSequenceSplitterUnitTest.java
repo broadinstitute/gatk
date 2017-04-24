@@ -209,7 +209,13 @@ public class SharedVertexSequenceSplitterUnitTest extends BaseTest {
             sortedSplitPaths.add(kbh.bases());
         Collections.sort(sortedSplitPaths, BaseUtils.BASES_COMPARATOR);
 
-        Assert.assertEquals(sortedSplitPaths, sortedOriginalPaths, Utils.join("_", strings) + "_" + hasTop + "_" + hasBot);
+        Assert.assertEquals(sortedSplitPaths.size(), sortedOriginalPaths.size());
+        for (int i=0; i < sortedSplitPaths.size(); i++) {
+            Assert.assertEquals(
+                    sortedSplitPaths.get(i),
+                    sortedOriginalPaths.get(i),
+                    Utils.join("_", strings) + "_" + hasTop + "_" + hasBot);
+        }
     }
 
     /**
