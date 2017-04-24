@@ -1,17 +1,23 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect;
 
+import htsjdk.tribble.readers.LineIterator;
+import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCodec;
 import junit.framework.Assert;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -24,6 +30,7 @@ import java.util.stream.StreamSupport;
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
     private static final String DREAM_VCFS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/vcfs/";
+    private static final String DREAM_MASKS_DIR = publicTestDir + "org/broadinstitute/hellbender/tools/mutect/dream/masks/";
 
     /**
      * Several DREAM challenge bams with synthetic truth data.  In order to keep file sizes manageable, bams are restricted
@@ -43,7 +50,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
      * @throws Exception
      */
     @Test(dataProvider = "dreamSyntheticData")
-    public void testDreamTumorNormal(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample, final File truthVcf, final double requiredSensitivity) throws Exception {
+    public void testDreamTumorNormal(final File tumorBam, final String tumorSample, final File normalBam, final String normalSample,
+                                     final File truthVcf, final File mask, final double requiredSensitivity) throws Exception {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
         final File filteredVcf = createTempFile("filtered", ".vcf");
@@ -55,6 +63,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "-normal", normalSample,
                 "-R", b37_reference_20_21,
                 "-L", "20",
+                "-XL", mask.getAbsolutePath(),
                 "-O", unfilteredVcf.getAbsolutePath()
         };
 
@@ -63,11 +72,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // run FilterMutectCalls
         new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-V", unfilteredVcf.getAbsolutePath(), "-O", filteredVcf.getAbsolutePath()), "FilterMutectCalls"));
 
-        final Pair<Double, Double> concordance = calculateConcordance(filteredVcf, truthVcf);
-        final double sensitivity = concordance.getLeft();
-        final double fdr = concordance.getRight();
-        Assert.assertTrue("Sensitivity " + sensitivity + " was lower than required sensitivity of " + requiredSensitivity, sensitivity > requiredSensitivity);
-        Assert.assertTrue(fdr < 0.5);
+
+        // run Concordance
+        final File concordanceSummary = createTempFile("concordance", ".txt");
+        new Main().instanceMain(makeCommandLineArgs(Arrays.asList("-truth", truthVcf.getAbsolutePath(), "-eval", unfilteredVcf.getAbsolutePath(), "-L", "20", "-XL", mask.getAbsolutePath(), "-summary", concordanceSummary.getAbsolutePath()), "Concordance"));
+
+        final List<ConcordanceSummaryRecord> summaryRecords = new ConcordanceSummaryRecord.Reader(concordanceSummary).toList();
+        summaryRecords.forEach(rec -> {
+            if (rec.getTruePositives() + rec.getFalseNegatives() > 0) {
+                Assert.assertTrue(rec.getSensitivity() > requiredSensitivity);
+                Assert.assertTrue(rec.getPrecision() > 0.5);
+            }
+        });
     }
 
     // make a pon with a tumor and then use this pon to call somatic variants on the same tumor
@@ -182,10 +198,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "dreamSyntheticData")
     public Object[][] dreamSyntheticData() {
         return new Object[][]{
-                //{new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), 0.97},
-                //{new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), 0.95},
-                {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), 0.90},
-                {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), 0.65}
+                {new File(DREAM_BAMS_DIR, "tumor_1.bam"), "synthetic.challenge.set1.tumor", new File(DREAM_BAMS_DIR, "normal_1.bam"), "synthetic.challenge.set1.normal", new File(DREAM_VCFS_DIR, "sample_1.vcf"), new File(DREAM_MASKS_DIR, "mask1.list"), 0.97},
+                {new File(DREAM_BAMS_DIR, "tumor_2.bam"), "background.synth.challenge2.snvs.svs.tumorbackground", new File(DREAM_BAMS_DIR, "normal_2.bam"), "synthetic.challenge.set2.normal", new File(DREAM_VCFS_DIR, "sample_2.vcf"), new File(DREAM_MASKS_DIR, "mask2.list"), 0.95},
+                {new File(DREAM_BAMS_DIR, "tumor_3.bam"), "IS3.snv.indel.sv", new File(DREAM_BAMS_DIR, "normal_3.bam"), "G15512.prenormal.sorted", new File(DREAM_VCFS_DIR, "sample_3.vcf"), new File(DREAM_MASKS_DIR, "mask3.list"), 0.90},
+                {new File(DREAM_BAMS_DIR, "tumor_4.bam"), "synthetic.challenge.set4.tumour", new File(DREAM_BAMS_DIR, "normal_4.bam"), "synthetic.challenge.set4.normal", new File(DREAM_VCFS_DIR, "sample_4.vcf"), new File(DREAM_MASKS_DIR, "mask4.list"), 0.65}
         };
     }
 
@@ -210,25 +226,6 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final long truePositives = outputKeys.stream().filter(truthKeys::contains).count();
         final long falsePositives = outputKeys.size() - truePositives;
-
-        // for debugging
-        final List<VariantContext> falseNegatives = StreamSupport.stream(new FeatureDataSource<VariantContext>(truthVcf).spliterator(), false)
-                .filter(vc -> vc.getFilters().isEmpty())
-                .filter(vc -> ! vc.isSymbolicOrSV())
-                .filter(vc -> !outputKeys.contains(keyForVariant(vc)))
-                .collect(Collectors.toList());
-
-        final List<VariantContext> filteredFalseNegatives = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .filter(vc -> !vc.getFilters().isEmpty())
-                .filter(vc -> ! vc.isSymbolicOrSV())
-                .filter(vc -> truthKeys.contains(keyForVariant(vc)))
-                .collect(Collectors.toList());
-
-        final List<VariantContext> falsePositivesList = StreamSupport.stream(new FeatureDataSource<VariantContext>(outputVcf).spliterator(), false)
-                .filter(vc -> vc.getFilters().isEmpty())
-                .filter(vc -> !truthKeys.contains(keyForVariant(vc)))
-                .collect(Collectors.toList());
-
 
         final double sensitivity = (double) truePositives / truthKeys.size();
         final double fdr = (double) falsePositives / outputKeys.size();

@@ -15,6 +15,8 @@
 ##ALT=<ID=DUP,Description="Duplication">
 ##ALT=<ID=DEL,Description="Deletion">
 ##ALT=<ID=INS,Description="Insertion">
+##contig=<ID=20,length=63025520,assembly=GRCh37>
+##contig=<ID=21,length=48129895,assembly=GRCh37>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SPIKEIN
 20	577548	.	C	G	100	PASS	SOMATIC;VAF=0.48275862069;DPR=29.0	GT	0/1
 20	1838610	.	T	A	100	PASS	SOMATIC;VAF=0.5;DPR=35.3333333333	GT	0/1
