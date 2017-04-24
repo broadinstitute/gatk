@@ -58,7 +58,7 @@ final htsjdkVersion = System.getProperty('htsjdk.version','2.9.1')
 final sparkVersion = System.getProperty('spark.version', '2.0.2')
 final hadoopBamVersion = System.getProperty('hadoopBam.version','7.8.0')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','0.5.0-proto-3.0.0-beta-1')
-
+final testNGVersion = '6.11'
 
 configurations.all {
     resolutionStrategy {
@@ -69,10 +69,13 @@ configurations.all {
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
         // later versions explode Hadoop
         force 'com.google.protobuf:protobuf-java:3.0.0-beta-1'
+        // force testng dependency so we don't pick up a different version via GenomicsDB
+        force 'org.testng:testng:' + testNGVersion
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
 }
+
 
 jacocoTestReport {
     dependsOn test
@@ -110,8 +113,6 @@ dependencies {
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
-    compile 'com.googlecode.protobuf-java-format:protobuf-java-format:1.2'
-    compile 'com.googlecode.json-simple:json-simple:1.1.1'
     compile 'com.opencsv:opencsv:3.4'
     compile 'com.google.guava:guava:18.0'
     compile 'com.github.samtools:htsjdk:'+ htsjdkVersion
@@ -152,7 +153,7 @@ dependencies {
     }
 
     compile 'org.jgrapht:jgrapht-core:0.9.1'
-    compile 'org.testng:testng:6.9.6' //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
+    compile 'org.testng:testng:' + testNGVersion //compile instead of testCompile because it is needed for test infrastructure that needs to be packaged
     compile 'org.apache.hadoop:hadoop-minicluster:2.7.2' //the version of minicluster should match the version of hadoop
 
     compile('org.seqdoop:hadoop-bam:' + hadoopBamVersion) {
