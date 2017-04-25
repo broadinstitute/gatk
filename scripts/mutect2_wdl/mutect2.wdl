@@ -140,7 +140,7 @@ workflow Mutect2 {
       tumor_bam = tumor_bam,
       tumor_bam_index = tumor_bam_index,
       ref_fasta = ref_fasta,
-      ref_fasta_index = reF_fasta_index,
+      ref_fasta_index = ref_fasta_index,
       artifact_modes = artifact_modes,
       variants_for_contamination = variants_for_contamination,
       variants_for_contamination_index = variants_for_contamination_index
