@@ -18,6 +18,8 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.List;
 
+import static htsjdk.variant.vcf.VCFConstants.MAX_GENOTYPE_QUAL;
+
 /**
  * Genome-wide VCF writer
  */
@@ -71,15 +73,20 @@ public final class GVCFWriter implements VariantContextWriter {
     @VisibleForTesting
     static RangeMap<Integer,Range<Integer>> parsePartitions(final List<Integer> gqPartitions) {
         Utils.nonEmpty(gqPartitions);
-        Utils.containsNoNull(gqPartitions, "gqPartitions contains a null Integer");
+        Utils.containsNoNull(gqPartitions, "GQ partitions contains a null Integer");
         final RangeMap<Integer, Range<Integer>> result = TreeRangeMap.create();
         int lastThreshold = 0;
         for (final Integer value : gqPartitions) {
-            if (value < lastThreshold) {
-                throw new IllegalArgumentException("gqPartitions is out of order.  Last is " + lastThreshold + " but next is " + value);
+            if (value < 0) {
+                throw new IllegalArgumentException("GQ partitions contains a negative value.");
+            } else if (value > MAX_GENOTYPE_QUAL) {
+                throw new IllegalArgumentException("The value " + value + " in the list of GQ partitions is greater than " + MAX_GENOTYPE_QUAL + ".");
+            } else if (value < lastThreshold) {
+                throw new IllegalArgumentException("GQ partitions is out of order. Last is " + lastThreshold + " but next is " + value);
             } else if (value == lastThreshold) {
-                throw new IllegalArgumentException("gqPartitions is equal elements: Last is " + lastThreshold + " but next is " + value);
+                throw new IllegalArgumentException("GQ partitions is equal elements. Last is " + lastThreshold + " but next is " + value);
             }
+
             result.put(Range.closedOpen(lastThreshold, value), Range.closedOpen(lastThreshold, value));
             lastThreshold = value;
         }
@@ -166,7 +173,7 @@ public final class GVCFWriter implements VariantContextWriter {
 
     private boolean genotypeCanBeMergedInCurrentBlock(final Genotype g) {
         return currentBlock != null
-                && currentBlock.withinBounds(g.getGQ())
+                && currentBlock.withinBounds(Math.min(g.getGQ(), MAX_GENOTYPE_QUAL))
                 && currentBlock.getPloidy() == g.getPloidy()
                 && (currentBlock.getMinPLs() == null || !g.hasPL() || (currentBlock.getMinPLs().length == g.getPL().length));
     }
@@ -191,7 +198,7 @@ public final class GVCFWriter implements VariantContextWriter {
      */
     private HomRefBlock createNewBlock(final VariantContext vc, final Genotype g) {
         // figure out the GQ limits to use based on the GQ of g
-        final int gq = g.getGQ();
+        final int gq = Math.min(g.getGQ(), MAX_GENOTYPE_QUAL);
         final Range<Integer> partition = gqPartitions.get(gq);
 
         if( partition == null) {
