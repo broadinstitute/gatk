@@ -47,6 +47,7 @@ public class AddContextDataToReadSpark {
      * @param reads the coordinate-sorted reads
      * @param referenceSource the reference source
      * @param variants the coordinate-sorted variants
+     * @param variantsPaths the paths to variants files
      * @param joinStrategy the strategy to use to join context data to reads
      * @param sequenceDictionary the sequence dictionary for the reads (only used for OVERLAPS_PARTITIONER join strategy, use null otherwise)
      * @param shardSize the maximum size of each shard, in bases (only used for OVERLAPS_PARTITIONER join strategy, use 0 otherwise)
@@ -56,7 +57,7 @@ public class AddContextDataToReadSpark {
     public static JavaPairRDD<GATKRead, ReadContextData> add(
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> reads, final ReferenceMultiSource referenceSource,
-            final JavaRDD<GATKVariant> variants, final JoinStrategy joinStrategy,
+            final JavaRDD<GATKVariant> variants, final List<String> variantsPaths, final JoinStrategy joinStrategy,
             final SAMSequenceDictionary sequenceDictionary,
             final int shardSize, final int shardPadding) {
         // TODO: this static method should not be filtering the unmapped reads.  To be addressed in another issue.
@@ -73,7 +74,7 @@ public class AddContextDataToReadSpark {
             // Join Reads with ReferenceBases
             withVariantsWithRef = ShuffleJoinReadsWithRefBases.addBases(referenceSource, withVariants);
         } else if (joinStrategy.equals(JoinStrategy.OVERLAPS_PARTITIONER)) {
-            return addUsingOverlapsPartitioning(ctx, reads, referenceSource, variants, sequenceDictionary, shardSize, shardPadding);
+            return addUsingOverlapsPartitioning(ctx, reads, referenceSource, variants, variantsPaths, sequenceDictionary, shardSize, shardPadding);
         } else {
             throw new UserException("Unknown JoinStrategy");
         }
@@ -86,6 +87,7 @@ public class AddContextDataToReadSpark {
      * @param mappedReads the coordinate-sorted reads
      * @param referenceSource the reference source
      * @param variants the coordinate-sorted variants
+     * @param variantsPaths the paths to variants files, if null then the variants RDD is used
      * @param sequenceDictionary the sequence dictionary for the reads
      * @param shardSize the maximum size of each shard, in bases
      * @param shardPadding amount of extra context around each shard, in bases
@@ -94,8 +96,9 @@ public class AddContextDataToReadSpark {
     private static JavaPairRDD<GATKRead, ReadContextData> addUsingOverlapsPartitioning(
             final JavaSparkContext ctx,
             final JavaRDD<GATKRead> mappedReads, final ReferenceMultiSource referenceSource,
-            final JavaRDD<GATKVariant> variants, final SAMSequenceDictionary sequenceDictionary,
+            final JavaRDD<GATKVariant> variants, final List<String> variantsPaths, final SAMSequenceDictionary sequenceDictionary,
             final int shardSize, final int shardPadding) {
+
         final List<SimpleInterval> intervals = IntervalUtils.getAllIntervalsForReference(sequenceDictionary);
         // use unpadded shards (padding is only needed for reference bases)
         final List<ShardBoundary> intervalShards = intervals.stream()
@@ -103,19 +106,21 @@ public class AddContextDataToReadSpark {
                 .collect(Collectors.toList());
 
         final Broadcast<ReferenceMultiSource> bReferenceSource = ctx.broadcast(referenceSource);
-        final IntervalsSkipList<GATKVariant> variantSkipList = new IntervalsSkipList<>(variants.collect());
-        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = ctx.broadcast(variantSkipList);
+        final Broadcast<IntervalsSkipList<GATKVariant>> variantsBroadcast = variantsPaths == null ? ctx.broadcast(new IntervalsSkipList<>(variants.collect())) : null;
 
         int maxLocatableSize = Math.min(shardSize, shardPadding);
         JavaRDD<Shard<GATKRead>> shardedReads = SparkSharder.shard(ctx, mappedReads, GATKRead.class, sequenceDictionary, intervalShards, maxLocatableSize);
-        return shardedReads.flatMapToPair(new PairFlatMapFunction<Shard<GATKRead>, GATKRead, ReadContextData>() {
+        return shardedReads.flatMapToPair(
+                new PairFlatMapFunction<Shard<GATKRead>, GATKRead, ReadContextData>() {
             private static final long serialVersionUID = 1L;
+
             @Override
             public Iterator<Tuple2<GATKRead, ReadContextData>> call(Shard<GATKRead> shard) throws Exception {
                 // get reference bases for this shard (padded)
                 SimpleInterval paddedInterval = shard.getInterval().expandWithinContig(shardPadding, sequenceDictionary);
                 ReferenceBases referenceBases = bReferenceSource.getValue().getReferenceBases(null, paddedInterval);
-                final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsBroadcast.getValue();
+                final IntervalsSkipList<GATKVariant> intervalsSkipList = variantsPaths == null ? variantsBroadcast.getValue() :
+                        KnownSitesCache.getVariants(variantsPaths);
                 Iterator<Tuple2<GATKRead, ReadContextData>> transform = Iterators.transform(shard.iterator(), new Function<GATKRead, Tuple2<GATKRead, ReadContextData>>() {
                     @Nullable
                     @Override

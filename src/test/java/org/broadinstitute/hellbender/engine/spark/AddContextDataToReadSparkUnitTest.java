@@ -70,7 +70,7 @@ public class AddContextDataToReadSparkUnitTest extends BaseTest {
         SAMSequenceDictionary sd = new SAMSequenceDictionary(Lists.newArrayList(new SAMSequenceRecord("1", 100000), new SAMSequenceRecord("2", 100000)));
         when(mockSource.getReferenceSequenceDictionary(null)).thenReturn(sd);
 
-        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(ctx, rddReads, mockSource, rddVariants, joinStrategy,
+        JavaPairRDD<GATKRead, ReadContextData> rddActual = AddContextDataToReadSpark.add(ctx, rddReads, mockSource, rddVariants, null, joinStrategy,
                 sd, 10000, 1000);
         Map<GATKRead, ReadContextData> actual = rddActual.collectAsMap();
 
