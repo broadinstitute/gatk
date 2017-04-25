@@ -35,7 +35,7 @@ task CountFalsePositives {
 	File ref_fasta
 	File ref_fasta_index
 	File ref_dict
-	File intervals
+	File? intervals
 	File? gatk4_jar_override
 
 	command {
@@ -48,7 +48,7 @@ task CountFalsePositives {
 	  java -jar $GATK_JAR CountFalsePositives \
 		-V ${filtered_vcf} \
 		-R ${ref_fasta} \
-		-L ${intervals} \
+		${"-L " + intervals} \
 		-O false-positives.txt \
 	}
 
@@ -70,7 +70,7 @@ workflow Mutect2ReplicateValidation {
 	# tumor_bam, tumor_bam_index, tumor_sample_name, normal_bam, normal_bam_index, normal_sample_name
 	File replicate_pair_list
 	Array[Array[String]] pairs = read_tsv(replicate_pair_list)
-	File intervals
+	File? intervals
 	File ref_fasta
 	File ref_fasta_index
 	File ref_dict
@@ -92,28 +92,28 @@ workflow Mutect2ReplicateValidation {
 	scatter(pair in pairs) {
 		call m2.Mutect2 {
 			input:
-				gatk4_jar=gatk4_jar,
-				intervals=intervals,
-				ref_fasta=ref_fasta,
-				ref_fasta_index=ref_fasta_index,
-				ref_dict=ref_dict,
-				tumor_bam=pair[0],
-				tumor_bam_index=pair[1],
-				tumor_sample_name=pair[2],
-				normal_bam=pair[3],
-				normal_bam_index=pair[4],
-				normal_sample_name=pair[5],
-				pon=pon,
-				pon_index=pon_index,
-				scatter_count=scatter_count,
-				dbsnp=dbsnp,
-				dbsnp_index=dbsnp_index,
-				cosmic=cosmic,
-				cosmic_index=cosmic_index,
+				gatk4_jar = gatk4_jar,
+				intervals = intervals,
+				ref_fasta = ref_fasta,
+				ref_fasta_index = ref_fasta_index,
+				ref_dict = ref_dict,
+				tumor_bam = pair[0],
+				tumor_bam_index = pair[1],
+				tumor_sample_name = pair[2],
+				normal_bam = pair[3],
+				normal_bam_index = pair[4],
+				normal_sample_name = pair[5],
+				pon = pon,
+				pon_index = pon_index,
+				scatter_count = scatter_count,
+				dbsnp = dbsnp,
+				dbsnp_index = dbsnp_index,
+				cosmic = cosmic,
+				cosmic_index = cosmic_index,
 				picard_jar = picard_jar,
                 is_run_orientation_bias_filter = is_run_orientation_bias_filter,
-                is_run_oncotator=is_run_oncotator,
-                oncotator_docker=oncotator_docker,
+                is_run_oncotator = is_run_oncotator,
+                oncotator_docker = oncotator_docker,
                 m2_docker = m2_docker,
                 gatk4_jar_override = gatk4_jar_override,
                 preemptible_attempts = preemptible_attempts,
@@ -122,20 +122,20 @@ workflow Mutect2ReplicateValidation {
 
 		call CountFalsePositives {
 			input:
-				gatk4_jar=gatk4_jar,
-				filtered_vcf=Mutect2.filtered_vcf,
-				filtered_vcf_index=Mutect2.filtered_vcf_index,
-				ref_fasta=ref_fasta,
-				ref_fasta_index=ref_fasta_index,
-				ref_dict=ref_dict,
-				intervals=intervals,
-				gatk4_jar_override=gatk4_jar_override
+				gatk4_jar = gatk4_jar,
+				filtered_vcf = Mutect2.filtered_vcf,
+				filtered_vcf_index = Mutect2.filtered_vcf_index,
+				ref_fasta = ref_fasta,
+				ref_fasta_index = ref_fasta_index,
+				ref_dict = ref_dict,
+				intervals = intervals,
+				gatk4_jar_override = gatk4_jar_override
 		}
 	}
 
 	call GatherTables {
         input:
-            tables=CountFalsePositives.false_positive_counts
+            tables = CountFalsePositives.false_positive_counts
 	}
 
 	output {

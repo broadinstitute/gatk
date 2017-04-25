@@ -21,14 +21,14 @@ task CreateSubVcf {
     File hapmap
     File hapmap_idx        # only here so the index file is copied along, or else SelectVariants will create it.
     File sample_file
-    File intervals            # the primary intervals to restrict to
+    File? intervals            # the primary intervals to restrict to
     File dbsnp                # to filter out false positives
     File dbsnp_idx
 
     command {
         # subsampling and restriction to biallelics and intervals
         java -jar ${gatk_jar} SelectVariants -V ${hapmap} -O sub.vcf \
-            -restrictAllelesTo BIALLELIC --sample_file ${sample_file} -L ${intervals} -excludeNonVariants
+            -restrictAllelesTo BIALLELIC --sample_file ${sample_file} ${"-L " + intervals} -excludeNonVariants
 
         #SNPs, filtered for overlap with dbSNP
         java -jar ${gatk_jar} SelectVariants -V sub.vcf -O snps.vcf -L ${dbsnp} -selectType SNP
@@ -119,7 +119,7 @@ workflow HapmapSensitivityTruth {
     File pooled_bam
     File pooled_bam_idx
     File sample_file
-    File intervals
+    File? intervals
     File dbsnp
     File dbsnp_idx
     Int min_indel_spacing

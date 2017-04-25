@@ -26,7 +26,7 @@
 workflow Mutect2 {
   # gatk4_jar needs to be a String input to the workflow in order to work in a Docker image
   String gatk4_jar
-  File intervals
+  File? intervals
   File ref_fasta
   File ref_fasta_index
   File ref_dict
@@ -71,6 +71,9 @@ workflow Mutect2 {
       gatk4_jar = gatk4_jar,
       scatter_count = scatter_count,
       intervals = intervals,
+      ref_fasta = ref_fasta,
+      ref_fasta_index = ref_fasta_index,
+      ref_dict = ref_dict,
       gatk4_jar_override = gatk4_jar_override,
       preemptible_attempts = preemptible_attempts,
       m2_docker = m2_docker
@@ -172,7 +175,7 @@ workflow Mutect2 {
 
 task M2 {
   String gatk4_jar
-  File intervals
+  File? intervals
   File ref_fasta
   File ref_fasta_index
   File ref_dict
@@ -212,7 +215,7 @@ task M2 {
     ${"--dbsnp " + dbsnp} \
     ${"--cosmic " + cosmic} \
     ${"--normal_panel " + pon} \
-    -L ${intervals} \
+    ${"-L " + intervals} \
     -O "${output_vcf_name}.vcf"
   }
 
@@ -325,7 +328,7 @@ task Filter {
   File? gatk4_jar_override
   File unfiltered_vcf
   String output_vcf_name
-  File intervals
+  File? intervals
   Int preemptible_attempts
   String m2_docker
   File? pre_adapter_metrics
@@ -345,7 +348,7 @@ task Filter {
     fi
 
     if [[ "${variants_for_contamination}" == *.vcf ]]; then
-        java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} -L ${intervals} -V ${variants_for_contamination} -O pileups.table
+        java -Xmx4g -jar $GATK_JAR GetPileupSummaries -I ${tumor_bam} ${"-L " + intervals} -V ${variants_for_contamination} -O pileups.table
         java -Xmx4g -jar $GATK_JAR CalculateContamination -I pileups.table -O contamination.table
         contamination_cmd="-contaminationTable contamination.table"
     fi
@@ -376,7 +379,10 @@ task Filter {
 task SplitIntervals {
   String gatk4_jar
   Int scatter_count
-  File intervals
+  File? intervals
+  File ref_fasta
+  File ref_fasta_index
+  File ref_dict
   File? gatk4_jar_override
   Int preemptible_attempts
   String m2_docker
@@ -388,21 +394,9 @@ task SplitIntervals {
         GATK_JAR=${gatk4_jar_override}
     fi
 
-
-
-   if [[ "${scatter_count}" == 1 ]]; then
-        cp ${intervals} 1.interval_list
-   else
-        mkdir interval-files
-        java -jar $GATK_JAR IntervalListTools -I ${intervals} -O interval-files -SCATTER_COUNT ${scatter_count}
-
-        find $PWD/interval-files -iname scattered.intervals | sort > interval-files.txt
-        i=1
-        while read file; do
-          mv $file $i.interval_list
-          ((i++))
-        done < interval-files.txt
-   fi
+    mkdir interval-files
+    java -jar $GATK_JAR SplitIntervals -R ${ref_fasta} ${"-L " + intervals} -scatter ${scatter_count} -O interval-files
+    cp interval-files/*.intervals .
   }
 
   runtime {
@@ -413,7 +407,7 @@ task SplitIntervals {
   }
 
   output {
-    Array[File] interval_files = glob("*.interval_list")
+    Array[File] interval_files = glob("*.intervals")
   }
 }
 

@@ -50,7 +50,7 @@ workflow Mutect2Trio {
 	# normal_bam, normal_bam_index, normal_sample_name, good_tumor_bam, good_tumor_bam_index, good_tumor_sample_name, bad_tumor_bam, bad_tumor_bam_index, bad_tumor_sample_name,
 	File trio_list
 	Array[Array[String]] trios = read_tsv(trio_list)
-	File intervals
+	File? intervals
 	File ref_fasta
 	File ref_fasta_index
 	File ref_dict

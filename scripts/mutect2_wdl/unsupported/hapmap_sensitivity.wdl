@@ -71,7 +71,7 @@ workflow HapmapSensitivity {
   	String gatk4_jar
   	Int scatter_count
   	File pair_list
-  	File intervals
+  	File? intervals
   	File ref_fasta
   	File ref_fasta_index
   	File ref_dict
