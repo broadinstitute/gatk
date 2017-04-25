@@ -34,18 +34,17 @@ public class BreakpointEvidenceTest extends BaseTest {
         final int uncertainty = (readMetadata.getStatistics(groupName).getMedianFragmentSize()-readSize)/2;
         final int evidenceLocus = readStart - uncertainty;
         final BreakpointEvidence evidence2 = new BreakpointEvidence(read, readMetadata, evidenceLocus, uncertainty);
-        Assert.assertEquals(0, evidence1.getContigIndex());
-        Assert.assertEquals(evidenceLocus-uncertainty, evidence1.getEventStartPosition());
-        Assert.assertEquals(evidenceLocus+uncertainty, evidence1.getContigEnd());
-        Assert.assertEquals(2*uncertainty, evidence1.getEventWidth());
-        Assert.assertEquals(templateName, evidence1.getTemplateName());
-        Assert.assertEquals(BreakpointEvidence.TemplateEnd.UNPAIRED, evidence1.getTemplateEnd());
-        Assert.assertEquals(evidence2, evidence1);
-        Assert.assertEquals(0, evidence1.compareTo(evidence2));
+        Assert.assertEquals(evidence1.getLocation().getContig(), 0);
+        Assert.assertEquals(evidence1.getLocation().getStart(), evidenceLocus-uncertainty);
+        Assert.assertEquals(evidence1.getLocation().getEnd(), evidenceLocus+uncertainty);
+        Assert.assertEquals(evidence1.getLocation().getLength(), 2*uncertainty);
+        Assert.assertEquals(evidence1.getTemplateName(), templateName);
+        Assert.assertEquals(evidence1.getTemplateEnd(), BreakpointEvidence.TemplateEnd.UNPAIRED);
+        Assert.assertEquals(evidence1.toString(), evidence2.toString());
         read.setIsReverseStrand(false);
         final BreakpointEvidence evidence3 = new BreakpointEvidence(read, readMetadata);
         final BreakpointEvidence evidence4 = new BreakpointEvidence(read, readMetadata, readStart+readSize+uncertainty, uncertainty);
-        Assert.assertEquals(evidence4, evidence3);
+        Assert.assertEquals(evidence3.toString(), evidence4.toString());
     }
 
     @Test(groups = "spark")
@@ -74,6 +73,9 @@ public class BreakpointEvidenceTest extends BaseTest {
         final Input in = new Input(bis);
         @SuppressWarnings("unchecked")
         final List<BreakpointEvidence> evidenceList2 = (List<BreakpointEvidence>)kryo.readClassAndObject(in);
-        Assert.assertEquals(evidenceList, evidenceList2);
+        Assert.assertEquals(evidenceList.size(), evidenceList2.size());
+        for ( int idx = 0; idx != evidenceList.size(); ++idx ) {
+            Assert.assertEquals(evidenceList.get(idx).toString(), evidenceList2.get(idx).toString());
+        }
     }
 }

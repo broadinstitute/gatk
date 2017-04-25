@@ -14,10 +14,8 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
  * Each BreakpointEvidence object comes from examining a single read, and describing its funkiness, if any, by
  *   instantiating one of the subclasses that addresses that type of funkiness.
  */
-public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
-    private final int contigIndex; // which reference contig (as an index into the sequence dictionary)
-    private final int eventWidth; // i.e., eventEndPosition would be eventStartPosition+eventWidth
-    private final int eventStartPosition; // offset on the contig of the starting position of the event
+public class BreakpointEvidence {
+    private final SVInterval eventLocation;
     private final String templateName; // QNAME of the read that was funky (i.e., the name of the fragment)
     private final TemplateEnd templateEnd; // which read we're talking about (first or last, for paired-end reads)
 
@@ -56,12 +54,10 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
             width = read.getUnclippedStart() + templateLen - readEnd;
             start = readEnd;
         }
-        this.contigIndex = metadata.getContigID(read.getContig());
+        this.eventLocation = new SVInterval(metadata.getContigID(read.getContig()), start, start+width);
         this.templateName = read.getName();
         if ( templateName == null ) throw new GATKException("Read has no name.");
         this.templateEnd = findTemplateEnd(read);
-        this.eventWidth = width;
-        this.eventStartPosition = start;
     }
 
     /**
@@ -69,18 +65,16 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      */
     protected BreakpointEvidence( final GATKRead read, final ReadMetadata metadata,
                         final int contigOffset, final int offsetUncertainty ) {
-        this.contigIndex = metadata.getContigID(read.getContig());
-        this.templateName = read.getName();
-        if ( templateName == null ) throw new GATKException("Read has no name.");
-        this.templateEnd = findTemplateEnd(read);
         int width = 2*offsetUncertainty;
         int start = contigOffset - offsetUncertainty;
         if ( start < 1 ) {
             width += start - 1;
             start = 1;
         }
-        this.eventStartPosition = start;
-        this.eventWidth = width;
+        this.eventLocation = new SVInterval(metadata.getContigID(read.getContig()), start, start+width);
+        this.templateName = read.getName();
+        if ( templateName == null ) throw new GATKException("Read has no name.");
+        this.templateEnd = findTemplateEnd(read);
     }
 
     /**
@@ -89,9 +83,10 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      * it will be called by subclasses in their own constructors from Kryo streams (as super(kryo, input)).
      */
     protected BreakpointEvidence( final Kryo kryo, final Input input ) {
-        this.contigIndex = input.readInt();
-        this.eventWidth = input.readInt();
-        this.eventStartPosition = input.readInt();
+        final int contig = input.readInt();
+        final int start = input.readInt();
+        final int end = input.readInt();
+        this.eventLocation = new SVInterval(contig, start, end);
         this.templateName = input.readString();
         this.templateEnd = TemplateEnd.values()[input.readByte()];
     }
@@ -101,71 +96,26 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
      * used by the MapPartitioner to flush pending evidence in the FindBreakEvidenceSpark.WindowSorter.
      */
     public BreakpointEvidence( final int contigIndex ) {
-        this.contigIndex = contigIndex;
+        this.eventLocation = new SVInterval(contigIndex, 0, 0);
         this.templateName = "sentinel";
         this.templateEnd = TemplateEnd.PAIRED_UNKNOWN;
-        this.eventStartPosition = 0;
-        this.eventWidth = 0;
     }
 
     protected void serialize( final Kryo kryo, final Output output ) {
-        output.writeInt(contigIndex);
-        output.writeInt(eventWidth);
-        output.writeInt(eventStartPosition);
+        output.writeInt(eventLocation.getContig());
+        output.writeInt(eventLocation.getStart());
+        output.writeInt(eventLocation.getEnd());
         output.writeString(templateName);
         output.writeByte(templateEnd.ordinal());
     }
 
-    public int getContigIndex() { return contigIndex; }
-    public int getEventStartPosition() { return eventStartPosition; }
-    public int getEventWidth() { return eventWidth; }
-    public int getContigEnd() { return eventStartPosition +eventWidth; }
+    public SVInterval getLocation() { return eventLocation; }
     public String getTemplateName() { return templateName; }
     public TemplateEnd getTemplateEnd() { return templateEnd; }
 
     @Override
-    public int compareTo( final BreakpointEvidence that ) {
-        if ( this == that ) return 0;
-        int result = Integer.compare(this.contigIndex, that.contigIndex);
-        if ( result == 0 ) {
-            result = Integer.compare(this.eventStartPosition, that.eventStartPosition);
-            if ( result == 0 ) {
-                result = Integer.compare(this.eventWidth, that.eventWidth);
-                if ( result == 0 ) {
-                    result = this.templateEnd.compareTo(that.templateEnd);
-                    if ( result == 0 ) {
-                        result = this.templateName.compareTo(that.templateName);
-                        if ( result == 0 ) {
-                            result = this.getClass().getName().compareTo(that.getClass().getName());
-                        }
-                    }
-                }
-            }
-        }
-        return result;
-    }
-
-    @Override
     public String toString() {
-        return contigIndex + "[" + eventStartPosition + ":" + getContigEnd() + "] " + templateName + templateEnd;
-    }
-
-    @Override
-    public boolean equals( final Object obj ) {
-        return obj instanceof BreakpointEvidence && compareTo((BreakpointEvidence)obj) == 0;
-    }
-
-    @Override
-    public int hashCode() {
-        final int mult = 1103515245;
-        int result = 12345;
-        result = mult * result + contigIndex;
-        result = mult * result + eventStartPosition;
-        result = mult * result + eventWidth;
-        result = mult * result + templateName.hashCode();
-        result = mult * result + templateEnd.ordinal();
-        result = mult * result + getClass().getSimpleName().hashCode();
-        return mult * result;
+        return eventLocation+" "+templateName + templateEnd;
     }
 
     private static TemplateEnd findTemplateEnd( final GATKRead read ) {
@@ -201,23 +151,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
             super.serialize(kryo, output);
             output.writeString(cigar);
             output.writeString(tagSA);
-        }
-
-        @Override
-        public int compareTo( final BreakpointEvidence that ) {
-            int result = super.compareTo(that);
-            if ( result == 0 ) result = this.cigar.compareTo(((SplitRead)that).cigar);
-            return result;
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof SplitRead && compareTo((SplitRead)obj) == 0;
-        }
-
-        @Override
-        public int hashCode() {
-            return super.hashCode() + cigar.hashCode();
         }
 
         @Override
@@ -261,23 +194,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         }
 
         @Override
-        public int compareTo( final BreakpointEvidence that ) {
-            int result = super.compareTo(that);
-            if ( result == 0 ) result = this.cigar.compareTo(((LargeIndel)that).cigar);
-            return result;
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof LargeIndel && compareTo((LargeIndel)obj) == 0;
-        }
-
-        @Override
-        public int hashCode() {
-            return super.hashCode() + cigar.hashCode();
-        }
-
-        @Override
         public String toString() {
             return super.toString() + " Indel " + cigar;
         }
@@ -303,11 +219,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         }
 
         private MateUnmapped( final Kryo kryo, final Input input ) { super(kryo, input); }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof MateUnmapped && compareTo((MateUnmapped)obj) == 0;
-        }
 
         @Override
         public String toString() {
@@ -352,28 +263,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         }
 
         @Override
-        public int compareTo( final BreakpointEvidence that ) {
-            int result = super.compareTo(that);
-            if ( result == 0 ) {
-                result = Integer.compare(this.mateContigIndex, ((InterContigPair)that).mateContigIndex);
-                if ( result == 0 ) {
-                    result = Integer.compare(this.mateStartPosition, ((InterContigPair)that).mateStartPosition);
-                }
-            }
-            return result;
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof InterContigPair && compareTo((InterContigPair)obj) == 0;
-        }
-
-        @Override
-        public int hashCode() {
-            return 47*(47*(47*super.hashCode() + mateContigIndex) + mateStartPosition);
-        }
-
-        @Override
         public String toString() {
             return super.toString() + " IntercontigPair " + mateContigIndex;
         }
@@ -400,11 +289,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         private OutiesPair( final Kryo kryo, final Input input ) { super(kryo, input); }
 
         @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof OutiesPair && compareTo((OutiesPair)obj) == 0;
-        }
-
-        @Override
         public String toString() {
             return super.toString() + " OutiesPair";
         }
@@ -429,11 +313,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         }
 
         private SameStrandPair( final Kryo kryo, final Input input ) { super(kryo, input); }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof SameStrandPair && compareTo((SameStrandPair)obj) == 0;
-        }
 
         @Override
         public String toString() {
@@ -471,23 +350,6 @@ public class BreakpointEvidence implements Comparable<BreakpointEvidence> {
         protected void serialize( final Kryo kryo, final Output output ) {
             super.serialize(kryo, output);
             output.writeInt(templateSize);
-        }
-
-        @Override
-        public int compareTo( final BreakpointEvidence that ) {
-            int result = super.compareTo(that);
-            if ( result == 0 ) result = Integer.compare(this.templateSize, ((WeirdTemplateSize)that).templateSize);
-            return result;
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            return obj instanceof WeirdTemplateSize && compareTo((WeirdTemplateSize)obj) == 0;
-        }
-
-        @Override
-        public int hashCode() {
-            return super.hashCode() + templateSize;
         }
 
         @Override
