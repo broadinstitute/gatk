@@ -34,12 +34,26 @@ import java.util.stream.Collectors;
  */
 public class SVVCFWriter {
 
+    static void writeVCF(final PipelineOptions pipelineOptions, final String outputPath, String vcfFileName,
+                         final String fastaReference, final JavaRDD<VariantContext> variantContexts,
+                         final Logger logger) {
+
+        final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference, ReferenceWindowFunctions.IDENTITY_FUNCTION).getReferenceSequenceDictionary(null);
+
+        final List<VariantContext> sortedVariantsList = sortVariantsByCoordinate(variantContexts.collect(), referenceSequenceDictionary);
+
+        logNumOfVarByTypes(sortedVariantsList, logger);
+
+        writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary, getVcfHeader(referenceSequenceDictionary));
+    }
+
     /**
      * FASTA and Broadcast references are both required because 2bit Broadcast references currently order their
      * sequence dictionaries in a scrambled order, see https://github.com/broadinstitute/gatk/issues/2037.
      */
     public static void writeVCF(final PipelineOptions pipelineOptions, final String vcfFileName,
                                 final String fastaReference, final JavaRDD<VariantContext> variantContexts,
+                                final VCFHeader header,
                                 final Logger logger) {
 
         final SAMSequenceDictionary referenceSequenceDictionary = new ReferenceMultiSource(pipelineOptions, fastaReference,
@@ -49,7 +63,7 @@ public class SVVCFWriter {
 
         logNumOfVarByTypes(sortedVariantsList, logger);
 
-        writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary);
+        writeVariants(vcfFileName, sortedVariantsList, referenceSequenceDictionary, header);
     }
 
     private static void logNumOfVarByTypes(final List<VariantContext> sortedVariantsList, final Logger logger) {
@@ -81,13 +95,13 @@ public class SVVCFWriter {
     }
 
     private static void writeVariants(final String fileName, final List<VariantContext> variantsArrayList,
-                                      final SAMSequenceDictionary referenceSequenceDictionary) {
+                                      final SAMSequenceDictionary referenceSequenceDictionary, final VCFHeader header) {
         try (final OutputStream outputStream
                      = new BufferedOutputStream(BucketUtils.createFile(fileName))) {
 
             final VariantContextWriter vcfWriter = getVariantContextWriter(outputStream, referenceSequenceDictionary);
 
-            vcfWriter.writeHeader(getVcfHeader(referenceSequenceDictionary));
+            vcfWriter.writeHeader(header);
             variantsArrayList.forEach(vcfWriter::add);
             vcfWriter.close();
 

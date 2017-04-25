@@ -1,6 +1,12 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -15,6 +21,8 @@ import org.broadinstitute.hellbender.engine.spark.datasources.VariantsSparkSourc
 import org.broadinstitute.hellbender.utils.variant.GATKVariant;
 
 import java.io.File;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -24,6 +32,8 @@ import java.util.stream.Collectors;
         oneLineSummary = "genotype SV variant call files",
         programGroup = StructuralVariationSparkProgramGroup.class)
 public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
+
+    private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
     private RequiredVariantInputArgumentCollection variantArguments;
@@ -36,6 +46,15 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
 
     private VariantsSparkSource variantsSource;
 
+    @Override
+    public boolean requiresReads() {
+        return true;
+    }
+
+    @Override
+    public boolean requiresReference() {
+        return true;
+    }
 
     private void setUp(final JavaSparkContext ctx) {
         if (!outputFile.getParentFile().isDirectory()) {
@@ -51,8 +70,21 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         setUp(ctx);
         final JavaRDD<GATKVariant> variants = variantsSource.getParallelVariants(variantArguments.variantFiles.stream().map(vf -> vf.getFeaturePath()).collect(Collectors.toList()), getIntervals());
         final JavaRDD<GATKVariant> outputVariants = processVariants(variants, ctx);
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(), referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants.map(gatkv -> (VariantContext) gatkv), logger);
+        final VCFHeader header = composeOutputHeader();
+        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(), referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants.map(gatkv -> (VariantContext) gatkv), header, logger);
         tearDown(ctx);
+    }
+
+    private VCFHeader composeOutputHeader() {
+        final SAMFileHeader readHeader = getHeaderForReads();
+        final List<String> samples = readHeader.getReadGroups().stream()
+                .map(SAMReadGroupRecord::getSample)
+                .sorted()
+                .collect(Collectors.toList());
+        final VCFHeader result = new VCFHeader(Collections.emptySet(), samples);
+        result.setSequenceDictionary(getReferenceSequenceDictionary());
+        result.addMetaDataLine(new VCFInfoHeaderLine(VCFConstants.END_KEY, 1, VCFHeaderLineType.Integer, "last base position of the variant"));
+        return result;
     }
 
     private JavaRDD<GATKVariant> processVariants(final JavaRDD<GATKVariant> variants, final JavaSparkContext ctx) {
