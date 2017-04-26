@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,33 +62,6 @@ final class HomRefBlock implements Locatable {
     }
 
     /**
-     * Calculate the genotype Quality by subtracting the first smallest pl from the second smallest
-     *
-     * @param minPLs list of genotype likelihoods
-     * @return the genotype quality based on the pls
-     */
-    @VisibleForTesting
-    static int genotypeQualityFromPLs(final int[] minPLs){
-        if (minPLs == null || minPLs.length < 3){
-            throw new GATKException("minPLs must be at least size 3");
-        }
-
-        final int[] sortedPls = Arrays.copyOf(minPLs, minPLs.length);
-        Arrays.sort(sortedPls);
-
-        if (sortedPls[0] != minPLs[HOM_REF_PL_POSITION]) {
-            throw new GATKException("This should be a home ref block, but the lowest pl was not for hom ref");
-        }
-
-        final int rawQuality = sortedPls[1] - sortedPls[0];
-
-        // cap the quality to the highest quality that will be emitted by the VCFEncoder
-        // this isn't strictly necessary since it will be capped when written anyway
-        // it should help avoid confusion by preventing the quality from changing when written and loaded from disk
-        return Math.min(rawQuality, VCFConstants.MAX_GENOTYPE_QUAL);
-    }
-
-    /**
      * Convert a HomRefBlock into a VariantContext
      *
      * @param sampleName sample name to give this variant context
@@ -112,7 +86,7 @@ final class HomRefBlock implements Locatable {
 
         final int[] minPLs = getMinPLs();
         gb.PL(minPLs);
-        gb.GQ(genotypeQualityFromPLs(minPLs));
+        gb.GQ(GATKVariantContextUtils.calculateGQFromPLs(minPLs));
         gb.DP(getMedianDP());
         gb.attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, getMinDP());
 

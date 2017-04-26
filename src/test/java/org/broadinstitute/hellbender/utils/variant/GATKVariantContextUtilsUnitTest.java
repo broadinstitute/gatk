@@ -1817,4 +1817,33 @@ public final class GATKVariantContextUtilsUnitTest extends BaseTest {
             Assert.assertEquals(vc.getAttribute(VCFConstants.ALLELE_FREQUENCY_KEY), alleleFrequency.toArray());
         }
     }
+
+    @DataProvider(name="gqFromPLsData")
+    public Object[][] gqFromPLsData() {
+        return new Object[][]{
+                {new int[]{0, 15}, 15},
+                {new int[]{15, 0}, 15},
+                {new int[]{0, 10, 20}, 10},
+                {new int[]{20, 10, 0}, 10},
+                {new int[]{0, 10, 20, 30, 40}, 10},
+                {new int[]{30, 40, 20, 10, 0}, 10},
+                {new int[]{-10, 20, 35}, 30},
+                {new int[]{35, 40, -10, 15, 20}, 25},
+                {new int[]{0, 10, 20, 30, 40, 50, 5}, 5},
+                {new int[]{15, 15, 0, 5}, 5},
+                {new int[]{15, 15, 0, 25}, 15},
+                {new int[]{0, 15, 0, 25}, 0}
+        };
+    }
+
+    @Test(dataProvider = "gqFromPLsData")
+    public void testCalculateGQFromPLs(final int[] plValues, final int expectedGQ) {
+        Assert.assertEquals(GATKVariantContextUtils.calculateGQFromPLs(plValues), expectedGQ);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testCalculateGQFromShortPLArray() {
+        final int[] plValues = new int[]{0};
+        GATKVariantContextUtils.calculateGQFromPLs(plValues);
+    }
 }

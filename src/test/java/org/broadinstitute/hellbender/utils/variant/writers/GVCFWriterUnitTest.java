@@ -6,7 +6,10 @@ import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -24,6 +27,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.BiPredicate;
+
+import static htsjdk.variant.vcf.VCFConstants.MAX_GENOTYPE_QUAL;
 
 public class GVCFWriterUnitTest extends BaseTest {
 
@@ -345,6 +350,8 @@ public class GVCFWriterUnitTest extends BaseTest {
                 {Arrays.asList(1, 2, 3), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,2), Range.closedOpen(2,3),Range.closedOpen(3,Integer.MAX_VALUE))},
                 {Arrays.asList(1, 10), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, Integer.MAX_VALUE))},
                 {Arrays.asList(1, 10, 30), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, 30),Range.closedOpen(30,Integer.MAX_VALUE))},
+                {Arrays.asList(1, 10, VCFConstants.MAX_GENOTYPE_QUAL - 1), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL - 1),Range.closedOpen(MAX_GENOTYPE_QUAL - 1,Integer.MAX_VALUE))},
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL), Arrays.asList(Range.closedOpen(0,1), Range.closedOpen(1,10), Range.closedOpen(10, MAX_GENOTYPE_QUAL),Range.closedOpen(MAX_GENOTYPE_QUAL,Integer.MAX_VALUE))}
         };
     }
 
@@ -362,7 +369,9 @@ public class GVCFWriterUnitTest extends BaseTest {
                 {Collections.emptyList()},
                 {Arrays.asList(10, 1, 30)},
                 {Arrays.asList(-1, 1)},
-                {Arrays.asList(1, null, 10)}
+                {Arrays.asList(1, null, 10)},
+                {Arrays.asList(1, 1, 10)},
+                {Arrays.asList(1, 10, MAX_GENOTYPE_QUAL+1)}
         };
     }
 

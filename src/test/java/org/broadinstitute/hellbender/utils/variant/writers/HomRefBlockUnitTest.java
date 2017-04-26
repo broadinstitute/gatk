@@ -144,35 +144,6 @@ public class HomRefBlockUnitTest extends BaseTest {
         Assert.assertEquals(band.isContiguous(testVC), expected);
     }
 
-    @DataProvider(name = "minPLs")
-    public Object[][] getMinPLs(){
-        return new Object[][] {
-                {new int[] {0, 1, 5}, 1},
-                {new int[] {10, 50, 30}, 20},
-                {new int[] {0, 10, 20, 10, 5, 50}, 5},
-                {new int[] {0, 1000, 1000000}, VCFConstants.MAX_GENOTYPE_QUAL} //check that QG is capped at MAX_GENOTYPE_QUAL
-        };
-    }
-
-    @DataProvider(name = "badMinPls")
-    public Object[][] getBadMinPLs(){
-        return new Object[][] {
-                {new int[] {0}}, // too few PLs
-                {new int[] {20, 1, 0}}, //first should be lowest since this is a homRefBlock
-                {new int[] {}},
-        };
-    }
-
-    @Test(dataProvider = "minPLs")
-    public void testGenotypeQualityFromPls(int[] minPLs, int expected){
-        Assert.assertEquals(HomRefBlock.genotypeQualityFromPLs(minPLs), expected);
-    }
-
-    @Test(dataProvider = "badMinPls", expectedExceptions = GATKException.class)
-    public void testGenotypeQualityFromPLsBadPLs(int[] minPLs){
-        HomRefBlock.genotypeQualityFromPLs(minPLs); //this should explode
-    }
-
     @Test
     public void testToVariantContext(){
         final VariantContext vc = getVariantContext();
