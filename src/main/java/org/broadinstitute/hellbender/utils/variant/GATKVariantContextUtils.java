@@ -1441,7 +1441,7 @@ public final class GATKVariantContextUtils {
     }
 
     /**
-     * Calculate the Genotype Quality (GQ) by subtracting the second smallest Phred-scaled likelihoods (PL) first smallest.
+     * Calculate the Genotype Quality (GQ) by subtracting the smallest Phred-scaled likelihoods (PL) from the second smallest.
      *
      * @param plValues  array of PL values
      * @return          the genotype quality corresponding to the PL values
@@ -1458,7 +1458,9 @@ public final class GATKVariantContextUtils {
         }
         for (int i = 2; i < plValues.length; i++) {
             final int candidate = plValues[i];
-            if (candidate >= second) continue;
+            if (candidate >= second) {
+                continue;
+            }
             if (candidate <= first) {
                 second = first;
                 first = candidate;

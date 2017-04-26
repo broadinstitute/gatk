@@ -73,18 +73,18 @@ public final class GVCFWriter implements VariantContextWriter {
     @VisibleForTesting
     static RangeMap<Integer,Range<Integer>> parsePartitions(final List<Integer> gqPartitions) {
         Utils.nonEmpty(gqPartitions);
-        Utils.containsNoNull(gqPartitions, "GQ partitions contains a null Integer");
+        Utils.containsNoNull(gqPartitions, "The list of GQ partitions contains a null integer");
         final RangeMap<Integer, Range<Integer>> result = TreeRangeMap.create();
         int lastThreshold = 0;
         for (final Integer value : gqPartitions) {
             if (value < 0) {
-                throw new IllegalArgumentException("GQ partitions contains a negative value.");
+                throw new IllegalArgumentException("The list of GQ partitions contains a non-positive integer.");
             } else if (value > MAX_GENOTYPE_QUAL) {
-                throw new IllegalArgumentException("The value " + value + " in the list of GQ partitions is greater than " + MAX_GENOTYPE_QUAL + ".");
+                throw new IllegalArgumentException(String.format("The value %d in the list of GQ partitions is greater than VCFConstants.MAX_GENOTYPE_QUAL = %d.", value, VCFConstants.MAX_GENOTYPE_QUAL));
             } else if (value < lastThreshold) {
-                throw new IllegalArgumentException("GQ partitions is out of order. Last is " + lastThreshold + " but next is " + value);
+                throw new IllegalArgumentException(String.format("The list of GQ partitions is out of order. Previous value is %d but the next is %d.", lastThreshold, value));
             } else if (value == lastThreshold) {
-                throw new IllegalArgumentException("GQ partitions is equal elements. Last is " + lastThreshold + " but next is " + value);
+                throw new IllegalArgumentException(String.format("The value %d appears more than once in the list of GQ partitions.", value));
             }
 
             result.put(Range.closedOpen(lastThreshold, value), Range.closedOpen(lastThreshold, value));
