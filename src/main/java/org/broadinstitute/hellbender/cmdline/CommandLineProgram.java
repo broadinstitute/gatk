@@ -191,11 +191,15 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     }
 
     public Object instanceMain(final String[] argv) {
-        if (!parseArgs(argv)) {
-            //an information only argument like help or version was specified, just exit
-            return 0;
+        try {
+            if (!parseArgs(argv)) {
+                //an information only argument like help or version was specified, just exit
+                return 0;
+            }
+            return instanceMainPostParseArgs();
+        } catch (final RuntimeException | Error er) {
+            throw er;
         }
-        return instanceMainPostParseArgs();
     }
 
     /**

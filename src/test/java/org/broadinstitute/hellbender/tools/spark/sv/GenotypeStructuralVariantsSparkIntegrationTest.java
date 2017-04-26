@@ -15,8 +15,10 @@ import java.util.List;
  */
 public class GenotypeStructuralVariantsSparkIntegrationTest extends CommandLineProgramTest {
 
-    private static final File INPUT_VCF = new File(largeFileTestDir, "sv_evidence_for_variants_input.vcf.gz");
+    private static final long serialVersionUID = 1L;
 
+    private static final File INPUT_VCF = new File(publicTestDir, "/test-files/sv_evidence_sam_for_variants_input_20_21.vcf.gz");
+    private static final File INPUT_BAM = new File(publicTestDir, "/test-files/sv_evidence_for_variants_input.bam");
 
     @Test
     public void test() {
@@ -25,15 +27,19 @@ public class GenotypeStructuralVariantsSparkIntegrationTest extends CommandLineP
         final File outputVcfIndex = new File(outputVcf.getPath() + ".tbi");
         outputVcfIndex.delete();
         outputVcfIndex.deleteOnExit();
-        final List<String> args = new ArrayList<String>() {{
-            add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
-            add(INPUT_VCF.getAbsolutePath());
-            add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-            add(outputVcf.getAbsolutePath());
-        }};
-        Assert.assertTrue(outputVcf.isFile());
-        Assert.assertTrue(outputVcfIndex.isFile());
+        final List<String> args = new ArrayList<String>() {
+            private static final long serialVersionUID = 1L;
+            {add("-" + StandardArgumentDefinitions.VARIANT_SHORT_NAME);
+             add(INPUT_VCF.getAbsolutePath());
+             add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
+             add(outputVcf.getAbsolutePath());
+             add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
+             add(b37_reference_20_21);
+             add("-" + StandardArgumentDefinitions.INPUT_SHORT_NAME);
+             add( INPUT_BAM.getAbsolutePath());}
+        };
         runCommandLine(args);
+        Assert.assertTrue(outputVcf.isFile());
     }
 
 }

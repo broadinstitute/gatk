@@ -36,7 +36,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     private static final long serialVersionUID = 1L;
 
     @ArgumentCollection
-    private RequiredVariantInputArgumentCollection variantArguments;
+    private RequiredVariantInputArgumentCollection variantArguments = new RequiredVariantInputArgumentCollection();
 
     @Argument(doc = "output VCF file",
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -68,10 +68,10 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
     @Override
     protected void runTool(final JavaSparkContext ctx) {
         setUp(ctx);
-        final JavaRDD<GATKVariant> variants = variantsSource.getParallelVariants(variantArguments.variantFiles.stream().map(vf -> vf.getFeaturePath()).collect(Collectors.toList()), getIntervals());
-        final JavaRDD<GATKVariant> outputVariants = processVariants(variants, ctx);
+        final JavaRDD<VariantContext> variants = variantsSource.getParallelVariantContexts(variantArguments.variantFiles.get(0).getFeaturePath(), getIntervals());
+        final JavaRDD<VariantContext> outputVariants = processVariants(variants, ctx);
         final VCFHeader header = composeOutputHeader();
-        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(), referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants.map(gatkv -> (VariantContext) gatkv), header, logger);
+        SVVCFWriter.writeVCF(getAuthenticatedGCSOptions(), outputFile.getParent(), outputFile.getName(), referenceArguments.getReferenceFile().getAbsolutePath(), outputVariants, header, logger);
         tearDown(ctx);
     }
 
@@ -79,6 +79,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         final SAMFileHeader readHeader = getHeaderForReads();
         final List<String> samples = readHeader.getReadGroups().stream()
                 .map(SAMReadGroupRecord::getSample)
+                .distinct()
                 .sorted()
                 .collect(Collectors.toList());
         final VCFHeader result = new VCFHeader(Collections.emptySet(), samples);
@@ -87,7 +88,7 @@ public class GenotypeStructuralVariantsSpark extends GATKSparkTool {
         return result;
     }
 
-    private JavaRDD<GATKVariant> processVariants(final JavaRDD<GATKVariant> variants, final JavaSparkContext ctx) {
+    private JavaRDD<VariantContext> processVariants(final JavaRDD<VariantContext> variants, final JavaSparkContext ctx) {
         return variants;
     }
 
