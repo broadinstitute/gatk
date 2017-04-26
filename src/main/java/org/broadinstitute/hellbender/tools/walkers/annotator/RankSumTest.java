@@ -1,8 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
+import com.google.common.primitives.Doubles;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.apache.commons.lang.ArrayUtils;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MannWhitneyU;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -67,12 +69,16 @@ public abstract class RankSumTest extends InfoFieldAnnotation {
             return Collections.emptyMap();
         }
 
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
+
         // we are testing that set1 (the alt bases) have lower quality scores than set2 (the ref bases)
-        final double p = MannWhitneyU.runOneSidedTest(useDithering, altQuals, refQuals).getLeft();
-        if (Double.isNaN(p)) {
+        final MannWhitneyU.Result result = mannWhitneyU.test(Doubles.toArray(altQuals), Doubles.toArray(refQuals), MannWhitneyU.TestType.FIRST_DOMINATES);
+        final double zScore = result.getZ();
+
+        if (Double.isNaN(zScore)) {
             return Collections.emptyMap();
         } else {
-            return Collections.singletonMap(getKeyNames().get(0), String.format("%.3f", p));
+            return Collections.singletonMap(getKeyNames().get(0), String.format("%.3f", zScore));
         }
     }
 

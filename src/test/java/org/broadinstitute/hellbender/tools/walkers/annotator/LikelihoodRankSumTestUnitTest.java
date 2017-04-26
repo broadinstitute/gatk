@@ -48,6 +48,7 @@ public final class LikelihoodRankSumTestUnitTest extends BaseTest {
     public void testReadPos(){
         final double[] altBestAlleleLL = {-1.0, -2.0};
         final double[] refBestAlleleLL = {-5.0, -7.0};
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
 
         final List<GATKRead> refReads = Arrays.asList(makeRead(), makeRead());
         final List<GATKRead> altReads = Arrays.asList(makeRead(), makeRead());
@@ -62,9 +63,7 @@ public final class LikelihoodRankSumTestUnitTest extends BaseTest {
         matrix.set(0, 1, refBestAlleleLL[1]);
         matrix.set(1, 2, altBestAlleleLL[0]);
         matrix.set(1, 3, altBestAlleleLL[1]);
-
-
-
+        
         final InfoFieldAnnotation ann = new LikelihoodRankSumTest();
         Assert.assertEquals(ann.getDescriptions().size(), 1);
         Assert.assertEquals(ann.getDescriptions().get(0).getID(), GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY);
@@ -77,12 +76,9 @@ public final class LikelihoodRankSumTestUnitTest extends BaseTest {
         final VariantContext vc= makeVC(CONTIG, position, REF, ALT);
 
         final Map<String, Object> annotate = ann.annotate(ref, vc, likelihoods);
-        final double val= MannWhitneyU.runOneSidedTest(false,
-                Arrays.asList(altBestAlleleLL[0], altBestAlleleLL[1]),
-                Arrays.asList(refBestAlleleLL[0], refBestAlleleLL[1])).getLeft();
-        final String valStr= String.format("%.3f", val);
-        Assert.assertEquals(annotate.get(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY), valStr);
-
+        final double zScore = mannWhitneyU.test(new double[]{altBestAlleleLL[0], altBestAlleleLL[1]}, new double[]{refBestAlleleLL[0], refBestAlleleLL[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
+        final String zScoreStr= String.format("%.3f", zScore);
+        Assert.assertEquals(annotate.get(GATKVCFConstants.LIKELIHOOD_RANK_SUM_KEY), zScoreStr);
     }
 
     @Test(expectedExceptions = IllegalStateException.class)

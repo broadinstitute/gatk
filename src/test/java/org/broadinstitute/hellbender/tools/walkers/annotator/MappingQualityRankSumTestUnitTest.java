@@ -49,6 +49,7 @@ public final class MappingQualityRankSumTestUnitTest {
     public void testMQ(){
         final InfoFieldAnnotation ann = new MappingQualityRankSumTest();
         final String key = GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY;
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
 
         final int[] altMappingQualities = {10, 20};
         final int[] refMappingQualities = {100, 110};
@@ -60,10 +61,9 @@ public final class MappingQualityRankSumTestUnitTest {
 
         final Map<String, Object> annotate = ann.annotate(null, vc, likelihoods);
 
-        final double val= MannWhitneyU.runOneSidedTest(false, Arrays.asList(altMappingQualities[0], altMappingQualities[1]),
-                                                              Arrays.asList(refMappingQualities[0], refMappingQualities[1])).getLeft();
-        final String valStr= String.format("%.3f", val);
-        Assert.assertEquals(annotate.get(key), valStr);
+        final double zScore = mannWhitneyU.test(new double[]{altMappingQualities[0], altMappingQualities[1]}, new double[]{refMappingQualities[0], refMappingQualities[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
+        final String zScoreStr = String.format("%.3f", zScore);
+        Assert.assertEquals(annotate.get(key), zScoreStr);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);
         Assert.assertEquals(ann.getDescriptions().get(0).getID(), key);

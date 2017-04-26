@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.annotator;
 
-import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.*;
@@ -52,6 +51,7 @@ public final class ReadPosRankSumTestUnitTest extends BaseTest {
     public void testReadPos(){
         final InfoFieldAnnotation ann = new ReadPosRankSumTest();
         final String key =  GATKVCFConstants.READ_POS_RANK_SUM_KEY;
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
 
         final int[] startAlts = {3, 4};
         final int[] startRefs = {1, 2};
@@ -71,23 +71,18 @@ public final class ReadPosRankSumTestUnitTest extends BaseTest {
         final VariantContext vc= makeVC(position);
 
         final Map<String, Object> annotate = ann.annotate(ref, vc, likelihoods);
-        final double val= MannWhitneyU.runOneSidedTest(false,
-                Arrays.asList(position - startAlts[0], position - startAlts[1]),
-                Arrays.asList(position - startRefs[0], position - startRefs[1])).getLeft();
-        final String valStr= String.format("%.3f", val);
-        Assert.assertEquals(annotate.get(key), valStr);
-
-
+        final double zScore = mannWhitneyU.test(new double[]{position - startAlts[0], position - startAlts[1]}, new double[]{position - startRefs[0], position - startRefs[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
+        final String zScoreStr = String.format("%.3f", zScore);
+        Assert.assertEquals(annotate.get(key), zScoreStr);
+        
         final long positionEnd = 8L;  //past middle
         final VariantContext vcEnd= makeVC(positionEnd);
 
         //Note: past the middle of the read we compute the position from the end.
         final Map<String, Object> annotateEnd = ann.annotate(ref, vcEnd, likelihoods);
-        final double valEnd= MannWhitneyU.runOneSidedTest(false,
-                Arrays.asList(startAlts[0], startAlts[1]),
-                Arrays.asList(startRefs[0], startRefs[1])).getLeft();
-        final String valStrEnd= String.format("%.3f", valEnd);
-        Assert.assertEquals(annotateEnd.get(key), valStrEnd);
+        final double zScoreEnd = mannWhitneyU.test(new double[]{startAlts[0], startAlts[1]}, new double[]{startRefs[0], startRefs[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
+        final String zScoreEndStr = String.format("%.3f", zScoreEnd);
+        Assert.assertEquals(annotateEnd.get(key), zScoreEndStr);
 
         final long positionPastEnd = 20L;  //past middle
         final VariantContext vcPastEnd= makeVC(positionPastEnd);
@@ -126,8 +121,7 @@ public final class ReadPosRankSumTestUnitTest extends BaseTest {
         final String expected = startAlts[0] + ",1," + startAlts[1] + ",1" + AS_RankSumTest.PRINT_DELIM + startRefs[0] + ",1," + startRefs[1] + ",1";
         Assert.assertEquals(annotateRaw.get(key1), expected);
         Assert.assertEquals(annotateNonRaw.get(key1), expected);
-
-
+        
         final long positionEnd = 8L;  //past middle
         final VariantContext vcEnd= makeVC(positionEnd);
 

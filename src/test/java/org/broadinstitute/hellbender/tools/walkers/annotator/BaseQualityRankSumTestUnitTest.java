@@ -50,6 +50,7 @@ public final class BaseQualityRankSumTestUnitTest {
     public void testBaseQual() {
         final InfoFieldAnnotation ann = new BaseQualityRankSumTest();
         final String key = GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY;
+        final MannWhitneyU mannWhitneyU = new MannWhitneyU();
 
         final int[] altBaseQuals = {10, 20};
         final int[] refBaseQuals = {50, 60};
@@ -63,11 +64,9 @@ public final class BaseQualityRankSumTestUnitTest {
 
         final Map<String, Object> annotate = ann.annotate(ref, vc, likelihoods);
 
-        final double val = MannWhitneyU.runOneSidedTest(false,
-                Arrays.asList(altBaseQuals[0], altBaseQuals[1]),
-                Arrays.asList(refBaseQuals[0], refBaseQuals[1])).getLeft();
-        final String valStr = String.format("%.3f", val);
-        Assert.assertEquals(annotate.get(key), valStr);
+        final double zScore = mannWhitneyU.test(new double[]{altBaseQuals[0], altBaseQuals[1]}, new double[]{refBaseQuals[0], refBaseQuals[1]}, MannWhitneyU.TestType.FIRST_DOMINATES).getZ();
+        final String zScoreStr = String.format("%.3f", zScore);
+        Assert.assertEquals(annotate.get(key), zScoreStr);
 
         Assert.assertEquals(ann.getDescriptions().size(), 1);
         Assert.assertEquals(ann.getDescriptions().get(0).getID(), key);

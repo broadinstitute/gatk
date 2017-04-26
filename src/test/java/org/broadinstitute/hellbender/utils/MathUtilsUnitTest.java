@@ -185,6 +185,15 @@ public final class MathUtilsUnitTest extends BaseTest {
     }
 
     @Test
+    public void testBinomialCoefficient() {
+        // results from Wolfram Alpha
+        Assert.assertEquals(MathUtils.binomialCoefficient(4, 2), 6.0, 1e-6);
+        Assert.assertEquals(MathUtils.binomialCoefficient(10, 3), 120.0, 1e-6);
+        Assert.assertEquals(MathUtils.binomialCoefficient(20, 3), 1140.0, 1e-6);
+        Assert.assertEquals(MathUtils.binomialCoefficient(100, 4), 3921225.0, 1e-6);
+    }
+
+    @Test
     public void testLog10BinomialCoefficient() {
         // note that we can test the binomial coefficient calculation indirectly via Newton's identity
         // (1+z)^m = sum (m choose k)z^k
