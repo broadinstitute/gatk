@@ -778,6 +778,11 @@ public final class IntervalUtils {
         }
     }
 
+    public static String locatableToString(Locatable interval) {
+        Utils.nonNull(interval);
+        return String.format("%s:%s-%s", interval.getContig(), interval.getStart(), interval.getEnd());
+    }
+
     private static final class SplitLocusRecursive {
         final List<GenomeLoc> split;
         final LinkedList<GenomeLoc> remaining;

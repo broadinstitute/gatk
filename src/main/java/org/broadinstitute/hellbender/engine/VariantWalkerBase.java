@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.utils.IndexUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.nio.file.Path;
 import java.util.Spliterator;
 import java.util.stream.StreamSupport;
 
@@ -35,9 +36,11 @@ public abstract class VariantWalkerBase extends GATKTool {
 
     @Override
     void initializeFeatures() {
+
         //Note: we override this method because we don't want to set feature manager to null if there are no FeatureInputs.
         //This is because we have at least 1 source of features (namely the driving dataset).
-        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+        features = new FeatureManager(this, FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                                      referenceArguments.getReferencePath());
         initializeDrivingVariants();
     }
 

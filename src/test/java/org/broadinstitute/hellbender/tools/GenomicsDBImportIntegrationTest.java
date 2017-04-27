@@ -10,6 +10,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBConstants;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.test.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.test.BaseTest;
@@ -23,11 +25,6 @@ import java.util.Collections;
 import java.util.List;
 
 public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTest {
-
-  private static final String GENOMICSDB_WORKSPACE = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
-  private static final String GENOMICSDB_ARRAYNAME = "gatk-genomicsdb-test-array";
-  private static final String TEST_CALLSETMAP_JSON_FILE = GENOMICSDB_WORKSPACE + "/callset.json";
-  private static final String TEST_VIDMAP_JSON_FILE = GENOMICSDB_WORKSPACE + "/vidmap.json";
 
   private static final File TEST_REFERENCE_GENOME = new File(largeFileTestDir + "/Homo_sapiens_assembly38.20.21.fasta");
 
@@ -59,35 +56,28 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
   }
 
   private void testGenomicsDBImporter(final List<String> vcfInputs, final SimpleInterval interval, final String expectedCombinedVCF) throws IOException {
+    final String workspace = createTempDir("genomicsdb-tests-").getAbsolutePath() + "/workspace";
     final ArgumentsBuilder args = new ArgumentsBuilder();
-    args.add("--genomicsDBWorkspace"); args.add(GENOMICSDB_WORKSPACE);
-    args.add("--genomicsDBArray"); args.add(GENOMICSDB_ARRAYNAME);
-
-    args.add("-L"); args.add(interval);
-
-    for (String vcfInput : vcfInputs) {
-      args.add("-V"); args.add(vcfInput);
-    }
-
+    args.addArgument("genomicsDBWorkspace", workspace);
+    args.addArgument("L", IntervalUtils.locatableToString(interval));
+    vcfInputs.forEach(vcf -> args.addArgument("V", vcf));
     runCommandLine(args);
 
-    GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
+    final GenomicsDBFeatureReader<VariantContext, PositionalBufferedStream> genomicsDBFeatureReader =
       new GenomicsDBFeatureReader<>(
-        new File(TEST_VIDMAP_JSON_FILE).getAbsolutePath(),
-        new File(TEST_CALLSETMAP_JSON_FILE).getAbsolutePath(),
-        GENOMICSDB_WORKSPACE,
-        GENOMICSDB_ARRAYNAME,
-        TEST_REFERENCE_GENOME.getAbsolutePath(), null, new BCF2Codec());
+              new File(workspace, GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME).getAbsolutePath(),
+              new File(workspace, GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME).getAbsolutePath(),
+              workspace,
+              GenomicsDBConstants.DEFAULT_ARRAY_NAME,
+              TEST_REFERENCE_GENOME.getAbsolutePath(), null, new BCF2Codec());
 
-    AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
+    final AbstractFeatureReader<VariantContext, LineIterator> combinedVCFReader =
       AbstractFeatureReader.getFeatureReader(expectedCombinedVCF, new VCFCodec(), true);
 
-    try (CloseableTribbleIterator<VariantContext> actualVcs =
-           genomicsDBFeatureReader.query(interval.getContig(), interval.getStart(), interval.getEnd());
-
-         CloseableTribbleIterator<VariantContext> expectedVcs =
-           combinedVCFReader.query(interval.getContig(), interval.getStart(), interval.getEnd());) {
-
+    try (final CloseableTribbleIterator<VariantContext> actualVcs =
+                 genomicsDBFeatureReader.query(interval.getContig(), interval.getStart(), interval.getEnd());
+         final CloseableTribbleIterator<VariantContext> expectedVcs =
+                 combinedVCFReader.query(interval.getContig(), interval.getStart(), interval.getEnd()) ){
       BaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> {
         // TODO: Temporary hacks to make this test pass. Must be removed later
         if ( // allele order

@@ -1339,4 +1339,10 @@ public final class IntervalUtilsUnitTest extends BaseTest {
     public void testIntervalIsOnDictionaryContigNullDictionary() {
         IntervalUtils.intervalIsOnDictionaryContig(new SimpleInterval("1", 1, 10), null);
     }
+
+    @Test
+    public void testToGatkIntervalString(){
+            final SimpleInterval interval = new SimpleInterval("1",1,100);
+            Assert.assertEquals(IntervalUtils.locatableToString(interval), "1:1-100");
+    }
 }

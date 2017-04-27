@@ -14,17 +14,14 @@ import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.nio.SeekableByteChannelPrefetcher;
 
 import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -132,11 +129,29 @@ public final class FeatureManager implements AutoCloseable {
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      *
      */
-    public FeatureManager( final CommandLineProgram toolInstance, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
+    public FeatureManager(final CommandLineProgram toolInstance, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
+        this(toolInstance, featureQueryLookahead, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, null);
+    }
+
+    /**
+     * Create a FeatureManager given a CommandLineProgram tool instance, discovering all FeatureInput
+     * arguments in the tool and creating query-able FeatureDataSources for them. Allows control over
+     * how much caching is performed by each {@link FeatureDataSource}.
+     *
+     * @param toolInstance Instance of the tool to be run (potentially containing one or more FeatureInput arguments)
+     *                     Must have undergone command-line argument parsing and argument value injection already.
+     * @param featureQueryLookahead When querying FeatureDataSources, cache this many extra bases of context beyond
+     *                              the end of query intervals in anticipation of future queries (>= 0).
+     * @param cloudPrefetchBuffer MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
+     * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param reference reference to use when opening feature files, may be null, currently only used by Genomics DB
+     *
+     */
+    public FeatureManager(final CommandLineProgram toolInstance, final int featureQueryLookahead, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
         this.toolInstanceSimpleClassName = toolInstance.getClass().getSimpleName();
         this.featureSources = new LinkedHashMap<>();
 
-        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+        initializeFeatureSources(featureQueryLookahead, toolInstance, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
     }
 
     /**
@@ -151,7 +166,7 @@ public final class FeatureManager implements AutoCloseable {
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer ) {
+    private void initializeFeatureSources( final int featureQueryLookahead, final CommandLineProgram toolInstance, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
 
         // Discover all arguments of type FeatureInput (or Collections thereof) in our tool's class hierarchy
         // (and associated ArgumentCollections). Arguments not specified by the user on the command line will
@@ -165,7 +180,7 @@ public final class FeatureManager implements AutoCloseable {
             // Only create a data source for Feature arguments that were actually specified
             if ( featureInput != null ) {
                 final Class<? extends Feature> featureType = getFeatureTypeForFeatureInputField(featureArgument.getKey());
-                addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+                addToFeatureSources(featureQueryLookahead, featureInput, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference);
             }
         }
     }
@@ -183,9 +198,9 @@ public final class FeatureManager implements AutoCloseable {
      * Note: package-visible to enable access from the core walker classes
      * (but not actual tools, so it's not protected).
      */
-    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
+    void addToFeatureSources(final int featureQueryLookahead, final FeatureInput<? extends Feature> featureInput, final Class<? extends Feature> featureType, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
         // Create a new FeatureDataSource for this file, and add it to our query pool
-        featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer));
+        featureSources.put(featureInput, new FeatureDataSource<>(featureInput, featureQueryLookahead, featureType, cloudPrefetchBuffer, cloudIndexPrefetchBuffer, reference));
     }
 
     /**

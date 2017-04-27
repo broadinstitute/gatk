@@ -1,9 +1,0 @@
-{
-    "callsets" : { 
-        "SAMPLE_1" : {
-            "row_idx" : 0,
-            "idx_in_file": 0,
-            "filename": "src/test/resources/org/broadinstitute/hellbender/engine/GenomicsDBIntegration/tiny_jsons/tiny.gvcf.gz"
-        }
-    }
-}

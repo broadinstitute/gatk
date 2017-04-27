@@ -45,31 +45,29 @@ import java.util.function.Function;
 )
 public final class GenomicsDBImport extends GATKTool {
 
-    private final long DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE = 16*1024L;
-    private final long DEFAULT_SEGMENT_SIZE = 1048576L;
-    private final String DEFAULT_ARRAY = "genomicsdb_array";
-    private final String DEFAULT_VIDMAP_FILE_NAME = "vidmap.json";
-    private final String DEFAULT_CALLSETMAP_FILE_NAME = "callset.json";
+    private static final long DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE = 16*1024L;
+    private static final long DEFAULT_SEGMENT_SIZE = 1048576L;
 
-    private static final String WORKSPACE_ARG_NAME = "genomicsDBWorkspace";
-    private static final String ARRAY_ARG_NAME = "genomicsDBArray";
+    public static final String WORKSPACE_ARG_NAME = "genomicsDBWorkspace";
     private static final String SEGMENT_SIZE_ARG_NAME = "genomicsDBSegmentSize";
+    private static final String OVERWRITE_WORKSPACE_NAME = "overwriteExistingGenomicsDBWorkspace";
 
     private static final String VCF_BUFFER_SIZE_ARG_NAME = "genomicsDBVCFBufferSize";
+    private static final String ARRAY_ARG_NAME = "genomicsDBArray";
     private static final String VID_MAP_FILE_ARG_NAME = "genomicsDBVidMapFile";
+
     private static final String CALLSET_MAP_FILE_ARG_NAME = "genomicsDBCallsetMapFile";
-    private static final String OVERWRITE_WORKSPACE_NAME = "overwriteExistingGenomicsDBWorkspace";
 
     @Argument(fullName = WORKSPACE_ARG_NAME,
               shortName = WORKSPACE_ARG_NAME,
               doc = "Workspace for GenomicsDB. Has to be a POSIX file system path")
     private String workspace;
 
-    @Argument(fullName = ARRAY_ARG_NAME,
-              shortName = ARRAY_ARG_NAME,
-              doc = "TileDB array name used by GenomicsDB. Defaults to " + ARRAY_ARG_NAME,
-              optional = true)
-    private String arrayName = DEFAULT_ARRAY;
+//    @Argument(fullName = ARRAY_ARG_NAME,
+//              shortName = ARRAY_ARG_NAME,
+//              doc = "TileDB array name used by GenomicsDB. Defaults to " + ARRAY_ARG_NAME,
+//              optional = true)
+    private final String arrayName = GenomicsDBConstants.DEFAULT_ARRAY_NAME;
 
     @Argument(fullName = SEGMENT_SIZE_ARG_NAME,
               shortName = SEGMENT_SIZE_ARG_NAME,
@@ -93,22 +91,22 @@ public final class GenomicsDBImport extends GATKTool {
               optional = true)
     private long vcfBufferSizePerSample = DEFAULT_VCF_BUFFER_SIZE_PER_SAMPLE;
 
-    @Argument(fullName = CALLSET_MAP_FILE_ARG_NAME,
-              shortName = CALLSET_MAP_FILE_ARG_NAME,
-              doc = "Path to callset JSON file to be created. " +
-                    "The file contains row mappings to sample names."
-                    + " Defaults to " + DEFAULT_CALLSETMAP_FILE_NAME +
-                    " file is written to GenomicsDB workspace",
-              optional = true)
-    private String callsetMapJSONFileName = DEFAULT_CALLSETMAP_FILE_NAME;
+//    @Argument(fullName = CALLSET_MAP_FILE_ARG_NAME,
+//              shortName = CALLSET_MAP_FILE_ARG_NAME,
+//              doc = "Path to callset JSON file to be created. " +
+//                    "The file contains row mappings to sample names."
+//                    + " Defaults to " + DEFAULT_CALLSETMAP_FILE_NAME +
+//                    " file is written to GenomicsDB workspace",
+//              optional = true)
+    private final String callsetMapJSONFileName = GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME;
 
-    @Argument(fullName = VID_MAP_FILE_ARG_NAME,
-              shortName = VID_MAP_FILE_ARG_NAME,
-              doc = "Path to vid map JSON file to be created. Includes contig maps and INFO/FORMAT/FILTER" +
-                    "fields from headers. Defaults to " + DEFAULT_VIDMAP_FILE_NAME +
-                    " file is written to GenomicsDB workspace",
-              optional = true)
-    private String vidMapJSONFileName = DEFAULT_VIDMAP_FILE_NAME;
+//    @Argument(fullName = VID_MAP_FILE_ARG_NAME,
+//              shortName = VID_MAP_FILE_ARG_NAME,
+//              doc = "Path to vid map JSON file to be created. Includes contig maps and INFO/FORMAT/FILTER" +
+//                    "fields from headers. Defaults to " + DEFAULT_VIDMAP_FILE_NAME +
+//                    " file is written to GenomicsDB workspace",
+//              optional = true)
+    private final String vidMapJSONFileName = GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME;
 
     @Argument(fullName = OVERWRITE_WORKSPACE_NAME,
               shortName = OVERWRITE_WORKSPACE_NAME,
@@ -135,7 +133,7 @@ public final class GenomicsDBImport extends GATKTool {
     // Intervals from command line (singleton for now)
     private List<ChromosomeInterval> intervals;
 
-    private Map<String, FeatureReader<VariantContext>> sampleToVCFMap = new HashMap<>();
+    private final Map<String, FeatureReader<VariantContext>> sampleToVCFMap = new HashMap<>();
 
     // Needed as smartMergeHeaders() returns a set of VCF header lines
     private Set<VCFHeaderLine> mergedHeader = null;
@@ -151,19 +149,19 @@ public final class GenomicsDBImport extends GATKTool {
     @Override
     public void onStartup() {
 
-        for (String variantPath : variantFilePaths) {
+        for (final String variantPath : variantFilePaths) {
 
             final String variantURI = IOUtils.getPath(variantPath).toAbsolutePath().toUri().toString();
             final Function<SeekableByteChannel, SeekableByteChannel> cloudWrapper = (cloudPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudPrefetchBuffer, is) : Function.identity());
             final Function<SeekableByteChannel, SeekableByteChannel> cloudIndexWrapper = (cloudIndexPrefetchBuffer > 0 ? is -> SeekableByteChannelPrefetcher.addPrefetcher(cloudIndexPrefetchBuffer, is) : Function.identity());
-            AbstractFeatureReader<VariantContext, LineIterator> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
+            final AbstractFeatureReader<VariantContext, LineIterator> reader = AbstractFeatureReader.getFeatureReader(variantURI, null, new VCFCodec(), true, cloudWrapper, cloudIndexWrapper);
 
             // A GVCF file must contain only one sample, throw an exception otherwise
             if (((VCFHeader)reader.getHeader()).getNGenotypeSamples() != 1) {
                 throw new UserException("Input GVCF: " + variantPath + " should contain data for one sample");
             }
 
-            String sampleName = ((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0);
+            final String sampleName = ((VCFHeader) reader.getHeader()).getGenotypeSamples().get(0);
             sampleToVCFMap.put(sampleName, reader);
         }
 
@@ -191,18 +189,18 @@ public final class GenomicsDBImport extends GATKTool {
                 " or larger values than 10KB");
         }
 
-        File vidMapJSONFile = (vidMapJSONFileName.equals(DEFAULT_VIDMAP_FILE_NAME)) ?
+        final File vidMapJSONFile = (vidMapJSONFileName.equals(GenomicsDBConstants.DEFAULT_VIDMAP_FILE_NAME)) ?
             new File(workspaceDir + "/" + vidMapJSONFileName) :
             new File(vidMapJSONFileName);
 
-        File callsetMapJSONFile = (callsetMapJSONFileName.equals(DEFAULT_CALLSETMAP_FILE_NAME)) ?
+        final File callsetMapJSONFile = (callsetMapJSONFileName.equals(GenomicsDBConstants.DEFAULT_CALLSETMAP_FILE_NAME)) ?
             new File (workspaceDir + "/" + callsetMapJSONFileName) :
             new File(callsetMapJSONFileName);
 
         logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
         logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
         
-        long variantContextBufferSize = vcfBufferSizePerSample * sampleToVCFMap.size();
+        final long variantContextBufferSize = vcfBufferSizePerSample * sampleToVCFMap.size();
 
         logger.info("Writing data to array - " + workspace + "/" + arrayName);
 
