@@ -38,7 +38,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testAsDrivingVariants() throws IOException {
-        final String workspace = createTempGenomicsDB(Collections.singletonList(TINY_GVCF), INTERVAL);
+        final String workspace = createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                 .addArgument("V", makeGenDBUri(workspace))
                 .addReference(new File(BaseTest.b37_reference_20_21)));
@@ -46,7 +46,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testWithIntervalsAsAuxiliary() throws IOException {
-        final String workspace = createTempGenomicsDB(Collections.singletonList(TINY_GVCF),INTERVAL);
+        final String workspace = createTempGenomicsDB(TINY_GVCF,INTERVAL);
 
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                 .addArgument("V", TINY_GVCF.getAbsolutePath())
@@ -57,7 +57,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testWithIntervalsDriving() throws IOException {
-        final String workspace = createTempGenomicsDB(Collections.singletonList(TINY_GVCF), INTERVAL);
+        final String workspace = createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                 .addArgument("L", "20")
                 .addReference(new File(BaseTest.b37_reference_20_21))
@@ -72,7 +72,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testRestrictingIntervals() throws IOException {
-        final String workspace = createTempGenomicsDB(Collections.singletonList(TINY_GVCF), INTERVAL);
+        final String workspace = createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(new File(TEST_DATA_PATH, "intervalsRestrictedExpected.g.vcf"), new ArgumentsBuilder()
                 .addReference(new File(BaseTest.b37_reference_20_21))
                 .addArgument("L", "20:69491-69521")
@@ -85,13 +85,15 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
                 .addOutput(output);
         runCommandLine(args);
 
-        final Iterable<VariantContext> actualVcs = new FeatureDataSource<>(output);
-        final Iterable<VariantContext> expectedVcs = new FeatureDataSource<>(expected);
-
-        BaseTest.assertCondition(actualVcs, expectedVcs, (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a,e, Collections.emptyList()));
+        try (final FeatureDataSource<VariantContext> actualVcs = new FeatureDataSource<>(output);
+             final FeatureDataSource<VariantContext> expectedVcs = new FeatureDataSource<>(expected)) {
+            BaseTest.assertCondition(actualVcs, expectedVcs,
+                                     (a, e) -> VariantContextTestUtils.assertVariantContextsAreEqual(a, e,
+                                                                                                     Collections.emptyList()));
+        }
     }
 
-    private static String createTempGenomicsDB(final List<File> gvcfs, final Locatable interval) {
+    private static String createTempGenomicsDB(final File gvcfs, final Locatable interval) {
         final File workspaceDir = BaseTest.createTempDir("genomicsDBWorkspace");
 
         final CommandLineProgramTest importer = new CommandLineProgramTest() {
@@ -102,7 +104,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
         };
 
         final ArgumentsBuilder args = new ArgumentsBuilder();
-        gvcfs.forEach(args::addVCF);
+        args.addVCF(gvcfs);
 
         final String workspace = new File(workspaceDir, "workspace").getAbsolutePath();
         args.addArgument(GenomicsDBImport.WORKSPACE_ARG_NAME, workspace);
@@ -113,7 +115,7 @@ public class GenomicsDBIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testAsAuxiliaryVariants() throws IOException {
-        final String workspace = createTempGenomicsDB(Collections.singletonList(TINY_GVCF), INTERVAL);
+        final String workspace = createTempGenomicsDB(TINY_GVCF, INTERVAL);
         testExpectedVariantsFromGenomicsDB(TINY_GVCF, new ArgumentsBuilder()
                     .addArgument("V", TINY_GVCF.getAbsolutePath())
                     .addArgument("concordance", makeGenDBUri(workspace))
