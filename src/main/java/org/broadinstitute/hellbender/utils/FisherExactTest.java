@@ -11,6 +11,7 @@ import java.util.stream.DoubleStream;
  * assuming the null hypothesis of odd ratio of 1.
  */
 public final class FisherExactTest {
+    private static final double REL_ERR = 1 - 10e-7;
 
     /**
      * Computes the 2-sided pvalue of the Fisher's exact test on a normalized table that ensures that the sum of
@@ -37,7 +38,7 @@ public final class FisherExactTest {
 
         final AbstractIntegerDistribution dist = new HypergeometricDistribution(null, m+n, m, k);
         final double[] logds = support.mapToDouble(dist::logProbability);
-        final double threshold = logds[x[0][0] - lo];
+        final double threshold = logds[x[0][0] - lo] * REL_ERR;
         final double[] log10ds = DoubleStream.of(logds).filter(d -> d <= threshold).map(MathUtils::logToLog10).toArray();
         final double pValue = MathUtils.sumLog10(log10ds);
 

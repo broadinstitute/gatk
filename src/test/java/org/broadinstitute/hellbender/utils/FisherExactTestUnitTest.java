@@ -26,6 +26,8 @@ public final class FisherExactTestUnitTest{
         tests.add(new Object[]{1, 2, 3, 4,                     1.0});
         tests.add(new Object[]{0, 0, 100000, 100000,           1.0});
         tests.add(new Object[]{100000,100000,100000,0,         0.0});             //below R's or Java's precision
+        tests.add(new Object[]{12, 4, 26, 7,                   1.0});             //tests rounding the probabilities from the Hypergeometric
+        tests.add(new Object[]{12, 26, 4, 7,                   1.0});             //tests rounding the probabilities from the Hypergeometric
 
         tests.add(new Object[]{200000,100000,1,2,              0.259263});
         tests.add(new Object[]{100,100,100,0,                  3.730187e-23});
