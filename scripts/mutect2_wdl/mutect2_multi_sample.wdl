@@ -55,7 +55,7 @@ workflow Mutect2_Multi {
 	Int scatter_count
 	File pair_list
 	Array[Array[String]] pairs = read_tsv(pair_list)
-	File intervals
+	File? intervals
 	File ref_fasta
 	File ref_fasta_index
 	File ref_dict
