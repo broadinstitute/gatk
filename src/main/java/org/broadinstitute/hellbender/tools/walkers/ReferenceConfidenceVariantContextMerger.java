@@ -259,7 +259,6 @@ final class ReferenceConfidenceVariantContextMerger {
      * lookup the depth from the VC DP field or calculate by summing the depths of the genotypes
      */
     private static int calculateVCDepth(VariantContext vc) {
-
         if ( vc.hasAttribute(VCFConstants.DEPTH_KEY) ) {
             return vc.getAttributeAsInt(VCFConstants.DEPTH_KEY, 0);
         } else { // handle the gVCF case from the HaplotypeCaller
@@ -287,9 +286,10 @@ final class ReferenceConfidenceVariantContextMerger {
         return attributes;
     }
 
-    private static int getBestDepthValue(final Genotype gt) {
+    @VisibleForTesting
+    static int getBestDepthValue(final Genotype gt) {
         if (gt.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) {
-            return Integer.parseInt((String) gt.getAnyAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+            return Integer.parseInt(gt.getAnyAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY).toString());
         } else {
             return gt.hasDP() ? gt.getDP() : 0;
         }

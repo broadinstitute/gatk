@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -46,6 +47,23 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends BaseTest {
             VariantContextTestUtils.assertGenotypesAreEqual(result.getGenotype(expectedGenotype.getSampleName()), expectedGenotype);
         }
     }
+
+    @DataProvider
+    public Object[][] getVariousDepths() {
+        Genotype baseGenotype = new GenotypeBuilder("sample", Arrays.asList(C, G)).make();
+        return new Object[][]{
+                {baseGenotype, 0},
+                {new GenotypeBuilder(baseGenotype).DP(10).attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, 5).make(), 5},
+                {new GenotypeBuilder(baseGenotype).DP(10).attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, "5").make(), 5},
+                {new GenotypeBuilder(baseGenotype).DP(10).make(), 10}
+        };
+    }
+
+    @Test(dataProvider = "getVariousDepths")
+    public void testGetBestDepthValue(final Genotype genotype, final int expectedDepth){
+        Assert.assertEquals(ReferenceConfidenceVariantContextMerger.getBestDepthValue(genotype), expectedDepth);
+    }
+
 
     @Test
     public void testGenerateADWithNewAlleles() {
