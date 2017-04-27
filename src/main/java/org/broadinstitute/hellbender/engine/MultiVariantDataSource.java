@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -63,7 +64,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      */
     public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases) {
-        this(featureInputs, queryLookaheadBases, 0, 0);
+        this(featureInputs, queryLookaheadBases, 0, 0, null);
     }
 
     /**
@@ -74,14 +75,16 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
      * @param queryLookaheadBases look ahead this many bases during queries that produce cache misses
      * @param cloudPrefetchBuffer  MB size of caching/prefetching wrapper for the data, if on Google Cloud (0 to disable).
      * @param cloudIndexPrefetchBuffer MB size of caching/prefetching wrapper for the index, if on Google Cloud (0 to disable).
+     * @param reference reference to use when creating FeatureDataSources, may be null, only needed by GenomicsDB
      */
-    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer) {
+    public MultiVariantDataSource(final List<FeatureInput<VariantContext>> featureInputs, final int queryLookaheadBases, final int cloudPrefetchBuffer, final int cloudIndexPrefetchBuffer, final Path reference) {
         Utils.validateArg(queryLookaheadBases >= 0, "Query lookahead bases must be >= 0");
         Utils.validateArg(featureInputs != null && featureInputs.size() > 0, "FeatureInputs list must be non-null and non-empty");
 
         featureInputs.forEach(
                 featureInput -> featureDataSources.add(
-                        new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer)));
+                        new FeatureDataSource<>(featureInput, queryLookaheadBases, VariantContext.class, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                                                reference)));
 
         // Ensure that the merged header and sequence dictionary that we use are in sync with each
         // other, and reflect the actual dictionaries used to do validation:

@@ -6,7 +6,6 @@ import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Spliterator;
@@ -66,7 +65,8 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
                                                  referenceArguments.getReferencePath());
                 }
         );
-        drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer);
+        drivingVariants = new MultiVariantDataSource(drivingVariantsFeatureInputs, VariantWalkerBase.FEATURE_CACHE_LOOKAHEAD, cloudPrefetchBuffer, cloudIndexPrefetchBuffer,
+                                                     referenceArguments.getReferencePath());
 
         //Note: the intervals for the driving variants are set in onStartup
     }
