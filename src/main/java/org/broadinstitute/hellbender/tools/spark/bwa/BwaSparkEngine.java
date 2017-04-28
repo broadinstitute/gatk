@@ -14,10 +14,7 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.seqdoop.hadoop_bam.BAMInputFormat;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * The BwaSparkEngine provides a simple interface for transforming a JavaRDD<GATKRead> in which the reads are paired
@@ -107,20 +104,14 @@ public final class BwaSparkEngine implements AutoCloseable {
                 final byte[] quals = originalRead.getBaseQualities();
                 final String readGroup = originalRead.getReadGroup();
                 final List<BwaMemAlignment> alignments = allAlignments.get(idx);
-                final long nPrimaries = alignments.stream().filter(aln->(aln.getSamFlag()&SAMFlag.NOT_PRIMARY_ALIGNMENT.intValue())==0).count();
+                final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
                 for ( final BwaMemAlignment alignment : alignments ) {
                     final SAMRecord samRecord =
                             BwaMemAlignmentUtils.applyAlignment(readName, bases, quals, readGroup,
                                                                 alignment, refNames, readsHeader, false, true);
                     final GATKRead rec = SAMRecordToGATKReadAdapter.headerlessReadAdapter(samRecord);
-                    if ( nPrimaries > 1 ) {
-                        final StringBuilder saTag = new StringBuilder();
-                        alignments.stream()
-                                .filter(aln->aln != alignment)
-                                .filter(aln->(aln.getSamFlag()&SAMFlag.NOT_PRIMARY_ALIGNMENT.intValue())==0)
-                                .forEach(aln->saTag.append(BwaMemAlignmentUtils.asTag(aln, refNames)));
-                        rec.setAttribute("SA", saTag.toString());
-                    }
+                    final String saTag = saTagMap.get(alignment);
+                    if ( saTag != null ) rec.setAttribute("SA", saTag);
                     outputReads.add(rec);
                 }
             }

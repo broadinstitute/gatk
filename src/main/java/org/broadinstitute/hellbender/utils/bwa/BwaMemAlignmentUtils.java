@@ -2,10 +2,10 @@ package org.broadinstitute.hellbender.utils.bwa;
 
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
+import org.broadinstitute.hellbender.tools.spark.sv.SVUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Utils to move data from a BwaMemAlignment into a GATKRead, or into a SAM tag.
@@ -91,11 +91,43 @@ public class BwaMemAlignmentUtils {
     }
 
     /**
+     * Produces an SA tag for each primary line and supplemental alignment as a map from alignment to tag value.
+     */
+    public static Map<BwaMemAlignment,String> createSATags( final List<BwaMemAlignment> alignments,
+                                                            final List<String> refNames ) {
+        final int nAlignments = alignments.size();
+        if ( nAlignments < 2 ) return Collections.emptyMap();
+
+        final String[] selfTags = new String[nAlignments];
+        for ( int idx = 0; idx != nAlignments; ++idx ) {
+            final BwaMemAlignment alignment = alignments.get(idx);
+            if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isUnset(alignment.getSamFlag()) ) {
+                selfTags[idx] = asTag(alignment, refNames);
+            }
+        }
+
+        final Map<BwaMemAlignment,String> saTags = new HashMap<>(SVUtils.hashMapCapacity(nAlignments));
+        for ( int idx = 0; idx != nAlignments; ++idx ) {
+            final BwaMemAlignment alignment = alignments.get(idx);
+            if ( SAMFlag.NOT_PRIMARY_ALIGNMENT.isSet(alignment.getSamFlag()) ) continue;
+
+            final StringBuilder saTag = new StringBuilder();
+            for ( int idx2 = 0; idx2 != nAlignments; ++idx2 ) {
+                if ( idx2 == idx ) continue;
+                final String tag = selfTags[idx2];
+                if ( tag != null ) saTag.append(tag);
+            }
+            saTags.put(alignment, saTag.toString());
+        }
+        return saTags;
+    }
+
+    /**
      * Describes an alignment as a string for use in an SA tag, for example.
      */
     public static String asTag( final BwaMemAlignment alignment, final List<String> refNames ) {
         return refNames.get(alignment.getRefId())+","+(alignment.getRefStart()+1)+","+
                 (SAMFlag.READ_REVERSE_STRAND.isSet(alignment.getSamFlag())?"-":"+")+","+
-                alignment.getCigar()+","+alignment.getMapQual()+","+alignment.getNMismatches()+";";
+                alignment.getCigar().replace('H','S')+","+alignment.getMapQual()+","+alignment.getNMismatches()+";";
     }
 }
