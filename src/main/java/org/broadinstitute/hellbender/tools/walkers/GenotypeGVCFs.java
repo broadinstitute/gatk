@@ -164,7 +164,7 @@ public final class GenotypeGVCFs extends VariantWalker {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
         }
 
-        vcfWriter = GATKVariantContextUtils.createVCFWriter(outputFile, getReferenceDictionary(), false);
+        vcfWriter = createVCFWriter(outputFile);
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));

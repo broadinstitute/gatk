@@ -1,11 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import htsjdk.tribble.Tribble;
 import htsjdk.tribble.readers.LineIterator;
 import htsjdk.tribble.readers.PositionalBufferedStream;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFCodec;
+import htsjdk.variant.vcf.VCFUtils;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
@@ -31,7 +34,8 @@ import java.util.stream.Collectors;
 public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     private static final List<String> NO_EXTRA_ARGS = Collections.emptyList();
-    private static final String b38_reference_20_21 =largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
+    private static final String b38_reference_20_21 = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
+    private static final String BASE_PAIR_GVCF = "gvcf.basepairResolution.gvcf";
 
     private static final List<String> ATTRIBUTES_TO_IGNORE = Arrays.asList(
             "QD",//TODO QD has a cap value and anything that reaches that is randomized.  It's difficult to reproduce the same random numbers across gatk3 -> 4
@@ -48,19 +52,18 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "gvcfsToGenotype")
     public Object[][] gvcfsToGenotype() {
-        String basePairGVCF = "gvcf.basepairResolution.gvcf";
         return new Object[][]{
                 //combine not supported yet, see https://github.com/broadinstitute/gatk/issues/2429 and https://github.com/broadinstitute/gatk/issues/2584
                 //{"combine.single.sample.pipeline.1.vcf", null, Arrays.asList("-V", getTestFile("combine.single.sample.pipeline.2.vcf").toString() , "-V", getTestFile("combine.single.sample.pipeline.3.vcf").toString()), b37_reference_20_21},
-                {getTestFile(basePairGVCF), getTestFile( "gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}, //base pair level gvcf
+                {getTestFile(BASE_PAIR_GVCF), getTestFile("gvcf.basepairResolution.gatk3.7_30_ga4f720357.output.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}, //base pair level gvcf
                 {getTestFile("testUpdatePGT.gvcf"), getTestFile( "testUpdatePGT.gatk3.7_30_ga4f720357.output.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},   //testUpdatePGT
                 {getTestFile("gvcfExample1.vcf"), getTestFile( "gvcfExample1.gatk3.7_30_ga4f720357.expected.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}, //single sample vcf
                 {getTestFile("gvcfExample1.vcf"), getTestFile( "gvcfExample1.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList("-L", "20"), b37_reference_20_21}, //single sample vcf with -L
                 {getTestFile("combined_genotype_gvcf_exception.original.vcf"), getTestFile( "combined_genotype_gvcf_exception.gatk3.7_30_ga4f720357.output.vcf"), NO_EXTRA_ARGS, b37_reference_20_21}, //test that an input vcf with 0/0 already in GT field is overwritten
                 {getTestFile("combined_genotype_gvcf_exception.nocall.vcf"), getTestFile( "combined_genotype_gvcf_exception.gatk3.7_30_ga4f720357.output.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},  //same test as above but with ./.
-                {getTestFile(basePairGVCF), getTestFile( "ndaTest.gatk3.7_30_ga4f720357.expected.vcf"), Collections.singletonList("-nda"), b37_reference_20_21},  //annotating with the number of alleles discovered option
-                {getTestFile(basePairGVCF), getTestFile( "maxAltAllelesTest.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList("-maxAltAlleles", "1"), b37_reference_20_21 }, //restricting the max number of alt alleles
-                {getTestFile(basePairGVCF), getTestFile( "standardConfTest.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList("-stand_call_conf","300"),b37_reference_20_21}, //set minimum calling threshold
+                {getTestFile(BASE_PAIR_GVCF), getTestFile("ndaTest.gatk3.7_30_ga4f720357.expected.vcf"), Collections.singletonList("-nda"), b37_reference_20_21},  //annotating with the number of alleles discovered option
+                {getTestFile(BASE_PAIR_GVCF), getTestFile("maxAltAllelesTest.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList("-maxAltAlleles", "1"), b37_reference_20_21 }, //restricting the max number of alt alleles
+                {getTestFile(BASE_PAIR_GVCF), getTestFile("standardConfTest.gatk3.7_30_ga4f720357.expected.vcf"), Arrays.asList("-stand_call_conf", "300"),b37_reference_20_21}, //set minimum calling threshold
                 {getTestFile("spanningDel.combined.g.vcf"), getTestFile( "spanningDel.combined.gatk3.7_30_ga4f720357.expected.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 {getTestFile("spanningDel.delOnly.g.vcf"), getTestFile( "spanningDel.delOnly.gatk3.7_30_ga4f720357.expected.vcf"), NO_EXTRA_ARGS, b37_reference_20_21},
                 {getTestFile("spanningDel.depr.delOnly.g.vcf"), getTestFile( "spanningDel.depr.delOnly.gatk3.7_30_ga4f720357.expected.vcf" ), NO_EXTRA_ARGS, b37_reference_20_21},
@@ -191,5 +194,20 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         }
 
         return VCs;
+    }
+
+    @Test
+    public void testIndexIsCreated(){
+        final File output = createTempFile("test", ".vcf");
+        final File index = new File(output.getAbsolutePath() + Tribble.STANDARD_INDEX_EXTENSION);
+        Assert.assertFalse(index.exists());
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(getTestFile(BASE_PAIR_GVCF))
+                .addOutput(output)
+                .addReference(new File(b37_reference_20_21))
+                .addArgument(StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME, "true");
+
+        runCommandLine(args);
+        Assert.assertTrue(index.exists());
     }
 }
