@@ -35,20 +35,17 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ChromosomeCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
-import org.broadinstitute.hellbender.utils.io.ListFileUtils;
 import org.broadinstitute.hellbender.utils.samples.MendelianViolation;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDB;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
-import org.broadinstitute.hellbender.utils.samples.SampleUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.*;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -129,7 +126,10 @@ public final class SelectVariants extends VariantWalker {
     public File outFile = null;
 
     /**
-     * This argument can be specified multiple times in order to provide multiple sample names.
+     * This argument can be specified multiple times in order to provide multiple sample names, or to specify
+     * the name of one or more files containing sample names. File names must end in ".list", and the expected
+     * file format is simply plain text with one sample name per line. Note that sample exclusion takes
+     * precedence over inclusion, so that if a sample is in both lists it will be excluded.
      */
     @Argument(fullName="sample_name", shortName="sn", doc="Include genotypes from this sample", optional=true)
     private Set<String> sampleNames = new LinkedHashSet<>(0);
@@ -143,26 +143,13 @@ public final class SelectVariants extends VariantWalker {
     private Set<String> sampleExpressions = new LinkedHashSet<>(0);
 
     /**
-     * Sample names should be in a plain text file listing one sample name per line. This argument can be specified
-     * multiple times in order to provide multiple sample list files.
-     */
-    @Argument(fullName="sample_file", shortName="sf", doc="File containing a list of samples to include", optional=true)
-    private Set<File> sampleFiles = new LinkedHashSet<>(0);
-
-    /**
      * Note that sample exclusion takes precedence over inclusion, so that if a sample is in both lists it will be
-     * excluded. This argument can be specified multiple times in order to provide multiple sample names.
+     * excluded. This argument can be specified multiple times in order to provide multiple sample names, or to
+     * specify the name of one or more files containing sample names. File names must end in ".list", and the
+     * expected file format is simply plain text with one sample name per line.
      */
     @Argument(fullName="exclude_sample_name", shortName="xl_sn", doc="Exclude genotypes from this sample", optional=true)
     private Set<String> XLsampleNames = new LinkedHashSet<>(0);
-
-    /**
-     * Sample names should be in a plain text file listing one sample name per line. Note that sample exclusion takes
-     * precedence over inclusion, so that if a sample is in both lists it will be excluded. This argument can be
-     * specified multiple times in order to provide multiple sample list files.
-     */
-    @Argument(fullName="exclude_sample_file", shortName="xl_sf", doc="List of samples to exclude", optional=true)
-    private Set<File> XLsampleFiles = new LinkedHashSet<>(0);
 
     /**
      * Using a regular expression allows you to match multiple sample names that have that pattern in common. Note that
@@ -316,20 +303,20 @@ public final class SelectVariants extends VariantWalker {
     private List<VariantContext.Type> typesToExclude = new ArrayList<>();
 
     /**
-     * If a file containing a list of IDs is provided to this argument, the tool will only select variants whose ID
-     * field is present in this list of IDs. The matching is done by exact string matching. The expected file format
-     * is simply plain text with one ID per line.
+     * List of IDs (or a .list file containing ids) to select. The tool will only select variants whose ID
+     * field is present in this list of IDs. The matching is done by exact string matching. If a file, the file
+     * name must end in ".list", and the expected file format is simply plain text with one ID per line.
      */
-    @Argument(fullName="keepIDs", shortName="IDs", doc="List of variant IDs to select", optional=true)
-    private File rsIDFile = null;
+    @Argument(fullName="keepIDs", shortName="IDs", doc="List of variant rsIDs to select", optional=true)
+    private Set<String> rsIDsToKeep = new HashSet<>();
 
     /**
-     * If a file containing a list of IDs is provided to this argument, the tool will not select variants whose ID
-     * field is present in this list of IDs. The matching is done by exact string matching. The expected file format
-     * is simply plain text with one ID per line.
+     * List of IDs (or a .list file containing ids) to exclude. The tool will exclude variants whose ID
+     * field is present in this list of IDs. The matching is done by exact string matching. If a file, the
+     * file name must end in ".list", and the expected file format is simply plain text with one ID per line.
      */
-    @Argument(fullName="excludeIDs", shortName="xlIDs", doc="List of variant IDs to select", optional=true)
-    private File XLrsIDFile = null;
+    @Argument(fullName="excludeIDs", shortName="xlIDs", doc="List of variant rsIDs to exclude", optional=true)
+    private Set<String> rsIDsToRemove = new HashSet<>();
 
     @Hidden
     @Argument(fullName="fullyDecode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
@@ -434,9 +421,6 @@ public final class SelectVariants extends VariantWalker {
     // Random number generator for the genotypes to remove
     private final Random randomGenotypes = new Random();
 
-    private Set<String> IDsToKeep = null;
-    private Set<String> IDsToRemove = null;
-
     private final List<Allele> diploidNoCallAlleles = GATKVariantContextUtils.noCallAlleles(2);
 
     private final Map<Integer, Integer> ploidyToNumberOfAlleles = new LinkedHashMap<Integer, Integer>();
@@ -484,10 +468,6 @@ public final class SelectVariants extends VariantWalker {
         if (selectRandomFraction) {
             logger.info("Selecting approximately " + 100.0*fractionRandom + "% of the variants at random from the variant track");
         }
-
-        // Prepare the variant IDs to keep and to be removed for use by the IDs filter
-        IDsToKeep = getIDsFromFile(rsIDFile);
-        IDsToRemove = getIDsFromFile(XLrsIDFile);
 
         //TODO: this should be refactored/consolidated as part of
         // https://github.com/broadinstitute/gatk/issues/121 and
@@ -656,12 +636,12 @@ public final class SelectVariants extends VariantWalker {
             compositeFilter = compositeFilter.and(new VariantTypesVariantFilter(selectedTypes));
         }
 
-        if (IDsToKeep != null && !IDsToKeep.isEmpty()) {
-            compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(IDsToKeep));
+        if (rsIDsToKeep != null && !rsIDsToKeep.isEmpty()) {
+            compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(rsIDsToKeep));
         }
 
-        if (IDsToRemove != null && !IDsToRemove.isEmpty()) {
-            compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(IDsToRemove).negate());
+        if (rsIDsToRemove != null && !rsIDsToRemove.isEmpty()) {
+            compositeFilter = compositeFilter.and(new VariantIDsVariantFilter(rsIDsToRemove).negate());
         }
 
         return compositeFilter;
@@ -672,33 +652,30 @@ public final class SelectVariants extends VariantWalker {
      */
     private SortedSet<String> createSampleNameInclusionList(Map<String, VCFHeader> vcfHeaders) {
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
-        final Collection<String> samplesFromFile = SampleUtils.getSamplesFromFiles(sampleFiles);
         final Collection<String> samplesFromExpressions = matchSamplesExpressions(vcfSamples, sampleExpressions);
 
-        // first, check overlap between requested and present samples
-        final Set<String> commandLineUniqueSamples = new LinkedHashSet<>(samplesFromFile.size()+samplesFromExpressions.size()+sampleNames.size());
-        commandLineUniqueSamples.addAll(samplesFromFile);
-        commandLineUniqueSamples.addAll(samplesFromExpressions);
-        commandLineUniqueSamples.addAll(sampleNames);
-        commandLineUniqueSamples.removeAll(vcfSamples);
+        // first, find any samples that were listed on the command line but which don't exist in in the header
+        final Set<String> samplesNotInHeader = new LinkedHashSet<>(samplesFromExpressions.size()+sampleNames.size());
+        samplesNotInHeader.addAll(samplesFromExpressions);
+        samplesNotInHeader.addAll(sampleNames);
+        samplesNotInHeader.removeAll(vcfSamples);
 
         // second, add the requested samples
         samples.addAll(sampleNames);
         samples.addAll(samplesFromExpressions);
-        samples.addAll(samplesFromFile);
 
-        logger.debug(Utils.join(",", commandLineUniqueSamples));
-
-        if (!commandLineUniqueSamples.isEmpty()) {
+        // report any requested samples that don't exist in the header and remove them from the list we're accumulating
+        logger.debug(Utils.join(",", samplesNotInHeader));
+        if (!samplesNotInHeader.isEmpty()) {
             if (allowNonOverlappingCommandLineSamples) {
                 logger.warn("Samples present on command line input that are not present in the VCF. These samples will be ignored.");
-                samples.removeAll(commandLineUniqueSamples);
+                samples.removeAll(samplesNotInHeader);
             }
             else {
                 throw new UserException.BadInput(String.format("%s%n%n%s%n%n%s%n%n%s",
                         "Samples entered on command line (through -sf or -sn) that are not present in the VCF.",
                         "A list of these samples:",
-                        Utils.join(",", commandLineUniqueSamples),
+                        Utils.join(",", samplesNotInHeader),
                         "To ignore these samples, run with --ALLOW_NONOVERLAPPING_COMMAND_LINE_SAMPLES"));
             }
         }
@@ -710,14 +687,11 @@ public final class SelectVariants extends VariantWalker {
         }
 
         // Exclude samples take precedence over include - remove any excluded samples
-        final Collection<String> XLsamplesFromFile = SampleUtils.getSamplesFromFiles(XLsampleFiles);
         final Collection<String> XLsamplesFromExpressions = matchSamplesExpressions(vcfSamples, XLsampleExpressions);
-        samples.removeAll(XLsamplesFromFile);
         samples.removeAll(XLsampleNames);
         samples.removeAll(XLsamplesFromExpressions);
         noSamplesSpecified = noSamplesSpecified &&
                                 XLsampleNames.isEmpty() &&
-                                XLsamplesFromFile.isEmpty() &&
                                 XLsamplesFromExpressions.isEmpty();
 
         if (samples.isEmpty() && !noSamplesSpecified) {
@@ -796,46 +770,55 @@ public final class SelectVariants extends VariantWalker {
      * @param sampleExpressions list of expressions to use for matching samples
      * @return the set of samples from originalSamples that satisfy at least one of the expressions in sampleExpressions
      */
-    private static Collection<String> matchSamplesExpressions (Collection<String> originalSamples, Collection<String> sampleExpressions) {
-        // Now, check the expressions that weren't used in the previous step, and use them as if they're regular expressions
-        final Set<String> samples = new LinkedHashSet<>();
-        if (sampleExpressions != null) {
-            samples.addAll(ListFileUtils.includeMatching(originalSamples, sampleExpressions, false));
-        }
-        return samples;
+    private static Collection<String> matchSamplesExpressions(Collection<String> originalSamples, Collection<String> sampleExpressions) {
+        return sampleExpressions == null ?
+                Collections.emptySet() :
+                includeMatching(originalSamples, sampleExpressions, false);
     }
 
     /**
-     * Get IDs from a file
+     * Returns a new set of values including only values listed by filters/expressions
+     * <p/>
      *
-     * @param file file containing the IDs
-     * @return set of IDs or null if the file is null
-     * @throws UserException.CouldNotReadInputFile if could not read the file
+     * @param sourceValues     Values to match against
+     * @param filterExpressions    Filters/expressions
+     * @param exactMatch If true match filters exactly, otherwise use as both exact and regular expressions
+     * @return entries from values, filtered by filters
      */
-    private Set<String> getIDsFromFile(final File file){
-        /** load in the IDs file to a hashset for matching */
-        if (file != null) {
-            Set<String> ids = new LinkedHashSet<>();
-            try (final XReadLines xrl = new XReadLines(file)) {
-                ids.addAll(xrl.readLines().stream().map(String::trim).collect(Collectors.toList()));
-                logger.info("Selecting only variants with one of " + ids.size() + " IDs from " + file);
-            } catch (IOException e) {
-                throw new UserException.CouldNotReadInputFile(file, e);
+    protected static Set<String> includeMatching(
+            final Collection<String> sourceValues,
+            final Collection<String> filterExpressions,
+            final boolean exactMatch) {
+        Utils.nonNull(sourceValues);
+        Utils.nonNull(filterExpressions);
+
+        final Set<String> filteredValues = new LinkedHashSet<>();
+
+        Collection<Pattern> patterns = null;
+        if (!exactMatch) {
+            patterns = compilePatterns(filterExpressions);
+        }
+        for (final String value : sourceValues) {
+            if (filterExpressions.contains(value)) {
+                filteredValues.add(value);
+            } else if (!exactMatch) {
+                for (final Pattern pattern : patterns) {
+                    if (pattern.matcher(value).find()) {
+                        filteredValues.add(value);
+                    }
+                }
             }
-            return ids;
         }
 
-        return null;
+        return filteredValues;
     }
 
-    /**
-     * Prepend inverse phrase to description if --invertFilterExpression
-     *
-     * @param description the description
-     * @return the description with inverse prepended if --invert_filter_expression
-     */
-    private String possiblyInvertFilterExpression(final String description){
-        return invertSelect ? "Inverse of: " + description : description;
+    private static Collection<Pattern> compilePatterns(final Collection<String> filters) {
+        final Collection<Pattern> patterns = new ArrayList<Pattern>();
+        for (final String filter: filters) {
+            patterns.add(Pattern.compile(filter));
+        }
+        return patterns;
     }
 
     /**
