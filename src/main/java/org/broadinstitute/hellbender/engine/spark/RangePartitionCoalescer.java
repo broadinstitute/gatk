@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * A {@link PartitionCoalescer} that allows a range of partitions to be coalesced into groups.
  */
-class RangePartitionCoalescer implements PartitionCoalescer, Serializable {
+class RangePartitionCoalescer implements PartitionCoalescer, Serializable, scala.Serializable {
 
     private static final long serialVersionUID = 1L;
 
