@@ -152,8 +152,12 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
         if (bufSize <= 0) {
             throw new IllegalArgumentException("bufSize must be positive");
         }
-        this.bufSize = bufSize;
         this.size = chan.size();
+        if (bufSize > this.size) {
+            this.bufSize = (int)this.size;
+        } else {
+            this.bufSize = bufSize;
+        }
         this.open = true;
         exec = Executors.newFixedThreadPool(1);
     }
