@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.cloud.dataflow.sdk.options.PipelineOptions;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextWriter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -27,7 +28,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * An assembly with its contigs aligned to referece, or a reason that there isn't an assembly.
+ * An assembly with its contigs aligned to reference, or a reason that there isn't an assembly.
  */
 @DefaultSerializer(AlignedAssemblyOrExcuse.Serializer.class)
 public final class AlignedAssemblyOrExcuse {
@@ -130,12 +131,17 @@ public final class AlignedAssemblyOrExcuse {
                 for ( int contigIdx = 0; contigIdx != nContigs; ++contigIdx ) {
                     final List<BwaMemAlignment> alignments = allAlignments.get(contigIdx);
                     if ( alignments.isEmpty() ) continue;
+                    final Map<BwaMemAlignment,String> saTagMap = BwaMemAlignmentUtils.createSATags(alignments,refNames);
                     final FermiLiteAssembly.Contig contig = assembly.getContig(contigIdx);
                     final String readName = String.format("asm%06d:tig%05d", assemblyId, contigIdx);
                     final byte[] calls = contig.getSequence();
                     for ( final BwaMemAlignment alignment : alignments ) {
-                        writer.addAlignment(BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null, alignment,
-                                refNames, header, false, false));
+                        final SAMRecord samRecord =
+                                BwaMemAlignmentUtils.applyAlignment(readName, calls, null, null, alignment,
+                                        refNames, header, false, false);
+                        final String saTag = saTagMap.get(alignment);
+                        if ( saTag != null ) samRecord.setAttribute("SA", saTag);
+                        writer.addAlignment(samRecord);
                     }
                 }
             }
