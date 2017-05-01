@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
+import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -99,11 +100,11 @@ public final class RecalibrationArgumentCollection implements Serializable {
     @Argument(fullName = "preserve_qscores_less_than", shortName = "preserveQ", doc = "Don't recalibrate bases with quality scores less than this threshold (with -" + StandardArgumentDefinitions.BQSR_TABLE_SHORT_NAME + ")", optional = true)
     public int PRESERVE_QSCORES_LESS_THAN = QualityUtils.MIN_USABLE_Q_SCORE;
 
-    @Hidden
+    @Advanced
     @Argument(fullName = "enableBAQ", shortName = "enableBAQ", doc = "do BAQ correction")
     public boolean enableBAQ = false;
 
-    @Hidden
+    @Advanced
     @Argument(fullName = "computeIndelBQSRTables", shortName = "indelBQSR", doc = "compute indel BQSR tables")
     public boolean computeIndelBQSRTables = false;
 
