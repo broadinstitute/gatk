@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
  */
 public final class SeekableByteChannelPrefetcher implements SeekableByteChannel {
 
+    // Only one thread at a time should use chan.
+    // To ensure this is the case, only the prefetching thread uses it.
     private final SeekableByteChannel chan;
     private final int bufSize;
     private final ExecutorService exec;
@@ -145,6 +147,9 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     }
 
     public SeekableByteChannelPrefetcher(SeekableByteChannel chan, int bufSize) throws IOException {
+        if (chan instanceof SeekableByteChannelPrefetcher) {
+            throw new IllegalArgumentException("Cannot put two prefetchers on the same channel.");
+        }
         if (!chan.isOpen()) {
             throw new IllegalArgumentException("channel must be open");
         }
@@ -159,6 +164,7 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
             this.bufSize = bufSize;
         }
         this.open = true;
+        // We use a single thread to ensure no parallel accesses to the channel.
         exec = Executors.newFixedThreadPool(1);
     }
 
@@ -441,6 +447,13 @@ public final class SeekableByteChannelPrefetcher implements SeekableByteChannel 
     @Override
     public void close() throws IOException {
         if (open) {
+            exec.shutdown();
+            try {
+                exec.awaitTermination(3, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                // Restore interrupted status
+                Thread.currentThread().interrupt();
+            }
             chan.close();
             open = false;
         }
