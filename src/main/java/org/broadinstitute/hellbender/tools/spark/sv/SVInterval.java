@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 
 /**
  * Naturally collating, simple interval.
+ * Some methods assume that the interval is half-open.
  */
 @DefaultSerializer(SVInterval.Serializer.class)
 @VisibleForTesting
@@ -40,8 +41,19 @@ public final class SVInterval implements Comparable<SVInterval> {
     public int getEnd() { return end; }
     public int getLength() { return end-start; }
 
+    /** This definition is appropriate for half-open intervals.
+     *  If you're building your intervals as closed, you're going to have trouble.
+     */
+    public boolean overlaps( final SVInterval that ) {
+        return this.contig == that.contig && this.start < that.end && that.start < this.end;
+    }
+
     public boolean isDisjointFrom( final SVInterval that ) {
-        return this.contig != that.contig || this.end < that.start || that.end < this.start;
+        return !overlaps(that);
+    }
+
+    public boolean isUpstreamOf( final SVInterval that ) {
+        return this.contig < that.contig || (this.contig == that.contig && this.end <= that.start);
     }
 
     public int gapLen( final SVInterval that ) {
@@ -80,6 +92,9 @@ public final class SVInterval implements Comparable<SVInterval> {
         }
         return result;
     }
+
+    @Override
+    public String toString() { return Integer.toString(contig)+"["+start+":"+end+"]"; }
 
     public static final class Serializer extends com.esotericsoftware.kryo.Serializer<SVInterval> {
         @Override

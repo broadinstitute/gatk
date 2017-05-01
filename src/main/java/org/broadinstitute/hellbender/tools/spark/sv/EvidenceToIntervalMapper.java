@@ -10,11 +10,9 @@ import java.util.function.Function;
  * A class to examine a stream of BreakpointEvidence, and group it into Intervals.
  */
 public final class EvidenceToIntervalMapper implements Function<BreakpointEvidence, Iterator<SVInterval>> {
-    private static final Iterator<SVInterval> noInterval = Collections.emptyIterator();
     private final int gapSize;
-    private int contig = -1;
-    private int start;
-    private int end;
+    private SVInterval curInterval;
+    private static final Iterator<SVInterval> EMPTY_ITERATOR = Collections.emptyIterator();
 
     public EvidenceToIntervalMapper( final int gapSize ) {
         this.gapSize = gapSize;
@@ -22,20 +20,15 @@ public final class EvidenceToIntervalMapper implements Function<BreakpointEviden
 
     @Override
     public Iterator<SVInterval> apply( final BreakpointEvidence evidence ) {
-        Iterator<SVInterval> result = noInterval;
-        if ( evidence.getContigIndex() != contig ) {
-            if ( contig != -1 ) {
-                result = new SingletonIterator<>(new SVInterval(contig, start, end));
-            }
-            contig = evidence.getContigIndex();
-            start = evidence.getEventStartPosition();
-            end = evidence.getContigEnd();
-        } else if ( evidence.getEventStartPosition() >= end + gapSize ) {
-            result = new SingletonIterator<>(new SVInterval(contig, start, end));
-            start = evidence.getEventStartPosition();
-            end = evidence.getContigEnd();
+        Iterator<SVInterval> result = EMPTY_ITERATOR;
+        final SVInterval interval = evidence.getLocation();
+        if ( curInterval == null ) {
+            curInterval = interval;
+        } else if ( curInterval.gapLen(interval) < gapSize ) {
+            curInterval = curInterval.join(interval);
         } else {
-            end = Math.max(end, evidence.getContigEnd());
+            result = new SingletonIterator<>(curInterval);
+            curInterval = interval;
         }
         return result;
     }

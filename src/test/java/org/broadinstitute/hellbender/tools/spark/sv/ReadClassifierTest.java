@@ -68,6 +68,9 @@ public class ReadClassifierTest extends BaseTest {
     private void checkClassification( final ReadClassifier classifier, final GATKRead read, final List<BreakpointEvidence> expectedEvidence ) {
         final List<BreakpointEvidence> evidence = new ArrayList<>();
         classifier.apply(read).forEachRemaining(evidence::add);
-        Assert.assertEquals(evidence, expectedEvidence);
+        Assert.assertEquals(evidence.size(), expectedEvidence.size());
+        for ( int idx = 0; idx != evidence.size(); ++idx ) {
+            Assert.assertEquals(evidence.get(idx).toString(), expectedEvidence.get(idx).toString());
+        }
     }
 }

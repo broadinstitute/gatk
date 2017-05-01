@@ -708,12 +708,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
                                     .mapToInt(CigarElement::getLength)
                                     .sum() >= minMatchLen)
                     .mapPartitions(readItr ->
-                            new MapPartitioner<>(readItr, new ReadClassifier(broadcastMetadata.value())).iterator(), true)
+                            new MapPartitioner<>(readItr,
+                                    new ReadClassifier(broadcastMetadata.value())).iterator(), true)
                     .mapPartitions(evidenceItr ->
-                            new MapPartitioner<>(evidenceItr, new BreakpointClusterer(minEvidenceCount, 2*maxFragmentSize)).iterator(), true)
-                    .mapPartitions(evidenceItr ->
-                            new MapPartitioner<>(evidenceItr,
-                                    new WindowSorter(3*maxFragmentSize), new BreakpointEvidence(nContigs)).iterator(), true);
+                            new BreakpointClusterer(minEvidenceCount,evidenceItr), true);
 
         // record the evidence
         if ( locations.evidenceDir != null ) {

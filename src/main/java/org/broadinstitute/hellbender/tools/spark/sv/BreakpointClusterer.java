@@ -1,61 +1,75 @@
 package org.broadinstitute.hellbender.tools.spark.sv;
 
+import org.apache.spark.api.java.function.FlatMapFunction;
+import org.apache.spark.api.java.function.Function;
+
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * A class that acts as a filter for breakpoint evidence.
  * It passes only that evidence that is part of a putative cluster.
  */
-public final class BreakpointClusterer implements Function<BreakpointEvidence, Iterator<BreakpointEvidence>> {
+public final class BreakpointClusterer implements Iterator<BreakpointEvidence> {
     private final int minEvidenceCount;
-    private final int staleEventDistance;
-    private final SortedMap<BreakpointEvidence, Boolean> locMap = new TreeMap<>();
-    private final List<Map.Entry<BreakpointEvidence, Boolean>> reportableEntries;
-    private static final Iterator<BreakpointEvidence> noEvidence = Collections.emptyIterator();
-    private int currentContig = -1;
+    private final SVIntervalTree<List<BreakpointEvidence>> evidenceTree;
+    private Iterator<SVIntervalTree.Entry<List<BreakpointEvidence>>> treeItr;
+    private Iterator<BreakpointEvidence> listItr;
 
-    public BreakpointClusterer( final int minEvidenceCount, final int staleEventDistance ) {
+    public BreakpointClusterer( final int minEvidenceCount, final Iterator<BreakpointEvidence> evidenceItr ) {
         this.minEvidenceCount = minEvidenceCount;
-        this.staleEventDistance = staleEventDistance;
-        this.reportableEntries = new ArrayList<>(2 * minEvidenceCount);
+        this.evidenceTree = new SVIntervalTree<>();
+        buildTree(evidenceItr);
     }
 
     @Override
-    public Iterator<BreakpointEvidence> apply( final BreakpointEvidence evidence ) {
-        if ( evidence.getContigIndex() != currentContig ) {
-            currentContig = evidence.getContigIndex();
-            locMap.clear();
+    public boolean hasNext() {
+        if ( listItr != null && listItr.hasNext() ) {
+            return true;
         }
-
-        locMap.put(evidence, true);
-
-        final int locusStart = evidence.getEventStartPosition();
-        final int locusEnd = evidence.getContigEnd();
-        final int staleEnd = locusStart - staleEventDistance;
-        int evidenceCount = 0;
-        reportableEntries.clear();
-        final Iterator<Map.Entry<BreakpointEvidence, Boolean>> itr = locMap.entrySet().iterator();
-        while ( itr.hasNext() ) {
-            final Map.Entry<BreakpointEvidence, Boolean> entry = itr.next();
-            final BreakpointEvidence evidence2 = entry.getKey();
-            final int contigEnd = evidence2.getContigEnd();
-            if ( contigEnd <= staleEnd ) itr.remove();
-            else if ( evidence2.getEventStartPosition() >= locusEnd ) break;
-            else if ( contigEnd > locusStart ) {
-                evidenceCount += 1;
-                if ( entry.getValue() ) reportableEntries.add(entry);
+        listItr = null;
+        while ( treeItr.hasNext() ) {
+            final SVIntervalTree.Entry<List<BreakpointEvidence>> entry = treeItr.next();
+            if ( hasEnoughOverlappers(entry.getInterval()) ) {
+                listItr = entry.getValue().iterator();
+                return true;
             }
         }
+        return false;
+    }
 
-        if ( evidenceCount >= minEvidenceCount ) {
-            return reportableEntries.stream()
-                    .map(entry -> {
-                        entry.setValue(false);
-                        return entry.getKey();
-                    })
-                    .iterator();
+    @Override
+    public BreakpointEvidence next() {
+        if ( !hasNext() ) {
+            throw new NoSuchElementException("No next element.");
         }
-        return noEvidence;
+        return listItr.next();
+    }
+
+    private void buildTree( final Iterator<BreakpointEvidence> evidenceItr ) {
+        while ( evidenceItr.hasNext() ) {
+            final BreakpointEvidence evidence = evidenceItr.next();
+            final SVInterval location = evidence.getLocation();
+            final SVIntervalTree.Entry<List<BreakpointEvidence>> entry = evidenceTree.find(location);
+            if ( entry != null ) {
+                entry.getValue().add(evidence);
+            } else {
+                final List<BreakpointEvidence> valueList = new ArrayList<>(1);
+                valueList.add(evidence);
+                evidenceTree.put(location, valueList);
+            }
+        }
+        treeItr = evidenceTree.iterator();
+    }
+
+    private boolean hasEnoughOverlappers( final SVInterval interval ) {
+        final Iterator<SVIntervalTree.Entry<List<BreakpointEvidence>>> itr = evidenceTree.overlappers(interval);
+        int count = 0;
+        while ( itr.hasNext() ) {
+            count += itr.next().getValue().size();
+            if ( count >= minEvidenceCount ) {
+                return true;
+            }
+        }
+        return false;
     }
 }
