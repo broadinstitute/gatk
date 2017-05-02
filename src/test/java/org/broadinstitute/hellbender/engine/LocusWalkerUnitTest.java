@@ -103,4 +103,34 @@ public class LocusWalkerUnitTest extends CommandLineProgramTest {
         Assert.assertEquals(tool.totalPileup, 1);
     }
 
+    private static class TestEmitUncoveredLociTool extends LocusWalker {
+        public int totalApplyCalls = 0;
+
+        @Override
+        public boolean emitEmptyLoci() {
+            return true;
+        }
+
+        @Override
+        public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
+            totalApplyCalls++;
+        }
+    }
+
+    @Test
+    public void testEmitUncoveredLoci() {
+        // Most testing of this is in IntervalAlignmentContextIteratorUnitTest
+        final TestEmitUncoveredLociTool tool = new TestEmitUncoveredLociTool();
+
+        final String[] args = {
+                "-I", getTestDataDir()+ "/print_reads.sorted.bam",
+                "-R", getTestDataDir()+ "/print_reads.fasta",
+                "-L", "chr7:21-30"
+        };
+
+        tool.instanceMain(args);
+
+        Assert.assertEquals(tool.totalApplyCalls, 10);
+    }
+
 }
